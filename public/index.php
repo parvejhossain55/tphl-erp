@@ -127,6 +127,12 @@ $routes = [
     "update-blog/(\d+)" => ["controller" => "BlogController", "method" => "update"],
     "delete-blog/(\d+)" => ["controller" => "BlogController", "method" => "delete"],
 
+    //location
+    "location-lists" => ["controller" => "LocationController", "method" => "index"],
+    "store-location" => ["controller" => "LocationController", "method" => "store"],
+  
+    "update-location/(\d+)" => ["controller" => "LocationController", "method" => "update"],
+    "delete-location/(\d+)" => ["controller" => "LocationController", "method" => "delete"],
 
     // Leave controller 
     "leave-types" => ["controller" => "Leaves\\LeaveTypeController","method" => "index" ],

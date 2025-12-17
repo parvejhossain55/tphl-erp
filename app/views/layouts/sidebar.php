@@ -89,7 +89,7 @@
                        </li>
 
 
-                       
+
                        <li class="slide  <?= isActive('leadSource-lists', $current_route) ?>">
                            <a href="<?= $base_url ?>/leadSource-lists" class="sidebar__menu-item  <?= isActive('leadSource-lists', $current_route) ?>">
                                <div class="side-menu__icon"><i class="fa-solid fa-users"></i></div>
@@ -218,10 +218,17 @@
                                <li class="slide <?= isActive('home-footer-setting', $current_route) ?>">
                                    <a class="sidebar__menu-item <?= isActive('home-footer-setting', $current_route) ?>" href="<?= $GLOBALS['base_url'] ?>/home-footer-setting">Home Footer</a>
                                </li>
-                            
+
                            </ul>
                        </li>
 
+
+                       <li class="slide  <?= isActive('location-lists', $current_route) ?>">
+                           <a href="<?= $base_url ?>/location-lists" class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
+                               <div class="side-menu__icon"><i class="fa-solid fa-tags"></i></div>
+                               <span class="sidebar__menu-label">Location Manage</span>
+                           </a>
+                       </li>
 
 
                        </li>

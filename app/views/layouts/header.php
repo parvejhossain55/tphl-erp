@@ -63,7 +63,7 @@
 
         <?php
 
-        $base_url = '/TPHL-ERP/public/'; //'/tphl_project/public'
+        $base_url = '/TPHL-ERP/public'; //'/tphl_project/public'
         require __DIR__ . '/sidebar.php'; ?>
         <!-- App header area start -->
         <div class="page__body-wrapper">

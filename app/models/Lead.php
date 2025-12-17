@@ -27,10 +27,6 @@ class Lead extends Model
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-
-
-
-
     public function create($data)
     {
         $stmt = $this->db->prepare("
@@ -138,25 +134,13 @@ class Lead extends Model
         if (!$stmt->execute()) {
             throw new Exception("Update failed: " . $stmt->error);
         }
-
         return true;
     }
-
-
-
-    
-
-
     public function delete($id)
     {
         $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");
         $stmt->bind_param("i", $id);
         return $stmt->execute();
     }
-
-
-
-
-
 
 }
