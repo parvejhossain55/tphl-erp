@@ -9,31 +9,10 @@ class Location extends Model
         $this->db = $db;
     }
 
-    // Get all Departments with paginate
-public function getPaginated($limit, $offset, $search = '')
-{
-    $sql = "SELECT * FROM departments WHERE 1";
-    $params = [];
-    $types = "";
+    // Get all locations with paginate
 
-    if ($search) {
-        $sql .= " AND (name LIKE ?)";
-        $params[] = "%$search%";
-        $types .= "s";
-    }
-
-    $sql .= " ORDER BY id DESC LIMIT ? OFFSET ?";
-    $params[] = $limit;
-    $params[] = $offset;
-    $types .= "ii";
-
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-}
 public function getAll() {
-    $stmt = $this->db->prepare("SELECT * FROM departments");
+    $stmt = $this->db->prepare("SELECT * FROM locations");
     
     if (!$stmt) {
         die("Prepare failed: " . $this->db->error);
@@ -56,18 +35,12 @@ public function create($data)
    
 
     $stmt = $this->db->prepare(
-        "INSERT INTO departments
-        (name, status)
-        VALUES (?, ?)"
-    );
+        "INSERT INTO locations(name) VALUES (?)");
 
 
 $stmt->bind_param(
-    "si",
-    $data['name'],
-    $data['status'],
-    
-);
+    "s",
+    $data['name']);
     if ($stmt->execute()) {
         return true;
     } else {
@@ -76,41 +49,18 @@ $stmt->bind_param(
     }
 }
 
-
-public function countAll($search = '')
-{
-    $sql = "SELECT COUNT(*) as total FROM departments WHERE 1";
-    $params = [];
-    $types = "";
-
-    if ($search) {
-        $sql .= " AND (name LIKE ?)";
-        $params[] = "%$search%";
-        $types .= "s";
-    }
-
-    $stmt = $this->db->prepare($sql);
-    if ($params) {
-        $stmt->bind_param($types, ...$params);
-    }
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return $result['total'];
-}
- // Update role name + permissions
 public function update($data)
 {
     // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE departments SET name = ?, status = ? WHERE id = ?");
+    $stmt = $this->db->prepare("UPDATE locations SET name = ? WHERE id = ?");
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;
     }
 
     $stmt->bind_param(
-        "sii",
-        $data['name'],    
-        $data['status'],  
+        "si",
+        $data['name'],     
         $data['id']       
     );
 
@@ -126,13 +76,13 @@ public function update($data)
 public function delete($id)
 {
     // 1️⃣ Delete all designations linked to this department
-    $stmt1 = $this->db->prepare("DELETE FROM designations WHERE department_id = ?");
+    $stmt1 = $this->db->prepare("DELETE FROM locations WHERE department_id = ?");
     $stmt1->bind_param("i", $id);
     $stmt1->execute();
     $stmt1->close();
 
     // 2️⃣ Delete the department
-    $stmt2 = $this->db->prepare("DELETE FROM departments WHERE id = ?");
+    $stmt2 = $this->db->prepare("DELETE FROM locations WHERE id = ?");
     $stmt2->bind_param("i", $id);
     $stmt2->execute();
     $stmt2->close();

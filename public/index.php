@@ -43,7 +43,6 @@ $db = $database->conn;
 
 // Routes (regex for ID)
 $routes = [
-
     ""                 => ["controller" => "LoginController", "method" => "index"],
     "admin-login"           => ["controller" => "LoginController", "method" => "index"],
     "home"                 => ["controller" => "HomeController", "method" => "index"],
@@ -110,7 +109,7 @@ $routes = [
     "leads-import-csv" => ["controller" => "LeadController", "method" => "importCsv"],
     "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
     "delete-lead/(\d+)" => ["controller" => "LeadController", "method" => "delete"],
-    // leads
+    // leads Source
     "leadSource-lists" => ["controller" => "LeadSourceController", "method" => "index"],
     // "create-leadSource" => ["controller" => "LeadSourceController", "method" => "create"],
     "store-leadSource" => ["controller" => "LeadSourceController", "method" => "store"],
@@ -130,24 +129,53 @@ $routes = [
     //location
     "location-lists" => ["controller" => "LocationController", "method" => "index"],
     "store-location" => ["controller" => "LocationController", "method" => "store"],
-  
-    "update-location/(\d+)" => ["controller" => "LocationController", "method" => "update"],
-    "delete-location/(\d+)" => ["controller" => "LocationController", "method" => "delete"],
+    "update-location" => ["controller" => "LocationController", "method" => "update"],
+    "delete-location" => ["controller" => "LocationController", "method" => "delete"],
+    //Units
+    "unit-lists" => ["controller" => "UnitController", "method" => "index"],
+    "store-unit" => ["controller" => "UnitController", "method" => "store"],
+    "update-unit" => ["controller" => "UnitController", "method" => "update"],
+    "delete-unit" => ["controller" => "UnitController", "method" => "delete"],
+    //community
+    "community-lists" => ["controller" => "CommunityController", "method" => "index"],
+    "store-community" => ["controller" => "CommunityController", "method" => "store"],
+    "update-community" => ["controller" => "CommunityController", "method" => "update"],
+    "delete-community" => ["controller" => "CommunityController", "method" => "delete"],
 
     // Leave controller 
-    "leave-types" => ["controller" => "Leaves\\LeaveTypeController","method" => "index" ],
-    "store-leave-type" => ["controller" => "Leaves\\LeaveTypeController","method" => "store" ],
+    "leave-types" => ["controller" => "Leaves\\LeaveTypeController", "method" => "index"],
+    "store-leave-type" => ["controller" => "Leaves\\LeaveTypeController", "method" => "store"],
+
+
     // Site controller 
-    "slider-manage" => ["controller" => "SiteManage\\SliderController","method" => "index" ],
-    "store-slider" => ["controller" => "SiteManage\\SliderController","method" => "store" ],
+    "slider-manage" => ["controller" => "SiteManage\\SliderController", "method" => "index"],
+    "store-slider" => ["controller" => "SiteManage\\SliderController", "method" => "store"],
     // "store-leave-type" => ["controller" => "Leaves\\LeaveTypeController","method" => "store" ],
 
     // site-Setting 
-   "site-settings" => ["controller" => "SiteManage\\SiteSettingController", "method" => "index"],
+    "site-settings" => ["controller" => "SiteManage\\SiteSettingController", "method" => "index"],
     "store-site-setting" => ["controller" => "SiteManage\\SiteSettingController", "method" => "storeOrUpdate"],
 
+    //project
+    "project-lists" => ["controller" => "ProjectController", "method" => "index"],
+    "create-project" => ["controller" => "ProjectController", "method" => "create"],
+    "store-project" => ["controller" => "ProjectController", "method" => "store"],
+    "edit-project/(\d+)" => ["controller" => "ProjectController", "method" => "edit"],
+    "projects-import-csv" => ["controller" => "ProjectController", "method" => "importCsv"],
+    "update-project/(\d+)" => ["controller" => "ProjectController", "method" => "update"],
+    "delete-project/(\d+)" => ["controller" => "ProjectController", "method" => "delete"],
 
-    
+    //flat
+    "flat-lists" => ["controller" => "FlatController", "method" => "index"],
+    "create-flat" => ["controller" => "FlatController", "method" => "create"],
+    "store-flat" => ["controller" => "FlatController", "method" => "store"],
+    "edit-flat/(\d+)" => ["controller" => "FlatController", "method" => "edit"],
+    "flats-import-csv" => ["controller" => "FlatController", "method" => "importCsv"],
+    "update-flat/(\d+)" => ["controller" => "FlatController", "method" => "update"],
+    "delete-flat/(\d+)" => ["controller" => "FlatController", "method" => "delete"],
+   
+
+
 
 
 ];

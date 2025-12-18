@@ -1,10 +1,6 @@
 <?php
 $page = "create List"
-
-
 ?>
-
-
 <!-- new lead modal start -->
 <form action="<?= $GLOBALS['base_url'] ?>/store-lead" method="POST">
     <div class="row gy-10">
@@ -46,28 +42,6 @@ $page = "create List"
             </div>
         </div>
 
-        <!-- Value Amount -->
-        <div class="col-md-6">
-            <div class="from__input-box">
-                <label class="form__input-title" for="value">Value Amount</label>
-                <input class="form-control" name="value_amount" id="value" type="number">
-            </div>
-        </div>
-
-        <!-- Currency -->
-        <div class="col-md-6">
-            <div class="from__input-box">
-                <label class="form__input-title" for="currency">Currency*</label>
-                <select name="currency" id="currency" class="form-select">
-                    <option value="BDT">BDT</option>
-                    <option value="USD">USD</option>
-                    <option value="EURO">EURO</option>
-                    <option value="RUBLE">RUBLE</option>
-                    <option value="POUND">POUND</option>
-                </select>
-            </div>
-        </div>
-
         <!-- Phone -->
         <div class="col-md-6">
             <div class="from__input-box">
@@ -106,19 +80,7 @@ $page = "create List"
             </div>
         </div>
 
-        <!-- Owner ID -->
-        <div class="col-md-6 d-none">
-            <div class="from__input-box">
-                <label class="form__input-title" for="ownerName">Lead Owner*</label>
-                <select name="owner_id" id="ownerName" class="form-select">
-                    <option value="">Select Owner</option>
-                    <?php foreach ($ownerUsers as $user): ?>
-                        <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?></option>
-                    <?php endforeach ?>
-                    <!-- Dynamic user list -->
-                </select>
-            </div>
-        </div>
+
 
         <!-- Address -->
         <div class="col-md-6">

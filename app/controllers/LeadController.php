@@ -14,8 +14,6 @@ class LeadController extends Controller
         $this->leadModel = new Lead($this->db);
         $this->leadSource = new LeadSource($this->db);
     }
-
-
     public function index()
     {
         $owners = $this->userModel->getAll();
@@ -61,7 +59,6 @@ class LeadController extends Controller
             'lead_type' => $_POST['lead_type'] ?? null,
             'company' => $_POST['company'] ?? null,
             'value_amount' => $_POST['value_amount'] ?? 0,
-            'currency' => $_POST['currency'] ?? 'BDT',
             'phone' => $_POST['phone'] ?? null,
             'alt_phone_number' => $_POST['alt_phone_number'] ?? null,
             'email' => $_POST['email'] ?? null,
@@ -119,7 +116,6 @@ class LeadController extends Controller
             'lead_name' => $_POST['lead_name'] ?? null,
             'lead_type' => $_POST['lead_type'] ?? null,
             'company' => $_POST['company'] ?? null,
-            'value_amount' => $_POST['value_amount'] ?? 0,
             'currency' => $_POST['currency'] ?? 'BDT',
             'phone' => $_POST['phone'] ?? null,
             'alt_phone_number' => $_POST['alt_phone_number'] ?? null,

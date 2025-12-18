@@ -8,10 +8,6 @@
                </a>
            </div>
 
-
-
-
-
            <div class="main-sidebar" id="sidebar-scroll">
                <nav class="main-menu-container nav nav-pills flex-column sub-open">
                    <div class="sidebar-left" id="sidebar-left"></div>
@@ -223,16 +219,59 @@
                        </li>
 
 
+
                        <li class="slide  <?= isActive('location-lists', $current_route) ?>">
-                           <a href="<?= $base_url ?>/location-lists" class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
-                               <div class="side-menu__icon"><i class="fa-solid fa-tags"></i></div>
-                               <span class="sidebar__menu-label">Location Manage</span>
+                           <a href="<?= $base_url ?>/location-lists" class="sidebar__menu-item  <?= isActive('location-lists', $current_route) ?>">
+                               <div class="side-menu__icon"><i class="fa-solid fa-location-dot"></i></div>
+                               <span class="sidebar__menu-label">Location Manage </span>
+                           </a>
+                       </li>
+                       <li class="slide  <?= isActive('community-lists', $current_route) ?>">
+                           <a href="<?= $base_url ?>/community-lists" class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
+                               <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
+                               <span class="sidebar__menu-label">Community Manage </span>
                            </a>
                        </li>
 
 
+                       <li class="slide has-sub <?= isActive(['create-project', 'project-lists'], $current_route) ?>">
+                           <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-project', 'project-lists'], $current_route) ?>">
+                               <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                               <div class="side-menu__icon">  <i class="fa-solid fa-building"></i></div>
+                               <span class="sidebar__menu-label">Project Manage</span>
+                           </a>
+                           <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-project', 'project-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                               <li class="slide <?= isActive('create-project', $current_route) ?>">
+                                   <a class="sidebar__menu-item <?= isActive('create-project', $current_route) ?>" href="<?= $base_url ?>/create-project">Add project</a>
+                               </li>
+                               <li class="slide <?= isActive('project-lists', $current_route) ?>">
+                                   <a class="sidebar__menu-item <?= isActive('project-lists', $current_route) ?>" href="<?= $base_url ?>/project-lists">Product List</a>
+                               </li>
+                           </ul>
                        </li>
 
+                       <li class="slide  <?= isActive('unit-lists', $current_route) ?>">
+                           <a href="<?= $base_url ?>/unit-lists" class="sidebar__menu-item  <?= isActive('unit-lists', $current_route) ?>">
+                               <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                               <span class="sidebar__menu-label">Flat Unit Manage </span>
+                           </a>
+                       </li>
+
+                       <li class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ?>">
+                           <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-flat', 'flat-lists'], $current_route) ?>">
+                               <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                               <div class="side-menu__icon"> <i class="fa-solid fa-house"></i></div>
+                               <span class="sidebar__menu-label">Flat Icon Manage</span>
+                           </a>
+                           <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-flat', 'flat-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                               <li class="slide <?= isActive('create-flat', $current_route) ?>">
+                                   <a class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>" href="<?= $base_url ?>/create-flat">Add Flat</a>
+                               </li>
+                               <li class="slide <?= isActive('flat-lists', $current_route) ?>">
+                                   <a class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>" href="<?= $base_url ?>/flat-lists">Flat List</a>
+                               </li>
+                           </ul>
+                       </li>
                    </ul>
                    <div class="sidebar-right" id="sidebar-right"></div>
                </nav>

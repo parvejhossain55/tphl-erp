@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 17, 2025 at 11:57 AM
+-- Generation Time: Dec 18, 2025 at 01:29 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -48,6 +48,27 @@ CREATE TABLE `blogs` (
 
 INSERT INTO `blogs` (`id`, `title`, `excerpt`, `content`, `image`, `author`, `published_date`, `comments`, `read_time`, `status`, `created_at`, `updated_at`) VALUES
 (1, 'From Vision to Venture; The Entrepreneurial Journey2', 'চবিতে “From Vision to Venture; The Entrepreneurial Journey” অনুপ্রেরণামূলক সেশন অনুষ্ঠিত', 'চিটাগং ইউনিভার্সিটি ইন্ট্রাপেনার এন্ড স্টার্টআপ সোসাইটি (সিইউইএসএস) এর উদ্যোগে “From Vision to Venture; The Entrepreneurial Journey” শীর্ষক এক অনুপ্রেরণামূলক সেশন বুধবার (৫ নভেম্বর ২০২৫) দুপুর ১টায় চবি ব্যবসায় প্রশাসন অনুষদ অডিটোরিয়ামে অনুষ্ঠিত হয়। অনুষ্ঠানে বিশেষ অতিথি হিসেবে উপস্থিত ছিলেন চট্টগ্রাম বিশ্ববিদ্যালয়ের মাননীয় উপ-উপাচার্য (একাডেমিক) প্রফেসর ড. মোহাম্মদ শামীম উদ্দিন খান ও ব্যবসায় প্রশাসন অনুষদের ডিন প্রফেসর ড. মোহাম্মদ তৈয়ব চৌধুরী। অনুষ্ঠানে সম্মানিত অতিথি ছিলেন চবি প্রক্টর প্রফেসর ড. হোসেন শহীদ সরওয়ার্দী ও চবি মানবসম্পদ ব্যবস্থাপনা বিভাগের সভাপতি প্রফেসর ড. মো. আফতাব উদ্দীন। বক্তব্যে চবি উপ-উপাচার্য (একাডেমিক) প্রফেসর ড. মোহাম্মদ শামীম উদ্দিন খান এমন উদ্যােগের জন্য আয়োজকদের ধন্যবাদ জানান। উপ-উপাচার্য (একাডেমিক) তাঁর বক্তৃতায় শিক্ষার্থীদের উদ্ভাবনী চিন্তা ও নেতৃত্বের পথে এগিয়ে যেতে উৎসাহিত করেন। অনুষ্ঠানে মূল বক্তা হিসেবে উপস্থিত ছিলেন দ্য প্রিমিয়াম হোমস লি. এর ম্যানেজিং ডিরেক্টর ও সিইও মো. মাইনুল হাসান দোলন এবং ইন্টেরিয়র স্টুডিও এর ফাউন্ডার ও সিইও মারুফ লিয়াকত। তারা বাস্তব উদ্যোক্তা জীবন, নেতৃত্বগুণ এবং সাহসী সিদ্ধান্ত গ্রহণের জন্য অনুপ্রেরণামূলক বক্তব্য রাখেন। এসময় অতিথিদের সম্মাননা ক্রেস্ট প্রদান করা হয়। পরবর্তীতে আয়োজিত কুইজ প্রতিযোগিতাতে ১০টি প্রশ্নে বিজয়ীদের পুরস্কার দেওয়া হয়। CUESS এর সভাপতি মুশফিকুর রহমান হৃদয় ও সাধারণ সম্পাদক সাহিব আব্বাস বাহার চৌধুরী সমাপনী বক্তব্যে অতিথি ও অংশগ্রহণকারীদের প্রতি ধন্যবাদ ও কৃতজ্ঞতা জানান।', '694265d5d7d91_1765959125.webp', 'Admin', '2025-01-01', 0, '2 min read', 1, '2025-12-17 06:45:34', '2025-12-17 09:04:58');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `communities`
+--
+
+CREATE TABLE `communities` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `status` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `communities`
+--
+
+INSERT INTO `communities` (`id`, `name`, `status`, `created_at`, `updated_at`) VALUES
+(1, 'The Premium Smart City', 1, '2025-12-18 06:41:23', '2025-12-18 06:44:31');
 
 -- --------------------------------------------------------
 
@@ -153,6 +174,38 @@ INSERT INTO `employees` (`id`, `user_id`, `full_name`, `employee_id`, `username`
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `flats`
+--
+
+CREATE TABLE `flats` (
+  `id` int(11) NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `unit_id` int(11) NOT NULL,
+  `sqft` int(11) DEFAULT NULL,
+  `bhk` int(11) DEFAULT NULL,
+  `bedroom` int(11) DEFAULT NULL,
+  `bathroom` int(11) DEFAULT NULL,
+  `balcony` int(11) DEFAULT NULL,
+  `drawing_dining_kitchen` tinyint(1) DEFAULT NULL,
+  `common_dining` tinyint(1) DEFAULT NULL,
+  `floor_no` int(11) DEFAULT NULL,
+  `facing_site` varchar(50) DEFAULT NULL,
+  `price_value` decimal(12,2) DEFAULT NULL,
+  `facilities` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `flats`
+--
+
+INSERT INTO `flats` (`id`, `project_id`, `unit_id`, `sqft`, `bhk`, `bedroom`, `bathroom`, `balcony`, `drawing_dining_kitchen`, `common_dining`, `floor_no`, `facing_site`, `price_value`, `facilities`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, 240, 2, 3, 2, 2, 0, 0, 5, '0', 40000000.00, 'Gym', '2025-12-18 11:58:43', '2025-12-18 12:06:55');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `leads`
 --
 
@@ -239,6 +292,26 @@ INSERT INTO `leave_types` (`id`, `name`, `is_active`, `created_at`, `updated_at`
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `locations`
+--
+
+CREATE TABLE `locations` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `locations`
+--
+
+INSERT INTO `locations` (`id`, `name`, `created_at`, `updated_at`) VALUES
+(1, 'Atibazar ', '2025-12-18 04:35:38', '2025-12-18 04:59:51');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `notifications`
 --
 
@@ -277,6 +350,52 @@ INSERT INTO `permissions` (`id`, `name`, `status`, `created_at`, `updated_at`) V
 (4, 'Show Permission', 1, '2025-12-06 05:51:25', '2025-12-06 05:51:25'),
 (5, 'Add Task', 1, '2025-12-10 04:26:45', '2025-12-10 04:26:45'),
 (6, 'HRM Manage ', 1, '2025-12-17 09:52:36', '2025-12-17 09:52:36');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `projects`
+--
+
+CREATE TABLE `projects` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `location_id` int(11) DEFAULT NULL,
+  `community_id` int(11) NOT NULL,
+  `building_type` varchar(50) DEFAULT NULL,
+  `total_share` int(11) DEFAULT NULL,
+  `unit_per_floor` int(11) DEFAULT NULL,
+  `types` varchar(255) DEFAULT NULL,
+  `image` varchar(255) DEFAULT NULL,
+  `image2` varchar(255) DEFAULT NULL,
+  `image3` varchar(255) DEFAULT NULL,
+  `front_road` varchar(50) DEFAULT NULL,
+  `price_range` enum('Under 50 Lac BDT','50 Lac - 1 Crore BDT','1 Crore - 2 Crore BDT','2 Crore - 5 Crore BDT','Above 5 Crore BDT') DEFAULT NULL,
+  `hover_text` varchar(255) DEFAULT NULL,
+  `tag` varchar(50) DEFAULT NULL,
+  `brochure_link` varchar(255) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `apartment_count` int(11) DEFAULT NULL,
+  `amenities_details` longtext DEFAULT NULL,
+  `amenities_image` varchar(255) DEFAULT NULL,
+  `map_image` varchar(255) DEFAULT NULL,
+  `map_link` varchar(255) DEFAULT NULL,
+  `passenger_lift` int(11) DEFAULT NULL,
+  `cargo_lift` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `rooftop_gardening` tinyint(1) DEFAULT 0 COMMENT '1=Yes, 0=No',
+  `swimming_pool` tinyint(1) DEFAULT 0 COMMENT '1=Yes, 0=No',
+  `convention` tinyint(1) DEFAULT 0 COMMENT '1=Yes, 0=No',
+  `electricity_backup` tinyint(1) DEFAULT 0 COMMENT '1=Yes, 0=No'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `projects`
+--
+
+INSERT INTO `projects` (`id`, `name`, `location_id`, `community_id`, `building_type`, `total_share`, `unit_per_floor`, `types`, `image`, `image2`, `image3`, `front_road`, `price_range`, `hover_text`, `tag`, `brochure_link`, `description`, `apartment_count`, `amenities_details`, `amenities_image`, `map_image`, `map_link`, `passenger_lift`, `cargo_lift`, `created_at`, `updated_at`, `rooftop_gardening`, `swimming_pool`, `convention`, `electricity_backup`) VALUES
+(1, 'The Premium Nobel Court', 1, 1, '', 40, 4, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', '6943d73330f2d_1766053683.png', '6943d733450c3_1766053683.png', '6943d7335c2f2_1766053683.png', '', 'Under 50 Lac BDT', 'The Premium Nobel Court', 'SOLD OUT', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 1, '<div class=\"group relative bg-white  rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer overflow-hidden border border-emerald-100/50 hover:border-emerald-400 animate-scale-in\">\r\n<h3 class=\"relative p-4 font-semibold text-center text-xs sm:text-sm md:text-base text-neutral-800 group-hover:text-[#0d3d2d] transition-colors duration-300\">Daffodil International University</h3>\r\n<div class=\"absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl\"> </div>\r\n</div>\r\n<div class=\"group relative bg-white  rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer overflow-hidden border border-emerald-100/50 hover:border-emerald-400 animate-scale-in\">\r\n<div class=\"absolute inset-0 bg-gradient-to-br from-[#0d3d2d]/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl\"> </div>\r\n<div class=\"absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-emerald-400/20 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500\"> </div>\r\n<div class=\"relative aspect-square bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-t-xl mb-3 sm:mb-4 overflow-hidden ring-1 ring-neutral-200 group-hover:ring-emerald-400 transition-all duration-500\"><img class=\"w-full h-full object-cover group-hover:scale-110 transition-transform duration-700\" src=\"https://www.dpremiumhomes.com/assets/Brac-Dt9jTuCp.png\" alt=\"Brac University (Tarc)\">\r\n<div class=\"absolute inset-0 bg-gradient-to-t from-[#0d3d2d]/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500\"> </div>\r\n<div class=\"absolute top-2 right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transform scale-50 group-hover:scale-100 transition-all duration-500\"> </div>\r\n</div>\r\n<h3 class=\"relative p-4 font-semibold text-center text-xs sm:text-sm md:text-base text-neutral-800 group-hover:text-[#0d3d2d] transition-colors duration-300\">Brac University (Tarc)</h3>\r\n<div class=\"absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl\"> </div>\r\n</div>\r\n<div class=\"group relative bg-white  rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer overflow-hidden border border-emerald-100/50 hover:border-emerald-400 animate-scale-in\">\r\n<div class=\"absolute inset-0 bg-gradient-to-br from-[#0d3d2d]/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl\"> </div>\r\n<div class=\"absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-emerald-400/20 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500\"> </div>\r\n<div class=\"relative aspect-square bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-t-xl mb-3 sm:mb-4 overflow-hidden ring-1 ring-neutral-200 group-hover:ring-emerald-400 transition-all duration-500\"><img class=\"w-full h-full object-cover group-hover:scale-110 transition-transform duration-700\" src=\"https://www.dpremiumhomes.com/assets/Manarat-BBRfHwvp.png\" alt=\"Manarat International University\">\r\n<div class=\"absolute inset-0 bg-gradient-to-t from-[#0d3d2d]/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500\"> </div>\r\n<div class=\"absolute top-2 right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transform scale-50 group-hover:scale-100 transition-all duration-500\"> </div>\r\n</div>\r\n<h3 class=\"relative p-4 font-semibold text-center text-xs sm:text-sm md:text-base text-neutral-800 group-hover:text-[#0d3d2d] transition-colors duration-300\">Manarat International University</h3>\r\n<div class=\"absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl\"> </div>\r\n</div>\r\n<div class=\"group relative bg-white  rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer overflow-hidden border border-emerald-100/50 hover:border-emerald-400 animate-scale-in\">\r\n<div class=\"absolute inset-0 bg-gradient-to-br from-[#0d3d2d]/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl\"> </div>\r\n<div class=\"absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-emerald-400/20 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500\"> </div>\r\n<div class=\"relative aspect-square bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-t-xl mb-3 sm:mb-4 overflow-hidden ring-1 ring-neutral-200 group-hover:ring-emerald-400 transition-all duration-500\"><img class=\"w-full h-full object-cover group-hover:scale-110 transition-transform duration-700\" src=\"https://www.dpremiumhomes.com/assets/mosque-ClDhUgQu.jpg\" alt=\"Masjid\">\r\n<div class=\"absolute inset-0 bg-gradient-to-t from-[#0d3d2d]/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500\"> </div>\r\n<div class=\"absolute top-2 right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transform scale-50 group-hover:scale-100 transition-all duration-500\"> </div>\r\n</div>\r\n<h3 class=\"relative p-4 font-semibold text-center text-xs sm:text-sm md:text-base text-neutral-800 group-hover:text-[#0d3d2d] transition-colors duration-300\">Masjid</h3>\r\n</div>', '6943d733818a7_1766053683.png', '6943d73372ce5_1766053683.png', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', 2, 1, '2025-12-18 10:28:03', '2025-12-18 10:28:03', 1, 1, 1, 1);
 
 -- --------------------------------------------------------
 
@@ -428,6 +547,28 @@ INSERT INTO `tasks` (`id`, `employee_id`, `assigned_by`, `title`, `description`,
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `units`
+--
+
+CREATE TABLE `units` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `units`
+--
+
+INSERT INTO `units` (`id`, `name`, `created_at`, `updated_at`) VALUES
+(1, 'Unit A', '2025-12-18 10:55:04', '2025-12-18 10:55:04'),
+(2, 'Unit - B', '2025-12-18 10:59:55', '2025-12-18 10:59:55'),
+(3, 'Unit C', '2025-12-18 11:04:55', '2025-12-18 11:04:55');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 
@@ -458,8 +599,8 @@ INSERT INTO `users` (`id`, `full_name`, `user_name`, `phone`, `email`, `designat
 (2, 'Mehedi Hasan Jony', '', '01710000000', 'jony@gmail.com', 1, '0', '908927387', 3, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', '693e8e3dac751_1765707325.jpg', '', '', '2025-12-14 12:35:32', '2025-12-09 07:53:41', '2025-12-14 10:15:25'),
 (3, 'employee-1', '', '01800000000', 'employee1@gmail.com', 1, '0', '1230000', 2, '$2y$10$xzoToZ2.n3Zfyj11JmM6n.TNtAmP0WArM.OioGwNQeJenGCtxCY3q', '693e8cdbbdb7f_1765706971.jpg', '', '', '2025-12-10 15:43:28', '2025-12-10 04:23:16', '2025-12-14 10:09:31'),
 (4, 'Mr.X', 'X', '01712000000', 'x@gmail.com', 1, 'Dhaka', '', 2, '$2y$10$hJW2yO/zHIo90adHDAzHNub1LhaMY/28k3rLDuejUYgEYKkD.ZbSC', NULL, '832764', '87436', '2025-12-10 15:09:59', '2025-12-10 09:09:59', '2025-12-14 05:18:11'),
-(5, 'Hamid', '', '01809999999', 'hamid@gmail.com', 1, 'Dhaka', '123456', 2, '$2y$10$TDUeHDA2FHo5goUwgMOceex1oB7OgLrm94gic25RX2DEjiQibooH.', '', '', '', '2025-12-10 15:42:03', '2025-12-10 09:42:03', '2025-12-14 11:33:05'),
-(12, 'Farzana', 'Farzana', '01711111111', 'farz@gmail.com', 1, 'Dhaka', '12345678', 3, '$2y$10$E0Yhq.1IcOfIhUepelWIieBg7O9L6XhEKWNmRhD1v2rT0WRH5Q7T6', '693e4b6b1f340_1765690219.jpg', 'https://business.facebook.com/', 'https://www.linkedin.com/', '2025-12-14 18:05:33', '2025-12-14 05:30:19', '2025-12-14 12:05:33'),
+(5, 'Admin', '', '01809999999', 'admin@admin.com', 1, 'Dhaka', '123456', 1, '$2y$10$.sBkFmSga6GfHwV9DZaKFeJv.BeShxh63EjLJ45wIqk1C0V8iQDGi', '', '', '', '2025-12-18 10:11:50', '2025-12-10 09:42:03', '2025-12-18 04:12:54'),
+(12, 'Farzana', 'Farzana', '01711111111', 'farz@gmail.com', 1, 'Dhaka', '12345678', 3, '$2y$10$E0Yhq.1IcOfIhUepelWIieBg7O9L6XhEKWNmRhD1v2rT0WRH5Q7T6', '693e4b6b1f340_1765690219.jpg', 'https://business.facebook.com/', 'https://www.linkedin.com/', '2025-12-18 10:13:06', '2025-12-14 05:30:19', '2025-12-18 04:13:06'),
 (13, 'Nusrat', '', '01789000000', 'nusrat@gmail.com', 1, '23', '123456', 2, '$2y$10$3CN1C.iRuSmfS4qjtmGuZupZjaBqCLCTBsDEacL5yBX.TDoInJxRW', '', '', '', '2025-12-14 17:34:07', '2025-12-14 06:34:19', '2025-12-14 11:34:07'),
 (14, 'Farhana', 'Farhana', '01700000000', 'farhana@gmail.com', 1, 'Dhaka', '2345676', 2, '$2y$10$lxw8JSnTFc75E7i0QyuKEuxgedIf2l7E/y94jxlnZzG2EjloA2TYu', NULL, 'www.google.com', 'www.linkedin.com', '2025-12-14 14:40:51', '2025-12-14 08:40:51', '2025-12-14 08:40:51');
 
@@ -471,6 +612,12 @@ INSERT INTO `users` (`id`, `full_name`, `user_name`, `phone`, `email`, `designat
 -- Indexes for table `blogs`
 --
 ALTER TABLE `blogs`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `communities`
+--
+ALTER TABLE `communities`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -499,6 +646,14 @@ ALTER TABLE `employees`
   ADD KEY `fk_employee_user` (`user_id`);
 
 --
+-- Indexes for table `flats`
+--
+ALTER TABLE `flats`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `project_id` (`project_id`),
+  ADD KEY `unit_id` (`unit_id`);
+
+--
 -- Indexes for table `leads`
 --
 ALTER TABLE `leads`
@@ -518,6 +673,12 @@ ALTER TABLE `leave_types`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `locations`
+--
+ALTER TABLE `locations`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `notifications`
 --
 ALTER TABLE `notifications`
@@ -531,6 +692,14 @@ ALTER TABLE `notifications`
 --
 ALTER TABLE `permissions`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `projects`
+--
+ALTER TABLE `projects`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `location_id` (`location_id`),
+  ADD KEY `community_id` (`community_id`);
 
 --
 -- Indexes for table `roles`
@@ -565,6 +734,12 @@ ALTER TABLE `tasks`
   ADD KEY `idx_employee_id` (`employee_id`);
 
 --
+-- Indexes for table `units`
+--
+ALTER TABLE `units`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -580,6 +755,12 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `blogs`
 --
 ALTER TABLE `blogs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `communities`
+--
+ALTER TABLE `communities`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
@@ -601,6 +782,12 @@ ALTER TABLE `employees`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
+-- AUTO_INCREMENT for table `flats`
+--
+ALTER TABLE `flats`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `leads`
 --
 ALTER TABLE `leads`
@@ -619,6 +806,12 @@ ALTER TABLE `leave_types`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
+-- AUTO_INCREMENT for table `locations`
+--
+ALTER TABLE `locations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
@@ -629,6 +822,12 @@ ALTER TABLE `notifications`
 --
 ALTER TABLE `permissions`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `projects`
+--
+ALTER TABLE `projects`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -655,6 +854,12 @@ ALTER TABLE `tasks`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
+-- AUTO_INCREMENT for table `units`
+--
+ALTER TABLE `units`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
@@ -679,6 +884,13 @@ ALTER TABLE `employees`
   ADD CONSTRAINT `fk_employee_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
+-- Constraints for table `flats`
+--
+ALTER TABLE `flats`
+  ADD CONSTRAINT `flats_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `flats_ibfk_2` FOREIGN KEY (`unit_id`) REFERENCES `units` (`id`);
+
+--
 -- Constraints for table `leads`
 --
 ALTER TABLE `leads`
@@ -691,6 +903,13 @@ ALTER TABLE `notifications`
   ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `notifications_ibfk_2` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `notifications_ibfk_3` FOREIGN KEY (`assigned_by`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `projects`
+--
+ALTER TABLE `projects`
+  ADD CONSTRAINT `projects_ibfk_1` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `projects_ibfk_2` FOREIGN KEY (`community_id`) REFERENCES `communities` (`id`);
 
 --
 -- Constraints for table `role_permissions`

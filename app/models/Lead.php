@@ -31,7 +31,7 @@ class Lead extends Model
     {
         $stmt = $this->db->prepare("
         INSERT INTO leads (
-            lead_name, lead_type, company, value_amount, currency,
+            lead_name, lead_type, company,
             phone, alt_phone_number, email, source_type_id,
             address, pref_location, designation, project_type, interest_on,
             pref_flat_size, communication_type, tags, description,
@@ -46,12 +46,11 @@ class Lead extends Model
 
         // 21 PARAMETERS → so provide EXACT 21 TYPE LETTERS
         $stmt->bind_param(
-            "sssdsssissssssssssssi",
+            "sssssissssssssssssi",
             $data['lead_name'],
             $data['lead_type'],
             $data['company'],
-            $data['value_amount'],
-            $data['currency'],
+       
             $data['phone'],
             $data['alt_phone_number'],
             $data['email'],
@@ -95,7 +94,7 @@ class Lead extends Model
     public function update($id, $data)
     {
         $sql = "UPDATE leads SET
-        lead_name = ?, lead_type = ?, company = ?, value_amount = ?, currency = ?, phone = ?, alt_phone_number = ?,
+        lead_name = ?, lead_type = ?, company = ?, phone = ?, alt_phone_number = ?,
         email = ?, source_type_id = ?, address = ?, pref_location = ?, designation = ?, project_type = ?,
         interest_on = ?, pref_flat_size = ?, communication_type = ?, tags = ?, description = ?, visibility = ?, status = ?, lead_quality = ?
         WHERE id = ?";
@@ -106,12 +105,10 @@ class Lead extends Model
         }
 
         $stmt->bind_param(
-            "sssdssssissssssssssssi",
+            "ssssssissssssssssssi",
             $data['lead_name'],
             $data['lead_type'],
             $data['company'],
-            $data['value_amount'],
-            $data['currency'],
             $data['phone'],
             $data['alt_phone_number'],
             $data['email'],

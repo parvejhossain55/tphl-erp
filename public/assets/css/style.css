@@ -127,3 +127,36 @@
 .ts-panel.open .ts-icon-close { display: block; }
 
 
+.facility-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    background: #f5f7fa;
+    border: 1px solid #e0e0e0;
+    transition: 0.3s;
+    cursor: pointer;
+}
+
+.facility-box:hover {
+    background: #eef4ff;
+    border-color: #4f46e5;
+}
+
+.facility-box input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #4f46e5; /* checkbox color */
+    cursor: pointer;
+}
+
+.facility-label {
+    font-weight: 500;
+    color: #333;
+}
+
+.facility-icon {
+    font-size: 18px;
+    color: #4f46e5;
+}
