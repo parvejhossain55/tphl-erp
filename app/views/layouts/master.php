@@ -4,14 +4,20 @@
 // Controller থেকে পাঠানো variable
 $current_route = $data['current_route'] ?? ($current_page ?? '');
 
-function isActive($pages, $current_route) {
-    if (is_array($pages)) return in_array($current_route, $pages) ? 'active' : '';
+function isActive($pages, $current_route)
+{
+    if (is_array($pages)) {
+        return in_array($current_route, $pages) ? 'active' : '';
+    }
     return ($current_route === $pages) ? 'active' : '';
 }
 
-function isMenuOpen($pages, $current_route) {
-    if (is_array($pages)) return in_array($current_route, $pages) ? 'menu-open' : '';
-    return ($current_route === $pages) ? 'menu-open' : '';
+function isMenuOpen($pages, $current_route)
+{
+    if (is_array($pages)) {
+        return in_array($current_route, $pages);
+    }
+    return ($current_route === $pages);
 }
 
 

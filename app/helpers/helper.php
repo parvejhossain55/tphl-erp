@@ -193,7 +193,8 @@ function checkLogin()
     }
 
     if (!isset($_SESSION['user'])) {
-        header("Location: /tphl_project/public/admin-login");
+        // header("Location: /tphl_project/public/admin-login");
+        header("Location: {$GLOBALS('base_url')}/admin-login");
         exit;
     }
 }
