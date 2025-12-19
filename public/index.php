@@ -1,0 +1,222 @@
+
+
+
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once("../app/helpers/helper.php");
+// Enable debug
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+$root = dirname(__DIR__);
+$GLOBALS['base_url'] = '/TPHL-ERP/public';
+
+// folder er moddhe o chaile folder kore controller nite parbo abr folder chara o controller
+spl_autoload_register(function ($class) use ($root) {
+    $class = str_replace('\\', '/', $class);
+
+    $paths = [
+        $root . "/app/core/$class.php",
+        $root . "/app/models/$class.php",
+        $root . "/app/controllers/$class.php",
+    ];
+
+    foreach ($paths as $file) {
+        if (file_exists($file)) {
+            require $file;
+            return;
+        }
+    }
+});
+
+
+
+
+// Load config
+$config = require $root . "/app/config/config.php";
+
+// Create DB
+$database = new Database($config);
+$db = $database->conn;
+
+// Routes (regex for ID)
+$routes = [
+    ""                 => ["controller" => "LoginController", "method" => "index"],
+    "admin-login"           => ["controller" => "LoginController", "method" => "index"],
+    "home"                 => ["controller" => "HomeController", "method" => "index"],
+    "product-request"      => ["controller" => "ProductRequestController", "method" => "index"],
+    "logout"             => ["controller" => "LoginController", "method" => "logout"],
+
+
+    // users
+    "user-lists"           => ["controller" => "UserController", "method" => "index"],
+    "create-user"          => ["controller" => "UserController", "method" => "create"],
+    "store-user"          => ["controller" => "UserController", "method" => "store"],
+    "edit-user/(\d+)"          => ["controller" => "UserController", "method" => "edit"],
+    "user-profile/(\d+)"          => ["controller" => "UserController", "method" => "show"],
+    "update-user/(\d+)"          => ["controller" => "UserController", "method" => "update"],
+
+
+    "customer-lists"       => ["controller" => "CustomerController", "method" => "index"],
+    "create-customer"      => ["controller" => "CustomerController", "method" => "create"],
+    // permission
+    "permissions"          => ["controller" => "PermissionController", "method" => "index"],
+    "create-permission"    => ["controller" => "PermissionController", "method" => "create"],
+    "store-permission"     => ["controller" => "PermissionController", "method" => "store"],
+    // Roles
+    "store-role"           => ["controller" => "RoleController", "method" => "store"],
+    "get-role"      => ["controller" => "RoleController", "method" => "edit"],
+    "update-role"   => ["controller" => "RoleController", "method" => "update"],
+
+    // Tasks
+
+    'task-lists' => ["controller" => "TaskController", "method" => "index"],
+    'create-task' => ["controller" => "TaskController", "method" => "create"],
+    'store-task' => ["controller" => "TaskController", "method" => "store"],
+    'show-task/(\d+)' => ["controller" => "TaskController", "method" => "show"],
+    'edit-task/(\d+)' => ["controller" => "TaskController", "method" => "edit"],
+    'update-task/(\d+)' => ["controller" => "TaskController", "method" => "update"],
+    'delete-task/(\d+)' => ["controller" => "TaskController", "method" => "delete"],
+
+    // department 
+    'departments' => ['controller' => 'DepartmentController', 'method' => "index"],
+    'store-department' => ['controller' => 'DepartmentController', 'method' => "store"],
+    'update-department' => ['controller' => 'DepartmentController', 'method' => "update"],
+    'delete-department' => ['controller' => 'DepartmentController', 'method' => "delete"],
+    // designations 
+    'designations' => ['controller' => 'DesignationController', 'method' => "index"],
+    'store-designation' => ['controller' => 'DesignationController', 'method' => "store"],
+    'update-designation' => ['controller' => 'DesignationController', 'method' => "update"],
+    'delete-designation' => ['controller' => 'DesignationController', 'method' => "delete"],
+
+    // employees
+    "employee-lists" => ["controller" => "EmployeeController", "method" => "index"],
+    "create-employee" => ["controller" => "EmployeeController", "method" => "create"],
+    "store-employee" => ["controller" => "EmployeeController", "method" => "store"],
+    "edit-employee/(\d+)" => ["controller" => "EmployeeController", "method" => "edit"],
+    "update-employee/(\d+)" => ["controller" => "EmployeeController", "method" => "update"],
+    "employee-profile/(\d+)" => ["controller" => "EmployeeController", "method" => "show"],
+    "delete-employee/(\d+)" => ["controller" => "EmployeeController", "method" => "delete"],
+    "employee-dashboard" => ["controller" => "EmployeeDashboardController", "method" => "index"],
+
+    // leads
+    "lead-lists" => ["controller" => "LeadController", "method" => "index"],
+    "create-lead" => ["controller" => "LeadController", "method" => "create"],
+    "store-lead" => ["controller" => "LeadController", "method" => "store"],
+    "edit-lead/(\d+)" => ["controller" => "LeadController", "method" => "edit"],
+    "leads-import-csv" => ["controller" => "LeadController", "method" => "importCsv"],
+    "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
+    "delete-lead/(\d+)" => ["controller" => "LeadController", "method" => "delete"],
+    // leads Source
+    "leadSource-lists" => ["controller" => "LeadSourceController", "method" => "index"],
+    // "create-leadSource" => ["controller" => "LeadSourceController", "method" => "create"],
+    "store-leadSource" => ["controller" => "LeadSourceController", "method" => "store"],
+    "edit-leadSource/(\d+)" => ["controller" => "LeadSourceController", "method" => "edit"],
+    "update-leadSource/(\d+)" => ["controller" => "LeadSourceController", "method" => "update"],
+    "delete-leadSource/(\d+)" => ["controller" => "LeadSourceController", "method" => "delete"],
+
+    //blogs
+    "blog-lists" => ["controller" => "BlogController", "method" => "index"],
+    "create-blog" => ["controller" => "BlogController", "method" => "create"],
+    "store-blog" => ["controller" => "BlogController", "method" => "store"],
+    "blog-details/(\d+)" => ["controller" => "BlogController", "method" => "show"],
+    "edit-blog/(\d+)" => ["controller" => "BlogController", "method" => "edit"],
+    "update-blog/(\d+)" => ["controller" => "BlogController", "method" => "update"],
+    "delete-blog/(\d+)" => ["controller" => "BlogController", "method" => "delete"],
+
+    //location
+    "location-lists" => ["controller" => "LocationController", "method" => "index"],
+    "store-location" => ["controller" => "LocationController", "method" => "store"],
+    "update-location" => ["controller" => "LocationController", "method" => "update"],
+    "delete-location" => ["controller" => "LocationController", "method" => "delete"],
+    //Units
+    "unit-lists" => ["controller" => "UnitController", "method" => "index"],
+    "store-unit" => ["controller" => "UnitController", "method" => "store"],
+    "update-unit" => ["controller" => "UnitController", "method" => "update"],
+    "delete-unit" => ["controller" => "UnitController", "method" => "delete"],
+    //community
+    "community-lists" => ["controller" => "CommunityController", "method" => "index"],
+    "store-community" => ["controller" => "CommunityController", "method" => "store"],
+    "update-community" => ["controller" => "CommunityController", "method" => "update"],
+    "delete-community" => ["controller" => "CommunityController", "method" => "delete"],
+
+    // Leave controller 
+    "leave-types" => ["controller" => "Leaves\\LeaveTypeController", "method" => "index"],
+    "store-leave-type" => ["controller" => "Leaves\\LeaveTypeController", "method" => "store"],
+
+
+    // Site controller 
+    "slider-manage" => ["controller" => "SiteManage\\SliderController", "method" => "index"],
+    "store-slider" => ["controller" => "SiteManage\\SliderController", "method" => "store"],
+    // "store-leave-type" => ["controller" => "Leaves\\LeaveTypeController","method" => "store" ],
+
+    // site-Setting 
+    "site-settings" => ["controller" => "SiteManage\\SiteSettingController", "method" => "index"],
+    "store-site-setting" => ["controller" => "SiteManage\\SiteSettingController", "method" => "storeOrUpdate"],
+
+    //project
+    "project-lists" => ["controller" => "ProjectController", "method" => "index"],
+    "create-project" => ["controller" => "ProjectController", "method" => "create"],
+    "store-project" => ["controller" => "ProjectController", "method" => "store"],
+    "edit-project/(\d+)" => ["controller" => "ProjectController", "method" => "edit"],
+    "projects-import-csv" => ["controller" => "ProjectController", "method" => "importCsv"],
+    "update-project/(\d+)" => ["controller" => "ProjectController", "method" => "update"],
+    "delete-project/(\d+)" => ["controller" => "ProjectController", "method" => "delete"],
+
+    //flat
+    "flat-lists" => ["controller" => "FlatController", "method" => "index"],
+    "create-flat" => ["controller" => "FlatController", "method" => "create"],
+    "store-flat" => ["controller" => "FlatController", "method" => "store"],
+    "edit-flat/(\d+)" => ["controller" => "FlatController", "method" => "edit"],
+    "flats-import-csv" => ["controller" => "FlatController", "method" => "importCsv"],
+    "update-flat/(\d+)" => ["controller" => "FlatController", "method" => "update"],
+    "delete-flat/(\d+)" => ["controller" => "FlatController", "method" => "delete"],
+   
+
+
+
+
+];
+
+$route = trim(strtok($_SERVER["REQUEST_URI"], '?'), '/');
+
+// Remove base folder if present
+$base_folder = 'TPHL-ERP/public';
+if (strpos($route, $base_folder) === 0) {
+    $route = substr($route, strlen($base_folder));
+}
+$route = trim($route, '/');
+
+// Skip routes that don't need login
+$skip_routes = ["admin-login", "admin-registration", "logout"];
+
+// কোন routes skip হবে
+if (!in_array($route, $skip_routes)) {
+    checkLogin();
+}
+
+
+$matched = false;
+$params = [];
+
+foreach ($routes as $pattern => $routeInfo) {
+    if (preg_match("#^$pattern$#", $route, $matches)) {
+        $controllerName = $routeInfo['controller'];
+        $methodName = $routeInfo['method'];
+        $params = array_slice($matches, 1); // ID captured here
+        $matched = true;
+        break;
+    }
+}
+
+if (!$matched) {
+    die("404 - Route not found: $route");
+}
+
+// Instantiate controller
+$controller = new $controllerName($db);
+
+// Call method with ID param if exists
+call_user_func_array([$controller, $methodName], $params);
