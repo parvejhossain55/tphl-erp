@@ -173,10 +173,13 @@ $routes = [
     "flats-import-csv" => ["controller" => "FlatController", "method" => "importCsv"],
     "update-flat/(\d+)" => ["controller" => "FlatController", "method" => "update"],
     "delete-flat/(\d+)" => ["controller" => "FlatController", "method" => "delete"],
-   
 
-
-
+        //follow-up-leads
+    "follow-up-leads/(\d+)" => ["controller" => "FollowUPController", "method" => "index"],
+    "store-follow-up" => ["controller" => "FollowUPController", "method" => "store"],
+    "update-follow-up" => ["controller" => "FollowUPController", "method" => "update"],
+    "delete-follow-up" => ["controller" => "FollowUPController", "method" => "delete"],
+    "get-flats/(\d+)" => ["controller" => "FollowUPController", "method" => "getFlats"],
 
 ];
 
@@ -187,6 +190,7 @@ $base_folder = 'TPHL-ERP/public';
 if (strpos($route, $base_folder) === 0) {
     $route = substr($route, strlen($base_folder));
 }
+
 $route = trim($route, '/');
 
 // Skip routes that don't need login

@@ -194,7 +194,7 @@ function checkLogin()
 
     if (!isset($_SESSION['user'])) {
         // header("Location: /tphl_project/public/admin-login");
-        header("Location: {$GLOBALS('base_url')}/admin-login");
+        header("Location: /TPHL-ERP/public/admin-login");
         exit;
     }
 }
@@ -262,7 +262,6 @@ function db()
 
         $db = new Database($config);
     }
-
     return $db->conn; // return mysqli connection
 }
 

@@ -14,10 +14,10 @@ class Lead extends Model
         $sql = $this->db->prepare("
         SELECT 
             l.*,
-            u.id AS owner_id,
-            u.full_name AS owner_name
+            u.id AS assigned_id,
+            u.full_name AS agent_name
         FROM leads AS l
-        LEFT JOIN users AS u ON l.owner_id = u.id
+        LEFT JOIN users AS u ON l.assigned_id = u.id
     ");
         $sql->execute();
         if (!$sql->execute()) {
@@ -27,56 +27,62 @@ class Lead extends Model
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-    public function create($data)
-    {
-        $stmt = $this->db->prepare("
+
+	
+
+public function create($data)
+{
+    $stmt = $this->db->prepare("
         INSERT INTO leads (
             lead_name, lead_type, company,
-            phone, alt_phone_number, email, source_type_id,
-            address, pref_location, designation, project_type, interest_on,
-            pref_flat_size, communication_type, tags, description,
+            phone, alt_phone_number, email,
+            source_type_id, assigned_id,
+            address, pref_location, designation,
+            project_type, interest_on, pref_flat_size,
+            communication_type, tags, description,
             visibility, status, lead_quality
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
-        if (!$stmt) {
-            setError("Prepare failed: " . $this->db->error);
-            return false;
-        }
-
-        // 21 PARAMETERS → so provide EXACT 21 TYPE LETTERS
-        $stmt->bind_param(
-            "sssssissssssssssssi",
-            $data['lead_name'],
-            $data['lead_type'],
-            $data['company'],
-       
-            $data['phone'],
-            $data['alt_phone_number'],
-            $data['email'],
-            $data['source_type_id'],
-            $data['address'],
-            $data['pref_location'],
-            $data['designation'],
-            $data['project_type'],
-            $data['interest_on'],
-            $data['pref_flat_size'],
-            $data['communication_type'],
-            $data['tags'],
-            $data['description'],
-            $data['visibility'],
-            $data['status'],
-            $data['lead_quality']
-        );
-
-        if ($stmt->execute()) {
-            setSuccess("Lead created successfully!");
-            return true;
-        } else {
-            setError("Lead creation failed: " . $stmt->error);
-            return false;
-        }
+    if (!$stmt) {
+        setError("Prepare failed: " . $this->db->error);
+        return false;
     }
+
+    // Correct type string: 21 parameters
+    // Assuming: s=string, i=int
+    $stmt->bind_param(
+        "ssssssisssssssssssss",
+        $data['lead_name'],          
+        $data['lead_type'],          
+        $data['company'],            
+        $data['phone'],              
+        $data['alt_phone_number'],   
+        $data['email'],              
+        $data['source_type_id'],     // i
+        $data['assigned_id'],        // i
+        $data['address'],            
+        $data['pref_location'],      
+        $data['designation'],        
+        $data['project_type'],       
+        $data['interest_on'],        
+        $data['pref_flat_size'],     
+        $data['communication_type'], 
+        $data['tags'],               
+        $data['description'],        
+        $data['visibility'],         
+        $data['status'],             
+        $data['lead_quality']        
+    );
+
+    if ($stmt->execute()) {
+        setSuccess("Lead created successfully!");
+        return true;
+    } else {
+        setError("Lead creation failed: " . $stmt->error);
+        return false;
+    }
+}
 
 
     //employee id find for edit
@@ -95,7 +101,7 @@ class Lead extends Model
     {
         $sql = "UPDATE leads SET
         lead_name = ?, lead_type = ?, company = ?, phone = ?, alt_phone_number = ?,
-        email = ?, source_type_id = ?, address = ?, pref_location = ?, designation = ?, project_type = ?,
+        email = ?, source_type_id = ?,assigned_id=?, address = ?, pref_location = ?, designation = ?, project_type = ?,
         interest_on = ?, pref_flat_size = ?, communication_type = ?, tags = ?, description = ?, visibility = ?, status = ?, lead_quality = ?
         WHERE id = ?";
 
@@ -105,7 +111,7 @@ class Lead extends Model
         }
 
         $stmt->bind_param(
-            "ssssssissssssssssssi",
+            "ssssssiissssssssssssi",
             $data['lead_name'],
             $data['lead_type'],
             $data['company'],
@@ -113,6 +119,7 @@ class Lead extends Model
             $data['alt_phone_number'],
             $data['email'],
             $data['source_type_id'],
+            $data['assigned_id'],
             $data['address'],
             $data['pref_location'],
             $data['designation'],

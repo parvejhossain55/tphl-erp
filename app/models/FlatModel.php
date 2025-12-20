@@ -33,6 +33,10 @@ class FlatModel extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
+
+
+
+
     /* =========================
        Create Project
     ========================== */
@@ -142,6 +146,30 @@ class FlatModel extends Model
         }
         return true;
     }
+
+
+
+  public function getProjectsFromFlats() {
+        $sql = "SELECT DISTINCT p.id, p.name
+                FROM flats f
+                INNER JOIN projects p ON f.project_id = p.id
+                ORDER BY p.name ASC";
+        $result = $this->db->query($sql);
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function getFlatsByProject($projectId) {
+        $stmt = $this->db->prepare("SELECT f.id, u.name AS flat_name
+                                     FROM flats f
+                                     INNER JOIN units u ON f.unit_id = u.id
+                                     WHERE f.project_id = ?
+                                     ORDER BY u.name ASC");
+        $stmt->bind_param("i", $projectId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+
     public function delete($id)
     {
         $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");

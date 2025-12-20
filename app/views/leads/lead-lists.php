@@ -79,6 +79,8 @@ $show_breadcrumb = true;
                             <th class="no-sort sorting"><input type="checkbox" id="selectall"></input>
                             </th>
                             <th>created At</th>
+
+                            <th>Follow Up</th>
                             <th>Lead Name</th>
                             <th>Lead Type</th>
                             <th>Company</th>
@@ -98,7 +100,6 @@ $show_breadcrumb = true;
                             <th>Note</th>
                             <!-- <th>Description</th> -->
                             <th>Visibility</th>
-                            <th>Status</th>
                             <th>Lead Quality</th>
                             <th>Action</th>
                         </tr>
@@ -108,6 +109,12 @@ $show_breadcrumb = true;
                         <?php foreach ($leads as $lead): ?>
                             <tr>
                                 <td><input type="checkbox" class="selectedId" name="selectedId"></td>
+                                <td>
+                                    <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>" class="btn btn-primary w-full">
+                                        Follow Up
+                                    </a>
+                                </td>
+
                                 <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
                                 <td><?= $lead['lead_name'] ?? '' ?></td>
                                 <td><?= $lead['lead_type'] ?? '' ?></td>
@@ -115,7 +122,7 @@ $show_breadcrumb = true;
                                 <td><?= ($lead['currency'] ?? '') . ' ' . ($lead['value_amount'] ?? '') ?></td>
                                 <td><?= $lead['phone'] ?? '' ?></td>
                                 <td><?= $lead['email'] ?? '' ?></td>
-                                <td><?= $lead['owner_name'] ?? '' ?></td>
+                                <td><?= $lead['agent_name'] ?? '' ?></td>
                                 <td><?= $lead['designation'] ?? '' ?></td>
                                 <td><?= $lead['pref_location'] ?? '' ?></td>
                                 <td><span class="bd-badge bg-success"><?= $lead['project_type'] ?? '' ?></span></td>
@@ -123,7 +130,7 @@ $show_breadcrumb = true;
                                 <td><?= $lead['pref_flat_size'] ?? '' ?></td>
                                 <td><?= $lead['tags'] ?? '' ?></td>
                                 <td><?= $lead['visibility'] ?? '' ?></td>
-                                <td><span class="bd-badge bg-success"><?= $lead['status'] ?? '' ?></span></td>
+
                                 <td><?= $lead['lead_quality'] ?? '' ?></td>
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-10">

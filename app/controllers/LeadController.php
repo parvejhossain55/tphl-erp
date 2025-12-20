@@ -21,8 +21,6 @@ class LeadController extends Controller
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-
-
         $message = "";
         $this->view("leads/lead-lists", [
             "current_route" => "lead-lists",
@@ -35,8 +33,7 @@ class LeadController extends Controller
 
     public function create()
     {
-
-        $ownerUsers = $this->userModel->getAll();
+        $assignedUsers = $this->userModel->getAll();
         $sources = $this->leadSource->getAll();
 
         $this->view("leads/create-lead", [
@@ -44,7 +41,7 @@ class LeadController extends Controller
             "active"          => "create-lead",
             "page_title"      => "Add lead",
             "show_breadcrumb" => true,
-            "ownerUsers" => $ownerUsers,
+            "assignedUsers" => $assignedUsers,
             "sources" => $sources,
 
         ]);
@@ -63,7 +60,7 @@ class LeadController extends Controller
             'alt_phone_number' => $_POST['alt_phone_number'] ?? null,
             'email' => $_POST['email'] ?? null,
             'source_type_id' => $_POST['source_type_id'] ?? null,
-            // 'owner_id' => $_POST['owner_id'] ?? null,
+            'assigned_id' => $_POST['assigned_id'] ?? null,
             'address' => $_POST['address'] ?? null,
             'pref_location' => $_POST['pref_location'] ?? null,
             'designation' => $_POST['designation'] ?? null,
@@ -93,14 +90,14 @@ class LeadController extends Controller
     // Edit Employee Page
     public function edit($id)
     {
-        $ownerUsers = $this->userModel->getAll();
+        $assignedUsers = $this->userModel->getAll();
         $leadData = $this->leadModel->find($id);
     $sources = $this->leadSource->getAll();
         $this->view("leads/edit-lead", [
             "current_route"   => "edit-lead",
             "page_title"      => "Edit Lead",
             "leadData"        => $leadData,
-            "ownerUsers"        => $ownerUsers,
+            "assignedUsers"        => $assignedUsers,
             "sources"        => $sources,
             "show_breadcrumb" => true,
         ]);
@@ -121,6 +118,7 @@ class LeadController extends Controller
             'alt_phone_number' => $_POST['alt_phone_number'] ?? null,
             'email' => $_POST['email'] ?? null,
             'source_type_id' => $_POST['source_type_id'] ?? null,
+            'assigned_id' => $_POST['assigned_id'] ?? null,
             'owner_id' => $_POST['owner_id'] ?? null,
             'address' => $_POST['address'] ?? null,
             'pref_location' => $_POST['pref_location'] ?? null,

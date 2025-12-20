@@ -112,11 +112,11 @@ $selectedSourceId = $_SESSION['old']['source_type_id']
         <!-- Owner ID -->
         <div class="col-md-6">
             <div class="from__input-box">
-                <label class="form__input-title" for="ownerName">Lead Owner*</label>
+                <label class="form__input-title" for="ownerName"> Assigned User*</label>
                 <select name="owner_id" id="ownerName" class="form-select">
                     <option value="">Select Owner</option>
-                    <?php foreach ($ownerUsers as $user): ?>
-                        <option value="<?= $user['id'] ?>" <?= ($leadData['owner_id'] ?? '') == $user['id'] ? 'selected' : '' ?>><?= $user['full_name'] ?></option>
+                    <?php foreach ($assignedUsers as $user): ?>
+                        <option value="<?= $user['id'] ?>" <?= ($leadData['assigned_id'] ?? '') == $user['id'] ? 'selected' : '' ?>><?= $user['full_name'] ?></option>
                     <?php endforeach ?>
                 </select>
             </div>
@@ -232,7 +232,6 @@ $selectedSourceId = $_SESSION['old']['source_type_id']
                 <label><input type="radio" name="status" value="inactive" <?= ($leadData['status'] ?? '') == 'inactive' ? 'checked' : '' ?>> Inactive</label>
             </div>
         </div>
-
 
     </div>
 

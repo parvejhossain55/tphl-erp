@@ -95,5 +95,10 @@ $show_breadcrumb = true;
             <label>Facilities</label>
             <input type="text" name="facilities" class="form-control" placeholder="e.g., Gym, Pool, Parking">
         </div>
+
+
+           <div class="submit__btn text-center">
+                 <button class="btn btn-primary">Submit</button>
+             </div>
     </div>
 </form>

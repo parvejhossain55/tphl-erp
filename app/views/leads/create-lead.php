@@ -151,7 +151,7 @@ $page = "create List"
             <select name="lead_quality" class="form-select">
                 <option value="Not Interested">Not Interested</option>
                 <option value="Prospect">Prospect</option>
-                <option value="Pending">Pending</option>
+                <option value="Pending">Pending follow Up</option>
             </select>
         </div>
 
@@ -165,6 +165,17 @@ $page = "create List"
 
         <!-- Visibility -->
 
+        <div class="col-lg-6">
+            <div class="from__input-box">
+                <label class="form__input-title" for="assignedUser">Assigned User*</label>
+                <select name="assigned_id" id="assignedUser" class="form-select">
+                    <option value="">Select</option>
+                    <?php foreach ($assignedUsers as $user) : ?>
+                        <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
 
         <!-- Status -->
         <div class="col-md-6">
@@ -186,8 +197,6 @@ $page = "create List"
                 </div>
             </div>
         </div>
-
-
 
     </div>
 

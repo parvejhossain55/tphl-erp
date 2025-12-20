@@ -83,7 +83,6 @@
                                                    Role-Permissions
                                                </a>
                                            </li>
-
                                        </ul>
                                    </li>
                                    <!-- User Submenu -->
@@ -178,17 +177,16 @@
                            </ul>
                        </li>
 
-
-
                        <li class="slide has-sub <?= isActive(['leadSource-lists', 'create-lead', 'lead-lists', 'location-lists', 'community-lists', 'create-project', 'project-lists', 'unit-lists', 'create-flat', 'flat-lists'], $current_route) ?>">
-                           <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['leadSource-lists', 'create-lead', 'lead-lists', 'location-lists', 'community-lists', 'create-project', 'project-lists', 'unit-lists', 'create-flat', 'flat-lists'], $current_route) ? 'menu-open' : '' ?>">
+                           <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['leadSource-lists', 'create-lead', 'lead-lists', 'location-lists', 'community-lists', 'create-project', 'project-lists', 'unit-lists', 'create-flat', 'flat-lists'], 
+                           $current_route) ? 'menu-open' : '' ?>">
                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                               <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
-                               <span class="sidebar__menu-label">Sales And Development</span>
+                               <div class="side-menu__icon"><i class="fa fa-bar-chart"></i>  </div>
+                               <span class="sidebar__menu-label">Sales & Bussiness <br >Development </span>
                            </a>
 
 
-                           <ul class="sidebar-menu child1" style="<?= isMenuOpen(['leadSource-lists', 'create-lead', 'lead-lists', 'location-lists', 'community-lists', 'create-project', 'project-lists', 'unit-lists', 'create-flat', 'flat-lists'], $current_route) ? 'display:block;' : '' ?>">
+                           <ul class="sidebar-menu child1 py-3" style="<?= isMenuOpen(['leadSource-lists', 'create-lead', 'lead-lists', 'location-lists', 'community-lists', 'create-project', 'project-lists', 'unit-lists', 'create-flat', 'flat-lists'], $current_route) ? 'display:block;' : '' ?>">
                                <li class="slide  <?= isActive('leadSource-lists', $current_route) ?>">
                                    <a href="<?= $base_url ?>/leadSource-lists" class="sidebar__menu-item  <?= isActive('leadSource-lists', $current_route) ?>">
                                        <div class="side-menu__icon"><i class="fa-solid fa-users"></i></div>
@@ -254,7 +252,7 @@
                                    <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-flat', 'flat-lists'], $current_route) ?>">
                                        <i class="fa-regular fa-angle-down side-menu__angle"></i>
                                        <div class="side-menu__icon"> <i class="fa-solid fa-house"></i></div>
-                                       <span class="sidebar__menu-label">Flat Icon Manage</span>
+                                       <span class="sidebar__menu-label">Flats Manage</span>
                                    </a>
                                    <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-flat', 'flat-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
                                        <li class="slide <?= isActive('create-flat', $current_route) ?>">
@@ -265,6 +263,15 @@
                                        </li>
                                    </ul>
                                </li>
+
+                              
+                               <li class="slide  <?= isActive('follow-up-leads', $current_route) ?>">
+                                   <a href="<?= $base_url ?>/follow-up-leads" class="sidebar__menu-item  <?= isActive('follow-up-leads', $current_route) ?>">
+                                       <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                                       <span class="sidebar__menu-label">Follow Up Leads</span>
+                                   </a>
+                               </li>
+                                 
 
 
 
