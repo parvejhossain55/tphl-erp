@@ -18,6 +18,8 @@ class LeadController extends Controller
     {
         $owners = $this->userModel->getAll();
         $leads = $this->leadModel->getAll();
+
+        $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -28,8 +30,15 @@ class LeadController extends Controller
             "owners" => $owners,
             "leads" => $leads,
             "message" => $message,
+            "followUpCounts" => $followUpCounts
         ]);
     }
+
+
+
+
+
+
 
     public function create()
     {
@@ -92,7 +101,7 @@ class LeadController extends Controller
     {
         $assignedUsers = $this->userModel->getAll();
         $leadData = $this->leadModel->find($id);
-    $sources = $this->leadSource->getAll();
+        $sources = $this->leadSource->getAll();
         $this->view("leads/edit-lead", [
             "current_route"   => "edit-lead",
             "page_title"      => "Edit Lead",
@@ -105,7 +114,7 @@ class LeadController extends Controller
 
     public function update($id)
     {
-        
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         // Collect form data
@@ -133,61 +142,70 @@ class LeadController extends Controller
             'status' => $_POST['status'] ?? 'active',
             'lead_quality' => $_POST['lead_quality'] ?? 'Pending',
         ];
-        
+
         // Update lead
-         try {
-        $this->leadModel->update($id, $leadData);
-        setSuccess("Lead updated successfully!");
-        header("Location: {$GLOBALS['base_url']}/lead-lists");
-        exit;
-    } catch (Exception $e) {
-        setError($e->getMessage());
-        $_SESSION['old'] = $_POST;
-        header("Location: {$GLOBALS['base_url']}/edit-lead/{$id}");
-        exit;
-    }
+        try {
+            $this->leadModel->update($id, $leadData);
+            setSuccess("Lead updated successfully!");
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
+        } catch (Exception $e) {
+            setError($e->getMessage());
+            $_SESSION['old'] = $_POST;
+            header("Location: {$GLOBALS['base_url']}/edit-lead/{$id}");
+            exit;
+        }
     }
 
 
     public function importCsv()
-{
-    if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
-        setError("CSV upload failed");
-        return;
-    }
-
-    $fileTmp = $_FILES['csv_file']['tmp_name'];
-    $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
-
-    if ($ext !== 'csv') {
-        setError("Only CSV files allowed");
-        return;
-    }
-
-    if (($handle = fopen($fileTmp, "r")) !== false) {
-
-        $header = fgetcsv($handle); // first row → header
-
-        while (($row = fgetcsv($handle, 1000, ",")) !== false) {
-
-            // 🔑 CSV → DB column mapping
-            $data = array_combine($header, $row);
-
-            // defaults & safety
-            $data['value_amount'] = (float)($data['value_amount'] ?? 0);
-            $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
-            $data['status'] = (int)($data['status'] ?? 0);
-            $data['visibility'] = $data['visibility'] ?? 'public';
-
-            $this->leadModel->create($data);
+    {
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
+            setError("CSV upload failed");
+            return;
         }
 
-        fclose($handle);
-        setSuccess("CSV imported successfully");
+        $fileTmp = $_FILES['csv_file']['tmp_name'];
+        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+
+        if ($ext !== 'csv') {
+            setError("Only CSV files allowed");
+            return;
+        }
+
+        if (($handle = fopen($fileTmp, "r")) !== false) {
+
+            $header = fgetcsv($handle); // first row → header
+
+            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+
+                // 🔑 CSV → DB column mapping
+                $data = array_combine($header, $row);
+
+                // defaults & safety
+                $data['value_amount'] = (float)($data['value_amount'] ?? 0);
+                $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
+                $data['status'] = (int)($data['status'] ?? 0);
+                $data['visibility'] = $data['visibility'] ?? 'public';
+
+                $this->leadModel->create($data);
+            }
+
+            fclose($handle);
+            setSuccess("CSV imported successfully");
+        }
     }
-}
 
 
+    // Get single lead by ID
+
+
+    // Optional: get all leads
+    public function getAll()
+    {
+        $result = $this->db->query("SELECT * FROM leads ORDER BY created_at DESC");
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
 
 
     // Delete Employee

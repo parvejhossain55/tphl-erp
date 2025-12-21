@@ -174,12 +174,22 @@ $routes = [
     "update-flat/(\d+)" => ["controller" => "FlatController", "method" => "update"],
     "delete-flat/(\d+)" => ["controller" => "FlatController", "method" => "delete"],
 
-        //follow-up-leads
+    //follow-up-leads
     "follow-up-leads/(\d+)" => ["controller" => "FollowUPController", "method" => "index"],
     "store-follow-up" => ["controller" => "FollowUPController", "method" => "store"],
     "update-follow-up" => ["controller" => "FollowUPController", "method" => "update"],
     "delete-follow-up" => ["controller" => "FollowUPController", "method" => "delete"],
     "get-flats/(\d+)" => ["controller" => "FollowUPController", "method" => "getFlats"],
+
+    // booking
+    "booking-leads/(\d+)" => ["controller" => "BookingController", "method" => "index"],
+    "booking-store" => ["controller" => "BookingController", "method" => "store"],
+    "get-flats-by-project/(\d+)" => ["controller" => "BookingController", "method" => "getFlatsByProject"],
+
+    // payments_booking
+       "payments-booking/(\d+)" => ["controller" => "PaymentBookingController", "method" => "index"],
+       "payment-booking-store" => ["controller" => "PaymentBookingController", "method" => "store"],
+
 
 ];
 

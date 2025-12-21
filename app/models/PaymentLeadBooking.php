@@ -1,0 +1,188 @@
+<?php
+
+class PaymentLeadBooking extends Model
+{
+    public $db;
+
+    public function __construct($db = null)
+    {
+        parent::__construct($db);
+        $this->db = $db; // mysqli connection
+    }
+
+    // Get all follow-ups with related lead, project, flat, and creator info
+  // Get all payments for a specific onboarding record
+    public function getByOnboardId($booking_id)
+    {
+        $stmt = $this->db->prepare("
+            SELECT p.*, u.full_name AS created_by_name
+            FROM lead_payments p
+            LEFT JOIN users u ON p.created_by = u.id
+            WHERE p.booking_id = ?
+            ORDER BY p.payment_date ASC, p.id ASC
+        ");
+
+        $stmt->bind_param("i", $booking_id);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // Create a new follow-up
+
+public function create($data)
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO lead_payments
+            (booking_id, payment_type, amount, payment_method, payment_status, payment_date, transaction_ref, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $stmt->bind_param(
+            "isdssssi",
+            $data['booking_id'],
+            $data['payment_type'],
+            $data['amount'],
+            $data['payment_method'],
+            $data['payment_status'],
+            $data['payment_date'],
+            $data['transaction_ref'],
+            $data['created_by']
+        );
+
+        if ($stmt->execute()) {
+            // যদি booking payment হয়, flat booked mark করা হবে
+            if ($data['payment_type'] === 'booking') {
+                $this->markFlatBooked($data['booking_id']);
+            }
+            return $this->db->insert_id;
+        }
+
+        return false;
+    }
+
+    // Flat is_booked update
+    private function markFlatBooked($booking_id)
+    {
+        $sql = "UPDATE flats f
+                JOIN lead_bookings b ON b.flat_id = f.id
+                SET f.is_booked = 1
+                WHERE b.id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("i", $booking_id);
+        $stmt->execute();
+    }
+
+    // All payments for a booking
+    public function getByBooking($booking_id)
+    {
+        $stmt = $this->db->prepare("
+            SELECT p.*, u.full_name AS created_by_name
+            FROM lead_payments p
+            LEFT JOIN users u ON p.created_by = u.id
+            WHERE p.booking_id = ?
+            ORDER BY p.id DESC
+        ");
+        $stmt->bind_param("i", $booking_id);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // Check if booking payment already exists
+    public function getByBookingType($booking_id, $type)
+    {
+        $stmt = $this->db->prepare("
+            SELECT * FROM lead_payments
+            WHERE booking_id = ? AND payment_type = ?
+        ");
+        $stmt->bind_param("is", $booking_id, $type);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // Update follow-up by ID
+    public function update($data)
+    {
+        $stmt = $this->db->prepare("
+        UPDATE lead_follow_ups SET
+            lead_id = ?,
+            flat_id = ?,
+            follow_up_date = ?,
+            follow_up_time = ?,
+            follow_up_type = ?,
+            status = ?,
+            discussion_note = ?,
+            next_follow_up_date = ?,
+            next_action = ?
+        WHERE id = ?
+    ");
+
+        if (!$stmt) {
+            setError($this->db->error);
+            return false;
+        }
+        $stmt->bind_param(
+            "iisssssssi",
+            $data['lead_id'],
+            $data['flat_id'],   // NULL or valid flats.id
+            $data['follow_up_date'],
+            $data['follow_up_time'],
+            $data['follow_up_type'],
+            $data['status'],
+            $data['discussion_note'],
+            $data['next_follow_up_date'],
+            $data['next_action'],
+            $data['id']
+        );
+
+
+        return $stmt->execute();
+    }
+    // Optional: get onboard records by lead
+    public function getByLead($lead_id)
+    {
+        $stmt = $this->db->prepare("
+        SELECT o.*, p.name AS project_name, f.floor_no, f.sqft, u.name AS unit_name
+        FROM lead_payments o
+        LEFT JOIN projects p ON o.project_id = p.id
+        LEFT JOIN flats f ON o.flat_id = f.id
+        LEFT JOIN units u ON f.unit_id = u.id
+        WHERE o.lead_id = ?
+    ");
+        $stmt->bind_param("i", $lead_id);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+
+
+ 
+
+
+    public function getFollowUpCountByLead()
+    {
+        $sql = "
+        SELECT lead_id, COUNT(*) AS follow_up_count
+        FROM lead_follow_ups
+        GROUP BY lead_id
+    ";
+
+        $result = $this->db->query($sql);
+        $data = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $data[$row['lead_id']] = $row['follow_up_count'];
+        }
+
+        return $data;
+    }
+
+
+    // Delete follow-up by ID
+    public function delete($id)
+    {
+        $stmt = $this->db->prepare("DELETE FROM lead_follow_ups WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        return $stmt->execute();
+    }
+}

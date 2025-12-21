@@ -148,6 +148,26 @@ public function getByLead($lead_id)
     return $followUps;
 }
 
+
+public function getFollowUpCountByLead()
+{
+    $sql = "
+        SELECT lead_id, COUNT(*) AS follow_up_count
+        FROM lead_follow_ups
+        GROUP BY lead_id
+    ";
+
+    $result = $this->db->query($sql);
+    $data = [];
+
+    while ($row = $result->fetch_assoc()) {
+        $data[$row['lead_id']] = $row['follow_up_count'];
+    }
+
+    return $data;
+}
+
+
     // Delete follow-up by ID
     public function delete($id){
         $stmt = $this->db->prepare("DELETE FROM lead_follow_ups WHERE id = ?");

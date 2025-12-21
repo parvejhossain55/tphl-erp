@@ -20,32 +20,32 @@ class FollowUpController extends Controller
     }
 
     // Index page: show leads for follow-up
-public function index($lead_id = null)
-{
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    public function index($lead_id = null)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
-    $leads = $this->leadModel->getAll(); // for the table/list
-    $followUpLeads = [];
+        $leads = $this->leadModel->getAll(); // for the table/list
+        $followUpLeads = [];
 
-    if ($lead_id) {
-        $followUpLeads = $this->followUpModel->getByLead($lead_id);
+        if ($lead_id) {
+            $followUpLeads = $this->followUpModel->getByLead($lead_id);
+        }
+
+        $projects = $this->projectModel->getAll(); // optional
+        $flats = $this->flatModel->getAll();       // optional
+
+        $this->view("followUp-leads/followUpLeads", [
+            "current_route" => "follow-up-leads",
+            "page_title" => "Follow Up Lead List",
+            "followUpLeads" => $followUpLeads,
+            "projects" => $projects,
+            "flats" => $flats,
+            "leads" => $leads,
+            "selected_lead_id" => $lead_id,
+        ]);
+
+        // print_r($followUpLeads);
     }
-
-    $projects = $this->projectModel->getAll(); // optional
-    $flats = $this->flatModel->getAll();       // optional
-
-    $this->view("followUp-leads/followUpLeads", [
-        "current_route" => "follow-up-leads",
-        "page_title" => "Follow Up Lead List",
-        "followUpLeads" => $followUpLeads,
-        "projects" => $projects,
-        "flats" => $flats,
-        "leads" => $leads,
-        "selected_lead_id" => $lead_id,
-    ]);
-
-    print_r($followUpLeads);
-}
 
 
     public function getFlats($projectId)
@@ -79,41 +79,39 @@ public function index($lead_id = null)
 
         ];
 
-        // 1️⃣ Create follow-up
+        //  Create follow-up
         $created = $this->followUpModel->create($followUpData);
 
         if ($created) {
-
+            $leadId = $_POST['lead_id'];
             setSuccess("Follow-up created successfully!");
-            header("Location: {$GLOBALS['base_url']}/follow-up-leads");
+            header("Location: {$GLOBALS['base_url']}/follow-up-leads/{$leadId}");
             exit;
         } else {
+            $leadId = $_POST['lead_id'];
             setError("Failed to create follow-up!");
-            header("Location: {$GLOBALS['base_url']}/follow-up-leads");
+            header("Location: {$GLOBALS['base_url']}/follow-up-leads/{$leadId}");
             exit;
         }
     }
 
-
-
-
     public function update()
     {
-    $flatId = $_POST['flat_id'] ?? null;
-$flatId = ($flatId === '' || $flatId === '0') ? null : (int)$flatId;
+        $flatId = $_POST['flat_id'] ?? null;
+        $flatId = ($flatId === '' || $flatId === '0') ? null : (int)$flatId;
 
-$followUpData = [
-    'id' => (int)$_POST['id'],
-    'lead_id' => (int)$_POST['lead_id'],
-    'flat_id' => $flatId,   // ✅ NULL or flats.id only
-    'follow_up_date' => $_POST['follow_up_date'],
-    'follow_up_time' => $_POST['follow_up_time'] ?: null,
-    'follow_up_type' => $_POST['follow_up_type'],
-    'status' => $_POST['status'] ?? 'pending',
-    'discussion_note' => $_POST['discussion_note'] ?? null,
-    'next_follow_up_date' => $_POST['next_follow_up_date'] ?: null,
-    'next_action' => $_POST['next_action'] ?? null,
-];
+        $followUpData = [
+            'id' => (int)$_POST['id'],
+            'lead_id' => (int)$_POST['lead_id'],
+            'flat_id' => $flatId,   // ✅ NULL or flats.id only
+            'follow_up_date' => $_POST['follow_up_date'],
+            'follow_up_time' => $_POST['follow_up_time'] ?: null,
+            'follow_up_type' => $_POST['follow_up_type'],
+            'status' => $_POST['status'] ?? 'pending',
+            'discussion_note' => $_POST['discussion_note'] ?? null,
+            'next_follow_up_date' => $_POST['next_follow_up_date'] ?: null,
+            'next_action' => $_POST['next_action'] ?? null,
+        ];
 
 
         if ($this->followUpModel->update($followUpData)) {
@@ -121,8 +119,8 @@ $followUpData = [
         } else {
             setError("Failed to update follow-up!");
         }
-
-        header("Location: {$GLOBALS['base_url']}/follow-up-leads");
+        $leadId = $_POST['lead_id'];
+        header("Location: {$GLOBALS['base_url']}/follow-up-leads/{$leadId}");
         exit;
     }
 

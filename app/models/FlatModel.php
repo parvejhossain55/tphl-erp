@@ -170,6 +170,30 @@ class FlatModel extends Model
     }
 
 
+
+     public function getFlatsWithUnitByProject($projectId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT 
+                f.id AS flat_id,
+                f.floor_no,
+                f.sqft,
+                f.bhk,
+                f.price_value,
+                u.name AS unit_name
+            FROM flats f
+            JOIN units u ON f.unit_id = u.id
+            WHERE f.project_id = ?
+            ORDER BY f.floor_no ASC, u.name ASC
+        ");
+
+        $stmt->bind_param("i", $projectId);
+        $stmt->execute();
+
+        $result = $stmt->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
     public function delete($id)
     {
         $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");

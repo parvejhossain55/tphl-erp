@@ -187,6 +187,8 @@ CREATE TABLE
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
 
+-- leads
+
 CREATE TABLE
     `leads` (
         `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -270,6 +272,7 @@ CREATE TABLE
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
 
+--flat
 CREATE TABLE
     flats (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -336,61 +339,87 @@ CREATE TABLE lead_follow_ups (
 
 
 
-CREATE TABLE site_visits (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    follow_up_id INT NOT NULL,
-    visit_date DATE NOT NULL,
-    visit_time TIME NULL,
-    visit_status ENUM(
-        'scheduled',
-        'completed',
+
+CREATE TABLE lead_bookings (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    lead_id INT UNSIGNED NOT NULL,
+    project_id INT  NOT NULL,
+    flat_id INT  NOT NULL,
+
+    agreement_value DECIMAL(12,2) NOT NULL,
+    booking_date DATE NOT NULL,
+
+    booking_status ENUM(
+        'booked',
         'cancelled',
-        'no_show'
-    ) DEFAULT 'scheduled',
-    feedback TEXT,
-    created_by INT,
+        'completed'
+    ) DEFAULT 'booked',
+
+    created_by INT  NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (follow_up_id) REFERENCES lead_follow_ups(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    FOREIGN KEY (lead_id) REFERENCES leads(id),
+    FOREIGN KEY (project_id) REFERENCES projects(id),
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (flat_id) REFERENCES flats(id)
+);
 
 
 
-CREATE TABLE payments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    lead_id INT NOT NULL,
-    project_id INT NOT NULL,
-    flat_id INT NOT NULL,
-    follow_up_id INT NULL,        -- optional: link to follow-up
-    payment_type ENUM('booking','registration','emi','other') NOT NULL,
+
+CREATE TABLE lead_payments (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    -- Master reference
+    booking_id INT UNSIGNED NOT NULL,   -- lead booking / onboard reference
+
+    -- Payment identity
+    payment_type ENUM('booking_money','registration','emi') NOT NULL,
+
+    -- Amount info
     amount DECIMAL(12,2) NOT NULL,
-    payment_date DATE NOT NULL,
-    payment_status ENUM('pending','paid','failed') DEFAULT 'pending',
+
+    -- Method & status
     payment_method ENUM('cash','bank','online','cheque') DEFAULT 'cash',
-    created_by INT,
+    payment_status ENUM('paid','pending','failed') DEFAULT 'paid',
+
+    -- Dates
+    payment_date DATE NOT NULL,
+
+    -- Optional EMI info
+    emi_no INT NULL,                    -- only for EMI payments
+    emi_total INT NULL,                 -- total EMI count (optional)
+
+    -- Transaction reference
+    transaction_ref VARCHAR(100) NULL,
+
+    -- Audit
+    created_by INT UNSIGNED NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (flat_id) REFERENCES flats(id) ON DELETE CASCADE,A
-    FOREIGN KEY (follow_up_id) REFERENCES lead_follow_ups(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    -- Relations
+    CONSTRAINT fk_payment_booking
+        FOREIGN KEY (booking_id)
+        REFERENCES lead_bookings(id)
+        ON DELETE CASCADE
+);
 
 
+CREATE TABLE emi_schedules (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    onboarding_id INT UNSIGNED NOT NULL,
 
-CREATE TABLE flat_payment_schedule (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    lead_id INT NOT NULL,
-    project_id INT NOT NULL,
-    flat_id INT NOT NULL,
-    payment_id INT NULL,            -- optional: linked actual payment
     emi_amount DECIMAL(12,2) NOT NULL,
     due_date DATE NOT NULL,
+
     status ENUM('pending','paid','missed') DEFAULT 'pending',
+    payment_id INT UNSIGNED NULL,
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (flat_id) REFERENCES flats(id) ON DELETE CASCADE,
+
+    FOREIGN KEY (onboarding_id) REFERENCES onboarding_leads(id) ON DELETE CASCADE,
     FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+);
+
+

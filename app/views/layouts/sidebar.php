@@ -265,12 +265,7 @@
                                </li>
 
                               
-                               <li class="slide  <?= isActive('follow-up-leads', $current_route) ?>">
-                                   <a href="<?= $base_url ?>/follow-up-leads" class="sidebar__menu-item  <?= isActive('follow-up-leads', $current_route) ?>">
-                                       <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
-                                       <span class="sidebar__menu-label">Follow Up Leads</span>
-                                   </a>
-                               </li>
+                              
                                  
 
 

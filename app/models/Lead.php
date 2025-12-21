@@ -140,6 +140,21 @@ public function create($data)
         }
         return true;
     }
+
+
+    //     public function getById($lead_id)
+    // {
+    //     $stmt = $this->db->prepare("
+    //         SELECT *
+    //         FROM leads
+    //         WHERE id = ?
+    //         LIMIT 1
+    //     ");
+    //     $stmt->bind_param("i", $lead_id);
+    //     $stmt->execute();
+    //     $result = $stmt->get_result();
+    //     return $result->fetch_assoc(); // single record
+    // }
     public function delete($id)
     {
         $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");
