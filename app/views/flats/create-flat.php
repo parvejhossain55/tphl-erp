@@ -20,12 +20,19 @@ $show_breadcrumb = true;
         <!-- Unit -->
         <div class="col-xl-6">
             <label>Unit *</label>
-            <select name="unit_id" class="form-control" required>
-                <option value="">Select Unit</option>
-                <?php foreach ($units as $unit): ?>
-                    <option value="<?= $unit['id'] ?>"><?= htmlspecialchars($unit['name']) ?></option>
-                <?php endforeach; ?>
-            </select>
+            <div class="d-flex gap-2">
+                <select name="unit_id" class="form-control" required style="flex:1;">
+                    <option value="">Select Unit</option>
+                    <?php foreach ($units as $unit): ?>
+                        <option value="<?= $unit['id']; ?>"><?= $unit['name']; ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <a href="<?= $GLOBALS['base_url'] ?>/unit-lists"
+                    class="btn btn-secondary"
+                    style="height: 38px; display:flex; align-items:center; padding:0 12px;">
+                    + Unit
+                </a>
+            </div>
         </div>
 
         <!-- Sqft -->

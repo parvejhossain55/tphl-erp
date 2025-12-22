@@ -6,20 +6,24 @@ class LeadController extends Controller
     protected $userModel;
     protected $leadModel;
     protected $leadSource;
-
+    protected $leadBookedModel;
     public function __construct($db)
     {
         $this->db = $db;
         $this->userModel = new User($this->db);
         $this->leadModel = new Lead($this->db);
         $this->leadSource = new LeadSource($this->db);
+        $this->leadBookedModel = new BookingLead($this->db);
+
     }
     public function index()
     {
         $owners = $this->userModel->getAll();
         $leads = $this->leadModel->getAll();
-
+        $leadCounts = count($leads);
+        $bookingCount = $this->leadBookedModel->getBookingCountByLead();
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
+        $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -30,15 +34,12 @@ class LeadController extends Controller
             "owners" => $owners,
             "leads" => $leads,
             "message" => $message,
-            "followUpCounts" => $followUpCounts
+            "followUpCounts" => $followUpCounts,
+            "bookingCount" => $bookingCount,
+            "paymentCount" => $paymentCount,
+            "leadCounts" => $leadCounts,
         ]);
     }
-
-
-
-
-
-
 
     public function create()
     {
@@ -96,6 +97,14 @@ class LeadController extends Controller
         }
     }
 
+    public function show($id){
+        $leadData = $this->leadModel->find($id);
+       $this->view("leads/view-lead",[
+        "current_route" => "view-lead",
+        "page_title"  => "View Lead",
+        "leadData" => $leadData,
+       ]);
+    }
     // Edit Employee Page
     public function edit($id)
     {
@@ -128,7 +137,6 @@ class LeadController extends Controller
             'email' => $_POST['email'] ?? null,
             'source_type_id' => $_POST['source_type_id'] ?? null,
             'assigned_id' => $_POST['assigned_id'] ?? null,
-            'owner_id' => $_POST['owner_id'] ?? null,
             'address' => $_POST['address'] ?? null,
             'pref_location' => $_POST['pref_location'] ?? null,
             'designation' => $_POST['designation'] ?? null,

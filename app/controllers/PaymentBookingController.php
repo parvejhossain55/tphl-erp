@@ -23,9 +23,10 @@ public function index($booking_id = null)
         exit;
     }
 
-    // Booking info নিয়ে আসো
-    $booking = $this->bookingModel->getById($booking_id); // single record
 
+    // Booking info 
+    $booking = $this->bookingModel->getById($booking_id); // single record
+    
     if (!$booking) {
         setError("Booking not found!");
         header("Location: {$GLOBALS['base_url']}/onboard-leads");
@@ -36,7 +37,7 @@ public function index($booking_id = null)
     $payments = $this->paymentModel->getByBooking($booking_id);
 
     // Check if booking payment already done
-    $existingBookingPayment = $this->paymentModel->getByBookingType($booking_id, 'booking');
+    $existingBookingPayment = $this->paymentModel->getByBookingType($booking_id, 'booking_money');
 
     // Form show/hide
     $showBookingForm = empty($existingBookingPayment); // true = show, false = hide
@@ -76,6 +77,27 @@ public function store()
 
     header("Location: {$GLOBALS['base_url']}/payments-booking/" . $_POST['booking_id']);
     exit;
+}
+
+
+public function invoice($payment_id)
+{
+    if (!$payment_id) {
+        die("Invalid payment ID");
+    }
+
+    // Payment + Booking + Lead + Project info
+    $invoice = $this->paymentModel->getInvoiceData($payment_id);
+
+    if (!$invoice) {
+        die("Invoice not found");
+    }
+
+    $this->view("salesLeads/payments/payment-invoice", [
+        "invoice" => $invoice,
+        "current_route" => 'payment-invoice',
+        "page_title" => "Payment Invoice"
+    ], false);
 }
 
 

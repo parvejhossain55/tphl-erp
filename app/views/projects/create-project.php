@@ -13,31 +13,44 @@ $show_breadcrumb = true;
             <input type="text" name="name" class="form-control" required>
         </div>
 
+
+
         <!-- Location -->
         <div class="col-xl-6">
-            <label>Location *</label>
-            <select name="location_id" class="form-control" required>
-                <option value="">Select Location</option>
-                <?php foreach ($locations as $location): ?>
-                    <option value="<?= $location['id']; ?>">
-                        <?= $location['name']; ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <label>Community *</label>
+            <div class="d-flex gap-2">
+                <select name="location_id" class="form-control" required style="flex:1;">
+                    <option value="">Select Location</option>
+                    <?php foreach ($locations as $location): ?>
+                        <option value="<?= $location['id']; ?>"><?= $location['name']; ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <a href="<?= $GLOBALS['base_url'] ?>/location-lists"
+                    class="btn btn-secondary"
+                    style="height: 38px; display:flex; align-items:center; padding:0 12px;">
+                    + Location
+                </a>
+            </div>
         </div>
 
         <!-- Community -->
         <div class="col-xl-6">
             <label>Community *</label>
-            <select name="community_id" class="form-control" required>
-                <option value="">Select Community</option>
-                <?php foreach ($communities as $community): ?>
-                    <option value="<?= $community['id']; ?>">
-                        <?= $community['name']; ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <div class="d-flex gap-2">
+                <select name="community_id" class="form-control" required style="flex:1;">
+                    <option value="">Select Community</option>
+                    <?php foreach ($communities as $community): ?>
+                        <option value="<?= $community['id']; ?>"><?= $community['name']; ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <a href="<?= $GLOBALS['base_url'] ?>/community-lists"
+                    class="btn btn-secondary"
+                    style="height: 38px; display:flex; align-items:center; padding:0 12px;">
+                    + Community
+                </a>
+            </div>
         </div>
+
 
         <!-- Building Type -->
         <div class="col-xl-6">
@@ -93,10 +106,21 @@ $show_breadcrumb = true;
             <input type="text" name="hover_text" class="form-control">
         </div>
 
-        <!-- Tag -->
+        <!-- plot Size -->
         <div class="col-xl-6">
-            <label>Tag</label>
-            <input type="text" name="tag" class="form-control">
+            <label>Plot Size in Katha</label>
+            <input type="text" name="plot_size" class="form-control">
+        </div>
+        <!-- plot Size -->
+        <div class="col-xl-6">
+            <label>Plot No</label>
+            <input type="text" name="plot_no" class="form-control">
+        </div>
+
+        <!-- block Size -->
+        <div class="col-xl-6">
+            <label>Block Size</label>
+            <input type="text" name="block_size" class="form-control">
         </div>
         <div class="col-xl-6 col-md-6">
             <div class="from__input-box">

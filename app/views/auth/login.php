@@ -60,7 +60,7 @@
                         <a href="javascript:;" class="authentication-logo logo-white">
                             <img src="assets/images/logo/logo_white.png" alt="logo">
                         </a>
-                        <h4 class="mb-15">Welcome to Manez</h4>
+                        <h4 class="mb-15">Welcome to The Premium Homes Ltd.</h4>
                         <p class="mb-15">Please sign-in to your account and start the adventure</p>
                     </div>
                   <form method="POST" action="<?php echo $GLOBALS['base_url']; ?>/admin-login">

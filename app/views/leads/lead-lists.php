@@ -8,7 +8,7 @@ $show_breadcrumb = true;
 
 <div class="row">
 
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -17,43 +17,29 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Lead</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">1500</h4>
+                        <h4 class="card__title"><?= $leadCounts ?></h4>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-badge-check"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Company</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">950</h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+  
+    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
                     <span><i class="fa-sharp fa-regular fa-user"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Approved </h6>
+                    <h6 class="card__sub-title mb-10">Total Booked </h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">3130</h4>
+                        <h4 class="card__title"><?= $paymentCount ?></h4>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <button
                 class="btn btn-success my-2 w-full"
@@ -78,8 +64,7 @@ $show_breadcrumb = true;
                         <tr class="table__title table__sort">
                             <th class="no-sort sorting"><input type="checkbox" id="selectall"></input>
                             </th>
-                            <th>Follow Up</th>
-                            <th>Onboard</th>
+
                             <th>Create Lead</th>
 
                             <th>Lead Name</th>
@@ -94,10 +79,11 @@ $show_breadcrumb = true;
                             <!-- <th>Address</th> -->
                             <th>Designation</th>
                             <th>Preferred Location</th>
+                            <th>Follow Up</th>
+                            <th>Booking</th>
                             <th>Project Type</th>
                             <th>Interest On</th>
                             <th>Preferred Flat Size</th>
-                            <th>Lead Quality</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -107,6 +93,15 @@ $show_breadcrumb = true;
                             <tr>
 
                                 <td><input type="checkbox" class="selectedId" name="selectedId"></td>
+                                <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
+                                <td><?= $lead['lead_name'] ?? '' ?></td>
+                                <td><?= $lead['lead_type'] ?? '' ?></td>
+                                <td><?= $lead['company'] ?? '' ?></td>
+                                <td><?= $lead['phone'] ?? '' ?></td>
+                                <td><?= $lead['email'] ?? '' ?></td>
+                                <td><?= $lead['agent_name'] ?? '' ?></td>
+                                <td><?= $lead['designation'] ?? '' ?></td>
+                                <td><?= $lead['pref_location'] ?? '' ?></td>
                                 <td>
                                     <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
                                         class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">
@@ -123,29 +118,22 @@ $show_breadcrumb = true;
                                 <td>
                                     <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
                                         class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
-
-                                        <span>Booking</span>
-
+                                        <?php if (!empty($bookingCount[$lead['id']])): ?>
+                                            <span>Booked </span>
+                                            <span class="followup-badge">
+                                                <?= $bookingCount[$lead['id']] ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span>Booking </span>
+                                        <?php endif ?>
                                     </a>
                                 </td>
-
-                                <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
-                                <td><?= $lead['lead_name'] ?? '' ?></td>
-                                <td><?= $lead['lead_type'] ?? '' ?></td>
-                                <td><?= $lead['company'] ?? '' ?></td>
-                                <td><?= $lead['phone'] ?? '' ?></td>
-                                <td><?= $lead['email'] ?? '' ?></td>
-                                <td><?= $lead['agent_name'] ?? '' ?></td>
-                                <td><?= $lead['designation'] ?? '' ?></td>
-                                <td><?= $lead['pref_location'] ?? '' ?></td>
                                 <td><span class="bd-badge bg-success"><?= $lead['project_type'] ?? '' ?></span></td>
                                 <td><?= $lead['interest_on'] ?? '' ?></td>
                                 <td><?= $lead['pref_flat_size'] ?? '' ?></td>
-
-                                <td><?= $lead['lead_quality'] ?? '' ?></td>
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-10">
-                                        <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead">
+                                        <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>">
                                             <i class="fa-regular fa-eye"></i>
                                         </a>
                                         <a class="table__icon edit" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>">
@@ -163,7 +151,6 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-
 </div>
 
 

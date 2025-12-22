@@ -23,14 +23,14 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <div class="col-lg-6">
                         <label class="form-label">Lead Name</label>
                         <input type="text" class="form-control"
-                               value="<?= $lead['lead_name'] ?? '' ?>" readonly>
+                            value="<?= $lead['lead_name'] ?? '' ?>" readonly>
                     </div>
 
                     <!-- Booking Date -->
                     <div class="col-lg-6">
                         <label class="form-label">Booking Date</label>
                         <input type="date" name="booking_date" class="form-control"
-                               value="<?= date('Y-m-d') ?>" required>
+                            value="<?= date('Y-m-d') ?>" required>
                     </div>
 
                     <!-- Project -->
@@ -52,11 +52,20 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         </select>
                     </div>
 
+                    <!-- Plot / Flat Price -->
+                    <div class="col-lg-6">
+                        <label class="form-label">Plot Value</label>
+                        <input type="text"
+                            class="form-control"
+                            id="flatPrice"
+                            readonly>
+                    </div>
+
                     <!-- Agreement Value -->
                     <div class="col-lg-6">
-                        <label class="form-label">Agreement Value *</label>
+                        <label class="form-label">Agreement Value/Booking Money *</label>
                         <input type="number" name="agreement_value" class="form-control"
-                               placeholder="e.g. 5000000" required>
+                            placeholder="e.g. 5000000" required>
                     </div>
 
                     <!-- Status -->
@@ -131,34 +140,51 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const projectSelect = document.getElementById('projectSelect');
-    const flatSelect = document.getElementById('flatSelect');
+    document.addEventListener('DOMContentLoaded', function() {
+        const projectSelect = document.getElementById('projectSelect');
+        const flatSelect = document.getElementById('flatSelect');
+        const flatPriceInput = document.getElementById('flatPrice');
 
-    if (projectSelect) {
-        projectSelect.addEventListener('change', function() {
-            const projectId = this.value;
-            flatSelect.innerHTML = '<option>Loading...</option>';
+        let flatData = []; // flat list store করবো
 
-            if (!projectId) {
-                flatSelect.innerHTML = '<option value="">Select Flat</option>';
-                return;
-            }
+        if (projectSelect) {
+            projectSelect.addEventListener('change', function() {
+                const projectId = this.value;
+                flatSelect.innerHTML = '<option>Loading...</option>';
+                flatPriceInput.value = '';
 
-            fetch("<?= $GLOBALS['base_url'] ?>/get-flats-by-project/" + projectId)
-                .then(res => res.json())
-                .then(data => {
+                if (!projectId) {
                     flatSelect.innerHTML = '<option value="">Select Flat</option>';
-                    data.forEach(flat => {
-                        flatSelect.innerHTML += `<option value="${flat.flat_id}">${flat.unit_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft</option>`;
-                    });
-                });
-        });
-    }
+                    return;
+                }
 
-    // Initialize DataTables
-    if (typeof $ !== 'undefined' && $.fn.dataTable) {
-        $('#bookingTable').DataTable();
-    }
-});
+                fetch("<?= $GLOBALS['base_url'] ?>/get-flats-by-project/" + projectId)
+                    .then(res => res.json())
+                    .then(data => {
+                        flatData = data; // store flats
+                        flatSelect.innerHTML = '<option value="">Select Flat</option>';
+
+                        data.forEach(flat => {
+                            flatSelect.innerHTML += `
+                            <option value="${flat.flat_id}">
+                                ${flat.unit_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft
+                            </option>`;
+                        });
+                    });
+            });
+        }
+
+        // Flat select করলে price show হবে
+        flatSelect.addEventListener('change', function() {
+            const selectedFlatId = this.value;
+            const flat = flatData.find(f => f.flat_id == selectedFlatId);
+
+            if (flat) {
+                flatPriceInput.value = Number(flat.price_value).toLocaleString();
+            } else {
+                flatPriceInput.value = '';
+            }
+        });
+
+    });
 </script>

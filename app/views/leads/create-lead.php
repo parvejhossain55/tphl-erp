@@ -66,19 +66,25 @@ $page = "create List"
             </div>
         </div>
 
-        <!-- Source Type -->
-        <div class="col-md-6">
-            <div class="from__input-box">
-                <label class="form__input-title" for="source_type_id">Source Type</label>
-                <select name="source_type_id" id="source_type_id" class="form-select">
-
-                    <?php foreach ($sources as $source) : ?>
-                        <option value="<?= $source['id'] ?>"><?= $source['name'] ?></option>
-
-                    <?php endforeach ?>
+        <!-- Source -->
+        <div class="col-xl-6">
+            <label>Lead Source *</label>
+            <div class="d-flex gap-2">
+                <select name="source_type_id" class="form-control" required style="flex:1;">
+                    <option value="">Select Source</option>
+                    <?php foreach ($sources as $source): ?>
+                        <option value="<?= $source['id']; ?>"><?= $source['name']; ?></option>
+                    <?php endforeach; ?>
                 </select>
+                <a href="<?= $GLOBALS['base_url'] ?>/leadSource-lists"
+                    class="btn btn-secondary"
+                    style="height: 38px; display:flex; align-items:center; padding:0 12px;">
+                    + source
+                </a>
             </div>
         </div>
+
+
 
 
 
@@ -142,8 +148,6 @@ $page = "create List"
                 </select>
             </div>
         </div>
-
-
 
         <!-- Lead Quality -->
         <div class="col-md-6">

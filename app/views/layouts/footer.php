@@ -80,7 +80,7 @@
                     icon: 'error',
                     title: <?= json_encode($_SESSION['flash_error']); ?>,
                     showConfirmButton: false,
-                    timer: 4000,
+                    timer: 1000000,
                     width: '320px'
                 });
             </script>

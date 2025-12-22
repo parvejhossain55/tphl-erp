@@ -7,7 +7,7 @@ $show_breadcrumb = true;
 
 ?>
 <div class="breadcrumb__btn my-4">
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewLocation">Add location</button>
+    <a href="<?= $GLOBALS['base_url'] ?>/create-project" class="btn btn-primary" >Add location</a>
 </div>
 <div class="row">
     <div class="col-xxl-12">
@@ -26,9 +26,8 @@ $show_breadcrumb = true;
                             <th>Unit Per Floor</th>
                             <th>Type</th>
                             <th>Front Road</th>
-                            <th>Hover Text</th>
+                            <th>Plot Size</th>
                             <th>Price Range</th>
-                            <th>Tag</th>
                             <th>Brochure</th>
                             <th>Apartment Count</th>
                             <th>Rooftop Gardening</th>
@@ -51,15 +50,14 @@ $show_breadcrumb = true;
 
                             <td><?= htmlspecialchars($project['name']) ?></td>
                             <td><?= htmlspecialchars($project['location_name'] ?? '') ?></td>
-                            <td><?= htmlspecialchars($project['community_name'] ?? '') ?></td>
+                            <td><?= htmlspecialchars($project['community_name'] ?? '') ?> </td>
                             <td><?= htmlspecialchars($project['building_type']) ?></td>
                             <td><?= htmlspecialchars($project['total_share']) ?></td>
                             <td><?= htmlspecialchars($project['unit_per_floor']) ?></td>
                             <td><?= htmlspecialchars($project['types']) ?></td>
                             <td><?= htmlspecialchars($project['front_road']) ?></td>
-                            <td><?= htmlspecialchars($project['hover_text']) ?></td>
+                            <td><?= $project['plot_size'] ?? 'N/A'?></td>
                             <td><?= htmlspecialchars($project['price_range']) ?></td>
-                            <td><?= htmlspecialchars($project['tag']) ?></td>
                             <td>
                                 <?php if(!empty($project['brochure_link'])): ?>
                                     <a href="<?= $project['brochure_link'] ?>" target="_blank">View</a>

@@ -52,14 +52,14 @@ public function create($data)
     // ======================
     $stmt = $this->db->prepare("
         INSERT INTO projects (
-            name, location_id, community_id, building_type,
+            name, location_id, community_id,plot_no,block_no, building_type,
             total_share, unit_per_floor, types, front_road,
-            hover_text, price_range, tag, brochure_link,
+            hover_text, price_range, plot_size, brochure_link,
             description, apartment_count, amenities_details, amenities_image,
             map_image, map_link, passenger_lift, cargo_lift,
             rooftop_gardening, swimming_pool, convention, electricity_backup,
             image, image2, image3
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
     if (!$stmt) {
@@ -67,36 +67,40 @@ public function create($data)
         return false;
     }
 
-    $stmt->bind_param(
-        "siisiisssssssissssiiiiiisss",
-        $data['name'],
-        $data['location_id'],
-        $data['community_id'],
-        $data['building_type'],
-        $data['total_share'],
-        $data['unit_per_floor'],
-        $data['types'],
-        $data['front_road'],
-        $data['hover_text'],
-        $data['price_range'],
-        $data['tag'],
-        $data['brochure_link'],
-        $data['description'],
-        $data['apartment_count'],
-        $data['amenities_details'],
-        $amenities_image,
-        $map_image,
-        $data['map_link'],
-        $data['passenger_lift'],
-        $data['cargo_lift'],
-        $data['rooftop_gardening'],
-        $data['swimming_pool'],
-        $data['convention'],
-        $data['electricity_backup'],
-        $image,
-        $image2,
-        $image3
-    );
+$stmt->bind_param(
+    "sssssssssssssssssssssssssssss",
+    $data['name'],
+    $data['location_id'],
+    $data['community_id'],
+    $data['plot_no'],
+    $data['block_no'],
+    $data['building_type'],
+    $data['total_share'],
+    $data['unit_per_floor'],
+    $data['types'],
+    $data['front_road'],
+    $data['hover_text'],
+    $data['price_range'],
+    $data['plot_size'],
+    $data['brochure_link'],
+    $data['description'],
+    $data['apartment_count'],
+    $data['amenities_details'],
+    $amenities_image,
+    $map_image,
+    $data['map_link'],
+    $data['passenger_lift'],
+    $data['cargo_lift'],
+    $data['rooftop_gardening'],
+    $data['swimming_pool'],
+    $data['convention'],
+    $data['electricity_backup'],
+    $image,
+    $image2,
+    $image3
+);
+
+
 
     return $stmt->execute();
 }
@@ -122,8 +126,8 @@ public function create($data)
     {
         $sql = "UPDATE leads SET
         lead_name = ?, lead_type = ?, company = ?, value_amount = ?, currency = ?, phone = ?, alt_phone_number = ?,
-        email = ?, source_type_id = ?, address = ?, pref_location = ?, designation = ?, project_type = ?,
-        interest_on = ?, pref_flat_size = ?, communication_type = ?, tags = ?, description = ?, visibility = ?, status = ?, lead_quality = ?
+        email = ?, source_type_id = ?,plot_no = ?,block_no = ?, address = ?, pref_location = ?, designation = ?, project_type = ?,
+        interest_on = ?, pref_flat_size = ?, communication_type = ?, plot_sizes = ?, description = ?, visibility = ?, status = ?, lead_quality = ?
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -132,7 +136,7 @@ public function create($data)
         }
 
         $stmt->bind_param(
-            "sssdssssissssssssssssi",
+            "sssdssssissssssisssssi",
             $data['lead_name'],
             $data['lead_type'],
             $data['company'],
@@ -142,6 +146,8 @@ public function create($data)
             $data['alt_phone_number'],
             $data['email'],
             $data['source_type_id'],
+            $data['plot_no'],
+            $data['block_no'],
             $data['address'],
             $data['pref_location'],
             $data['designation'],
@@ -149,7 +155,7 @@ public function create($data)
             $data['interest_on'],
             $data['pref_flat_size'],
             $data['communication_type'],
-            $data['tags'],
+            $data['plot_sizes'],
             $data['description'],
             $data['visibility'],
             $data['status'],

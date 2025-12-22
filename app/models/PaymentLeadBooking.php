@@ -11,7 +11,7 @@ class PaymentLeadBooking extends Model
     }
 
     // Get all follow-ups with related lead, project, flat, and creator info
-  // Get all payments for a specific onboarding record
+    // Get all payments for a specific onboarding record
     public function getByOnboardId($booking_id)
     {
         $stmt = $this->db->prepare("
@@ -30,7 +30,7 @@ class PaymentLeadBooking extends Model
 
     // Create a new follow-up
 
-public function create($data)
+    public function create($data)
     {
         $stmt = $this->db->prepare("
             INSERT INTO lead_payments
@@ -88,6 +88,16 @@ public function create($data)
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+public function getPaymentCount()
+{
+    $stmt = $this->db->prepare(
+        "SELECT COUNT(*) AS total FROM lead_payments"
+    );
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    return (int)($result['total'] ?? 0);
+}
+
     // Check if booking payment already exists
     public function getByBookingType($booking_id, $type)
     {
@@ -98,6 +108,53 @@ public function create($data)
         $stmt->bind_param("is", $booking_id, $type);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+
+
+    public function getInvoiceData($payment_id)
+    {
+        $stmt = $this->db->prepare("SELECT
+            lp.*,
+
+            lb.id AS booking_id,
+            lb.agreement_value,
+
+            l.lead_name AS lead_name,
+            p.name AS project_name,
+
+            f.floor_no,
+            u.name AS unit_name,
+
+            cr.full_name AS created_by_name
+
+        FROM lead_payments lp
+
+        INNER JOIN lead_bookings lb 
+            ON lb.id = lp.booking_id
+
+        INNER JOIN leads l 
+            ON l.id = lb.lead_id
+
+        INNER JOIN projects p 
+            ON p.id = lb.project_id
+
+        INNER JOIN flats f 
+            ON f.id = lb.flat_id
+
+        INNER JOIN units u 
+            ON u.id = f.unit_id
+
+        LEFT JOIN users cr 
+            ON cr.id = lp.created_by
+
+        WHERE lp.id = ?
+        LIMIT 1");
+
+        $stmt->bind_param("i", $payment_id);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_assoc();
     }
 
     // Update follow-up by ID
@@ -156,7 +213,7 @@ public function create($data)
 
 
 
- 
+
 
 
     public function getFollowUpCountByLead()

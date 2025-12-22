@@ -113,8 +113,8 @@ $selectedSourceId = $_SESSION['old']['source_type_id']
         <div class="col-md-6">
             <div class="from__input-box">
                 <label class="form__input-title" for="ownerName"> Assigned User*</label>
-                <select name="owner_id" id="ownerName" class="form-select">
-                    <option value="">Select Owner</option>
+                <select name="assigned_id" id="ownerName" class="form-select">
+                    <option value="">Select User</option>
                     <?php foreach ($assignedUsers as $user): ?>
                         <option value="<?= $user['id'] ?>" <?= ($leadData['assigned_id'] ?? '') == $user['id'] ? 'selected' : '' ?>><?= $user['full_name'] ?></option>
                     <?php endforeach ?>

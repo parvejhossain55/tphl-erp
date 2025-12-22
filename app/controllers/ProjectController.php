@@ -79,7 +79,10 @@ class ProjectController extends Controller
         'apartment_count'   => $_POST['apartment_count'] ?? null,
 
         'hover_text'        => $_POST['hover_text'] ?? null,
-        'tag'               => $_POST['tag'] ?? null,
+        // 'tag'               => $_POST['tag'] ?? null,
+        'plot_size'               => $_POST['plot_size'] ?? null,
+        'plot_no'               => $_POST['plot_no'] ?? null,
+        'block_no'               => $_POST['block_no'] ?? null,
         'brochure_link'     => $_POST['brochure_link'] ?? null,
 
         'passenger_lift'    => $_POST['passenger_lift'] ?? null,

@@ -93,15 +93,13 @@ class BookingLead extends Model
             $data['next_action'],
             $data['id']
         );
-
-
         return $stmt->execute();
     }
     // Optional: get onboard records by lead
     public function getByLead($lead_id)
     {
         $stmt = $this->db->prepare("
-        SELECT o.*, p.name AS project_name, f.floor_no, f.sqft, u.name AS unit_name
+        SELECT o.*, p.name AS project_name, f.floor_no, f.sqft,f.price_value, u.name AS unit_name
         FROM lead_bookings o
         LEFT JOIN projects p ON o.project_id = p.id
         LEFT JOIN flats f ON o.flat_id = f.id
@@ -112,20 +110,24 @@ class BookingLead extends Model
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
-
-    public function getFollowUpCountByLead()
+    public function getBookingCountByLead()
     {
-        $sql = "
-        SELECT lead_id, COUNT(*) AS follow_up_count
-        FROM lead_follow_ups
-        GROUP BY lead_id
-    ";
+        $stmt = $this->db->prepare(
+            "SELECT 
+            lb.lead_id,
+            COUNT(DISTINCT lb.id) AS booking_count
+         FROM lead_bookings lb
+         INNER JOIN lead_payments lp 
+            ON lp.booking_id = lb.id
+         GROUP BY lb.lead_id"
+        );
 
-        $result = $this->db->query($sql);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
         $data = [];
-
         while ($row = $result->fetch_assoc()) {
-            $data[$row['lead_id']] = $row['follow_up_count'];
+            $data[$row['lead_id']] = $row['booking_count'];
         }
 
         return $data;

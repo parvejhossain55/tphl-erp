@@ -386,9 +386,6 @@ function getLoggedInUserImage()
     return getImage('users', 'default.png');
 }
 
-
-
-
 // sweet alert 
 
 function setSuccess($message)
@@ -469,10 +466,8 @@ function getSetting($key, $default = null)
 {
     static $settings = null;
 
-    // First time load all settings
     if ($settings === null) {
-        $db = $GLOBALS['db']; // assuming db globally available
-
+        $db = $GLOBALS['db'];
         $stmt = $db->prepare("SELECT * FROM site_settings WHERE id = 1 LIMIT 1");
         if ($stmt && $stmt->execute()) {
             $result = $stmt->get_result();
@@ -484,6 +479,7 @@ function getSetting($key, $default = null)
 
     return $settings[$key] ?? $default;
 }
+
 
 
 function calculateReadTime($content, $wpm = 180)

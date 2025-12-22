@@ -28,7 +28,7 @@ public function index($lead_id = null)
      
         $lead = $this->leadModel->find($lead_id);
 
-        // Optional: onboard records for this lead
+        // Optional: booking records for this lead
         $bookingRecords = $this->bookingModel->getByLead($lead_id);
     } else {
         $lead = null;
@@ -45,7 +45,7 @@ public function index($lead_id = null)
         "bookingRecords" => $bookingRecords,
         "selected_lead_id" => $lead_id,
         "current_route" => "booking-leads",
-        "page_title" => "Onboard Lead Page",
+        "page_title" => "Booking Lead Page",
     ]);
 }
 

@@ -106,6 +106,7 @@ $routes = [
     "create-lead" => ["controller" => "LeadController", "method" => "create"],
     "store-lead" => ["controller" => "LeadController", "method" => "store"],
     "edit-lead/(\d+)" => ["controller" => "LeadController", "method" => "edit"],
+    "view-lead/(\d+)" => ["controller" => "LeadController", "method" => "show"],
     "leads-import-csv" => ["controller" => "LeadController", "method" => "importCsv"],
     "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
     "delete-lead/(\d+)" => ["controller" => "LeadController", "method" => "delete"],
@@ -189,6 +190,8 @@ $routes = [
     // payments_booking
        "payments-booking/(\d+)" => ["controller" => "PaymentBookingController", "method" => "index"],
        "payment-booking-store" => ["controller" => "PaymentBookingController", "method" => "store"],
+       "payment-invoice/(\d+)" => ["controller" => "PaymentBookingController", "method" => "invoice"],
+       
 
 
 ];
