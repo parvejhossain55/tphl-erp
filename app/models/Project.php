@@ -105,15 +105,16 @@ $stmt->bind_param(
     return $stmt->execute();
 }
 
-
-
-
     /* =========================
        Find Project (Edit)
     ========================== */
     public function find($id)
     {
-        $stmt = $this->db->prepare("SELECT * FROM projects WHERE id = ?");
+        $stmt = $this->db->prepare("SELECT p.*,l.name AS location_name, c.name AS community_name 
+          FROM projects  AS p 
+          JOIN locations AS l ON p.location_id = l.id
+          JOIN communities AS c ON p.community_id = c.id
+          WHERE p.id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
@@ -122,52 +123,119 @@ $stmt->bind_param(
     /**
      * Update lead
      */
-    public function update($id, $data)
-    {
-        $sql = "UPDATE leads SET
-        lead_name = ?, lead_type = ?, company = ?, value_amount = ?, currency = ?, phone = ?, alt_phone_number = ?,
-        email = ?, source_type_id = ?,plot_no = ?,block_no = ?, address = ?, pref_location = ?, designation = ?, project_type = ?,
-        interest_on = ?, pref_flat_size = ?, communication_type = ?, plot_sizes = ?, description = ?, visibility = ?, status = ?, lead_quality = ?
-        WHERE id = ?";
+public function update($id, $data)
+{
+    // ======================
+    // Get Old Images
+    // ======================
+    $old = $this->find($id);
 
-        $stmt = $this->db->prepare($sql);
-        if (!$stmt) {
-            throw new Exception("Prepare failed: " . $this->db->error);
-        }
-
-        $stmt->bind_param(
-            "sssdssssissssssisssssi",
-            $data['lead_name'],
-            $data['lead_type'],
-            $data['company'],
-            $data['value_amount'],
-            $data['currency'],
-            $data['phone'],
-            $data['alt_phone_number'],
-            $data['email'],
-            $data['source_type_id'],
-            $data['plot_no'],
-            $data['block_no'],
-            $data['address'],
-            $data['pref_location'],
-            $data['designation'],
-            $data['project_type'],
-            $data['interest_on'],
-            $data['pref_flat_size'],
-            $data['communication_type'],
-            $data['plot_sizes'],
-            $data['description'],
-            $data['visibility'],
-            $data['status'],
-            $data['lead_quality'],
-            $id
-        );
-
-        if (!$stmt->execute()) {
-            throw new Exception("Update failed: " . $stmt->error);
-        }
-        return true;
+    if (!$old) {
+        return false;
     }
+
+    // ======================
+    // Image Upload (fallback old)
+    // ======================
+    $image = !empty($_FILES['image']['name'])
+        ? uploadImage('image', 'projects', 'fixed')
+        : $old['image'];
+
+    $image2 = !empty($_FILES['image2']['name'])
+        ? uploadImage('image2', 'projects', 'fixed')
+        : $old['image2'];
+
+    $image3 = !empty($_FILES['image3']['name'])
+        ? uploadImage('image3', 'projects', 'fixed')
+        : $old['image3'];
+
+    $map_image = !empty($_FILES['map_image']['name'])
+        ? uploadImage('map_image', 'projects', 'fixed')
+        : $old['map_image'];
+
+    $amenities_image = !empty($_FILES['amenities_image']['name'])
+        ? uploadImage('amenities_image', 'projects', 'fixed')
+        : $old['amenities_image'];
+
+    // ======================
+    // Update Query
+    // ======================
+    $stmt = $this->db->prepare("
+        UPDATE projects SET
+            name = ?, 
+            location_id = ?, 
+            community_id = ?, 
+            plot_no = ?, 
+            block_no = ?, 
+            building_type = ?,
+            total_share = ?, 
+            unit_per_floor = ?, 
+            types = ?, 
+            front_road = ?,
+            hover_text = ?, 
+            price_range = ?, 
+            plot_size = ?, 
+            brochure_link = ?,
+            description = ?, 
+            apartment_count = ?, 
+            amenities_details = ?, 
+            amenities_image = ?,
+            map_image = ?, 
+            map_link = ?, 
+            passenger_lift = ?, 
+            cargo_lift = ?,
+            rooftop_gardening = ?, 
+            swimming_pool = ?, 
+            convention = ?, 
+            electricity_backup = ?,
+            image = ?, 
+            image2 = ?, 
+            image3 = ?
+        WHERE id = ?
+    ");
+
+    if (!$stmt) {
+        setError($this->db->error);
+        return false;
+    }
+
+    $stmt->bind_param(
+        "sssssssssssssssssssssssssssssi",
+        $data['name'],
+        $data['location_id'],
+        $data['community_id'],
+        $data['plot_no'],
+        $data['block_no'],
+        $data['building_type'],
+        $data['total_share'],
+        $data['unit_per_floor'],
+        $data['types'],
+        $data['front_road'],
+        $data['hover_text'],
+        $data['price_range'],
+        $data['plot_size'],
+        $data['brochure_link'],
+        $data['description'],
+        $data['apartment_count'],
+        $data['amenities_details'],
+        $amenities_image,
+        $map_image,
+        $data['map_link'],
+        $data['passenger_lift'],
+        $data['cargo_lift'],
+        $data['rooftop_gardening'],
+        $data['swimming_pool'],
+        $data['convention'],
+        $data['electricity_backup'],
+        $image,
+        $image2,
+        $image3,
+        $id
+    );
+
+    return $stmt->execute();
+}
+
     public function delete($id)
     {
         $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");

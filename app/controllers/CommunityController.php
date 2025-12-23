@@ -15,7 +15,7 @@ public function index()
     // Get communitiess
     $communities = $this->deparmentModel->getAll();
 
-    $this->view("communities/communities", [
+    $this->view("sales-developments/communities/communities", [
         "current_route"   => "community-lists",
         "page_title"      => "communities List",
         "communities"     => $communities,

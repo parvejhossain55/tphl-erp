@@ -188,10 +188,10 @@ $routes = [
     "get-flats-by-project/(\d+)" => ["controller" => "BookingController", "method" => "getFlatsByProject"],
 
     // payments_booking
-       "payments-booking/(\d+)" => ["controller" => "PaymentBookingController", "method" => "index"],
-       "payment-booking-store" => ["controller" => "PaymentBookingController", "method" => "store"],
-       "payment-invoice/(\d+)" => ["controller" => "PaymentBookingController", "method" => "invoice"],
-       
+    "payments-booking/(\d+)" => ["controller" => "PaymentBookingController", "method" => "index"],
+    "payment-booking-store" => ["controller" => "PaymentBookingController", "method" => "store"],
+    "payment-invoice/(\d+)" => ["controller" => "PaymentBookingController", "method" => "invoice"],
+
 
 
 ];

@@ -74,7 +74,7 @@ $show_breadcrumb = true;
                                     <a href="download.php?id=<?= $project['id'] ?>" class="table__icon download">
                                         <i class="fa-regular fa-arrow-down-to-bracket"></i>
                                     </a>
-                                    <a href="edit-project.php?id=<?= $project['id'] ?>" class="table__icon edit">
+                                    <a href="<?= $GLOBALS['base_url'] ?>/edit-project/<?= $project['id'] ?>" class="table__icon edit">
                                         <i class="fa-sharp fa-light fa-pen"></i>
                                     </a>
                                     <button type="button" class="table__icon view" data-bs-toggle="modal" data-bs-target="#showItemsModal_<?= $project['id'] ?>">

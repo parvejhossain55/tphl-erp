@@ -118,6 +118,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <th>Method</th>
                             <th>Status</th>
                             <th>Payment Date</th>
+                            <th></th>
                             <th>Transaction Ref</th>
                             <th>Created By</th>
                             <th>Action</th>
@@ -156,6 +157,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         </div>
     </div>
 </div>
+
 
 <?php if (!$showBookingForm): ?>
     <script>

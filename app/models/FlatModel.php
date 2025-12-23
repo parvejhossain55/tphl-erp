@@ -33,6 +33,23 @@ class FlatModel extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
+    public function getFlatStatusCount()
+{
+    $sql = $this->db->prepare("
+        SELECT 
+            SUM(CASE WHEN is_booked = 1 THEN 1 ELSE 0 END) AS booked,
+            SUM(CASE WHEN is_booked = 0 THEN 1 ELSE 0 END) AS available
+        FROM flats
+    ");
+
+    $sql->execute();
+    return $sql->get_result()->fetch_assoc() ?? [
+        'booked' => 0,
+        'available' => 0
+    ];
+}
+
+
 
 
 
@@ -40,7 +57,7 @@ class FlatModel extends Model
     /* =========================
        Create Project
     ========================== */
-  public function create($data)
+    public function create($data)
     {
         $stmt = $this->db->prepare("
             INSERT INTO flats (
@@ -93,21 +110,25 @@ class FlatModel extends Model
     ========================== */
     public function find($id)
     {
-        $stmt = $this->db->prepare("SELECT * FROM projects WHERE id = ?");
+        $stmt = $this->db->prepare("SELECT 
+        f.*, p.name AS project_name, u.name AS unit_name  FROM flats AS f 
+        JOIN projects AS p ON f.project_id = p.id
+        JOIN units AS u ON f.unit_id = u.id
+        WHERE f.id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
     }
 
+                // project_id, unit_id,sqft,bhk,   bedroom, bathroom, balcony, drawing_dining_kitchen, common_dining, floor_no,  facing_site,price_value,  facilities
     /**
      * Update lead
      */
     public function update($id, $data)
     {
-        $sql = "UPDATE leads SET
-        lead_name = ?, lead_type = ?, company = ?, value_amount = ?, currency = ?, phone = ?, alt_phone_number = ?,
-        email = ?, source_type_id = ?, address = ?, pref_location = ?, designation = ?, project_type = ?,
-        interest_on = ?, pref_flat_size = ?, communication_type = ?, tags = ?, description = ?, visibility = ?, status = ?, lead_quality = ?
+        $sql = "UPDATE flats SET
+        project_id = ?, unit_id = ?, sqft = ?, bhk = ?, bedroom = ?, bathroom = ?, balcony = ?,
+        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -116,28 +137,21 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "sssdssssissssssssssssi",
-            $data['lead_name'],
-            $data['lead_type'],
-            $data['company'],
-            $data['value_amount'],
-            $data['currency'],
-            $data['phone'],
-            $data['alt_phone_number'],
-            $data['email'],
-            $data['source_type_id'],
-            $data['address'],
-            $data['pref_location'],
-            $data['designation'],
-            $data['project_type'],
-            $data['interest_on'],
-            $data['pref_flat_size'],
-            $data['communication_type'],
-            $data['tags'],
-            $data['description'],
-            $data['visibility'],
-            $data['status'],
-            $data['lead_quality'],
+            "iiiiiiiiiisdsi",
+            $data['project_id'],
+            $data['unit_id'],
+            $data['sqft'],
+            $data['bhk'],
+            $data['bedroom'],
+            $data['bathroom'],
+            $data['balcony'],
+            $data['drawing_dining_kitchen'],
+            $data['common_dining'],
+            $data['floor_no'],
+            $data['facing_site'],
+            $data['price_value'],
+            $data['facilities'],
+           
             $id
         );
 
@@ -149,7 +163,8 @@ class FlatModel extends Model
 
 
 
-  public function getProjectsFromFlats() {
+    public function getProjectsFromFlats()
+    {
         $sql = "SELECT DISTINCT p.id, p.name
                 FROM flats f
                 INNER JOIN projects p ON f.project_id = p.id
@@ -158,7 +173,8 @@ class FlatModel extends Model
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getFlatsByProject($projectId) {
+    public function getFlatsByProject($projectId)
+    {
         $stmt = $this->db->prepare("SELECT f.id, u.name AS flat_name
                                      FROM flats f
                                      INNER JOIN units u ON f.unit_id = u.id
@@ -171,11 +187,12 @@ class FlatModel extends Model
 
 
 
-     public function getFlatsWithUnitByProject($projectId)
+    public function getFlatsWithUnitByProject($projectId)
     {
         $stmt = $this->db->prepare("
             SELECT 
                 f.id AS flat_id,
+                f.is_booked,
                 f.floor_no,
                 f.sqft,
                 f.bhk,

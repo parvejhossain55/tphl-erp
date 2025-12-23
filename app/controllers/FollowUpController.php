@@ -34,7 +34,7 @@ class FollowUpController extends Controller
         $projects = $this->projectModel->getAll(); // optional
         $flats = $this->flatModel->getAll();       // optional
 
-        $this->view("followUp-leads/followUpLeads", [
+        $this->view("sales-developments/followUp-leads/followUpLeads", [
             "current_route" => "follow-up-leads",
             "page_title" => "Follow Up Lead List",
             "followUpLeads" => $followUpLeads,

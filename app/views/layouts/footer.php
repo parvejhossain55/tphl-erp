@@ -59,13 +59,15 @@
             <script>
                 Swal.fire({
                     toast: true,
-                    position: 'top-end', // right side (top)
+                    position: 'top-end',
                     icon: 'success',
                     title: <?= json_encode($_SESSION['flash_success']); ?>,
                     showConfirmButton: false,
-                    timer: 10000,
+                    timer: 4000,
                     timerProgressBar: true,
-                    width: '320px' // width
+                    customClass: {
+                        popup: 'swal2-toast'
+                    }
                 });
             </script>
         <?php unset($_SESSION['flash_success']);

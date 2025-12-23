@@ -9,7 +9,7 @@ $page = "View Lead";
         <div>
             <h3 class="mb-1"><?= htmlspecialchars($leadData['lead_name']) ?></h3>
             <span class="badge bg-success"><?= $leadData['lead_type'] ?></span>
-            <span class="badge bg-info"><?= $leadData['lead_quality'] ?></span>
+           Lead Follow UP <span class="badge bg-info"><?= $leadData['follow_up_count'] ?></span>
         </div>
 
         <div class="d-flex gap-2">
@@ -94,7 +94,7 @@ $page = "View Lead";
                 <div class="card-body">
                     <div class="row mb-2">
                         <div class="col-5 text-muted">Assigned To</div>
-                        <div class="col-7 text-title"><?= $leadData['assigned_user_name'] ?? '-' ?></div>
+                        <div class="col-7 text-title"><?= $leadData['user_name'] ?? '-' ?></div>
                     </div>
                     <div class="row mb-2">
                         <div class="col-5 text-muted">Visibility</div>

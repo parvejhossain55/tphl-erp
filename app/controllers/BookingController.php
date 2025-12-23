@@ -38,7 +38,7 @@ public function index($lead_id = null)
     $projects = $this->projectModel->getAll();
     $flats = []; // empty initially
 
-    $this->view("booking-leads/bookingLeads", [
+    $this->view("sales-developments/booking-leads/bookingLeads", [
         "lead" => $lead,
         "projects" => $projects,
         "flats" => $flats,
@@ -83,12 +83,12 @@ public function index($lead_id = null)
     if ($created) {
         $leadId = $_POST['lead_id'];
         setSuccess("Lead onboarded successfully!");
-        header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+        header("Location: {$GLOBALS['base_url']}/sales-developmet/{$leadId}");
         exit;
     } else {
         setError("Failed to onboard lead!");
           $leadId = $_POST['lead_id'];
-        header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+        header("Location: {$GLOBALS['base_url']}/sales-developmet/{$leadId}");
         exit;
     }
 }

@@ -28,7 +28,7 @@ class LeadController extends Controller
             session_start();
         }
         $message = "";
-        $this->view("leads/lead-lists", [
+        $this->view("sales-developments/leads/lead-lists", [
             "current_route" => "lead-lists",
             "page_title" => "Lead List",
             "owners" => $owners,
@@ -46,7 +46,7 @@ class LeadController extends Controller
         $assignedUsers = $this->userModel->getAll();
         $sources = $this->leadSource->getAll();
 
-        $this->view("leads/create-lead", [
+        $this->view("sales-developments/leads/create-lead", [
             "current_route"   => "create-lead",
             "active"          => "create-lead",
             "page_title"      => "Add lead",
@@ -99,7 +99,7 @@ class LeadController extends Controller
 
     public function show($id){
         $leadData = $this->leadModel->find($id);
-       $this->view("leads/view-lead",[
+       $this->view("sales-developments/leads/view-lead",[
         "current_route" => "view-lead",
         "page_title"  => "View Lead",
         "leadData" => $leadData,
@@ -111,7 +111,7 @@ class LeadController extends Controller
         $assignedUsers = $this->userModel->getAll();
         $leadData = $this->leadModel->find($id);
         $sources = $this->leadSource->getAll();
-        $this->view("leads/edit-lead", [
+        $this->view("sales-developments/leads/edit-lead", [
             "current_route"   => "edit-lead",
             "page_title"      => "Edit Lead",
             "leadData"        => $leadData,

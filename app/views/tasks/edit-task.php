@@ -9,7 +9,6 @@
       <div class="row">
           <div class="col-xxl-12">
 
-
               <div class="row gy-10">
                   <div class="col-xl-12">
                       <div class="card__wrapper">
@@ -24,7 +23,6 @@
                                       </div>
                                   </div>
                               </div>
-
                             
                               <div class="col-lg-6">
                                   <div class="from__input-box">

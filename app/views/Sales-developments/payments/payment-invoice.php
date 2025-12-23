@@ -180,7 +180,7 @@
 <div class="invoice-wrapper">
 
     <!-- LOGO CENTERED -->
-    <div class="site-logo">
+    <div class="site-logo mt-3">
         <img src="<?= getImage('settings', getSetting('logo')) ?>" alt="<?= getSetting('website_title', 'Site Logo') ?>">
     </div>
 
@@ -203,12 +203,12 @@
             <p><strong>Date:</strong> <?= date('d M Y', strtotime($invoice['payment_date'])) ?></p>
         </div>
     </div>
-
+    
     <!-- CUSTOMER INFO -->
     <div class="section">
         <h3>Customer Information</h3>
         <div class="info-grid">
-            <span><strong>Lead Name:</strong> <?= $invoice['lead_name'] ?></span>
+            <span><strong>Client Name:</strong> <?= $invoice['lead_name'] ?></span>
             <span><strong>Project:</strong> <?= $invoice['project_name'] ?></span>
             <span><strong>Unit:</strong> <?= $invoice['unit_name'] ?></span>
             <span><strong>Floor:</strong> <?= $invoice['floor_no'] ?></span>
@@ -248,12 +248,13 @@
             <div class="grand">
                 <span>Paid Amount</span>
                 <span><?= number_format($invoice['amount'], 2) ?></span>
+                <span ></span>
             </div>
         </div>
     </div>
 
     <!-- FOOTER -->
-    <div class="footer">
+    <div class="footer mt-3">
         Payment received by <strong><?= $invoice['created_by_name'] ?? 'System' ?></strong><br>
         Thank you for doing business with us.
     </div>

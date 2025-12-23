@@ -42,7 +42,7 @@ public function index($booking_id = null)
     // Form show/hide
     $showBookingForm = empty($existingBookingPayment); // true = show, false = hide
 
-    $this->view("salesLeads/payments/payment-bookings", [
+    $this->view("sales-developments/payments/payment-bookings", [
         "onboard" => $booking,
         "payments" => $payments,
         "showBookingForm" => $showBookingForm,
@@ -93,7 +93,7 @@ public function invoice($payment_id)
         die("Invoice not found");
     }
 
-    $this->view("salesLeads/payments/payment-invoice", [
+    $this->view("sales-developments/payments/payment-invoice", [
         "invoice" => $invoice,
         "current_route" => 'payment-invoice',
         "page_title" => "Payment Invoice"
