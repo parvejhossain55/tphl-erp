@@ -100,8 +100,6 @@ $stmt->bind_param(
     $image3
 );
 
-
-
     return $stmt->execute();
 }
 

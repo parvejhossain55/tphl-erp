@@ -83,12 +83,12 @@ public function index($lead_id = null)
     if ($created) {
         $leadId = $_POST['lead_id'];
         setSuccess("Lead onboarded successfully!");
-        header("Location: {$GLOBALS['base_url']}/sales-developmet/{$leadId}");
+        header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
         exit;
     } else {
         setError("Failed to onboard lead!");
           $leadId = $_POST['lead_id'];
-        header("Location: {$GLOBALS['base_url']}/sales-developmet/{$leadId}");
+        header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
         exit;
     }
 }

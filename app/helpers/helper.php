@@ -26,106 +26,116 @@
 //      return null;
 // }
 
-function uploadImage($input, $module = 'general', $mode = 'original', $width = 300, $height = 300)
-{
-    // Project root থেকে public folder path
-    $rootPublic = dirname(__DIR__, 2) . "/public/uploads/" . $module . "/";
-
-    // Create module folder if not exists
-    if (!is_dir($rootPublic)) {
-        mkdir($rootPublic, 0777, true); // recursive folder creation
-    }
-
-    // If file not selected
+function uploadImage(  $input,$module = 'general', $mode = 'original',  $width = 300,   $height = 300) {
+    // 1. File check
     if (!isset($_FILES[$input]) || $_FILES[$input]['error'] !== UPLOAD_ERR_OK) {
         return null;
     }
 
-    $tmpPath = $_FILES[$input]['tmp_name'];
-    $ext = pathinfo($_FILES[$input]['name'], PATHINFO_EXTENSION);
-    $fileName = uniqid() . "_" . time() . "." . $ext;
-    $targetFile = $rootPublic . $fileName;
+    // 2. Allowed extensions
+    $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    $ext = strtolower(pathinfo($_FILES[$input]['name'], PATHINFO_EXTENSION));
 
-    // ---------- MODE 1: Original size ----------
-    if ($mode === 'original') {
-        if (move_uploaded_file($tmpPath, $targetFile)) {
-            return $fileName;
-        }
+    if (!in_array($ext, $allowed)) {
         return null;
     }
 
-    // ---------- MODE 2: Fixed size ----------
-    if ($mode === 'fixed') {
-        // Load original image
-        switch (strtolower($ext)) {
-            case 'jpg':
-            case 'jpeg':
-                $src = imagecreatefromjpeg($tmpPath);
-                break;
-            case 'png':
-                $src = imagecreatefrompng($tmpPath);
-                break;
-            case 'gif':
-                $src = imagecreatefromgif($tmpPath);
-                break;
-            case 'avif':
-                if (function_exists('imagecreatefromavif')) {
-                    $src = imagecreatefromavif($tmpPath);
-                } else {
-                    return null; // AVIF not supported
-                }
-                break;
-            case 'webp':
-                if (function_exists('imagecreatefromwebp')) {
-                    $src = imagecreatefromwebp($tmpPath);
-                } else {
-                    return null; // WebP not supported
-                }
-                break;
-            default:
-                return null; // unsupported format
-        }
-
-        // Create destination image
-        $dst = imagecreatetruecolor($width, $height);
-
-        // Preserve transparency
-        if (in_array(strtolower($ext), ['png', 'gif', 'webp'])) {
-            imagecolortransparent($dst, imagecolorallocatealpha($dst, 0, 0, 0, 127));
-            imagealphablending($dst, false);
-            imagesavealpha($dst, true);
-        }
-
-        // Resize
-        list($origWidth, $origHeight) = getimagesize($tmpPath);
-        imagecopyresampled($dst, $src, 0, 0, 0, 0, $width, $height, $origWidth, $origHeight);
-
-        // Save resized image
-        switch (strtolower($ext)) {
-            case 'jpg':
-            case 'jpeg':
-                imagejpeg($dst, $targetFile, 90);
-                break;
-            case 'png':
-                imagepng($dst, $targetFile);
-                break;
-            case 'gif':
-                imagegif($dst, $targetFile);
-                break;
-            case 'webp':
-                imagewebp($dst, $targetFile, 90);
-                break;
-        }
-
-        // Free memory
-        imagedestroy($src);
-        imagedestroy($dst);
-
-        return $fileName;
+    // 3. Upload path
+    $uploadPath = dirname(__DIR__, 2) . "/public/uploads/{$module}/";
+    if (!is_dir($uploadPath)) {
+        mkdir($uploadPath, 0777, true);
     }
 
-    return null;
+    // 4. File name
+    $fileName = uniqid($module . '_') . '.' . $ext;
+    $target = $uploadPath . $fileName;
+
+    // ======================
+    // ORIGINAL MODE
+    // ======================
+    if ($mode === 'original') {
+        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
+            ? $fileName
+            : null;
+    }
+
+    // ======================
+    // FIXED MODE (Safe)
+    // ======================
+    // GD not available → fallback
+    if (!extension_loaded('gd')) {
+        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
+            ? $fileName
+            : null;
+    }
+
+    // Create source image
+    switch ($ext) {
+        case 'jpg':
+        case 'jpeg':
+            $src = imagecreatefromjpeg($_FILES[$input]['tmp_name']);
+            break;
+        case 'png':
+            $src = imagecreatefrompng($_FILES[$input]['tmp_name']);
+            break;
+        case 'gif':
+            $src = imagecreatefromgif($_FILES[$input]['tmp_name']);
+            break;
+        case 'webp':
+            if (function_exists('imagecreatefromwebp')) {
+                $src = imagecreatefromwebp($_FILES[$input]['tmp_name']);
+            } else {
+                return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
+                    ? $fileName
+                    : null;
+            }
+            break;
+        default:
+            return null;
+    }
+
+    if (!$src) {
+        return null;
+    }
+
+    // Destination canvas
+    $dst = imagecreatetruecolor($width, $height);
+
+    // Transparency support
+    if (in_array($ext, ['png', 'gif', 'webp'])) {
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+        $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+        imagefilledrectangle($dst, 0, 0, $width, $height, $transparent);
+    }
+
+    // Resize
+    [$w, $h] = getimagesize($_FILES[$input]['tmp_name']);
+    imagecopyresampled($dst, $src, 0, 0, 0, 0, $width, $height, $w, $h);
+
+    // Save image
+    switch ($ext) {
+        case 'jpg':
+        case 'jpeg':
+            imagejpeg($dst, $target, 90);
+            break;
+        case 'png':
+            imagepng($dst, $target);
+            break;
+        case 'gif':
+            imagegif($dst, $target);
+            break;
+        case 'webp':
+            imagewebp($dst, $target, 90);
+            break;
+    }
+
+    imagedestroy($src);
+    imagedestroy($dst);
+
+    return $fileName;
 }
+
 
 function getImage($module, $filename)
 {

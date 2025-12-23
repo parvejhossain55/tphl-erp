@@ -286,6 +286,7 @@ CREATE TABLE
         drawing_dining_kitchen TINYINT (1),
         common_dining TINYINT (1),
         floor_no INT,
+        is_booked INT,
         facing_site VARCHAR(50), -- East / West
         price_value DECIMAL(12, 2),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

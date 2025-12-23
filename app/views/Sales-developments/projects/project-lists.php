@@ -1,13 +1,13 @@
 
 
 <?php
-$page = 'Locatiopn';
+$page = 'Projects';
 $addPage = true;
 $show_breadcrumb = true;
 
 ?>
 <div class="breadcrumb__btn my-4">
-    <a href="<?= $GLOBALS['base_url'] ?>/create-project" class="btn btn-primary" >Add location</a>
+    <a href="<?= $GLOBALS['base_url'] ?>/create-project" class="btn btn-primary" >Add Project</a>
 </div>
 <div class="row">
     <div class="col-xxl-12">
