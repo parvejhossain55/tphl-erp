@@ -395,6 +395,13 @@ CREATE TABLE lead_payments (
     -- Transaction reference
     transaction_ref VARCHAR(100) NULL,
 
+--    new add 
+     bank_name VARCHAR(100) DEFAULT NULL --AFTER transaction_ref,
+     bank_account_no VARCHAR(50) DEFAULT NULL --AFTER bank_name,
+     cheque_no VARCHAR(50) DEFAULT NULL --AFTER bank_account_no,
+     online_type VARCHAR(50) DEFAULT NULL -- AFTER cheque_no;
+
+
     -- Audit
     created_by INT UNSIGNED NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

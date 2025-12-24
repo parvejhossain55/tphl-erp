@@ -56,7 +56,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <!-- Payment Method -->
                         <div class="col-lg-6">
                             <label class="form-label">Payment Method *</label>
-                            <select name="payment_method" class="form-select" required>
+                            <select name="payment_method" class="form-select payment-method" required>
                                 <option value="">Select Method</option>
                                 <option value="cash">Cash</option>
                                 <option value="bank">Bank</option>
@@ -64,6 +64,30 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                 <option value="cheque">Cheque</option>
                             </select>
                         </div>
+
+                        <!-- Bank Details -->
+                        <div class="col-lg-6 extra-input" id="bankFields" style="display:none;">
+                            <label class="form-label">Bank Name - Branch*</label>
+                            <input type="text" name="bank_name" class="form-control" placeholder="Enter Bank Name">
+                        </div>
+
+                        <div class="col-lg-6 extra-input" id="bankAccountFields" style="display:none;">
+                            <label class="form-label">Bank Account No *</label>
+                            <input type="text" name="bank_account_no" class="form-control" placeholder="Enter Account Number">
+                        </div>
+
+                        <!-- Cheque Details -->
+                        <div class="col-lg-6 extra-input" id="chequeFields" style="display:none;">
+                            <label class="form-label">Cheque No *</label>
+                            <input type="text" name="cheque_no" class="form-control" placeholder="Enter Cheque Number">
+                        </div>
+
+                        <!-- Online Details -->
+                        <div class="col-lg-6 extra-input" id="onlineFields" style="display:none;">
+                            <label class="form-label">Online Type *</label>
+                            <input type="text" name="online_type" class="form-control" placeholder="Enter Online Type (Bkash, Nagad, etc)">
+                        </div>
+
 
                         <!-- Amount -->
                         <div class="col-lg-6">
@@ -109,7 +133,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
-                <table class="table table-bordered table-striped">
+                <table class="table table-bordered table-striped align-middle">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -118,9 +142,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <th>Method</th>
                             <th>Status</th>
                             <th>Payment Date</th>
-                            <th></th>
                             <th>Transaction Ref</th>
-                            <th>Created By</th>
+                            <th>Recevied By</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -133,25 +156,24 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                     <td><?= number_format($p['amount'], 2) ?></td>
                                     <td><?= ucfirst($p['payment_method']) ?></td>
                                     <td><?= ucfirst($p['payment_status']) ?></td>
-                                    <td><?= $p['payment_date'] ?></td>
+                                    <td><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
                                     <td><?= $p['transaction_ref'] ?? '-' ?></td>
-                                    <td><?= $p['created_by_name'] ?? '-' ?> </td>
-                                    <td><a target="_blank"
-                                        href="<?= $GLOBALS['base_url'] ?>/payment-invoice/<?= $p['id'] ?>"
-                                        class="btn btn-success btn-sm">
-                                        Print Invoice
-                                    </a></td>
-
+                                    <td><?= $p['created_by_name'] ?? '-' ?></td>
+                                    <td>
+                                        <a target="_blank"
+                                            href="<?= $GLOBALS['base_url'] ?>/payment-invoice/<?= $p['id'] ?>"
+                                            class="btn btn-success btn-sm">
+                                            Print Invoice
+                                        </a>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="8" class="text-center">No payments found for this onboarding.</td>
+                                <td colspan="9" class="text-center">No payments found for this onboarding.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
-
-
                 </table>
             </div>
         </div>
@@ -159,8 +181,42 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 </div>
 
 
+
 <?php if (!$showBookingForm): ?>
     <script>
         document.querySelector('#bookingPayment').style.display = 'none';
+
+
+
     </script>
 <?php endif; ?>
+<script>
+ document.querySelectorAll('.payment-method').forEach(select => {
+    select.addEventListener('change', function() {
+        const method = this.value;
+
+        // Hide all extra input fields
+        document.querySelectorAll('.extra-input').forEach(div => {
+            div.style.display = 'none';
+            div.querySelector('input')?.removeAttribute('required');
+        });
+
+        // Show relevant fields
+        if(method === 'bank') {
+            document.querySelector('#bankFields').style.display = 'block';
+            document.querySelector('#bankFields input').setAttribute('required', 'required');
+
+            document.querySelector('#bankAccountFields').style.display = 'block';
+            document.querySelector('#bankAccountFields input').setAttribute('required', 'required');
+        } else if(method === 'cheque') {
+            document.querySelector('#chequeFields').style.display = 'block';
+            document.querySelector('#chequeFields input').setAttribute('required', 'required');
+        } else if(method === 'online') {
+            document.querySelector('#onlineFields').style.display = 'block';
+            document.querySelector('#onlineFields input').setAttribute('required', 'required');
+        }
+    });
+});
+
+
+</script>

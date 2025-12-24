@@ -64,6 +64,10 @@ public function store()
         'payment_status' => $_POST['payment_status'] ?? 'paid',
         'payment_date' => $_POST['payment_date'],
         'transaction_ref' => $_POST['transaction_ref'] ?? null,
+        'bank_name' => $_POST['bank_name'] ?? null,
+        'bank_account_no' => $_POST['bank_account_no'] ?? null,
+        'cheque_no' => $_POST['cheque_no'] ?? null,
+        'online_type' => $_POST['online_type'] ?? null,
         'created_by' => $_SESSION['user']['id'] ?? 1,
     ];
 

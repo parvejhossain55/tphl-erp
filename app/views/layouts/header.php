@@ -40,6 +40,7 @@
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/main.css">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+ <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.14.0-beta3/css/bootstrap-select.min.css">

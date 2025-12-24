@@ -1,6 +1,3 @@
-
-
-
 <?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -191,6 +188,11 @@ $routes = [
     "payments-booking/(\d+)" => ["controller" => "PaymentBookingController", "method" => "index"],
     "payment-booking-store" => ["controller" => "PaymentBookingController", "method" => "store"],
     "payment-invoice/(\d+)" => ["controller" => "PaymentBookingController", "method" => "invoice"],
+
+    //SalesDashboard
+
+    "sales-dashboard" => ["controller" => "SalesDashboardController", "method" => "index"],
+    
 
 
 

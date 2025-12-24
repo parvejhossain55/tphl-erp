@@ -47,14 +47,15 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <!-- Flat -->
                     <div class="col-lg-6">
                         <label class="form-label">Flat / Unit *</label>
-                        <select name="flat_id" id="flatSelect" class="form-select" required>
+                        <select id="flatSelect" class="form-select " data-live-search="true">
+
                             <option value="">Select Flat</option>
                         </select>
                     </div>
 
                     <!-- Plot / Flat Price -->
                     <div class="col-lg-6">
-                        <label class="form-label">Plot Value</label>
+                        <label class="form-label">Share Value</label>
                         <input type="text"
                             class="form-control"
                             id="flatPrice"
@@ -116,7 +117,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                     <td><?= $_SESSION['user']['name'] ?? '' ?></td>
                                     <td>
                                         <a href="<?= $GLOBALS['base_url'] ?>/onboard-edit/<?= $or['id'] ?>" class="btn btn-sm btn-primary">Edit</a>
-                                        <a href="<?= $GLOBALS['base_url'] ?>/onboard-delete/<?= $or['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+
                                         <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>" class="btn btn-sm btn-success">Payments</a>
                                     </td>
                                 </tr>
@@ -140,57 +141,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 </div>
 
 <script>
-    // document.addEventListener('DOMContentLoaded', function() {
-    //     const projectSelect = document.getElementById('projectSelect');
-    //     const flatSelect = document.getElementById('flatSelect');
-    //     const flatPriceInput = document.getElementById('flatPrice');
-
-    //     let flatData = []; // flat list store করবো
-
-    //     if (projectSelect) {
-    //         projectSelect.addEventListener('change', function() {
-    //             const projectId = this.value;
-    //             flatSelect.innerHTML = '<option>Loading...</option>';
-    //             flatPriceInput.value = '';
-
-    //             if (!projectId) {
-    //                 flatSelect.innerHTML = '<option value="">Select Flat</option>';
-    //                 return;
-    //             }
-
-    //             fetch("<?= $GLOBALS['base_url'] ?>/get-flats-by-project/" + projectId)
-    //                 .then(res => res.json())
-    //                 .then(data => {
-    //                     flatData = data; // store flats
-    //                     flatSelect.innerHTML = '<option value="">Select Flat</option>';
-
-    //                     data.forEach(flat => {
-    //                         flatSelect.innerHTML += `
-    //                         <option value="${flat.flat_id}">
-    //                             ${flat.unit_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft
-    //                         </option>`;
-    //                     });
-    //                 });
-
-    //         });
-    //     }
-
-
-    //     // Flat select করলে price show হবে
-    //     flatSelect.addEventListener('change', function() {
-    //         const selectedFlatId = this.value;
-    //         const flat = flatData.find(f => f.flat_id == selectedFlatId);
-
-    //         if (flat) {
-    //             flatPriceInput.value = Number(flat.price_value).toLocaleString();
-    //         } else {
-    //             flatPriceInput.value = '';
-    //         }
-    //     });
-
-    // });
-
-
     document.addEventListener('DOMContentLoaded', function() {
         const projectSelect = document.getElementById('projectSelect');
         const flatSelect = document.getElementById('flatSelect');
@@ -208,32 +158,32 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     flatSelect.innerHTML = '<option value="">Select Flat</option>';
                     return;
                 }
-
+                //strat fetch
                 fetch("<?= $GLOBALS['base_url'] ?>/get-flats-by-project/" + projectId)
                     .then(res => res.json())
                     .then(data => {
                         flatData = data;
-                        flatSelect.innerHTML = '<option value="">Select Flat</option>'; // reset
+                        flatSelect.innerHTML = '<option value="">Select Flat</option>';
 
                         data.forEach(flat => {
                             const option = document.createElement('option');
                             option.value = flat.flat_id;
 
-                            // Add booked text if booked
-                            const bookedText = flat.is_booked == 1 ? ' [Booked]' : '';
-                            option.textContent = `${flat.unit_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft${bookedText}`;
-
-                            // Optional: mark attribute for reference
                             if (flat.is_booked == 1) {
-                                option.setAttribute('data-booked', '1');
+                                option.textContent = `${flat.unit_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
+                                option.classList.add('booked-option');
+                                option.disabled = true; // Disable booked flats
+                            } else {
+                                option.textContent = `${flat.unit_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
                             }
 
                             flatSelect.appendChild(option);
                         });
-
-                        console.log(data);
-
                     });
+
+
+
+                //end fetch
             });
         }
 
@@ -246,4 +196,4 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             flatPriceInput.value = flat ? Number(flat.price_value).toLocaleString() : '';
         });
     });
-</script>
+</script>>

@@ -9,3 +9,4 @@
     # All other requests → index.php
     RewriteRule ^ index.php [QSA,L]
 </IfModule>
+<!-- UI+,&%e]1u,UKxMS -->

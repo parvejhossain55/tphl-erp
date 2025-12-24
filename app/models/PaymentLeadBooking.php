@@ -30,36 +30,40 @@ class PaymentLeadBooking extends Model
 
     // Create a new follow-up
 
-    public function create($data)
-    {
-        $stmt = $this->db->prepare("
-            INSERT INTO lead_payments
-            (booking_id, payment_type, amount, payment_method, payment_status, payment_date, transaction_ref, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ");
+public function create($data)
+{
+    $stmt = $this->db->prepare("
+        INSERT INTO lead_payments
+        (booking_id, bank_name, bank_account_no, cheque_no, online_type, payment_type, amount, payment_method, payment_status, payment_date, transaction_ref, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
 
-        $stmt->bind_param(
-            "isdssssi",
-            $data['booking_id'],
-            $data['payment_type'],
-            $data['amount'],
-            $data['payment_method'],
-            $data['payment_status'],
-            $data['payment_date'],
-            $data['transaction_ref'],
-            $data['created_by']
-        );
+    $stmt->bind_param(
+        "isssssdssssi",
+        $data['booking_id'],
+        $data['bank_name'],
+        $data['bank_account_no'],
+        $data['cheque_no'],
+        $data['online_type'],
+        $data['payment_type'],
+        $data['amount'],
+        $data['payment_method'],
+        $data['payment_status'],
+        $data['payment_date'],
+        $data['transaction_ref'],
+        $data['created_by']
+    );
 
-        if ($stmt->execute()) {
-            // যদি booking payment হয়, flat booked mark করা হবে
-            if ($data['payment_type'] === 'booking') {
-                $this->markFlatBooked($data['booking_id']);
-            }
-            return $this->db->insert_id;
+    if ($stmt->execute()) {
+        if ($data['payment_type'] === 'booking') {
+            $this->markFlatBooked($data['booking_id']);
         }
-
-        return false;
+        return $this->db->insert_id;
     }
+
+    return false;
+}
+
 
     // Flat is_booked update
     private function markFlatBooked($booking_id)
@@ -110,7 +114,43 @@ public function getPaymentCount()
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    public function getByLead($lead_id)
+    {
+        $stmt = $this->db->prepare("
+        SELECT o.*, p.name AS project_name, f.floor_no, f.sqft, u.name AS unit_name
+        FROM lead_payments o
+        LEFT JOIN projects p ON o.project_id = p.id
+        LEFT JOIN flats f ON o.flat_id = f.id
+        LEFT JOIN units u ON f.unit_id = u.id
+        WHERE o.lead_id = ?
+    ");
+        $stmt->bind_param("i", $lead_id);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
 
+
+
+
+
+
+    public function getFollowUpCountByLead()
+    {
+        $sql = "
+        SELECT lead_id, COUNT(*) AS follow_up_count
+        FROM lead_follow_ups
+        GROUP BY lead_id
+    ";
+
+        $result = $this->db->query($sql);
+        $data = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $data[$row['lead_id']] = $row['follow_up_count'];
+        }
+
+        return $data;
+    }
 
     public function getInvoiceData($payment_id)
     {
@@ -124,6 +164,7 @@ public function getPaymentCount()
             p.name AS project_name,
 
             f.floor_no,
+            f.price_value,
             u.name AS unit_name,
 
             cr.full_name AS created_by_name
@@ -196,43 +237,7 @@ public function getPaymentCount()
         return $stmt->execute();
     }
     // Optional: get onboard records by lead
-    public function getByLead($lead_id)
-    {
-        $stmt = $this->db->prepare("
-        SELECT o.*, p.name AS project_name, f.floor_no, f.sqft, u.name AS unit_name
-        FROM lead_payments o
-        LEFT JOIN projects p ON o.project_id = p.id
-        LEFT JOIN flats f ON o.flat_id = f.id
-        LEFT JOIN units u ON f.unit_id = u.id
-        WHERE o.lead_id = ?
-    ");
-        $stmt->bind_param("i", $lead_id);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    }
 
-
-
-
-
-
-    public function getFollowUpCountByLead()
-    {
-        $sql = "
-        SELECT lead_id, COUNT(*) AS follow_up_count
-        FROM lead_follow_ups
-        GROUP BY lead_id
-    ";
-
-        $result = $this->db->query($sql);
-        $data = [];
-
-        while ($row = $result->fetch_assoc()) {
-            $data[$row['lead_id']] = $row['follow_up_count'];
-        }
-
-        return $data;
-    }
 
 
     // Delete follow-up by ID

@@ -174,4 +174,7 @@
     justify-content: center;
 }
 
-
+    .booked-option {
+        color: red;
+        font-weight: bold;
+    }
