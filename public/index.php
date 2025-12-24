@@ -8,7 +8,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 $root = dirname(__DIR__);
-$GLOBALS['base_url'] = '/TPHL-ERP/public';
+$GLOBALS['base_url'] = '/TPHL-ERP';
+
 
 // folder er moddhe o chaile folder kore controller nite parbo abr folder chara o controller
 spl_autoload_register(function ($class) use ($root) {
@@ -201,7 +202,8 @@ $routes = [
 $route = trim(strtok($_SERVER["REQUEST_URI"], '?'), '/');
 
 // Remove base folder if present
-$base_folder = 'TPHL-ERP/public';
+$base_folder = 'TPHL-ERP';
+
 if (strpos($route, $base_folder) === 0) {
     $route = substr($route, strlen($base_folder));
 }

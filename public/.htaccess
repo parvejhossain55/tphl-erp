@@ -1,12 +1,9 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /TPHL-ERP/public/
+    RewriteBase /TPHL-ERP/
 
-    # Serve existing files/folders
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
 
-    # All other requests → index.php
     RewriteRule ^ index.php [QSA,L]
 </IfModule>
-<!-- UI+,&%e]1u,UKxMS -->
