@@ -67,8 +67,10 @@ $routes = [
     "store-role"           => ["controller" => "RoleController", "method" => "store"],
     "get-role"      => ["controller" => "RoleController", "method" => "edit"],
     "update-role"   => ["controller" => "RoleController", "method" => "update"],
+    //hrm
 
-    // Tasks
+   "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
+   // Tasks
 
     'task-lists' => ["controller" => "TaskController", "method" => "index"],
     'create-task' => ["controller" => "TaskController", "method" => "create"],

@@ -50,8 +50,6 @@
                 </div>
             </div>
             <div class="row g-20">
-
-
                 <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-sm-6">
                     <div class="card__wrapper">
                         <div class="d-flex align-items-center gap-sm">

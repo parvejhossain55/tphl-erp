@@ -203,7 +203,8 @@ function checkLogin()
     }
 
     if (!isset($_SESSION['user'])) {
-        header("Location: " . $GLOBALS['base_url'] . "/admin-login");
+     header("Location: " . $GLOBALS['base_url'] . "/admin-login");
+
         exit;
     }
 }

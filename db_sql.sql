@@ -416,8 +416,8 @@ CREATE TABLE lead_payments (
 
 CREATE TABLE emi_schedules (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    onboarding_id INT UNSIGNED NOT NULL,
-
+    lead_booking_id INT UNSIGNED NOT NULL,
+    emi_no INT NUll,
     emi_amount DECIMAL(12,2) NOT NULL,
     due_date DATE NOT NULL,
 
@@ -426,8 +426,8 @@ CREATE TABLE emi_schedules (
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (onboarding_id) REFERENCES onboarding_leads(id) ON DELETE CASCADE,
-    FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE SET NULL
+    FOREIGN KEY (lead_booking_id) REFERENCES lead_bookings(id) ON DELETE CASCADE,
+    FOREIGN KEY (payment_id) REFERENCES lead_payments(id) ON DELETE SET NULL
 );
 
 
