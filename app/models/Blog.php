@@ -36,7 +36,7 @@ class Blog extends Model
 
     public function getAll()
     {
-        $stmt = $this->db->prepare("SELECT * FROM Blogs");
+        $stmt = $this->db->prepare("SELECT * FROM blogs");
 
         if (!$stmt) {
             die("Prepare failed: " . $this->db->error);
@@ -66,7 +66,7 @@ class Blog extends Model
 
 
 
-        $stmt = $this->db->prepare("INSERT INTO Blogs (title,content,author,excerpt,published_date,read_time,image, status) VALUES (?,?,?,?,?,?,?,?)");
+        $stmt = $this->db->prepare("INSERT INTO blogs (title,content,author,excerpt,published_date,read_time,image, status) VALUES (?,?,?,?,?,?,?,?)");
 
 
         $stmt->bind_param(
@@ -92,7 +92,7 @@ class Blog extends Model
 
     public function countAll($search = '')
     {
-        $sql = "SELECT COUNT(*) as total FROM Blogs WHERE 1";
+        $sql = "SELECT COUNT(*) as total FROM blogs WHERE 1";
         $params = [];
         $types = "";
 
@@ -111,15 +111,17 @@ class Blog extends Model
         return $result['total'];
     }
 
+public function find($id)
+{
+    $stmt = $this->db->prepare("
+        SELECT * FROM blogs WHERE id = ?
+    ");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
 
-    public function find($id): mixed
-    {
-        $stmt = $this->db->prepare("SELECT * FROM blogs AS b
-        WHERE b.id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
-    }
+    return $stmt->get_result()->fetch_assoc();
+}
+
     // Update role name + permissions
     public function update($data, $id, $photoInputName = '')
     {
