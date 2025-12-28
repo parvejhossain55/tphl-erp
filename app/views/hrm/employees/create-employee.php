@@ -164,7 +164,7 @@
                              </div>
                          </div>
                      </div>
-
+                    
 
                      <div class="col-lg-6">
                          <div class="from__input-box">
@@ -206,7 +206,17 @@
                              </div>
                          </div>
                      </div>
-                     <div class="col-lg-6 text-center">
+                       <div class="col-lg-6">
+                         <div class="from__input-box">
+                             <div class="form__input-title">
+                                 <label for="basic_salary">Basic Salary<span>*</span></label>
+                             </div>
+                             <div class="form__input">
+                                 <input class="form-control" name="basic_salary" id="basic_salary" type="number">
+                             </div>
+                         </div>
+                     </div>
+                     <div class="col-lg-12 text-center">
                          <div class="from__input-box">
                              <div class="form__input-title">
                                  <label for="address">Address <span>*</span></label>

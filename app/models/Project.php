@@ -33,6 +33,21 @@ class Project extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
+    public function countProject()
+{
+    $stmt = $this->db->prepare("
+        SELECT COUNT(*) AS total_projects 
+        FROM projects
+    ");
+
+    if (!$stmt->execute()) {
+        return 0;
+    }
+
+    $result = $stmt->get_result()->fetch_assoc();
+    return $result['total_projects'] ?? 0;
+}
+
     /* =========================
        Create Project
     ========================== */

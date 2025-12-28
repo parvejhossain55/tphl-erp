@@ -5,6 +5,7 @@ class SalesDashboardController extends Controller
     protected $db;
     protected $leadModel;
     protected $followUpModel;
+    protected $projectModel;
     protected $bookingModel;
     protected $paymentModel;
 
@@ -15,6 +16,7 @@ class SalesDashboardController extends Controller
         $this->followUpModel = new FollowUp($this->db);
         $this->bookingModel = new BookingLead($this->db);
         $this->paymentModel = new PaymentLeadBooking($this->db);
+        $this->projectModel = new Project($this->db);
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -107,6 +109,8 @@ class SalesDashboardController extends Controller
             ];
         }
 
+        $totalProjects = $this->projectModel->countProject();
+
         // Pass variables to view
         $this->view("sales-developments/sales-dashboard", [
             "current_route" => "sales-dashboard",
@@ -121,6 +125,7 @@ class SalesDashboardController extends Controller
             "weeklySales" => $weeklySales,
             "monthlySales" => $monthlySales,
             "yearlySales" => $yearlySales,
+            "totalProjects" => $totalProjects,
 
         ]);
     }

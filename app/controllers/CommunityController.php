@@ -32,7 +32,7 @@ public function store()
     ];
 
     if ($this->deparmentModel->create($data)) {
-        header("Location: {$GLOBALS['base_url']}/community_lists");
+        header("Location: {$GLOBALS['base_url']}/community-lists");
         exit;
     } else {
         echo "<h3 style='color:red'>Failed to create communities</h3>";

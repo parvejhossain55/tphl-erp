@@ -37,7 +37,7 @@ $page = "create List"
         <!-- Company Name -->
         <div class="col-lg-6">
             <div class="from__input-box">
-                <label class="form__input-title" for="companyName">Company Name</label>
+                <label class="form__input-title" for="companyName">Company Name (optional)</label>
                 <input class="form-control" name="company" id="companyName" type="text">
             </div>
         </div>
@@ -114,7 +114,7 @@ $page = "create List"
         <!-- Project Type -->
         <div class="col-md-6">
             <div class="from__input-box">
-                <label>Project Type*</label>
+                <label>Preferred Project *</label>
                 <select name="project_type" class="form-select">
                     <option value="ATI Society">ATI Society</option>
                     <option value="ASHU Society">ASHU Society</option>
@@ -123,7 +123,7 @@ $page = "create List"
         </div>
 
         <!-- Interest On -->
-        <div class="col-md-6">
+        <div class="col-md-6 d-none">
             <div class="from__input-box">
                 <label>Interest On*</label>
                 <input type="text" class="form-control" name="interest_on">
@@ -131,7 +131,7 @@ $page = "create List"
         </div>
 
         <!-- Preferred Flat Size -->
-        <div class="col-md-6">
+        <div class="col-md-6 ">
             <div class="from__input-box">
                 <label>Preferred Size*</label>
                 <input type="text" class="form-control" name="pref_flat_size">
@@ -139,8 +139,8 @@ $page = "create List"
         </div>
 
         <!-- Communication Type -->
-        <div class="col-md-6">
-            <div class="from__input-box">
+        <div class="col-md-6 d-none">
+            <div class="from__input-box d-none">
                 <label>Communication Type</label>
                 <select name="communication_type" class="form-select">
                     <option value="WA Messaging">WA Messaging</option>

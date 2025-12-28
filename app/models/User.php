@@ -177,33 +177,95 @@ class User extends Model
 
 
 
-    public function update($data, $id, $photoInputName = null)
-    {
-        $oldUser  = $this->find($id);
-        $oldPhoto = $oldUser['photo'] ?? '';
+    // public function update($data, $id, $photoInputName = null)
+    // {
+    //     $oldUser  = $this->find($id);
+    //     $oldPhoto = $oldUser['photo'] ?? '';
 
-        /* ---------- PHOTO ---------- */
-        $newPhoto = null;
-        if ($photoInputName && !empty($_FILES[$photoInputName]['name'])) {
-            $newPhoto = uploadImage($photoInputName, 'users', 'fixed', 300, 300);
-        }
+    //     /* ---------- PHOTO ---------- */
+    //     $newPhoto = null;
+    //     if ($photoInputName && !empty($_FILES[$photoInputName]['name'])) {
+    //         $newPhoto = uploadImage($photoInputName, 'users', 'fixed', 300, 300);
+    //     }
 
-        $finalPhoto = $newPhoto ?? $oldPhoto;
+    //     $finalPhoto = $newPhoto ?? $oldPhoto;
 
-        if ($newPhoto && !empty($oldPhoto)) {
-            $oldPath = dirname(__DIR__, 2) . "/public/uploads/users/" . $oldPhoto;
-            if (file_exists($oldPath)) {
-                unlink($oldPath);
-            }
-        }
+    //     if ($newPhoto && !empty($oldPhoto)) {
+    //         $oldPath = dirname(__DIR__, 2) . "/public/uploads/users/" . $oldPhoto;
+    //         if (file_exists($oldPath)) {
+    //             unlink($oldPath);
+    //         }
+    //     }
 
-        /* ---------- PASSWORD ---------- */
-        $finalPassword = !empty($data['password'])
-            ? password_hash($data['password'], PASSWORD_DEFAULT)
-            : $oldUser['password'];
+    //     /* ---------- PASSWORD ---------- */
+    //     $finalPassword = !empty($data['password'])
+    //         ? password_hash($data['password'], PASSWORD_DEFAULT)
+    //         : $oldUser['password'];
 
-        /* ---------- UPDATE QUERY ---------- */
-        $sql = "UPDATE users SET 
+    //     /* ---------- UPDATE QUERY ---------- */
+    //     $sql = "UPDATE users SET 
+    //     full_name = ?, 
+    //     user_name = ?, 
+    //     phone = ?, 
+    //     email = ?, 
+    //     designation_id = ?, 
+    //     address = ?, 
+    //     nid = ?, 
+    //     role_id = ?, 
+    //     media_link1 = ?, 
+    //     media_link2 = ?, 
+    //     photo = ?, 
+    //     password = ?
+    // WHERE id = ?";
+
+    //     $stmt = $this->db->prepare($sql);
+
+    //     $stmt->bind_param(
+    //         "ssssississssi",
+    //         $data['full_name'],
+    //         $data['user_name'],
+    //         $data['phone'],
+    //         $data['email'],
+    //         $data['designation_id'],
+    //         $data['address'],
+    //         $data['nid'],
+    //         $data['role_id'],
+    //         $data['media_link1'],
+    //         $data['media_link2'],
+    //         $finalPhoto,
+    //         $finalPassword,
+    //         $id
+    //     );
+
+    //     return $stmt->execute();
+    // }
+
+
+public function update($data, $id, $photoInputName = null)
+{
+    $oldUser  = $this->find($id);
+    $oldPhoto = $oldUser['photo'] ?? '';
+
+    /* ---------- PHOTO ---------- */
+    $newPhoto = null;
+    if ($photoInputName && !empty($_FILES[$photoInputName]['name'])) {
+        $newPhoto = uploadImage($photoInputName, 'users', 'fixed', 300, 300);
+    }
+
+    $finalPhoto = $newPhoto ?? $oldPhoto;
+
+    if ($newPhoto && !empty($oldPhoto)) {
+        $oldPath = dirname(__DIR__, 2) . "/public/uploads/users/" . $oldPhoto;
+        if (file_exists($oldPath)) unlink($oldPath);
+    }
+
+    /* ---------- PASSWORD ---------- */
+    $finalPassword = !empty($data['password'])
+        ? password_hash($data['password'], PASSWORD_DEFAULT)
+        : $oldUser['password'];
+
+    /* ---------- UPDATE QUERY ---------- */
+    $sql = "UPDATE users SET 
         full_name = ?, 
         user_name = ?, 
         phone = ?, 
@@ -218,29 +280,30 @@ class User extends Model
         password = ?
     WHERE id = ?";
 
-        $stmt = $this->db->prepare($sql);
+    $stmt = $this->db->prepare($sql);
 
-        $stmt->bind_param(
-            "ssssississssi",
-            $data['full_name'],
-            $data['user_name'],
-            $data['phone'],
-            $data['email'],
-            $data['designation_id'],
-            $data['address'],
-            $data['nid'],
-            $data['role_id'],
-            $data['media_link1'],
-            $data['media_link2'],
-            $finalPhoto,
-            $finalPassword,
-            $id
-        );
+    $stmt->bind_param(
+        "ssssississssi",
+        $data['full_name'],
+        $data['user_name'],
+        $data['phone'],
+        $data['email'],
+        $data['designation_id'],
+        $data['address'],
+        $data['nid'],
+        $data['role_id'],
+        $data['media_link1'],
+        $data['media_link2'],
+        $finalPhoto,
+        $finalPassword,
+        $id
+    );
 
-        return $stmt->execute();
-    }
+    $stmt->execute();
 
-
+    // ✅ Return the user ID instead of boolean
+    return $id;
+}
 
     public function getPermissionsByRole($role_id)
     {

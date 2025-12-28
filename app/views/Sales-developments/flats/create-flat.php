@@ -17,24 +17,13 @@ $show_breadcrumb = true;
                 <?php endforeach; ?>
             </select>
         </div>
-        <!-- Unit -->
-        <div class="col-xl-6">
-            <label>Unit *</label>
-            <div class="d-flex gap-2">
-                <select name="unit_id" class="form-control" required style="flex:1;">
-                    <option value="">Select Unit</option>
-                    <?php foreach ($units as $unit): ?>
-                        <option value="<?= $unit['id']; ?>"><?= $unit['name']; ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <a href="<?= $GLOBALS['base_url'] ?>/unit-lists"
-                    class="btn btn-secondary"
-                    style="height: 38px; display:flex; align-items:center; padding:0 12px;">
-                    + Unit
-                </a>
-            </div>
-        </div>
 
+
+        <!-- Flat -->
+        <div class="col-xl-6">
+            <label>Flat Name </label>
+            <input type="text" name="flat_name" class="form-control" >
+        </div>
         <!-- Sqft -->
         <div class="col-xl-6">
             <label>Sqft</label>

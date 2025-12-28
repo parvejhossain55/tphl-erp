@@ -1,31 +1,4 @@
 <?php
-// function uploadImage($input, $module = 'general')
-// {
-//     // Project root থেকে public folder path
-//     $rootPublic = dirname(__DIR__, 2) . "/public/uploads/" . $module . "/";
-
-//     // Create module folder if not exists
-//     if (!is_dir($rootPublic)) {
-//         mkdir($rootPublic, 0777, true); // recursive folder creation
-//     }
-
-//     // If file not selected
-//     if (!isset($_FILES[$input]) || $_FILES[$input]['error'] !== 0) {
-//         return null;
-//     }
-
-//     // File extension & unique name
-//     $ext = pathinfo($_FILES[$input]['name'], PATHINFO_EXTENSION);
-//     $fileName = uniqid() . "_" . time() . "." . $ext;
-
-//     // Move file to public/uploads/module
-//     $targetFile = $rootPublic . $fileName;
-//     if (move_uploaded_file($_FILES[$input]['tmp_name'], $targetFile)) {
-//         return $fileName; 
-//     }
-//      return null;
-// }
-
 function uploadImage(  $input,$module = 'general', $mode = 'original',  $width = 300,   $height = 300) {
     // 1. File check
     if (!isset($_FILES[$input]) || $_FILES[$input]['error'] !== UPLOAD_ERR_OK) {

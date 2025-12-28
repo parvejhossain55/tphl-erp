@@ -77,6 +77,15 @@ class Employee extends Model
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+    
+    public function getTotalCount()
+{
+    $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM employees");
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    return (int)$result['total'];
+}
+
     public function countAll($search = '', $department_id = 'employeePhoto')
     {
         $sql = "SELECT COUNT(*) as total FROM employees WHERE 1";
@@ -287,32 +296,61 @@ class Employee extends Model
         return $stmt->execute();
     }
 
-    public function taskNotification()
-    {
-        $loggedUserId = $_SESSION['user']['id'];
-
-        $stmt = $this->db->prepare("SELECT id FROM employees WHERE user_id = ?");
-        $stmt->bind_param("i", $loggedUserId);
-        $stmt->execute();
-        $emp = $stmt->get_result()->fetch_assoc();
-
-        $employeeId = $emp['id'];
-
-        // Notifications fetch
-        $stmt = $this->db->prepare("
-            SELECT n.*, u.full_name AS assigned_by_name
-            FROM notifications n
-            JOIN users u ON n.assigned_by = u.id
-            WHERE n.employee_id = ?
-            AND n.is_read = 0
-            ORDER BY n.created_at DESC
-");
-        $stmt->bind_param("i", $employeeId);
-
-        // $stmt->bind_param("i", $userId);
-        $stmt->execute();
-        $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-        return $notifications; // 
+public function taskNotification()
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
     }
+
+    $loggedUserId = $_SESSION['user']['id'] ?? null;
+    if (!$loggedUserId) return [];
+
+    // 1️⃣ Get employee ID
+    $stmt = $this->db->prepare("SELECT id FROM employees WHERE user_id = ? LIMIT 1");
+    $stmt->bind_param("i", $loggedUserId);
+    $stmt->execute();
+    $emp = $stmt->get_result()->fetch_assoc();
+    if (!$emp) return [];
+
+    $employeeId = (int) $emp['id'];
+
+    // 2️⃣ Fetch notifications ONLY for incomplete tasks
+    $stmt = $this->db->prepare("
+        SELECT n.*, u.full_name AS assigned_by_name, t.progress, t.status
+        FROM notifications n
+        LEFT JOIN tasks t ON n.task_id = t.id
+        LEFT JOIN users u ON n.assigned_by = u.id
+        WHERE n.employee_id = ?
+          AND n.is_read = 0
+          AND (t.status IS NULL OR t.status != 'completed')
+        ORDER BY n.created_at DESC
+    ");
+    $stmt->bind_param("i", $employeeId);
+    $stmt->execute();
+    $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    return $notifications;
+}
+
+
+
+public function getDepartmentWiseEmp(){
+    $stmt = $this->db->prepare("SELECT d.id,d.name AS dept_name,
+        COUNT(e.id) AS total_employee
+    FROM departments d
+    LEFT JOIN designations desg ON desg.department_id = d.id
+    LEFT JOIN employees e ON e.designation_id = desg.id
+    GROUP BY d.id
+    ORDER BY d.name ASC
+    ");
+
+    if(!$stmt){
+        return [];
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
+
 }

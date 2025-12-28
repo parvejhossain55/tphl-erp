@@ -99,10 +99,17 @@ class LeadController extends Controller
 
     public function show($id){
         $leadData = $this->leadModel->find($id);
+          $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
+        $followUpProjects = (new FollowUp($this->db))->getByLead($id);
+          $bookingCount = $this->leadBookedModel->getBookingCountByLead();
+
        $this->view("sales-developments/leads/view-lead",[
         "current_route" => "view-lead",
         "page_title"  => "View Lead",
         "leadData" => $leadData,
+        "followUpCounts" => $followUpCounts,
+        "followUpProjects" => $followUpProjects,
+        "bookingCount" => $bookingCount,
        ]);
     }
     // Edit Employee Page

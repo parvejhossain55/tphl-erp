@@ -6,14 +6,10 @@
             <h4 class="fw-bold mb-1">HR Dashboard</h4>
             <strong class="text-muted">Human Resources</strong>
         </div>
-         <div class="text-end">
-            <h6 class="mb-0"><?= $_SESSION['user']['name'] ?></h6>
-            <strong class="text-muted"><?= $_SESSION['user']['role_name'] ?></strong><br>
-            <small class="text-muted"><?= date('l, F j, Y') ?></small>
-        </div>
+        
     </div>
 
-    <!-- KPI CARDS -->
+    <!--  CARDS -->
     <div class="row g-20 mb-4">
         <div class="col-xxl-3 col-xl-6 col-md-6">
             <div class="card__wrapper">
@@ -21,7 +17,7 @@
                     <div class="card__icon"><span><i class="fa-regular fa-users"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Total Employees</h6>
-                        <h3 class="card__title">156</h3>
+                        <h3 class="card__title"><?= $totalEmployees ?? '' ?></h3>
                     </div>
                 </div>
             </div>
@@ -55,7 +51,7 @@
         <div class="col-xxl-3 col-xl-6 col-md-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
-                    <div class="card__icon"><span><i class="fa-regular fa-indian-rupee-sign"></i></span></div>
+                    <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Payroll </h6>
                         <h3 class="card__title">BDT 42.5L</h3>
@@ -65,9 +61,74 @@
         </div>
     </div>
 
+    <div class="row g-20 mb-4">
+
+        <!-- Today Assigned Tasks -->
+        <div class="col-xxl-3 col-xl-6 col-md-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon">
+                        <span><i class="fa-regular fa-clipboard-list"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Today Assigned Tasks</h6>
+                        <h3 class="card__title"><?= $todayTasks ?? 0 ?></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Tasks -->
+        <div class="col-xxl-3 col-xl-6 col-md-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon">
+                        <span><i class="fa-regular fa-hourglass-half"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Pending Tasks</h6>
+                        <h3 class="card__title"><?= $pendingTasks ?? 0 ?></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Tasks -->
+        <div class="col-xxl-3 col-xl-6 col-md-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon">
+                        <span><i class="fa-regular fa-circle-check"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Completed Tasks</h6>
+                        <h3 class="card__title"><?= $completedTasks ?? 0 ?></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overdue Tasks -->
+        <div class="col-xxl-3 col-xl-6 col-md-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon">
+                        <span><i class="fa-solid fa-triangle-exclamation"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Overdue Tasks</h6>
+                        <h3 class="card__title"><?= $overdueTasks ?? 0 ?></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
 
     <!-- TODAY'S ATTENDANCE -->
-    <div class="row g-20 mb-4">
+    <div class="row g-20 mb-4 d-none">
         <div class="col-xl-12">
             <div class="card__wrapper">
                 <h6 class="card__sub-title mb-15">Today's Attendance</h6>
@@ -120,7 +181,7 @@
     </div>
 
     <!-- PENDING LEAVE REQUESTS -->
-    <div class="row g-20 mb-4">
+    <div class="row g-20 mb-4 d-none">
         <div class="col-xl-12">
             <div class="card__wrapper">
                 <h6 class="card__sub-title mb-15">Pending Leave Requests</h6>
@@ -158,33 +219,35 @@
             </div>
         </div>
     </div>
+<?php
+$maxEmployee = max(array_column($departmentEmpCount, 'total_employee'));
+?>
 
-    <!-- DEPARTMENT WISE STAFF -->
-    <div class="row g-20 mb-4">
-        <div class="col-xl-12">
-            <div class="card__wrapper">
-                <h6 class="card__sub-title mb-15">Department-wise Staff</h6>
-                <div class="mb-2">Sales <span class="float-end">45/50</span></div>
-                <div class="progress mb-3">
-                    <div class="progress-bar bg-primary" style="width:90%"></div>
+<div class="row g-20 mb-4">
+    <div class="col-xl-12">
+        <div class="card__wrapper">
+            <h6 class="card__sub-title mb-15">Department-wise Employee</h6>
+
+            <?php foreach ($departmentEmpCount as $dept):
+                $percent = $maxEmployee > 0
+                    ? round(($dept['total_employee'] / $maxEmployee) * 100)
+                    : 0;
+            ?>
+                <div class="mb-2">
+                    <?= htmlspecialchars($dept['dept_name']) ?>
+                    <span class="float-end"><?= $dept['total_employee'] ?></span>
                 </div>
 
-                <div class="mb-2">Operations <span class="float-end">62/65</span></div>
                 <div class="progress mb-3">
-                    <div class="progress-bar bg-primary" style="width:95%"></div>
+                    <div class="progress-bar bg-primary" style="width:<?= $percent ?>%"></div>
                 </div>
-
-                <div class="mb-2">HR <span class="float-end">12/15</span></div>
-                <div class="progress mb-3">
-                    <div class="progress-bar bg-primary" style="width:80%"></div>
-                </div>
-
-                <div class="mb-2">Accounts <span class="float-end">18/20</span></div>
-                <div class="progress mb-3">
-                    <div class="progress-bar bg-primary" style="width:90%"></div>
-                </div>
-            </div>
+            <?php endforeach; ?>
         </div>
     </div>
+</div>
+
+
+    <!-- DEPARTMENT WISE STAFF -->
+
 
 </div>

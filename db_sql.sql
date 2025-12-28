@@ -51,6 +51,7 @@ CREATE TABLE
         address TEXT NOT NULL,
         pass_num VARCHAR(100) NULL,
         department_id INT UNSIGNED NOT NULL,
+        user_id INT UNSIGNED NOT NULL,
         designation_id INT UNSIGNED NULL,
         joining_date DATE NULL,
         account_holder_name VARCHAR(100) NULL,
@@ -62,6 +63,7 @@ CREATE TABLE
         social_media3 VARCHAR(255) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
         FOREIGN KEY (department_id) REFERENCES departments (id) ON DELETE CASCADE,
         FOREIGN KEY (designation_id) REFERENCES designations (id) ON DELETE SET NULL
     ) ENGINE = InnoDB;
@@ -278,6 +280,7 @@ CREATE TABLE
         id INT AUTO_INCREMENT PRIMARY KEY,
         project_id INT NOT NULL,
         unit_id INT NOT NULL,
+        flat_name VARCHAR(50),
         sqft INT,
         bhk INT,
         bedroom INT,
@@ -422,12 +425,12 @@ CREATE TABLE emi_schedules (
     due_date DATE NOT NULL,
 
     status ENUM('pending','paid','missed') DEFAULT 'pending',
-    payment_id INT UNSIGNED NULL,
+    lead_payment_id INT UNSIGNED NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (lead_booking_id) REFERENCES lead_bookings(id) ON DELETE CASCADE,
-    FOREIGN KEY (payment_id) REFERENCES lead_payments(id) ON DELETE SET NULL
+    FOREIGN KEY (lead_payment_id) REFERENCES lead_payments(id) ON DELETE SET NULL
 );
 
 

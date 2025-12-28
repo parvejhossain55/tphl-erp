@@ -6,9 +6,32 @@ $addPage = true;
 $show_breadcrumb = true;
 ?>
 
-<div class="row">
+<div class="row lead-select">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
 
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+        <h4 class="mb-2 mb-md-0">
+            Lead Management
+        </h4>
+
+        <div class="d-flex gap-2">
+            <button
+                class="btn btn-outline-success"
+                data-bs-toggle="modal"
+                data-bs-target="#importCsvModal">
+                <i class="fa-light fa-file-arrow-up me-1"></i>
+                Import CSV
+            </button>
+
+            <a href="<?= $GLOBALS['base_url'] ?>/create-lead"
+                class="btn btn-primary">
+                <i class="fa-light fa-plus me-1"></i>
+                Add Lead
+            </a>
+        </div>
+
+    </div>
+
+    <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -23,8 +46,8 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-  
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+
+    <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -39,69 +62,46 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <button
-                class="btn btn-success my-2 w-full"
-                data-bs-toggle="modal"
-                data-bs-target="#importCsvModal">
-                Import CSV
-            </button>
-
-            <a href="<?= $GLOBALS['base_url'] ?>/create-lead" class="btn btn-primary my-2 w-full">
-                Add Lead
-            </a>
-        </div>
-    </div>
 
 
 
     <div class="col-xxl-12">
         <div class="card__wrapper">
-            <div class="table__wrapper table-responsive">
+            <div class="table__wrapper ">
                 <table class="table mb-20 multiple_tables">
                     <thead>
                         <tr class="table__title table__sort">
-                            <th class="no-sort sorting"><input type="checkbox" id="selectall"></input>
-                            </th>
 
+
+                            <th class="pe-2">S/L</th>
                             <th>Create Lead</th>
 
                             <th>Lead Name</th>
-                            <th>Lead Type</th>
-                            <th>Company</th>
 
                             <th>Phone</th>
                             <!-- <th>Alt Phone</th> -->
                             <th>Email</th>
                             <!-- <th>Source Type</th> -->
                             <th>Assigned Agent</th>
-                            <!-- <th>Address</th> -->
-                            <th>Designation</th>
                             <th>Preferred Location</th>
                             <th>Follow Up</th>
                             <th>Booking</th>
-                            <th>Project Type</th>
-                            <th>Interest On</th>
-                            <th>Preferred Flat Size</th>
+                            <th>Preferred Project </th>
+                            <th class="d-none">Interest On</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody class="table__body">
 
-                        <?php foreach ($leads as $lead): ?>
+                        <?php foreach ($leads as $key => $lead): ?>
                             <tr>
-
-                                <td><input type="checkbox" class="selectedId" name="selectedId"></td>
+                                <td><?= $key + 1 ?></td>
                                 <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
                                 <td><?= $lead['lead_name'] ?? '' ?></td>
-                                <td><?= $lead['lead_type'] ?? '' ?></td>
-                                <td><?= $lead['company'] ?? '' ?></td>
                                 <td><?= $lead['phone'] ?? '' ?></td>
                                 <td><?= $lead['email'] ?? '' ?></td>
                                 <td><?= $lead['agent_name'] ?? '' ?></td>
-                                <td><?= $lead['designation'] ?? '' ?></td>
-                                <td><?= $lead['pref_location'] ?? '' ?></td>
+                                <td><?= $lead['pref_location'] ?? 'N/A' ?></td>
                                 <td>
                                     <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
                                         class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">
@@ -129,8 +129,7 @@ $show_breadcrumb = true;
                                     </a>
                                 </td>
                                 <td><span class="bd-badge bg-success"><?= $lead['project_type'] ?? '' ?></span></td>
-                                <td><?= $lead['interest_on'] ?? '' ?></td>
-                                <td><?= $lead['pref_flat_size'] ?? '' ?></td>
+                                <td class="d-none"><?= $lead['interest_on'] ?? '' ?></td>
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-10">
                                         <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>">
@@ -151,6 +150,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
+
 </div>
 
 
@@ -195,3 +195,23 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
+<script>
+    // Disable right-click context menu
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+    });
+
+    // Disable Ctrl+C, Ctrl+X, Ctrl+V
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey && e.key === 'c') ||
+            (e.ctrlKey && e.key === 'x') ||
+            (e.ctrlKey && e.key === 'v')) {
+            e.preventDefault();
+        }
+    });
+
+    // Optional: Disable drag
+    document.addEventListener('dragstart', function(e) {
+        e.preventDefault();
+    });
+</script>

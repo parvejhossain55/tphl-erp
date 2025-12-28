@@ -20,27 +20,42 @@ class FlatController extends Controller
     /* =========================
        Project List
     ========================== */
-    public function index()
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        $flatCounts = $this->flatModel->getFlatStatusCount();
-        $bookedFlats = $flatCounts['booked'];
-        $availableFlats = $flatCounts['available'];
-
-
-        $flats = $this->flatModel->getAll();
-
-        $this->view("sales-developments/flats/flat-lists", [
-            "current_route" => "flat-lists",
-            "page_title"    => "Flat List",
-            "flats"      => $flats,
-            "bookedFlats"       => $bookedFlats,
-            "availableFlats"       => $availableFlats,
-        ]);
+public function index()
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
     }
+
+    // 🔍 GET filters
+    $search        = $_GET['q'] ?? '';
+    $selectedProject = $_GET['project_id'] ?? '';
+
+    // 📦 Data load
+    $projects   = $this->projectModel->getAll();
+    $flatCounts = $this->flatModel->getFlatStatusCount();
+
+    $bookedFlats    = $flatCounts['booked'] ?? 0;
+    $availableFlats = $flatCounts['available'] ?? 0;
+
+    // 🏗️ Filtered flat list
+    $flats = $this->flatModel->getAll($search, $selectedProject);
+
+    // 🎯 View
+    $this->view("sales-developments/flats/flat-lists", [
+        "current_route"     => "flat-lists",
+        "page_title"        => "Flat List",
+
+        "flats"             => $flats,
+        "projects"          => $projects,
+
+        "bookedFlats"       => $bookedFlats,
+        "availableFlats"    => $availableFlats,
+
+        // 🔑 IMPORTANT for select & search retain
+        "searchTerm"        => $search,
+        "selectedProject"   => $selectedProject,
+    ]);
+}
 
     /* =========================
        Create Form
@@ -78,7 +93,7 @@ class FlatController extends Controller
         // ======================
         $data = [
             'project_id'             => $_POST['project_id'] ?? null,
-            'unit_id'                => $_POST['unit_id'] ?? null,
+            'flat_name'                => $_POST['flat_name'] ?? null,
             'sqft'                   => $_POST['sqft'] ?? null,
             'bhk'                    => $_POST['bhk'] ?? null,
             'bedroom'                => $_POST['bedroom'] ?? null,
@@ -95,8 +110,8 @@ class FlatController extends Controller
         // ======================
         // Basic Validation
         // ======================
-        if (empty($data['project_id']) || empty($data['unit_id'])) {
-            setError("Project and Unit are required");
+        if (empty($data['project_id']) ) {
+            setError("Project is required");
             header("Location: {$GLOBALS['base_url']}/create-flat");
             exit;
         }
@@ -119,13 +134,11 @@ class FlatController extends Controller
     public function edit($id)
     {
         $projects   = $this->projectModel->getAll();
-        $units = $this->unitModel->getAll();
         $flat = $this->flatModel->find($id);
         $this->view("sales-developments/flats/edit-flat", [
             "current_route"   => "edit-lead",
             "page_title"      => "Edit Lead",
             "projects"       => $projects,
-            "units"     => $units,
             "flat"     => $flat,
             "show_breadcrumb" => true,
         ]);
@@ -139,7 +152,7 @@ class FlatController extends Controller
         // Collect form data
         $data = [
             'project_id'             => $_POST['project_id'] ?? null,
-            'unit_id'                => $_POST['unit_id'] ?? null,
+            'flat_name'                => $_POST['flat_name'] ?? null,
             'sqft'                   => $_POST['sqft'] ?? null,
             'bhk'                    => $_POST['bhk'] ?? null,
             'bedroom'                => $_POST['bedroom'] ?? null,

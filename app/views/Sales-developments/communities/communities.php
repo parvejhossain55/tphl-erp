@@ -5,8 +5,17 @@ $addPage = true;
 $show_breadcrumb = true;
 
 ?>
-<div class="breadcrumb__btn my-4 text-align-end">
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewcommunity">Add community</button>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+
+    <h4 class="mb-2 mb-md-0">
+        Community Management
+    </h4>
+
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewcommunity">Add community</button>
+    </div>
+
 </div>
 
 <div class="row">

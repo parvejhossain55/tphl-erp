@@ -29,9 +29,6 @@ spl_autoload_register(function ($class) use ($root) {
     }
 });
 
-
-
-
 // Load config
 $config = require $root . "/app/config/config.php";
 
@@ -99,7 +96,11 @@ $routes = [
     "update-employee/(\d+)" => ["controller" => "EmployeeController", "method" => "update"],
     "employee-profile/(\d+)" => ["controller" => "EmployeeController", "method" => "show"],
     "delete-employee/(\d+)" => ["controller" => "EmployeeController", "method" => "delete"],
+
+    //employee dashboard
     "employee-dashboard" => ["controller" => "EmployeeDashboardController", "method" => "index"],
+    "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
+    "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
     // leads
     "lead-lists" => ["controller" => "LeadController", "method" => "index"],
@@ -197,6 +198,32 @@ $routes = [
     "sales-dashboard" => ["controller" => "SalesDashboardController", "method" => "index"],
     
 
+
+
+    //Rafi Start  Accounts
+             "accounts-dashboard" => ["controller" => "AccountManagementController", "method" => "index"],
+    //Clients
+         "clients-cash-in" => ["controller" => "AccountClientController", "method" => "index"],
+
+    // client's cash in history 
+         "clients-cash-in-history" => ["controller" => "AccountClientController", "method" => "indexTwo"],
+         "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],
+    
+    // Add transaction route
+      "add-transaction" => ["controller" => "AccountClientController", "method" => "addTransaction"],
+
+        "edit-client-cash-in/(\d+)" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
+
+          "edit-client-cash-in" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
+          "client-cash-in-form" => ["controller" => "AccountClientController", "method" => "showAddTransactionForm"],
+
+// Update transaction route
+"update-transaction" => ["controller" => "AccountClientController", "method" => "updateTransaction"],
+
+// Delete transaction route
+"delete-transaction" => ["controller" => "AccountClientController", "method" => "deleteTransaction"],
+    
+    //rafi End
 
 
 ];

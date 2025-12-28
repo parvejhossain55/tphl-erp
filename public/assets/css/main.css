@@ -76,8 +76,8 @@
   --clr-common-black: #362a2a;
   --clr-common-placeholder: #acaab1;
   --clr-heading-primary: #444050;
-  --clr-text-body: #878a99;
-  --clr-text-label: #495057;
+  --clr-text-body: #505152;
+  --clr-text-label: #393a3b;
   --clr-text-muted: #acaab1;
   --clr-text-taxonomy: #A9ABB6;
   --clr-text-secondary: #525252;
@@ -103,7 +103,7 @@
   --clr-alert-info: #cff4fc;
   --clr-alert-light: #efefef;
   --clr-alert-dark: #ced4da;
-  --clr-border-1: #EAEAEA;
+  --clr-border-1: #c5c1c1;
   --clr-border-2: #404040;
   --clr-border-3: #CECECE;
   --clr-chart-1: #7A7A7A;
@@ -5697,7 +5697,7 @@ img {
 }
 .app-sidebar .sidebar-menu.child1 .sidebar__menu-item:before, .app-sidebar .sidebar-menu.child2 .sidebar__menu-item:before, .app-sidebar .sidebar-menu.child3 .sidebar__menu-item:before {
   position: absolute;
-  content: "\e404";
+  /* content: "\e404"; */
   font-family: "Font Awesome 6 Pro";
   font-size: 12px;
   inset-inline-start: -10px;
@@ -5725,7 +5725,7 @@ img {
   display: flex;
   align-items: center;
   text-transform: capitalize;
-  font-weight: 700;
+  font-weight: 600;
 }
 .app-sidebar .side-menu__icon {
   margin-inline-end: 10px;

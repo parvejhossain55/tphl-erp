@@ -113,7 +113,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                     <td><?= $index + 1 ?></td>
                                     <td><?= $lead['lead_name'] ?? '' ?></td>
                                     <td><?= $or['project_name'] ?? '' ?></td>
-                                    <td><?= $or['unit_name'] ?? '' ?> (Floor: <?= $or['floor_no'] ?? '' ?>, <?= $or['sqft'] ?? '' ?> sqft)</td>
+                                    <td><?= $or['flat_name'] ?? '' ?> (Floor: <?= $or['floor_no'] ?? '' ?>, <?= $or['sqft'] ?? '' ?> sqft)</td>
                                     <td><?= $_SESSION['user']['name'] ?? '' ?></td>
                                     <td>
                                         <a href="<?= $GLOBALS['base_url'] ?>/onboard-edit/<?= $or['id'] ?>" class="btn btn-sm btn-primary">Edit</a>
@@ -170,11 +170,11 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             option.value = flat.flat_id;
 
                             if (flat.is_booked == 1) {
-                                option.textContent = `${flat.unit_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
+                                option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
                                 option.classList.add('booked-option');
                                 option.disabled = true; // Disable booked flats
                             } else {
-                                option.textContent = `${flat.unit_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
+                                option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
                             }
 
                             flatSelect.appendChild(option);
