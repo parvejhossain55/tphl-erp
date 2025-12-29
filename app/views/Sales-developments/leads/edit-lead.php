@@ -14,7 +14,7 @@ $selectedSourceId = $_SESSION['old']['source_type_id']
     <div class="row gy-10">
 
         <!-- Lead Name -->
-        <div class="col-lg-12">
+        <div class="col-lg-6">
             <div class="from__input-box">
                 <label class="form__input-title" for="leadName">Lead Name*</label>
                 <input class="form-control" name="lead_name" id="leadName" type="text" value="<?= $leadData['lead_name'] ?? '' ?>">
@@ -149,7 +149,7 @@ $selectedSourceId = $_SESSION['old']['source_type_id']
         <!-- Project Type -->
         <div class="col-md-6">
             <div class="from__input-box">
-                <label>Project Type*</label>
+                <label>Preferred Project*</label>
                 <select name="project_type" class="form-select">
                     <option value="ATI Society" <?= ($leadData['project_type'] ?? '') == 'ATI Society' ? 'selected' : '' ?>>ATI Society</option>
                     <option value="ASHU Society" <?= ($leadData['project_type'] ?? '') == 'ASHU Society' ? 'selected' : '' ?>>ASHU Society</option>
@@ -158,7 +158,7 @@ $selectedSourceId = $_SESSION['old']['source_type_id']
         </div>
 
         <!-- Interest On -->
-        <div class="col-md-6">
+        <div class="col-md-6 d-none">
             <div class="from__input-box">
                 <label>Interest On*</label>
                 <input type="text" class="form-control" name="interest_on" value="<?= $leadData['interest_on'] ?? '' ?>">

@@ -241,69 +241,97 @@ class User extends Model
     // }
 
 
-public function update($data, $id, $photoInputName = null)
+public function update($id, $data, $photoInputName = null)
 {
-    $oldUser  = $this->find($id);
-    $oldPhoto = $oldUser['photo'] ?? '';
+    //  Get old employee
+    $oldEmployee = $this->find($id);
+    if (!$oldEmployee) {
+        return false;
+    }
 
-    /* ---------- PHOTO ---------- */
+    $oldPhoto = $oldEmployee['photo'] ?? '';
+
+    //  Upload new photo (if any)
     $newPhoto = null;
     if ($photoInputName && !empty($_FILES[$photoInputName]['name'])) {
-        $newPhoto = uploadImage($photoInputName, 'users', 'fixed', 300, 300);
+        $newPhoto = uploadImage($photoInputName, 'employees', 'fixed', 300, 300);
     }
 
-    $finalPhoto = $newPhoto ?? $oldPhoto;
+    //  Decide final photo
+    $finalPhoto = $newPhoto ?: $oldPhoto;
 
-    if ($newPhoto && !empty($oldPhoto)) {
-        $oldPath = dirname(__DIR__, 2) . "/public/uploads/users/" . $oldPhoto;
-        if (file_exists($oldPath)) unlink($oldPath);
+    //  Delete old photo if new uploaded
+    if (
+        $newPhoto &&
+        !empty($oldPhoto) &&
+        file_exists(dirname(__DIR__, 2) . "/public/uploads/employees/" . $oldPhoto)
+    ) {
+        unlink(dirname(__DIR__, 2) . "/public/uploads/employees/" . $oldPhoto);
     }
 
-    /* ---------- PASSWORD ---------- */
-    $finalPassword = !empty($data['password'])
-        ? password_hash($data['password'], PASSWORD_DEFAULT)
-        : $oldUser['password'];
-
-    /* ---------- UPDATE QUERY ---------- */
-    $sql = "UPDATE users SET 
+    //  Update query (NO employee_id)
+    $sql = "UPDATE employees SET
         full_name = ?, 
-        user_name = ?, 
-        phone = ?, 
+        username = ?, 
         email = ?, 
-        designation_id = ?, 
+        father_name = ?, 
+        phone = ?, 
+        emergency_contact = ?,
+        qualification = ?, 
+        experience = ?, 
         address = ?, 
-        nid = ?, 
-        role_id = ?, 
-        media_link1 = ?, 
-        media_link2 = ?, 
-        photo = ?, 
-        password = ?
+        pass_num = ?, 
+        department_id = ?, 
+        designation_id = ?, 
+        dob = ?, 
+        joining_date = ?,
+        account_holder_name = ?, 
+        account_number = ?, 
+        bank_name = ?, 
+        branch_name = ?, 
+        social_media1 = ?, 
+        social_media2 = ?, 
+        social_media3 = ?, 
+        photo = ?
     WHERE id = ?";
 
     $stmt = $this->db->prepare($sql);
 
+    if (!$stmt) {
+        error_log("Employee update prepare failed: " . $this->db->error);
+        return false;
+    }
+
     $stmt->bind_param(
-        "ssssississssi",
+        "ssssssssssiiisssssssssi",
         $data['full_name'],
-        $data['user_name'],
-        $data['phone'],
+        $data['username'],
         $data['email'],
-        $data['designation_id'],
+        $data['father_name'],
+        $data['phone'],
+        $data['emergency_contact'],
+        $data['qualification'],
+        $data['experience'],
         $data['address'],
-        $data['nid'],
-        $data['role_id'],
-        $data['media_link1'],
-        $data['media_link2'],
+        $data['pass_num'],
+        $data['department_id'],
+        $data['designation_id'],
+        $data['dob'],
+        $data['joining_date'],
+        $data['account_holder_name'],
+        $data['account_number'],
+        $data['bank_name'],
+        $data['branch_name'],
+        $data['social_media1'],
+        $data['social_media2'],
+        $data['social_media3'],
         $finalPhoto,
-        $finalPassword,
         $id
     );
 
-    $stmt->execute();
-
-    // ✅ Return the user ID instead of boolean
-    return $id;
+    return $stmt->execute();
 }
+
 
     public function getPermissionsByRole($role_id)
     {

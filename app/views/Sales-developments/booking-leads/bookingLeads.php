@@ -116,7 +116,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                     <td><?= $or['flat_name'] ?? '' ?> (Floor: <?= $or['floor_no'] ?? '' ?>, <?= $or['sqft'] ?? '' ?> sqft)</td>
                                     <td><?= $_SESSION['user']['name'] ?? '' ?></td>
                                     <td>
-                                        <a href="<?= $GLOBALS['base_url'] ?>/onboard-edit/<?= $or['id'] ?>" class="btn btn-sm btn-primary">Edit</a>
+                                        <a  href="<?= $GLOBALS['base_url'] ?>/onboard-edit/<?= $or['id'] ?>" class="d-none btn btn-sm btn-primary">Edit</a>
 
                                         <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>" class="btn btn-sm btn-success">Payments</a>
                                     </td>

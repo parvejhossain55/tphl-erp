@@ -7,7 +7,7 @@ $current_route = $data['current_route'] ?? ($current_page ?? '');
 function isActive($pages, $current_route)
 {
     if (is_array($pages)) {
-        return in_array($current_route, $pages) ? 'active' : '';
+        return in_array($current_route, $pages, true) ? 'active' : '';
     }
     return ($current_route === $pages) ? 'active' : '';
 }
@@ -15,10 +15,11 @@ function isActive($pages, $current_route)
 function isMenuOpen($pages, $current_route)
 {
     if (is_array($pages)) {
-        return in_array($current_route, $pages);
+        return in_array($current_route, $pages, true);
     }
     return ($current_route === $pages);
 }
+
 
 
 if (!isset($page_title)) $page_title = "Blank";

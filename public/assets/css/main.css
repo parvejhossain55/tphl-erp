@@ -5650,7 +5650,7 @@ img {
 }
 .app-sidebar .sidebar__menu-category {
   color: var(--clr-text-body);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -5697,7 +5697,7 @@ img {
 }
 .app-sidebar .sidebar-menu.child1 .sidebar__menu-item:before, .app-sidebar .sidebar-menu.child2 .sidebar__menu-item:before, .app-sidebar .sidebar-menu.child3 .sidebar__menu-item:before {
   position: absolute;
-  /* content: "\e404"; */
+  content: "\e404";
   font-family: "Font Awesome 6 Pro";
   font-size: 12px;
   inset-inline-start: -10px;

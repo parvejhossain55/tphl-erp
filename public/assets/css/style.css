@@ -188,12 +188,12 @@
     -ms-user-select: none;   
     }
 /* Force parent menu always open */
-.always-open > .sidebar-menu {
-    display: block !important;
+.sidebar-menu.child2 {
+    padding-left: 15px !important;
 }
 
-/* Hide parent arrow */
-.always-open > a .side-menu__angle {
-    display: none;
+.sidebar-menu.child2 li a {
+    padding-left: 35px !important;
 }
+
 

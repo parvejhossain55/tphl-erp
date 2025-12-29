@@ -50,6 +50,7 @@ CREATE TABLE
         experience TEXT NULL,
         address TEXT NOT NULL,
         pass_num VARCHAR(100) NULL,
+        basic_salary VARCHAR(100) NULL,
         department_id INT UNSIGNED NOT NULL,
         user_id INT UNSIGNED NOT NULL,
         designation_id INT UNSIGNED NULL,
@@ -432,5 +433,45 @@ CREATE TABLE emi_schedules (
     FOREIGN KEY (lead_booking_id) REFERENCES lead_bookings(id) ON DELETE CASCADE,
     FOREIGN KEY (lead_payment_id) REFERENCES lead_payments(id) ON DELETE SET NULL
 );
+
+
+--29/12/25
+CREATE TABLE payslip_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    type ENUM('earning','deduction') NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+CREATE TABLE payslips (
+    id INT  AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT UNSIGNED NOT NULL,
+    designation_id INT UNSIGNED  DEFAULT NULL,
+    payslip_month DATE NOT NULL,
+    total_earning DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    total_deduction DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    net_salary DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    status ENUM('pending','approved','paid') NOT NULL DEFAULT 'pending',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    FOREIGN KEY (designation_id) REFERENCES designations(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE payslip_details (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    payslip_id INT  NOT NULL,
+    payslip_item_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (payslip_id) REFERENCES payslips(id) ON DELETE CASCADE,
+    FOREIGN KEY (payslip_item_id) REFERENCES payslip_items(id) ON DELETE CASCADE
+);
+
+
+
 
 

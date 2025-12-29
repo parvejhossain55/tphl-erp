@@ -86,18 +86,13 @@ public function update($data)
 public function delete($id)
 {
     // 1 Delete all designations linked to this department
-    $stmt1 = $this->db->prepare("DELETE FROM leave_types WHERE department_id = ?");
+    $stmt1 = $this->db->prepare("DELETE FROM leave_types WHERE id = ?");
     $stmt1->bind_param("i", $id);
     $stmt1->execute();
     $stmt1->close();
-
-    //  Delete the department
-    $stmt2 = $this->db->prepare("DELETE FROM departments WHERE id = ?");
-    $stmt2->bind_param("i", $id);
-    $stmt2->execute();
-    $stmt2->close();
-
     return true;
 }
+
+
 
 }

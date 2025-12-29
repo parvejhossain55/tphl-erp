@@ -86,16 +86,7 @@
                              </div>
                          </div>
                      </div>
-                     <div class="col-lg-6">
-                         <div class="from__input-box">
-                             <div class="form__input-title">
-                                 <label for="employeeId">Employee ID <span>*</span></label>
-                             </div>
-                             <div class="form__input">
-                                 <input class="form-control" name="employeeId" id="employeeId" type="text">
-                             </div>
-                         </div>
-                     </div>
+                    
                        <div class="col-lg-6">
                          <div class="from__input-box">
                              <div class="form__input-title">
@@ -216,7 +207,7 @@
                              </div>
                          </div>
                      </div>
-                     <div class="col-lg-12 text-center">
+                     <div class="col-lg-6 text-center">
                          <div class="from__input-box">
                              <div class="form__input-title">
                                  <label for="address">Address <span>*</span></label>

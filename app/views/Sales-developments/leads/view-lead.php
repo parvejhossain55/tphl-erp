@@ -10,7 +10,7 @@ $page = "View Lead";
             <div class="lead-header d-flex flex-wrap align-items-center gap-2">
 
                 <h3 class="mb-1 me-3">
-                    <?= htmlspecialchars($leadData['lead_name']) ?>
+                 Client Information
                 </h3>
 
                 <!-- Badges -->
@@ -58,12 +58,16 @@ $page = "View Lead";
                 <div class="card__header   p-2 ">Basic Information</div>
                 <div class="card-body">
                     <div class="row mb-2">
+                        <div class="col-5 text-muted ">Name</div>
+                        <div class="col-7 text-title"> <?= $leadData['lead_name'] ?></div>
+                    </div>
+                    <div class="row mb-2">
                         <div class="col-5 text-muted ">Company</div>
                         <div class="col-7 text-title"><?= $leadData['company'] ?: '-' ?></div>
                     </div>
                     <div class="row mb-2">
-                        <div class="col-5 text-muted">Value</div>
-                        <div class="col-7 text-title"><?= number_format($leadData['value_amount'] ?? 0) ?> <?= $leadData['currency'] ?></div>
+                        <div class="col-5 text-muted">Designation</div>
+                        <div class="col-7 text-title"><?= $leadData['designation'] ?></div>
                     </div>
                     <div class="row mb-2">
                         <div class="col-5 text-muted">Source</div>
@@ -93,6 +97,26 @@ $page = "View Lead";
                 </div>
             </div>
         </div>
+        <!-- Contact Info -->
+        <div class="col-lg-6">
+            <div class="card__wrapper">
+                <div class="card__header   p-2 ">Interst On Project</div>
+                <div class="card-body">
+                    <div class="row mb-2">
+                        <div class="col-5 text-muted">Project</div>
+                        <div class="col-7 text-title"><?= $leadData['project_type'] ?></div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-5 text-muted">Preferred Location</div>
+                        <div class="col-7 text-title"><?= $leadData['pref_location'] ?: '-' ?></div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-5 text-muted">Preferred Size</div>
+                        <div class="col-7 text-title"><?= $leadData['pref_flat_size'] ?: '-' ?></div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <?php
         $groupedFollowUps = [];
 
@@ -112,7 +136,7 @@ $page = "View Lead";
         <!-- Project / Interest -->
         <?php if (!empty($followUpProjects)) : ?>
 
-            <div class="col-lg-6">
+            <div class="col-lg-12">
                 <div class="card__wrapper">
                     <div class="card__header p-2">Follow Ups Info</div>
                     <div class="card-body">

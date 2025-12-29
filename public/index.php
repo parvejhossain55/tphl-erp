@@ -66,8 +66,8 @@ $routes = [
     "update-role"   => ["controller" => "RoleController", "method" => "update"],
     //hrm
 
-   "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
-   // Tasks
+    "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
+    // Tasks
 
     'task-lists' => ["controller" => "TaskController", "method" => "index"],
     'create-task' => ["controller" => "TaskController", "method" => "create"],
@@ -147,6 +147,8 @@ $routes = [
     // Leave controller 
     "leave-types" => ["controller" => "Leaves\\LeaveTypeController", "method" => "index"],
     "store-leave-type" => ["controller" => "Leaves\\LeaveTypeController", "method" => "store"],
+    "update-leave-type" => ["controller" => "Leaves\\LeaveTypeController", "method" => "update"],
+    "delete-leave-type" => ["controller" => "Leaves\\LeaveTypeController", "method" => "delete"],
 
 
     // Site controller 
@@ -177,11 +179,11 @@ $routes = [
     "delete-flat/(\d+)" => ["controller" => "FlatController", "method" => "delete"],
 
     //follow-up-leads
-    "follow-up-leads/(\d+)" => ["controller" => "FollowUPController", "method" => "index"],
-    "store-follow-up" => ["controller" => "FollowUPController", "method" => "store"],
-    "update-follow-up" => ["controller" => "FollowUPController", "method" => "update"],
-    "delete-follow-up" => ["controller" => "FollowUPController", "method" => "delete"],
-    "get-flats/(\d+)" => ["controller" => "FollowUPController", "method" => "getFlats"],
+    "follow-up-leads/(\d+)" => ["controller" => "FollowUpController", "method" => "index"],
+    "store-follow-up" => ["controller" => "FollowUpController", "method" => "store"],
+    "update-follow-up" => ["controller" => "FollowUpController", "method" => "update"],
+    "delete-follow-up" => ["controller" => "FollowUpController", "method" => "delete"],
+    "get-flats/(\d+)" => ["controller" => "FollowUpController", "method" => "getFlats"],
 
     // booking
     "booking-leads/(\d+)" => ["controller" => "BookingController", "method" => "index"],
@@ -196,33 +198,42 @@ $routes = [
     //SalesDashboard
 
     "sales-dashboard" => ["controller" => "SalesDashboardController", "method" => "index"],
-    
+
+
+    //payrolls
+    //--payslips lists
+    "payslip-lists" => ["controller" => "PayrollController", "method" => "index"],
+    "create-payslip" => ["controller" => "PayrollController", "method" => "create"],
+    //--payslip Item
+    "payslip-items" => ["controller" => "PayslipItemController", "method" => "index"],
+    "store-payslip-item" => ["controller" => "PayslipItemController", "method" => "store"],
+
 
 
 
     //Rafi Start  Accounts
-             "accounts-dashboard" => ["controller" => "AccountManagementController", "method" => "index"],
+    "accounts-dashboard" => ["controller" => "AccountManagementController", "method" => "index"],
     //Clients
-         "clients-cash-in" => ["controller" => "AccountClientController", "method" => "index"],
+    "clients-cash-in" => ["controller" => "AccountClientController", "method" => "index"],
 
     // client's cash in history 
-         "clients-cash-in-history" => ["controller" => "AccountClientController", "method" => "indexTwo"],
-         "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],
-    
+    "clients-cash-in-history" => ["controller" => "AccountClientController", "method" => "indexTwo"],
+    "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],
+
     // Add transaction route
-      "add-transaction" => ["controller" => "AccountClientController", "method" => "addTransaction"],
+    "add-transaction" => ["controller" => "AccountClientController", "method" => "addTransaction"],
 
-        "edit-client-cash-in/(\d+)" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
+    "edit-client-cash-in/(\d+)" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
 
-          "edit-client-cash-in" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
-          "client-cash-in-form" => ["controller" => "AccountClientController", "method" => "showAddTransactionForm"],
+    "edit-client-cash-in" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
+    "client-cash-in-form" => ["controller" => "AccountClientController", "method" => "showAddTransactionForm"],
 
-// Update transaction route
-"update-transaction" => ["controller" => "AccountClientController", "method" => "updateTransaction"],
+    // Update transaction route
+    "update-transaction" => ["controller" => "AccountClientController", "method" => "updateTransaction"],
 
-// Delete transaction route
-"delete-transaction" => ["controller" => "AccountClientController", "method" => "deleteTransaction"],
-    
+    // Delete transaction route
+    "delete-transaction" => ["controller" => "AccountClientController", "method" => "deleteTransaction"],
+
     //rafi End
 
 

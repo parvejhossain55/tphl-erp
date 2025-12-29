@@ -18,7 +18,7 @@ public function index()
         "sources" => $sources,
         "leadData" => [], // empty for new
         "current_route" => "leadSource-lists",
-        "page_title" => " Lead"
+        "page_title" => " Lead Source"
     ]);
    
 }

@@ -77,14 +77,14 @@ class Employee extends Model
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-    
+
     public function getTotalCount()
-{
-    $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM employees");
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return (int)$result['total'];
-}
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM employees");
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return (int)$result['total'];
+    }
 
     public function countAll($search = '', $department_id = 'employeePhoto')
     {
@@ -120,94 +120,77 @@ class Employee extends Model
     // models/Employee.php
     public function create($data, $photoInputName = '')
     {
-        // Upload photo if exists
-        $photo = null;
-
+        // Upload photo
+        $photo = '';
         if (!empty($_FILES[$photoInputName]['name'])) {
-
             $photo = uploadImage($photoInputName, 'employees', 'fixed', 300, 300);
         }
-        if (!$photo) {
-            $photo = '';
-        }
 
-
-        // Prepare all variables
-        $full_name       = $data['full_name'];
-        $employee_id     = $data['employee_id'];
-        $username        = $data['username'];
-        $email           = $data['email'];
-        $father_name     = $data['father_name'];
-        $phone           = $data['phone'];
-        $emergency_contact = $data['emergency_contact'];
-        $qualification   = $data['qualification'];
-        $experience      = $data['experience'];
-        $address         = $data['address'];
-        $pass_num        = $data['pass_num'] ?? '';
-        $nid        = $data['nid'] ?? '';
-        $department_id   = $data['department_id'];
-        $designation_id  = $data['designation_id'];
-        $dob             = $data['dob'];
-        $joining_date    = $data['joining_date'] ?? null;
-        $account_holder_name = $data['account_holder_name'];
-        $account_number  = $data['account_number'];
-        $bank_name       = $data['bank_name'];
-        $branch_name     = $data['branch_name'];
-        $social_media1   = $data['social_media1'] ?? '';
-        $social_media2   = $data['social_media2'] ?? '';
-        $social_media3   = $data['social_media3'] ?? '';
-        $make_user       = $data['make_user'] ?? 0;
-        $password        = $data['password'] ?? '';
-
+        // Prepare variables (NO employee_id here)
         $stmt = $this->db->prepare(
             "INSERT INTO employees 
-    (full_name, employee_id, username, email, father_name, phone, emergency_contact, 
-     qualification, experience, address, pass_num, nid, department_id, designation_id, dob, 
-     joining_date, account_holder_name, account_number, bank_name, branch_name, 
-     social_media1, social_media2, social_media3, photo, make_user, password) 
-    VALUES (?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        (full_name,basic_salary, username, email, father_name, phone, emergency_contact, 
+         qualification, experience, address, pass_num, nid, department_id, 
+         designation_id, dob, joining_date, account_holder_name, account_number, 
+         bank_name, branch_name, social_media1, social_media2, social_media3, 
+         photo, make_user, password) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
 
         $stmt->bind_param(
-            "ssssssssssssiissssssssssis",
-            $full_name,
-            $employee_id,
-            $username,
-            $email,
-            $father_name,
-            $phone,
-            $emergency_contact,
-            $qualification,
-            $experience,
-            $address,
-            $pass_num,
-            $nid,
-            $department_id,
-            $designation_id,
-            $dob,
-            $joining_date,
-            $account_holder_name,
-            $account_number,
-            $bank_name,
-            $branch_name,
-            $social_media1,
-            $social_media2,
-            $social_media3,
+            "sissssssssssiissssssssssis",
+            $data['full_name'],
+            $data['basic_salary'],
+            $data['username'],
+            $data['email'],
+            $data['father_name'],
+            $data['phone'],
+            $data['emergency_contact'],
+            $data['qualification'],
+            $data['experience'],
+            $data['address'],
+            $data['pass_num'],
+            $data['nid'],
+            $data['department_id'],
+            $data['designation_id'],
+            $data['dob'],
+            $data['joining_date'],
+            $data['account_holder_name'],
+            $data['account_number'],
+            $data['bank_name'],
+            $data['branch_name'],
+            $data['social_media1'],
+            $data['social_media2'],
+            $data['social_media3'],
             $photo,
-            $make_user,
-            $password
+            $data['make_user'],
+            $data['password']
         );
 
-        if ($stmt->execute()) {
-            return true;
-        } else {
-            error_log("Employee creation failed: " . $stmt->error);
+        if (!$stmt->execute()) {
+            error_log("Employee insert failed: " . $stmt->error);
             return false;
         }
+
+        //  Get auto ID
+        $id = $this->db->insert_id;
+
+        //  Generate employee_id (EMP-00001)
+        $employeeCode = 'EMP-' . str_pad($id, 5, '0', STR_PAD_LEFT);
+
+        //  Update employee_id
+        $update = $this->db->prepare(
+            "UPDATE employees SET employee_id = ? WHERE id = ?"
+        );
+        $update->bind_param("si", $employeeCode, $id);
+        $update->execute();
+
+        return true;
     }
 
+
     //employee id find for edit
-    public function find($id): mixed
+    public function find($id)
     {
         $stmt = $this->db->prepare("SELECT 
             e.*, 
@@ -227,38 +210,70 @@ class Employee extends Model
      */
     public function update($id, $data, $photoInputName = null)
     {
-        // 1. old employee info
+        // 1️⃣ Get old employee
         $oldEmployee = $this->find($id);
-        $oldPhoto = $oldEmployee['photo'];
+        if (!$oldEmployee) {
+            return false;
+        }
 
-        // 2. নতুন photo upload
+        $oldPhoto = $oldEmployee['photo'] ?? '';
+
+        // 2️⃣ Upload new photo (if any)
         $newPhoto = null;
         if ($photoInputName && !empty($_FILES[$photoInputName]['name'])) {
             $newPhoto = uploadImage($photoInputName, 'employees', 'fixed', 300, 300);
         }
 
-        // 3. Decide final photo          
-        $finalPhoto = $newPhoto ?? $oldPhoto;
+        // 3️⃣ Decide final photo
+        $finalPhoto = $newPhoto ?: $oldPhoto;
 
-        // 4. old photo delete (if new add )
-        if ($newPhoto && !empty($oldPhoto) && file_exists(dirname(__DIR__, 2) . "/public/uploads/employees/" . $oldPhoto)) {
+        // 4️⃣ Delete old photo if new uploaded
+        if (
+            $newPhoto &&
+            !empty($oldPhoto) &&
+            file_exists(dirname(__DIR__, 2) . "/public/uploads/employees/" . $oldPhoto)
+        ) {
             unlink(dirname(__DIR__, 2) . "/public/uploads/employees/" . $oldPhoto);
         }
 
-        // 5. Update query
+        // 5️⃣ Update query (NO employee_id)
         $sql = "UPDATE employees SET
-        full_name = ?, employee_id = ?, username = ?, email = ?, father_name = ?, phone = ?, emergency_contact = ?,
-        qualification = ?, experience = ?, address = ?, pass_num = ?, department_id = ?, designation_id = ?,dob=?, joining_date = ?,
-        account_holder_name = ?, account_number = ?, bank_name = ?, branch_name = ?, social_media1 = ?, social_media2 = ?, social_media3 = ?, 
+        full_name = ?, 
+        basic_salary = ?, 
+        username = ?, 
+        email = ?, 
+        father_name = ?, 
+        phone = ?, 
+        emergency_contact = ?,
+        qualification = ?, 
+        experience = ?, 
+        address = ?, 
+        pass_num = ?, 
+        department_id = ?, 
+        designation_id = ?, 
+        dob = ?, 
+        joining_date = ?,
+        account_holder_name = ?, 
+        account_number = ?, 
+        bank_name = ?, 
+        branch_name = ?, 
+        social_media1 = ?, 
+        social_media2 = ?, 
+        social_media3 = ?, 
         photo = ?
     WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
 
+        if (!$stmt) {
+            error_log("Employee update prepare failed: " . $this->db->error);
+            return false;
+        }
+
         $stmt->bind_param(
-            "sssssssssssiissssssssssi",
+            "sdsssssssssiiisssssssssi",
             $data['full_name'],
-            $data['employee_id'],
+            $data['basic_salary'],
             $data['username'],
             $data['email'],
             $data['father_name'],
@@ -283,7 +298,6 @@ class Employee extends Model
             $id
         );
 
-
         return $stmt->execute();
     }
 
@@ -296,26 +310,26 @@ class Employee extends Model
         return $stmt->execute();
     }
 
-public function taskNotification()
-{
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    public function taskNotification()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-    $loggedUserId = $_SESSION['user']['id'] ?? null;
-    if (!$loggedUserId) return [];
+        $loggedUserId = $_SESSION['user']['id'] ?? null;
+        if (!$loggedUserId) return [];
 
-    // 1️⃣ Get employee ID
-    $stmt = $this->db->prepare("SELECT id FROM employees WHERE user_id = ? LIMIT 1");
-    $stmt->bind_param("i", $loggedUserId);
-    $stmt->execute();
-    $emp = $stmt->get_result()->fetch_assoc();
-    if (!$emp) return [];
+        //  Get employee ID
+        $stmt = $this->db->prepare("SELECT id FROM employees WHERE user_id = ? LIMIT 1");
+        $stmt->bind_param("i", $loggedUserId);
+        $stmt->execute();
+        $emp = $stmt->get_result()->fetch_assoc();
+        if (!$emp) return [];
 
-    $employeeId = (int) $emp['id'];
+        $employeeId = (int) $emp['id'];
 
-    // 2️⃣ Fetch notifications ONLY for incomplete tasks
-    $stmt = $this->db->prepare("
+        //  Fetch notifications ONLY for incomplete tasks
+        $stmt = $this->db->prepare("
         SELECT n.*, u.full_name AS assigned_by_name, t.progress, t.status
         FROM notifications n
         LEFT JOIN tasks t ON n.task_id = t.id
@@ -325,17 +339,18 @@ public function taskNotification()
           AND (t.status IS NULL OR t.status != 'completed')
         ORDER BY n.created_at DESC
     ");
-    $stmt->bind_param("i", $employeeId);
-    $stmt->execute();
-    $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->bind_param("i", $employeeId);
+        $stmt->execute();
+        $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-    return $notifications;
-}
+        return $notifications;
+    }
 
 
 
-public function getDepartmentWiseEmp(){
-    $stmt = $this->db->prepare("SELECT d.id,d.name AS dept_name,
+    public function getDepartmentWiseEmp()
+    {
+        $stmt = $this->db->prepare("SELECT d.id,d.name AS dept_name,
         COUNT(e.id) AS total_employee
     FROM departments d
     LEFT JOIN designations desg ON desg.department_id = d.id
@@ -344,13 +359,11 @@ public function getDepartmentWiseEmp(){
     ORDER BY d.name ASC
     ");
 
-    if(!$stmt){
-        return [];
+        if (!$stmt) {
+            return [];
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-    $stmt->execute();
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
-
-
 }

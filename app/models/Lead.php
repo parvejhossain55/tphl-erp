@@ -86,23 +86,32 @@ public function create($data)
 
 
     //employee id find for edit
-    public function find($id)
-    {
-        $stmt = $this->db->prepare(
-        "SELECT leads.* ,s.name AS source_name, u.full_name AS user_name,
-        f.lead_id, COUNT(*) AS follow_up_count
-         
-            FROM leads 
-            JOIN lead_sources s ON leads.source_type_id 
-            JOIN  lead_follow_ups AS f ON leads.id = f.lead_id
-            JOIN users AS u
+public function find($id)
+{
+    $stmt = $this->db->prepare(
+        "SELECT 
+            leads.*,
+            s.name AS source_name,
+            u.full_name AS user_name,
+            COUNT(f.id) AS follow_up_count
 
-    
-          WHERE leads.id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
-    }
+        FROM leads
+        LEFT JOIN lead_sources s 
+            ON leads.source_type_id = s.id
+        LEFT JOIN lead_follow_ups f 
+            ON leads.id = f.lead_id
+        LEFT JOIN users u 
+            ON leads.assigned_id = u.id
+
+        WHERE leads.id = ?
+        GROUP BY leads.id"
+    );
+
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc();
+}
+
 
     /**
      * Update lead

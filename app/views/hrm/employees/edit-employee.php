@@ -65,12 +65,7 @@
                          value="<?= htmlspecialchars($employee['qualification']) ?>">
                  </div>
 
-                 <!-- Employee ID -->
-                 <div class="col-lg-6">
-                     <label for="employeeId">Employee ID <span>*</span></label>
-                     <input class="form-control" name="employee_id" id="employeeId" type="text"
-                         value="<?= htmlspecialchars($employee['employee_id']) ?>">
-                 </div>
+               
 
                  <!-- Department -->
                  <div class="col-lg-6">
@@ -98,6 +93,12 @@
                              </option>
                          <?php endforeach ?>
                      </select>
+                 </div>
+                 <!-- Designation -->
+                 <div class="col-lg-6">
+                     <label>Basic Salary <span>*</span></label>
+                      <input class="form-control" name="basic_salary" id="basic_salary" type="number"
+                         value="<?=$employee['basic_salary']?>">
                  </div>
                  <?php
                     $joiningDate = $employee['joining_date'];

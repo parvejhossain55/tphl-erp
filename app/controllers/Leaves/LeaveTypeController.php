@@ -49,9 +49,15 @@ class LeaveTypeController extends Controller
         $data = [
             'id'     => $_POST['id'] ?? 0,
             'name'   => $_POST['name'] ?? '',
-            'status' => isset($_POST['status']) ? intval($_POST['status']) : 0,
+            'is_active' => isset($_POST['is_active']) ? intval($_POST['is_active']) : 0,
         ];
-        print_r($data); // debug: check values
+            if ($this->leaveTypeModel->update($data)) {
+                setSuccess("Leave Type Update successfully");
+        header("Location: {$GLOBALS['base_url']}/leave-types");
+        exit;
+    } else {
+             setError("Failed to update department");
+    }
     }
     public function show()
     {
@@ -63,8 +69,22 @@ class LeaveTypeController extends Controller
         ]);
     }
 
-    public function delete()
-    {
-        $id = $_POST['id'] ?? 0;
+    // public function delete()
+    // {
+    //     $id = $_POST['id'] ?? 0;
+    // }
+
+
+
+ public function delete()
+{
+    $id = $_POST['id'] ?? 0;
+
+    if ($id && $this->leaveTypeModel->delete($id)) {
+        header("Location: {$GLOBALS['base_url']}/leave-types");
+        exit;
+    } else {
+        echo "<h3 style='color:red'>Failed to delete leave type</h3>";
     }
+}
 }
