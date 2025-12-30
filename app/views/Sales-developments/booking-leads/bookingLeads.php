@@ -116,9 +116,22 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                     <td><?= $or['flat_name'] ?? '' ?> (Floor: <?= $or['floor_no'] ?? '' ?>, <?= $or['sqft'] ?? '' ?> sqft)</td>
                                     <td><?= $_SESSION['user']['name'] ?? '' ?></td>
                                     <td>
-                                        <a  href="<?= $GLOBALS['base_url'] ?>/onboard-edit/<?= $or['id'] ?>" class="d-none btn btn-sm btn-primary">Edit</a>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <button type="button"
+                                                class="table__icon edit editBookingBtn"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#editModalBooking"
+                                                data-id="<?= $or['id'] ?>"
+                                                data-project="<?= $or['project_id'] ?>"
+                                                data-flat="<?= $or['flat_id'] ?>"
+                                                data-date="<?= $or['booking_date'] ?>"
+                                                data-agreement="<?= $or['agreement_value'] ?>"
+                                                data-status="<?= $or['booking_status'] ?>">
+                                                Edit
+                                            </button>
 
-                                        <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>" class="btn btn-sm btn-success">Payments</a>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>" class="btn btn-sm btn-success">Payments</a>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -139,6 +152,63 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         </div>
     </div>
 </div>
+
+
+<!-- edit payslip-item modal start -->
+<!-- Edit Booking Modal -->
+<div id="editModalBooking" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Booking</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+
+                <form action="<?= $GLOBALS['base_url'] ?>/update-flats-by-project" method="POST">
+                    <input type="hidden" name="booking_id" id="edit_booking_id">
+
+                    <!-- Agreement Value -->
+                    <div class="mb-3">
+                        <label class="form-label">Agreement Value/Booking Money *</label>
+                        <input type="number" name="agreement_value" id="edit_agreement" class="form-control" required>
+                    </div>
+
+                    <!-- Project -->
+                    <div class="mb-3">
+                        <label class="form-label">Project *</label>
+                        <select name="project_id" id="edit_project" class="form-select" required>
+                            <option value="">Select Project</option>
+                            <?php foreach ($projects as $project): ?>
+                                <option value="<?= $project['id'] ?>"><?= $project['name'] ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <!-- Flat -->
+                    <div class="mb-3">
+                        <label class="form-label">Flat / Unit *</label>
+                        <select name="flat_id" id="edit_flat" class="form-select" required>
+                            <option value="">Select Flat</option>
+                        </select>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-success">Update Booking</button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -177,12 +247,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                 option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
                             }
 
-                            flatSelect.appendChild(option);
+                            flatSelect.appendChild(option)
                         });
                     });
-
-
-
                 //end fetch
             });
         }
@@ -192,8 +259,95 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         // Show price when flat selected
         flatSelect.addEventListener('change', function() {
             const selectedFlatId = this.value;
+
             const flat = flatData.find(f => f.flat_id == selectedFlatId);
             flatPriceInput.value = flat ? Number(flat.price_value).toLocaleString() : '';
         });
     });
 </script>>
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+
+        // ===============================
+        // Update Booking Modal Logic
+        // ===============================
+        let flatDataEdit = []; // store flats for edit modal
+
+        const editProjectSelect = document.getElementById('edit_project');
+        const editFlatSelect = document.getElementById('edit_flat');
+        const editFlatPriceInput = document.getElementById('edit_flatPrice'); // optional price display
+
+        // Load flats on project change in edit modal
+        if (editProjectSelect) {
+            editProjectSelect.addEventListener('change', function() {
+                const projectId = this.value;
+                editFlatSelect.innerHTML = '<option>Loading...</option>';
+                if (!projectId) {
+                    editFlatSelect.innerHTML = '<option value="">Select Flat</option>';
+                    return;
+                }
+                fetch("<?= $GLOBALS['base_url'] ?>/get-flats-by-project/" + projectId)
+                    .then(res => res.json())
+                    .then(data => {
+                        flatDataEdit = data;
+                        editFlatSelect.innerHTML = '<option value="">Select Flat</option>';
+
+                        data.forEach(flat => {
+                            const opt = document.createElement('option');
+                            opt.value = flat.flat_id;
+                            opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
+                            if (flat.is_booked == 1) {
+                                opt.disabled = true;
+                                opt.textContent += ' [Booked]';
+                            }
+                            editFlatSelect.appendChild(opt);
+                        });
+
+                        // Set flat after options loaded
+                        if (typeof flatId !== 'undefined') {
+                            editFlatSelect.value = flatId;
+                        }
+                    });
+
+            });
+        }
+
+        // Optional: show price when flat selected
+        if (editFlatSelect && editFlatPriceInput) {
+            editFlatSelect.addEventListener('change', function() {
+                const selectedFlatId = this.value;
+                const flat = flatDataEdit.find(f => f.flat_id == selectedFlatId);
+                editFlatPriceInput.value = flat ? Number(flat.price_value).toLocaleString() : '';
+            });
+        }
+
+        // ===============================
+        // Populate edit modal when button clicked
+        // ===============================
+        document.querySelectorAll('.editBookingBtn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const bookingId = this.dataset.id;
+                const projectId = this.dataset.project;
+                const flatId = this.dataset.flat;
+                const agreement = this.dataset.agreement;
+
+                document.getElementById('edit_booking_id').value = bookingId;
+                document.getElementById('edit_agreement').value = agreement;
+
+                // set project and trigger change to load flats
+                editProjectSelect.value = projectId;
+                const event = new Event('change');
+                editProjectSelect.dispatchEvent(event);
+
+                // Wait for flats to load then select the flat
+                setTimeout(() => {
+                    editFlatSelect.value = flatId;
+                }, 300); // 300ms delay to ensure flats are loaded
+            });
+        });
+
+    });
+</script>

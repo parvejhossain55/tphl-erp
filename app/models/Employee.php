@@ -188,6 +188,33 @@ class Employee extends Model
         return true;
     }
 
+public function getAllWithDesignation() {
+    $stmt = $this->db->prepare("
+        SELECT 
+            e.id,
+            e.full_name,
+            e.email,
+            e.basic_salary,
+            e.employee_id,
+            e.joining_date,
+            e.designation_id,         
+            d.name AS designation
+        FROM employees e
+        LEFT JOIN designations d ON e.designation_id = d.id
+        ORDER BY e.full_name ASC
+    ");
+
+    if (!$stmt) {
+        die("Prepare failed: " . $this->db->error);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    return $data;
+}
 
     //employee id find for edit
     public function find($id)

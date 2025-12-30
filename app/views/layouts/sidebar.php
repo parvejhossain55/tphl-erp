@@ -192,24 +192,24 @@
                        </li>
 
                        <!-- Sales Dashboard -->
-                       <li class="slide <?= isActive('sales-dashboard', $current_route) ?>">
-                           <a href="<?= $base_url ?>/sales-dashboard" class="sidebar__menu-item">
+                       <li class="slide ">
+                           <a href="<?= $base_url ?>/sales-dashboard" class="sidebar__menu-item <?= isActive('sales-dashboard', $current_route) ?>">
                                <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                                <span class="sidebar__menu-label">Sales Dashboard</span>
                            </a>
                        </li>
 
                        <!-- Location -->
-                       <li class="slide <?= isActive('location-lists', $current_route) ?>">
-                           <a href="<?= $base_url ?>/location-lists" class="sidebar__menu-item">
+                       <li class="slide ">
+                           <a href="<?= $base_url ?>/location-lists" class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
                                <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
                                <span class="sidebar__menu-label">Location Manage</span>
                            </a>
                        </li>
 
                        <!-- Community -->
-                       <li class="slide <?= isActive('community-lists', $current_route) ?>">
-                           <a href="<?= $base_url ?>/community-lists" class="sidebar__menu-item">
+                       <li class="slide">
+                           <a href="<?= $base_url ?>/community-lists" class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
                                <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
                                <span class="sidebar__menu-label">Community Lists</span>
                            </a>
@@ -222,15 +222,16 @@
                                <span class="sidebar__menu-label">Lead & Booking</span>
                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
                            </a>
-                           <ul class="sidebar-menu child2" style="<?= isMenuOpen(['create-lead', 'lead-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
-                               <li class="slide <?= isActive('create-lead', $current_route) ?>">
-                                   <a href="<?= $base_url ?>/create-lead" class="sidebar__menu-item">Add Lead</a>
+                           <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-lead', 'lead-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                               <li class="slide">
+                                   <a href="<?= $base_url ?>/create-lead" class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">Add Lead</a>
                                </li>
-                               <li class="slide <?= isActive('lead-lists', $current_route) ?>">
-                                   <a href="<?= $base_url ?>/lead-lists" class="sidebar__menu-item">Lead List</a>
+                               <li class="slide">
+                                   <a href="<?= $base_url ?>/lead-lists" class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">Lead List</a>
                                </li>
                            </ul>
                        </li>
+
 
                        <!-- Project Manage -->
                        <li class="slide has-sub <?= isMenuOpen(['create-project', 'project-lists'], $current_route) ? 'active' : '' ?>">
@@ -239,12 +240,12 @@
                                <span class="sidebar__menu-label">Project Manage</span>
                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
                            </a>
-                           <ul class="sidebar-menu child2" style="<?= isMenuOpen(['create-project', 'project-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
-                               <li class="slide <?= isActive('create-project', $current_route) ?>">
-                                   <a href="<?= $base_url ?>/create-project" class="sidebar__menu-item">Add Project</a>
+                           <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-project', 'project-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                               <li class="slide">
+                                   <a href="<?= $base_url ?>/create-project" class="sidebar__menu-item <?= isActive('create-project', $current_route) ?>">Add Project</a>
                                </li>
-                               <li class="slide <?= isActive('project-lists', $current_route) ?>">
-                                   <a href="<?= $base_url ?>/project-lists" class="sidebar__menu-item">Project List</a>
+                               <li class="slide">
+                                   <a href="<?= $base_url ?>/project-lists" class="sidebar__menu-item <?= isActive('project-lists', $current_route) ?>">Project List</a>
                                </li>
                            </ul>
                        </li>
@@ -256,65 +257,76 @@
                                <span class="sidebar__menu-label">Flats Manage</span>
                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
                            </a>
-                           <ul class="sidebar-menu child2" style="<?= isMenuOpen(['create-flat', 'flat-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
-                               <li class="slide <?= isActive('create-flat', $current_route) ?>">
-                                   <a href="<?= $base_url ?>/create-flat" class="sidebar__menu-item">Add Flat</a>
+                           <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-flat', 'flat-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                               <li class="slide">
+                                   <a href="<?= $base_url ?>/create-flat" class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
                                </li>
-                               <li class="slide <?= isActive('flat-lists', $current_route) ?>">
-                                   <a href="<?= $base_url ?>/flat-lists" class="sidebar__menu-item">Flat List</a>
+                               <li class="slide">
+                                   <a href="<?= $base_url ?>/flat-lists" class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">Flat List</a>
+                               </li>
+                           </ul>
+                       </li>
+
+
+                       <li class="slide has-sub <?= isActive(['payslip-lists', 'payslip-items'], $current_route) ?>">
+                           <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['payslip-lists', 'payslip-items'], $current_route) ?>">
+                               <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                               <div class="side-menu__icon"><i class="fa-solid fa-money-bill"></i>
+                               </div>
+                               <span class="sidebar__menu-label">Payroll Manage</span>
+                           </a>
+                           <ul class="sidebar-menu child1" style="<?= isMenuOpen(['payslip-lists', 'payslip-items'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                               <li class="slide <?= isActive('payslip-lists', $current_route) ?>">
+                                   <a class="sidebar__menu-item <?= isActive('payslip-lists', $current_route) ?>" href="<?= $base_url ?>/payslip-lists">Payroll Lists</a>
+                               </li>
+                               <li class="slide <?= isActive('payslip-items', $current_route) ?>">
+                                   <a class="sidebar__menu-item <?= isActive('payslip-items', $current_route) ?>" href="<?= $base_url ?>/payslip-items">Payslip Items</a>
                                </li>
                            </ul>
                        </li>
 
 
 
-
-
-
-                       <!-- CATEGORY -->
+                       <!--HRM CATEGORY -->
                        <li class="sidebar__menu-category">
                            <span class="category-name">HRM</span>
                        </li>
 
                        <!-- Sales Dashboard -->
-                       <li class="slide <?= isActive('hrm-dashboard', $current_route) ?>">
-                           <a href="<?= $base_url ?>/hrm-dashboard" class="sidebar__menu-item">
+                       <li class="slide ">
+                           <a href="<?= $base_url ?>/hrm-dashboard" class="sidebar__menu-item <?= isActive('hrm-dashboard', $current_route) ?>">
                                <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                                <span class="sidebar__menu-label">HR Dashboard</span>
                            </a>
                        </li>
 
                        <!-- Location -->
-                       <li class="slide <?= isActive('employee-lists', $current_route) ?>">
-                           <a href="<?= $base_url ?>/employee-lists" class="sidebar__menu-item">
+                       <li class="slide ">
+                           <a href="<?= $base_url ?>/employee-lists" class="sidebar__menu-item <?= isActive('employee-lists', $current_route) ?>">
                                <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
                                <span class="sidebar__menu-label">Employee Manage</span>
                            </a>
                        </li>
 
                        <!-- department -->
-                       <li class="slide <?= isActive('departments', $current_route) ?>">
-                           <a href="<?= $base_url ?>/departments" class="sidebar__menu-item">
+                       <li class="slide ">
+                           <a href="<?= $base_url ?>/departments" class="sidebar__menu-item <?= isActive('departments', $current_route) ?>">
                                <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
                                <span class="sidebar__menu-label">Department Lists</span>
                            </a>
                        </li>
                        <!-- department -->
-                       <li class="slide <?= isActive('designations', $current_route) ?>">
-                           <a href="<?= $base_url ?>/designations" class="sidebar__menu-item">
+                       <li class="slide ">
+                           <a href="<?= $base_url ?>/designations" class="sidebar__menu-item <?= isActive('designations', $current_route) ?>">
                                <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
                                <span class="sidebar__menu-label">Designation Lists</span>
                            </a>
                        </li>
 
-                    
-
-
-
-
+                        <!--End HRM CATEGORY -->
 
                        <!-- Accounts   -->
-                       <li>
+                       <li class="d-none">
                            <a href="javascript:void(0);" class="sidebar__menu-item">
 
                                <span class="sidebar__menu-label text-15">
@@ -333,9 +345,6 @@
                                        <span class="sidebar__menu-label">Accounts Dashboard</span>
                                    </a>
                                </li>
-
-
-
                                <!-- Flats Manage -->
                                <li class="slide has-sub <?= isActive(['accounts-dashboard', 'clients-cash-in'], $current_route) ? 'active' : '' ?>">
                                    <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['accounts-dashboard', 'clients-cash-in'], $current_route) ? 'menu-open active' : '' ?>">
@@ -346,7 +355,7 @@
                                        <span class="sidebar__menu-label">Cash In Manage</span>
                                    </a>
 
-                                   <ul class="sidebar-menu child2" style="<?= isMenuOpen(['accounts-dashboard', 'clients-cash-in'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                                   <ul class="sidebar-menu child1" style="<?= isMenuOpen(['accounts-dashboard', 'clients-cash-in'], $current_route) ? 'display:block;' : 'display:none;' ?>">
                                        <li class="slide  <?= isActive('clients-cash-in', $current_route) ?>">
                                            <a href="<?= $base_url ?>/clients-cash-in" class="sidebar__menu-item  <?= isActive('clients-cash-in', $current_route) ?>">
                                                Clients
@@ -359,8 +368,6 @@
                                        </li>
                                    </ul>
                                </li>
-
-
                            </ul>
                        </li>
 
@@ -385,27 +392,6 @@
 
                            </ul>
                        </li>
-
-
-
-                       <li class="slide has-sub <?= isActive(['payslip-lists', 'payslip-items'], $current_route) ?>">
-                           <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['payslip-lists', 'payslip-items'], $current_route) ?>">
-                               <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                               <div class="side-menu__icon"><i class="fa-solid fa-money-bill"></i>
-                               </div>
-                               <span class="sidebar__menu-label">Payroll Manage</span>
-                           </a>
-                           <ul class="sidebar-menu child1" style="<?= isMenuOpen(['payslip-lists', 'payslip-items-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
-                               <li class="slide <?= isActive('payslip-lists', $current_route) ?>">
-                                   <a class="sidebar__menu-item <?= isActive('payslip-lists', $current_route) ?>" href="<?= $base_url ?>/payslip-lists">Payroll Lists</a>
-                               </li>
-                               <li class="slide <?= isActive('payslip-items', $current_route) ?>">
-                                   <a class="sidebar__menu-item <?= isActive('payslip-items', $current_route) ?>" href="<?= $base_url ?>/payslip-items">Payslip Items</a>
-                               </li>
-                           </ul>
-                       </li>
-
-
 
                        <li class="slide ">
                            <a class="sidebar__menu-item " href="<?= $GLOBALS['base_url']  ?>/logout"><svg width="18" height="18" viewBox="0 0 18 18"

@@ -92,34 +92,40 @@ public function index($lead_id = null)
         exit;
     }
 }
-    public function update()
-    {
-        $flatId = $_POST['flat_id'] ?? null;
-        $flatId = ($flatId === '' || $flatId === '0') ? null : (int)$flatId;
-
-        $followUpData = [
-            'id' => (int)$_POST['id'],
-            'lead_id' => (int)$_POST['lead_id'],
-            'flat_id' => $flatId,   //  NULL or flats.id only
-            'follow_up_date' => $_POST['follow_up_date'],
-            'follow_up_time' => $_POST['follow_up_time'] ?: null,
-            'follow_up_type' => $_POST['follow_up_type'],
-            'status' => $_POST['status'] ?? 'pending',
-            'discussion_note' => $_POST['discussion_note'] ?? null,
-            'next_follow_up_date' => $_POST['next_follow_up_date'] ?: null,
-            'next_action' => $_POST['next_action'] ?? null,
-        ];
 
 
-        if ($this->bookingModel->update($followUpData)) {
-            setSuccess("Follow-up updated successfully!");
-        } else {
-            setError("Failed to update follow-up!");
-        }
-        $leadId = $_POST['lead_id'];
-        header("Location: {$GLOBALS['base_url']}/follow-up-leads/{$leadId}");
-        exit;
+public function update()
+{
+    $id = (int)($_POST['id'] ?? 0);
+    $flatId = ($_POST['flat_id'] ?? '') === '' ? null : (int)$_POST['flat_id'];
+
+    $bookingData = [
+        'lead_id' => (int)($_POST['lead_id'] ?? 0),
+        'project_id' => (int)($_POST['project_id'] ?? 0),
+        'flat_id' => $flatId,
+        'agreement_value' => $_POST['agreement_value'] ?? 0,
+        'booking_date' => $_POST['booking_date'] ?? date('Y-m-d'),
+        'booking_status' => $_POST['booking_status'] ?? 'booked',
+        'created_by' => $_SESSION['user']['id'] ?? 1
+    ];
+
+    // Update lead_bookings table
+    if ($this->bookingModel->update($bookingData, $id)) {
+
+        // Update lead_payments table automatically
+        $this->bookingModel->updateBookingPaymentAmount($id, $bookingData['agreement_value']);
+
+        setSuccess("Booking updated successfully!");
+    } else {
+        setError("Failed to update booking!");
     }
+
+    $leadId = $_POST['lead_id'] ?? 0;
+    header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+    exit;
+}
+
+
 
 
 

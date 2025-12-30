@@ -15,74 +15,80 @@ class PayslipItemController extends Controller
 
     public function index()
     {
-      
+
         // Pass all data to view
         $items = $this->payslipItemModel->getAll();
         $this->view("payrolls/payslip-items/payslip-items", [
             "current_route" => "payslip-items",
             "page_title"    => "Payslip Items Lists",
             "items"    => $items,
-           
+
         ]);
     }
 
 
-       // Handle form submission
-public function store()
-{
-    $data = [
-        'name'   => $_POST['name'] ?? '',
-        'type' => $_POST['type'] , // checkbox
-    ];
-
-    if ($this->payslipItemModel->create($data)) {
-        header("Location: {$GLOBALS['base_url']}/payslip-items");
-        exit;
-    } else {
-        echo "<h3 style='color:red'>Failed to create department</h3>";
-    }
-}
-public function update()
-{
-    $data = [
-        'id'     => $_POST['id'] ?? 0,          
-        'name'   => $_POST['name'] ?? '',        
-        'status' => isset($_POST['status']) ? intval($_POST['status']) : 0, 
-    ];
-
-    // print_r($data); // debug: check values
-
-    if ($this->payslipItemModel->update($data)) {
-        header("Location: {$GLOBALS['base_url']}/payslip-items");
-        exit;
-    } else {
-        echo "Failed to update department";
-    }
-}
-
-
-
-
-    public function show()
+    // Handle form submission
+    public function store()
     {
-        $this->view("tasks/view-task", [
-            "current_route" => "show-task",
-            "active" => "show-task",
-            "psge_title" => "Show Task",
-            "show_breadcrumb" => true,
-        ]);
+        $data = [
+            'name'   => $_POST['name'] ?? '',
+            'type' => $_POST['type'] ?? '', // 'earning' or 'deduction'
+        ];
+
+        if ($this->payslipItemModel->create($data)) {
+            setSuccess("Payslip item created successfully.");
+            header("Location: {$GLOBALS['base_url']}/payslip-items");
+            exit;
+        } else {
+            setError("Failed to create payslip item.");
+        }
     }
+    public function update($data, $id)
+    {
+        $stmt = $this->db->prepare("
+        UPDATE bookings SET
+            lead_id = ?,
+            project_id = ?,
+            flat_id = ?,
+            created_by = ?,
+            agreement_value = ?,
+            booking_date = ?,
+            booking_status = ?
+        WHERE id = ?
+    ");
+
+        $stmt->bind_param(
+            "iiiidssi",
+            $data['lead_id'],
+            $data['project_id'],
+            $data['flat_id'],
+            $data['created_by'],
+            $data['agreement_value'],
+            $data['booking_date'],
+            $data['booking_status'],
+            $id
+        );
+
+        return $stmt->execute();
+    }
+
+
 
     public function delete()
-{
-    $id = $_POST['id'] ?? 0;
+    {
+        $id = $_POST['id'] ?? 0;
 
-    if ($id && $this->payslipItemModel->delete($id)) {
+        try {
+            if ($this->payslipItemModel->delete($id)) {
+                setSuccess("Payslip item deleted successfully.");
+            } else {
+                setError("Failed to delete payslip item.");
+            }
+        } catch (Exception $e) {
+            setError("Error: " . $e->getMessage());
+        }
+
         header("Location: {$GLOBALS['base_url']}/payslip-items");
         exit;
-    } else {
-        echo "<h3 style='color:red'>Failed to delete department</h3>";
     }
-}
-   
 }

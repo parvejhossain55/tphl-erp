@@ -189,6 +189,8 @@ $routes = [
     "booking-leads/(\d+)" => ["controller" => "BookingController", "method" => "index"],
     "booking-store" => ["controller" => "BookingController", "method" => "store"],
     "get-flats-by-project/(\d+)" => ["controller" => "BookingController", "method" => "getFlatsByProject"],
+    "update-flats-by-project" => ["controller" => "BookingController", "method" => "update"],
+
 
     // payments_booking
     "payments-booking/(\d+)" => ["controller" => "PaymentBookingController", "method" => "index"],
@@ -204,9 +206,12 @@ $routes = [
     //--payslips lists
     "payslip-lists" => ["controller" => "PayrollController", "method" => "index"],
     "create-payslip" => ["controller" => "PayrollController", "method" => "create"],
+    "store-payslip" => ["controller" => "PayrollController", "method" => "store"],
     //--payslip Item
     "payslip-items" => ["controller" => "PayslipItemController", "method" => "index"],
     "store-payslip-item" => ["controller" => "PayslipItemController", "method" => "store"],
+    "update-payslip-item" => ["controller" => "PayslipItemController", "method" => "update"],
+    "delete-payslip-item" => ["controller" => "PayslipItemController", "method" => "delete"],
 
 
 

@@ -20,7 +20,6 @@ $show_breadcrumb = true;
 </div>
 
 <div class="row">
-
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
@@ -40,7 +39,7 @@ $show_breadcrumb = true;
 
                         <?php foreach ($items as $index => $item): ?>
                             <tr>
-                                <!-- Checkbox with department id -->
+                                <!-- Checkbox with payslip-item id -->
                                 <td><input type="checkbox" class="selectedId" name="selectedId[]" value="<?= $item['id'] ?>"></td>
 
                                 <!-- Serial number -->
@@ -50,21 +49,25 @@ $show_breadcrumb = true;
                                 <!-- Action buttons -->
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-10">
-                                        <button type="button" class="table__icon edit"
+                                        <button type="button"
+                                            class="table__icon edit"
                                             data-bs-toggle="modal"
-                                            data-bs-target="#editDepartment"
+                                            data-bs-target="#editPayslipItemModal"
                                             data-id="<?= $item['id'] ?>"
-                                            data-name="<?= htmlspecialchars($item['name']) ?>"
+                                            data-name="<?= htmlspecialchars($item['name'], ENT_QUOTES) ?>"
                                             data-type="<?= $item['type'] ?>">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </button>
 
-                                        <button class="removeBtnCust table__icon delete"
+
+                                        <button type="button"
+                                            class="removeBtnCust table__icon delete"
                                             data-id="<?= $item['id'] ?>"
-                                            data-name="<?= $item['name'] ?>"
-                                            data-action="delete-department">
+                                            data-name="<?= htmlspecialchars($item['name'], ENT_QUOTES) ?>"
+                                            data-action="delete-payslip-item">
                                             <i class="fa-regular fa-trash"></i>
                                         </button>
+
 
                                     </div>
                                 </td>
@@ -96,7 +99,7 @@ $show_breadcrumb = true;
                                     <div class="col-lg-12">
                                         <div class="from__input-box">
                                             <div class="form__input-title">
-                                                <label for="department">Payslip Item Name<span>*</span></label>
+                                                <label for="payslip-item">Payslip Item Name<span>*</span></label>
                                             </div>
                                             <div class="form__input">
                                                 <input class="form-control" name="name" id="name" type="text">
@@ -107,7 +110,7 @@ $show_breadcrumb = true;
                                     <div class="col-md-12">
                                         <div class="from__input-box">
                                             <label>Item Type *</label>
-                                            <select name="project_type" class="form-select">
+                                            <select name="type" class="form-select">
                                                 <option value="earning">Earning</option>
                                                 <option value="deduction">Deduction</option>
                                             </select>
@@ -126,93 +129,90 @@ $show_breadcrumb = true;
     </div>
 </div>
 <!-- new lead modal end -->
-<!-- edit department modal start -->
-<div id="editDepartment" class="modal custom-modal fade" role="dialog">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+
+
+
+<!-- edit payslip-item modal start -->
+<div id="editPayslipItemModal" class="modal custom-modal fade" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
+
             <div class="modal-header">
-                <h5 class="modal-title">Edit Department</h5>
-                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                <h5 class="modal-title">Edit Payslip Item</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
                     <i class="fa-solid fa-xmark-large"></i>
                 </button>
             </div>
 
             <div class="modal-body">
-                <form id="editDepartmentForm" action="<?= $GLOBALS['base_url'] ?>/update-department" method="POST">
-                    <input type="hidden" name="id" id="edit_department_id">
+                <form action="<?= $GLOBALS['base_url'] ?>/update-payslip-item" method="POST">
 
-                    <div class="row gy-10">
-                        <div class="col-xl-12">
-                            <div class="card__wrapper">
-                                <div class="row gy-20">
+                    <!-- hidden id -->
+                    <input type="hidden" name="id" id="edit_payslip_item_id">
 
-                                    <!-- payslip Item Name -->
-                                    <div class="col-lg-12">
-                                        <div class="from__input-box">
-                                            <div class="form__input-title">
-                                                <label for="edit_department">Payslip Item Name <span>*</span></label>
-                                            </div>
-                                            <div class="form__input">
-                                                <input class="form-control" name="name" id="edit_department" type="text" required>
-                                            </div>
-                                        </div>
-                                    </div>
+                    <div class="row gy-20">
 
-                                    <!-- Status -->
-                                    <div class="col-md-6">
-                                        <div class="from__input-box">
-                                            <label>Communication Type</label>
-                                            <select name="type" class="form-select">
-                                                <option value="earning" >Earning</option>
-                                                <option value="deduction">Deduction</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                </div> <!-- row -->
+                        <!-- Payslip Item Name -->
+                        <div class="col-12">
+                            <div class="from__input-box">
+                                <label>Payslip Item Name <span>*</span></label>
+                                <input type="text"
+                                    class="form-control"
+                                    name="name"
+                                    id="edit_payslip_item_name"
+                                    required>
                             </div>
                         </div>
+
+                        <!-- Type -->
+                        <div class="col-md-6">
+                            <div class="from__input-box">
+                                <label>Type</label>
+                                <select name="type"
+                                    class="form-select"
+                                    id="edit_payslip_item_type"
+                                    required>
+                                    <option value="">Select Type</option>
+                                    <option value="earning">Earning</option>
+                                    <option value="deduction">Deduction</option>
+                                </select>
+                            </div>
+                        </div>
+
                     </div>
 
-                    <!-- Update Button -->
-                    <div class="submit__btn text-center">
-                        <button type="submit" class="btn btn-primary">Update</button>
+                    <div class="submit__btn text-center mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            Update
+                        </button>
                     </div>
 
                 </form>
             </div>
+
         </div>
     </div>
 </div>
-<!-- edit department modal end -->
+<!-- edit payslip-item modal end -->
+
+
 <script>
-    const base_url = "<?= $GLOBALS['base_url'] ?>"; // PHP outputs the correct base URL
-
-
-
+       const base_url = "<?= $GLOBALS['base_url'] ?>";
     document.addEventListener("DOMContentLoaded", function() {
-        const modal = document.getElementById('editDepartment');
 
-        // Attach listener only once when modal is shown
+        const modal = document.getElementById('editPayslipItemModal');
+
         modal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget; // the clicked button
+            const button = event.relatedTarget;
 
-            // Get data attributes
             const id = button.getAttribute('data-id');
             const name = button.getAttribute('data-name');
-            const status = button.getAttribute('data-status');
+            const type = button.getAttribute('data-type');
 
-            // Fill form fields
-            document.getElementById('edit_department_id').value = id;
-            document.getElementById('edit_department').value = name;
-            console.log("Button clicked:", button);
-            console.log("Department ID:", id, "Name:", name, "Status:", status);
-
-            if (status === "1") {
-                document.getElementById('editStatusActive').checked = true;
-            } else {
-                document.getElementById('editStatusInactive').checked = true;
-            }
+            document.getElementById('edit_payslip_item_id').value = id;
+            document.getElementById('edit_payslip_item_name').value = name;
+            document.getElementById('edit_payslip_item_type').value = type;
         });
+
     });
 </script>

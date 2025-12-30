@@ -60,41 +60,60 @@ class BookingLead extends Model
     }
 
     // Update follow-up by ID
-    public function update($data)
-    {
-        $stmt = $this->db->prepare("
-        UPDATE lead_follow_ups SET
+public function update($data, $id)
+{
+    $stmt = $this->db->prepare("
+        UPDATE lead_bookings SET
             lead_id = ?,
             flat_id = ?,
-            follow_up_date = ?,
-            follow_up_time = ?,
-            follow_up_type = ?,
-            booking_status = ?,
-            discussion_note = ?,
-            next_follow_up_date = ?,
-            next_action = ?
+            project_id = ?,
+            created_by = ?,
+            agreement_value = ?,
+            booking_date = ?,
+            booking_status = ?
         WHERE id = ?
     ");
 
-        if (!$stmt) {
-            setError($this->db->error);
-            return false;
-        }
-        $stmt->bind_param(
-            "iisssssssi",
-            $data['lead_id'],
-            $data['flat_id'],   // NULL or valid flats.id
-            $data['follow_up_date'],
-            $data['follow_up_time'],
-            $data['follow_up_type'],
-            $data['booking_status'],
-            $data['discussion_note'],
-            $data['next_follow_up_date'],
-            $data['next_action'],
-            $data['id']
-        );
-        return $stmt->execute();
+    if (!$stmt) {
+        setError($this->db->error);
+        return false;
     }
+
+    $stmt->bind_param(
+        "iiiidssi",
+        $data['lead_id'],
+        $data['flat_id'],
+        $data['project_id'],
+        $data['created_by'],
+        $data['agreement_value'],
+        $data['booking_date'],
+        $data['booking_status'],
+        $id
+    );
+
+    return $stmt->execute();
+}
+
+/**
+ * Update lead_payments.amount for the booking_money payment type
+ */
+public function updateBookingPaymentAmount($bookingId, $amount)
+{
+    $stmt = $this->db->prepare("
+        UPDATE lead_payments
+        SET amount = ?
+        WHERE booking_id = ? AND payment_type = 'booking_money'
+    ");
+
+    if (!$stmt) {
+        setError($this->db->error);
+        return false;
+    }
+
+    $stmt->bind_param("di", $amount, $bookingId);
+    return $stmt->execute();
+}
+
     // Optional: get onboard records by lead
     public function getByLead($lead_id)
     {

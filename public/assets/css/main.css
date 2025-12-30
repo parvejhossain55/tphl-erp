@@ -5648,7 +5648,7 @@ img {
 .app-sidebar .sidebar-menu.child3 .sidebar__menu-item:hover {
   color: var(--clr-theme-primary);
 }
-.app-sidebar .sidebar__menu-category {
+/* .app-sidebar .sidebar__menu-category {
   color: var(--clr-text-body);
   font-size: 16px;
   font-weight: 500;
@@ -5657,7 +5657,30 @@ img {
   padding: 10px 20px;
   white-space: nowrap;
   position: relative;
+} */
+
+
+.app-sidebar .sidebar__menu-category {
+    color: var(--clr-text-body);
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    white-space: nowrap;
+    position: relative;
+    display: flex;
+    align-items: center;
 }
+
+.app-sidebar .sidebar__menu-category::before {
+    content: "\e404"; /* highpen icon code */
+font-family: "Font Awesome 6 Pro";
+  font-size: 12px;
+  inset-inline-start: -10px;
+  opacity: 0.8;
+}
+
 .app-sidebar .sidebar__menu-item {
   padding: 12px 20px;
   position: relative;
@@ -5698,7 +5721,7 @@ img {
 .app-sidebar .sidebar-menu.child1 .sidebar__menu-item:before, .app-sidebar .sidebar-menu.child2 .sidebar__menu-item:before, .app-sidebar .sidebar-menu.child3 .sidebar__menu-item:before {
   position: absolute;
   content: "\e404";
-  font-family: "Font Awesome 6 Pro";
+font-family: "Font Awesome 6 Pro";
   font-size: 12px;
   inset-inline-start: -10px;
   opacity: 0.8;

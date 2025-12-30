@@ -61,7 +61,7 @@ $stmt->bind_param(
 public function update($data)
 {
     // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE departments SET name = ?, type = ? WHERE id = ?");
+    $stmt = $this->db->prepare("UPDATE payslip_items SET name = ?, type = ? WHERE id = ?");
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;
@@ -86,10 +86,10 @@ public function update($data)
 public function delete($id)
 {
     // Delete all designations linked to this department
-    $stmt1 = $this->db->prepare("DELETE FROM payslip_details WHERE payslip_item_id = ?");
-    $stmt1->bind_param("i", $id);
-    $stmt1->execute();
-    $stmt1->close();
+    // $stmt1 = $this->db->prepare("DELETE FROM payslip_details WHERE payslip_item_id = ?");
+    // $stmt1->bind_param("i", $id);
+    // $stmt1->execute();
+    // $stmt1->close();
 
     //  Delete the department
     $stmt2 = $this->db->prepare("DELETE FROM payslip_items WHERE id = ?");
