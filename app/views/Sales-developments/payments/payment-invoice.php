@@ -625,7 +625,9 @@
 
                     <div class="field-group">
                         <label class="field-label">Payment Received Date</label>
-                        <input type="date" class="field-input" value="<?= date('d M Y', strtotime($invoice['payment_date'])) ?>">
+                        <input type="date" class="field-input"
+                            value="<?= date('Y-m-d', strtotime($invoice['payment_date'])) ?>">
+
                     </div>
 
                     <div class="field-group">
@@ -685,27 +687,75 @@
 
                 <div class="section-decorator"></div>
 
-                <div style="margin-top: 3rem; padding: 2rem; background: linear-gradient(135deg, #e6f7f1 0%, #f0fdf4 100%); border-radius: 12px; border: 2px solid var(--primary-light);">
-                    <div style="text-align: center;">
-                        <p style="font-size: 1rem; color: var(--primary); font-weight: 600; margin-bottom: 0.5rem;">
-                            ✓ Document Verified & Authenticated
-                        </p>
-                        <p style="font-size: 0.9rem; color: var(--text-light);">
-                            Please verify all information before printing. This document serves as an official record of the transaction.
-                        </p>
-                    </div>
-                </div>
+                <div class="section-header">
+    <h2 class="section-title">RULES OF FLAT PURCHASING WITH LAND</h2>
+</div>
+
+<?php $rulesArray = getFlatRulesArray(); ?>
+
+<div style="margin-top: 3rem; padding: 2rem; background: linear-gradient(135deg, #e6f7f1 0%, #f0fdf4 100%); border-radius: 12px; border: 2px solid var(--primary-light);">
+    <div style="text-align: center;">
+        <ul style="list-style-type: decimal; padding-left: 1.5rem; text-align: left; color: var(--primary); font-weight: 600;">
+            <?php foreach($rulesArray as $rule): ?>
+                <li><?= htmlspecialchars($rule) ?></li>
+            <?php endforeach; ?>
+        </ul>
+        <p style="font-size: 0.9rem; color: var(--text-light); margin-top: 1rem;">
+            Please verify all information before printing. This document serves as an official record of the transaction.
+        </p>
+    </div>
+</div>
+
+<!-- Footer Section -->
+<div style="margin-top: 3rem; display: flex; flex-direction: column; gap: 2rem; font-size: 0.95rem;">
+
+    <!-- I Agree Checkbox -->
+    <div style="text-align: left;">
+        <label>
+            <input type="checkbox" disabled checked> I agree to the terms & conditions
+        </label>
+    </div>
+
+    <!-- Signature Rows -->
+    <div style="display: flex; justify-content: space-between; margin-top: 2rem;">
+
+        <!-- Left: Seller Name & Signature -->
+        <div style="text-align: left;">
+            <p>Seller Name & Signature</p>
+            <div style="border-bottom: 1px solid #000; width: 200px; height: 1.5rem;"></div>
+        </div>
+
+        <!-- Right: Applicant & Authorized Signatures -->
+        <div style="text-align: right;">
+            <p>Applicant Signature</p>
+            <div style="border-bottom: 1px solid #000; width: 200px; height: 1.5rem; margin-bottom: 1rem;"></div>
+
+            <p>Authorized Signature</p>
+            <div style="border-bottom: 1px solid #000; width: 200px; height: 1.5rem;"></div>
+        </div>
+
+    </div>
+</div>
+
             </div>
+
+
+            <div class="section-divider"></div>
 
             <div class="section">
                 <div class="section-header">
-                    <h2 class="section-title">Terms And Condition</h2>
-                    <p><?= $flatRules ?></p>
+                    <h2 class="section-title">Terms & Conditions</h2>
                 </div>
 
-          
+                <div style="padding-left: 70px; margin-top: 1rem;">
+                    <?= $flatRules ?>
+                </div>
+            </div>
+
+
 
         </div>
+
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 

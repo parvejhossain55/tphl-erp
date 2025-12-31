@@ -479,8 +479,7 @@ function calculateReadTime($content, $wpm = 180)
 }
 
 
-//rules
-function getFlatRules($separator = "\n")
+function getFlatRulesArray()
 {
     static $rulesCache = null;
 
@@ -491,12 +490,15 @@ function getFlatRules($separator = "\n")
         $result = $db->query($query);
         if ($result) {
             while ($row = $result->fetch_assoc()) {
-                $rulesCache[] = $row['rules_description'];
+                $rule = trim($row['rules_description']); // whitespace remove
+                if ($rule !== '') { // empty skip
+                    $rulesCache[] = $rule;
+                }
             }
         }
     }
 
-    return implode($separator, $rulesCache);
+    return $rulesCache; // array return
 }
 
 
