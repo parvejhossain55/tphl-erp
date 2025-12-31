@@ -159,6 +159,11 @@ $routes = [
     // site-Setting 
     "site-settings" => ["controller" => "SiteManage\\SiteSettingController", "method" => "index"],
     "store-site-setting" => ["controller" => "SiteManage\\SiteSettingController", "method" => "storeOrUpdate"],
+    // flat purchase rules
+    "flat-purchase-rules" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "index"],
+    "store-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "store"],
+    "update-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "update"],
+    "delete-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "delete"],
 
     //project
     "project-lists" => ["controller" => "ProjectController", "method" => "index"],
@@ -214,30 +219,59 @@ $routes = [
     "delete-payslip-item" => ["controller" => "PayslipItemController", "method" => "delete"],
 
 
+    //company bank accounts
+    "company-bank-accounts" => ["controller" => "BankAccountController", "method" => "index"],
+
+
 
 
     //Rafi Start  Accounts
-    "accounts-dashboard" => ["controller" => "AccountManagementController", "method" => "index"],
-    //Clients
-    "clients-cash-in" => ["controller" => "AccountClientController", "method" => "index"],
+ // ==================== ACCOUNTS====================
 
+    'dashboard' => ["controller" => "DashboardController", "method" => "index"],
+    'account-dashboard' => ["controller" => "DashboardController", "method" => "index"],
+    'dashboard/get-statistics' => ["controller" => "DashboardController", "method" => "getStatistics"],
+
+    // ==================== CLIENT CASH IN ROUTES ====================
+
+    "clients-cash-in" => ["controller" => "AccountClientController", "method" => "index"],
     // client's cash in history 
     "clients-cash-in-history" => ["controller" => "AccountClientController", "method" => "indexTwo"],
     "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],
-
     // Add transaction route
     "add-transaction" => ["controller" => "AccountClientController", "method" => "addTransaction"],
-
     "edit-client-cash-in/(\d+)" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
-
     "edit-client-cash-in" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
     "client-cash-in-form" => ["controller" => "AccountClientController", "method" => "showAddTransactionForm"],
-
-    // Update transaction route
     "update-transaction" => ["controller" => "AccountClientController", "method" => "updateTransaction"],
-
-    // Delete transaction route
     "delete-transaction" => ["controller" => "AccountClientController", "method" => "deleteTransaction"],
+
+    // ==================== MANAGEMENT CASH IN ROUTES ====================
+    'management-cash-in' => ["controller" => "AccountManagementController", "method" => "index"],
+    'add-management-cash-in' => ["controller" => "AccountManagementController", "method" => "showAddForm"],
+    'store-management-cash-in' => ["controller" => "AccountManagementController", "method" => "storeTransaction"],
+    'edit-management-cash-in' => ["controller" => "AccountManagementController", "method" => "showEditForm"],
+    'update-management-cash-in' => ["controller" => "AccountManagementController", "method" => "updateTransaction"],
+    'delete-management-cash-in' => ["controller" => "AccountManagementController", "method" => "deleteTransaction"],
+    'get-management-transaction-details' => ["controller" => "AccountManagementController", "method" => "getTransactionDetails"],
+
+    // ==================== MANAGEMENT ROLES ROUTES ====================
+    'management-roles' => ["controller" => "AccountManagementController", "method" => "manageRoles"],
+    'get-role-details' => ["controller" => "AccountManagementController", "method" => "getRoleDetails"],
+    'add-role' => ["controller" => "AccountManagementController", "method" => "addRole"],
+    'update-roles' => ["controller" => "AccountManagementController", "method" => "updateRole"],
+    'delete-role' => ["controller" => "AccountManagementController", "method" => "deleteRole"],
+    'toggle-role-status' => ["controller" => "AccountManagementController", "method" => "toggleRoleStatus"],
+
+    // ==================== MANAGEMENT CASH OUT ROUTES ====================
+    'management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "index"],
+    'add-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "showAddForm"],
+    'store-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "storeTransaction"],
+    'edit-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "showEditForm"],
+    'update-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "updateTransaction"],
+    'delete-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "deleteTransaction"],
+    'get-cashout-transaction-details' => ["controller" => "AccountManagementCashoutController", "method" => "getTransactionDetails"],
+    'export-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "exportTransactions"],
 
     //rafi End
 

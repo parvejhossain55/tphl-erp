@@ -34,12 +34,12 @@ public function create($data)
 {
     $stmt = $this->db->prepare("
         INSERT INTO lead_payments
-        (booking_id, bank_name, bank_account_no, cheque_no, online_type, payment_type, amount, payment_method, payment_status, payment_date, transaction_ref, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (booking_id, bank_name, bank_account_no, cheque_no, online_type, payment_type, amount, payment_method, payment_status, payment_date, transaction_ref, total_emi_no,created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)
     ");
 
     $stmt->bind_param(
-        "isssssdssssi",
+        "isssssdssssii",
         $data['booking_id'],
         $data['bank_name'],
         $data['bank_account_no'],
@@ -51,6 +51,7 @@ public function create($data)
         $data['payment_status'],
         $data['payment_date'],
         $data['transaction_ref'],
+        $data['total_emi_no'],
         $data['created_by']
     );
 
@@ -159,11 +160,16 @@ public function getPaymentCount()
 
             lb.id AS booking_id,
             lb.agreement_value,
-
+            lb.discount_amount,
+            lb.booking_date,
             l.lead_name AS lead_name,
+            l.father_name,l.mother_name,l.email,l.address,l.nid_or_passport,l.address,l.permanent_address,l.dob,l.phone,l.designation AS profession,
             p.name AS project_name,
-
+            p.electricity_backup,
+            p.total_share,
+            f.flat_name,
             f.floor_no,
+            f.sqft,
             f.price_value,
             u.name AS unit_name,
 

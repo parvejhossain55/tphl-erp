@@ -571,7 +571,7 @@ div.dataTables_wrapper div.dataTables_filter {
 
 .dataTables_wrapper .dataTables_paginate .paginate_button {
     font-size: 16px;
-    padding: 6px 24px;
+    padding: 16px 24px;
     box-shadow: none;
     font-weight: 400;
     transition: all 0.3s linear;
@@ -646,6 +646,7 @@ div.dataTables_wrapper div.dataTables_filter {
 }
 
 .dataTables_wrapper .dataTables_paginate {
+    padding-bottom: 20px;
     padding-top: 20px;
 
     @include rtl {

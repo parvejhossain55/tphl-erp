@@ -26,6 +26,7 @@ class LeadSource extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
+    
 
 
     public function find($id)

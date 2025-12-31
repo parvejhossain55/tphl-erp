@@ -5,7 +5,23 @@ $addPage = 'add transaction';
 $addPage = true;
 $show_breadcrumb = true;
 ?>
-
+<style>
+        .card__icon span {
+    color: var(--clr-theme-primary);
+    background: rgba(108, 95, 252, 0.1);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
+}
+.card__title {
+    font-size: 1.25rem;
+}
+</style>
 <div class="row">
 
     <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
@@ -112,7 +128,7 @@ $show_breadcrumb = true;
                                     </td>
                                     <td><?= htmlspecialchars($client['unit_name']) ?> - Floor <?= $client['flat_no'] ?></td>
                                     <td><?= number_format($client['flat_size']) ?> sqft</td>
-                                    <td class="">
+                                    <td>
                                         <div class="d-flex align-items-center justify-content-start gap-10">
                                             <a class="table__icon download"
                                                 href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history/<?= $client['booking_id'] ?>"
@@ -136,7 +152,109 @@ $show_breadcrumb = true;
 
 </div>
 
-<
+<!-- Add Transaction Modal -->
+<!-- <div class="modal fade" id="addTransactionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Transaction</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/add-transaction" method="post" id="transactionForm">
+                    <input type="hidden" name="booking_id" id="modal_booking_id">
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-20">
+                            <div class="alert alert-info">
+                                <strong>Client:</strong> <span id="modal_client_name"></span><br>
+                                <strong>Agreement Value:</strong> ৳<span id="modal_agreement_value"></span><br>
+                                <strong>Already Paid:</strong> ৳<span id="modal_paid_amount"></span><br>
+                                <strong>Remaining:</strong> ৳<span id="modal_remaining_amount"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-20">
+                            <div class="form__input-title">
+                                <label>Payment Type <span>*</span></label>
+                            </div>
+                            <div class="form__input">
+                                <select name="payment_type" class="form-select" required>
+                                    <option value="booking_money">Booking Money</option>
+                                    <option value="registration">Registration</option>
+                                    <option value="emi">EMI</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-20">
+                            <div class="form__input-title">
+                                <label>Amount <span>*</span></label>
+                            </div>
+                            <div class="form__input">
+                                <input type="number" name="amount" class="form-control" 
+                                       step="0.01" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-20">
+                            <div class="form__input-title">
+                                <label>Payment Method <span>*</span></label>
+                            </div>
+                            <div class="form__input">
+                                <select name="payment_method" class="form-select" required>
+                                    <option value="cash">Cash</option>
+                                    <option value="bank">Bank Transfer</option>
+                                    <option value="online">Online Payment</option>
+                                    <option value="cheque">Cheque</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-20">
+                            <div class="form__input-title">
+                                <label>Payment Date <span>*</span></label>
+                            </div>
+                            <div class="form__input">
+                                <input type="date" name="payment_date" class="form-control" 
+                                       value="<?= date('Y-m-d') ?>" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-20">
+                            <div class="form__input-title">
+                                <label>Transaction Reference</label>
+                            </div>
+                            <div class="form__input">
+                                <input type="text" name="transaction_ref" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-20">
+                            <div class="form__input-title">
+                                <label>Payment Status <span>*</span></label>
+                            </div>
+                            <div class="form__input">
+                                <select name="payment_status" class="form-select" required>
+                                    <option value="paid">Paid</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="failed">Failed</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="submit__btn text-center mt-20">
+                        <button type="submit" class="btn btn-primary">Add Transaction</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div> -->
 
 <script>
     function openTransactionModal(bookingId, clientName, agreementValue, paidAmount) {

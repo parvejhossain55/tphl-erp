@@ -28,68 +28,102 @@ class Lead extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-	
 
-public function create($data)
-{
-    $stmt = $this->db->prepare("
+
+    public function create($data)
+    {
+        $stmt = $this->db->prepare("
         INSERT INTO leads (
-            lead_name, lead_type, company,
+            lead_name, father_name, mother_name, dob, permanent_address, nid_or_passport,
             phone, alt_phone_number, email,
             source_type_id, assigned_id,
             address, pref_location, designation,
             project_type, interest_on, pref_flat_size,
             communication_type, tags, description,
-            visibility, status, lead_quality
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            visibility, status, lead_quality, lead_type, company
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
-    if (!$stmt) {
-        setError("Prepare failed: " . $this->db->error);
-        return false;
+        if (!$stmt) {
+            setError("Prepare failed: " . $this->db->error);
+            return false;
+        }
+
+        // Assign variables first (pass by reference)
+        $lead_name = $data['lead_name'] ?? null;
+        $father_name = $data['father_name'] ?? null;
+        $mother_name = $data['mother_name'] ?? null;
+        $dob = $data['dob'] ?? null;
+        $permanent_address = $data['permanent_address'] ?? null;
+        $nid_or_passport = $data['nid_or_passport'] ?? null;
+        $phone = $data['phone'] ?? null;
+        $alt_phone_number = $data['alt_phone_number'] ?? null;
+        $email = $data['email'] ?? null;
+        $source_type_id = $data['source_type_id'] ?? null;
+        $assigned_id = $data['assigned_id'] ?? null;
+        $address = $data['address'] ?? null;
+        $pref_location = $data['pref_location'] ?? null;
+        $designation = $data['designation'] ?? null;
+        $project_type = $data['project_type'] ?? null;
+        $interest_on = $data['interest_on'] ?? null;
+        $pref_flat_size = $data['pref_flat_size'] ?? null;
+        $communication_type = $data['communication_type'] ?? null;
+        $tags = $data['tags'] ?? null;
+        $description = $data['description'] ?? null;
+        $visibility = $data['visibility'] ?? 'public';
+        $status = $data['status'] ?? 'active';
+        $lead_quality = $data['lead_quality'] ?? 'Pending';
+        $lead_type = $data['lead_type'] ?? null;
+        $company = $data['company'] ?? null;
+
+        // Bind parameters
+        $stmt->bind_param(
+            "sssssssssssisssssssssssss",
+            $lead_name,
+            $father_name,
+            $mother_name,
+            $dob,
+            $permanent_address,
+            $nid_or_passport,
+            $phone,
+            $alt_phone_number,
+            $email,
+            $source_type_id,
+            $assigned_id,
+            $address,
+            $pref_location,
+            $designation,
+            $project_type,
+            $interest_on,
+            $pref_flat_size,
+            $communication_type,
+            $tags,
+            $description,
+            $visibility,
+            $status,
+            $lead_quality,
+            $lead_type,
+            $company
+        );
+
+        if ($stmt->execute()) {
+            setSuccess("Lead created successfully!");
+            return true;
+        } else {
+            setError("Lead creation failed: " . $stmt->error);
+            return false;
+        }
     }
 
-    // Correct type string: 21 parameters
-    // Assuming: s=string, i=int
-    $stmt->bind_param(
-        "ssssssisssssssssssss",
-        $data['lead_name'],          
-        $data['lead_type'],          
-        $data['company'],            
-        $data['phone'],              
-        $data['alt_phone_number'],   
-        $data['email'],              
-        $data['source_type_id'],     // i
-        $data['assigned_id'],        // i
-        $data['address'],            
-        $data['pref_location'],      
-        $data['designation'],        
-        $data['project_type'],       
-        $data['interest_on'],        
-        $data['pref_flat_size'],     
-        $data['communication_type'], 
-        $data['tags'],               
-        $data['description'],        
-        $data['visibility'],         
-        $data['status'],             
-        $data['lead_quality']        
-    );
 
-    if ($stmt->execute()) {
-        setSuccess("Lead created successfully!");
-        return true;
-    } else {
-        setError("Lead creation failed: " . $stmt->error);
-        return false;
-    }
-}
+
 
 
     //employee id find for edit
-public function find($id)
-{
-    $stmt = $this->db->prepare(
-        "SELECT 
+    public function find($id)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT 
             leads.*,
             s.name AS source_name,
             u.full_name AS user_name,
@@ -105,12 +139,12 @@ public function find($id)
 
         WHERE leads.id = ?
         GROUP BY leads.id"
-    );
+        );
 
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_assoc();
-}
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
 
 
     /**
@@ -119,8 +153,9 @@ public function find($id)
     public function update($id, $data)
     {
         $sql = "UPDATE leads SET
-        lead_name = ?, lead_type = ?, company = ?, phone = ?, alt_phone_number = ?,
-        email = ?, source_type_id = ?,assigned_id=?, address = ?, pref_location = ?, designation = ?, project_type = ?,
+        lead_name = ?, father_name = ?, mother_name = ?, dob = ?, permanent_address = ?, nid_or_passport = ?,
+        phone = ?, alt_phone_number = ?,
+        email = ?, source_type_id = ?, assigned_id=?, address = ?, pref_location = ?, designation = ?, project_type = ?,
         interest_on = ?, pref_flat_size = ?, communication_type = ?, tags = ?, description = ?, visibility = ?, status = ?, lead_quality = ?
         WHERE id = ?";
 
@@ -130,10 +165,13 @@ public function find($id)
         }
 
         $stmt->bind_param(
-            "ssssssiissssssssssssi",
+            "sssssssssssiissssssssssssi",
             $data['lead_name'],
-            $data['lead_type'],
-            $data['company'],
+            $data['father_name'],
+            $data['mother_name'],
+            $data['dob'],
+            $data['permanent_address'],
+            $data['nid_or_passport'],
             $data['phone'],
             $data['alt_phone_number'],
             $data['email'],
@@ -180,5 +218,4 @@ public function find($id)
         $stmt->bind_param("i", $id);
         return $stmt->execute();
     }
-
 }

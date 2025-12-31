@@ -11,8 +11,12 @@ class Payslip extends Model
 
     // Get all Departments with paginate
 
-public function getAll() {
-    $stmt = $this->db->prepare("SELECT * FROM payslips");
+public function getAllWithEmployee() {
+    $stmt = $this->db->prepare("SELECT p.*,e.id AS employee_id,e.full_name AS employee_name ,e.email,e.joining_date,d.name AS desgination_name 
+    FROM payslips AS p 
+    LEFT JOIN employees AS e ON p.employee_id = e.id 
+    LEFT JOIN designations AS d ON p.designation_id = d.id
+    ORDER BY p.id DESC");
     
     if (!$stmt) {
         die("Prepare failed: " . $this->db->error);
@@ -26,7 +30,24 @@ public function getAll() {
     return $data;
 }
 
+public function getPaidCount(){
+    $stmt = $this->db->prepare("SELECT count(*) as paid_count FROM payslips WHERE status ='paid'");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+    $stmt->close();
 
+    return $data['paid_count'];
+}
+public function getPendingCount(){
+    $stmt = $this->db->prepare("SELECT count(*) as pending_count FROM payslips WHERE status ='pending'");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+    $stmt->close();
+
+    return $data['pending_count'];
+}
     // Create a new role
 
   public function create($data)

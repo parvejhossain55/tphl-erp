@@ -479,6 +479,26 @@ function calculateReadTime($content, $wpm = 180)
 }
 
 
+//rules
+function getFlatRules($separator = "\n")
+{
+    static $rulesCache = null;
+
+    if ($rulesCache === null) {
+        $db = $GLOBALS['db']; 
+        $rulesCache = [];
+        $query = "SELECT rules_description FROM flat_purchase_rules WHERE status = 1 ORDER BY id ASC";
+        $result = $db->query($query);
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $rulesCache[] = $row['rules_description'];
+            }
+        }
+    }
+
+    return implode($separator, $rulesCache);
+}
+
 
 
 // $readTime = calculateReadTime($_POST['content']);

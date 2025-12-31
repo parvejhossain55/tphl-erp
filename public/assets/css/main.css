@@ -11641,6 +11641,9 @@ div.DTS div.dataTables_scrollBody table {
   padding: 0;
   width: 100%;
 }
+.dataTables_paginate paging_simple_numbers{
+  padding-bottom:10px;
+}
 .dataTables_wrapper.no-footer .dataTables_scrollBody {
   border-bottom: 1px solid var(--clr-border-1);
 }
@@ -11659,7 +11662,7 @@ div.DTS div.dataTables_scrollBody table {
   margin-top: 20px;
 }
 .dataTables_wrapper .dataTables_paginate .paginate_button {
-  margin: 0 10px;
+  margin: 10px 10px;
   border-radius: 0;
 }
 .dataTables_wrapper .dataTables_paginate .paginate_button.current, .dataTables_wrapper .dataTables_paginate .paginate_button:active {

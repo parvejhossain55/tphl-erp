@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 <div class="row mb-4">
     <div class="col-xxl-12">
         <div class="card__wrapper p-3">
-            <h5>Onboard Lead</h5>
+            <h5>Booking Lead</h5>
 
             <form action="<?= $GLOBALS['base_url'] ?>/booking-store" method="POST">
                 <div class="row gy-3">
@@ -47,7 +47,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <!-- Flat -->
                     <div class="col-lg-6">
                         <label class="form-label">Flat / Unit *</label>
-                        <select id="flatSelect" class="form-select " data-live-search="true">
+                        <select id="flatSelect" name="flat_id" class="form-select " data-live-search="true">
 
                             <option value="">Select Flat</option>
                         </select>
@@ -82,7 +82,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 </div>
 
                 <div class="mt-4">
-                    <button type="submit" class="btn btn-success">Confirm Onboard</button>
+                    <button type="submit" class="btn btn-success">Confirm Booking</button>
                 </div>
 
             </form>
@@ -99,7 +99,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>Lead</th>
+                            <th>Client</th>
                             <th>Project</th>
                             <th>Flat</th>
                             <th>Created By</th>
@@ -140,7 +140,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <tr>
                                 <td></td>
                                 <td></td>
-                                <td class="text-center text-muted">No onboarding records found</td>
+                                <td class="text-center text-muted">No Bookings records found</td>
                                 <td></td>
                                 <td></td>
                                 <td></td>

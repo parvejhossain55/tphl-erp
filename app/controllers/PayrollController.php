@@ -5,22 +5,30 @@ class PayrollController extends Controller
     protected $db;
     protected $employeeModel;
     protected $payslipItemModel;
-
+    protected $paymentModel;
     public function __construct($db)
     {
         $this->db = $db;
         $this->employeeModel = new Employee($this->db);
         $this->payslipItemModel = new PayslipItem($this->db);
+        $this->paymentModel = new Payslip($this->db);
     }
 
     public function index()
     {
-        $employees = $this->employeeModel->getAll();
+        $totalEmployees = $this->employeeModel->getTotalCount();
+        $payslips = $this->paymentModel->getAllWithEmployee();
+        $paidCount = $this->paymentModel->getPaidCount();
+        $pendingCount = $this->paymentModel->getPendingCount();
 
         //  Pass all data to view
         $this->view("payrolls/payslips/payslip-lists", [
             "current_route" => "payslip-lists",
             "page_title"    => "Payroll Lists",
+            "payslips" => $payslips,
+            "totalEmployees" => $totalEmployees,
+            "paidCount" => $paidCount,
+            "pendingCount" => $pendingCount,
 
         ]);
     }

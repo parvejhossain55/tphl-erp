@@ -1,5 +1,5 @@
 <?php
-$page = "create List"
+$page = "create Lead"
 ?>
 <!-- new lead modal start -->
 <form action="<?= $GLOBALS['base_url'] ?>/store-lead" method="POST">
@@ -12,10 +12,32 @@ $page = "create List"
                 <input class="form-control" name="lead_name" id="leadName" type="text">
             </div>
         </div>
+        <div class="col-lg-6">
+            <div class="from__input-box">
+                <label class="form__input-title" for="leadName">Father Name</label>
+                <input class="form-control" name="father_name" id="father_name" type="text">
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="from__input-box">
+                <label class="form__input-title" for="leadName">Mother Name</label>
+                <input class="form-control" name="mother_name" id="mother_name" type="text">
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="from__input-box">
+                <div class="form__input-title">
+                    <label class="form-check-label">Date Of Birth <span>*</span></label>
+                </div>
+                <div class="form__input">
+                    <input name="dob" class="form-control" id="dateofBirth" type="text" readonly="readonly">
+                </div>
+            </div>
+        </div>
         <!-- designation  -->
         <div class="col-md-6">
             <div class="from__input-box">
-                <label>Designation</label>
+                <label>Profession</label>
                 <input type="text" class="form-control" name="designation">
             </div>
         </div>
@@ -84,18 +106,6 @@ $page = "create List"
             </div>
         </div>
 
-
-
-
-
-        <!-- Address -->
-        <div class="col-md-6">
-            <div class="from__input-box">
-                <label>Address</label>
-                <input type="text" class="form-control" name="address">
-            </div>
-        </div>
-
         <!-- Preferred Location -->
         <div class="col-md-6">
             <div class="from__input-box">
@@ -159,11 +169,25 @@ $page = "create List"
             </select>
         </div>
 
-        <!-- Description -->
-        <div class="col-md-12">
+        <!-- Address -->
+        <div class="col-md-6">
             <div class="from__input-box">
-                <label>Lead Description</label>
-                <textarea class="form-control" name="description"></textarea>
+                <label>Present Address</label>
+                 <textarea class="form-control" name="address"></textarea>
+            </div>
+        </div>
+        <!-- Description -->
+        <div class="col-md-6">
+            <div class="from__input-box">
+                <label>Permanent Address</label>
+                <textarea class="form-control" name="permanent_address"></textarea>
+            </div>
+        </div>
+             <!-- Preferred Flat Size -->
+        <div class="col-md-6 ">
+            <div class="from__input-box">
+                <label>NID/Passpor Number*</label>
+                <input type="text" class="form-control" name="nid_or_passport">
             </div>
         </div>
 

@@ -51,7 +51,7 @@
 <body class="body-area">
 
     <!-- Preloader start -->
-    <div class="preloader" id="preloader">
+    <div class=" preloader" id="preloader">
         <div class="loading">
             <span></span>
             <span></span>

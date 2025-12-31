@@ -44,16 +44,52 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
                     
                     <div class="row gy-20">
                         <!-- Payment Type -->
-                        <div class="col-md-6">
-                            <div class="from__input-box">
-                                <label class="form__input-title">Payment Type <span>*</span></label>
-                                <select name="payment_type" id="paymentType" class="form-select" required>
-                                    <option value="">Select Payment Type</option>
-                                    <option value="registration">Registration</option>
-                                    <option value="emi">EMI</option>
-                                </select>
-                            </div>
-                        </div>
+<!-- Payment Type Field -->
+<div class="col-md-6 mb-3">
+    <label class="form-label">Payment Type: <span class="text-danger">*</span></label>
+    <select name="payment_type" class="form-control" id="paymentType" required>
+        <option value="">-- Select Payment Type --</option>
+        
+        <!-- Registration - Always available -->
+        <option value="registration" 
+                data-details="false"
+                <?= (isset($_POST['payment_type']) && $_POST['payment_type'] == 'registration') ? 'selected' : '' ?>>
+            Registration
+        </option>
+                
+        <!-- EMI - Show only if registration is paid -->
+        <?php if ($registrationPaid): ?>
+            <option value="emi" 
+                    data-details="true"
+                    <?= (isset($_POST['payment_type']) && $_POST['payment_type'] == 'emi') ? 'selected' : '' ?>>
+                EMI
+            </option>
+        <?php else: ?>
+            <!-- Disabled option with message -->
+            <option value="emi" disabled>
+                EMI (Registration Required)
+            </option>
+        <?php endif; ?>
+    </select>
+    
+    <!-- Simple help text -->
+    <small class="text-muted">
+        <?php if (!$registrationPaid): ?>
+            <span class="text-warning">
+                <i class="fa-light fa-exclamation-triangle"></i> 
+                EMI option will be available after registration payment is made.
+            </span>
+        <?php endif; ?>
+    </small>
+</div>
+
+<!-- EMI Details Section -->
+<div class="col-md-6 mb-3" id="emiDetailsSection" style="display: none;">
+    <label class="form-label">Due EMI Amount: <span class="text-danger">*</span></label>
+    <input type="number" name="due_emi_amount" class="form-control" step="0.01" min="0.01" 
+           value="<?= $_POST['due_emi_amount'] ?? '' ?>">
+    <small class="text-muted">Enter the due amount for this EMI installment</small>
+</div>
 
                         <!-- Amount -->
                         <div class="col-md-6">
@@ -181,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
     paymentType.addEventListener('change', function() {
         if (this.value === 'emi') {
             emiFields.forEach(field => field.style.display = 'block');
-            document.getElementById('dueEmiAmount').setAttribute('required', 'required');
+            document.getElementById('dueEmiAmount').removeAttribute('required', 'required');
         } else {
             emiFields.forEach(field => field.style.display = 'none');
             document.getElementById('dueEmiAmount').removeAttribute('required');
@@ -229,13 +265,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('transactionForm').addEventListener('submit', function(e) {
         const paymentType = document.getElementById('paymentType').value;
         const amount = parseFloat(document.getElementById('amount').value) || 0;
-        const dueAmount = parseFloat(document.getElementById('dueEmiAmount').value) || 0;
+        const dueAmount = parseFloat(document.getElementById('dueEmiAmount').value) || '';
         
-        if (paymentType === 'emi' && dueAmount <= 0) {
-            e.preventDefault();
-            alert('Please enter a valid due amount for EMI');
-            return false;
-        }
+
     });
 });
+
+
 </script>

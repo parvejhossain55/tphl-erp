@@ -29,9 +29,7 @@ class BookingLead extends Model
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    // Create a new follow-up
-
-
+    
     // Get a single follow-up by ID
     public function create($data)
     {
@@ -60,9 +58,9 @@ class BookingLead extends Model
     }
 
     // Update follow-up by ID
-public function update($data, $id)
-{
-    $stmt = $this->db->prepare("
+    public function update($data, $id)
+    {
+        $stmt = $this->db->prepare("
         UPDATE lead_bookings SET
             lead_id = ?,
             flat_id = ?,
@@ -74,45 +72,45 @@ public function update($data, $id)
         WHERE id = ?
     ");
 
-    if (!$stmt) {
-        setError($this->db->error);
-        return false;
+        if (!$stmt) {
+            setError($this->db->error);
+            return false;
+        }
+
+        $stmt->bind_param(
+            "iiiidssi",
+            $data['lead_id'],
+            $data['flat_id'],
+            $data['project_id'],
+            $data['created_by'],
+            $data['agreement_value'],
+            $data['booking_date'],
+            $data['booking_status'],
+            $id
+        );
+
+        return $stmt->execute();
     }
 
-    $stmt->bind_param(
-        "iiiidssi",
-        $data['lead_id'],
-        $data['flat_id'],
-        $data['project_id'],
-        $data['created_by'],
-        $data['agreement_value'],
-        $data['booking_date'],
-        $data['booking_status'],
-        $id
-    );
-
-    return $stmt->execute();
-}
-
-/**
- * Update lead_payments.amount for the booking_money payment type
- */
-public function updateBookingPaymentAmount($bookingId, $amount)
-{
-    $stmt = $this->db->prepare("
+    /**
+     * Update lead_payments.amount for the booking_money payment type
+     */
+    public function updateBookingPaymentAmount($bookingId, $amount)
+    {
+        $stmt = $this->db->prepare("
         UPDATE lead_payments
         SET amount = ?
         WHERE booking_id = ? AND payment_type = 'booking_money'
     ");
 
-    if (!$stmt) {
-        setError($this->db->error);
-        return false;
-    }
+        if (!$stmt) {
+            setError($this->db->error);
+            return false;
+        }
 
-    $stmt->bind_param("di", $amount, $bookingId);
-    return $stmt->execute();
-}
+        $stmt->bind_param("di", $amount, $bookingId);
+        return $stmt->execute();
+    }
 
     // Optional: get onboard records by lead
     public function getByLead($lead_id)
@@ -158,7 +156,9 @@ public function updateBookingPaymentAmount($bookingId, $amount)
         SELECT lb.*, 
                l.lead_name, 
                p.name AS project_name,
+               p.total_share,
                f.floor_no, 
+               f.price_value,
                f.sqft,
                u.name AS unit_name
         FROM lead_bookings lb

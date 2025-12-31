@@ -91,6 +91,7 @@
 
         <!-- JS -->
         <!-- Footer Scripts -->
+
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/calendar-activision.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/jquery-3.7.0.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/isotope.pkgd.js"></script>
@@ -146,6 +147,7 @@
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/sidebar.js"></script>
 
 
+    
         <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.14.0-beta3/js/bootstrap-select.min.js"></script>
 
 

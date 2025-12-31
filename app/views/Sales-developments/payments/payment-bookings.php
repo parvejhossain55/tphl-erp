@@ -11,39 +11,58 @@ if (session_status() === PHP_SESSION_NONE) session_start();
     <div class="row mb-4" id="bookingPayment">
         <div class="col-xxl-12">
             <div class="card__wrapper p-3">
-                <h5>Add Payment for <?= $onboard['lead_name'] ?? 'Lead' ?></h5>
+                <h5>Add Payment for <?= $booking['lead_name'] ?? 'Lead' ?></h5>
 
                 <form action="<?= $GLOBALS['base_url'] ?>/payment-booking-store" method="POST">
                     <div class="row gy-3">
 
                         <!-- Hidden Inputs -->
-                        <input type="hidden" name="booking_id" value="<?= $onboard['id'] ?>">
+                        <input type="hidden" name="booking_id" value="<?= $booking['id'] ?>">
                         <input type="hidden" name="created_by" value="<?= $_SESSION['user']['id'] ?>">
 
                         <!-- Lead Info (Readonly) -->
                         <div class="col-lg-6">
-                            <label class="form-label">Lead Name</label>
-                            <input type="text" class="form-control" value="<?= $onboard['lead_name'] ?>" readonly>
+                            <label class="form__input-title">Lead Name</label>
+                            <input type="text" class="form-control" value="<?= $booking['lead_name'] ?>" readonly>
                         </div>
 
                         <div class="col-lg-6">
-                            <label class="form-label">Project</label>
-                            <input type="text" class="form-control" value="<?= $onboard['project_name'] ?>" readonly>
+                            <label class="form__input-title">Project</label>
+                            <input type="text" class="form-control" value="<?= $booking['project_name'] ?>" readonly>
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Number Of Share</label>
+                            <input type="text" class="form-control" value="<?= $booking['total_share'] ?>" readonly>
                         </div>
 
                         <div class="col-lg-6">
-                            <label class="form-label">Flat / Unit</label>
-                            <input type="text" class="form-control" value="<?= $onboard['unit_name'] ?> (Floor: <?= $onboard['floor_no'] ?>)" readonly>
+                            <label class="form__input-title">Flat / Unit</label>
+                            <input type="text" class="form-control" value="<?= $booking['unit_name'] ?> (Floor: <?= $booking['floor_no'] ?>)" readonly>
                         </div>
-
                         <div class="col-lg-6">
-                            <label class="form-label">Agreement Value</label>
-                            <input type="text" class="form-control" value="<?= number_format($onboard['agreement_value'], 2) ?>" readonly>
+                            <label class="form__input-title">Flat Size</label>
+                            <input type="text" class="form-control" value="<?= $booking['sqft'] ?>" readonly>
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Land Share Value</label>
+                            <input type="text" class="form-control" value="<?= number_format($booking['price_value'], 2) ?>" readonly>
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Agreement Value</label>
+                            <input type="text" class="form-control" value="<?= number_format($booking['agreement_value'], 2) ?>" readonly>
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Discount Value</label>
+                            <input type="text" class="form-control"  value="<?= number_format($booking['discount_amount'] ?? 0, 2) ?>"  readonly>
+                        </div>
+                         <div class="col-lg-6">
+                            <label class="form__input-title">Total EMI Number</label>
+                            <input type="number" name="total_emi_no" class="form-control" value="">
                         </div>
 
                         <!-- Payment Type -->
                         <div class="col-lg-6">
-                            <label class="form-label">Payment Type *</label>
+                            <label class="form__input-title">Payment Type *</label>
                             <select name="payment_type" class="form-select" required>
                                 <option value="">Select Type</option>
                                 <option value="booking_money">Booking</option>
@@ -55,7 +74,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                         <!-- Payment Method -->
                         <div class="col-lg-6">
-                            <label class="form-label">Payment Method *</label>
+                            <label class="form__input-title">Payment Method *</label>
                             <select name="payment_method" class="form-select payment-method" required>
                                 <option value="">Select Method</option>
                                 <option value="cash">Cash</option>
@@ -67,49 +86,49 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                         <!-- Bank Details -->
                         <div class="col-lg-6 extra-input" id="bankFields" style="display:none;">
-                            <label class="form-label">Bank Name - Branch*</label>
+                            <label class="form__input-title">Bank Name - Branch*</label>
                             <input type="text" name="bank_name" class="form-control" placeholder="Enter Bank Name">
                         </div>
 
                         <div class="col-lg-6 extra-input" id="bankAccountFields" style="display:none;">
-                            <label class="form-label">Bank Account No *</label>
+                            <label class="form__input-title">Bank Account No *</label>
                             <input type="text" name="bank_account_no" class="form-control" placeholder="Enter Account Number">
                         </div>
 
                         <!-- Cheque Details -->
                         <div class="col-lg-6 extra-input" id="chequeFields" style="display:none;">
-                            <label class="form-label">Cheque No *</label>
+                            <label class="form__input-title">Cheque No *</label>
                             <input type="text" name="cheque_no" class="form-control" placeholder="Enter Cheque Number">
                         </div>
 
                         <!-- Online Details -->
                         <div class="col-lg-6 extra-input" id="onlineFields" style="display:none;">
-                            <label class="form-label">Online Type *</label>
+                            <label class="form__input-title">Online Type *</label>
                             <input type="text" name="online_type" class="form-control" placeholder="Enter Online Type (Bkash, Nagad, etc)">
                         </div>
 
 
                         <!-- Amount -->
                         <div class="col-lg-6">
-                            <label class="form-label">Pay Amount *</label>
+                            <label class="form__input-title">Pay Amount *</label>
                             <input type="number" step="0.01" name="amount" class="form-control" placeholder="e.g. 5000000" required>
                         </div>
 
                         <!-- Payment Date -->
                         <div class="col-lg-6">
-                            <label class="form-label">Payment Date *</label>
+                            <label class="form__input-title">Payment Date *</label>
                             <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
                         </div>
 
                         <!-- Transaction Reference -->
                         <div class="col-lg-6">
-                            <label class="form-label">Transaction Reference</label>
+                            <label class="form__input-title">Transaction Reference</label>
                             <input type="text" name="transaction_ref" class="form-control" placeholder="Optional reference number">
                         </div>
 
                         <!-- Status -->
                         <div class="col-lg-6">
-                            <label class="form-label">Payment Status</label>
+                            <label class="form__input-title">Payment Status</label>
                             <select name="payment_status" class="form-select">
                                 <option value="paid">Paid</option>
                                 <option value="pending">Pending</option>
@@ -185,38 +204,53 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 <?php if (!$showBookingForm): ?>
     <script>
         document.querySelector('#bookingPayment').style.display = 'none';
-
-
-
     </script>
 <?php endif; ?>
 <script>
- document.querySelectorAll('.payment-method').forEach(select => {
-    select.addEventListener('change', function() {
-        const method = this.value;
+    document.querySelectorAll('.payment-method').forEach(select => {
+        select.addEventListener('change', function() {
+            const method = this.value;
 
-        // Hide all extra input fields
-        document.querySelectorAll('.extra-input').forEach(div => {
-            div.style.display = 'none';
-            div.querySelector('input')?.removeAttribute('required');
+            // Hide all extra input fields
+            document.querySelectorAll('.extra-input').forEach(div => {
+                div.style.display = 'none';
+                div.querySelector('input')?.removeAttribute('required');
+            });
+
+            // Show relevant fields
+            if (method === 'bank') {
+                document.querySelector('#bankFields').style.display = 'block';
+                document.querySelector('#bankFields input').setAttribute('required', 'required');
+
+                document.querySelector('#bankAccountFields').style.display = 'block';
+                document.querySelector('#bankAccountFields input').setAttribute('required', 'required');
+            } else if (method === 'cheque') {
+                 document.querySelector('#bankFields').style.display = 'block';
+                document.querySelector('#bankFields input').setAttribute('required', 'required');
+                document.querySelector('#chequeFields').style.display = 'block';
+                document.querySelector('#chequeFields input').setAttribute('required', 'required');
+            } else if (method === 'online') {
+                document.querySelector('#onlineFields').style.display = 'block';
+                document.querySelector('#onlineFields input').setAttribute('required', 'required');
+            }
         });
-
-        // Show relevant fields
-        if(method === 'bank') {
-            document.querySelector('#bankFields').style.display = 'block';
-            document.querySelector('#bankFields input').setAttribute('required', 'required');
-
-            document.querySelector('#bankAccountFields').style.display = 'block';
-            document.querySelector('#bankAccountFields input').setAttribute('required', 'required');
-        } else if(method === 'cheque') {
-            document.querySelector('#chequeFields').style.display = 'block';
-            document.querySelector('#chequeFields input').setAttribute('required', 'required');
-        } else if(method === 'online') {
-            document.querySelector('#onlineFields').style.display = 'block';
-            document.querySelector('#onlineFields input').setAttribute('required', 'required');
-        }
     });
-});
-
-
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

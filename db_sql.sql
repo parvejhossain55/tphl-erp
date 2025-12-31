@@ -449,6 +449,10 @@ CREATE TABLE payslip_items (
 CREATE TABLE payslips (
     id INT  AUTO_INCREMENT PRIMARY KEY,
     employee_id INT UNSIGNED NOT NULL,
+    --- 31/12/25
+    payment_method ENUM('bank','cash','mobile_banking') NOT NULL DEFAULT 'bank',
+    company_bank_id INT DEFAULT NULL,
+    --- 31/12/25
     designation_id INT UNSIGNED  DEFAULT NULL,
     payslip_month DATE NOT NULL,
     total_earning DECIMAL(10,2) NOT NULL DEFAULT 0.00,
@@ -458,7 +462,8 @@ CREATE TABLE payslips (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
-    FOREIGN KEY (designation_id) REFERENCES designations(id) ON DELETE SET NULL
+    FOREIGN KEY (designation_id) REFERENCES designations(id) ON DELETE SET NULL,
+    FOREIGN KEY (company_bank_id) REFERENCES company_bank_accounts(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -470,6 +475,28 @@ CREATE TABLE payslip_details (
     FOREIGN KEY (payslip_id) REFERENCES payslips(id) ON DELETE CASCADE,
     FOREIGN KEY (payslip_item_id) REFERENCES payslip_items(id) ON DELETE CASCADE
 );
+
+--- 31/12/25
+CREATE TABLE company_bank_accounts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    bank_name VARCHAR(255) NOT NULL,
+    account_name VARCHAR(255) NOT NULL,
+    account_number VARCHAR(100) NOT NULL,
+    is_default TINYINT(1) DEFAULT 0,
+    status ENUM('active','inactive') DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE flat_purchase_rules (
+   id INT AUTO_INCREMENT PRIMARY KEY,
+   rules_description TEXT,
+   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+
+
 
 
 

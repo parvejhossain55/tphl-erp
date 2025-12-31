@@ -64,8 +64,13 @@ class LeadController extends Controller
         $leadData = [
             'lead_name' => $_POST['lead_name'] ?? null,
             'lead_type' => $_POST['lead_type'] ?? null,
+            'father_name' => $_POST['father_name'] ?? null,
+            'mother_name' => $_POST['mother_name'] ?? null,
+            'dob' => $_POST['dob'] ?? null,
+            'permanent_address' => $_POST['permanent_address'] ?? null,
+            'nid_or_passport' => $_POST['nid_or_passport'] ?? null,
             'company' => $_POST['company'] ?? null,
-            'value_amount' => $_POST['value_amount'] ?? 0,
+            // 'value_amount' => $_POST['value_amount'] ?? 0,
             'phone' => $_POST['phone'] ?? null,
             'alt_phone_number' => $_POST['alt_phone_number'] ?? null,
             'email' => $_POST['email'] ?? null,
@@ -137,6 +142,11 @@ class LeadController extends Controller
         $leadData = [
             'lead_name' => $_POST['lead_name'] ?? null,
             'lead_type' => $_POST['lead_type'] ?? null,
+            'father_name' => $_POST['father_name'] ?? null,
+            'mother_name' => $_POST['mother_name'] ?? null,
+            'dob' => $_POST['dob'] ?? null,
+            'nid_or_passport' => $_POST['nid_or_passport'] ?? null,
+            'permanent_address' => $_POST['permanent_address'] ?? null,
             'company' => $_POST['company'] ?? null,
             'currency' => $_POST['currency'] ?? 'BDT',
             'phone' => $_POST['phone'] ?? null,
@@ -196,9 +206,6 @@ class LeadController extends Controller
 
                 // 🔑 CSV → DB column mapping
                 $data = array_combine($header, $row);
-
-                // defaults & safety
-                $data['value_amount'] = (float)($data['value_amount'] ?? 0);
                 $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
                 $data['status'] = (int)($data['status'] ?? 0);
                 $data['visibility'] = $data['visibility'] ?? 'public';
