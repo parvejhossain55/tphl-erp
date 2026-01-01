@@ -500,6 +500,29 @@ function getFlatRulesArray()
 
     return $rulesCache; // array return
 }
+       function amountInWords($amount)
+                    {
+                        if ($amount === null || $amount === '') {
+                            return '';
+                        }
+
+                        $amount = (float)$amount;
+
+                        $formatter = new NumberFormatter("en", NumberFormatter::SPELLOUT);
+                        $words = $formatter->format($amount);
+
+                        // Capitalize + Bangladeshi style
+                        return strtoupper($words . " TAKA ONLY");
+                    }
+
+// truncate text to N characters
+function truncateText($text, $limit = 50) {
+    $text = strip_tags($text); // remove HTML
+    if (strlen($text) > $limit) {
+        return substr($text, 0, $limit) . '...';
+    }
+    return $text;
+}
 
 
 

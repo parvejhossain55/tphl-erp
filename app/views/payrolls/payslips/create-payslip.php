@@ -4,8 +4,11 @@
                         <div class="card_wrapper">
                             <div class="card__body">
                                 <form action="<?= $GLOBALS['base_url'] ?>/store-payslip" method="POST" id="payslipForm">
-
-                                <!-- new here  -->
+                                     <div class="form-header p-3 mb-4 border-bottom">
+                                        <h4 class="card__title text-center mb-4">
+                                            Payslip for the month of <span id="paydateText"></span>
+                                        </h4>
+                                        
                                                              <div class="row g-20 gy-20">
                                 <div class="col-md-7">
                                     <div class="invoice__logo mb-20">
@@ -38,41 +41,19 @@
                                         </div>
                                         <div class="col-lg-9">
                                             <div class="form__input">
-                                                <input class="form-control flatpickr-input active" id="basicInput" type="text" placeholder="Select Date" readonly="readonly">
+                                                <input class="form-control flatpickr-input active" id="paydate" type="text" placeholder="Select Date" readonly="readonly">
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-3">
-                                            <div class="form__input-title">
-                                                <label for="basicInput2">Due Date</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-9">
-                                            <div class="form__input">
-                                                <input class="form-control flatpickr-input active" id="basicInput2" type="text" placeholder="Select Date" readonly="readonly">
-                                            </div>
-                                        </div>
-                                    </div>
+                                   
                                 </div>
                             </div>
-                                <!-- new here  -->
-
-
-
-
-
-
-                                    <div class="form-header p-3 mb-4 border-bottom">
-                                        <h4 class="card__title text-center mb-4">
-                                            Payslip for the month of <span id="paydateText"></span>
-                                        </h4>
-                                        <div class="row align-items-center">
+                                        <!-- <div class="row align-items-center">
                                             <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                                                <img src="<?= getImage('settings', getSetting('logo')); ?>" class="inv-logo mb-2" alt="Logo" style="max-width:150px;">
+                                                <img src="<= getImage('settings', getSetting('logo')); ?>" class="inv-logo mb-2" alt="Logo" style="max-width:150px;">
                                                 <ul class="list-unstyled mb-0">
-                                                    <li><?= getSetting('website_title') ?></li>
-                                                    <li><?= getSetting('address') ?>,</li>
+                                                    <li><= getSetting('website_title') ?></li>
+                                                    <li><= getSetting('address') ?>,</li>
                                                 </ul>
                                             </div>
                                             <div class="col-md-6 text-md-end mt-3 mt-md-0">
@@ -84,8 +65,17 @@
                                                     </li>
                                                 </ul>
                                             </div>
-                                        </div>
+                                        </div> -->
                                     </div>
+                                <!-- new here  -->
+                                <!-- new here  -->
+
+
+
+
+
+
+                                   
 
                                     <!-- Employee Info -->
                                     <div class="row mb-4">
@@ -340,392 +330,3 @@
 
 
 
-
-                <div class="row justify-content-center">
-                    <div class="col-xxl-12 col-xl-12 col-lg-12">
-                        <div class="card__wrapper">
-                            <div class="row g-20 gy-20">
-                                <div class="col-md-7">
-                                    <div class="invoice__logo mb-20">
-                                        <img class="light-logo" src="assets/images/logo/logo.svg" alt="payslip logo">
-                                        <img class="dark-logo" src="assets/images/logo/logo-white.svg" alt="payslip logo">
-                                    </div>
-                                    <p class="mb-5">100 Terminal, Fort Lauderdale,</p>
-                                    <p class="mb-5">Miami 33315, United States</p>
-                                    <p class="mb-5">name@manez.com</p>
-                                    <p class="mb-5">+1(800) 642 7676</p>
-                                </div>
-                                <div class="col-md-5">
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-3">
-                                            <div class="form__input-title">
-                                                <label for="invoiceNumber">Invoice No.</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-9">
-                                            <div class="form__input">
-                                                <input id="invoiceNumber" type="text" class="form-control" placeholder="#MZ-00114">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-3">
-                                            <div class="form__input-title">
-                                                <label for="basicInput">Date</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-9">
-                                            <div class="form__input">
-                                                <input class="form-control flatpickr-input active" id="basicInput" type="text" placeholder="Select Date" readonly="readonly">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-3">
-                                            <div class="form__input-title">
-                                                <label for="basicInput2">Due Date</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-9">
-                                            <div class="form__input">
-                                                <input class="form-control flatpickr-input active" id="basicInput2" type="text" placeholder="Select Date" readonly="readonly">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="invoice-line"></div>
-                            <div class="row g-60 gy-20">
-                                <div class="col-xl-6">
-                                    <div class="mb-15">
-                                        <h5 class="card__heading-title">Billing Address</h5>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-4">
-                                            <div class="form__input-title">
-                                                <label for="billingName">Full Name</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-8">
-                                            <input type="text" class="form-control" id="billingName" placeholder="Full Name" required="">
-                                        </div>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-4">
-                                            <div class="form__input-title">
-                                                <label for="billingEmail">Email</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-8">
-                                            <input type="email" class="form-control" id="billingEmail" placeholder="Email address" required="">
-                                        </div>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-4">
-                                            <div class="form__input-title">
-                                                <label for="billingAddress">Address</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-8">
-                                            <textarea class="form-control" id="billingAddress" rows="3" placeholder="Address" required=""></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-4">
-                                            <div class="form__input-title">
-                                                <label for="billingNumber">Mobile Number</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-8">
-                                            <input type="text" class="form-control" id="billingNumber" placeholder="+1(800) 642 7676" required="">
-                                        </div>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-4">
-                                            <div class="form__input-title">
-                                                <label for="billingPhone">Phone Number</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-8">
-                                            <input type="text" class="form-control" id="billingPhone" placeholder="+1(800) 642 7676" required="">
-                                        </div>
-                                    </div>
-
-                                    <div class="form-check d-flex align-items-center">
-                                        <input type="checkbox" class="form-check-input" id="sameAddresses" name="sameAddresses">
-                                        <label class="form-check-label" for="sameAddresses">
-                                            Are your billing and shipping addresses the same?
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-xl-6">
-                                    <div class="mb-15">
-                                        <h5 class="card__heading-title">Shipping Address</h5>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-4">
-                                            <div class="form__input-title">
-                                                <label for="shippinggName">Full Name</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-8">
-                                            <input type="text" class="form-control" id="shippinggName" placeholder="Full Name" required="">
-                                        </div>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-4">
-                                            <div class="form__input-title">
-                                                <label for="shippinggEmail">Email</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-8">
-                                            <input type="email" class="form-control" id="shippinggEmail" placeholder="Email address" required="">
-                                        </div>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-4">
-                                            <div class="form__input-title">
-                                                <label for="shippinggAddress">Address</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-8">
-                                            <textarea class="form-control" id="shippinggAddress" rows="3" placeholder="Address" required=""></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-4">
-                                            <div class="form__input-title">
-                                                <label for="shippinggNumber">Mobile Number</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-8">
-                                            <input type="text" class="form-control" id="shippinggNumber" placeholder="+1(800) 642 7676" required="">
-                                        </div>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-4">
-                                            <div class="form__input-title">
-                                                <label for="shippinggPhone">Phone Number</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-8">
-                                            <input type="text" class="form-control" id="shippinggPhone" placeholder="+1(800) 642 7676" required="">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="invoice-line"></div>
-                            <div class="row">
-                                <div class="table-responsive">
-                                    <table class="table table-borderless table-nowrap mb-0" id="productTableRepeater">
-                                        <thead class="align-middle">
-                                            <tr class="table__title bg-title">
-                                                <th scope="col" class="" style="width: 30px;">#</th>
-                                                <th scope="col">
-                                                    Product Details
-                                                </th>
-                                                <th scope="col" style="width: 120px;">
-                                                    Rate
-                                                </th>
-                                                <th scope="col" style="width: 120px;">Quantity</th>
-                                                <th scope="col" class="text-end" style="width: 150px;">Amount</th>
-                                                <th scope="col" class="text-end" style="width: 30px;"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr class="product">
-                                                <td>01</td>
-                                                <td class="text-start">
-                                                    <div class="mb-10">
-                                                        <input type="text" class="form-control" id="productName" placeholder="Product Name" required>
-                                                    </div>
-                                                    <textarea class="form-control" id="productDetails" rows="2" placeholder="Product Details"></textarea>
-                                                </td>
-                                                <td>
-                                                    <input type="number" class="form-control product-rate" id="productRate" step="0.01" placeholder="0.00" required>
-                                                </td>
-                                                <td>
-                                                    <input type="number" class="form-control product-quantity" id="productQnty" placeholder="1" min="1" max="1000">
-                                                </td>
-                                                <td class="text-end">
-                                                    <div>
-                                                        <input type="text" class="form-control total-price" id="productTotalPrice" placeholder="$0.00" readonly>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <button id="productRemoval" class="product__removal-btn"><span><i
-                                                                class="fa-solid fa-xmark"></i></span></button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                        <tbody>
-                                            <tr>
-                                                <td colspan="5">
-                                                    <button id="addItemBtn" class="btn btn-primary">Add Item</button>
-                                                </td>
-                                            </tr>
-                                            <tr class="invoice-line">
-                                                <td colspan="2" class="align-middle">
-                                                    <div class="form__input-title">
-                                                        <label for="extraNote">Notes:</label>
-                                                    </div>
-                                                    <textarea class="form-control" id="extraNote" placeholder="Extra Notes..."></textarea>
-                                                </td>
-                                                <td colspan=""></td>
-                                                <td colspan="3" class="p-0">
-                                                    <table class="table table-borderless mb-0 mt-15">
-                                                        <tbody>
-                                                            <tr>
-                                                                <td>Sub Total :</td>
-                                                                <td class="text-end">$00.00</td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td>Discount: <span class="text-black fw-700">(20%)</span></td>
-                                                                <td class="text-end">-$00.00</td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td>Vat :<span class="text-black fw-700">(7.5%)</span></td>
-                                                                <td class="text-end">+$00.00</td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td>Shipping Charge :</td>
-                                                                <td class="text-end">$00.00</td>
-                                                            </tr>
-                                                            <tr class="border-top">
-                                                                <th scope="row">Total :</th>
-                                                                <th class="text-end">$00.00</th>
-                                                            </tr>
-                                                            <tr class="border-top">
-                                                                <td>Rebate :</td>
-                                                                <td class="text-end">-$00.00</td>
-                                                            </tr>
-                                                            <tr class="border-top">
-                                                                <th scope="row">Payable Amount :</th>
-                                                                <th class="text-end">$00.00</th>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="invoice-line"></div>
-                            <div class="row">
-                                <div class="col-xl-6">
-                                    <div class="card__info-wrapper">
-                                        <div class="payment__card-tab">
-                                            <ul class="nav nav-pills mb-15" id="pills-tab" role="tablist">
-                                                <li class="nav-item" role="presentation">
-                                                    <div class="nav-link active" id="pills-bank-tab" data-bs-toggle="pill" data-bs-target="#pills-bank" role="tab" aria-controls="pills-bank" aria-selected="true">
-                                                        <span class="form-check form-check-inline form-check-primary">
-                                                            <input name="customRadio" class="form-check-input" type="radio" value=""
-                                                                id="defaultRadio1" checked="">
-                                                            <label class="form-check-label cursor" for="defaultRadio1">
-                                                                Bank Account
-                                                            </label>
-                                                        </span>
-                                                    </div>
-                                                </li>
-                                                <li class="nav-item" role="presentation">
-                                                    <div class="nav-link" id="pills-paypal-tab" data-bs-toggle="pill" data-bs-target="#pills-paypal" role="tab" aria-controls="pills-paypal" aria-selected="false">
-                                                        <span class="form-check form-check-inline form-check-secondary">
-                                                            <input name="customRadio" class="form-check-input" type="radio" value=""
-                                                                id="defaultRadio2">
-                                                            <label class="form-check-label cursor" for="defaultRadio2">
-                                                                PayPal
-                                                            </label>
-                                                        </span>
-                                                    </div>
-                                                </li>
-                                                <li class="nav-item" role="presentation">
-                                                    <div class="nav-link" id="pills-cod-tab" data-bs-toggle="pill" data-bs-target="#pills-cod" role="tab" aria-controls="pills-cod" aria-selected="false">
-                                                        <span class="form-check form-check-inline form-check-info">
-                                                            <input name="customRadio" class="form-check-input" type="radio" value=""
-                                                                id="defaultRadio3">
-                                                            <label class="form-check-label cursor" for="defaultRadio3">
-                                                                Cash On Delivery
-                                                            </label>
-                                                        </span>
-                                                    </div>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                        <div class="tab-content" id="pills-tabContent">
-                                            <div class="tab-pane fade show active" id="pills-bank" role="tabpanel" aria-labelledby="pills-bank-tab">
-                                                <div class="payment__card-content">
-                                                    <div class="row g-20 gy-20 align-items-center align-content-end justify-content-between">
-                                                        <div class="col-md-6 col-sm-6">
-                                                            <div class="from__input-box">
-                                                                <div class="form__input-title">
-                                                                    <label for="cardname">Card Name</label>
-                                                                </div>
-                                                                <div class="form__input">
-                                                                    <input class="form-control" name="name" id="cardname" type="text" placeholder="Card Holder Name">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6 col-sm-6">
-                                                            <div class="from__input-box">
-                                                                <div class="form__input-title">
-                                                                    <label for="creditCard">Card Number</label>
-                                                                </div>
-                                                                <div class="card-form-control p-relative">
-                                                                    <input class="form-control" type="text" id="creditCard" name="creditCard" placeholder="XXXX XXXX XXXX XXXX">
-                                                                    <div class="credit-card__logo">
-                                                                        <i class="credit-card__logo" id="creditCardLogo"></i>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6 col-sm-6">
-                                                            <div class="from__input-box">
-                                                                <div class="form__input-title">
-                                                                    <label class="form-check-label" for="cardmmyy">Exp.
-                                                                        Date</label>
-                                                                </div>
-                                                                <input class="form-control" id="cardmmyy" placeholder="MM/YY" type="tel">
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6 col-sm-6">
-                                                            <div class="from__input-box">
-                                                                <div class="form__input-title">
-                                                                    <label class="form-check-label" for="cvvcode">CVV
-                                                                        Code</label>
-                                                                </div>
-                                                                <input class="form-control" id="cvvcode" type="text" placeholder="XXX">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="tab-pane fade" id="pills-paypal" role="tabpanel" aria-labelledby="pills-paypal-tab">
-                                                <div class="payment__card-content mt-20 mb-20">
-                                                    <div class="from__input-box">
-                                                        <div class="form__input-title">
-                                                            <label for="cardname2">Send Mony</label>
-                                                        </div>
-                                                        <div class="form__input">
-                                                            <input class="form-control" name="name" id="cardname2" type="text" placeholder="Name, email or mobile number">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="tab-pane fade" id="pills-cod" role="tabpanel" aria-labelledby="pills-cod-tab">
-                                                <div class="payment__card-content mt-20 mb-20"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="invoice-line"></div>
-                            <div class="d-flex flex-wrap gap-10 justify-content-lg-end">
-                                <a class="btn btn-info" href="app-invoice-preview.html"><i class="fa-sharp fa-regular fa-eye"></i> Preview</a>
-                                <button type="submit" class="btn btn-success"><i class="fa-sharp fa-light fa-floppy-disk"></i> Save</button>
-                                <a class="btn btn-warning" href="assets/pdf/invoice-print-version.pdf" download="invoice-print-version.pdf"><i class="fa-sharp fa-thin fa-file-arrow-down"></i> Download</a>
-                                <button type="submit" class="btn btn-primary"><i class="fa-light fa-paper-plane"></i> Send</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>

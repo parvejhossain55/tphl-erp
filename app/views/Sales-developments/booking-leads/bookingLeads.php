@@ -5,10 +5,21 @@ $show_breadcrumb = true;
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 ?>
+<div class="row">
+       <div clas="card__wrapper">
+        <a href="<?= $base_url ?>/edit-lead/<?= $lead['id'] ?>"
+   class="btn btn-sm btn-primary">
+   Complete Profile
+</a>
+</div>
+
 <div class="row mb-4">
+ 
+    </div>
     <div class="col-xxl-12">
         <div class="card__wrapper p-3">
             <h5>Booking Lead</h5>
+            
 
             <form action="<?= $GLOBALS['base_url'] ?>/booking-store" method="POST">
                 <div class="row gy-3">

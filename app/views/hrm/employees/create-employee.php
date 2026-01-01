@@ -7,7 +7,8 @@
 
 
  <div class="row">
-     <div class="col-xxl-12 col-xl-12 col-lg-12">
+    <div class="card__wrapper">
+         <div class="col-xxl-12 col-xl-12 col-lg-12">
 
          <div class="card__title-wrap mb-20">
              <h5 class="card__heading-title">Add New Employee</h5>
@@ -268,10 +269,6 @@
                              </div>
                          </div>
                      </div>
-
-
-
-
                      <div class="col-md-12">
                          <div class="from__input-box">
                              <div class="form__input-title">
@@ -291,6 +288,7 @@
              </div>
          </form>
      </div>
+    </div>
  </div>
 
 

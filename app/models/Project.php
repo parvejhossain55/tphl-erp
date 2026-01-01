@@ -73,8 +73,8 @@ public function create($data)
             description, apartment_count, amenities_details, amenities_image,
             map_image, map_link, passenger_lift, cargo_lift,
             rooftop_gardening, swimming_pool, convention, electricity_backup,
-            image, image2, image3
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            image, image2, image3,car_parking
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
     if (!$stmt) {
@@ -83,7 +83,7 @@ public function create($data)
     }
 
 $stmt->bind_param(
-    "sssssssssssssssssssssssssssss",
+    "ssssssssssssssssssssssssssssss",
     $data['name'],
     $data['location_id'],
     $data['community_id'],
@@ -112,7 +112,8 @@ $stmt->bind_param(
     $data['electricity_backup'],
     $image,
     $image2,
-    $image3
+    $image3,
+    $data['car_parking'],
 );
 
     return $stmt->execute();
@@ -121,17 +122,24 @@ $stmt->bind_param(
     /* =========================
        Find Project (Edit)
     ========================== */
-    public function find($id)
-    {
-        $stmt = $this->db->prepare("SELECT p.*,l.name AS location_name, c.name AS community_name 
-          FROM projects  AS p 
-          JOIN locations AS l ON p.location_id = l.id
-          JOIN communities AS c ON p.community_id = c.id
-          WHERE p.id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
-    }
+public function find($id)
+{
+    $stmt = $this->db->prepare("
+        SELECT 
+            p.*, 
+            l.name AS location_name, 
+            c.name AS community_name
+        FROM projects AS p
+        LEFT JOIN locations AS l ON p.location_id = l.id
+        LEFT JOIN communities AS c ON p.community_id = c.id
+        WHERE p.id = ?
+    ");
+
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc();
+}
+
 
     /**
      * Update lead
@@ -203,7 +211,9 @@ public function update($id, $data)
             electricity_backup = ?,
             image = ?, 
             image2 = ?, 
-            image3 = ?
+            image3 = ?,
+            car_parking = ?
+
         WHERE id = ?
     ");
 
@@ -213,7 +223,7 @@ public function update($id, $data)
     }
 
     $stmt->bind_param(
-        "sssssssssssssssssssssssssssssi",
+        "ssssssssssssssssssssssssssssssi",
         $data['name'],
         $data['location_id'],
         $data['community_id'],
@@ -243,6 +253,7 @@ public function update($id, $data)
         $image,
         $image2,
         $image3,
+        $data['car_parking'],
         $id
     );
 

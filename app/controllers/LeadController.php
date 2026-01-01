@@ -133,54 +133,129 @@ class LeadController extends Controller
         ]);
     }
 
-    public function update($id)
-    {
+    // public function update($id)
+    // {
 
-        if (session_status() === PHP_SESSION_NONE) session_start();
+    //     if (session_status() === PHP_SESSION_NONE) session_start();
 
-        // Collect form data
-        $leadData = [
-            'lead_name' => $_POST['lead_name'] ?? null,
-            'lead_type' => $_POST['lead_type'] ?? null,
-            'father_name' => $_POST['father_name'] ?? null,
-            'mother_name' => $_POST['mother_name'] ?? null,
-            'dob' => $_POST['dob'] ?? null,
-            'nid_or_passport' => $_POST['nid_or_passport'] ?? null,
-            'permanent_address' => $_POST['permanent_address'] ?? null,
-            'company' => $_POST['company'] ?? null,
-            'currency' => $_POST['currency'] ?? 'BDT',
-            'phone' => $_POST['phone'] ?? null,
-            'alt_phone_number' => $_POST['alt_phone_number'] ?? null,
-            'email' => $_POST['email'] ?? null,
-            'source_type_id' => $_POST['source_type_id'] ?? null,
-            'assigned_id' => $_POST['assigned_id'] ?? null,
-            'address' => $_POST['address'] ?? null,
-            'pref_location' => $_POST['pref_location'] ?? null,
-            'designation' => $_POST['designation'] ?? null,
-            'project_type' => $_POST['project_type'] ?? null,
-            'interest_on' => $_POST['interest_on'] ?? null,
-            'pref_flat_size' => $_POST['pref_flat_size'] ?? null,
-            'communication_type' => $_POST['communication_type'] ?? null,
-            'tags' => $_POST['tags'] ?? null,
-            'description' => $_POST['description'] ?? null,
-            'visibility' => $_POST['visibility'] ?? 'public',
-            'status' => $_POST['status'] ?? 'active',
-            'lead_quality' => $_POST['lead_quality'] ?? 'Pending',
-        ];
+    //     // Collect form data
+    //     $leadData = [
+    //         'lead_name' => $_POST['lead_name'] ?? null,
+    //         'lead_type' => $_POST['lead_type'] ?? null,
+    //         'father_name' => $_POST['father_name'] ?? null,
+    //         'mother_name' => $_POST['mother_name'] ?? null,
+    //         'dob' => $_POST['dob'] ?? null,
+    //         'nid_or_passport' => $_POST['nid_or_passport'] ?? null,
+    //         'permanent_address' => $_POST['permanent_address'] ?? null,
+    //         'company' => $_POST['company'] ?? null,
+    //         'currency' => $_POST['currency'] ?? 'BDT',
+    //         'phone' => $_POST['phone'] ?? null,
+    //         'alt_phone_number' => $_POST['alt_phone_number'] ?? null,
+    //         'email' => $_POST['email'] ?? null,
+    //         'source_type_id' => $_POST['source_type_id'] ?? null,
+    //         'assigned_id' => $_POST['assigned_id'] ?? null,
+    //         'address' => $_POST['address'] ?? null,
+    //         'pref_location' => $_POST['pref_location'] ?? null,
+    //         'designation' => $_POST['designation'] ?? null,
+    //         'project_type' => $_POST['project_type'] ?? null,
+    //         'interest_on' => $_POST['interest_on'] ?? null,
+    //         'pref_flat_size' => $_POST['pref_flat_size'] ?? null,
+    //         'communication_type' => $_POST['communication_type'] ?? null,
+    //         'tags' => $_POST['tags'] ?? null,
+    //         'description' => $_POST['description'] ?? null,
+    //         'visibility' => $_POST['visibility'] ?? 'public',
+    //         'status' => $_POST['status'] ?? 'active',
+    //         'lead_quality' => $_POST['lead_quality'] ?? 'Pending',
+    //     ];
 
-        // Update lead
-        try {
-            $this->leadModel->update($id, $leadData);
-            setSuccess("Lead updated successfully!");
-            header("Location: {$GLOBALS['base_url']}/lead-lists");
-            exit;
-        } catch (Exception $e) {
-            setError($e->getMessage());
-            $_SESSION['old'] = $_POST;
-            header("Location: {$GLOBALS['base_url']}/edit-lead/{$id}");
-            exit;
-        }
+    //     // Update lead
+    //     try {
+    //         $this->leadModel->update($id, $leadData);
+    //         setSuccess("Lead updated successfully!");
+    //         header("Location: {$GLOBALS['base_url']}/lead-lists");
+    //         exit;
+    //     } catch (Exception $e) {
+    //         setError($e->getMessage());
+    //         $_SESSION['old'] = $_POST;
+    //         header("Location: {$GLOBALS['base_url']}/edit-lead/{$id}");
+    //         exit;
+    //     }
+    // }
+
+
+
+public function update($id)
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    // Collect form data from update form
+    $leadData = [
+        // Personal Info
+        'lead_name' => $_POST['lead_name'] ?? null,
+        'lead_name_bn' => $_POST['lead_name_bn'] ?? null,
+        'father_name' => $_POST['father_name'] ?? null,
+        'father_name_bn' => $_POST['father_name_bn'] ?? null,
+        'mother_name' => $_POST['mother_name'] ?? null,
+        'mother_name_bn' => $_POST['mother_name_bn'] ?? null,
+        'dob' => $_POST['dob'] ?? null,
+        'nid_or_passport' => $_POST['nid_or_passport'] ?? null,
+        'identity_type' => $_POST['identity_type'] ?? null,
+        'permanent_address' => $_POST['permanent_address'] ?? null,
+        'permanent_add_bn' => $_POST['permanent_add_bn'] ?? null,
+        'address' => $_POST['address'] ?? null,
+        'present_add_bn' => $_POST['present_add_bn'] ?? null,
+        'designation' => $_POST['designation'] ?? null,
+        'profession_bn' => $_POST['profession'] ?? null,
+        'nationality' => $_POST['nationality'] ?? 'Bangladeshi',
+        'religion' => $_POST['religion'] ?? null,
+        'phone' => $_POST['phone'] ?? null,
+        'email' => $_POST['email'] ?? null,
+        'lead_image' => $_FILES['lead_image']['name'] ?? null, // handle image upload separately
+
+        // Lead Meta
+        // 'lead_type' => $_POST['lead_type'] ?? null,
+        // 'company' => $_POST['company'] ?? null,
+        // 'currency' => $_POST['currency'] ?? 'BDT',
+        // 'source_type_id' => $_POST['source_type_id'] ?? null,
+        // 'assigned_id' => $_POST['assigned_id'] ?? null,
+        // 'pref_location' => $_POST['pref_location'] ?? null,
+        // 'project_type' => $_POST['project_type'] ?? null,
+        // 'pref_flat_size' => $_POST['pref_flat_size'] ?? null,
+        // 'communication_type' => $_POST['communication_type'] ?? null,
+        // 'tags' => $_POST['tags'] ?? null,
+        'description' => $_POST['description'] ?? null,
+        // 'visibility' => $_POST['visibility'] ?? 'public',
+        // 'status' => $_POST['status'] ?? 'active',
+        // 'lead_quality' => $_POST['lead_quality'] ?? 'Pending',
+
+        // Nominee Info
+        'nominee_name' => $_POST['nominee_name'] ?? null,
+        'relation_with_lead' => $_POST['relation_with_lead'] ?? null,
+        'nomi_father_name' => $_POST['nomi_father_name'] ?? null,
+        'nomi_mother_name' => $_POST['nomi_mother_name'] ?? null,
+        'nomi_profession' => $_POST['nomi_profession'] ?? null,
+        'nomi_dob' => $_POST['nomi_dob'] ?? null,
+        'nomi_phone' => $_POST['nomi_phone'] ?? null,
+        'nomi_email' => $_POST['nomi_email'] ?? null,
+        'nomi_nid_passport' => $_POST['nomi_nid_passport'] ?? null,
+        'nomi_present_add' => $_POST['nomi_present_address'] ?? null,
+        'nomi_permanent_address' => $_POST['nomi_permanent_address'] ?? null,
+        'nomi_image' => $_FILES['nomi_image']['name'] ?? null, // handle upload separately
+    ];
+
+    // Update lead
+    try {
+        $this->leadModel->update($id, $leadData);
+        setSuccess("Lead updated successfully!");
+        header("Location: {$GLOBALS['base_url']}/lead-lists");
+        exit;
+    } catch (Exception $e) {
+        setError($e->getMessage());
+        $_SESSION['old'] = $_POST;
+        header("Location: {$GLOBALS['base_url']}/edit-lead/{$id}");
+        exit;
     }
+}
 
 
     public function importCsv()
@@ -204,7 +279,7 @@ class LeadController extends Controller
 
             while (($row = fgetcsv($handle, 1000, ",")) !== false) {
 
-                // 🔑 CSV → DB column mapping
+                //  CSV → DB column mapping
                 $data = array_combine($header, $row);
                 $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
                 $data['status'] = (int)($data['status'] ?? 0);

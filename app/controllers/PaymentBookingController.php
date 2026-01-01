@@ -90,7 +90,7 @@ class PaymentBookingController extends Controller
         if (!$payment_id) {
             die("Invalid payment ID");
         }
-$flatRules = getFlatRules();
+
         // Payment + Booking + Lead + Project info
         $invoice = $this->paymentModel->getInvoiceData($payment_id);
 
@@ -102,7 +102,7 @@ $flatRules = getFlatRules();
             "invoice" => $invoice,
             "current_route" => 'payment-invoice',
             "page_title" => "Payment Invoice",
-            "flatRules" => $flatRules
+        
         ], false);
     }
 

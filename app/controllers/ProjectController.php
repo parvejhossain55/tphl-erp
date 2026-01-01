@@ -90,7 +90,7 @@ class ProjectController extends Controller
 
             // Facilities (checkbox → default 0)
             'rooftop_gardening' => $_POST['rooftop_gardening'] ?? 0,
-            'swimming_pool'    => $_POST['swimming_pool'] ?? 0,
+            'car_parking'    => $_POST['car_parking'] ?? 0,
             'convention'       => $_POST['convention'] ?? 0,
             'electricity_backup' => $_POST['electricity_backup'] ?? 0,
 
@@ -162,14 +162,14 @@ public function update($id)
         'hover_text'        => $_POST['hover_text'] ?? null,
         'plot_size'         => $_POST['plot_size'] ?? null,
         'plot_no'           => $_POST['plot_no'] ?? null,
-        'block_size'        => $_POST['block_size'] ?? null,
+        'block_no'        => $_POST['block_no'] ?? null,
 
         'brochure_link'     => $_POST['brochure_link'] ?? null,
         'passenger_lift'    => $_POST['passenger_lift'] ?? null,
         'cargo_lift'        => $_POST['cargo_lift'] ?? null,
 
         'rooftop_gardening' => isset($_POST['rooftop_gardening']) ? 1 : 0,
-        'swimming_pool'     => isset($_POST['swimming_pool']) ? 1 : 0,
+        'car_parking'       => isset($_POST['car_parking']) ? 1 : 0,
         'convention'        => isset($_POST['convention']) ? 1 : 0,
         'electricity_backup'=> isset($_POST['electricity_backup']) ? 1 : 0,
 

@@ -4,7 +4,9 @@ $page = 'Edit Project';
 $show_breadcrumb = true;
 ?>
 
-<form action="<?= $GLOBALS['base_url'] ?>/update-project/<?= $project['id'] ?>"
+<div class="row">
+    <div class="card__wrapper">
+        <form action="<?= $GLOBALS['base_url'] ?>/update-project/<?= $project['id'] ?>"
       method="POST"
       enctype="multipart/form-data">
 
@@ -88,7 +90,8 @@ $show_breadcrumb = true;
                 foreach ($ranges as $range):
                 ?>
                     <option value="<?= $range ?>"
-                        <?= ($project['price_range'] == $range) ? 'selected' : '' ?>>
+                        <?= (($project['price_range'] ?? '') === $range) ? 'selected' : '' ?>
+
                         <?= $range ?>
                     </option>
                 <?php endforeach; ?>
@@ -124,8 +127,8 @@ $show_breadcrumb = true;
 
         <div class="col-xl-4">
             <label>Block Size</label>
-            <input type="text" name="block_size" class="form-control"
-                   value="<?= $project['block_size'] ?? '' ?>">
+            <input type="text" name="block_no" class="form-control"
+                   value="<?= $project['block_no'] ?? '' ?>">
         </div>
 
         <!-- Lift -->
@@ -187,7 +190,7 @@ $show_breadcrumb = true;
         <?php
         $facilities = [
             'rooftop_gardening' => 'Rooftop Gardening',
-            'swimming_pool' => 'Swimming Pool',
+            'car_parking' => 'Car Parking',
             'convention' => 'Convention Hall',
             'electricity_backup' => 'Electricity Backup'
         ];
@@ -225,3 +228,6 @@ $show_breadcrumb = true;
 
     </div>
 </form>
+
+    </div>
+</div>

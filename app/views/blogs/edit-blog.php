@@ -4,7 +4,9 @@ $page = 'Edit Blog ';
 $show_breadcrumb = true;
 
 ?>
-<form action="<?= $GLOBALS['base_url'] ?>/update-blog/<?= $blog['id'] ?>" method="POST" enctype="multipart/form-data">
+<div class="row">
+    <div class="card__wrapper">
+        <form action="<?= $GLOBALS['base_url'] ?>/update-blog/<?= $blog['id'] ?>" method="POST" enctype="multipart/form-data">
     <div class="row">
         <div class="col-xxl-12">
             <div class="row gy-10">
@@ -115,3 +117,5 @@ $show_breadcrumb = true;
         <button class="btn btn-primary">Update Blog</button>
     </div>
 </form>
+    </div>
+</div>

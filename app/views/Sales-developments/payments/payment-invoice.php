@@ -177,6 +177,14 @@
             letter-spacing: 0.5px;
         }
 
+        .section-title2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 0.5px;
+        }
+
         /* PHOTO BOX */
         .photo-section {
             position: absolute;
@@ -231,6 +239,15 @@
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1.5rem;
         }
+
+        .field-input[readonly],
+        textarea.field-input[readonly] {
+            resize: none;
+            /* user resize off */
+            overflow: hidden;
+            /* scrollbar hide */
+        }
+
 
         .field-group {
             position: relative;
@@ -393,30 +410,6 @@
             }
         }
 
-        /* PRINT STYLES */
-        @media print {
-
-            .fields-grid {
-                grid-template-columns: 1fr 1fr !important;
-                gap: 12px;
-            }
-
-            .full-width {
-                grid-column: 1 / -1 !important;
-            }
-
-            .section {
-                margin-bottom: 20px;
-                page-break-inside: avoid;
-            }
-
-            .document-header {
-                background: #fff !important;
-                color: #000 !important;
-            }
-        }
-
-
         /* ADDITIONAL STYLING */
         .full-width {
             grid-column: 1 / -1;
@@ -436,13 +429,136 @@
         .company {
             color: #fff;
         }
+
+
+
+
+        /* PRINT STYLES */
+        @media print {
+
+            /* Images */
+            img {
+                max-width: 120px !important;
+                height: auto !important;
+                page-break-inside: avoid;
+            }
+
+            /* Base font */
+            html,
+            body {
+                font-size: 11px !important;
+                line-height: 1.3 !important;
+                background: #fff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            /* Headings */
+            h1 {
+                font-size: 16px !important;
+            }
+
+            h2 {
+                font-size: 14px !important;
+            }
+
+            h3 {
+                font-size: 13px !important;
+            }
+
+            h4 {
+                font-size: 12px !important;
+            }
+
+            .section-title {
+                font-size: 13px !important;
+                margin-bottom: 6px !important;
+            }
+
+            /* Hide print button & header */
+            .print-button,
+            .document-header,
+            .document-header::before,
+            .document-header::after {
+                display: none !important;
+            }
+
+            /* Container */
+            .document-container {
+                max-width: 100% !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+            }
+
+            /* Sections */
+            .section {
+                margin-bottom: 12px !important;
+                page-break-inside: avoid !important;
+                /* section break safe */
+            }
+
+            .section-divider {
+                margin: 12px 0 !important;
+            }
+
+            /* Grid & Fields */
+            .fields-grid {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 8px !important;
+            }
+
+            .full-width {
+                grid-column: 1 / -1 !important;
+            }
+
+            input,
+            textarea {
+                background: #f8f8f8 !important;
+                border: 1px solid #999 !important;
+                color: #000 !important;
+            }
+
+            label {
+                color: #000 !important;
+            }
+
+            /* Section header row - responsive for print */
+            .section>.row {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                /* wrap for mobile PDF */
+                align-items: flex-start !important;
+                margin: 0 !important;
+            }
+
+            .section>.row>.col-md-9 {
+                flex: 0 0 70% !important;
+                max-width: 70% !important;
+            }
+
+            .section>.row>.col-md-3 {
+                flex: 0 0 30% !important;
+                max-width: 30% !important;
+                text-align: right !important;
+                margin-top: 8px !important;
+                /* small spacing on mobile wrap */
+            }
+
+            /* Disable animations & transitions */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                animation: none !important;
+                transition: none !important;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div class="print-button">
         <button class="btn-print" onclick="window.print()">
-            <span>🖨</span>
             <span>Print Document</span>
         </button>
     </div>
@@ -471,72 +587,217 @@
 
             <!-- CLIENT INFORMATION -->
             <div class="section">
-                <div class="section-header">
-                    <div class="section-icon"></div>
-                    <h2 class="section-title">Client Information</h2>
-                </div>
 
-                <div class="d-none photo-section">
-                    <div class="photo-box">
-                        <div class="photo-icon">📷</div>
-                        <div>Passport<br>Size Photo</div>
+                <!-- Header + Image Row -->
+                <div class="row align-items-start mb-4">
+
+                    <!-- LEFT : Section Title -->
+                    <div class="col-md-9">
+                        <div class="section-header">
+                            <div class="section-icon"></div>
+                            <h2 class="section-title">Client Information</h2>
+                        </div>
                     </div>
+
+                    <!-- RIGHT : Lead Image -->
+                    <div class="col-md-3 text-end">
+                        <div class="field-group">
+                            <label class="field-label d-block">Client Image</label>
+                            <img
+                                src="<?= getImage('leads', $invoice['lead_image']) ?>"
+                                alt="Lead Image"
+                                style="max-width:150px; border:1px solid #ddd; padding:4px; border-radius:6px;">
+                        </div>
+                    </div>
+
                 </div>
 
+                <!-- FORM FIELDS -->
                 <div class="fields-grid">
-                    <div class="field-group full-width">
+
+                    <!-- Full Name -->
+                    <div class="field-group">
                         <label class="field-label">Full Name (Block Letters)</label>
                         <input type="text" class="field-input uppercase" value="<?= $invoice['lead_name'] ?>">
                     </div>
 
+                    <!-- Full Name Bangla -->
+                    <div class="field-group">
+                        <label class="field-label">পূর্ণ নাম (বাংলা)</label>
+                        <input type="text" class="field-input" value="<?= $invoice['lead_name_bn'] ?>">
+                    </div>
+
+                    <!-- Father's Name -->
                     <div class="field-group">
                         <label class="field-label">Father's Name</label>
                         <input type="text" class="field-input" value="<?= $invoice['father_name'] ?>">
                     </div>
 
+                    <!-- Father's Name Bangla -->
+                    <div class="field-group">
+                        <label class="field-label">পিতার নাম (বাংলা)</label>
+                        <input type="text" class="field-input" value="<?= $invoice['father_name_bn'] ?>">
+                    </div>
+
+                    <!-- Mother's Name -->
                     <div class="field-group">
                         <label class="field-label">Mother's Name</label>
                         <input type="text" class="field-input" value="<?= $invoice['mother_name'] ?>">
                     </div>
 
+                    <!-- Mother's Name Bangla -->
+                    <div class="field-group">
+                        <label class="field-label">মাতার নাম (বাংলা)</label>
+                        <input type="text" class="field-input" value="<?= $invoice['mother_name_bn'] ?>">
+                    </div>
+
+                    <!-- Profession -->
                     <div class="field-group">
                         <label class="field-label">Profession</label>
                         <input type="text" class="field-input" value="<?= $invoice['profession'] ?>">
                     </div>
 
-                    <div class="field-group d-none">
-                        <label class="field-label">Relationship with Applicant</label>
-                        <input type="text" class="field-input" placeholder="e.g., Self, Wife, Husband, Son">
+                    <!-- Profession Bangla -->
+                    <div class="field-group">
+                        <label class="field-label">পেশা (বাংলা)</label>
+                        <input type="text" class="field-input" value="<?= $invoice['profession_bn'] ?>">
                     </div>
 
+                    <!-- Date of Birth -->
                     <div class="field-group">
                         <label class="field-label">Date of Birth</label>
                         <input type="date" class="field-input" value="<?= $invoice['dob'] ?>">
                     </div>
 
+                    <!-- NID / Passport -->
                     <div class="field-group">
-                        <label class="field-label">NID / Passport No / Birth Certificate</label>
+                        <label class="field-label">NID / Passport / Birth Certificate</label>
                         <input type="text" class="field-input numeric" value="<?= $invoice['nid_or_passport'] ?>">
                     </div>
 
+                    <!-- Identity Type -->
+                    <div class="field-group">
+                        <label class="field-label">Identity Type</label>
+                        <input type="text" class="field-input" value="<?= $invoice['identity_type'] ?>">
+                    </div>
+
+                    <!-- Mobile -->
                     <div class="field-group">
                         <label class="field-label">Mobile Number</label>
                         <input type="tel" class="field-input numeric" value="<?= $invoice['phone'] ?>">
                     </div>
 
+                    <!-- Email -->
                     <div class="field-group">
                         <label class="field-label">E-mail Address</label>
                         <input type="email" class="field-input" value="<?= $invoice['email'] ?>">
                     </div>
 
-                    <div class="field-group ">
+                    <!-- Addresses -->
+                    <div class="field-group">
                         <label class="field-label">Present Address</label>
                         <textarea class="field-input" readonly><?= $invoice['address'] ?></textarea>
                     </div>
 
-                    <div class="field-group ">
+                    <div class="field-group">
                         <label class="field-label">Permanent Address</label>
                         <textarea class="field-input" readonly><?= $invoice['permanent_address'] ?></textarea>
+                    </div>
+
+                    <!-- Nationality -->
+                    <div class="field-group">
+                        <label class="field-label">Nationality</label>
+                        <input type="text" class="field-input" value="<?= $invoice['nationality'] ?>">
+                    </div>
+
+                    <!-- Religion -->
+                    <div class="field-group">
+                        <label class="field-label">Religion</label>
+                        <input type="text" class="field-input" value="<?= $invoice['religion'] ?>">
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="section">
+
+                <!-- Header + Image Row -->
+                <div class="row align-items-start mb-4">
+
+                    <!-- LEFT : Section Title -->
+                    <div class="col-md-9">
+                        <div class="section-header">
+                            <h2 class="section-title">Nominee Information</h2>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT : Lead Image -->
+                    <div class="col-md-3 text-end">
+                        <div class="field-group">
+                            <label class="field-label d-block">Nominee Image</label>
+                            <img
+                                src="<?= getImage('leads', $invoice['nomi_image']) ?>"
+                                alt="Lead Image"
+                                style="max-width:150px; border:1px solid #ddd; padding:4px; border-radius:6px;">
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="fields-grid">
+                    <div class="field-group ">
+                        <label class="field-label">Full Name (Block Letters)</label>
+                        <input type="text" class="field-input uppercase" value="<?= $invoice['nominee_name'] ?>">
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">Father's Name</label>
+                        <input type="text" class="field-input" value="<?= $invoice['nomi_father_name'] ?>">
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">Mother's Name</label>
+                        <input type="text" class="field-input" value="<?= $invoice['nomi_mother_name'] ?>">
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">Profession</label>
+                        <input type="text" class="field-input" value="<?= $invoice['nomi_profession'] ?>">
+                    </div>
+
+                    <div class="field-group d-none">
+                        <label class="field-label">Relationship with Applicant</label>
+                        <input type="text" class="field-input" value="<?= $invoice['relation_with_lead'] ?>">
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">Date of Birth</label>
+                        <input type="date" class="field-input" value="<?= $invoice['nomi_dob'] ?>">
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">NID / Passport No / Birth Certificate</label>
+                        <input type="text" class="field-input numeric" value="<?= $invoice['nomi_nid_passport'] ?>">
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">Mobile Number</label>
+                        <input type="tel" class="field-input numeric" value="<?= $invoice['nomi_phone'] ?>">
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">E-mail Address</label>
+                        <input type="email" class="field-input" value="<?= $invoice['nomi_email'] ?>">
+                    </div>
+
+                    <div class="field-group ">
+                        <label class="field-label">Present Address</label>
+                        <textarea class="field-input" readonly><?= $invoice['nomi_present_add'] ?></textarea>
+                    </div>
+
+                    <div class="field-group ">
+                        <label class="field-label">Permanent Address</label>
+                        <textarea class="field-input" readonly><?= $invoice['nomi_permanent_address'] ?></textarea>
                     </div>
                 </div>
             </div>
@@ -579,8 +840,8 @@
                         <label class="field-label">Car Parking</label>
                         <input type="text"
                             class="field-input"
-                            value="<?= htmlspecialchars($invoice['electricity_backup'] ?? '') ?>"
-                            <?= (($invoice['car_parking'] ?? '') === 'Yes') ? 'readonly' : '' ?>>
+                            value="<?= (($invoice['car_parking'] ?? 0) == 1) ? 'Yes' : 'No' ?>"
+                            readonly>
 
                     </div>
 
@@ -604,9 +865,12 @@
                 </div>
 
                 <div class="info-card">
-                    <div class="info-card-title"> Total Payable Amount</div>
-                    <div class="info-card-value">৳ <span id="totalAmount"><?= number_format($invoice['amount'], 2) ?></span></div>
+                    <div class="info-card-title">Total Payable Amount</div>
+                    <div class="info-card-value">
+                        &#2547; <span id="totalAmount"><?= number_format($invoice['amount'], 2) ?></span>
+                    </div>
                 </div>
+
             </div>
 
             <div class="section-divider"></div>
@@ -625,9 +889,7 @@
 
                     <div class="field-group">
                         <label class="field-label">Payment Received Date</label>
-                        <input type="date" class="field-input"
-                            value="<?= date('Y-m-d', strtotime($invoice['payment_date'])) ?>">
-
+                        <input type="date" class="field-input" value="<?= date('d M Y', strtotime($invoice['payment_date'])) ?>">
                     </div>
 
                     <div class="field-group">
@@ -659,22 +921,7 @@
                         <label class="field-label">Note / Remarks</label>
                         <input type="text" class="field-input" value="<?= htmlspecialchars($invoice['note'] ?? '') ?>">
                     </div>
-                    <?php
-                    function amountInWords($amount)
-                    {
-                        if ($amount === null || $amount === '') {
-                            return '';
-                        }
 
-                        $amount = (float)$amount;
-
-                        $formatter = new NumberFormatter("en", NumberFormatter::SPELLOUT);
-                        $words = $formatter->format($amount);
-
-                        // Capitalize + Bangladeshi style
-                        return strtoupper($words . " TAKA ONLY");
-                    }
-                    ?>
 
                     <div class="field-group full-width">
                         <label class="field-label">Amount in Words</label>
@@ -686,79 +933,98 @@
                 </div>
 
                 <div class="section-decorator"></div>
-
                 <div class="section-header">
-    <h2 class="section-title">RULES OF FLAT PURCHASING WITH LAND</h2>
-</div>
+                    <h2 class="section-title">RULES OF FLAT PURCHASING WITH LAND</h2>
+                </div>
 
-<?php $rulesArray = getFlatRulesArray(); ?>
+                <?php $rulesArray = getFlatRulesArray(); ?>
 
-<div style="margin-top: 3rem; padding: 2rem; background: linear-gradient(135deg, #e6f7f1 0%, #f0fdf4 100%); border-radius: 12px; border: 2px solid var(--primary-light);">
-    <div style="text-align: center;">
-        <ul style="list-style-type: decimal; padding-left: 1.5rem; text-align: left; color: var(--primary); font-weight: 600;">
-            <?php foreach($rulesArray as $rule): ?>
-                <li><?= htmlspecialchars($rule) ?></li>
-            <?php endforeach; ?>
-        </ul>
-        <p style="font-size: 0.9rem; color: var(--text-light); margin-top: 1rem;">
-            Please verify all information before printing. This document serves as an official record of the transaction.
-        </p>
-    </div>
-</div>
+                <div style="margin-top: 3rem; padding: 2rem; background: linear-gradient(135deg, #e6f7f1 0%, #f0fdf4 100%); border-radius: 12px; border: 2px solid var(--primary-light);">
+                    <div style="text-align: center;">
+                        <ul style="list-style-type: decimal; padding-left: 1.5rem; text-align: left; color: var(--primary); font-weight: 600;">
+                            <?php foreach ($rulesArray as $rule): ?>
+                                <li><?= htmlspecialchars($rule) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <p style=" font-size: 0.9rem; color: var(--text-light); margin-top: 1rem;" class="d-none">
+                            Please verify all information before printing. This document serves as an official record of the transaction.
+                        </p>
+                    </div>
+                </div>
+                <!-- Footer Section -->
+                <div class="section-header mt-2">
+                    <h2 class="section-title2">DECLARATION</h2>
+                </div>
+                <div style="margin-top: 3rem; display: flex; flex-direction: column; gap: 2rem; font-size: 0.95rem;">
+                    <ul style="list-style-type: decimal; padding-left: 1.5rem; text-align: left; color: var(--primary); font-weight: 600;">
 
-<!-- Footer Section -->
-<div style="margin-top: 3rem; display: flex; flex-direction: column; gap: 2rem; font-size: 0.95rem;">
+                        <oi><?= getSetting('client_declaration') ?? 'N/A' ?></oi>
 
-    <!-- I Agree Checkbox -->
-    <div style="text-align: left;">
-        <label>
-            <input type="checkbox" disabled checked> I agree to the terms & conditions
-        </label>
-    </div>
+                    </ul>
 
-    <!-- Signature Rows -->
-    <div style="display: flex; justify-content: space-between; margin-top: 2rem;">
+                    <!-- I Agree Checkbox -->
+                    <div style="text-align: left;">
+                        <label>
+                            <input type="checkbox" checked disabled> I agree to the terms & conditions
+                        </label>
+                    </div>
 
-        <!-- Left: Seller Name & Signature -->
-        <div style="text-align: left;">
-            <p>Seller Name & Signature</p>
-            <div style="border-bottom: 1px solid #000; width: 200px; height: 1.5rem;"></div>
-        </div>
+                    <!-- Signature Rows -->
+                    <div style="display: flex; justify-content: space-between; margin-top: 2rem;">
 
-        <!-- Right: Applicant & Authorized Signatures -->
-        <div style="text-align: right;">
-            <p>Applicant Signature</p>
-            <div style="border-bottom: 1px solid #000; width: 200px; height: 1.5rem; margin-bottom: 1rem;"></div>
+                        <!-- Left: Seller Name & Signature -->
+                        <div style="text-align: left;">
+                            <p>Seller Name & Signature</p>
+                            <div style="border-bottom: 1px solid #000; width: 200px; height: 1.5rem;"></div>
+                        </div>
 
-            <p>Authorized Signature</p>
-            <div style="border-bottom: 1px solid #000; width: 200px; height: 1.5rem;"></div>
-        </div>
+                        <!-- Right: Applicant & Authorized Signatures -->
+                        <div style="text-align: right;">
+                            <p>Applicant Signature</p>
+                            <div style="border-bottom: 1px solid #000; width: 200px; height: 1.5rem; margin-bottom: 1rem;"></div>
 
-    </div>
-</div>
+                            <p>Authorized Signature</p>
+                            <div style="border-bottom: 1px solid #000; width: 200px; height: 1.5rem;"></div>
+                        </div>
+
+                    </div>
+                </div>
+
+
 
             </div>
 
-
-            <div class="section-divider"></div>
-
-            <div class="section">
-                <div class="section-header">
-                    <h2 class="section-title">Terms & Conditions</h2>
-                </div>
-
-                <div style="padding-left: 70px; margin-top: 1rem;">
-                    <?= $flatRules ?>
-                </div>
-            </div>
-
-
-
         </div>
-
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const textareas = document.querySelectorAll("textarea.field-input");
+
+            textareas.forEach(textarea => {
+                textarea.style.height = "auto";
+                textarea.style.height = textarea.scrollHeight + "px";
+            });
+        });
+
+
+        document.addEventListener("DOMContentLoaded", function() {
+
+            // make all inputs & textareas readonly
+            document.querySelectorAll("input, textarea").forEach(el => {
+                el.setAttribute("readonly", true);
+            });
+
+            // except checkbox (already disabled)
+            document.querySelectorAll("input[type='checkbox']").forEach(el => {
+                el.removeAttribute("readonly");
+            });
+
+        });
+    </script>
 </body>
 
 </html>

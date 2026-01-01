@@ -150,53 +150,92 @@ class Lead extends Model
     /**
      * Update lead
      */
-    public function update($id, $data)
-    {
-        $sql = "UPDATE leads SET
+public function update($id, $data)
+{
+    $old = $this->find($id);
+    if (!$old) {
+        return false;
+    }
+
+    // ======================
+    // Image Upload (fallback old)
+    // ======================
+    $lead_image = !empty($_FILES['lead_image']['name'])
+        ? uploadImage('lead_image', 'leads', 'fixed')
+        : $old['lead_image'];
+
+    $nomi_image = !empty($_FILES['nomi_image']['name'])
+        ? uploadImage('nomi_image', 'leads', 'fixed')
+        : $old['nomi_image'];
+
+    // ======================
+    // Prepare SQL
+    // ======================
+    $sql = "UPDATE leads SET
         lead_name = ?, father_name = ?, mother_name = ?, dob = ?, permanent_address = ?, nid_or_passport = ?,
-        phone = ?, alt_phone_number = ?,
-        email = ?, source_type_id = ?, assigned_id=?, address = ?, pref_location = ?, designation = ?, project_type = ?,
-        interest_on = ?, pref_flat_size = ?, communication_type = ?, tags = ?, description = ?, visibility = ?, status = ?, lead_quality = ?
+        phone = ?, alt_phone_number = ?, email = ?, address = ?, designation = ?,
+        lead_name_bn = ?, father_name_bn = ?, mother_name_bn = ?, identity_type = ?, permanent_add_bn = ?,
+        present_add_bn = ?, profession_bn = ?, nationality = ?, religion = ?, lead_image = ?,
+        nominee_name = ?, relation_with_lead = ?, nomi_father_name = ?, nomi_mother_name = ?, nomi_profession = ?,
+        nomi_dob = ?, nomi_phone = ?, nomi_email = ?, nomi_nid_passport = ?, nomi_present_add = ?, 
+        nomi_permanent_address = ?, nomi_image = ?, description = ?
         WHERE id = ?";
 
-        $stmt = $this->db->prepare($sql);
-        if (!$stmt) {
-            throw new Exception("Prepare failed: " . $this->db->error);
-        }
-
-        $stmt->bind_param(
-            "sssssssssssiissssssssssssi",
-            $data['lead_name'],
-            $data['father_name'],
-            $data['mother_name'],
-            $data['dob'],
-            $data['permanent_address'],
-            $data['nid_or_passport'],
-            $data['phone'],
-            $data['alt_phone_number'],
-            $data['email'],
-            $data['source_type_id'],
-            $data['assigned_id'],
-            $data['address'],
-            $data['pref_location'],
-            $data['designation'],
-            $data['project_type'],
-            $data['interest_on'],
-            $data['pref_flat_size'],
-            $data['communication_type'],
-            $data['tags'],
-            $data['description'],
-            $data['visibility'],
-            $data['status'],
-            $data['lead_quality'],
-            $id
-        );
-
-        if (!$stmt->execute()) {
-            throw new Exception("Update failed: " . $stmt->error);
-        }
-        return true;
+    $stmt = $this->db->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Prepare failed: " . $this->db->error);
     }
+
+    // ======================
+    // Bind all strings + id as integer
+    // ======================
+    $stmt->bind_param(
+        str_repeat("s", 34) . "i", // 34 strings + 1 integer for id
+        $data['lead_name'],
+        $data['father_name'],
+        $data['mother_name'],
+        $data['dob'],
+        $data['permanent_address'],
+        $data['nid_or_passport'],
+        $data['phone'],
+        $data['alt_phone_number'],
+        $data['email'],
+        $data['address'],
+        $data['designation'],
+        $data['lead_name_bn'],
+        $data['father_name_bn'],
+        $data['mother_name_bn'],
+        $data['identity_type'],
+        $data['permanent_add_bn'],
+        $data['present_add_bn'],
+        $data['profession_bn'],
+        $data['nationality'],
+        $data['religion'],
+        $lead_image,
+        $data['nominee_name'],
+        $data['relation_with_lead'],
+        $data['nomi_father_name'],
+        $data['nomi_mother_name'],
+        $data['nomi_profession'],
+        $data['nomi_dob'],
+        $data['nomi_phone'],
+        $data['nomi_email'],
+        $data['nomi_nid_passport'],
+        $data['nomi_present_add'],
+        $data['nomi_permanent_address'],
+        $nomi_image,
+        $data['description'],
+        $id // integer
+    );
+
+    if (!$stmt->execute()) {
+        throw new Exception("Update failed: " . $stmt->error);
+    }
+
+    return true;
+}
+
+
 
 
     //     public function getById($lead_id)

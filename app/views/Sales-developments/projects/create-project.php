@@ -4,7 +4,9 @@ $page = 'Add Project';
 $show_breadcrumb = true;
 ?>
 
-<form action="<?= $GLOBALS['base_url'] ?>/store-project" method="POST" enctype="multipart/form-data">
+<div class="row">
+    <div class="card__wrapper">
+        <form action="<?= $GLOBALS['base_url'] ?>/store-project" method="POST" enctype="multipart/form-data">
     <div class="row gy-20">
 
         <!-- Project Name -->
@@ -205,9 +207,9 @@ $show_breadcrumb = true;
 
         <div class="col-xl-3 col-md-6">
             <label class="facility-box">
-                <input type="checkbox" name="swimming_pool" value="1">
-                <i class="fa-solid fa-person-swimming text-primary"></i>
-                <span class="facility-label">Swimming Pool</span>
+                <input type="checkbox" name="car_parking" value="1">
+                <i class="fa-solid fa-person-car text-primary"></i>
+                <span class="facility-label">Car Parking</span>
             </label>
         </div>
 
@@ -249,3 +251,5 @@ $show_breadcrumb = true;
 
     </div>
 </form>
+    </div>
+</div>

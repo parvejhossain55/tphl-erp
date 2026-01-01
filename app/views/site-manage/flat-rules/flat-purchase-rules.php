@@ -29,7 +29,17 @@
 
                                 <td>#<?= $index + 1 ?></td>
 
-                                <td><?= htmlspecialchars($rule['rules_description']) ?></td>
+                                <td>
+                                    <?= truncateText($rule['rules_description'], 60) ?>
+                                    <?php if (strlen(strip_tags($rule['rules_description'])) > 60): ?>
+                                        <button class="btn btn-sm btn-outline-primary view-description-btn"
+                                            data-description="<?= htmlspecialchars($rule['rules_description']) ?>"
+                                            data-bs-toggle="modal" data-bs-target="#viewRuleDescription">
+                                            View
+                                        </button>
+                                    <?php endif; ?>
+                                </td>
+
 
                                 <td>
                                     <?php if ($rule['status'] == 1): ?>
@@ -156,59 +166,96 @@
         </div>
     </div>
 </div>
+
+
+<!-- view full rule description -->
+<div id="viewRuleDescription" class="modal custom-modal fade">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Rule Description</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <textarea id="view_rule_description" class="form-control" rows="6" readonly></textarea>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 <script>
- const base_url = "<?= $GLOBALS['base_url'] ?>";
-document.addEventListener("DOMContentLoaded", function () {
-    const modal = document.getElementById('editRule');
 
-    modal.addEventListener('show.bs.modal', function (event) {
-        const btn = event.relatedTarget;
+document.addEventListener("DOMContentLoaded", function() {
+    const viewButtons = document.querySelectorAll(".view-description-btn");
+    const modalTextarea = document.getElementById("view_rule_description");
 
-        document.getElementById('edit_rule_id').value = btn.dataset.id;
-        document.getElementById('edit_rule_description').value = btn.dataset.description;
-
-        if (btn.dataset.status === "1") {
-            document.getElementById('editRuleActive').checked = true;
-        } else {
-            document.getElementById('editRuleInactive').checked = true;
-        }
+    viewButtons.forEach(btn => {
+        btn.addEventListener("click", function() {
+            modalTextarea.value = this.dataset.description;
+        });
     });
 });
 
 
 
-document.addEventListener("DOMContentLoaded", function () {
 
-    const ruleContainer = document.getElementById('ruleInputs');
+    const base_url = "<?= $GLOBALS['base_url'] ?>";
+    document.addEventListener("DOMContentLoaded", function() {
+        const modal = document.getElementById('editRule');
 
-    ruleContainer.addEventListener('click', function(e) {
-        if (e.target && e.target.classList.contains('btn-add-rule')) {
-            e.preventDefault();
+        modal.addEventListener('show.bs.modal', function(event) {
+            const btn = event.relatedTarget;
 
-            // Create new input row
-            const div = document.createElement('div');
-            div.className = 'from__input-box mb-2 d-flex align-items-center';
+            document.getElementById('edit_rule_id').value = btn.dataset.id;
+            document.getElementById('edit_rule_description').value = btn.dataset.description;
 
-            div.innerHTML = `
+            if (btn.dataset.status === "1") {
+                document.getElementById('editRuleActive').checked = true;
+            } else {
+                document.getElementById('editRuleInactive').checked = true;
+            }
+        });
+    });
+
+
+
+    document.addEventListener("DOMContentLoaded", function() {
+
+        const ruleContainer = document.getElementById('ruleInputs');
+
+        ruleContainer.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('btn-add-rule')) {
+                e.preventDefault();
+
+                // Create new input row
+                const div = document.createElement('div');
+                div.className = 'from__input-box mb-2 d-flex align-items-center';
+
+                div.innerHTML = `
                 <input type="text" name="rules[]" class="form-control me-2" placeholder="Enter rule" required>
                 <button type="button" class="btn btn-danger btn-remove-rule">-</button>
             `;
 
-            ruleContainer.appendChild(div);
-        }
+                ruleContainer.appendChild(div);
+            }
 
-        // Remove input field
-        if (e.target && e.target.classList.contains('btn-remove-rule')) {
-            e.preventDefault();
-            e.target.parentElement.remove();
-        }
+            // Remove input field
+            if (e.target && e.target.classList.contains('btn-remove-rule')) {
+                e.preventDefault();
+                e.target.parentElement.remove();
+            }
+        });
+
+        // Optional: form submit handler to combine rules if needed
+        document.getElementById('flatRuleForm').addEventListener('submit', function(e) {
+            // All rules are already in array: rules[]
+            // Backend will handle saving each rule individually
+        });
+
     });
-
-    // Optional: form submit handler to combine rules if needed
-    document.getElementById('flatRuleForm').addEventListener('submit', function(e) {
-        // All rules are already in array: rules[]
-        // Backend will handle saving each rule individually
-    });
-
-});
 </script>

@@ -90,7 +90,7 @@ $show_breadcrumb = true;
                             <th>Joining Date</th>
                             <th>Salary (Monthly)</th>
                             <th>Status</th>
-                            <th>Action</th>
+                            <th class="d-none">Action</th>
                         </tr>
                     </thead>
                     <tbody class="table__body">
@@ -117,7 +117,7 @@ $show_breadcrumb = true;
                                         <span class="bd-badge bg-danger">Pending</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="table__icon-box">
+                                <td class="d-none table__icon-box">
                                     <div class="d-flex align-items-center justify-content-start gap-10">
                                         <button
                                             class="d-none btn btn-success btn-sm payPayslipBtn"
