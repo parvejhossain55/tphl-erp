@@ -84,4 +84,6 @@ class PayrollController extends Controller
         window.location.href = '{$GLOBALS['base_url']}/payslip-lists';
     </script>";
     }
+
+    
 }

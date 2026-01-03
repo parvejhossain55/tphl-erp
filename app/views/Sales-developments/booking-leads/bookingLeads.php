@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
        <div clas="card__wrapper">
         <a href="<?= $base_url ?>/edit-lead/<?= $lead['id'] ?>"
    class="btn btn-sm btn-primary">
-   Complete Profile
+   Complete Client Profile
 </a>
 </div>
 

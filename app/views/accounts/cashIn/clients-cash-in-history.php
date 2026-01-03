@@ -25,6 +25,7 @@ $show_breadcrumb = true;
 <div class="row">
     <!-- Client Header Section -->
     <div class="col-xxl-12 mb-4">
+        
         <div class="card__wrapper">
             <div class="card__body">
                 <h3 class="mb-2">
@@ -238,7 +239,12 @@ $show_breadcrumb = true;
             <div class="card__header">
                 <h5 class="card__title">Transaction History</h5>
             </div>
-
+    <div class="col-xxl-12 mb-4">
+                        <div class="d-flex flex-wrap justify-content-end gap-2">
+             <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['id'] ?>" class="btn btn-primary mb-3">
+                        <i class="fa-light fa-plus me-2"></i> Add Transaction
+                    </a>
+                </div>
             <div class="table__wrapper table-responsive">
                 <table class="table mb-20 multiple_tables">
                     <thead>

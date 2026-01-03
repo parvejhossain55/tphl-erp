@@ -12,8 +12,11 @@ class AccountManagementCashOut extends Model
     // Get all transactions
     public function getAllTransactions()
     {
-        $sql = "SELECT mc.*, u.full_name as created_by_name
+        $sql = "SELECT mc.*, 
+                cat.category_name,
+                u.full_name as created_by_name
                 FROM {$this->table} mc
+                LEFT JOIN management_categories cat ON mc.category_id = cat.id
                 LEFT JOIN users u ON mc.created_by = u.id
                 ORDER BY mc.created_at DESC";
         
@@ -36,8 +39,11 @@ class AccountManagementCashOut extends Model
     // Get transaction by ID
     public function getTransactionById($id)
     {
-        $sql = "SELECT mc.*, u.full_name as created_by_name
+        $sql = "SELECT mc.*, 
+                cat.category_name,
+                u.full_name as created_by_name
                 FROM {$this->table} mc
+                LEFT JOIN management_categories cat ON mc.category_id = cat.id
                 LEFT JOIN users u ON mc.created_by = u.id
                 WHERE mc.id = ?";
         
@@ -58,150 +64,143 @@ class AccountManagementCashOut extends Model
     }
 
     // Add new transaction
-// Add new transaction - CORRECTED VERSION
-public function addTransaction($data)
-{
-    try {
-        // SQL INSERT with correct field order matching database table
-        $sql = "INSERT INTO {$this->table} 
-                (role_name, role_id, person_name, transaction_date, paid_to, description, 
-                 amount, payment_method, payment_status, transaction_ref, 
-                 bank_name, bank_account_no, cheque_no, online_type, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        
-        $stmt = $this->db->prepare($sql);
-        
-        if (!$stmt) {
-            error_log("Prepare failed: " . $this->db->error);
+    public function addTransaction($data)
+    {
+        try {
+            $sql = "INSERT INTO {$this->table} 
+                    (category_id, transaction_date, paid_to, description, 
+                     amount, payment_method, payment_status, transaction_ref, 
+                     bank_name, bank_account_no, cheque_no, online_type, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            
+            $stmt = $this->db->prepare($sql);
+            
+            if (!$stmt) {
+                error_log("Prepare failed: " . $this->db->error);
+                return [
+                    'success' => false,
+                    'message' => 'Database prepare failed.'
+                ];
+            }
+            
+            // Bind parameters - 13 parameters total
+            // Types: i=integer, s=string, d=double
+            // category_id(i), transaction_date(s), paid_to(s), description(s), 
+            // amount(d), payment_method(s), payment_status(s), transaction_ref(s),
+            // bank_name(s), bank_account_no(s), cheque_no(s), online_type(s), created_by(i)
+            $stmt->bind_param(
+                "isssdsssssssi",
+                $data['category_id'],
+                $data['transaction_date'],
+                $data['paid_to'],
+                $data['description'],
+                $data['amount'],
+                $data['payment_method'],
+                $data['payment_status'],
+                $data['transaction_ref'],
+                $data['bank_name'],
+                $data['bank_account_no'],
+                $data['cheque_no'],
+                $data['online_type'],
+                $data['created_by']
+            );
+            
+            $result = $stmt->execute();
+            $insertId = $this->db->insert_id;
+            $stmt->close();
+            
+            if ($result) {
+                return [
+                    'success' => true,
+                    'message' => 'Cash out transaction added successfully!',
+                    'id' => $insertId
+                ];
+            } else {
+                error_log("Execute failed: " . $this->db->error);
+                return [
+                    'success' => false,
+                    'message' => 'Failed to add transaction.'
+                ];
+            }
+        } catch (Exception $e) {
+            error_log("Exception: " . $e->getMessage());
             return [
                 'success' => false,
-                'message' => 'Database prepare failed.'
+                'message' => 'Error: ' . $e->getMessage()
             ];
         }
-        
-        // Bind parameters - 15 parameters total in CORRECT ORDER
-        $stmt->bind_param(
-            "sissssdsssssssi",  // Note: s first for role_name, then i for role_id
-            $data['role_name'],
-            $data['role_id'],
-            $data['person_name'],
-            $data['transaction_date'],
-            $data['paid_to'],
-            $data['description'],
-            $data['amount'],
-            $data['payment_method'],
-            $data['payment_status'],
-            $data['transaction_ref'],
-            $data['bank_name'],
-            $data['bank_account_no'],
-            $data['cheque_no'],
-            $data['online_type'],
-            $data['created_by']
-        );
-        
-        $result = $stmt->execute();
-        $insertId = $this->db->insert_id;
-        $stmt->close();
-        
-        if ($result) {
-            return [
-                'success' => true,
-                'message' => 'Cash out transaction added successfully!',
-                'id' => $insertId
-            ];
-        } else {
-            error_log("Execute failed: " . $this->db->error);
-            return [
-                'success' => false,
-                'message' => 'Failed to add transaction.'
-            ];
-        }
-    } catch (Exception $e) {
-        error_log("Exception: " . $e->getMessage());
-        return [
-            'success' => false,
-            'message' => 'Error: ' . $e->getMessage()
-        ];
     }
-}
 
     // Update transaction
-// Update transaction - FIXED VERSION
-// Update transaction - CORRECTED VERSION
-public function updateTransaction($data)
-{
-    try {
-        // SQL UPDATE with correct field order matching database table
-        $sql = "UPDATE {$this->table} SET
-                role_name = ?,
-                role_id = ?,
-                person_name = ?,
-                transaction_date = ?,
-                paid_to = ?,
-                description = ?,
-                amount = ?,
-                payment_method = ?,
-                payment_status = ?,
-                transaction_ref = ?,
-                bank_name = ?,
-                bank_account_no = ?,
-                cheque_no = ?,
-                online_type = ?
-                WHERE id = ?";
-        
-        $stmt = $this->db->prepare($sql);
-        
-        if (!$stmt) {
-            error_log("Prepare failed: " . $this->db->error);
+    public function updateTransaction($data)
+    {
+        try {
+            $sql = "UPDATE {$this->table} SET
+                    category_id = ?,
+                    transaction_date = ?,
+                    paid_to = ?,
+                    description = ?,
+                    amount = ?,
+                    payment_method = ?,
+                    payment_status = ?,
+                    transaction_ref = ?,
+                    bank_name = ?,
+                    bank_account_no = ?,
+                    cheque_no = ?,
+                    online_type = ?
+                    WHERE id = ?";
+            
+            $stmt = $this->db->prepare($sql);
+            
+            if (!$stmt) {
+                error_log("Prepare failed: " . $this->db->error);
+                return [
+                    'success' => false,
+                    'message' => 'Database prepare failed.'
+                ];
+            }
+            
+            // Bind parameters
+            $stmt->bind_param(
+                "isssdsssssssi",
+                $data['category_id'],
+                $data['transaction_date'],
+                $data['paid_to'],
+                $data['description'],
+                $data['amount'],
+                $data['payment_method'],
+                $data['payment_status'],
+                $data['transaction_ref'],
+                $data['bank_name'],
+                $data['bank_account_no'],
+                $data['cheque_no'],
+                $data['online_type'],
+                $data['transaction_id']
+            );
+            
+            $result = $stmt->execute();
+            $stmt->close();
+            
+            if ($result) {
+                return [
+                    'success' => true,
+                    'message' => 'Cash out transaction updated successfully!'
+                ];
+            } else {
+                error_log("Execute failed: " . $this->db->error);
+                return [
+                    'success' => false,
+                    'message' => 'Failed to update transaction.'
+                ];
+            }
+        } catch (Exception $e) {
+            error_log("Exception: " . $e->getMessage());
             return [
                 'success' => false,
-                'message' => 'Database prepare failed.'
+                'message' => 'Error: ' . $e->getMessage()
             ];
         }
-        
-        // Bind parameters in CORRECT ORDER matching SQL above
-        $stmt->bind_param(
-            "sissssdsssssssi",  // Note: s first for role_name, then i for role_id
-            $data['role_name'],
-            $data['role_id'],
-            $data['person_name'],
-            $data['transaction_date'],
-            $data['paid_to'],
-            $data['description'],
-            $data['amount'],
-            $data['payment_method'],
-            $data['payment_status'],
-            $data['transaction_ref'],
-            $data['bank_name'],
-            $data['bank_account_no'],
-            $data['cheque_no'],
-            $data['online_type'],
-            $data['transaction_id']
-        );
-        
-        $result = $stmt->execute();
-        $stmt->close();
-        
-        if ($result) {
-            return [
-                'success' => true,
-                'message' => 'Cash out transaction updated successfully!'
-            ];
-        } else {
-            error_log("Execute failed: " . $this->db->error);
-            return [
-                'success' => false,
-                'message' => 'Failed to update transaction.'
-            ];
-        }
-    } catch (Exception $e) {
-        error_log("Exception: " . $e->getMessage());
-        return [
-            'success' => false,
-            'message' => 'Error: ' . $e->getMessage()
-        ];
     }
-}
 
     // Delete transaction
     public function deleteTransaction($id)

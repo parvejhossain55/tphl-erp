@@ -3,13 +3,13 @@ class AccountManagementCashoutController extends Controller
 {
     protected $db;
     protected $cashoutModel;
-    protected $roleModel;
+    protected $categoryModel;
 
     public function __construct($db)
     {
         $this->db = $db;
         $this->cashoutModel = new AccountManagementCashOut($this->db);
-        $this->roleModel = new ManagementRole($this->db);
+        $this->categoryModel = new ManagementCategory($this->db);
         if (session_status() === PHP_SESSION_NONE) session_start();
     }
 
@@ -30,12 +30,12 @@ class AccountManagementCashoutController extends Controller
     // Show Add Form
     public function showAddForm()
     {
-        $roles = $this->roleModel->getAllActiveRoles();
+        $categories = $this->categoryModel->getAllActiveCategories();
         
         $this->view("accounts/cashout/management-cashout-form", [
             "current_route" => "add-management-cash-out",
             "page_title" => "Add Cash Out Transaction",
-            "roles" => $roles
+            "categories" => $categories
         ]);
     }
 
@@ -46,23 +46,8 @@ class AccountManagementCashoutController extends Controller
             
             $created_by = $this->getCurrentUserId();
             
-            // Get role and person name
-            $role_id = $_POST['role_id'] ?? null;
-            $person_name = '';
-            $role_name = '';
-            
-            if ($role_id) {
-                $roleData = $this->roleModel->getRoleById($role_id);
-                if ($roleData) {
-                    $person_name = $roleData['person_name'];
-                    $role_name = $roleData['role_name'];
-                }
-            }
-            
             $data = [
-                'role_id' => $role_id,
-                'role_name' => $role_name,
-                'person_name' => $person_name,
+                'category_id' => $_POST['category_id'] ?? null,
                 'transaction_date' => $_POST['transaction_date'] ?? date('Y-m-d'),
                 'paid_to' => trim($_POST['paid_to'] ?? ''),
                 'description' => trim($_POST['description'] ?? ''),
@@ -78,7 +63,7 @@ class AccountManagementCashoutController extends Controller
             ];
 
             // Basic validation
-            if (empty($data['role_id']) || empty($data['paid_to']) || $data['amount'] <= 0) {
+            if (empty($data['category_id']) || empty($data['paid_to']) || $data['amount'] <= 0) {
                 $_SESSION['old_form_data'] = $_POST;
                 setError("Please fill all required fields correctly.");
                 header("Location: {$GLOBALS['base_url']}/add-management-cash-out");
@@ -149,13 +134,13 @@ class AccountManagementCashoutController extends Controller
             exit;
         }
 
-        $roles = $this->roleModel->getAllActiveRoles();
+        $categories = $this->categoryModel->getAllActiveCategories();
 
         $this->view("accounts/cashout/edit-management-cashout", [
             "current_route" => "edit-management-cash-out",
             "page_title" => "Edit Cash Out Transaction",
             "transaction" => $transaction,
-            "roles" => $roles
+            "categories" => $categories
         ]);
     }
 
@@ -170,24 +155,9 @@ class AccountManagementCashoutController extends Controller
                 exit;
             }
 
-            // Get role and person name
-            $role_id = $_POST['role_id'] ?? null;
-            $person_name = '';
-            $role_name = '';
-            
-            if ($role_id) {
-                $roleData = $this->roleModel->getRoleById($role_id);
-                if ($roleData) {
-                    $person_name = $roleData['person_name'];
-                    $role_name = $roleData['role_name'];
-                }
-            }
-
             $data = [
                 'transaction_id' => $transactionId,
-                'role_id' => $role_id,
-                'role_name' => $role_name,
-                'person_name' => $person_name,
+                'category_id' => $_POST['category_id'] ?? null,
                 'transaction_date' => $_POST['transaction_date'] ?? date('Y-m-d'),
                 'paid_to' => trim($_POST['paid_to'] ?? ''),
                 'description' => trim($_POST['description'] ?? ''),
@@ -201,7 +171,7 @@ class AccountManagementCashoutController extends Controller
                 'online_type' => trim($_POST['online_type'] ?? '')
             ];
 
-            if (empty($data['role_id']) || empty($data['paid_to']) || $data['amount'] <= 0) {
+            if (empty($data['category_id']) || empty($data['paid_to']) || $data['amount'] <= 0) {
                 setError("Please fill all required fields correctly.");
                 header("Location: {$GLOBALS['base_url']}/edit-management-cash-out?id={$transactionId}");
                 exit;
@@ -304,7 +274,7 @@ class AccountManagementCashoutController extends Controller
         
         // Add CSV headers
         fputcsv($output, [
-            'ID', 'Transaction Date', 'Role', 'Person Name', 'Paid To', 
+            'ID', 'Transaction Date', 'Category', 'Paid To', 
             'Description', 'Amount', 'Payment Method', 'Payment Status',
             'Bank Name', 'Bank Account No', 'Cheque No', 'Online Type',
             'Transaction Ref', 'Created By', 'Created At'
@@ -315,8 +285,7 @@ class AccountManagementCashoutController extends Controller
             fputcsv($output, [
                 $transaction['id'],
                 $transaction['transaction_date'],
-                $transaction['role_name'],
-                $transaction['person_name'],
+                $transaction['category_name'] ?? 'N/A',
                 $transaction['paid_to'],
                 $transaction['description'],
                 $transaction['amount'],

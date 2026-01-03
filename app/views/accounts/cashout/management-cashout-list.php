@@ -93,8 +93,8 @@ $show_breadcrumb = true;
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title" style="margin-top: -13px;">Cash Out Transactions</h5>
                 <div class="d-flex flex-wrap justify-content-end gap-2">
-                    <a href="<?= $GLOBALS['base_url'] ?>/management-roles" class="btn btn-info">
-                        <i class="fa-light fa-users-gear me-2"></i> Manage Roles
+                    <a href="<?= $GLOBALS['base_url'] ?>/management-categories" class="btn btn-info">
+                        <i class="fa-light fa-layer-group me-2"></i> Manage Categories
                     </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/add-management-cash-out" class="btn btn-success">
                         <i class="fa-light fa-plus me-2"></i> Add Transaction
@@ -123,8 +123,7 @@ $show_breadcrumb = true;
                             <tr class="table__title table__sort">
                                 <th>ID</th>
                                 <th>Date</th>
-                                <th>Role</th>
-                                <th>Person Name</th>
+                                <th>Category</th>
                                 <th>Paid To</th>
                                 <th>Description</th>
                                 <th>Amount</th>
@@ -142,9 +141,8 @@ $show_breadcrumb = true;
                                     <tr>
                                         <td>#<?= $transaction['id'] ?></td>
                                         <td><?= $transaction['transaction_date'] ? date('d M, Y', strtotime($transaction['transaction_date'])) : '' ?></td>
-                                        <td><span class="bd-badge bg-primary"><?= htmlspecialchars($transaction['role_name'] ?? 'N/A') ?></span></td>
-                                        <td><strong><?= htmlspecialchars($transaction['person_name'] ?? 'N/A') ?></strong></td>
-                                        <td><?= htmlspecialchars($transaction['paid_to'] ?? '') ?></td>
+                                        <td><span class="bd-badge bg-primary"><?= htmlspecialchars($transaction['category_name'] ?? 'N/A') ?></span></td>
+                                        <td><strong><?= htmlspecialchars($transaction['paid_to'] ?? '') ?></strong></td>
                                         <td>
                                             <small>
                                                 <?= htmlspecialchars($transaction['description'] ?? '') ?>
@@ -202,7 +200,7 @@ $show_breadcrumb = true;
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="13" class="text-center py-4">
+                                    <td colspan="12" class="text-center py-4">
                                         <div class="text-muted">
                                             <i class="fa-light fa-receipt fa-2x mb-3"></i><br>
                                             No cash out transactions found
@@ -242,7 +240,8 @@ function deleteTransaction(transactionId) {
     }
 }
 
-function showFullDescription(transactionId) {fetch('<?= $GLOBALS['base_url'] ?>/get-cashout-transaction-details?id=' + transactionId)
+function showFullDescription(transactionId) {
+    fetch('<?= $GLOBALS['base_url'] ?>/get-cashout-transaction-details?id=' + transactionId)
         .then(response => response.json())
         .then(data => {
             if (data.error) {

@@ -19,7 +19,7 @@ class AccountManagementController extends Controller
         $transactions = $this->managementModel->getAllTransactions();
         $statistics = $this->managementModel->getStatistics();
 
-        $this->view("accounts/cashin/managements", [
+        $this->view("accounts/cashIn/managements", [
             "current_route" => "management-cash-in",
             "page_title" => "Management Cash In",
             "transactions" => $transactions,
@@ -32,7 +32,7 @@ class AccountManagementController extends Controller
     {
         $roles = $this->roleModel->getAllActiveRoles();
         
-        $this->view("accounts/cashin/managements-cash-in-form", [
+        $this->view("accounts/cashIn/managements-cash-in-form", [
             "current_route" => "add-management-cash-in",
             "page_title" => "Add Management Transaction",
             "roles" => $roles
@@ -151,7 +151,7 @@ class AccountManagementController extends Controller
 
         $roles = $this->roleModel->getAllActiveRoles();
 
-        $this->view("accounts/cashin/management-edit-form", [
+        $this->view("accounts/cashIn/management-edit-form", [
             "current_route" => "edit-management-cash-in",
             "page_title" => "Edit Management Transaction",
             "transaction" => $transaction,
@@ -296,7 +296,7 @@ class AccountManagementController extends Controller
     {
         $roles = $this->roleModel->getAllRoles();
         
-        $this->view("accounts/cashin/management-roles", [
+        $this->view("accounts/cashIn/management-roles", [
             "current_route" => "management-roles",
             "page_title" => "Manage Roles",
             "roles" => $roles

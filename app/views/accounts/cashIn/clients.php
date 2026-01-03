@@ -71,7 +71,12 @@ $show_breadcrumb = true;
     </div>
 
     <div class="col-xxl-12">
+
         <div class="card__wrapper">
+            <div class="d-flex  justify-content-between mb-20">
+                <h4>Clients Information</h4>
+            </div>
+ 
             <div class="table__wrapper table-responsive">
                 <table class="table mb-20 multiple_tables">
                     <thead>

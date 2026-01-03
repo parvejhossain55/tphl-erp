@@ -36,25 +36,24 @@ unset($_SESSION['old_form_data']);
 
                 <form action="<?= $GLOBALS['base_url'] ?>/store-management-cash-out" method="POST">
                     <div class="row">
-                        <!-- Role Selection -->
+                        <!-- Category Selection -->
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Select Role: <span class="text-danger">*</span></label>
-                            <select name="role_id" id="role_id" class="form-control" required onchange="updatePersonName()">
-                                <option value="">-- Select Role --</option>
-                                <?php if (!empty($roles) && is_array($roles)): ?>
-                                    <?php foreach ($roles as $role): ?>
-                                        <option value="<?= htmlspecialchars($role['id'] ?? '') ?>"
-                                            data-person="<?= htmlspecialchars($role['person_name'] ?? '') ?>"
-                                            <?= (!empty($old_data['role_id']) && $old_data['role_id'] == $role['id']) ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($role['role_name'] ?? 'Unknown') ?> - <?= htmlspecialchars($role['person_name'] ?? 'Unknown') ?>
+                            <label class="form-label">Select Category: <span class="text-danger">*</span></label>
+                            <select name="category_id" id="category_id" class="form-control" required>
+                                <option value="">-- Select Category --</option>
+                                <?php if (!empty($categories) && is_array($categories)): ?>
+                                    <?php foreach ($categories as $category): ?>
+                                        <option value="<?= htmlspecialchars($category['id'] ?? '') ?>"
+                                            <?= (!empty($old_data['category_id']) && $old_data['category_id'] == $category['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($category['category_name'] ?? 'Unknown') ?>
                                         </option>
                                     <?php endforeach; ?>
                                 <?php else: ?>
-                                    <option value="" disabled>No roles available</option>
+                                    <option value="" disabled>No categories available</option>
                                 <?php endif; ?>
                             </select>
                             <small class="text-muted">
-                                Don't see the role? <a href="<?= $GLOBALS['base_url'] ?>/management-roles" target="_blank">Add a new role here</a>
+                                Don't see the category? <a href="<?= $GLOBALS['base_url'] ?>/management-categories" target="_blank">Add a new category here</a>
                             </small>
                         </div>
 
@@ -164,10 +163,6 @@ unset($_SESSION['old_form_data']);
                                 value="<?= !empty($old_data['transaction_ref']) ? htmlspecialchars($old_data['transaction_ref']) : '' ?>">
                         </div>
 
-                        <!-- Hidden fields for role_name and person_name -->
-                        <input type="hidden" name="role_name" id="role_name" value="<?= !empty($old_data['role_name']) ? htmlspecialchars($old_data['role_name']) : '' ?>">
-                        <input type="hidden" name="person_name" id="person_name" value="<?= !empty($old_data['person_name']) ? htmlspecialchars($old_data['person_name']) : '' ?>">
-
                         <!-- Created by (hidden, will be set in backend) -->
                         <input type="hidden" name="created_by" value="<?= $_SESSION['user_id'] ?? '' ?>">
 
@@ -190,23 +185,6 @@ unset($_SESSION['old_form_data']);
 </div>
 
 <script>
-    function updatePersonName() {
-        var roleSelect = document.getElementById('role_id');
-        var selectedOption = roleSelect.options[roleSelect.selectedIndex];
-
-        if (selectedOption && selectedOption.value) {
-            var roleName = selectedOption.text.split(' - ')[0];
-            var personName = selectedOption.getAttribute('data-person') || '';
-
-            // Update hidden fields
-            document.getElementById('role_name').value = roleName;
-            document.getElementById('person_name').value = personName;
-        } else {
-            document.getElementById('role_name').value = '';
-            document.getElementById('person_name').value = '';
-        }
-    }
-
     function togglePaymentFields() {
         var paymentMethod = document.getElementById('payment_method').value;
 
@@ -228,7 +206,6 @@ unset($_SESSION['old_form_data']);
 
     // Initialize fields on page load
     document.addEventListener('DOMContentLoaded', function() {
-        updatePersonName();
         togglePaymentFields();
 
         // If old data exists, ensure correct fields are shown
