@@ -71,7 +71,7 @@ class FollowUpController extends Controller
             'follow_up_date' => $_POST['follow_up_date'],
             'follow_up_time' => $_POST['follow_up_time'] ?? null,
             'follow_up_type' => $_POST['follow_up_type'],
-            'status' => $_POST['status'] ?? 'pending',
+            'status' => $_POST['status'] ?? 'completed',
             'discussion_note' => $_POST['discussion_note'] ?? null,
             'next_follow_up_date' => $_POST['next_follow_up_date'] ?? null,
             'next_action' => $_POST['next_action'] ?? null,

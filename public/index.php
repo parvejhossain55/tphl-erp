@@ -227,8 +227,7 @@ $routes = [
 
     //Rafi Start  Accounts
  // ==================== ACCOUNTS====================
-
-    'dashboard' => ["controller" => "DashboardController", "method" => "index"],
+ 'dashboard' => ["controller" => "DashboardController", "method" => "index"],
     'account-dashboard' => ["controller" => "DashboardController", "method" => "index"],
     'dashboard/get-statistics' => ["controller" => "DashboardController", "method" => "getStatistics"],
 
@@ -272,6 +271,14 @@ $routes = [
     'delete-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "deleteTransaction"],
     'get-cashout-transaction-details' => ["controller" => "AccountManagementCashoutController", "method" => "getTransactionDetails"],
     'export-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "exportTransactions"],
+
+    // ==================== MANAGEMENT CATEGORIES ROUTES ====================
+    'management-categories' => ["controller" => "AccountManagementCategoryController", "method" => "index"],
+    'get-category-details' => ["controller" => "AccountManagementCategoryController", "method" => "getCategoryDetails"],
+    'add-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "addCategory"],
+    'update-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "updateCategory"],
+    'delete-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "deleteCategory"],
+    'toggle-category-status' => ["controller" => "AccountManagementCategoryController", "method" => "toggleCategoryStatus"],
 
     //rafi End
 
