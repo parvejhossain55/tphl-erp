@@ -500,20 +500,25 @@ function getFlatRulesArray()
 
     return $rulesCache; // array return
 }
-       function amountInWords($amount)
-                    {
-                        if ($amount === null || $amount === '') {
-                            return '';
-                        }
+  if (!function_exists('amountInWords')) {
+    function amountInWords($amount)
+    {
+        if ($amount === null || $amount === '') {
+            return '';
+        }
 
-                        $amount = (float)$amount;
+        $amount = round((float)$amount);
 
-                        $formatter = new NumberFormatter("en", NumberFormatter::SPELLOUT);
-                        $words = $formatter->format($amount);
+        if (!class_exists('NumberFormatter')) {
+            return '';
+        }
 
-                        // Capitalize + Bangladeshi style
-                        return strtoupper($words . " TAKA ONLY");
-                    }
+        $formatter = new NumberFormatter("en", NumberFormatter::SPELLOUT);
+        $words = ucwords($formatter->format($amount));
+
+        return $words . " Taka Only";
+    }
+}
 
 // truncate text to N characters
 function truncateText($text, $limit = 50) {

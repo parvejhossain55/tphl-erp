@@ -90,7 +90,7 @@ $show_breadcrumb = true;
                             <th>Joining Date</th>
                             <th>Salary (Monthly)</th>
                             <th>Status</th>
-                            <th class="d-none">Action</th>
+                            <th class="">Action</th>
                         </tr>
                     </thead>
                     <tbody class="table__body">
@@ -110,25 +110,28 @@ $show_breadcrumb = true;
                                 <td class="table__employee-emaill"><a href="<?= $payslip['email'] ?>"><?= $payslip['email'] ?></a></td>
                                 <td class="table__joining-date"><?= $payslip['joining_date'] ?></td>
                                 <td class="table__salary"><?= $payslip['net_salary'] ?></td>
-                                <td class="table__delivery">
+                                <td class="table__delivery ">
                                     <?php if ($payslip['status'] == 'paid'): ?>
-                                        <span class="bd-badge bg-success">Approve</span>
+                                        <span class="bd-badge bg-success">Paid</span>
                                     <?php else: ?>
                                         <span class="bd-badge bg-danger">Pending</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="d-none able__icon-box">
+                                <td class="able__icon-box">
                                     <div class="d-flex align-items-center justify-content-start gap-10">
-                                        <button
-                                            class=" btn btn-success btn-sm payPayslipBtn"
-                                            data-id="<?= $payslip['id'] ?>"
-                                            data-earning="<?= $payslip['total_earning'] ?>"
-                                            data-deduction="<?= $payslip['total_deduction'] ?>"
-                                            data-net="<?= $payslip['net_salary'] ?>">
-                                            Pay
-                                        </button>
+                                        <?php if ($payslip['status'] != 'paid'): ?>
+                                            <button
+                                                class="btn btn-success btn-sm payPayslipBtn"
+                                                data-id="<?= $payslip['id'] ?>"
+                                                data-earning="<?= $payslip['total_earning'] ?>"
+                                                data-deduction="<?= $payslip['total_deduction'] ?>"
+                                                data-net="<?= $payslip['net_salary'] ?>">
+                                                Pay
+                                            </button>
+                                        <?php endif; ?>
 
-                                        <a href="payroll-payslip.html" class="table__icon download">
+
+                                        <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>" class="table__icon download">
                                             <i class="fa-regular fa-eye"></i>
                                         </a>
                                         <a href="#" class="table__icon edit">
@@ -148,6 +151,8 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
+
+<!-- Pay Payslip Modal -->
 
 <!-- Pay Payslip Modal -->
 <div id="payPayslipModal" class="modal custom-modal fade" role="dialog">
@@ -233,14 +238,24 @@ $show_breadcrumb = true;
                                                 <label>Company Bank</label>
                                             </div>
                                             <div class="form__input">
-                                                <select name="company_bank_id" class="form-select">
+                                                <select name="company_bank_id" id="companyBankSelect" class="form-select">
                                                     <option value="">Select Bank</option>
                                                     <?php foreach ($companyBanks as $bank): ?>
-                                                        <option value="<?= $bank['id'] ?>">
+                                                        <option value="<?= $bank['id'] ?>"
+                                                            data-bank-name="<?= $bank['bank_name'] ?>"
+                                                            data-account-name="<?= $bank['account_name'] ?>"
+                                                            data-account-number="<?= $bank['account_number'] ?>">
                                                             <?= $bank['bank_name'] ?> (<?= $bank['account_number'] ?>)
                                                         </option>
                                                     <?php endforeach; ?>
                                                 </select>
+                                            </div>
+
+                                            <!-- Bank Details -->
+                                            <div id="bankDetails" class="d-none mt-2">
+                                                <p><strong>Bank Name:</strong> <span id="bankName"></span></p>
+                                                <p><strong>Account Name:</strong> <span id="accountName"></span></p>
+                                                <p><strong>Account Number:</strong> <span id="accountNumber"></span></p>
                                             </div>
                                         </div>
                                     </div>
@@ -269,6 +284,39 @@ $show_breadcrumb = true;
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+
+        const paymentMethod = document.getElementById('paymentMethod');
+        const companyBankWrapper = document.getElementById('companyBankWrapper');
+        const companyBankSelect = document.getElementById('companyBankSelect');
+        const bankDetails = document.getElementById('bankDetails');
+        const bankName = document.getElementById('bankName');
+        const accountName = document.getElementById('accountName');
+        const accountNumber = document.getElementById('accountNumber');
+
+        // Show/hide bank section based on payment method
+        paymentMethod.addEventListener('change', function() {
+            if (this.value === 'bank') {
+                companyBankWrapper.classList.remove('d-none');
+            } else {
+                companyBankWrapper.classList.add('d-none');
+                bankDetails.classList.add('d-none');
+            }
+        });
+
+        // Show bank details when a bank is selected
+        companyBankSelect.addEventListener('change', function() {
+            const selectedOption = this.selectedOptions[0];
+            if (selectedOption && selectedOption.value !== "") {
+                bankName.textContent = selectedOption.dataset.bankName;
+                accountName.textContent = selectedOption.dataset.accountName;
+                accountNumber.textContent = selectedOption.dataset.accountNumber;
+                bankDetails.classList.remove('d-none');
+            } else {
+                bankDetails.classList.add('d-none');
+            }
+        });
+
+        // Open modal and prefill payslip data
         document.querySelectorAll('.payPayslipBtn').forEach(btn => {
             btn.addEventListener('click', function() {
                 document.getElementById('modalPayslipId').value = this.dataset.id;
@@ -276,11 +324,19 @@ $show_breadcrumb = true;
                 document.getElementById('modalTotalDeduction').value = this.dataset.deduction;
                 document.getElementById('modalNetSalary').value = this.dataset.net;
 
-                new bootstrap.Modal(
-                    document.getElementById('payPayslipModal')
-                ).show();
-            })
-        })
+                // Reset payment method & bank details
+                paymentMethod.value = "";
+                companyBankWrapper.classList.add('d-none');
+                bankDetails.classList.add('d-none');
+                companyBankSelect.value = "";
 
-    })
+                new bootstrap.Modal(document.getElementById('payPayslipModal')).show();
+            });
+        });
+
+    });
 </script>
+
+
+
+<!-- JS to handle modal and bank details -->

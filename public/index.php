@@ -212,6 +212,13 @@ $routes = [
     "payslip-lists" => ["controller" => "PayrollController", "method" => "index"],
     "create-payslip" => ["controller" => "PayrollController", "method" => "create"],
     "store-payslip" => ["controller" => "PayrollController", "method" => "store"],
+    // 03-01-2025
+    "pay-payslip" => ["controller" => "PayrollController", "method" => "updatePay"],
+    "show-payslip/(\d+)" => ["controller" => "PayrollController", "method" => "show"],
+    "print-payslip/(\d+)" => ["controller" => "PayrollController", "method" => "print"],
+
+    "download-payslip/(\d+)" => ["controller" => "PayrollController", "method" => "downloadPDF"],
+
     //--payslip Item
     "payslip-items" => ["controller" => "PayslipItemController", "method" => "index"],
     "store-payslip-item" => ["controller" => "PayslipItemController", "method" => "store"],
@@ -226,8 +233,8 @@ $routes = [
 
 
     //Rafi Start  Accounts
- // ==================== ACCOUNTS====================
- 'dashboard' => ["controller" => "DashboardController", "method" => "index"],
+    // ==================== ACCOUNTS====================
+    'dashboard' => ["controller" => "DashboardController", "method" => "index"],
     'account-dashboard' => ["controller" => "DashboardController", "method" => "index"],
     'dashboard/get-statistics' => ["controller" => "DashboardController", "method" => "getStatistics"],
 

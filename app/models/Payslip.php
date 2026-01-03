@@ -118,7 +118,61 @@ public function delete($id)
     return true;
 }
 
+public function payPayslip($payslipId, $paymentMethod, $companyBankId = null)
+{
+    $stmt = $this->db->prepare("
+        UPDATE payslips 
+        SET status = 'paid', 
+            payment_method = ?, 
+            company_bank_id = ?, 
+            updated_at = NOW() 
+        WHERE id = ?
+    ");
+    $stmt->bind_param("sii", $paymentMethod, $companyBankId, $payslipId);
+    $stmt->execute();
+    $affectedRows = $stmt->affected_rows;
+    $stmt->close();
+    return $affectedRows > 0; // returns true if updated
+}
 
+public function getByIdWithItems($id) {
+    //  Get main payslip
+    $stmt = $this->db->prepare("
+        SELECT p.*, cb.bank_name, cb.account_name, cb.account_number,e.employee_id,e.full_name AS employee_name, e.email,e.joining_date,e.phone,e.basic_salary,
+        d.name AS designation_name ,dept.name AS department_name
+        FROM payslips AS p
+        LEFT JOIN company_bank_accounts AS cb ON p.company_bank_id = cb.id
+        LEFT JOIN employees AS e ON p.employee_id = e.id
+        LEFT JOIN designations AS d ON p.designation_id = d.id
+        LEFT JOIN departments AS dept ON e.department_id = dept.id
+        WHERE p.id = ?
+    ");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $payslip = $result->fetch_assoc();
+    $stmt->close();
+
+    if (!$payslip) return null;
+
+    // 2 Get item details for this payslip
+    $stmt2 = $this->db->prepare("
+        SELECT pd.*, pi.name AS item_name, pi.type AS item_type
+        FROM payslip_details AS pd
+        LEFT JOIN payslip_items AS pi ON pd.payslip_item_id = pi.id
+        WHERE pd.payslip_id = ?
+    ");
+    $stmt2->bind_param("i", $id);
+    $stmt2->execute();
+    $itemsResult = $stmt2->get_result();
+    $items = $itemsResult->fetch_all(MYSQLI_ASSOC);
+    $stmt2->close();
+
+    // 3 Attach items to payslip array
+    $payslip['items'] = $items;
+
+    return $payslip;
+}
 
 
 

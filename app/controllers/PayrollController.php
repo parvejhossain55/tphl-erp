@@ -6,21 +6,25 @@ class PayrollController extends Controller
     protected $employeeModel;
     protected $payslipItemModel;
     protected $paymentModel;
+    protected $bankModel;
     public function __construct($db)
     {
         $this->db = $db;
         $this->employeeModel = new Employee($this->db);
         $this->payslipItemModel = new PayslipItem($this->db);
         $this->paymentModel = new Payslip($this->db);
+        $this->bankModel = new CompanyBankAccount($this->db);
     }
 
     public function index()
     {
+        
         $totalEmployees = $this->employeeModel->getTotalCount();
         $payslips = $this->paymentModel->getAllWithEmployee();
         $paidCount = $this->paymentModel->getPaidCount();
         $pendingCount = $this->paymentModel->getPendingCount();
-
+   // Get all company banks
+    $companyBanks = $this->bankModel->getAll(); 
         //  Pass all data to view
         $this->view("payrolls/payslips/payslip-lists", [
             "current_route" => "payslip-lists",
@@ -29,6 +33,7 @@ class PayrollController extends Controller
             "totalEmployees" => $totalEmployees,
             "paidCount" => $paidCount,
             "pendingCount" => $pendingCount,
+            "companyBanks" => $companyBanks,
 
         ]);
     }
@@ -85,5 +90,81 @@ class PayrollController extends Controller
     </script>";
     }
 
+
+    public function updatePay()
+{  
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $payslipId = $_POST['payslip_id'] ?? null;
+        $paymentMethod = $_POST['payment_method'] ?? null;
+        $companyBankId = $_POST['company_bank_id'] ?? null;
+
+        if (!$payslipId || !$paymentMethod) {
+            $_SESSION['error'] = "Payslip ID or payment method missing.";
+            header("Location: " . $GLOBALS['base_url'] . "/payslip-lists");
+            exit;
+        }
+
+        $companyBankId = $companyBankId ?: null; // nullable
+
+        $success = $this->paymentModel->payPayslip($payslipId, $paymentMethod, $companyBankId);
+
+        if ($success) {
+            $_SESSION['success'] = "Payslip paid successfully.";
+        } else {
+            $_SESSION['error'] = "Failed to update payslip. Please try again.";
+        }
+
+        header("Location: " . $GLOBALS['base_url'] . "/payslip-lists");
+        exit;
     
+}
+
+
+public function show($id){
+    
+$payslip = $this->paymentModel->getByIdWithItems($id);
+
+$this->view("payrolls/payslips/show-payslip", [
+
+    "current_route" => "show-payslip",
+    "page_title"    => "Payslip Details",
+    "payslip"       => $payslip
+],false);
+
+}
+public function print($id) {
+    $payslip = $this->paymentModel->getByIdWithItems($id);
+
+    $this->view("payrolls/payslips/print-payslip", [
+        "payslip" => $payslip
+    ]);
+}
+
+
+
+
+
+public function downloadPDF($id)
+{
+    ini_set('memory_limit', '1024M'); // Increase memory
+    require_once __DIR__ . '/../../vendor/autoload.php';
+
+    $payslip = $this->paymentModel->getByIdWithItems($id);
+    if (!$payslip) die('Payslip not found');
+
+    ob_start();
+    $this->view("payrolls/payslips/payslip-download", ["payslip" => $payslip]);
+    $html = ob_get_clean();
+
+    $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/../../tmp']); // tempDir optional
+    $mpdf->WriteHTML($html);
+    $mpdf->Output('payslip_'.$payslip['id'].'.pdf','D');
+}
+
+
+
+
+
 }

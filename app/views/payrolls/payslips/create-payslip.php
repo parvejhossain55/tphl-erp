@@ -13,9 +13,9 @@
                                 <div class="col-md-7">
                                     <div class="invoice__logo mb-20">
                                         <img class=" d-nonelight-logo" src="<?= getImage('settings', getSetting('logo')); ?>" alt="payslip logo">
-                                        <img class="dark-logo" src="assets/images/logo/logo-white.svg" alt="payslip logo">
+                                        <img class="d-none dark-logo" src="assets/images/logo/logo-white.svg" alt="payslip logo">
                                     </div>
-                                    <p class="mb-5"><?= getSetting('website_title') ?></p>
+                                    <h4 class="mb-5"><?= getSetting('website_title') ?></h4>
                                     <p class="mb-5"><?= getSetting('website_address') ?></p>
                                     <p class="mb-5"><?= getSetting('website_email') ?></p>
                                     <p class="mb-5"><?= getSetting('website_phone') ?></p>
@@ -41,7 +41,7 @@
                                         </div>
                                         <div class="col-lg-9">
                                             <div class="form__input">
-                                                <input class="form-control flatpickr-input active" id="paydate" type="text" placeholder="Select Date" readonly="readonly">
+                                                <input class="form-control flatpickr-input active" id="paydate" type="date" placeholder="Select Date" >
                                             </div>
                                         </div>
                                     </div>
@@ -68,15 +68,6 @@
                                         </div> -->
                                     </div>
                                 <!-- new here  -->
-                                <!-- new here  -->
-
-
-
-
-
-
-                                   
-
                                     <!-- Employee Info -->
                                     <div class="row mb-4">
                                         <div class="col-sm-6">
