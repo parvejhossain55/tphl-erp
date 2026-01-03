@@ -1,6 +1,4 @@
-
 <?php 
-// core/database 
 class Database{
 
     public $conn;
@@ -25,7 +23,4 @@ class Database{
         return $this->conn->query($sql);
     }
 }
-
-
-?>
 

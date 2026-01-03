@@ -125,13 +125,13 @@ public function update($data)
 
 public function delete($id)
 {
-    // 1️⃣ Delete all designations linked to this department
+    // Delete all designations linked to this department
     $stmt1 = $this->db->prepare("DELETE FROM designations WHERE department_id = ?");
     $stmt1->bind_param("i", $id);
     $stmt1->execute();
     $stmt1->close();
 
-    // 2️⃣ Delete the department
+    //  Delete the department
     $stmt2 = $this->db->prepare("DELETE FROM departments WHERE id = ?");
     $stmt2->bind_param("i", $id);
     $stmt2->execute();

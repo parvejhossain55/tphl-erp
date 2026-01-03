@@ -14,11 +14,11 @@ public function index()
 {
     $sources = $this->leadSourceModel->getAll();
 
-    $this->view("lead-sources/leadSources", [
+    $this->view("sales-developments/lead-sources/leadSources", [
         "sources" => $sources,
         "leadData" => [], // empty for new
         "current_route" => "leadSource-lists",
-        "page_title" => " Lead"
+        "page_title" => " Lead Source"
     ]);
    
 }

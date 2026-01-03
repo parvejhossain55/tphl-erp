@@ -4,7 +4,7 @@ $page = 'Employee Lists';
 $show_breadcrumb = true;
 
 ?>
-<form method="GET" action="">
+
     <div class="row g-20 mb-20 justify-content-between align-items-end">
 
         <!-- Search -->

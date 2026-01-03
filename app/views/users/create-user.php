@@ -63,15 +63,24 @@ $show_breadcrumb = true;
                         <label for="nid">NID Number <span>*</span></label>
                         <input class="form-control" name="nid" id="nid" type="text" required>
                     </div>
-                    <!-- Role (dynamic from DB) -->
-                    <div class="col-lg-6 mb-3">
-                        <label for="role">Role <span>*</span></label>
-                        <select class="form-control" name="role_id" id="role" required>
-                            <option value="">Select Role</option>
-                            <?php foreach ($roles as $role): ?>
-                                <option value="<?= $role['id'] ?>"><?= $role['name'] ?></option>
-                            <?php endforeach; ?>
-                        </select>
+
+
+                    <!-- Location -->
+                    <div class="col-xl-6">
+                        <label>Role *</label>
+                        <div class="d-flex gap-2">
+                            <select name="role_id" class="form-control" required style="flex:1;">
+                                <option value="">Select Role</option>
+                                <?php foreach ($roles as $role): ?>
+                                    <option value="<?= $role['id']; ?>"><?= $role['name']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <a href="<?= $GLOBALS['base_url'] ?>/permissions"
+                                class="btn btn-secondary"
+                                style="height: 38px; display:flex; align-items:center; padding:0 12px;">
+                                + role
+                            </a>
+                        </div>
                     </div>
 
                     <!-- Designation -->

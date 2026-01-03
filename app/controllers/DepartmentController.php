@@ -57,7 +57,7 @@ public function update()
         'status' => isset($_POST['status']) ? intval($_POST['status']) : 0, 
     ];
 
-    print_r($data); // debug: check values
+    // print_r($data); // debug: check values
 
     if ($this->deparmentModel->update($data)) {
         header("Location: {$GLOBALS['base_url']}/departments");

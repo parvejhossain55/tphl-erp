@@ -38,7 +38,7 @@ $show_breadcrumb = true;
                                         <button class="removeBtnCust table__icon delete"
                                             data-id="<?= $location['id'] ?>"
                                             data-name="<?= $location['name'] ?>"
-                                            data-action="delete-department">
+                                            data-action="delete-location">
                                             <i class="fa-regular fa-trash"></i>
                                         </button>
 

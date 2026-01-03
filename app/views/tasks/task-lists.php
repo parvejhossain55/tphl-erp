@@ -99,7 +99,7 @@
                   </div>
                   <div class="task__btn d-flex justify-content-between">
                       <a class="btn btn-outline-theme-border" href="<?= $base_url ?>/show-task/<?= $task['id'] ?>">View Task</a>
-                      <a class="btn btn-outline-theme-border" href="<?= $base_url ?>/show-task/<?= $task['id'] ?>">Edit Task</a>
+                      <a class="btn btn-outline-theme-border" href="<?= $base_url ?>/edit-task/<?= $task['id'] ?>">Edit Task</a>
 
                   </div>
               </div>

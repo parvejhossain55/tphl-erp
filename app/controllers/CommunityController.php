@@ -15,7 +15,7 @@ public function index()
     // Get communitiess
     $communities = $this->deparmentModel->getAll();
 
-    $this->view("communities/communities", [
+    $this->view("sales-developments/communities/communities", [
         "current_route"   => "community-lists",
         "page_title"      => "communities List",
         "communities"     => $communities,
@@ -32,7 +32,7 @@ public function store()
     ];
 
     if ($this->deparmentModel->create($data)) {
-        header("Location: {$GLOBALS['base_url']}/community_lists");
+        header("Location: {$GLOBALS['base_url']}/community-lists");
         exit;
     } else {
         echo "<h3 style='color:red'>Failed to create communities</h3>";

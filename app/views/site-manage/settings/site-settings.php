@@ -145,7 +145,7 @@ $settings = $settings ?? []; // Controller থেকে পাঠানো হ�
         <!-- Header Code -->
         <div class="col-md-12">
             <div class="from__input-box">
-                <label>Header Code</label>
+                <label>Ruls of flat Purchasing With Land</label>
                 <textarea name="header_code" rows="4" class="form-control"><?= $settings['header_code'] ?? '' ?></textarea>
             </div>
         </div>

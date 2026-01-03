@@ -100,19 +100,19 @@ class Task extends Model
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)"
         );
         $stmt->bind_param(
-            "sisssiisis", 
+            "sisssisssi",
             $data['title'],
             $data['employee_id'],
             $data['description'],
             $data['start_date'],
             $data['deadline'],
             $data['employee_accept'],
-            
             $data['status'],
             $data['progress'],
             $data['priority'],
             $data['assigned_by']
         );
+
         if ($stmt->execute()) {
             return true;
         } else {
@@ -154,37 +154,158 @@ class Task extends Model
      */
     public function update($id, $data)
     {
-        // 1. old employee info
-        $oldEmployee = $this->find($id);
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-        // 5. Update query
-        $sql = "UPDATE tasks SET
-        title = ?, description = ?, start_date = ?, deadline = ?, priority = ?, progress = ?, status = ?,
-        employee_id = ?,
-    WHERE id = ?";
+        $oldTask = $this->find($id);
+        if (!$oldTask) return false;
 
-        $stmt = $this->db->prepare($sql);
+        $oldEmployeeId = (int)$oldTask['employee_id'];
+        $newEmployeeId = (int)$data['employee_id'];
 
-        $stmt->bind_param(
-            "sssssisi",
-            $data['title'],
-            $data['description'],
-            $data['start_date'],
-            $data['deadline'],
-            $data['priority'],
-            $data['progress'],
-            $data['status'],
-            $data['employee_id'],
-            $id
-        );
+        //  Start transaction
+        $this->db->begin_transaction();
 
-        return $stmt->execute();
+        try {
+            //  Update task
+            $sql = "UPDATE tasks SET
+                    title = ?, 
+                    description = ?, 
+                    start_date = ?, 
+                    deadline = ?, 
+                    priority = ?, 
+                    progress = ?, 
+                    status = ?,
+                    employee_id = ?
+                WHERE id = ?";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param(
+                "sssssisii",
+                $data['title'],
+                $data['description'],
+                $data['start_date'],
+                $data['deadline'],
+                $data['priority'],
+                $data['progress'],
+                $data['status'],
+                $newEmployeeId,
+                $id
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Task update failed");
+            }
+
+            //  UPDATE notification if employee changed
+            if ($oldEmployeeId !== $newEmployeeId) {
+
+                $message = "Task reassigned: " . $data['title'];
+
+                $stmt = $this->db->prepare("
+                UPDATE notifications
+                SET employee_id = ?, message = ?, is_read = 0
+                WHERE task_id = ?
+            ");
+
+                $stmt->bind_param(
+                    "isi",
+                    $newEmployeeId,
+                    $message,
+                    $id
+                );
+
+                if (!$stmt->execute()) {
+                    throw new Exception("Notification update failed");
+                }
+            }
+
+            // 5 Commit
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return false;
+        }
     }
+
+
+
 
     public function delete($id)
     {
         $stmt = $this->db->prepare("DELETE FROM employees WHERE id = ?");
         $stmt->bind_param("i", $id);
         return $stmt->execute();
+    }
+
+
+    public function getTaskCount($condition)
+    {
+        $sql = "SELECT COUNT(*) AS total FROM tasks WHERE $condition";
+        $result = $this->db->query($sql)->fetch_assoc();
+        return $result['total'] ?? 0;
+    }
+
+    public function acceptTask($taskId)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $this->db->begin_transaction();
+
+        try {
+            //  Update task status
+            $stmt = $this->db->prepare("
+            UPDATE tasks 
+            SET employee_accept = 1, status = 'in_progress'
+            WHERE id = ?
+        ");
+            $stmt->bind_param("i", $taskId);
+            $stmt->execute();
+
+            //  Mark related notification as read
+            $stmt = $this->db->prepare("
+            UPDATE notifications 
+            SET is_read = 1
+            WHERE task_id = ?
+        ");
+            $stmt->bind_param("i", $taskId);
+            $stmt->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return false;
+        }
+    }
+
+
+    public function updateProgress($taskId, $progress)
+    {
+        // Start transaction
+        $this->db->begin_transaction();
+
+        try {
+            //  Update task progress
+            $status = ($progress >= 100) ? 'completed' : 'in_progress';
+
+            $stmt = $this->db->prepare("
+            UPDATE tasks
+            SET progress = ?, status = ?
+            WHERE id = ?
+        ");
+            $stmt->bind_param("isi", $progress, $status, $taskId);
+            $stmt->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return false;
+        }
     }
 }

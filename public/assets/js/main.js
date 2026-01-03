@@ -5,9 +5,14 @@
 	/*======================================
 	Preloader activation
 	========================================*/
-	$(window).on('load', function (event) {
-		$('#preloader').delay(500).fadeOut(500);
-	});
+	// $(window).on('load', function (event) {
+	// 	$('#preloader').delay(100).fadeOut(100);
+	// });
+
+		$(window).on('load', function () {
+			$('#preloader').hide();
+		});
+
 
 	/*======================================
 	Isotope Js

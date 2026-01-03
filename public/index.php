@@ -1,6 +1,3 @@
-
-
-
 <?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -11,7 +8,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 $root = dirname(__DIR__);
-$GLOBALS['base_url'] = '/TPHL-ERP/public';
+$GLOBALS['base_url'] = '/TPHL-ERP';
+
 
 // folder er moddhe o chaile folder kore controller nite parbo abr folder chara o controller
 spl_autoload_register(function ($class) use ($root) {
@@ -30,9 +28,6 @@ spl_autoload_register(function ($class) use ($root) {
         }
     }
 });
-
-
-
 
 // Load config
 $config = require $root . "/app/config/config.php";
@@ -69,7 +64,9 @@ $routes = [
     "store-role"           => ["controller" => "RoleController", "method" => "store"],
     "get-role"      => ["controller" => "RoleController", "method" => "edit"],
     "update-role"   => ["controller" => "RoleController", "method" => "update"],
+    //hrm
 
+    "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
     // Tasks
 
     'task-lists' => ["controller" => "TaskController", "method" => "index"],
@@ -99,13 +96,18 @@ $routes = [
     "update-employee/(\d+)" => ["controller" => "EmployeeController", "method" => "update"],
     "employee-profile/(\d+)" => ["controller" => "EmployeeController", "method" => "show"],
     "delete-employee/(\d+)" => ["controller" => "EmployeeController", "method" => "delete"],
+
+    //employee dashboard
     "employee-dashboard" => ["controller" => "EmployeeDashboardController", "method" => "index"],
+    "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
+    "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
     // leads
     "lead-lists" => ["controller" => "LeadController", "method" => "index"],
     "create-lead" => ["controller" => "LeadController", "method" => "create"],
     "store-lead" => ["controller" => "LeadController", "method" => "store"],
     "edit-lead/(\d+)" => ["controller" => "LeadController", "method" => "edit"],
+    "view-lead/(\d+)" => ["controller" => "LeadController", "method" => "show"],
     "leads-import-csv" => ["controller" => "LeadController", "method" => "importCsv"],
     "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
     "delete-lead/(\d+)" => ["controller" => "LeadController", "method" => "delete"],
@@ -145,6 +147,8 @@ $routes = [
     // Leave controller 
     "leave-types" => ["controller" => "Leaves\\LeaveTypeController", "method" => "index"],
     "store-leave-type" => ["controller" => "Leaves\\LeaveTypeController", "method" => "store"],
+    "update-leave-type" => ["controller" => "Leaves\\LeaveTypeController", "method" => "update"],
+    "delete-leave-type" => ["controller" => "Leaves\\LeaveTypeController", "method" => "delete"],
 
 
     // Site controller 
@@ -155,6 +159,11 @@ $routes = [
     // site-Setting 
     "site-settings" => ["controller" => "SiteManage\\SiteSettingController", "method" => "index"],
     "store-site-setting" => ["controller" => "SiteManage\\SiteSettingController", "method" => "storeOrUpdate"],
+    // flat purchase rules
+    "flat-purchase-rules" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "index"],
+    "store-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "store"],
+    "update-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "update"],
+    "delete-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "delete"],
 
     //project
     "project-lists" => ["controller" => "ProjectController", "method" => "index"],
@@ -173,9 +182,98 @@ $routes = [
     "flats-import-csv" => ["controller" => "FlatController", "method" => "importCsv"],
     "update-flat/(\d+)" => ["controller" => "FlatController", "method" => "update"],
     "delete-flat/(\d+)" => ["controller" => "FlatController", "method" => "delete"],
-   
+
+    //follow-up-leads
+    "follow-up-leads/(\d+)" => ["controller" => "FollowUpController", "method" => "index"],
+    "store-follow-up" => ["controller" => "FollowUpController", "method" => "store"],
+    "update-follow-up" => ["controller" => "FollowUpController", "method" => "update"],
+    "delete-follow-up" => ["controller" => "FollowUpController", "method" => "delete"],
+    "get-flats/(\d+)" => ["controller" => "FollowUpController", "method" => "getFlats"],
+
+    // booking
+    "booking-leads/(\d+)" => ["controller" => "BookingController", "method" => "index"],
+    "booking-store" => ["controller" => "BookingController", "method" => "store"],
+    "get-flats-by-project/(\d+)" => ["controller" => "BookingController", "method" => "getFlatsByProject"],
+    "update-flats-by-project" => ["controller" => "BookingController", "method" => "update"],
 
 
+    // payments_booking
+    "payments-booking/(\d+)" => ["controller" => "PaymentBookingController", "method" => "index"],
+    "payment-booking-store" => ["controller" => "PaymentBookingController", "method" => "store"],
+    "payment-invoice/(\d+)" => ["controller" => "PaymentBookingController", "method" => "invoice"],
+
+    //SalesDashboard
+
+    "sales-dashboard" => ["controller" => "SalesDashboardController", "method" => "index"],
+
+
+    //payrolls
+    //--payslips lists
+    "payslip-lists" => ["controller" => "PayrollController", "method" => "index"],
+    "create-payslip" => ["controller" => "PayrollController", "method" => "create"],
+    "store-payslip" => ["controller" => "PayrollController", "method" => "store"],
+    //--payslip Item
+    "payslip-items" => ["controller" => "PayslipItemController", "method" => "index"],
+    "store-payslip-item" => ["controller" => "PayslipItemController", "method" => "store"],
+    "update-payslip-item" => ["controller" => "PayslipItemController", "method" => "update"],
+    "delete-payslip-item" => ["controller" => "PayslipItemController", "method" => "delete"],
+
+
+    //company bank accounts
+    "company-bank-accounts" => ["controller" => "BankAccountController", "method" => "index"],
+
+
+
+
+    //Rafi Start  Accounts
+ // ==================== ACCOUNTS====================
+
+    'dashboard' => ["controller" => "DashboardController", "method" => "index"],
+    'account-dashboard' => ["controller" => "DashboardController", "method" => "index"],
+    'dashboard/get-statistics' => ["controller" => "DashboardController", "method" => "getStatistics"],
+
+    // ==================== CLIENT CASH IN ROUTES ====================
+
+    "clients-cash-in" => ["controller" => "AccountClientController", "method" => "index"],
+    // client's cash in history 
+    "clients-cash-in-history" => ["controller" => "AccountClientController", "method" => "indexTwo"],
+    "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],
+    // Add transaction route
+    "add-transaction" => ["controller" => "AccountClientController", "method" => "addTransaction"],
+    "edit-client-cash-in/(\d+)" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
+    "edit-client-cash-in" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
+    "client-cash-in-form" => ["controller" => "AccountClientController", "method" => "showAddTransactionForm"],
+    "update-transaction" => ["controller" => "AccountClientController", "method" => "updateTransaction"],
+    "delete-transaction" => ["controller" => "AccountClientController", "method" => "deleteTransaction"],
+
+    // ==================== MANAGEMENT CASH IN ROUTES ====================
+    'management-cash-in' => ["controller" => "AccountManagementController", "method" => "index"],
+    'add-management-cash-in' => ["controller" => "AccountManagementController", "method" => "showAddForm"],
+    'store-management-cash-in' => ["controller" => "AccountManagementController", "method" => "storeTransaction"],
+    'edit-management-cash-in' => ["controller" => "AccountManagementController", "method" => "showEditForm"],
+    'update-management-cash-in' => ["controller" => "AccountManagementController", "method" => "updateTransaction"],
+    'delete-management-cash-in' => ["controller" => "AccountManagementController", "method" => "deleteTransaction"],
+    'get-management-transaction-details' => ["controller" => "AccountManagementController", "method" => "getTransactionDetails"],
+
+    // ==================== MANAGEMENT ROLES ROUTES ====================
+    'management-roles' => ["controller" => "AccountManagementController", "method" => "manageRoles"],
+    'get-role-details' => ["controller" => "AccountManagementController", "method" => "getRoleDetails"],
+    'add-role' => ["controller" => "AccountManagementController", "method" => "addRole"],
+    'update-roles' => ["controller" => "AccountManagementController", "method" => "updateRole"],
+    'delete-role' => ["controller" => "AccountManagementController", "method" => "deleteRole"],
+    'toggle-role-status' => ["controller" => "AccountManagementController", "method" => "toggleRoleStatus"],
+
+    // ==================== MANAGEMENT CASH OUT ROUTES ====================
+    'management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "index"],
+    'add-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "showAddForm"],
+    'store-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "storeTransaction"],
+    'edit-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "showEditForm"],
+    'update-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "updateTransaction"],
+    'delete-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "deleteTransaction"],
+    'get-cashout-transaction-details' => ["controller" => "AccountManagementCashoutController", "method" => "getTransactionDetails"],
+    'export-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "exportTransactions"],
+
+    //rafi End
 
 
 ];
@@ -183,10 +281,12 @@ $routes = [
 $route = trim(strtok($_SERVER["REQUEST_URI"], '?'), '/');
 
 // Remove base folder if present
-$base_folder = 'TPHL-ERP/public';
+$base_folder = 'TPHL-ERP';
+
 if (strpos($route, $base_folder) === 0) {
     $route = substr($route, strlen($base_folder));
 }
+
 $route = trim($route, '/');
 
 // Skip routes that don't need login

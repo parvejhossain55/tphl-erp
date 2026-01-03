@@ -2,40 +2,80 @@
         $page_title = "Employee Dashboard ";
         ?>
 
-<div class="notification-dropdown">
-  
-    <ul>
-        <?php if (!empty($notifications)): ?>
-            <?php foreach($notifications as $note): ?>
-                <li>
-                    <strong><?= htmlspecialchars($note['message'] ?? '') ?></strong>
-                    <br>
-                    <small>Assigned by: <?= htmlspecialchars($note['assigned_by_name']) ?></small>
-                    <small><?= $note['created_at'] ?></small>
-                </li>
+
+
+        <?php if (!empty($pendingTasks)): ?>
+            <?php foreach ($pendingTasks as $task): ?>
+                <div class="card__wrapper mb-2 p-2">
+                    <h5><?= htmlspecialchars($task['title']) ?></h5>
+                    <p><?=$task['description'] ?></p>
+
+                    <?php if ($task['employee_accept'] == 0): ?>
+                        <!-- Accept button -->
+                        <form action="<?= $GLOBALS['base_url'] ?>/update-task-status" method="POST">
+                            <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
+                            <button type="submit" name="accept" class="btn btn-success btn-sm">Accept</button>
+                        </form>
+                    <?php else: ?>
+                        <!-- Working / Update Progress -->
+                        <form action="<?= $GLOBALS['base_url'] ?>/update-task-progress" method="POST" class="d-flex align-items-center gap-2">
+                            <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
+                            <input type="number" name="progress" min="<?= $task['progress'] ?>" max="100" value="<?= $task['progress'] ?>" class="form-control" style="width: 80px;">
+                            <button type="submit" class="btn btn-primary btn-sm">Update Progress</button>
+                        </form>
+                    <?php endif; ?>
+
+                    <!-- Progress bar -->
+                    <div class="progress mt-2" style="height: 20px;">
+                        <div class="progress-bar" role="progressbar"
+                            style="width: <?= $task['progress'] ?>%;"
+                            aria-valuenow="<?= $task['progress'] ?>"
+                            aria-valuemin="0" aria-valuemax="100">
+                            <?= $task['progress'] ?>%
+                        </div>
+                    </div>
+                </div>
             <?php endforeach; ?>
         <?php else: ?>
-            <li>No new notifications</li>
+            <p>No pending tasks</p>
         <?php endif; ?>
-    </ul>
-</div>
+
+
+
+
 
 
         <!-- App side area start -->
         <div class="app__slide-wrapper">
             <div class="row">
-                <div class="col-md-12">
-                    <div class="employee-alert-box">
-                        <div class="col-xl-12">
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                <i class="icon-thumbs-up"></i>
-                                <p>Your leave request for <strong><b>“24th April 2024”,</b></strong> has been approved. Enjoy
-                                    your day off!</p>
-                                <button class="btn-close" type="button" data-bs-dismiss="alert" aria-label="Close" title=""></button>
+                <!-- Notifications -->
+                <?php if (!empty($notifications)): ?>
+                    <div class="row gy-3 mt-3">
+                        <?php foreach ($notifications as $note): ?>
+                            <div class="col-md-12">
+                                <div class="employee-alert-box">
+                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <i class="icon-thumbs-up mt-1"></i>
+                                            <div>
+                                                <strong class="d-block"><?= htmlspecialchars($note['message'] ?? '') ?></strong>
+                                                <strong class="d-block">Assigned by: <?= htmlspecialchars($note['assigned_by_name'] ?? 'System') ?></strong>
+                                                <div class="row d-flex justify-content-between">
+                                                    <span class="text-dark">Start Task:</span> <?= date('d F, Y', strtotime($note['start_date'])) ?>
+                                                    <span class="text-dark">Deadline:</span> <?= date('d F, Y', strtotime($note['deadline'])) ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button class="btn-close" type="button" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
-                </div>
+                <?php else: ?>
+                    <div class="alert alert-info mt-2">No new notifications</div>
+                <?php endif; ?>
+
                 <div class="col-md-12">
                     <div class="employee-alert-box">
                         <div class="col-xl-12">
@@ -50,8 +90,6 @@
                 </div>
             </div>
             <div class="row g-20">
-
-
                 <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-sm-6">
                     <div class="card__wrapper">
                         <div class="d-flex align-items-center gap-sm">

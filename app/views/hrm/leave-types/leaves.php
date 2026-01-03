@@ -39,20 +39,24 @@ $show_breadcrumb = true;
                                         <div class="d-flex align-items-center gap-10">
 
                                             <!-- Edit Button -->
-                                            <button
-                                                type="button"
-                                                class="table__icon edit"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#daesignationsEdit">
-                                                <i class="fa-sharp fa-light fa-pen"></i>
-                                            </button>
+                                            
+                                            <button type="button" class="table__icon edit"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editLeaveType"
+                                            data-id="<?= $type['id'] ?>"
+                                            data-name="<?= htmlspecialchars($type['name']) ?>"
+                                            data-status="<?= $type['is_active'] ?>">
+                                            <i class="fa-sharp fa-light fa-pen"></i>
+                                        </button>
 
                                             <!-- Delete Button -->
-                                            <button
-                                                type="button"
-                                                class="table__icon delete removeBtn">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
+                                          
+                                              <button class="removeBtnCust table__icon delete"
+                                            data-id="<?= $type['id'] ?>"
+                                            data-name="<?= $type['name'] ?>"
+                                            data-action="delete-leave-type">
+                                            <i class="fa-regular fa-trash"></i>
+                                        </button>
 
                                         </div>
                                     </td>
@@ -118,65 +122,97 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
-<!-- New Designation Modal End -->
+<!-- New leave Modal End -->
 
-<!-- Designations Edit Modal Start -->
-<div class="modal fade" id="daesignationsEdit" tabindex="-1" aria-labelledby="daesignationsEditLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-md">
+<!-- edit leave modal start -->
+<div id="editLeaveType" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="daesignationsEditLabel">Designation Edit</h5>
-                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close"><i
-                        class="fa-solid fa-xmark-large"></i></button>
+                <h5 class="modal-title">Edit Leave Type</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
             </div>
+
             <div class="modal-body">
-                <div class="employee__info">
-                    <form action="#">
-                        <div class="card__wrapper mb-20">
-                            <div class="row g-20 gy-20 align-items-center justify-content-center">
-                                <div class="col-lg-12">
-                                    <div class="from__input-box">
-                                        <div class="form__input-title">
-                                            <label for="designation2">Designation <span>*</span></label>
-                                        </div>
-                                        <div class="form__input">
-                                            <input class="form-control" name="designation2" id="designation2" value="Business Intelligence Analyst" type="text">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-lg-12">
-                                    <div class="from__input-box">
-                                        <div class="form__input-title">
-                                            <label>Employee Designation <span>*</span></label>
-                                        </div>
-                                        <div class="form__input">
-                                            <select class="form-control">
-                                                <option value="BID" selected>Business Intelligence Department
-                                                </option>
-                                                <option value="ITD">Information Technology Department</option>
-                                                <option value="TD">Technology Department</option>
-                                                <option value="SD">Security Department</option>
-                                                <option value="NPD">Network Operations Department</option>
-                                                <option value="SAD">Systems Administration Department</option>
-                                                <option value="DMD">Database Management Department</option>
-                                                <option value="SDD">Software Development Department</option>
-                                                <option value="WDD">Web Development Department</option>
-                                                <option value="PMO">Project Management Office</option>
-                                                <option value="ITSP">IT Support Department</option>
-                                                <option value="CD">Consulting Department</option>
-                                            </select>
+                <form id="editLeaveTypeForm" action="<?= $GLOBALS['base_url'] ?>/update-leave-type" method="POST">
+                    <input type="hidden" name="id" id="edit_leaveType_id">
+
+                    <div class="row gy-10">
+                        <div class="col-xl-12">
+                            <div class="card__wrapper">
+                                <div class="row gy-20">
+
+                                    <!-- Department Name -->
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label for="edit_leave_type">Department Name <span>*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input class="form-control" name="name" id="edit_leave_type" type="text" required>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+
+                                    <!-- Status -->
+                                    <div class="col-md-6">
+                                        <div class="form__input-title">
+                                            <label>Status</label>
+                                        </div>
+
+                                        <div class="radio d-flex align-items-center gap-20">
+                                            <div class="form-check">
+                                                <input name="is_active" class="form-check-input" type="radio" value="1" id="editStatusActive">
+                                                <label class="form-check-label" for="editStatusActive">Active</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input name="is_active" class="form-check-input" type="radio" value="0" id="editStatusInactive">
+                                                <label class="form-check-label" for="editStatusInactive">Inactive</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div> <!-- row -->
                             </div>
                         </div>
-                        <div class="submit__btn text-center">
-                            <button class="btn btn-primary">Submit</button>
-                        </div>
-                    </form>
-                </div>
+                    </div>
+
+                    <!-- Update Button -->
+                    <div class="submit__btn text-center">
+                        <button type="submit" class="btn btn-primary">Update</button>
+                    </div>
+
+                </form>
             </div>
         </div>
     </div>
 </div>
-<!-- Designations Edit Modal End -->
+<!-- edit leave modal end -->
+<script>
+    const base_url = "<?= $GLOBALS['base_url'] ?>"; // PHP outputs the correct base URL
+    document.addEventListener("DOMContentLoaded", function() {
+        const modal = document.getElementById('editLeaveType');
+
+        // Attach listener only once when modal is shown
+        modal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget; // the clicked button
+
+            // Get data attributes
+            const id = button.getAttribute('data-id');
+            const name = button.getAttribute('data-name');
+            const status = button.getAttribute('data-status');
+
+            // Fill form fields
+            document.getElementById('edit_leaveType_id').value = id;
+            document.getElementById('edit_leave_type').value = name;
+           
+            if (status === "1") {
+                document.getElementById('editStatusActive').checked = true;
+            } else {
+                document.getElementById('editStatusInactive').checked = true;
+            }
+        });
+    });
+</script>

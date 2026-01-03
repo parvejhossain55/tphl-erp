@@ -9,39 +9,88 @@ class FlatModel extends Model
         parent::__construct($db);
     }
 
+
+
     /* =========================
        Get All Projects
     ========================== */
-    public function getAll()
+    public function getAll($search = '', $project_id = '')
     {
-        $sql = $this->db->prepare("
-            SELECT 
-                f.*,
-                p.name AS project_name,
-                u.name AS unit_name
-            FROM flats AS f
-            LEFT JOIN projects AS p ON f.project_id = p.id
-            LEFT JOIN units AS u ON f.unit_id = u.id
-            ORDER BY p.id DESC
-        ");
+        $sql = "
+        SELECT 
+            f.*,
+            p.name AS project_name,
+            u.name AS unit_name
+        FROM flats AS f
+        LEFT JOIN projects AS p ON f.project_id = p.id
+        LEFT JOIN units AS u ON f.unit_id = u.id
+        WHERE 1
+    ";
 
-        if (!$sql->execute()) {
-            return [];
+        $params = [];
+        $types  = "";
+
+        // 🔍 Search by flat name or sqft
+        if (!empty($search)) {
+            $sql .= " AND (f.flat_name LIKE ? OR f.sqft LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $types   .= "ss";
         }
 
-        $result = $sql->get_result();
+        //  Project wise filter
+        if (!empty($project_id)) {
+            $sql .= " AND f.project_id = ?";
+            $params[] = $project_id;
+            $types   .= "i";
+        }
+
+        $sql .= " ORDER BY f.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+
+
+    public function getFlatStatusCount()
+    {
+        $sql = $this->db->prepare("
+        SELECT 
+            SUM(CASE WHEN is_booked = 1 THEN 1 ELSE 0 END) AS booked,
+            SUM(CASE WHEN is_booked = 0 THEN 1 ELSE 0 END) AS available
+        FROM flats
+    ");
+
+        $sql->execute();
+        return $sql->get_result()->fetch_assoc() ?? [
+            'booked' => 0,
+            'available' => 0
+        ];
+    }
+
+
+
+
+
 
     /* =========================
        Create Project
     ========================== */
-  public function create($data)
+    public function create($data)
     {
         $stmt = $this->db->prepare("
             INSERT INTO flats (
                 project_id,
-                unit_id,
+                flat_name,
+               
                 sqft,
                 bhk,
                 bedroom,
@@ -53,7 +102,7 @@ class FlatModel extends Model
                 facing_site,
                 price_value,
                 facilities
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?,?,  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         if (!$stmt) {
@@ -62,9 +111,9 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "iiiiiiiiiiids",
+            "isiiiiiiiiids",
             $data['project_id'],
-            $data['unit_id'],
+            $data['flat_name'],
             $data['sqft'],
             $data['bhk'],
             $data['bedroom'],
@@ -89,21 +138,25 @@ class FlatModel extends Model
     ========================== */
     public function find($id)
     {
-        $stmt = $this->db->prepare("SELECT * FROM projects WHERE id = ?");
+        $stmt = $this->db->prepare("SELECT 
+        f.*, p.name AS project_name, u.name AS unit_name  FROM flats AS f 
+        JOIN projects AS p ON f.project_id = p.id
+        JOIN units AS u ON f.unit_id = u.id
+        WHERE f.id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
     }
 
+                // project_id, unit_id,sqft,bhk,   bedroom, bathroom, balcony, drawing_dining_kitchen, common_dining, floor_no,  facing_site,price_value,  facilities
     /**
      * Update lead
      */
     public function update($id, $data)
     {
-        $sql = "UPDATE leads SET
-        lead_name = ?, lead_type = ?, company = ?, value_amount = ?, currency = ?, phone = ?, alt_phone_number = ?,
-        email = ?, source_type_id = ?, address = ?, pref_location = ?, designation = ?, project_type = ?,
-        interest_on = ?, pref_flat_size = ?, communication_type = ?, tags = ?, description = ?, visibility = ?, status = ?, lead_quality = ?
+        $sql = "UPDATE flats SET
+        project_id = ?,flat_name=?,  sqft = ?, bhk = ?, bedroom = ?, bathroom = ?, balcony = ?,
+        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -112,36 +165,81 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "sssdssssissssssssssssi",
-            $data['lead_name'],
-            $data['lead_type'],
-            $data['company'],
-            $data['value_amount'],
-            $data['currency'],
-            $data['phone'],
-            $data['alt_phone_number'],
-            $data['email'],
-            $data['source_type_id'],
-            $data['address'],
-            $data['pref_location'],
-            $data['designation'],
-            $data['project_type'],
-            $data['interest_on'],
-            $data['pref_flat_size'],
-            $data['communication_type'],
-            $data['tags'],
-            $data['description'],
-            $data['visibility'],
-            $data['status'],
-            $data['lead_quality'],
+            "isiiiiiiiisdsi",
+            $data['project_id'],
+            $data['flat_name'],
+            $data['sqft'],
+            $data['bhk'],
+            $data['bedroom'],
+            $data['bathroom'],
+            $data['balcony'],
+            $data['drawing_dining_kitchen'],
+            $data['common_dining'],
+            $data['floor_no'],
+            $data['facing_site'],
+            $data['price_value'],
+            $data['facilities'],
             $id
         );
+
 
         if (!$stmt->execute()) {
             throw new Exception("Update failed: " . $stmt->error);
         }
         return true;
     }
+
+
+
+    public function getProjectsFromFlats()
+    {
+        $sql = "SELECT DISTINCT p.id, p.name
+                FROM flats f
+                INNER JOIN projects p ON f.project_id = p.id
+                ORDER BY p.name ASC";
+        $result = $this->db->query($sql);
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function getFlatsByProject($projectId)
+    {
+        $stmt = $this->db->prepare("SELECT f.id, f.flat_name
+                                     FROM flats f
+                                     INNER JOIN units u ON f.unit_id = u.id
+                                     WHERE f.project_id = ?
+                                     ORDER BY u.name ASC");
+        $stmt->bind_param("i", $projectId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+
+
+    public function getFlatsWithUnitByProject($projectId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT 
+                f.id AS flat_id,
+                f.is_booked,
+                f.floor_no,
+                f.sqft,
+                f.bhk,
+                f.price_value,
+                u.name AS unit_name,
+                f.flat_name
+            FROM flats f
+            JOIN units u ON f.unit_id = u.id
+            WHERE f.project_id = ?
+            ORDER BY f.floor_no ASC, u.name ASC
+        ");
+
+        $stmt->bind_param("i", $projectId);
+        $stmt->execute();
+
+        $result = $stmt->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
     public function delete($id)
     {
         $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");

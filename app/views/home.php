@@ -71,7 +71,7 @@ $show_breadcrumb = false;
                                     <span><i class="fa-light fa-badge-check"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
-                                    <h6 class="card__sub-title mb-10">Compleat Project</h6>
+                                    <h6 class="card__sub-title mb-10">Complete Tasks</h6>
                                     <div class="d-flex flex-wrap align-items-end gap-10">
                                         <h3 class="card__title">150</h3>
                                         <span class="card__desc style_two"><span class="price-decrease"><i
@@ -89,7 +89,7 @@ $show_breadcrumb = false;
                                     <span><i class="fa-sharp fa-regular fa-users"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
-                                    <h6 class="card__sub-title mb-10">Total Customer</h6>
+                                    <h6 class="card__sub-title mb-10">Total Clients</h6>
                                     <div class="d-flex flex-wrap align-items-end gap-10">
                                         <h3 class="card__title">151</h3>
                                         <span class="card__desc style_two"><span class="price-increase"><i

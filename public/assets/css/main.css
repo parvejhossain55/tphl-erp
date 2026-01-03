@@ -76,8 +76,8 @@
   --clr-common-black: #362a2a;
   --clr-common-placeholder: #acaab1;
   --clr-heading-primary: #444050;
-  --clr-text-body: #878a99;
-  --clr-text-label: #495057;
+  --clr-text-body: #505152;
+  --clr-text-label: #393a3b;
   --clr-text-muted: #acaab1;
   --clr-text-taxonomy: #A9ABB6;
   --clr-text-secondary: #525252;
@@ -103,7 +103,7 @@
   --clr-alert-info: #cff4fc;
   --clr-alert-light: #efefef;
   --clr-alert-dark: #ced4da;
-  --clr-border-1: #EAEAEA;
+  --clr-border-1: #c5c1c1;
   --clr-border-2: #404040;
   --clr-border-3: #CECECE;
   --clr-chart-1: #7A7A7A;
@@ -5648,16 +5648,39 @@ img {
 .app-sidebar .sidebar-menu.child3 .sidebar__menu-item:hover {
   color: var(--clr-theme-primary);
 }
-.app-sidebar .sidebar__menu-category {
+/* .app-sidebar .sidebar__menu-category {
   color: var(--clr-text-body);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   letter-spacing: 2px;
   text-transform: uppercase;
   padding: 10px 20px;
   white-space: nowrap;
   position: relative;
+} */
+
+
+.app-sidebar .sidebar__menu-category {
+    color: var(--clr-text-body);
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    white-space: nowrap;
+    position: relative;
+    display: flex;
+    align-items: center;
 }
+
+.app-sidebar .sidebar__menu-category::before {
+    content: "\e404"; /* highpen icon code */
+font-family: "Font Awesome 6 Pro";
+  font-size: 12px;
+  inset-inline-start: -10px;
+  opacity: 0.8;
+}
+
 .app-sidebar .sidebar__menu-item {
   padding: 12px 20px;
   position: relative;
@@ -5698,7 +5721,7 @@ img {
 .app-sidebar .sidebar-menu.child1 .sidebar__menu-item:before, .app-sidebar .sidebar-menu.child2 .sidebar__menu-item:before, .app-sidebar .sidebar-menu.child3 .sidebar__menu-item:before {
   position: absolute;
   content: "\e404";
-  font-family: "Font Awesome 6 Pro";
+font-family: "Font Awesome 6 Pro";
   font-size: 12px;
   inset-inline-start: -10px;
   opacity: 0.8;
@@ -5725,7 +5748,7 @@ img {
   display: flex;
   align-items: center;
   text-transform: capitalize;
-  font-weight: 700;
+  font-weight: 600;
 }
 .app-sidebar .side-menu__icon {
   margin-inline-end: 10px;
@@ -11618,6 +11641,9 @@ div.DTS div.dataTables_scrollBody table {
   padding: 0;
   width: 100%;
 }
+.dataTables_paginate paging_simple_numbers{
+  padding-bottom:10px;
+}
 .dataTables_wrapper.no-footer .dataTables_scrollBody {
   border-bottom: 1px solid var(--clr-border-1);
 }
@@ -11636,7 +11662,7 @@ div.DTS div.dataTables_scrollBody table {
   margin-top: 20px;
 }
 .dataTables_wrapper .dataTables_paginate .paginate_button {
-  margin: 0 10px;
+  margin: 10px 10px;
   border-radius: 0;
 }
 .dataTables_wrapper .dataTables_paginate .paginate_button.current, .dataTables_wrapper .dataTables_paginate .paginate_button:active {
@@ -12868,7 +12894,7 @@ table.dataTable tbody tr:last-child {
 /*----------------------------------------*/
 /*  sweetsAlert2 CSS START
 /*----------------------------------------*/
-.swal2-popup {
+/* .swal2-popup {
   display: none;
   position: relative;
   box-sizing: border-box;
@@ -12947,7 +12973,7 @@ div:where(.swal2-container) button:where(.swal2-styled) {
 
 .swal2-html-container {
   color: var(--clr-text-body) !important;
-}
+} */
 
 /*----------------------------------------*/
 /*  DROPDOWN CSS START

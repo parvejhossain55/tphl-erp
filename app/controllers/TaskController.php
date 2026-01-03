@@ -108,49 +108,44 @@ class TaskController extends Controller
         }
     }
     // Edit Employee Page
-    public function edit($id)
-    {
-        $task = $this->employeeModel->find($id);
-        $employee = $this->employeeModel->getAll();
+public function edit($id)
+{
+    $task = $this->taskModel->find($id);
+    $employees = $this->employeeModel->getAll();
 
-        $this->view("hrm/employees/edit-task", [
-            "current_route"   => "edit-task",
-            "page_title"      => "Edit task",
-            "show_breadcrumb" => true,
-            "task"        => $task,
+    $this->view("tasks/edit-task", [
+        "current_route"   => "edit-task",
+        "page_title"      => "Edit task",
+        "show_breadcrumb" => true,
+        "task"            => $task,
+        "employees"       => $employees,
+    ]);
+}
 
+public function update($id)
+{
+    $data = [
+        'title'            => trim($_POST['title'] ?? ''),
+        'employee_id'      => (int) ($_POST['employee_id'] ?? 0),
+        'description'      => trim($_POST['description'] ?? ''),
+        'start_date'       => $_POST['start_date'] ?? null,
+        'deadline'         => $_POST['deadline'] ?? null,
+        'employee_accept'  => (int) ($_POST['employee_accept'] ?? 0),
+        'status'           => $_POST['status'] ?? 'pending',
+        'progress'         => (int) ($_POST['progress'] ?? 0),
+        'priority'         => $_POST['priority'] ?? 'medium',
+        'assigned_by'      => $_SESSION['user']['id'] ?? null,
+    ];
 
-        ]);
+    if ($this->taskModel->update($id, $data)) {
+        header("Location: {$GLOBALS['base_url']}/task-lists");
+        exit;
+    } else {
+        echo "<h3 style='color:red'>Failed to update task</h3>";
     }
+}
 
 
-
-
-
-
-
-    public function update($id)
-    {
-        $data = [
-            'title'         => $_POST['title'] ?? '',
-            'description'       => $_POST['description'] ?? '',
-            'start_date'          => $_POST['start_date'] ?? '',
-            'deadline'             => $_POST['deadline'] ?? '',
-            'priority'       => $_POST['priority'] ?? '',
-            'progress'             => $_POST['progress'] ?? '',
-            'employee_id' => $_POST['employee_id'] ?? '',
-            'assigned_by'      => $_SESSION['user']['id'] ?? null,
-
-        ];
-
-
-        if ($this->employeeModel->update($id, $data)) {
-            header("Location: {$GLOBALS['base_url']}/task-lists");
-            exit;
-        } else {
-            echo "<h3 style='color:red'>Failed to update task</h3>";
-        }
-    }
     // Delete Employee
     public function delete($id)
     {

@@ -65,6 +65,7 @@ class EmployeeController extends Controller
             "designations"    => $designations
         ]);
     }
+
     public function store()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -74,7 +75,7 @@ class EmployeeController extends Controller
         // checkbox value
         $makeUser = $_POST['make_user'] ?? 0;
 
-        // Collect password ONLY when user account will be created
+        // password (only if user create)
         $plainPassword = trim($_POST['password'] ?? '');
 
         if ($makeUser == 1 && empty($plainPassword)) {
@@ -83,28 +84,27 @@ class EmployeeController extends Controller
             exit;
         }
 
-        // Hash password if creating user
         $hashedPassword = ($makeUser == 1)
             ? password_hash($plainPassword, PASSWORD_DEFAULT)
             : '';
 
-        // Prepare employee data
+        //  Employee data (NO employee_id here)
         $employeeData = [
             'full_name'       => trim($_POST['full_name'] ?? ''),
-            'employee_id'     => trim($_POST['employeeId'] ?? ''),
             'username'        => trim($_POST['userName'] ?? ''),
             'email'           => trim($_POST['email'] ?? ''),
             'father_name'     => trim($_POST['father_name'] ?? ''),
             'phone'           => trim($_POST['phone'] ?? ''),
             'emergency_contact' => trim($_POST['emergency_contact'] ?? ''),
             'qualification'   => trim($_POST['qualification'] ?? ''),
+            'basic_salary'    => trim($_POST['basic_salary'] ?? ''),
             'experience'      => trim($_POST['experience'] ?? ''),
             'nid'             => trim($_POST['nid'] ?? ''),
             'address'         => trim($_POST['address'] ?? ''),
             'pass_num'        => trim($_POST['pass_num'] ?? ''),
-            'department_id'   => intval($_POST['department_id'] ?? 0),
-            'designation_id'  => intval($_POST['designation_id'] ?? 0),
-            'dob'             =>  $_POST['dob'] ?? null,
+            'department_id'   => (int)($_POST['department_id'] ?? 0),
+            'designation_id'  => (int)($_POST['designation_id'] ?? 0),
+            'dob'             => $_POST['dob'] ?? null,
             'joining_date'    => $_POST['joining_date'] ?? null,
             'account_holder_name' => trim($_POST['account_holder_name'] ?? ''),
             'account_number'  => trim($_POST['account_number'] ?? ''),
@@ -113,48 +113,52 @@ class EmployeeController extends Controller
             'social_media1'   => trim($_POST['social_media1'] ?? ''),
             'social_media2'   => trim($_POST['social_media2'] ?? ''),
             'social_media3'   => trim($_POST['social_media3'] ?? ''),
-
             'make_user'       => $makeUser,
             'password'        => $hashedPassword,
         ];
+
         $photoInputName = 'photo';
-        // Create Employee
-        if (!$this->employeeModel->create($employeeData, $photoInputName)) {
+
+        //  Create Employee (Model returns employee_id)
+        $employee_id = $this->employeeModel->create($employeeData, $photoInputName);
+
+        if (!$employee_id) {
             $_SESSION['error'] = "Employee creation failed!";
             header("Location: {$GLOBALS['base_url']}/create-employee");
             exit;
         }
 
-        $employee_id = $this->db->insert_id;
-
-        // If create user also
+        //  If user account needed
         if ($makeUser == 1) {
-            // Prepare user data using helper
-            $userData = prepareUserData($_POST, isFromEmployee: true);
 
-            // Override with employee data
-            $userData['full_name'] = $employeeData['full_name'];
-            $userData['user_name'] = $employeeData['username'];
-            $userData['phone'] = $employeeData['phone'];
-            $userData['email'] = $employeeData['email'];
-            $userData['nid'] = $employeeData['nid'];
-            $userData['designation_id'] = $employeeData['designation_id'];
-            $userData['address'] = $employeeData['address'];
-            $userData['password'] = $hashedPassword; // Already hashed
+            // Prepare user data
+            $userData = prepareUserData($_POST, true);
 
-            // Create User
+            // Override from employee
+            $userData['full_name']       = $employeeData['full_name'];
+            $userData['user_name']       = $employeeData['username'];
+            $userData['phone']           = $employeeData['phone'];
+            $userData['email']           = $employeeData['email'];
+            $userData['nid']             = $employeeData['nid'];
+            $userData['designation_id']  = $employeeData['designation_id'];
+            $userData['address']         = $employeeData['address'];
+            $userData['password']        = $hashedPassword;
+
+            // Create user
             $user_id = $this->userModel->create($userData);
 
             if (!$user_id) {
-                // Rollback: delete the created employee
+                // rollback employee
                 $this->db->query("DELETE FROM employees WHERE id = $employee_id");
                 $_SESSION['error'] = "User creation failed!";
                 header("Location: {$GLOBALS['base_url']}/create-employee");
                 exit;
             }
 
-            // Update employee with user_id
-            $stmt = $this->db->prepare("UPDATE employees SET user_id = ? WHERE id = ?");
+            // Link user with employee
+            $stmt = $this->db->prepare(
+                "UPDATE employees SET user_id = ? WHERE id = ?"
+            );
             $stmt->bind_param("ii", $user_id, $employee_id);
 
             if (!$stmt->execute()) {
@@ -168,6 +172,7 @@ class EmployeeController extends Controller
         header("Location: {$GLOBALS['base_url']}/employee-lists");
         exit;
     }
+
 
     // Edit Employee Page
     public function edit($id)
@@ -193,116 +198,120 @@ class EmployeeController extends Controller
         $this->view("hrm/employees/employee-profile", [
             "current-route" => "employee-profile",
             "active" => "employee-profile",
-            "page-title" => "show-employee",
             "employee" => $employee,
         ]);
     }
 
 
 
-    // public function update($id)
-    // {
+    public function update($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $makeUser = $_POST['make_user'] ?? 0;
+        $plainPassword = trim($_POST['password'] ?? '');
+
+        // Password validation only when needed
+        if ($makeUser == 1 && empty($plainPassword)) {
+            $_SESSION['error'] = "Password is required when creating/updating user account!";
+            header("Location: {$GLOBALS['base_url']}/edit-employee?id=$id");
+            exit;
+        }
+
+        // Hash only if password provided
+        $hashedPassword = ($makeUser == 1 && !empty($plainPassword))
+            ? password_hash($plainPassword, PASSWORD_DEFAULT)
+            : null;
+
+        //  Employee data (NO employee_id)
+        $employeeData = [
+            'full_name'       => trim($_POST['full_name'] ?? ''),
+            'username'        => trim($_POST['username'] ?? ''),
+            'email'           => trim($_POST['email'] ?? ''),
+            'father_name'     => trim($_POST['father_name'] ?? ''),
+            'phone'           => trim($_POST['phone'] ?? ''),
+            'emergency_contact' => trim($_POST['emergency_contact'] ?? ''),
+            'qualification'   => trim($_POST['qualification'] ?? ''),
+            'basic_salary'    => trim($_POST['basic_salary'] ?? ''),
+            'experience'      => trim($_POST['experience'] ?? ''),
+            'nid'             => trim($_POST['nid'] ?? ''),
+            'address'         => trim($_POST['address'] ?? ''),
+            'pass_num'        => trim($_POST['pass_num'] ?? ''),
+            'department_id'   => (int)($_POST['department_id'] ?? 0),
+            'designation_id'  => (int)($_POST['designation_id'] ?? 0),
+            'dob'             => $_POST['dob'] ?? null,
+            'joining_date'    => $_POST['joining_date'] ?? null,
+            'account_holder_name' => trim($_POST['account_holder_name'] ?? ''),
+            'account_number'  => trim($_POST['account_number'] ?? ''),
+            'bank_name'       => trim($_POST['bank_name'] ?? ''),
+            'branch_name'     => trim($_POST['branch_name'] ?? ''),
+            'social_media1'   => trim($_POST['social_media1'] ?? ''),
+            'social_media2'   => trim($_POST['social_media2'] ?? ''),
+            'social_media3'   => trim($_POST['social_media3'] ?? ''),
+        ];
+
+        $photoInputName = 'photo';
+
+        // ✅ Update employee
+        if (!$this->employeeModel->update($id, $employeeData, $photoInputName)) {
+            $_SESSION['error'] = "Employee update failed!";
+            header("Location: {$GLOBALS['base_url']}/edit-employee?id=$id");
+            exit;
+        }
+
+        // ✅ Handle user account
+        if ($makeUser == 1) {
+
+            $employee = $this->employeeModel->find($id);
+            $existingUserId = $employee['user_id'] ?? null;
+
+            $userData = prepareUserData($_POST, true);
+
+            // Override from employee
+            $userData['full_name']      = $employeeData['full_name'];
+            $userData['user_name']      = $employeeData['username'];
+            $userData['phone']          = $employeeData['phone'];
+            $userData['email']          = $employeeData['email'];
+            $userData['nid']            = $employeeData['nid'];
+            $userData['designation_id'] = $employeeData['designation_id'];
+            $userData['address']        = $employeeData['address'];
+
+            // Only update password if provided
+            if ($hashedPassword !== null) {
+                $userData['password'] = $hashedPassword;
+            }
+
+            // Create or update user
+            if ($existingUserId) {
+                $user_id = $this->userModel->update($userData, $existingUserId, 'photo');
+            } else {
+                $user_id = $this->userModel->create($userData);
+            }
+
+            if (!$user_id) {
+                $_SESSION['error'] = "Failed to create/update user account!";
+                header("Location: {$GLOBALS['base_url']}/edit-employee?id=$id");
+                exit;
+            }
+
+            // Link employee to user
+            $stmt = $this->db->prepare(
+                "UPDATE employees SET user_id = ? WHERE id = ?"
+            );
+            $stmt->bind_param("ii", $user_id, $id);
+            $stmt->execute();
+        }
+
+        $_SESSION['success'] = "Employee updated successfully!";
+        header("Location: {$GLOBALS['base_url']}/employee-lists");
+        exit;
+    }
 
 
-    //     // checkbox value
-    //     $makeUser = $_POST['make_user'] ?? 0;
-
-    //     // Collect password ONLY when user account will be created
-    //     $plainPassword = trim($_POST['password'] ?? '');
-
-    //     if ($makeUser == 1 && empty($plainPassword)) {
-    //         $_SESSION['error'] = "Password is required when creating user account!";
-    //         header("Location: {$GLOBALS['base_url']}/create-employee");
-    //         exit;
-    //     }
-
-    //     // Hash password if creating user
-    //     $hashedPassword = ($makeUser == 1)
-    //         ? password_hash($plainPassword, PASSWORD_DEFAULT)
-    //         : '';
-
-    //     $data = [
-    //         'full_name'         => $_POST['full_name'] ?? '',
-    //         'employee_id'       => $_POST['employee_id'] ?? '',
-    //         'username'          => $_POST['username'] ?? '',
-    //         'email'             => $_POST['email'] ?? '',
-    //         'father_name'       => $_POST['father_name'] ?? '',
-    //         'phone'             => $_POST['phone'] ?? '',
-    //         'emergency_contact' => $_POST['emergency_contact'] ?? '',
-    //         'qualification'     => $_POST['qualification'] ?? '',
-    //         'experience'        => $_POST['experience'] ?? '',
-    //         'address'           => $_POST['address'] ?? '',
-    //         'pass_num'          => $_POST['pass_num'] ?? '',
-    //         'department_id'     => $_POST['department_id'] ?? null,
-    //         'designation_id'    => $_POST['designation_id'] ?? null,
-    //         'dob'             =>   $_POST['dob'] ?? null,
-    //         'joining_date'      => $_POST['joining_date'] ?? null,
-    //         'account_holder_name' => $_POST['account_holder_name'] ?? '',
-    //         'account_number'    => $_POST['account_number'] ?? '',
-    //         'bank_name'         => $_POST['bank_name'] ?? '',
-    //         'branch_name'       => $_POST['branch_name'] ?? '',
-    //         'social_media1'     => $_POST['social_media1'] ?? '',
-    //         'social_media2'     => $_POST['social_media2'] ?? '',
-    //         'social_media3'     => $_POST['social_media3'] ?? '',
-    //          'make_user'       => $makeUser,
-    //         'password'        => $hashedPassword,
-    //     ];
-
-    //     // শুধু input name 'photo' পাঠাও
-    //     $photoInputName = 'photo';
-
-    //     $employee_id = $this->db->insert_id;
-
-    //     // If create user also
-    //     if ($makeUser == 1) {
-    //         // Prepare user data using helper
-    //         $userData = prepareUserData($_POST, isFromEmployee: true);
-
-    //         // Override with employee data
-    //         $userData['full_name'] = $data['full_name'];
-    //         $userData['user_name'] = $data['username'];
-    //         $userData['phone'] = $data['phone'];
-    //         $userData['email'] = $data['email'];
-    //         $userData['designation_id'] = $data['designation_id'];
-    //         $userData['address'] = $data['address'];
-    //         $userData['password'] = $hashedPassword; // Already hashed
-
-    //         // Create User
-    //         $user_id = $this->userModel->update($userData);
-
-    //         if (!$user_id) {
-    //             // Rollback: delete the created employee
-    //             $this->db->query("DELETE FROM employees WHERE id = $employee_id");
-    //             $_SESSION['error'] = "User creation failed!";
-    //             header("Location: {$GLOBALS['base_url']}/create-employee");
-    //             exit;
-    //         }
-
-    //         // Update employee with user_id
-    //         $stmt = $this->db->prepare("UPDATE employees SET user_id = ? WHERE id = ?");
-    //         $stmt->bind_param("ii", $user_id, $employee_id);
-
-    //         if (!$stmt->execute()) {
-    //             $_SESSION['error'] = "Failed to link user with employee!";
-    //             header("Location: {$GLOBALS['base_url']}/create-employee");
-    //             exit;
-    //         }
-    //     }
-
-    //     $_SESSION['success'] = "Employee created successfully!";
-    //     header("Location: {$GLOBALS['base_url']}/employee-lists");
-    //     exit;
 
 
-
-    //     if ($this->employeeModel->update($id, $data, $photoInputName)) {
-    //         header("Location: {$GLOBALS['base_url']}/employee-lists");
-    //         exit;
-    //     } else {
-    //         echo "<h3 style='color:red'>Failed to update employee</h3>";
-    //     }
-
-    // }
     // Delete Employee
     public function delete($id)
 
