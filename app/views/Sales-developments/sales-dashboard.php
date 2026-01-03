@@ -63,8 +63,8 @@
                         <span><i class="fa-regular fa-circle-check"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Flat Booking</h6>
-                        <h3 class="card__title"><?= $onboardedClients ?></h3>
+                        <h6 class="card__sub-title mb-10">Today Follow Up</h6>
+                        <h3 class="card__title"><?= $totalTodayFollowUps ?></h3>
                     </div>
                 </div>
             </div>
@@ -74,9 +74,21 @@
 
     <!-- REVENUE + CONVERSION -->
     <div class="row g-20 mb-4">
-
+        <div class="col-xxl-3  col-md-3 col-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon">
+                        <span><i class="fa-regular fa-circle-check"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Flat Booking</h6>
+                        <h3 class="card__title"><?= $onboardedClients ?></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- TOTAL PROJECT -->
-        <div class="col-xl-4 col-md-4">
+        <div class="col-xl-3 col-md-3 col-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -90,8 +102,10 @@
             </div>
         </div>
 
+        <!-- Warning: Array to string conversion in C:\xampp\htdocs\TPHL-ERP\app\views\sales-developments\sales-dashboard.php on line 67
+Array -->
         <!-- BOOKING MONEY COLLECTED -->
-        <div class="col-xl-4 col-md-4">
+        <div class="col-xl-3 col-md-3 col-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -108,7 +122,7 @@
         </div>
 
         <!-- CONVERSION RATE -->
-        <div class="col-xl-4 col-md-4">
+        <div class="col-xl-3 col-md-3 col-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -125,6 +139,60 @@
         </div>
 
     </div>
+    <!-- Todays Follow up -->
+    <div class="col-12 mt-3">
+        <div class="card__wrapper">
+            <div class="card__header d-flex justify-content-between align-items-center mb-3">
+                <h5 class="card__title mb-0" id="transactionsTitle">
+                    Today's Follow-ups
+                </h5>
 
+            </div>
 
+            <div class="table__wrapper table-responsive">
+                <table class="table mb-20">
+                    <thead>
+                        <tr class="table__title">
+                            <th>S/L</th>
+                            <th>Date</th>
+                            <th>Lead Name</th>
+                            <th>Project</th>
+                            <th>Flat</th>
+                            <th>Follow-up Employee</th>
+                            <th>Last Follow Up Date</th>
+                            <th>Today Follow-up</th>
+                            <th>Last Decussion Note</th>
+                            <th>Today Follow Up Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="">
+                        <?php if (!empty($todayFollowUpData)): ?>
+                            <?php foreach ($todayFollowUpData as $key => $followUp): ?>
+                                <tr>
+                                    <td><?= $key + 1 ?></td>
+                                    <td><?= date('d M, Y', strtotime($followUp['follow_up_date'])) ?></td>
+                                    <td><?= htmlspecialchars($followUp['lead_name']) ?></td>
+                                    <td><?= htmlspecialchars($followUp['project_name']) ?></td>
+                                    <td><?= htmlspecialchars($followUp['flat_name']) ?></td>
+                                    <td><?= htmlspecialchars($followUp['assigned_with_name']) ?></td>
+                                    <td><?= date('d M, Y H:i', strtotime($followUp['follow_up_date'] . ' ' . $followUp['follow_up_time'])) ?></td>
+                                    <td><?= date('d M, Y H:i', strtotime($followUp['next_follow_up_date'])) ?></td>
+                                    <td><?= htmlspecialchars($followUp['discussion_note']) ?></td>
+                                    <td><?= htmlspecialchars($followUp['next_action']) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="7" class="text-center py-4">f
+                                    <div class="text-muted">
+                                        No follow-ups found
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>

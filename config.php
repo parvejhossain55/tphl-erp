@@ -5,4 +5,3 @@ return [
     "db_pass" => "UI+,&%e]1u,UKxMS",
     "db_name" => "dvalleyb_tphl_db",
 ];
-

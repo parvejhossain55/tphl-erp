@@ -31,7 +31,7 @@ $show_breadcrumb = true;
 
     </div>
 
-    <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-sm-4">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -47,7 +47,7 @@ $show_breadcrumb = true;
         </div>
     </div>
 
-    <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-sm-4">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -55,6 +55,21 @@ $show_breadcrumb = true;
                 </div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Booked </h6>
+                    <div class="d-flex flex-wrap align-items-end gap-10">
+                        <h4 class="card__title"><?= $paymentCount ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-sm-4">
+        <div class="card__wrapper">
+            <div class="d-flex align-items-center gap-sm">
+                <div class="card__icon">
+                    <span><i class="fa-sharp fa-regular fa-user"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-10">Today Follow Up</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
                         <h4 class="card__title"><?= $paymentCount ?></h4>
                     </div>

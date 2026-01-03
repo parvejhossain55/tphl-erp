@@ -37,7 +37,7 @@ class SalesDashboardController extends Controller
         //  Follow-ups Due
         $followUpsQuery = "SELECT COUNT(*) AS due FROM lead_follow_ups WHERE follow_up_date <= CURDATE() AND status = 'pending'";
         $followUpsResult = $this->db->query($followUpsQuery);
-        $followUpsDue = $followUpsResult->fetch_assoc()['due'] ?? 0;
+        $followUpsDue = $todayLeads;
 
         //  Onboarded Clients
         $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'booked'";
@@ -57,15 +57,20 @@ class SalesDashboardController extends Controller
         $newFollowUpsResult = $this->db->query($newFollowUpsQuery);
         $newFollowUpsToday = $newFollowUpsResult->fetch_assoc()['new_followups'] ?? 0;
 
+        $todayFollowUpCount = $this->followUpModel->getTodayFollowUpCountByLead();
+        $totalTodayFollowUps = array_sum($todayFollowUpCount);
+
+        // today's follow-ups table data
+        $todayFollowUpData = $this->followUpModel->getTodaysFollowUps();
 
 
-        $weeklySalesQuery = "
-    SELECT DATE(payment_date) AS date, SUM(amount) AS total
-    FROM lead_payments
-    WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-    GROUP BY DATE(payment_date)
-    ORDER BY DATE(payment_date)
-";
+                $weeklySalesQuery = "
+            SELECT DATE(payment_date) AS date, SUM(amount) AS total
+            FROM lead_payments
+            WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            GROUP BY DATE(payment_date)
+            ORDER BY DATE(payment_date)
+        ";
         $weeklySalesResult = $this->db->query($weeklySalesQuery);
         $weeklySales = [];
         while ($row = $weeklySalesResult->fetch_assoc()) {
@@ -126,6 +131,8 @@ class SalesDashboardController extends Controller
             "monthlySales" => $monthlySales,
             "yearlySales" => $yearlySales,
             "totalProjects" => $totalProjects,
+            "todayFollowUpData" => $todayFollowUpData,
+            "totalTodayFollowUps" => $totalTodayFollowUps,
 
         ]);
     }
