@@ -3,7 +3,8 @@
 # =====================
 .DS_Store
 Thumbs.db
-
+schema/*
+schema
 # VS Code
 .vscode/
 *.code-workspace
