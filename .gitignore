@@ -16,5 +16,8 @@ Thumbs.db
 # =====================
 docs.txt
 data.json
-v-rafi-file
+schema/config.php
+schema/data.json
+schema/docs.txt
+
 # db_sql.sql
