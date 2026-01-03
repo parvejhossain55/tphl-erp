@@ -1,0 +1,102 @@
+documents 
+
+// fixed size width and height 
+$photo = uploadImage('employeePhoto', 'employees', 'fixed', 300, 300);
+// original sizeof()
+$photo = uploadImage('employeePhoto', 'employees', 'original');
+
+
+// controller e arekta folder niye pore controller file likhle index.php te  route differently likhte hobe 
+
+"controller" => "Construction\\ProjectController"
+
+--lead e 
+Pending → এই value মানে lead follow-up pending
+
+Prospect → already contact / negotiation
+
+Not Interested → follow-up দরকার নেই
+
+Lead add করার পরেই follow up দিবো
+
+👉 Site visit কখনোই lead add করার সাথে সাথে না
+👉 Follow-up থেকেই site visit trigger হবে
+
+
+
+
+Helps in tracking changes and audit
+
+
+CREATE TABLE payment_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    payment_id INT NOT NULL,
+    action ENUM('created','updated','deleted','status_changed') NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE CASCADE
+);
+
+
+This lets flat_payment_schedul you track scheduled EMIs and mark them as paid when the lead makes the payment.
+
+2️⃣ Workflow Example
+
+Booking:
+
+User selects a flat → payment_type = 'booking' → insert into payments table.
+
+Registration:
+
+After booking → payment_type = 'registration' → insert another row.
+
+EMI:
+
+Create schedule rows in flat_payment_schedule.
+
+When EMI is paid, insert into payments table and update schedule status.
+
+Link with follow-up:
+
+Optional: If payment is part of a follow-up action (next_action = 'booking'), store follow_up_id in the payment row.
+
+3️⃣ Benefits of this approach
+
+Can track multiple payments per lead/flat.
+
+Can filter payments by type, date, or status.
+
+Works seamlessly with reporting, e.g., total collected, pending EMIs, or follow-up due for booking.
+
+Avoids cluttering leads or follow_ups tables with financial data.
+
+
+leads
+  └── id
+      │
+      ▼
+onboarding_leads
+  ├── id (PK)
+  ├── lead_id (FK)
+  ├── project_id
+  ├── flat_id
+  ├── agreement_value
+  │
+  ├───────────────┐
+  ▼               ▼
+payments        emi_schedules
+  ├── onboarding_id   ├── onboarding_id
+  ├── amount          ├── emi_amount
+  ├── payment_type    ├── due_date
+  └── status          └── payment_id (FK)
+
+Onboard হলে: flat table e update
+
+UPDATE flats SET is_booked = 1 WHERE id = ?
+
+cpanel e upload korle 
+-- public/.htaccess e e just domain er moddhe kono folder thakle tar nam dibo just demo-1 (like domain/demo-1)
+-- public/index.php e base_url, r base_folder er just domain er moddhe kono folder thakle tar nam dibo just demo-1 (like domain/demo-1)
+-- view/layouts/header.php e base_url er just domain er moddhe kono folder thakle tar nam dibo just demo-1 (like domain/demo-1)

@@ -3,22 +3,16 @@
 # =====================
 .DS_Store
 Thumbs.db
-schema/*
-schema
+
 # VS Code
 .vscode/
 *.code-workspace
 
 # PhpStorm
 .idea/
-
 # =====================
 # Logs / Data files
 # =====================
-docs.txt
-data.json
-schema/config.php
-schema/data.json
 schema/docs.txt
 
 # db_sql.sql
