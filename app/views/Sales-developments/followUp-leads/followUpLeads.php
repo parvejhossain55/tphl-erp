@@ -137,8 +137,8 @@ $show_breadcrumb = true;
                             <th>Discussion Note</th>
                             <th>Next Follow Up</th>
                             <th>Next Action</th>
-                            <th>Created By</th>
-                            <th>Actions</th>
+                            <th class="d-none">Created By</th>
+                            <th class="d-none">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="table__body">
@@ -156,8 +156,8 @@ $show_breadcrumb = true;
                                 <td><?= $fu['discussion_note'] ?? '' ?></td>
                                 <td><?= $fu['next_follow_up_date'] ?? '' ?></td>
                                 <td><?= $fu['next_action'] ?? '' ?></td>
-                                <td><?= $fu['created_by_name'] ?? '' ?></td>
-                                <td>
+                                <td class="d-none"><?= $fu['created_by_name'] ?? '' ?></td>
+                                <td class="d-none">
                                     <div class="d-flex align-items-center justify-content-start gap-10">
                                         <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-follow-up/<?= $fu['id'] ?>">
                                             <i class="fa-regular fa-eye"></i>

@@ -8,9 +8,6 @@
         </div>
 
     </div>
-
-
-
     <!-- KPI CARDS -->
     <div class="row g-20 mb-4">
 
