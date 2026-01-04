@@ -22,7 +22,6 @@ class AccountClient extends Model
                 lb.booking_status,
                 l.id as lead_id,
                 l.lead_name as client_name,
-                l.company,
                 l.phone,
                 l.email,
                 l.designation,
@@ -132,80 +131,81 @@ class AccountClient extends Model
         return $transaction;
     }
 
-    /**
-     * Get all transactions for a specific booking ID with EMI schedule info
-     */
 /**
- * Get all transactions for a specific booking ID with EMI schedule info
+ * Get client details by booking ID with payment summary and flat price
  */
-/**
- * Get all transactions for a specific booking ID including booking money from agreement
- */
-/**
- * Get all transactions for a specific booking ID with EMI schedule info
- */
-/**
- * Get all transactions for a specific booking ID with EMI schedule info
- */
-public function getTransactionsByBookingId($bookingId)
+public function getClientByBookingId($bookingId)
 {
-    // First get the booking details to get agreement_value (booking money)
-    $bookingStmt = $this->db->prepare("
+    if (empty($bookingId) || !is_numeric($bookingId)) {
+        error_log("Invalid booking ID provided: " . print_r($bookingId, true));
+        return null;
+    }
+
+    $stmt = $this->db->prepare("
         SELECT 
-            lb.agreement_value,
+            lb.id as booking_id,
             lb.booking_date,
-            l.lead_name,
+            lb.agreement_value,
+            lb.booking_status,
+            l.id as lead_id,
+            l.lead_name as client_name,
+            l.phone,
+            l.email,
+            l.designation,
+            p.id as project_id,
             p.name as project_name,
-            f.floor_no,
-            un.name as unit_name
+            p.types as project_type,
+            f.id as flat_id,
+            f.floor_no as flat_no,
+            f.sqft as flat_size,
+            f.price_value as total_price,
+            un.id as unit_id,
+            un.name as unit_name,
+            u.full_name as agent_name,
+            COALESCE(
+                (SELECT SUM(lp.amount) 
+                 FROM lead_payments lp 
+                 WHERE lp.booking_id = lb.id 
+                 AND lp.payment_status = 'paid'), 
+                0
+            ) as total_paid
         FROM lead_bookings lb
-        LEFT JOIN leads l ON l.id = lb.lead_id
-        LEFT JOIN projects p ON p.id = lb.project_id
-        LEFT JOIN flats f ON f.id = lb.flat_id
-        LEFT JOIN units un ON un.id = f.unit_id
+        INNER JOIN leads l ON lb.lead_id = l.id
+        INNER JOIN projects p ON lb.project_id = p.id
+        INNER JOIN flats f ON lb.flat_id = f.id
+        INNER JOIN units un ON f.unit_id = un.id
+        LEFT JOIN users u ON l.assigned_id = u.id
         WHERE lb.id = ?
     ");
+
+    if (!$stmt) {
+        error_log("Prepare statement failed: " . $this->db->error);
+        return null;
+    }
+
+    $stmt->bind_param("i", $bookingId);
     
-    $bookingStmt->bind_param("i", $bookingId);
-    $bookingStmt->execute();
-    $bookingResult = $bookingStmt->get_result();
-    $bookingDetails = $bookingResult ? $bookingResult->fetch_assoc() : null;
-    
-    $transactions = [];
-    
-    // Add booking money transaction from agreement_value
-    if ($bookingDetails && isset($bookingDetails['agreement_value']) && $bookingDetails['agreement_value'] > 0) {
-        $bookingTransaction = [
-            'id' => 'booking-' . $bookingId,
-            'booking_id' => $bookingId,
-            'payment_type' => 'booking_money',
-            'amount' => $bookingDetails['agreement_value'],
-            'payment_method' => 'agreement',
-            'payment_status' => 'paid',
-            'payment_date' => $bookingDetails['booking_date'] ?? date('Y-m-d'),
-            'transaction_ref' => 'BOOKING-' . $bookingId,
-            'bank_name' => null,
-            'bank_account_no' => null,
-            'cheque_no' => null,
-            'online_type' => null,
-            'created_by' => 0,
-            'created_at' => ($bookingDetails['booking_date'] ?? '') . ' 00:00:00',
-            'client_name' => $bookingDetails['lead_name'] ?? '',
-            'project_name' => $bookingDetails['project_name'] ?? '',
-            'flat_no' => $bookingDetails['floor_no'] ? 'UNIT ' . ($bookingDetails['unit_name'] ?? '') . ' - FLOOR ' . $bookingDetails['floor_no'] : '',
-            'created_by_name' => 'System',
-            'emi_no' => null,
-            'emi_amount' => null,
-            'due_emi_amount' => null,
-            'emi_due_date' => null,
-            'emi_status' => null,
-            'installment_label' => 'BOOKING',
-            'payment_details' => 'Booking Agreement'
-        ];
-        $transactions[] = $bookingTransaction;
+    if (!$stmt->execute()) {
+        error_log("Execute failed: " . $stmt->error);
+        return null;
     }
     
-    // Now get all payments from lead_payments table
+    $result = $stmt->get_result();
+    $clientDetails = $result ? $result->fetch_assoc() : null;
+    
+    if ($clientDetails) {
+        // Add calculated fields
+        $clientDetails['due_amount'] = $clientDetails['total_price'] - $clientDetails['total_paid'];
+    } else {
+        error_log("No client found for booking ID: " . $bookingId);
+    }
+    
+    return $clientDetails;
+}
+
+public function getTransactionsByBookingId($bookingId)
+{
+    // Get all payments from lead_payments table ONLY
     $paymentsStmt = $this->db->prepare("
         SELECT 
             lp.*,
@@ -251,6 +251,7 @@ public function getTransactionsByBookingId($bookingId)
             CASE 
                 WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
                 WHEN lp.payment_type = 'registration' THEN 'Registration Money'
+                WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
                 WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
                 ELSE 'Other Payment'
             END as payment_details
@@ -276,10 +277,7 @@ public function getTransactionsByBookingId($bookingId)
     $paymentsStmt->bind_param("i", $bookingId);
     $paymentsStmt->execute();
     $paymentsResult = $paymentsStmt->get_result();
-    $paymentTransactions = $paymentsResult ? $paymentsResult->fetch_all(MYSQLI_ASSOC) : [];
-    
-    // Merge booking money with other payments
-    $transactions = array_merge($transactions, $paymentTransactions);
+    $transactions = $paymentsResult ? $paymentsResult->fetch_all(MYSQLI_ASSOC) : [];
     
     // Format dates and add additional calculated fields
     foreach ($transactions as &$transaction) {
@@ -425,209 +423,139 @@ public function getTransactionsByBookingId($bookingId)
         }
     }
 
-    /**
-     * Get client details by booking ID with payment summary and flat price
-     */
-    public function getClientByBookingId($bookingId)
-    {
-        $stmt = $this->db->prepare("
-            SELECT 
-                lb.*,
-                l.lead_name as client_name,
-                l.phone,
-                l.email,
-                p.name as project_name,
-                f.floor_no as flat_no,
-                f.sqft as flat_size,
-                f.price_value,
-                un.name as unit_name,
-                COALESCE(
-                    (SELECT SUM(lp.amount) 
-                     FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
-                    0
-                ) as total_paid
-            FROM lead_bookings lb
-            INNER JOIN leads l ON lb.lead_id = l.id
-            INNER JOIN projects p ON lb.project_id = p.id
-            INNER JOIN flats f ON lb.flat_id = f.id
-            INNER JOIN units un ON f.unit_id = un.id
-            WHERE lb.id = ?
-        ");
-
-        $stmt->bind_param("i", $bookingId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        return $result ? $result->fetch_assoc() : null;
-    }
-
-    /**
-     * Get payment summary with proper construction fee calculation
-     */
-/**
- * Get payment summary with proper construction fee calculation
- */
-/**
- * Get payment summary with proper calculation
- */
-/**
- * Get payment summary with proper calculation
- */
-/**
- * Get payment summary with proper calculation
- */
-/**
- * Get payment summary with proper calculation
- */
-/**
- * Get payment summary with proper calculation
- */
-/**
- * Get payment summary with proper calculation
- */
-/**
- * Get payment summary with proper calculation
- */
-/**
- * Get payment summary with proper calculation
- */
 public function getPaymentSummaryByBookingId($bookingId)
-    {
-        $summary = [
-            'total_price' => 0,
-            'booking_money' => 0,
-            'registration_money' => 0,
-            'construction_fee' => 0,
-            'construction_fee_paid' => 0,
-            'total_paid' => 0,
-            'due_amount' => 0,
-            'avg_emi_amount' => 0,
-            'total_emi' => 0,  // Will get from lead_payments.emi_no
-            'completed_emi' => 0,
-            'pending_emi' => 0,
-            'remaining_construction_fee' => 0,
-            'last_payment_date' => null
-        ];
+{
+    $summary = [
+        'total_price' => 0,
+        'booking_money' => 0,
+        'registration_money' => 0,
+        'construction_fee' => 0,
+        'construction_fee_paid' => 0,
+        'total_paid' => 0,
+        'due_amount' => 0,
+        'avg_emi_amount' => 0,
+        'total_emi' => 0,
+        'completed_emi' => 0,
+        'pending_emi' => 0,
+        'remaining_construction_fee' => 0,
+        'last_payment_date' => null
+    ];
 
-        // Get booking details
-        $stmt = $this->db->prepare("
-            SELECT 
-                lb.agreement_value,
-                lb.booking_date,
-                f.price_value as flat_price
-            FROM lead_bookings lb
-            LEFT JOIN flats f ON f.id = lb.flat_id
-            WHERE lb.id = ?
-        ");
+    // Get booking details
+    $stmt = $this->db->prepare("
+        SELECT 
+            lb.agreement_value,
+            lb.booking_date,
+            f.price_value as flat_price
+        FROM lead_bookings lb
+        LEFT JOIN flats f ON f.id = lb.flat_id
+        WHERE lb.id = ?
+    ");
 
-        $stmt->bind_param("i", $bookingId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $booking = $result ? $result->fetch_assoc() : null;
+    $stmt->bind_param("i", $bookingId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $booking = $result ? $result->fetch_assoc() : null;
 
-        if ($booking) {
-            $summary['booking_money'] = $booking['agreement_value'] ?? 0;
-            $summary['total_price'] = $booking['flat_price'] ?? 0;
-        }
-
-        // Get total EMI from lead_payments table
-        $emiNoStmt = $this->db->prepare("
-            SELECT emi_no 
-            FROM lead_payments 
-            WHERE booking_id = ? 
-            AND payment_type = 'emi'
-            ORDER BY id DESC
-            LIMIT 1
-        ");
-        
-        $emiNoStmt->bind_param("i", $bookingId);
-        $emiNoStmt->execute();
-        $emiNoResult = $emiNoStmt->get_result();
-        $emiNoData = $emiNoResult ? $emiNoResult->fetch_assoc() : null;
-        
-        if ($emiNoData) {
-            $summary['total_emi'] = $emiNoData['emi_no'] ?? 0;  // Get total EMI from lead_payments table
-        }
-
-        // Get EMI data from emi_schedules table
-        $stmt = $this->db->prepare("
-            SELECT 
-                SUM(CASE WHEN status = 'paid' THEN emi_amount ELSE 0 END) as total_paid_emi,
-                COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_emi_count,
-                AVG(CASE WHEN status = 'paid' THEN emi_amount END) as avg_paid_emi,
-                MAX(CASE WHEN status = 'paid' THEN due_date END) as last_emi_date
-            FROM emi_schedules 
-            WHERE lead_booking_id = ?
-        ");
-
-        $stmt->bind_param("i", $bookingId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $emiData = $result ? $result->fetch_assoc() : [];
-        
-        $summary['construction_fee_paid'] = $emiData['total_paid_emi'] ?? 0;
-        $summary['completed_emi'] = $emiData['paid_emi_count'] ?? 0;
-        $summary['avg_emi_amount'] = $emiData['avg_paid_emi'] ?? 0;
-        
-        if ($emiData['last_emi_date'] ?? false) {
-            $summary['last_payment_date'] = $emiData['last_emi_date'];
-        }
-
-        // Get registration payments
-        $stmt = $this->db->prepare("
-            SELECT 
-                SUM(amount) as total_registration_paid
-            FROM lead_payments 
-            WHERE booking_id = ? 
-            AND payment_type = 'registration'
-            AND payment_status = 'paid'
-        ");
-
-        $stmt->bind_param("i", $bookingId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $regData = $result ? $result->fetch_assoc() : [];
-        
-        $summary['registration_money'] = $regData['total_registration_paid'] ?? 0;
-
-        // Get other payments (non-EMI)
-        $stmt = $this->db->prepare("
-            SELECT 
-                SUM(amount) as total_other_paid,
-                MAX(payment_date) as last_payment
-            FROM lead_payments 
-            WHERE booking_id = ? 
-            AND payment_status = 'paid'
-            AND payment_type != 'emi'
-        ");
-
-        $stmt->bind_param("i", $bookingId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $otherData = $result ? $result->fetch_assoc() : [];
-        
-        $summary['total_paid'] = ($otherData['total_other_paid'] ?? 0) + $summary['construction_fee_paid'];
-        
-        if (!$summary['last_payment_date'] && ($otherData['last_payment'] ?? false)) {
-            $summary['last_payment_date'] = $otherData['last_payment'];
-        }
-
-        // **CALCULATIONS:**
-        // 1. Construction Fee = Total Price - Booking Money - Registration Money
-        $summary['construction_fee'] = $summary['total_price'] - $summary['booking_money'] - $summary['registration_money'];
-        
-        // 2. Remaining Construction Fee = Construction Fee - Construction Fee Paid
-        $summary['remaining_construction_fee'] = $summary['construction_fee'] - $summary['construction_fee_paid'];
-        
-        // 3. Pending EMI = Total EMI (from lead_bookings) - Completed EMI
-        $summary['pending_emi'] = max(0, $summary['total_emi'] - $summary['completed_emi']);
-        
-        // 4. Calculate Due Amount
-        $summary['due_amount'] = $summary['total_price'] - $summary['total_paid'];
-
-        return $summary;
+    if ($booking) {
+        $summary['booking_money'] = $booking['agreement_value'] ?? 0;
+        $summary['total_price'] = $booking['flat_price'] ?? 0;
     }
+
+    // Get total EMI count from emi_schedules table (this is the correct table)
+    $emiCountStmt = $this->db->prepare("
+        SELECT COUNT(*) as total_emi
+        FROM emi_schedules 
+        WHERE lead_booking_id = ?
+    ");
+    
+    $emiCountStmt->bind_param("i", $bookingId);
+    $emiCountStmt->execute();
+    $emiCountResult = $emiCountStmt->get_result();
+    $emiCountData = $emiCountResult ? $emiCountResult->fetch_assoc() : null;
+    
+    if ($emiCountData) {
+        $summary['total_emi'] = $emiCountData['total_emi'] ?? 0;
+    }
+
+    // Get EMI data from emi_schedules table
+    $stmt = $this->db->prepare("
+        SELECT 
+            SUM(CASE WHEN status = 'paid' THEN emi_amount ELSE 0 END) as total_paid_emi,
+            COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_emi_count,
+            AVG(CASE WHEN status = 'paid' THEN emi_amount END) as avg_paid_emi,
+            MAX(CASE WHEN status = 'paid' THEN due_date END) as last_emi_date
+        FROM emi_schedules 
+        WHERE lead_booking_id = ?
+    ");
+
+    $stmt->bind_param("i", $bookingId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $emiData = $result ? $result->fetch_assoc() : [];
+    
+    $summary['construction_fee_paid'] = $emiData['total_paid_emi'] ?? 0;
+    $summary['completed_emi'] = $emiData['paid_emi_count'] ?? 0;
+    $summary['avg_emi_amount'] = $emiData['avg_paid_emi'] ?? 0;
+    
+    if ($emiData['last_emi_date'] ?? false) {
+        $summary['last_payment_date'] = $emiData['last_emi_date'];
+    }
+
+    // Get registration payments
+    $stmt = $this->db->prepare("
+        SELECT 
+            SUM(amount) as total_registration_paid
+        FROM lead_payments 
+        WHERE booking_id = ? 
+        AND payment_type = 'registration'
+        AND payment_status = 'paid'
+    ");
+
+    $stmt->bind_param("i", $bookingId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $regData = $result ? $result->fetch_assoc() : [];
+    
+    $summary['registration_money'] = $regData['total_registration_paid'] ?? 0;
+
+    // Get other payments (non-EMI)
+    $stmt = $this->db->prepare("
+        SELECT 
+            SUM(amount) as total_other_paid,
+            MAX(payment_date) as last_payment
+        FROM lead_payments 
+        WHERE booking_id = ? 
+        AND payment_status = 'paid'
+        AND payment_type != 'emi'
+    ");
+
+    $stmt->bind_param("i", $bookingId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $otherData = $result ? $result->fetch_assoc() : [];
+    
+    $summary['total_paid'] = ($otherData['total_other_paid'] ?? 0) + $summary['construction_fee_paid'];
+    
+    if (!$summary['last_payment_date'] && ($otherData['last_payment'] ?? false)) {
+        $summary['last_payment_date'] = $otherData['last_payment'];
+    }
+
+    // **CALCULATIONS:**
+    // 1. Construction Fee = Total Price - Booking Money - Registration Money
+    $summary['construction_fee'] = $summary['total_price'] - $summary['booking_money'] - $summary['registration_money'];
+    
+    // 2. Remaining Construction Fee = Construction Fee - Construction Fee Paid
+    $summary['remaining_construction_fee'] = $summary['construction_fee'] - $summary['construction_fee_paid'];
+    
+    // 3. Pending EMI = Total EMI - Completed EMI
+    $summary['pending_emi'] = max(0, $summary['total_emi'] - $summary['completed_emi']);
+    
+    // 4. Calculate Due Amount
+    $summary['due_amount'] = $summary['total_price'] - $summary['total_paid'];
+
+    return $summary;
+}
 
     /**
      * Calculate EMI statistics based on construction fee and paid EMIs
@@ -656,18 +584,6 @@ public function getPaymentSummaryByBookingId($bookingId)
         return $stats;
     }
 /**
- * Calculate EMI statistics based on construction fee and paid EMIs
- */
-// In your calculateEMIStats() method:
-
-/**
- * Calculate EMI statistics based on construction fee and paid EMIs
- */
-
-/**
- * Calculate EMI statistics based on construction fee and paid EMIs
- */
-
 
     /**
      * Get transaction by ID

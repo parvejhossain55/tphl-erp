@@ -241,7 +241,7 @@ $show_breadcrumb = true;
             </div>
     <div class="col-xxl-12 mb-4">
                         <div class="d-flex flex-wrap justify-content-end gap-2">
-             <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['id'] ?>" class="btn btn-primary mb-3">
+             <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                         <i class="fa-light fa-plus me-2"></i> Add Transaction
                     </a>
                 </div>

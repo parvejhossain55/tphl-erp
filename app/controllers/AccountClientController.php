@@ -56,31 +56,21 @@ public function indexTwo($bookingId = null)
         exit;
     }
 
-    // Get transaction history for this booking
+    // Get transaction history for this booking (WITHOUT automatic booking money)
     $transactions = $this->clientModel->getTransactionsByBookingId($bookingId);
-
-    // Check if booking money exists in transactions
-    $hasBookingMoney = false;
-    foreach ($transactions as $transaction) {
-        if ($transaction['payment_type'] === 'booking_money') {
-            $hasBookingMoney = true;
-            
-            // Add booking money specific data for display
-            $transaction['installment_label'] = 'BOOKING';
-            $transaction['payment_details'] = 'Booking Agreement';
-            break;
+    
+    // Filter out any automatically generated booking money transactions
+    // Only keep actual payment records from lead_payments table
+    $filteredTransactions = array_filter($transactions, function($transaction) {
+        // Remove the auto-generated booking transaction (the one with 'booking-' prefix in ID)
+        if (isset($transaction['id']) && is_string($transaction['id']) && strpos($transaction['id'], 'booking-') === 0) {
+            return false;
         }
-    }
-
-    // Only fetch booking money from database if not already in transactions
-    if (!$hasBookingMoney) {
-        $bookingMoney = $this->clientModel->getBookingMoneyTransaction($bookingId);
-        if ($bookingMoney) {
-            $bookingMoney['installment_label'] = 'BOOKING';
-            $bookingMoney['payment_details'] = 'Booking Agreement';
-            array_unshift($transactions, $bookingMoney);
-        }
-    }
+        return true;
+    });
+    
+    // Re-index the array to have sequential keys
+    $transactions = array_values($filteredTransactions);
 
     // Get payment summary statistics
     $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
@@ -94,7 +84,63 @@ public function indexTwo($bookingId = null)
     ]);
 }
 
-    /**
+
+    public function indexView()
+    {
+        // Get all clients (booked leads with their details)
+        $clients = $this->clientModel->getAllClients();
+
+        // Get payment statistics for each client
+        $paymentStats = $this->clientModel->getPaymentStatistics();
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $this->view("ced/clients-cashin-view", [
+            "current_route" => "clients-cash-in-view",
+            "page_title" => "Clients Management - Cash In View",
+            "clients" => $clients,
+            "paymentStats" => $paymentStats
+        ]);
+    }
+    
+
+public function indexTwoView($bookingId = null)
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    $bookingId = (int)$bookingId;
+
+    if ($bookingId <= 0) {
+        setError("No booking ID provided");
+        header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
+        exit;
+    }
+
+    $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+
+    if (!$clientDetails) {
+        setError("Client not found");
+        header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
+        exit;
+    }
+
+    $transactions = $this->clientModel->getTransactionsByBookingId($bookingId);
+    $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+
+    $this->view("ced/clients-cash-in-history-view", [
+        "current_route" => "clients-cash-in-history-view",
+        "page_title" => "Transaction History - " . $clientDetails['client_name'],
+        "clientDetails" => $clientDetails,
+        "transactions" => $transactions,
+        "paymentSummary" => $paymentSummary
+    ]);
+}
+
+    /*
      * Show add transaction form
      */
 public function showAddTransactionForm($bookingId = null)

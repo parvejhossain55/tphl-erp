@@ -287,6 +287,10 @@ $routes = [
     'delete-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "deleteCategory"],
     'toggle-category-status' => ["controller" => "AccountManagementCategoryController", "method" => "toggleCategoryStatus"],
 
+//===================Customer Experience Department====================
+'clients-cashin-view' => ["controller" => "AccountClientController", "method" => "indexView"],
+'clients-cash-in-history-view' => ["controller" => "AccountClientController", "method" => "indexTwoView"],
+'clients-cash-in-history-view/(\d+)' => ["controller" => "AccountClientController", "method" => "indexTwoView"],
     //rafi End
 
 
