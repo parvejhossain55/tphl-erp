@@ -163,21 +163,21 @@ $show_breadcrumb = true;
         </div>
     </div>
 
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-list-ol"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total EMI</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentSummary['total_emi'] ?? 0 ?></h4>
-                    </div>
+<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+    <div class="card__wrapper">
+        <div class="d-flex align-items-center gap-1">
+            <div class="card__icon">
+                <span><i class="fa-light fa-list-ol"></i></span>
+            </div>
+            <div class="card__title-wrap">
+                <h6 class="card__sub-title mb-10">Total EMI </h6>
+                <div class="d-flex flex-wrap align-items-end gap-10">
+                    <h4 class="card__title"><?= $paymentSummary['total_emi'] ?? 0 ?></h4>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
     <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">

@@ -423,6 +423,9 @@ public function getTransactionsByBookingId($bookingId)
         }
     }
 
+/**
+ * Get payment summary by booking ID including EMI numbers
+ */
 public function getPaymentSummaryByBookingId($bookingId)
 {
     $summary = [
@@ -434,11 +437,14 @@ public function getPaymentSummaryByBookingId($bookingId)
         'total_paid' => 0,
         'due_amount' => 0,
         'avg_emi_amount' => 0,
-        'total_emi' => 0,
-        'completed_emi' => 0,
-        'pending_emi' => 0,
+        'total_emi' => 0, // Total expected EMIs from lead_payments.total_emi_no
+        'completed_emi' => 0, // Actually paid EMI count from emi_schedules
+        'pending_emi' => 0, // total_emi - completed_emi
         'remaining_construction_fee' => 0,
-        'last_payment_date' => null
+        'last_payment_date' => null,
+        'emi_numbers' => [], // EMI sequence numbers from emi_schedules
+        'paid_emi_numbers' => [], // Paid EMI numbers
+        'pending_emi_numbers' => [] // Expected but not paid EMI numbers
     ];
 
     // Get booking details
@@ -462,44 +468,86 @@ public function getPaymentSummaryByBookingId($bookingId)
         $summary['total_price'] = $booking['flat_price'] ?? 0;
     }
 
-    // Get total EMI count from emi_schedules table (this is the correct table)
-    $emiCountStmt = $this->db->prepare("
-        SELECT COUNT(*) as total_emi
-        FROM emi_schedules 
-        WHERE lead_booking_id = ?
+    // 1. GET TOTAL EXPECTED EMI COUNT from lead_payments.total_emi_no
+    $totalEmiStmt = $this->db->prepare("
+        SELECT total_emi_no 
+        FROM lead_payments 
+        WHERE booking_id = ? 
+        AND payment_type = 'booking_money' 
+        LIMIT 1
     ");
     
-    $emiCountStmt->bind_param("i", $bookingId);
-    $emiCountStmt->execute();
-    $emiCountResult = $emiCountStmt->get_result();
-    $emiCountData = $emiCountResult ? $emiCountResult->fetch_assoc() : null;
+    $totalEmiStmt->bind_param("i", $bookingId);
+    $totalEmiStmt->execute();
+    $totalEmiResult = $totalEmiStmt->get_result();
+    $totalEmiRow = $totalEmiResult ? $totalEmiResult->fetch_assoc() : null;
     
-    if ($emiCountData) {
-        $summary['total_emi'] = $emiCountData['total_emi'] ?? 0;
-    }
+    // Set total expected EMI count
+    $summary['total_emi'] = $totalEmiRow['total_emi_no'] ?? 0;
 
-    // Get EMI data from emi_schedules table
-    $stmt = $this->db->prepare("
+    // 2. GET ACTUAL EMI PAYMENTS from emi_schedules
+    $emiDetailsStmt = $this->db->prepare("
         SELECT 
-            SUM(CASE WHEN status = 'paid' THEN emi_amount ELSE 0 END) as total_paid_emi,
-            COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_emi_count,
-            AVG(CASE WHEN status = 'paid' THEN emi_amount END) as avg_paid_emi,
-            MAX(CASE WHEN status = 'paid' THEN due_date END) as last_emi_date
+            emi_no,
+            emi_amount,
+            due_emi_amount,
+            due_date,
+            status
         FROM emi_schedules 
         WHERE lead_booking_id = ?
+        ORDER BY emi_no ASC
     ");
-
-    $stmt->bind_param("i", $bookingId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $emiData = $result ? $result->fetch_assoc() : [];
     
-    $summary['construction_fee_paid'] = $emiData['total_paid_emi'] ?? 0;
-    $summary['completed_emi'] = $emiData['paid_emi_count'] ?? 0;
-    $summary['avg_emi_amount'] = $emiData['avg_paid_emi'] ?? 0;
+    $emiDetailsStmt->bind_param("i", $bookingId);
+    $emiDetailsStmt->execute();
+    $emiDetailsResult = $emiDetailsStmt->get_result();
+    $emiDetails = $emiDetailsResult ? $emiDetailsResult->fetch_all(MYSQLI_ASSOC) : [];
     
-    if ($emiData['last_emi_date'] ?? false) {
-        $summary['last_payment_date'] = $emiData['last_emi_date'];
+    // Process actual EMI payments
+    $totalPaidEmi = 0;
+    $paidEmiCount = 0;
+    $paidEmiAmounts = [];
+    $lastEmiDate = null;
+    
+    foreach ($emiDetails as $emi) {
+        $summary['emi_numbers'][] = $emi['emi_no'];
+        
+        if ($emi['status'] === 'paid') {
+            $summary['paid_emi_numbers'][] = $emi['emi_no'];
+            $totalPaidEmi += $emi['emi_amount'];
+            $paidEmiCount++;
+            $paidEmiAmounts[] = $emi['emi_amount'];
+            
+            if (!$lastEmiDate || strtotime($emi['due_date']) > strtotime($lastEmiDate)) {
+                $lastEmiDate = $emi['due_date'];
+            }
+        } else {
+            $summary['pending_emi_numbers'][] = $emi['emi_no'];
+        }
+    }
+    
+    $summary['construction_fee_paid'] = $totalPaidEmi;
+    $summary['completed_emi'] = $paidEmiCount;
+    
+    // 3. CALCULATE PENDING EMI COUNT
+    // If total_emi is 48 and you've paid 1, then 47 are pending
+    $summary['pending_emi'] = max(0, $summary['total_emi'] - $paidEmiCount);
+    
+    // 4. GENERATE ALL EXPECTED EMI NUMBERS (1 to total_emi)
+    $summary['all_emi_numbers'] = [];
+    if ($summary['total_emi'] > 0) {
+        for ($i = 1; $i <= $summary['total_emi']; $i++) {
+            $summary['all_emi_numbers'][] = $i;
+        }
+    }
+    
+    // Calculate average EMI amount
+    if ($paidEmiCount > 0) {
+        $summary['avg_emi_amount'] = $totalPaidEmi / $paidEmiCount;
+    }
+    
+    if ($lastEmiDate) {
+        $summary['last_payment_date'] = $lastEmiDate;
     }
 
     // Get registration payments
@@ -548,11 +596,23 @@ public function getPaymentSummaryByBookingId($bookingId)
     // 2. Remaining Construction Fee = Construction Fee - Construction Fee Paid
     $summary['remaining_construction_fee'] = $summary['construction_fee'] - $summary['construction_fee_paid'];
     
-    // 3. Pending EMI = Total EMI - Completed EMI
-    $summary['pending_emi'] = max(0, $summary['total_emi'] - $summary['completed_emi']);
-    
-    // 4. Calculate Due Amount
+    // 3. Calculate Due Amount
     $summary['due_amount'] = $summary['total_price'] - $summary['total_paid'];
+
+    // Format EMI numbers for display
+    $summary['formatted_all_emi_numbers'] = implode(', ', $summary['all_emi_numbers']);
+    $summary['formatted_paid_emi_numbers'] = implode(', ', $summary['paid_emi_numbers']);
+    
+    // Generate pending EMI numbers (expected but not paid)
+    $summary['expected_pending_numbers'] = [];
+    if ($summary['total_emi'] > 0) {
+        for ($i = 1; $i <= $summary['total_emi']; $i++) {
+            if (!in_array($i, $summary['paid_emi_numbers'])) {
+                $summary['expected_pending_numbers'][] = $i;
+            }
+        }
+    }
+    $summary['formatted_pending_emi_numbers'] = implode(', ', $summary['expected_pending_numbers']);
 
     return $summary;
 }
