@@ -22,9 +22,6 @@ $show_breadcrumb = true;
     .card__title {
         font-size: 1.25rem;
     }
-
-
-
 </style>
 <div class="row">
     <!-- Client Header Section -->
@@ -167,21 +164,21 @@ $show_breadcrumb = true;
         </div>
     </div>
 
-<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon">
-                <span><i class="fa-light fa-list-ol"></i></span>
-            </div>
-            <div class="card__title-wrap">
-                <h6 class="card__sub-title mb-10">Total EMI</h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title"><?= $paymentSummary['total_emi'] ?? 0 ?> </h4>
+    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+        <div class="card__wrapper">
+            <div class="d-flex align-items-center gap-1">
+                <div class="card__icon">
+                    <span><i class="fa-light fa-list-ol"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-10">Total EMI</h6>
+                    <div class="d-flex flex-wrap align-items-end gap-10">
+                        <h4 class="card__title"><?= $paymentSummary['total_emi'] ?? 0 ?> </h4>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
     <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
@@ -248,7 +245,7 @@ $show_breadcrumb = true;
                     <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                         <i class="fa-light fa-plus me-2"></i> Add Transaction
                     </a>
-                   <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
+                    <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
 
@@ -304,12 +301,20 @@ $show_breadcrumb = true;
                                             <strong>৳<?= number_format($transaction['amount'] ?? 0, 2) ?></strong>
                                         </td>
                                         <td>
-                                            <?php if (($transaction['payment_status'] ?? 'paid') == 'paid'): ?>
-                                                <span class="bd-badge bg-success">Paid</span>
-                                            <?php elseif (($transaction['payment_status'] ?? '') == 'pending'): ?>
-                                                <span class="bd-badge bg-warning">Pending</span>
+                                            <?php if (isset($transaction['status_class']) && isset($transaction['status_text'])): ?>
+                                                <span class="bd-badge <?= $transaction['status_class'] ?>">
+                                                    <?= $transaction['status_text'] ?>
+                                                </span>
                                             <?php else: ?>
-                                                <span class="bd-badge bg-danger">Failed</span>
+                                                <?php if (($transaction['payment_status'] ?? 'paid') == 'paid'): ?>
+                                                    <span class="bd-badge bg-success">Paid</span>
+                                                <?php elseif (($transaction['payment_status'] ?? '') == 'partially_paid'): ?>
+                                                    <span class="bd-badge bg-info">Partially Paid</span>
+                                                <?php elseif (($transaction['payment_status'] ?? '') == 'pending'): ?>
+                                                    <span class="bd-badge bg-warning">Pending</span>
+                                                <?php else: ?>
+                                                    <span class="bd-badge bg-danger">Failed</span>
+                                                <?php endif; ?>
                                             <?php endif; ?>
                                         </td>
                                         <td>

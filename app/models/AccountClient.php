@@ -286,20 +286,28 @@ public function getTransactionsByBookingId($bookingId)
             $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
         }
         
-        // Add status badge class
+        // Add status badge class - FIXED HERE
         if (isset($transaction['payment_status'])) {
             switch ($transaction['payment_status']) {
                 case 'paid':
                     $transaction['status_class'] = 'bg-success';
                     $transaction['status_text'] = 'Paid';
                     break;
+                case 'partially_paid':
+                    $transaction['status_class'] = 'bg-info';
+                    $transaction['status_text'] = 'Partially Paid';
+                    break;
                 case 'pending':
                     $transaction['status_class'] = 'bg-warning';
                     $transaction['status_text'] = 'Pending';
                     break;
-                default:
+                case 'failed':
                     $transaction['status_class'] = 'bg-danger';
                     $transaction['status_text'] = 'Failed';
+                    break;
+                default:
+                    $transaction['status_class'] = 'bg-secondary';
+                    $transaction['status_text'] = ucfirst(str_replace('_', ' ', $transaction['payment_status']));
             }
         }
     }
@@ -938,6 +946,9 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
 /**
  * Get transactions by booking ID with date filter
  */
+/**
+ * Get transactions by booking ID with date filter
+ */
 public function getFilteredTransactionsByBookingId($bookingId, $dateFilter = [])
 {
     // Base query for all payments
@@ -1046,19 +1057,28 @@ public function getFilteredTransactionsByBookingId($bookingId, $dateFilter = [])
             $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
         }
         
+        // Add status badge class - FIXED: Added 'partially_paid' case
         if (isset($transaction['payment_status'])) {
             switch ($transaction['payment_status']) {
                 case 'paid':
                     $transaction['status_class'] = 'bg-success';
                     $transaction['status_text'] = 'Paid';
                     break;
+                case 'partially_paid':
+                    $transaction['status_class'] = 'bg-info';
+                    $transaction['status_text'] = 'Partially Paid';
+                    break;
                 case 'pending':
                     $transaction['status_class'] = 'bg-warning';
                     $transaction['status_text'] = 'Pending';
                     break;
-                default:
+                case 'failed':
                     $transaction['status_class'] = 'bg-danger';
                     $transaction['status_text'] = 'Failed';
+                    break;
+                default:
+                    $transaction['status_class'] = 'bg-secondary';
+                    $transaction['status_text'] = ucfirst(str_replace('_', ' ', $transaction['payment_status']));
             }
         }
     }
