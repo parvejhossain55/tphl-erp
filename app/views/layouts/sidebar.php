@@ -319,7 +319,6 @@
                            </ul>
                        </li>
 
-<<<<<<< HEAD
 
 
                        <!--Sales CATEGORY -->
@@ -531,9 +530,7 @@
 
 
 
-=======
                        <!-- Site Manage -->
->>>>>>> e277f47010be87a083fe2378010554bdea9c0950
                        <li class="slide has-sub <?= isActive(['slider-manage', 'site-settings', 'home-footer-setting'], $current_route) ?>">
                            <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['slider-manage', 'site-settings', 'home-footer-setting'], $current_route) ?>">
                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
