@@ -7,6 +7,8 @@
     <title>Property Booking & Payment Document</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Place favicon.ico in the root directory -->
+    <link rel="shortcut icon" type="image/x-icon" href="<?= $GLOBALS['base_url'] ?>/assets/images/logo/tphl_logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -33,7 +35,7 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+            /* background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%); */
             padding: 2rem 1rem;
             color: var(--text);
             line-height: 1.6;
@@ -448,7 +450,7 @@
             body {
                 font-size: 11px !important;
                 line-height: 1.3 !important;
-                background: #fff !important;
+                /* background: #fff !important; */
                 padding: 0 !important;
                 margin: 0 !important;
             }
@@ -554,6 +556,7 @@
             }
         }
     </style>
+    
 </head>
 
 <body>
@@ -563,7 +566,7 @@
         </button>
     </div>
 
-    <div class="document-container">
+    <div class="document-container" id="payment_booking">
         <!-- HEADER -->
         <div class="site-logo mt-3 mb-3">
             <img src="<?= getImage('settings', getSetting('logo')) ?>" alt="<?= getSetting('website_title', 'Site Logo') ?>">
@@ -995,12 +998,73 @@
             </div>
 
         </div>
+
+        <!-- Action Buttons -->
+        <div class="action-section">
+
+            <!-- <a href="<= $GLOBALS['base_url'] ?>/download-payslip/<= $payslip['id'] ?>" target="_blank" class="btn-action btn-download">
+                <i class="fas fa-file-pdf"></i> Download PDF
+            </a> -->
+            <button target="_blank" class="btn-action btn-print" onclick="downloadPaymentPdf()">
+                <i class="mdi mdi-download"></i> Download PDF
+            </button>
+        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 
     <script>
+   async function downloadPaymentPdf(leadName = 'Document') {
+    const { jsPDF } = window.jspdf;
+    const payment = document.querySelector("#payment_booking");
+
+    try {
+        // Ensure fonts/images are loaded
+        await document.fonts.ready;
+
+        // Capture the container with html2canvas
+        const canvas = await html2canvas(payment, {
+            scale: 2,              // higher scale for better quality
+            useCORS: true,         // allow cross-origin images
+            backgroundColor: "#ffffff", // force white background
+        });
+
+        const imgData = canvas.toDataURL("image/png");
+
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pdfWidth = 210; // A4 width in mm
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        let heightLeft = pdfHeight;
+        let position = 0;
+        const pageHeight = 297; // A4 page height in mm
+
+        // Add first page
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+
+        // Add extra pages if content is taller than one page
+        while (heightLeft > 0) {
+            position -= pageHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+            heightLeft -= pageHeight;
+        }
+
+        // Save PDF with dynamic lead name
+        pdf.save(`Payment_${leadName.replace(/\s+/g, '_')}.pdf`);
+
+    } catch (error) {
+        alert("Error generating PDF. Check console for details.");
+        console.error(error);
+    }
+}
+
+
+
         document.addEventListener("DOMContentLoaded", function() {
             const textareas = document.querySelectorAll("textarea.field-input");
 

@@ -6,22 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Payslip - <?= $payslip['employee_name'] ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <!-- Place favicon.ico in the root directory -->
+    <link rel="shortcut icon" type="image/x-icon" href="<?= $GLOBALS['base_url'] ?>/assets/images/logo/tphl_logo.png">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
         :root {
-            --primary-color: #4f46e5;
-            --primary-dark: #4338ca;
-            --secondary-color: #06b6d4;
-            --success-color: #10b981;
-            --danger-color: #ef4444;
-            --warning-color: #f59e0b;
-            --dark-color: #1f2937;
-            --light-bg: #f9fafb;
-            --border-color: #e5e7eb;
+            --primary-green: #059669;
+            --primary-dark: #047857;
+            --primary-light: #10b981;
+            --accent-green: #34d399;
+            --success-green: #22c55e;
+            --dark-green: #065f46;
+            --light-green-bg: #ecfdf5;
+            --danger-red: #ef4444;
+            --warning-amber: #f59e0b;
+            --dark-text: #1f2937;
+            --gray-text: #6b7280;
+            --border-color: #d1fae5;
+            --white: #ffffff;
         }
 
         * {
@@ -31,739 +37,1059 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
-            padding: 30px 15px;
+            font-family: 'Poppins', sans-serif;
+           background: linear-gradient(135deg, #e5e9e7 0%, #eff3f1 100%);
+            padding: 40px 20px;
             min-height: 100vh;
-            /* color: #333; */
+            color: var(--dark-text);
         }
 
-        .payslip-container {
-            max-width: 1000px;
+        .payslip-wrapper {
+            max-width: 1100px;
             margin: 0 auto;
-            background: #fff;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            background: var(--white);
+            border-radius: 24px;
             overflow: hidden;
+            box-shadow: 0 25px 70px rgba(5, 150, 105, 0.15);
         }
 
-        /* Header Section */
-        .payslip-header {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-            color: white;
-            padding: 40px;
+        /* Company Header Section */
+        .company-header {
+            /* background: linear-gradient(135deg, #21b385 0%, #62e3bf 100%); */
+            padding: 10PX;
             position: relative;
             overflow: hidden;
         }
 
-        .payslip-header::before {
+        .company-header::before {
             content: '';
             position: absolute;
-            top: -50%;
-            right: -10%;
-            width: 300px;
-            height: 300px;
-            background: rgba(255, 255, 255, 0.1);
+            top: -100px;
+            right: -100px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
             border-radius: 50%;
         }
 
-        .payslip-header::after {
+        .company-header::after {
             content: '';
             position: absolute;
-            bottom: -30%;
-            left: -5%;
-            width: 200px;
-            height: 200px;
-            background: rgba(255, 255, 255, 0.05);
+            bottom: -80px;
+            left: -80px;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
             border-radius: 50%;
         }
 
         .header-content {
             position: relative;
-            z-index: 1;
+            z-index: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        .payslip-title {
+        .company-info-section {
+            flex: 1;
+        }
+
+        .company-logo {
+            max-width: 185px;
+            margin-bottom: 25px;
+            filter: brightness(0) invert(1);
+        }
+
+        .company-name {
+            font-family: 'Montserrat', sans-serif;
             font-size: 32px;
-            font-weight: 700;
+            font-weight: 800;
+            color: var(--white);
             margin-bottom: 8px;
-            text-align: center;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
 
-        .payslip-subtitle {
-            text-align: center;
-            font-size: 16px;
-            opacity: 0.9;
+        .company-details {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 15px;
+            line-height: 1.8;
             font-weight: 400;
         }
 
-        /* Body Section */
-        .payslip-body {
-            padding: 40px;
+        .company-details i {
+            margin-right: 10px;
+            width: 20px;
+            color: var(--accent-green);
         }
 
-        /* Company & Employee Info Cards */
-        .info-cards-wrapper {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin-bottom: 35px;
+        .payslip-title-section {
+            text-align: center;
+            color: var(--white);
+            width: 100%;
         }
 
-        .info-card {
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            border-radius: 15px;
-            padding: 25px;
-            border: 2px solid #e2e8f0;
-            transition: all 0.3s ease;
+        .payslip-main-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 3px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
         }
 
-        .info-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        .payslip-id {
+            font-size: 18px;
+            opacity: 0.95;
+            font-weight: 500;
+            letter-spacing: 1.5px;
         }
 
-        .info-card-header {
+        /* Main Content Section */
+        .payslip-content {
+            padding: 50px 60px;
+        }
+
+        /* Period Info Bar */
+        .period-info-bar {
+            background: linear-gradient(135deg, var(--light-green-bg) 0%, #d1fae5 100%);
+            padding: 25px 35px;
+            border-radius: 16px;
+            border-left: 6px solid var(--primary-green);
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .period-item {
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #cbd5e1;
         }
 
-        .info-card-icon {
+        .period-icon {
             width: 45px;
             height: 45px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: var(--primary-green);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-size: 20px;
-        }
-
-        .info-card-title {
+            color: var(--white);
             font-size: 18px;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin: 0;
         }
 
-        .info-item {
+        .period-text {
             display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e2e8f0;
+            flex-direction: column;
         }
 
-        .info-item:last-child {
-            border-bottom: none;
-        }
-
-        .info-label {
+        .period-label {
+            font-size: 12px;
+            color: var(--gray-text);
             font-weight: 600;
-            color: #64748b;
-            font-size: 14px;
-        }
-
-        .info-value {
-            font-weight: 600;
-            color: var(--dark-color);
-            text-align: right;
-            font-size: 14px;
-        }
-
-        .company-logo {
-            max-width: 150px;
-            margin-bottom: 15px;
-        }
-
-        /* Payslip Tables */
-        .payslip-table-wrapper {
-            margin: 30px 0;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        }
-
-        .payslip-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-
-        .payslip-table thead {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-            color: white;
-        }
-
-        .payslip-table th {
-            padding: 18px 20px;
-            font-weight: 600;
-            text-align: left;
-            font-size: 15px;
-            letter-spacing: 0.5px;
-        }
-
-        .payslip-table th:last-child,
-        .payslip-table td:last-child {
-            text-align: right;
-        }
-
-        .payslip-table tbody tr {
-            border-bottom: 1px solid #f1f5f9;
-            transition: background-color 0.2s;
-        }
-
-        .payslip-table tbody tr:hover {
-            background-color: #f8fafc;
-        }
-
-        .payslip-table td {
-            padding: 15px 20px;
-            color: #475569;
-            font-size: 14px;
-        }
-
-        .payslip-table td:first-child {
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-
-        .amount-earning {
-            color: var(--success-color);
-            font-weight: 700;
-        }
-
-        .amount-deduction {
-            color: var(--danger-color);
-            font-weight: 700;
-        }
-
-        .total-row {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            font-weight: 700;
-        }
-
-        .total-row td {
-            padding: 18px 20px;
-            font-size: 16px;
-            color: var(--dark-color);
-        }
-
-        /* Net Salary Section */
-        .net-salary-card {
-            background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
-            color: white;
-            padding: 35px;
-            border-radius: 15px;
-            text-align: center;
-            margin: 35px 0;
-            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .net-salary-card::before {
-            content: '';
-            position: absolute;
-            top: -50px;
-            right: -50px;
-            width: 150px;
-            height: 150px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-        }
-
-        .net-salary-label {
-            font-size: 18px;
-            font-weight: 500;
-            opacity: 0.95;
-            margin-bottom: 12px;
-            letter-spacing: 1px;
-        }
-
-        .net-salary-amount {
-            font-size: 48px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Amount in Words */
-        .amount-words-card {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            padding: 25px;
-            border-radius: 15px;
-            border-left: 5px solid var(--warning-color);
-            margin: 25px 0;
-        }
-
-        .amount-words-label {
-            font-weight: 700;
-            color: var(--dark-color);
-            margin-bottom: 10px;
-            font-size: 14px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .amount-words-value {
-            color: #92400e;
+        .period-value {
+            font-size: 15px;
+            color: var(--dark-text);
+            font-weight: 700;
+        }
+
+        /* Salary Breakdown Section */
+        .salary-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .breakdown-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 35px;
+            border: 2px solid var(--border-color);
+            box-shadow: 0 8px 30px rgba(5, 150, 105, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .breakdown-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 45px rgba(5, 150, 105, 0.15);
+        }
+
+        .breakdown-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid var(--border-color);
+        }
+
+        .breakdown-icon {
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, var(--primary-green), var(--accent-green));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 24px;
+            box-shadow: 0 8px 20px rgba(5, 150, 105, 0.3);
+        }
+
+        .breakdown-icon.deduction {
+            background: linear-gradient(135deg, var(--danger-red), #dc2626);
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .breakdown-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--dark-text);
+            margin: 0;
+        }
+
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .breakdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: var(--dark-text);
+            font-size: 15px;
+        }
+
+        .item-amount {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .item-amount.earning {
+            color: var(--primary-green);
+        }
+
+        .item-amount.deduction {
+            color: var(--danger-red);
+        }
+
+        .breakdown-total {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 3px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .total-label {
+            font-family: 'Montserrat', sans-serif;
             font-size: 18px;
+            font-weight: 800;
+            color: var(--dark-text);
+        }
+
+        .total-amount {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .total-amount.earning {
+            color: var(--primary-green);
+        }
+
+        .total-amount.deduction {
+            color: var(--danger-red);
+        }
+
+        /* Net Salary Card */
+        .net-salary-section {
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
+            border-radius: 24px;
+            padding: 45px;
+            text-align: center;
+            margin: 9px 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(5, 150, 105, 0.3);
+        }
+
+        .net-salary-section::before {
+            content: '';
+            position: absolute;
+            top: -60px;
+            right: -60px;
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .net-salary-section::after {
+            content: '';
+            position: absolute;
+            bottom: -40px;
+            left: -40px;
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .net-salary-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .net-salary-label {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 7px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .net-salary-amount {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 43px;
+            font-weight: 900;
+            color: var(--white);
+            letter-spacing: 2px;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .net-salary-amount i {
+            font-size: 48px;
+        }
+
+        .amount-in-words {
+            margin-top: 20px;
+            padding: 20px 30px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .words-label {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .words-text {
+            font-size: 18px;
+            color: var(--white);
             font-weight: 600;
             text-transform: capitalize;
-            line-height: 1.6;
         }
 
         /* Payment Details */
-        .payment-details-card {
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-            padding: 25px;
-            border-radius: 15px;
-            border-left: 5px solid var(--secondary-color);
-            margin: 25px 0;
+        .payment-details-section {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: 20px;
+            padding: 35px;
+            border-left: 6px solid var(--warning-amber);
+            margin: 40px 0;
         }
 
-        .payment-details-title {
-            color: var(--dark-color);
-            font-weight: 700;
-            margin-bottom: 20px;
-            font-size: 18px;
+        .payment-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--dark-text);
+            margin-bottom: 25px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+        }
+
+        .payment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .payment-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .payment-label {
+            font-weight: 600;
+            color: var(--gray-text);
+            font-size: 14px;
+        }
+
+        .payment-value {
+            font-weight: 700;
+            color: var(--dark-text);
+            text-align: right;
         }
 
         .status-badge {
-            display: inline-block;
-            padding: 8px 20px;
-            border-radius: 25px;
-            font-weight: 600;
-            font-size: 13px;
-            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 1px;
             text-transform: uppercase;
         }
 
         .status-paid {
-            background: linear-gradient(135deg, var(--success-color), #059669);
-            color: white;
+            background: linear-gradient(135deg, var(--primary-green), var(--accent-green));
+            color: var(--white);
+            box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
         }
 
         .status-pending {
-            background: linear-gradient(135deg, var(--danger-color), #dc2626);
-            color: white;
+            background: linear-gradient(135deg, var(--danger-red), #dc2626);
+            color: var(--white);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Employee Information Section (Bottom) */
+        .employee-section {
+            background: linear-gradient(135deg, var(--light-green-bg) 0%, #d1fae5 100%);
+            padding: 45px 60px;
+            /* margin-top: 50px; */
+            border-top: 4px solid var(--primary-green);
+        }
+
+        .employee-header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .company-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 25px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .employee-subtitle {
+            color: var(--gray-text);
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .employee-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .employee-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 25px 30px;
+            box-shadow: 0 4px 20px rgba(5, 150, 105, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .employee-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(5, 150, 105, 0.15);
+        }
+
+        .employee-info-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .employee-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .employee-info-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--primary-green), var(--accent-green));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .employee-info-text {
+            flex: 1;
+        }
+
+        .employee-info-label {
+            font-size: 12px;
+            color: var(--gray-text);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .employee-info-value {
+            font-size: 15px;
+            color: var(--dark-text);
+            font-weight: 700;
         }
 
         /* Action Buttons */
-        .action-buttons {
+        .action-section {
+            padding: 40px 60px;
+            background: var(--white);
+            border-top: 2px solid var(--border-color);
             display: flex;
-            gap: 15px;
             justify-content: center;
-            padding: 30px 40px;
-            background: #f9fafb;
-            border-top: 2px solid #e5e7eb;
+            gap: 20px;
+            flex-wrap: wrap;
         }
 
         .btn-action {
-            padding: 14px 32px;
-            border-radius: 12px;
-            font-weight: 600;
+            padding: 16px 40px;
+            border-radius: 14px;
+            font-weight: 700;
             border: none;
             cursor: pointer;
             transition: all 0.3s ease;
-            font-size: 15px;
+            font-size: 16px;
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             text-decoration: none;
-            color: white;
+            font-family: 'Poppins', sans-serif;
+            letter-spacing: 0.5px;
         }
 
         .btn-print {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+            background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
+            color: var(--white);
+            box-shadow: 0 6px 20px rgba(5, 150, 105, 0.3);
         }
 
         .btn-print:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
+            box-shadow: 0 10px 30px rgba(5, 150, 105, 0.4);
         }
 
         .btn-download {
-            background: linear-gradient(135deg, var(--warning-color), #ea580c);
-            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+            background: linear-gradient(135deg, var(--warning-amber), #ea580c);
+            color: var(--white);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
         }
 
         .btn-download:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
-            color: white;
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+            color: var(--white);
         }
 
         /* Footer */
         .payslip-footer {
             text-align: center;
-            padding: 25px;
-            background: #f9fafb;
-            color: #64748b;
-            font-size: 13px;
+            padding: 30px;
+            background: var(--light-green-bg);
+            color: var(--gray-text);
+            font-size: 14px;
             line-height: 1.8;
         }
 
         .payslip-footer i {
-            color: var(--primary-color);
-            margin-right: 5px;
-        }
-
-        .divider {
-            height: 2px;
-            background: linear-gradient(to right, transparent, #e5e7eb, transparent);
-            margin: 30px 0;
-        }
-
-        /* Print Styles */
-        @media print {
-            body {
-                background: white;
-                padding: 0;
-            }
-
-            .payslip-container {
-                box-shadow: none;
-                border-radius: 0;
-                max-width: 100%;
-            }
-
-            .action-buttons {
-                display: none !important;
-            }
-
-            .payslip-body {
-                padding: 20px;
-            }
-
-            .payslip-table tbody tr:hover {
-                background-color: transparent;
-            }
-
-            .info-card:hover {
-                transform: none;
-                box-shadow: none;
-            }
-
-            .btn-action:hover {
-                transform: none;
-            }
+            color: var(--primary-green);
+            margin-right: 8px;
         }
 
         /* Responsive Design */
         @media (max-width: 768px) {
-            .payslip-header {
-                padding: 25px;
+            body {
+                padding: 20px 10px;
             }
 
-            .payslip-body {
-                padding: 25px;
+            .company-header,
+            .payslip-content,
+            .employee-section,
+            .action-section {
+                padding: 30px 25px;
             }
 
-            .payslip-title {
-                font-size: 24px;
-            }
-
-            .info-cards-wrapper {
-                grid-template-columns: 1fr;
-            }
-
-            .info-item {
+            .header-content {
                 flex-direction: column;
-                gap: 5px;
+                gap: 30px;
             }
 
-            .info-value {
+            .payslip-title-section {
                 text-align: left;
             }
 
-            .net-salary-amount {
-                font-size: 36px;
+            .company-name {
+                font-size: 26px;
             }
 
-            .action-buttons {
+            .payslip-main-title {
+                font-size: 28px;
+            }
+
+            .salary-breakdown {
+                grid-template-columns: 1fr;
+            }
+
+            .net-salary-amount {
+                font-size: 42px;
+            }
+
+            .employee-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .period-info-bar {
                 flex-direction: column;
-                padding: 20px;
+                align-items: flex-start;
+            }
+
+            .action-section {
+                flex-direction: column;
             }
 
             .btn-action {
                 width: 100%;
                 justify-content: center;
             }
+        }
 
-            .payslip-table {
-                font-size: 13px;
+        /* Print Styles */
+        /* Print Styles */
+        @media print {
+            @page {
+                size: A4;
+                margin: 15mm;
             }
 
-            .payslip-table th,
-            .payslip-table td {
-                padding: 12px 10px;
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color: #000 !important;
+                /* Force all text to black */
+                background: none !important;
+                /* Remove background colors/gradients */
+                box-shadow: none !important;
             }
+
+            body {
+                background: #fff !important;
+                color: #000 !important;
+                padding: 0 !important;
+            }
+
+            .payslip-wrapper {
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                background: #fff !important;
+            }
+
+            /* Remove gradients from sections */
+            .company-header,
+            .net-salary-section,
+            .employee-section,
+            .payment-details-section {
+                background: #fff !important;
+                color: #000 !important;
+            }
+
+            .breakdown-card {
+                border: 1px solid #000 !important;
+                /* Optional: simple border */
+                background: #fff !important;
+            }
+
+            .employee-card {
+                border: 1px solid #000 !important;
+                background: #fff !important;
+                box-shadow: none !important;
+            }
+
+            .breakdown-icon,
+            .employee-info-icon,
+            .status-badge {
+                background: #000 !important;
+                color: #fff !important;
+                box-shadow: none !important;
+            }
+
+            /* Hide buttons */
+            .action-section {
+                display: none !important;
+            }
+
+            /* Grid adjustments for print */
+            .salary-breakdown {
+                display: block !important;
+            }
+
+            .employee-grid {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 20px !important;
+            }
+
+            /* Typography */
+            h1,
+            h2,
+            h3,
+            h4,
+            h5,
+            h6,
+            p,
+            span,
+            div {
+                color: #000 !important;
+            }
+
+
+      /* Date Info Box */
+    .period-info-bar {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        border: 1px solid #000 !important;
+        border-radius: 8px !important;
+        padding: 10px 15px !important;
+        margin-bottom: 20px !important;
+        background: #fff !important;
+        gap: 20px !important;
+    }
+
+    .period-item {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 2px !important;
+    }
+
+    .period-label {
+        font-weight: 700 !important;
+        font-size: 12px !important;
+        color: #000 !important;
+        text-transform: uppercase;
+    }
+
+    .period-value {
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        color: #000 !important;
+    }
+
+    .period-icon {
+        display: none !important;
+    }
         }
     </style>
 </head>
 
 <body>
-    <div class="payslip-container" id="payslipContainer">
-        
-        <!-- Header Section -->
-        <div class="payslip-header">
+    <div class="payslip-wrapper" id="payslip">
+
+        <!-- Payslip Header Section -->
+
+        <div class="company-header">
             <div class="header-content">
-                <h1 class="payslip-title">EMPLOYEE PAYSLIP</h1>
-                <p class="payslip-subtitle">Payslip #MZ-<?= $payslip['id'] ?></p>
+                <div style="flex: 1;">
+                    <div class="employee-header">
+                        <h2 class="payslip-main-title">EMPLOYEE PAYSLIP</h2>
+                        <h3 class="company-title">Details of the issuing company</h3>
+                        <?php if (getSetting('logo')): ?>
+                            <img src="<?= getImage('settings', getSetting('logo')); ?>" alt="Company Logo" style="max-width: 185px; margin-bottom: 20px;">
+                            <div class="employee-info-value"><?= getSetting('website_title') ?></div>
+                            <div class="employee-info-value"><?= getSetting('address') ?></div>
+                            <div class="employee-info-value"><?= getSetting('email') ?></div>
+                            <div class="employee-info-value"><?= getSetting('phone') ?></div>
+                        <?php endif; ?>
+
+                    </div>
+                    <p class="payslip-id">Payslip Number: MZ-<?= $payslip['id'] ?></p>
+
+                </div>
             </div>
         </div>
 
-        <!-- Body Section -->
-        <div class="payslip-body">
-            
-            <!-- Company & Employee Information Cards -->
-            <div class="info-cards-wrapper">
-                
-                <!-- Company Information -->
-                <div class="info-card">
-                    <div class="info-card-header">
-                        <div class="info-card-icon">
+        <!-- Employee Information Section (Bottom) -->
+        <div class="employee-section">
+            <div class="employee-header">
+                <h3 class="employee-title">Employee Information</h3>
+                <p class="employee-subtitle">Complete details of the payslip recipient</p>
+            </div>
+
+            <div class="employee-grid">
+                <div class="employee-card">
+                    <div class="employee-info-item">
+                        <div class="employee-info-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="employee-info-text">
+                            <div class="employee-info-label">Full Name</div>
+                            <div class="employee-info-value"><?= $payslip['employee_name'] ?></div>
+                        </div>
+                    </div>
+
+                    <div class="employee-info-item">
+                        <div class="employee-info-icon">
+                            <i class="fas fa-briefcase"></i>
+                        </div>
+                        <div class="employee-info-text">
+                            <div class="employee-info-label">Position</div>
+                            <div class="employee-info-value"><?= $payslip['designation_name'] ?></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="employee-card">
+                    <div class="employee-info-item">
+                        <div class="employee-info-icon">
                             <i class="fas fa-building"></i>
                         </div>
-                        <h3 class="info-card-title">Company Information</h3>
-                    </div>
-                    
-                    <?php if (getSetting('logo')): ?>
-                        <img src="<?= getImage('settings', getSetting('logo')); ?>" alt="Company Logo" class="company-logo">
-                    <?php endif; ?>
-                    
-                    <div class="info-item">
-                        <span class="info-label">Company Name:</span>
-                        <span class="info-value"><?= getSetting('website_title') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Address:</span>
-                        <span class="info-value"><?= getSetting('address') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Email:</span>
-                        <span class="info-value"><?= getSetting('email') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Phone:</span>
-                        <span class="info-value"><?= getSetting('phone') ?></span>
-                    </div>
-                </div>
-
-                <!-- Employee Information -->
-                <div class="info-card">
-                    <div class="info-card-header">
-                        <div class="info-card-icon">
-                            <i class="fas fa-user-tie"></i>
+                        <div class="employee-info-text">
+                            <div class="employee-info-label">Department</div>
+                            <div class="employee-info-value"><?= $payslip['department_name'] ?></div>
                         </div>
-                        <h3 class="info-card-title">Employee Information</h3>
                     </div>
-                    
-                    <div class="info-item">
-                        <span class="info-label">Name:</span>
-                        <span class="info-value"><?= $payslip['employee_name'] ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Position:</span>
-                        <span class="info-value"><?= $payslip['designation_name'] ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Department:</span>
-                        <span class="info-value"><?= $payslip['department_name'] ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Email:</span>
-                        <span class="info-value"><?= $payslip['email'] ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Phone:</span>
-                        <span class="info-value"><?= $payslip['phone'] ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Created:</span>
-                        <span class="info-value"><?= $payslip['created_at'] ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Date Due:</span>
-                        <span class="info-value"><?= $payslip['updated_at'] ?></span>
+
+                    <div class="employee-info-item">
+                        <div class="employee-info-icon">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        <div class="employee-info-text">
+                            <div class="employee-info-label">Phone Number</div>
+                            <div class="employee-info-value"><?= $payslip['phone'] ?></div>
+                        </div>
                     </div>
                 </div>
 
+                <div class="employee-card">
+                    <div class="employee-info-item">
+                        <div class="employee-info-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="employee-info-text">
+                            <div class="employee-info-label">Email Address</div>
+                            <div class="employee-info-value"><?= $payslip['email'] ?></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Section -->
+        <div class="payslip-content">
+
+            <!-- Period Information Bar -->
+            <div class="period-info-bar">
+                <div class="period-item">
+                    <div class="period-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="period-text">
+                        <span class="period-label">Created Date</span>
+                        <span class="period-value"><?= $payslip['created_at'] ?></span>
+                    </div>
+                </div>
+
+                <div class="period-item">
+                    <div class="period-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="period-text">
+                        <span class="period-label">Date Due</span>
+                        <span class="period-value"><?= $payslip['updated_at'] ?></span>
+                    </div>
+                </div>
             </div>
 
-            <div class="divider"></div>
+            <!-- Salary Breakdown -->
+            <div class="salary-breakdown">
 
-            <!-- Earnings Table -->
-            <div class="payslip-table-wrapper">
-                <table class="payslip-table">
-                    <thead>
-                        <tr>
-                            <th><i class="fas fa-coins"></i> Earning</th>
-                            <th>Details</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Basic Salary -->
-                        <tr>
-                            <td>Basic Salary</td>
-                            <td>Monthly Basic Pay</td>
-                            <td class="amount-earning">
-                                <i class="fa-solid fa-bangladeshi-taka-sign"></i>
-                                <?= number_format($payslip['basic_salary'], 2) ?>
-                            </td>
-                        </tr>
+                <!-- Earnings Card -->
+                <div class="breakdown-card">
+                    <div class="breakdown-header">
+                        <div class="breakdown-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <h3 class="breakdown-title">Earnings</h3>
+                    </div>
 
-                        <!-- Dynamic Earnings -->
-                        <?php $earningTotal = $payslip['basic_salary']; ?>
-                        <?php foreach ($payslip['items'] as $item): ?>
-                            <?php if ($item['item_type'] === 'earning'): ?>
-                                <?php $earningTotal += $item['amount']; ?>
-                                <tr>
-                                    <td><?= $item['item_name'] ?></td>
-                                    <td>-</td>
-                                    <td class="amount-earning">
-                                        <i class="fa-solid fa-bangladeshi-taka-sign"></i>
-                                        <?= number_format($item['amount'], 2) ?>
-                                    </td>
-                                </tr>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
+                    <div class="breakdown-item">
+                        <span class="item-name">Basic Salary</span>
+                        <span class="item-amount earning">
+                            <i class="fa-solid fa-bangladeshi-taka-sign"></i>
+                            <?= number_format($payslip['basic_salary'], 2) ?>
+                        </span>
+                    </div>
 
-                        <!-- Earning Total -->
-                        <tr class="total-row">
-                            <td colspan="2"><strong>Total Earnings</strong></td>
-                            <td class="amount-earning">
-                                <i class="fa-solid fa-bangladeshi-taka-sign"></i>
-                                <?= number_format($earningTotal, 2) ?>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                    <?php $earningTotal = $payslip['basic_salary']; ?>
+                    <?php foreach ($payslip['items'] as $item): ?>
+                        <?php if ($item['item_type'] === 'earning'): ?>
+                            <?php $earningTotal += $item['amount']; ?>
+                            <div class="breakdown-item">
+                                <span class="item-name"><?= $item['item_name'] ?></span>
+                                <span class="item-amount earning">
+                                    <i class="fa-solid fa-bangladeshi-taka-sign"></i>
+                                    <?= number_format($item['amount'], 2) ?>
+                                </span>
+                            </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
 
-            <!-- Deductions Table -->
-            <?php
-            $deductionTotal = 0;
-            $hasDeductions = false;
-            foreach ($payslip['items'] as $item) {
-                if ($item['item_type'] === 'deduction') {
-                    $hasDeductions = true;
-                    break;
+                    <div class="breakdown-total">
+                        <span class="total-label">Total Earnings</span>
+                        <span class="total-amount earning">
+                            <i class="fa-solid fa-bangladeshi-taka-sign"></i>
+                            <?= number_format($earningTotal, 2) ?>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Deductions Card -->
+                <?php
+                $deductionTotal = 0;
+                $hasDeductions = false;
+                foreach ($payslip['items'] as $item) {
+                    if ($item['item_type'] === 'deduction') {
+                        $hasDeductions = true;
+                        $deductionTotal += $item['amount'];
+                    }
                 }
-            }
-            ?>
+                ?>
 
-            <?php if ($hasDeductions): ?>
-            <div class="payslip-table-wrapper">
-                <table class="payslip-table">
-                    <thead>
-                        <tr>
-                            <th><i class="fas fa-minus-circle"></i> Deduction</th>
-                            <th>Details</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="breakdown-card">
+                    <div class="breakdown-header">
+                        <div class="breakdown-icon deduction">
+                            <i class="fas fa-minus-circle"></i>
+                        </div>
+                        <h3 class="breakdown-title">Deductions</h3>
+                    </div>
+
+                    <?php if ($hasDeductions): ?>
                         <?php foreach ($payslip['items'] as $item): ?>
                             <?php if ($item['item_type'] === 'deduction'): ?>
-                                <?php $deductionTotal += $item['amount']; ?>
-                                <tr>
-                                    <td><?= $item['item_name'] ?></td>
-                                    <td>-</td>
-                                    <td class="amount-deduction">
+                                <div class="breakdown-item">
+                                    <span class="item-name"><?= $item['item_name'] ?></span>
+                                    <span class="item-amount deduction">
                                         <i class="fa-solid fa-bangladeshi-taka-sign"></i>
                                         <?= number_format($item['amount'], 2) ?>
-                                    </td>
-                                </tr>
+                                    </span>
+                                </div>
                             <?php endif; ?>
                         <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="breakdown-item">
+                            <span class="item-name">No Deductions</span>
+                            <span class="item-amount deduction">
+                                <i class="fa-solid fa-bangladeshi-taka-sign"></i> 0.00
+                            </span>
+                        </div>
+                    <?php endif; ?>
 
-                        <!-- Deduction Total -->
-                        <tr class="total-row">
-                            <td colspan="2"><strong>Total Deductions</strong></td>
-                            <td class="amount-deduction">
-                                <i class="fa-solid fa-bangladeshi-taka-sign"></i>
-                                <?= number_format($deductionTotal, 2) ?>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                    <div class="breakdown-total">
+                        <span class="total-label">Total Deductions</span>
+                        <span class="total-amount deduction">
+                            <i class="fa-solid fa-bangladeshi-taka-sign"></i>
+                            <?= number_format($deductionTotal, 2) ?>
+                        </span>
+                    </div>
+                </div>
+
             </div>
-            <?php endif; ?>
 
             <!-- Net Salary Section -->
-            <div class="net-salary-card">
-                <div class="net-salary-label">NET SALARY (TAKE HOME)</div>
-                <div class="net-salary-amount">
-                    <i class="fa-solid fa-bangladeshi-taka-sign"></i>
-                    <?= number_format($payslip['net_salary'], 2) ?>
-                </div>
-            </div>
+            <div class="net-salary-section">
+                <div class="net-salary-content">
+                    <div class="net-salary-label">Net Salary (Take Home)</div>
+                    <div class="net-salary-amount">
+                        <i class="fa-solid fa-bangladeshi-taka-sign"></i>
+                        <?= number_format($payslip['net_salary'], 2) ?>
+                    </div>
 
-            <!-- Amount in Words -->
-            <div class="amount-words-card">
-                <div class="amount-words-label">
-                    <i class="fas fa-file-invoice-dollar"></i> Amount in Words
-                </div>
-                <div class="amount-words-value">
-                    <?= amountInWords($payslip['net_salary']) ?> Taka Only
+                    <div class="amount-in-words">
+                        <div class="words-label">Amount in Words</div>
+                        <div class="words-text">
+                            <?= amountInWords($payslip['net_salary']) ?> Taka Only
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Payment Details -->
-            <div class="payment-details-card">
+            <div class="payment-details-section">
                 <?php if ($payslip['status'] === 'paid'): ?>
-                    <h4 class="payment-details-title">
+                    <h4 class="payment-title">
                         <i class="fas fa-credit-card"></i> Payment Details
                     </h4>
 
-                    <div class="info-item">
-                        <span class="info-label">Payment Method:</span>
-                        <span class="info-value"><?= ucfirst($payslip['payment_method']) ?></span>
-                    </div>
+                    <div class="payment-grid">
+                        <div class="payment-item">
+                            <span class="payment-label">Payment Method:</span>
+                            <span class="payment-value"><?= ucfirst($payslip['payment_method']) ?></span>
+                        </div>
 
-                    <?php if ($payslip['payment_method'] === 'bank'): ?>
-                        <div class="info-item">
-                            <span class="info-label">Bank Name:</span>
-                            <span class="info-value"><?= htmlspecialchars($payslip['bank_name'] ?? '-') ?></span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Account Name:</span>
-                            <span class="info-value"><?= htmlspecialchars($payslip['account_name'] ?? '-') ?></span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Account Number:</span>
-                            <span class="info-value"><?= htmlspecialchars($payslip['account_number'] ?? '-') ?></span>
-                        </div>
-                    <?php endif; ?>
+                        <?php if ($payslip['payment_method'] === 'bank'): ?>
+                            <div class="payment-item">
+                                <span class="payment-label">Bank Name:</span>
+                                <span class="payment-value"><?= htmlspecialchars($payslip['bank_name'] ?? '-') ?></span>
+                            </div>
+                            <div class="payment-item">
+                                <span class="payment-label">Account Name:</span>
+                                <span class="payment-value"><?= htmlspecialchars($payslip['account_name'] ?? '-') ?></span>
+                            </div>
+                            <div class="payment-item">
+                                <span class="payment-label">Account Number:</span>
+                                <span class="payment-value"><?= htmlspecialchars($payslip['account_number'] ?? '-') ?></span>
+                            </div>
+                        <?php endif; ?>
 
-                    <div class="info-item">
-                        <span class="info-label">Status:</span>
-                        <span class="info-value">
-                            <span class="status-badge status-paid">
-                                <i class="fas fa-check-circle"></i> PAID
+                        <div class="payment-item">
+                            <span class="payment-label">Status:</span>
+                            <span class="payment-value">
+                                <span class="status-badge status-paid">
+                                    <i class="fas fa-check-circle"></i> PAID
+                                </span>
                             </span>
-                        </span>
+                        </div>
                     </div>
 
                 <?php else: ?>
-                    <h4 class="payment-details-title">
+                    <h4 class="payment-title">
                         <i class="fas fa-exclamation-circle"></i> Payment Status
                     </h4>
-                    <div class="text-center">
+                    <div style="text-align: center;">
                         <span class="status-badge status-pending">
                             <i class="fas fa-clock"></i> PENDING
                         </span>
@@ -771,31 +1097,94 @@
                 <?php endif; ?>
             </div>
 
-            <!-- Footer -->
-            <div class="payslip-footer">
-                <p><i class="fas fa-info-circle"></i> This is a computer-generated payslip. No signature is required.</p>
-                <p>For any queries, please contact the HR Department</p>
-            </div>
-
         </div>
 
+
+
+
         <!-- Action Buttons -->
-        <div class="action-buttons">
+        <div class="action-section">
             <button type="button" class="btn-action btn-print" onclick="printPayslip()">
                 <i class="fas fa-print"></i> Print Payslip
             </button>
-            <a href="<?= $GLOBALS['base_url'] ?>/download-payslip/<?= $payslip['id'] ?>" target="_blank" class="btn-action btn-download">
+            <!-- <a href="<= $GLOBALS['base_url'] ?>/download-payslip/<= $payslip['id'] ?>" target="_blank" class="btn-action btn-download">
                 <i class="fas fa-file-pdf"></i> Download PDF
-            </a>
+            </a> -->
+            <button target="_blank" class="btn-action btn-download" onclick="downloadPayslipPDF()">
+                <i class="mdi mdi-download"></i> Download PDF
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="payslip-footer">
+            <p><i class="fas fa-info-circle"></i> This is a computer-generated payslip. No signature is required.</p>
+            <p>For any queries, please contact the HR Department</p>
         </div>
 
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+
 
     <script>
         function printPayslip() {
             window.print();
         }
+        async function downloadPayslipPDF() {
+            const {
+                jsPDF
+            } = window.jspdf;
+            const payslip = document.querySelector("#payslip");
+
+            try {
+                const canvas = await html2canvas(payslip, {
+                    scale: 2, // higher scale for sharp text
+                    useCORS: true
+                });
+
+                const imgData = canvas.toDataURL("image/png");
+
+                const pdf = new jsPDF("p", "mm", "a4");
+                const pdfWidth = 210;
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                let heightLeft = pdfHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+                heightLeft -= 297; // A4 page height in mm
+
+                while (heightLeft > 0) {
+                    position = heightLeft - pdfHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+                    heightLeft -= 297;
+                }
+
+                pdf.save("Payslip_<php echo $payslip['employee_name']; ?>.pdf");
+            } catch (error) {
+                alert("Error generating PDF. Check console for details.");
+                console.error(error);
+            }
+        }
     </script>
 
+    <script>
+        function printPayslip() {
+            window.print();
+        }
+
+        // Auto-print if ?print=1 is in URL
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('print') === '1') {
+                printPayslip(); // triggers browser print dialog immediately
+            }
+        });
+    </script>
+
+
 </body>
+
 </html>

@@ -121,12 +121,17 @@ $show_breadcrumb = true;
                                     <div class="d-flex align-items-center justify-content-start gap-10">
                                         <?php if ($payslip['status'] != 'paid'): ?>
                                             <button
-                                                class="btn btn-success btn-sm payPayslipBtn"
+                                                class="btn btn-warning btn-sm payPayslipBtn"
                                                 data-id="<?= $payslip['id'] ?>"
                                                 data-earning="<?= $payslip['total_earning'] ?>"
                                                 data-deduction="<?= $payslip['total_deduction'] ?>"
                                                 data-net="<?= $payslip['net_salary'] ?>">
-                                                Pay
+                                                Payment
+                                            </button>
+                                        <?php else: ?>
+                                            <button
+                                                class="btn btn-success btn-sm desabled">
+                                                Completed
                                             </button>
                                         <?php endif; ?>
 
@@ -134,10 +139,14 @@ $show_breadcrumb = true;
                                         <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>" class="table__icon download">
                                             <i class="fa-regular fa-eye"></i>
                                         </a>
-                                        <a href="#" class="table__icon edit">
+                                        <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>?print=1" class="table__icon download">
+                                            <i class="fas fa-print"></i>
+                                        </a>
+
+                                        <a href="#" class="d-none table__icon edit">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </a>
-                                        <button class="removeBtn table__icon delete"><i
+                                        <button class="d-none removeBtn table__icon delete"><i
                                                 class="fa-regular fa-trash"></i></button>
                                     </div>
                                 </td>

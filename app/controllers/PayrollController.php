@@ -18,13 +18,13 @@ class PayrollController extends Controller
 
     public function index()
     {
-        
+
         $totalEmployees = $this->employeeModel->getTotalCount();
         $payslips = $this->paymentModel->getAllWithEmployee();
         $paidCount = $this->paymentModel->getPaidCount();
         $pendingCount = $this->paymentModel->getPendingCount();
-   // Get all company banks
-    $companyBanks = $this->bankModel->getAll(); 
+        // Get all company banks
+        $companyBanks = $this->bankModel->getAll();
         //  Pass all data to view
         $this->view("payrolls/payslips/payslip-lists", [
             "current_route" => "payslip-lists",
@@ -92,7 +92,7 @@ class PayrollController extends Controller
 
 
     public function updatePay()
-{  
+    {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -118,53 +118,79 @@ class PayrollController extends Controller
 
         header("Location: " . $GLOBALS['base_url'] . "/payslip-lists");
         exit;
-    
-}
+    }
 
 
-public function show($id){
-    
-$payslip = $this->paymentModel->getByIdWithItems($id);
+    public function show($id)
+    {
 
-$this->view("payrolls/payslips/show-payslip", [
+        $payslip = $this->paymentModel->getByIdWithItems($id);
 
-    "current_route" => "show-payslip",
-    "page_title"    => "Payslip Details",
-    "payslip"       => $payslip
-],false);
+        $this->view("payrolls/payslips/show-payslip", [
 
-}
-public function print($id) {
-    $payslip = $this->paymentModel->getByIdWithItems($id);
-
-    $this->view("payrolls/payslips/print-payslip", [
-        "payslip" => $payslip
-    ]);
-}
+            "current_route" => "show-payslip",
+            "page_title"    => "Payslip Details",
+            "payslip"       => $payslip
+        ], false);
+    }
 
 
 
 
 
-public function downloadPDF($id)
-{
-    ini_set('memory_limit', '1024M'); // Increase memory
-    require_once __DIR__ . '/../../vendor/autoload.php';
 
-    $payslip = $this->paymentModel->getByIdWithItems($id);
-    if (!$payslip) die('Payslip not found');
+    // public function downloadPDF($id)
+    // {
+    //     ini_set('memory_limit', '1024M'); // Increase memory
+    //     require_once __DIR__ . '/../../vendor/autoload.php';
 
-    ob_start();
-    $this->view("payrolls/payslips/payslip-download", ["payslip" => $payslip]);
-    $html = ob_get_clean();
+    //     $payslip = $this->paymentModel->getByIdWithItems($id);
+    //     if (!$payslip) die('Payslip not found');
 
-    $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/../../tmp']); // tempDir optional
-    $mpdf->WriteHTML($html);
-    $mpdf->Output('payslip_'.$payslip['id'].'.pdf','D');
-}
+    //     ob_start();
+    //     $this->view("payrolls/payslips/payslip-download", ["payslip" => $payslip]);
+    //     $html = ob_get_clean();
 
-
-
+    //     $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/../../tmp']); // tempDir optional
+    //     $mpdf->WriteHTML($html);
+    //     $mpdf->Output('payslip_'.$payslip['id'].'.pdf','D');
+    // }
 
 
+
+    public function downloadPDF($id)
+    {
+        ini_set('memory_limit', '1024M');
+        require_once __DIR__ . '/../../vendor/autoload.php';
+
+        $payslip = $this->paymentModel->getByIdWithItems($id);
+        if (!$payslip) {
+            die('Payslip not found');
+        }
+
+        ob_start();
+        $isPdf = true;
+        $this->view("payrolls/payslips/payslip-download", [
+            "current_route" => "download-payslip",
+            "isPdf" => $isPdf,
+            "payslip" => $payslip
+        ]);
+        $html = ob_get_clean();
+
+        $mpdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'margin_top' => 15,
+            'margin_bottom' => 15,
+            'margin_left' => 15,
+            'margin_right' => 15,
+            'default_font' => 'dejavusans'
+        ]);
+
+        $mpdf->WriteHTML($html);
+        $mpdf->Output(
+            'Payslip_' . $payslip['employee_name'] . '.pdf',
+            \Mpdf\Output\Destination::INLINE
+        );
+    }
 }
