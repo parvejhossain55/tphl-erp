@@ -116,14 +116,15 @@ class UserController extends Controller
         ]);
     }
 
-    public function show($id){
+    public function show($id)
+    {
         $user = $this->userModel->find($id);
         $designations = $this->designationModel->getAll();
         $roles = $this->roleModel->getAll();
         if (!$user) {
             setError("User Not Found");
         }
-        $this->view("users/show-user",[
+        $this->view("users/show-user", [
             "current_route" => 'user-profile',
             "active" => 'user-profile',
             "page_title" => 'User Profile',
@@ -132,42 +133,29 @@ class UserController extends Controller
     }
 
 
-    public function update($id)
-    {
-        $data = [
-            'full_name'      => $_POST['full_name'] ?? '',
-            'user_name'      => $_POST['user_name'] ?? '',
-            'phone'          => $_POST['phone'] ?? '',
-            'email'          => $_POST['email'] ?? '',
-            'designation_id' => $_POST['designation_id'] ?? 0,
-            'address'        => $_POST['address'] ?? '',
-            'nid'        => $_POST['nid'] ?? '',
-            'role_id'        => $_POST['role_id'] ?? 0,
-            'password'       => $_POST['password'] ?? '',
-            'media_link1'    => $_POST['media_link1'] ?? '',
-            'media_link2'    => $_POST['media_link2'] ?? '',
-        ];
+public function update($id)
+{
+    $data = [
+        'full_name'    => $_POST['full_name'] ?? '',
+        'user_name'    => $_POST['user_name'] ?? '',
+        'phone'        => $_POST['phone'] ?? '',
+        'email'        => $_POST['email'] ?? '',
+        'designation_id'=> $_POST['designation_id'] ?? '',
+        'address'      => $_POST['address'] ?? '',
+        'nid'          => $_POST['nid'] ?? '',
+        'role_id'      => $_POST['role_id'] ?? 0,
+        'password'     => $_POST['password'] ?? '',
+        'media_link1'  => $_POST['media_link1'] ?? '',
+        'media_link2'  => $_POST['media_link2'] ?? '',
+        // 'photo' will be handled inside model
+    ];
 
-        
-
-        $photoInputName = 'photo';
-
-        
-
-
-        try {
-            if ($this->userModel->update($data, $id, $photoInputName)) {
-                setSuccess("User updated successfully");
-            } else {
-                setError("User update failed");
-            }
-        } catch (\Throwable $th) {
-
-            // setError("User update failed: ".$th->getMessage());
-            setError($th->getMessage());
-        }
-
+    if ($this->userModel->update($id, $data)) {
         header("Location: {$GLOBALS['base_url']}/user-lists");
         exit;
+    } else {
+        echo "<h3 style='color:red'>Failed to update user</h3>";
     }
+}
+
 }

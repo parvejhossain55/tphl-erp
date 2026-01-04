@@ -23,6 +23,11 @@ $show_breadcrumb = true;
                         <label for="fullName">Full Name <span>*</span></label>
                         <input class="form-control" name="full_name" id="full_Name" type="text" value="<?= htmlspecialchars($user['full_name']) ?>" required>
                     </div>
+                    <!-- Full Name -->
+                    <div class="col-lg-6 mb-3">
+                        <label for="fullName">User Name <span>*</span></label>
+                        <input class="form-control" name="user_name" id="user_name" type="text" value="<?= htmlspecialchars($user['user_name']) ?>" required>
+                    </div>
 
                     <!-- Contact Number -->
                     <div class="col-lg-6 mb-3">
@@ -74,17 +79,13 @@ $show_breadcrumb = true;
 
                     <!-- NID / Passport -->
                     <div class="col-lg-6 mb-3">
-                        <label for="nid">Password<span>*</span></label>
+                        <label for="nid">Password<span class="text-danger ps-2">*Must be re-type Password</span></label>
                         <input class="form-control" name="password" id="password" type="password" value="<?= htmlspecialchars($user['password']) ?>" required>
                     </div>
 
-
-
-
-
                     <!-- Photo -->
-                    <div class="col-lg-12">
-                        <label for="photo">Employee Photo (300px*300px)</label>
+                    <div class="col-lg-6 mb-3">
+                        <label for="photo">USer Photo (300px*300px)</label>
                         <input class="form-control" type="file" name="photo" id="photo">
 
 
@@ -92,7 +93,7 @@ $show_breadcrumb = true;
                     </div>
 
                     <div class="col-12 text-center mt-3">
-                        <button class="btn btn-primary">Update Employee</button>
+                        <button class="btn btn-primary">Update User</button>
                     </div>
 
 
@@ -104,4 +105,5 @@ $show_breadcrumb = true;
             </div>
 
 
+    </div>
     </div>

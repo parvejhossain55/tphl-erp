@@ -50,19 +50,47 @@ public function create($data)
     return true;
 }
 
+
+
     // Update permission
-    public function update($id, $data)
-    {
-        $stmt = $this->db->prepare("UPDATE permissions SET name = ?, status = ? WHERE id = ?");
-        $stmt->bind_param("sii", $data['name'], $data['status'], $id);
-        return $stmt->execute();
+public function update($data)
+{
+    $stmt = $this->db->prepare("
+        UPDATE permissions 
+        SET name = ?, status = ? 
+        WHERE id = ?
+    ");
+
+    if (!$stmt) {
+        die($this->db->error);
     }
 
+    $stmt->bind_param(
+        "sii",
+        $data['name'],   
+        $data['status'],  
+        $data['id']       
+    );
+
+    return $stmt->execute();
+}
+
     // Delete permission
-    public function delete($id)
-    {
-        $stmt = $this->db->prepare("DELETE FROM permissions WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        return $stmt->execute();
-    }
+public function delete($id)
+{
+    // Delete all designations linked to this department
+    $stmt1 = $this->db->prepare("DELETE FROM role_permissions WHERE permission_id = ?");
+    $stmt1->bind_param("i", $id);
+    $stmt1->execute();
+    $stmt1->close();
+
+    //  Delete the department
+    $stmt2 = $this->db->prepare("DELETE FROM permissions WHERE id = ?");
+    $stmt2->bind_param("i", $id);
+    $stmt2->execute();
+    $stmt2->close();
+
+    return true;
+}
+
 }

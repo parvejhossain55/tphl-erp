@@ -31,7 +31,7 @@ class RoleController extends Controller
     {
         $data = $_POST;
         if ($this->roleModel->create($data)) {
-            header("Location: {$GLOBALS['base_url']}/permissions");
+            header("Location: {$GLOBALS['base_url']}/role-permissions");
         } else {
             echo "Error creating role";
         }
@@ -40,7 +40,7 @@ class RoleController extends Controller
     {
         $id = $_GET['id'] ?? 0;
         if (!$id) {
-            header("Location: {$GLOBALS['base_url']}/permissions");
+            header("Location: {$GLOBALS['base_url']}/role-permissions");
             exit;
         }
 
@@ -61,7 +61,7 @@ class RoleController extends Controller
     {
         $data = $_POST;
         if ($this->roleModel->update($data)) {
-            header("Location: {$GLOBALS['base_url']}/permissions");
+            header("Location: {$GLOBALS['base_url']}/role-permissions");
             exit;
         } else {
             echo "Failed to update role";

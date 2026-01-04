@@ -84,7 +84,7 @@
                         </div>
 
                         <h2 class="header__title">
-                            Hello <?= isset($_SESSION['user']['name']) ? $_SESSION['user']['user_name'] : 'Admin' ?>
+                            Hello <?= isset($_SESSION['user']['name']) ? $_SESSION['user']['name'] : 'Admin' ?>
                             <span><img src="<?= $GLOBALS['base_url'] ?>/assets/images/shape/hand.png" alt="image"></span>
                         </h2>
 

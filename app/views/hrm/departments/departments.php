@@ -77,12 +77,12 @@ $show_breadcrumb = true;
     </div>
 </div>
 
-<!-- new lead modal start -->
+<!-- new department modal start -->
 <div id="addNewDepartment" class="modal custom-modal fade" role="dialog">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add New Lead</h5>
+                <h5 class="modal-title">Add New department</h5>
                 <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close"><i
                         class="fa-solid fa-xmark-large"></i></button>
             </div>
@@ -132,7 +132,7 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
-<!-- new lead modal end -->
+<!-- new department modal end -->
 <!-- edit department modal start -->
 <div id="editDepartment" class="modal custom-modal fade" role="dialog">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">

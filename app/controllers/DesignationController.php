@@ -48,11 +48,11 @@ public function store()
     ];
 
     if ($this->designationModel->create($data)) {
-        $_SESSION['success'] = "Department updated successfully!";
+        setSuccess("Designation created successfully.");
         header("Location: {$GLOBALS['base_url']}/designations");
         exit;
     } else {
-        $_SESSION['error'] = "Failed to create designationt!";
+      setError("Failed to create designation.");
         echo "<h3 style='color:red'>Failed to create designation</h3>";
     }
 }
@@ -68,10 +68,10 @@ public function update()
    $updated = $this->designationModel->update($id, $name, $department_id);
 
         if ($updated) {
-            $_SESSION['success'] = "Designation updated successfully!";
+            setSuccess("Updated successfully.");
              header("Location: {$GLOBALS['base_url']}/designations");
         } else {
-            $_SESSION['error'] = "Update failed!";
+            setError("Update failed!");
         }
         exit;
     
