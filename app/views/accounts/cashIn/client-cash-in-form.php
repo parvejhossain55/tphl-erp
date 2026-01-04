@@ -180,6 +180,7 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
                                 <label class="form__input-title">Payment Status <span>*</span></label>
                                 <select name="payment_status" class="form-select" required>
                                     <option value="paid">Paid</option>
+                                    <option value="partially_paid">Partially Paid</option>
                                     <option value="pending">Pending</option>
                                     <option value="failed">Failed</option>
                                 </select>

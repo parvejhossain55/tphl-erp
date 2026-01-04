@@ -421,4 +421,351 @@ public function updateTransaction()
         echo json_encode($client);
         exit;
     }
+
+    public function clientStatement($booking_id) {
+    try {
+        // Get period from query params
+        $period = $_GET['period'] ?? 'all';
+        $from_date = $_GET['from'] ?? null;
+        $to_date = $_GET['to'] ?? null;
+        
+        // Get client details
+        $client_query = "SELECT 
+            b.id as booking_id,
+            b.booking_date,
+            b.booking_money,
+            b.registration_money,
+            b.total_price,
+            b.number_of_emi,
+            c.client_name,
+            c.phone,
+            c.email,
+            p.project_name,
+            f.flat_no,
+            u.name as unit_name
+        FROM bookings b
+        LEFT JOIN clients c ON b.client_id = c.id
+        LEFT JOIN projects p ON b.project_id = p.id
+        LEFT JOIN flats f ON b.flat_id = f.id
+        LEFT JOIN units u ON f.unit_id = u.id
+        WHERE b.id = ?";
+        
+        $stmt = $this->db->prepare($client_query);
+        $stmt->execute([$booking_id]);
+        $clientDetails = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$clientDetails) {
+            die("Client not found");
+        }
+        
+        // Calculate construction fee
+        $construction_fee = $clientDetails['total_price'] - 
+                          ($clientDetails['booking_money'] + $clientDetails['registration_money']);
+        
+        // Build transaction query based on period
+        $transaction_query = "SELECT 
+            'emi' as payment_type,
+            pe.payment_date,
+            NULL as booking_date,
+            pe.amount,
+            pe.payment_status,
+            pe.payment_method,
+            pe.bank_name,
+            pe.bank_account_no,
+            pe.cheque_no,
+            pe.online_type,
+            CONCAT('EMI ', pe.emi_no, ' of ', pe.emi_total) as installment_label
+        FROM payment_emi pe
+        WHERE pe.booking_id = ?";
+        
+        $params = [$booking_id];
+        
+        // Add date filters
+        if ($period === 'custom' && $from_date && $to_date) {
+            $transaction_query .= " AND pe.payment_date BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $period_text = date('d M, Y', strtotime($from_date)) . ' to ' . date('d M, Y', strtotime($to_date));
+        } elseif ($period !== 'all') {
+            $months = (int)$period;
+            $from_date = date('Y-m-d', strtotime("-$months months"));
+            $transaction_query .= " AND pe.payment_date >= ?";
+            $params[] = $from_date;
+            $period_text = "Last $months Months (" . date('d M, Y', strtotime($from_date)) . " to " . date('d M, Y') . ")";
+        } else {
+            $period_text = "All Transactions";
+        }
+        
+        // Add other payment types
+        $transaction_query .= "
+        UNION ALL
+        SELECT 
+            pr.payment_type,
+            pr.payment_date,
+            NULL as booking_date,
+            pr.amount,
+            pr.payment_status,
+            pr.payment_method,
+            pr.bank_name,
+            pr.bank_account_no,
+            pr.cheque_no,
+            pr.online_type,
+            UPPER(REPLACE(pr.payment_type, '_', ' ')) as installment_label
+        FROM payment_registration pr
+        WHERE pr.booking_id = ?";
+        
+        $params[] = $booking_id;
+        
+        if ($period === 'custom' && $from_date && $to_date) {
+            $transaction_query .= " AND pr.payment_date BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+        } elseif ($period !== 'all') {
+            $transaction_query .= " AND pr.payment_date >= ?";
+            $params[] = $from_date;
+        }
+        
+        // Add booking money
+        $transaction_query .= "
+        UNION ALL
+        SELECT 
+            'booking_money' as payment_type,
+            NULL as payment_date,
+            b.booking_date,
+            b.booking_money as amount,
+            'paid' as payment_status,
+            'agreement' as payment_method,
+            NULL as bank_name,
+            NULL as bank_account_no,
+            NULL as cheque_no,
+            NULL as online_type,
+            'BOOKING' as installment_label
+        FROM bookings b
+        WHERE b.id = ?";
+        
+        $params[] = $booking_id;
+        
+        if ($period === 'custom' && $from_date && $to_date) {
+            $transaction_query .= " AND b.booking_date BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+        } elseif ($period !== 'all') {
+            $transaction_query .= " AND b.booking_date >= ?";
+            $params[] = $from_date;
+        }
+        
+        $transaction_query .= " ORDER BY COALESCE(payment_date, booking_date) DESC";
+        
+        $stmt = $this->db->prepare($transaction_query);
+        $stmt->execute($params);
+        $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Calculate statement summary
+        $total_paid = 0;
+        foreach ($transactions as $transaction) {
+            $total_paid += $transaction['amount'] ?? 0;
+        }
+        
+        $statement_summary = [
+            'total_paid' => $total_paid,
+            'transaction_count' => count($transactions)
+        ];
+        
+        // Get payment summary for outstanding amount
+        $emi_query = "SELECT 
+            COUNT(*) as total_emi,
+            SUM(CASE WHEN payment_status = 'paid' THEN 1 ELSE 0 END) as completed_emi,
+            SUM(CASE WHEN payment_status = 'pending' THEN 1 ELSE 0 END) as pending_emi,
+            SUM(CASE WHEN payment_status = 'paid' THEN amount ELSE 0 END) as construction_fee_paid
+        FROM payment_emi 
+        WHERE booking_id = ?";
+        
+        $stmt = $this->db->prepare($emi_query);
+        $stmt->execute([$booking_id]);
+        $emi_data = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $paymentSummary = [
+            'total_emi' => $emi_data['total_emi'] ?? 0,
+            'completed_emi' => $emi_data['completed_emi'] ?? 0,
+            'remaining_construction_fee' => $construction_fee - ($emi_data['construction_fee_paid'] ?? 0)
+        ];
+        
+        // Load the statement view
+        include '../app/views/accounts/client_statement.php';
+        
+    } catch (Exception $e) {
+        error_log("Statement Error: " . $e->getMessage());
+        die("Error generating statement: " . $e->getMessage());
+    }
+}
+
+// Add these methods to your AccountClientController class (after existing methods)
+
+/**
+ * View individual payment invoice/receipt
+ */
+public function viewPaymentInvoice($paymentId = null)
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    // Get payment_id from URL parameter or query string
+    if (!$paymentId) {
+        $paymentId = $_GET['payment_id'] ?? null;
+    }
+
+    if (!$paymentId) {
+        setError("No payment ID provided");
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+        exit;
+    }
+
+    // Get payment details
+    $payment = $this->clientModel->getTransactionById($paymentId);
+
+    if (!$payment) {
+        setError("Payment not found");
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+        exit;
+    }
+
+    // Get client details
+    $clientDetails = $this->clientModel->getClientByBookingId($payment['booking_id']);
+
+    if (!$clientDetails) {
+        setError("Client not found");
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+        exit;
+    }
+
+    // Get EMI schedule if payment type is EMI
+    $emiSchedule = null;
+    if ($payment['payment_type'] === 'emi') {
+        $emiSchedule = $this->clientModel->getEMIScheduleByPaymentId($paymentId);
+        
+        // Add installment label to payment
+        if ($emiSchedule && isset($emiSchedule['emi_no'])) {
+            $emiNo = $emiSchedule['emi_no'];
+            
+            // Determine suffix for ordinal numbers
+            if ($emiNo % 100 >= 11 && $emiNo % 100 <= 13) {
+                $suffix = 'th';
+            } else {
+                switch ($emiNo % 10) {
+                    case 1: $suffix = 'st'; break;
+                    case 2: $suffix = 'nd'; break;
+                    case 3: $suffix = 'rd'; break;
+                    default: $suffix = 'th';
+                }
+            }
+            
+            $payment['installment_label'] = $emiNo . $suffix . ' Installment';
+        }
+    }
+
+    // Use absolute path from root
+    $root = dirname(dirname(__DIR__)); // Go up to project root
+    $viewPath = $root . '/app/views/accounts/cashIn/invoice.php';
+    
+    if (!file_exists($viewPath)) {
+        die("View file not found at: " . $viewPath);
+    }
+    
+    // Render the individual payment invoice view
+    include $viewPath;
+    exit;
+}
+
+// Add this method to your AccountClientController class
+
+/**
+ * View client statement with period filter
+ */
+public function viewClientStatement($bookingId = null)
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    // Get booking_id from URL parameter or query string
+    if (!$bookingId) {
+        $bookingId = $_GET['booking_id'] ?? null;
+    }
+
+    if (!$bookingId) {
+        setError("No booking ID provided");
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+        exit;
+    }
+
+    // Get client details
+    $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+
+    if (!$clientDetails) {
+        setError("Client not found");
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+        exit;
+    }
+
+    // Get period filter
+    $period = $_GET['period'] ?? 'all';
+    $fromDate = $_GET['from'] ?? null;
+    $toDate = $_GET['to'] ?? null;
+
+    // Calculate date range based on period
+    $dateFilter = [];
+    $periodText = '';
+
+    if ($period === 'custom' && $fromDate && $toDate) {
+        $dateFilter['from'] = $fromDate;
+        $dateFilter['to'] = $toDate;
+        $periodText = date('d M, Y', strtotime($fromDate)) . ' to ' . date('d M, Y', strtotime($toDate));
+    } elseif ($period !== 'all' && is_numeric($period)) {
+        $months = (int)$period;
+        $dateFilter['from'] = date('Y-m-d', strtotime("-{$months} months"));
+        $dateFilter['to'] = date('Y-m-d');
+        $periodText = "Last {$months} Months (" . date('d M, Y', strtotime($dateFilter['from'])) . " to " . date('d M, Y') . ")";
+    } else {
+        $periodText = "All Transactions";
+    }
+
+    // Get filtered transactions
+    $transactions = $this->clientModel->getFilteredTransactionsByBookingId($bookingId, $dateFilter);
+
+    // Filter out booking money placeholder if exists
+    $filteredTransactions = array_filter($transactions, function($transaction) {
+        if (isset($transaction['id']) && is_string($transaction['id']) && strpos($transaction['id'], 'booking-') === 0) {
+            return false;
+        }
+        return true;
+    });
+    
+    $transactions = array_values($filteredTransactions);
+
+    // Calculate statement summary for the period
+    $statementSummary = [
+        'total_paid' => 0,
+        'transaction_count' => count($transactions)
+    ];
+
+    foreach ($transactions as $transaction) {
+        $statementSummary['total_paid'] += $transaction['amount'] ?? 0;
+    }
+
+    // Get overall payment summary (not filtered by period)
+    $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+
+    // Use absolute path from root
+    $root = dirname(dirname(__DIR__));
+    $viewPath = $root . '/app/views/accounts/cashIn/client-statement.php';
+    
+    if (!file_exists($viewPath)) {
+        die("View file not found at: " . $viewPath);
+    }
+    
+    // Render the statement view
+    include $viewPath;
+    exit;
+}
 }

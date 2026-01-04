@@ -507,4 +507,127 @@ public function toggleRoleStatus()
         // Absolute fallback
         return 1;
     }
+
+    // Add these methods to your AccountManagementController class
+
+/**
+ * View management statement with period filter (all roles)
+ */
+/**
+ * View management statement with period filter (all roles)
+ */
+public function viewManagementStatement()
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    // Get period filter
+    $period = $_GET['period'] ?? 'all';
+    $fromDate = $_GET['from'] ?? null;
+    $toDate = $_GET['to'] ?? null;
+
+    // Calculate date range based on period
+    $dateFilter = [];
+    $periodText = '';
+
+    if ($period === 'custom' && $fromDate && $toDate) {
+        $dateFilter['from'] = $fromDate;
+        $dateFilter['to'] = $toDate;
+        $periodText = date('d M, Y', strtotime($fromDate)) . ' to ' . date('d M, Y', strtotime($toDate));
+    } elseif ($period !== 'all' && is_numeric($period)) {
+        $months = (int)$period;
+        $dateFilter['from'] = date('Y-m-d', strtotime("-{$months} months"));
+        $dateFilter['to'] = date('Y-m-d');
+        $periodText = "Last {$months} Months (" . date('d M, Y', strtotime($dateFilter['from'])) . " to " . date('d M, Y') . ")";
+    } else {
+        $periodText = "All Transactions";
+    }
+
+    // Get filtered transactions (all roles)
+    $transactions = $this->managementModel->getFilteredTransactions($dateFilter);
+
+    // Calculate statement summary for the period
+    $statementSummary = [
+        'total_amount' => 0,
+        'paid_amount' => 0,
+        'pending_amount' => 0,
+        'transaction_count' => count($transactions)
+    ];
+
+    foreach ($transactions as $transaction) {
+        $amount = $transaction['amount'] ?? 0;
+        $statementSummary['total_amount'] += $amount;
+        
+        if (($transaction['payment_status'] ?? 'paid') === 'paid') {
+            $statementSummary['paid_amount'] += $amount;
+        } else {
+            $statementSummary['pending_amount'] += $amount;
+        }
+    }
+
+    // Use absolute path from root
+    $root = dirname(dirname(__DIR__));
+    $viewPath = $root . '/app/views/accounts/cashIn/management-cash-in-statement.php';
+    
+    if (!file_exists($viewPath)) {
+        die("View file not found at: " . $viewPath);
+    }
+    
+    // Render the statement view with ALL data needed
+    // The view expects these variables:
+    // - $transactions
+    // - $statementSummary
+    // - $periodText
+    // - $period, $fromDate, $toDate (for filter)
+    // - $roleDetails (will be null for ALL roles statement)
+    
+    // Since this is ALL roles statement, we don't have a specific role
+    $roleDetails = null;
+    
+    include $viewPath;
+    exit;
+}
+
+/**
+ * View individual transaction invoice/receipt
+ */
+public function viewTransactionInvoice($transactionId = null)
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    // Get transaction_id from URL parameter or query string
+    if (!$transactionId) {
+        $transactionId = $_GET['transaction_id'] ?? null;
+    }
+
+    if (!$transactionId) {
+        setError("No transaction ID provided");
+        header("Location: {$GLOBALS['base_url']}/management-cash-in");
+        exit;
+    }
+
+    // Get transaction details (includes role info from the transaction record itself)
+    $transaction = $this->managementModel->getTransactionById($transactionId);
+
+    if (!$transaction) {
+        setError("Transaction not found");
+        header("Location: {$GLOBALS['base_url']}/management-cash-in");
+        exit;
+    }
+
+    // Use absolute path from root
+    $root = dirname(dirname(__DIR__));
+    $viewPath = $root . '/app/views/accounts/cashIn/management-cash-in-invoice.php';
+    
+    if (!file_exists($viewPath)) {
+        die("View file not found at: " . $viewPath);
+    }
+    
+    // Render the invoice view
+    include $viewPath;
+    exit;
+}
 } 

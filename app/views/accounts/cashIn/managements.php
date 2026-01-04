@@ -5,21 +5,21 @@ $addPage = true;
 $show_breadcrumb = true;
 ?>
 <style>
-        .card__icon span {
-    color: var(--clr-theme-primary);
-    background: rgba(108, 95, 252, 0.1);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    text-align: center;
-    justify-content: center;
-    align-items: center;
-    font-size: 16px;
-}
-.card__title {
-    font-size: 1.25rem;
-}
+    .card__icon span {
+        color: var(--clr-theme-primary);
+        background: rgba(108, 95, 252, 0.1);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
+        font-size: 16px;
+    }
+    .card__title {
+        font-size: 1.25rem;
+    }
 </style>
 <div class="row">
     <!-- Summary Cards -->
@@ -93,6 +93,9 @@ $show_breadcrumb = true;
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title" style="margin-top: -13px;">Management Transactions</h5>
                 <div class="d-flex flex-wrap justify-content-end gap-2">
+                    <a href="<?= $GLOBALS['base_url'] ?>/management-cash-in-statement" class="btn btn-primary">
+                        <i class="fa-light fa-file-lines me-2"></i> View Statement
+                    </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/management-roles" class="btn btn-info">
                         <i class="fa-light fa-users-gear me-2"></i> Manage Roles
                     </a>
@@ -142,14 +145,16 @@ $show_breadcrumb = true;
                                     <tr>
                                         <td>#<?= $transaction['id'] ?></td>
                                         <td><?= $transaction['transaction_date'] ? date('d M, Y', strtotime($transaction['transaction_date'])) : '' ?></td>
-                                        <td><span class="bd-badge bg-primary"><?= htmlspecialchars($transaction['role_name'] ?? 'N/A') ?></span></td>
+                                        <td>
+                                            <span class="bd-badge bg-primary"><?= htmlspecialchars($transaction['role_name'] ?? 'N/A') ?></span>
+                                        </td>
                                         <td><strong><?= htmlspecialchars($transaction['person_name'] ?? 'N/A') ?></strong></td>
                                         <td><?= htmlspecialchars($transaction['source'] ?? '') ?></td>
                                         <td>
                                             <small>
-                                                <?= htmlspecialchars($transaction['description'] ?? '') ?>
+                                                <?= htmlspecialchars(substr($transaction['description'] ?? '', 0, 50)) ?>
                                                 <?php if (!empty($transaction['description']) && strlen($transaction['description']) > 50): ?>
-                                                    <br><a href="#" onclick="showFullDescription(<?= $transaction['id'] ?>)">View More</a>
+                                                    ...<br><a href="#" onclick="showFullDescription(<?= $transaction['id'] ?>); return false;">View More</a>
                                                 <?php endif; ?>
                                             </small>
                                         </td>
@@ -190,10 +195,28 @@ $show_breadcrumb = true;
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-center justify-content-start gap-10">
+                                                <!-- INVOICE BUTTON -->
+      <?php if (($transaction['payment_status'] ?? 'paid') === 'paid'): ?>
+    <a href="<?= $GLOBALS['base_url'] ?>/management-cash-in-invoice?transaction_id=<?= $transaction['id'] ?>"
+       class="table__icon invoice"
+       style="color: #fff; background-color: #6c5ffc;"
+       title="View Invoice"
+       target="_blank">
+       <i class="fa-light fa-file-invoice"></i>
+    </a>
+<?php else: ?>
+    <span class="table__icon invoice"
+          style="color: #999; background-color: #e9ecef; cursor: not-allowed;"
+          title="Invoice not available for <?= htmlspecialchars($transaction['payment_status'] ?? 'pending') ?> transactions">
+        <i class="fa-light fa-file-invoice"></i>
+    </span>
+<?php endif; ?>
+                                                <!-- EDIT BUTTON -->
                                                 <a href="<?= $GLOBALS['base_url'] ?>/edit-management-cash-in?id=<?= $transaction['id'] ?>" class="table__icon edit" title="Edit">
                                                     <i class="fa-sharp fa-light fa-pen"></i>
                                                 </a>
-                                                <a href="#" class="removeBtn table__icon delete" onclick="deleteTransaction(<?= $transaction['id'] ?>)" title="Delete">
+                                                <!-- DELETE BUTTON -->
+                                                <a href="#" class="removeBtn table__icon delete" onclick="deleteTransaction(<?= $transaction['id'] ?>); return false;" title="Delete">
                                                     <i class="fa-regular fa-trash"></i>
                                                 </a>
                                             </div>

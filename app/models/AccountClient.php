@@ -423,6 +423,15 @@ public function getTransactionsByBookingId($bookingId)
         }
     }
 
+/**
+ * Get payment summary by booking ID including EMI numbers
+ */
+/**
+ * Get payment summary by booking ID including EMI numbers
+ */
+/**
+ * Get payment summary by booking ID including EMI numbers
+ */
 public function getPaymentSummaryByBookingId($bookingId)
 {
     $summary = [
@@ -434,11 +443,14 @@ public function getPaymentSummaryByBookingId($bookingId)
         'total_paid' => 0,
         'due_amount' => 0,
         'avg_emi_amount' => 0,
-        'total_emi' => 0,
-        'completed_emi' => 0,
-        'pending_emi' => 0,
+        'total_emi' => 0, // Total expected EMIs from lead_payments.total_emi_no
+        'completed_emi' => 0, // Actually paid EMI count from emi_schedules
+        'pending_emi' => 0, // total_emi - completed_emi
         'remaining_construction_fee' => 0,
-        'last_payment_date' => null
+        'last_payment_date' => null,
+        'emi_numbers' => [], // EMI sequence numbers from emi_schedules
+        'paid_emi_numbers' => [], // Paid EMI numbers
+        'pending_emi_numbers' => [] // Expected but not paid EMI numbers
     ];
 
     // Get booking details
@@ -462,44 +474,86 @@ public function getPaymentSummaryByBookingId($bookingId)
         $summary['total_price'] = $booking['flat_price'] ?? 0;
     }
 
-    // Get total EMI count from emi_schedules table (this is the correct table)
-    $emiCountStmt = $this->db->prepare("
-        SELECT COUNT(*) as total_emi
-        FROM emi_schedules 
-        WHERE lead_booking_id = ?
+    // 1. GET TOTAL EXPECTED EMI COUNT from lead_payments.total_emi_no
+    $totalEmiStmt = $this->db->prepare("
+        SELECT total_emi_no 
+        FROM lead_payments 
+        WHERE booking_id = ? 
+        AND payment_type = 'booking_money' 
+        LIMIT 1
     ");
     
-    $emiCountStmt->bind_param("i", $bookingId);
-    $emiCountStmt->execute();
-    $emiCountResult = $emiCountStmt->get_result();
-    $emiCountData = $emiCountResult ? $emiCountResult->fetch_assoc() : null;
+    $totalEmiStmt->bind_param("i", $bookingId);
+    $totalEmiStmt->execute();
+    $totalEmiResult = $totalEmiStmt->get_result();
+    $totalEmiRow = $totalEmiResult ? $totalEmiResult->fetch_assoc() : null;
     
-    if ($emiCountData) {
-        $summary['total_emi'] = $emiCountData['total_emi'] ?? 0;
-    }
+    // Set total expected EMI count
+    $summary['total_emi'] = $totalEmiRow['total_emi_no'] ?? 0;
 
-    // Get EMI data from emi_schedules table
-    $stmt = $this->db->prepare("
+    // 2. GET ACTUAL EMI PAYMENTS from emi_schedules
+    $emiDetailsStmt = $this->db->prepare("
         SELECT 
-            SUM(CASE WHEN status = 'paid' THEN emi_amount ELSE 0 END) as total_paid_emi,
-            COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_emi_count,
-            AVG(CASE WHEN status = 'paid' THEN emi_amount END) as avg_paid_emi,
-            MAX(CASE WHEN status = 'paid' THEN due_date END) as last_emi_date
+            emi_no,
+            emi_amount,
+            due_emi_amount,
+            due_date,
+            status
         FROM emi_schedules 
         WHERE lead_booking_id = ?
+        ORDER BY emi_no ASC
     ");
-
-    $stmt->bind_param("i", $bookingId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $emiData = $result ? $result->fetch_assoc() : [];
     
-    $summary['construction_fee_paid'] = $emiData['total_paid_emi'] ?? 0;
-    $summary['completed_emi'] = $emiData['paid_emi_count'] ?? 0;
-    $summary['avg_emi_amount'] = $emiData['avg_paid_emi'] ?? 0;
+    $emiDetailsStmt->bind_param("i", $bookingId);
+    $emiDetailsStmt->execute();
+    $emiDetailsResult = $emiDetailsStmt->get_result();
+    $emiDetails = $emiDetailsResult ? $emiDetailsResult->fetch_all(MYSQLI_ASSOC) : [];
     
-    if ($emiData['last_emi_date'] ?? false) {
-        $summary['last_payment_date'] = $emiData['last_emi_date'];
+    // Process actual EMI payments
+    $totalPaidEmi = 0;
+    $paidEmiCount = 0;
+    $paidEmiAmounts = [];
+    $lastEmiDate = null;
+    
+    foreach ($emiDetails as $emi) {
+        $summary['emi_numbers'][] = $emi['emi_no'];
+        
+        if ($emi['status'] === 'paid') {
+            $summary['paid_emi_numbers'][] = $emi['emi_no'];
+            $totalPaidEmi += $emi['emi_amount'];
+            $paidEmiCount++;
+            $paidEmiAmounts[] = $emi['emi_amount'];
+            
+            if (!$lastEmiDate || strtotime($emi['due_date']) > strtotime($lastEmiDate)) {
+                $lastEmiDate = $emi['due_date'];
+            }
+        } else {
+            $summary['pending_emi_numbers'][] = $emi['emi_no'];
+        }
+    }
+    
+    $summary['construction_fee_paid'] = $totalPaidEmi;
+    $summary['completed_emi'] = $paidEmiCount;
+    
+    // 3. CALCULATE PENDING EMI COUNT
+    // If total_emi is 48 and you've paid 1, then 47 are pending
+    $summary['pending_emi'] = max(0, $summary['total_emi'] - $paidEmiCount);
+    
+    // 4. GENERATE ALL EXPECTED EMI NUMBERS (1 to total_emi)
+    $summary['all_emi_numbers'] = [];
+    if ($summary['total_emi'] > 0) {
+        for ($i = 1; $i <= $summary['total_emi']; $i++) {
+            $summary['all_emi_numbers'][] = $i;
+        }
+    }
+    
+    // Calculate average EMI amount
+    if ($paidEmiCount > 0) {
+        $summary['avg_emi_amount'] = $totalPaidEmi / $paidEmiCount;
+    }
+    
+    if ($lastEmiDate) {
+        $summary['last_payment_date'] = $lastEmiDate;
     }
 
     // Get registration payments
@@ -548,11 +602,23 @@ public function getPaymentSummaryByBookingId($bookingId)
     // 2. Remaining Construction Fee = Construction Fee - Construction Fee Paid
     $summary['remaining_construction_fee'] = $summary['construction_fee'] - $summary['construction_fee_paid'];
     
-    // 3. Pending EMI = Total EMI - Completed EMI
-    $summary['pending_emi'] = max(0, $summary['total_emi'] - $summary['completed_emi']);
-    
-    // 4. Calculate Due Amount
+    // 3. Calculate Due Amount
     $summary['due_amount'] = $summary['total_price'] - $summary['total_paid'];
+
+    // Format EMI numbers for display
+    $summary['formatted_all_emi_numbers'] = implode(', ', $summary['all_emi_numbers']);
+    $summary['formatted_paid_emi_numbers'] = implode(', ', $summary['paid_emi_numbers']);
+    
+    // Generate pending EMI numbers (expected but not paid)
+    $summary['expected_pending_numbers'] = [];
+    if ($summary['total_emi'] > 0) {
+        for ($i = 1; $i <= $summary['total_emi']; $i++) {
+            if (!in_array($i, $summary['paid_emi_numbers'])) {
+                $summary['expected_pending_numbers'][] = $i;
+            }
+        }
+    }
+    $summary['formatted_pending_emi_numbers'] = implode(', ', $summary['expected_pending_numbers']);
 
     return $summary;
 }
@@ -865,4 +931,138 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
         $row = $result->fetch_assoc();
         return $row['count'] > 0;
     }
+
+
+    // Add this method to your AccountClient model class
+
+/**
+ * Get transactions by booking ID with date filter
+ */
+public function getFilteredTransactionsByBookingId($bookingId, $dateFilter = [])
+{
+    // Base query for all payments
+    $sql = "
+        SELECT 
+            lp.*,
+            l.lead_name as client_name,
+            p.name as project_name,
+            f.floor_no,
+            un.name as unit_name,
+            CONCAT('UNIT ', un.name, ' - FLOOR ', f.floor_no) as flat_no,
+            u.full_name as created_by_name,
+            es.emi_no,
+            es.emi_amount,
+            es.due_emi_amount,
+            es.due_date as emi_due_date,
+            es.status as emi_status,
+            CASE 
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 1 THEN '1st Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 2 THEN '2nd Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 3 THEN '3rd Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 4 THEN '4th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 5 THEN '5th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 6 THEN '6th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 7 THEN '7th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 8 THEN '8th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 9 THEN '9th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 10 THEN '10th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 11 THEN '11th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 12 THEN '12th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
+                    THEN CONCAT(es.emi_no, 
+                        CASE 
+                            WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
+                            WHEN es.emi_no % 10 = 1 THEN 'st'
+                            WHEN es.emi_no % 10 = 2 THEN 'nd'
+                            WHEN es.emi_no % 10 = 3 THEN 'rd'
+                            ELSE 'th'
+                        END, ' Installment'
+                    )
+                WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
+                WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
+                WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
+                ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
+            END as installment_label,
+            CASE 
+                WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
+                WHEN lp.payment_type = 'registration' THEN 'Registration Money'
+                WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
+                WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
+                ELSE 'Other Payment'
+            END as payment_details
+        FROM lead_payments lp
+        LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
+        LEFT JOIN leads l ON l.id = lb.lead_id
+        LEFT JOIN projects p ON p.id = lb.project_id
+        LEFT JOIN flats f ON f.id = lb.flat_id
+        LEFT JOIN units un ON un.id = f.unit_id
+        LEFT JOIN users u ON u.id = lp.created_by
+        LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+        WHERE lp.booking_id = ?
+    ";
+
+    $params = [$bookingId];
+    $types = "i";
+
+    // Add date filter if provided
+    if (!empty($dateFilter['from']) && !empty($dateFilter['to'])) {
+        $sql .= " AND lp.payment_date BETWEEN ? AND ?";
+        $params[] = $dateFilter['from'];
+        $params[] = $dateFilter['to'];
+        $types .= "ss";
+    }
+
+    $sql .= " ORDER BY 
+        CASE 
+            WHEN lp.payment_type = 'booking_money' THEN 1
+            WHEN lp.payment_type = 'registration' THEN 2
+            ELSE 3
+        END,
+        es.emi_no ASC,
+        lp.payment_date DESC
+    ";
+
+    $stmt = $this->db->prepare($sql);
+    
+    if (!$stmt) {
+        error_log("Prepare failed: " . $this->db->error);
+        return [];
+    }
+
+    // Bind parameters dynamically
+    $stmt->bind_param($types, ...$params);
+    
+    if (!$stmt->execute()) {
+        error_log("Execute failed: " . $stmt->error);
+        return [];
+    }
+    
+    $result = $stmt->get_result();
+    $transactions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    
+    // Format dates and add additional calculated fields
+    foreach ($transactions as &$transaction) {
+        if (isset($transaction['payment_date'])) {
+            $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
+        }
+        
+        if (isset($transaction['payment_status'])) {
+            switch ($transaction['payment_status']) {
+                case 'paid':
+                    $transaction['status_class'] = 'bg-success';
+                    $transaction['status_text'] = 'Paid';
+                    break;
+                case 'pending':
+                    $transaction['status_class'] = 'bg-warning';
+                    $transaction['status_text'] = 'Pending';
+                    break;
+                default:
+                    $transaction['status_class'] = 'bg-danger';
+                    $transaction['status_text'] = 'Failed';
+            }
+        }
+    }
+
+    return $transactions;
+}
 }

@@ -92,11 +92,13 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="from__input-box">
-                                        <label class="form__input-title">Due Amount <span>*</span></label>
-                                        <input type="number" name="due_emi_amount" id="dueEmiAmount" class="form-control" step="0.01" min="0"
+                                        <label class="form__input-title">Due Amount</label>
+                                        <input type="number" name="due_emi_amount" id="dueEmiAmount" class="form-control"
+                                            step="0.01" min="0"
                                             value="<?= $emiSchedule['due_emi_amount'] ?? ($transaction['schedule_due_emi_amount'] ?? 0) ?>"
-                                            placeholder="Enter due amount for this EMI" <?= (($transaction['payment_type'] ?? '') === 'emi') ? 'required' : '' ?>>
-                                        <small class="text-muted">This amount is recorded in EMI schedule</small>
+                                            placeholder="Enter due amount for this EMI">
+
+                                            <small class="text-muted">This amount is recorded in EMI schedule</small>
                                     </div>
                                 </div>
 
@@ -183,6 +185,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                 <label class="form__input-title">Payment Status <span>*</span></label>
                                 <select name="payment_status" class="form-select" required>
                                     <option value="paid" <?= ($transaction['payment_status'] ?? '') === 'paid' ? 'selected' : '' ?>>Paid</option>
+                                    <option value="partially_paid" <?= ($transaction['payment_status'] ?? '') === 'partially_paid' ? 'selected' : '' ?>>Partially Paid</option>
                                     <option value="pending" <?= ($transaction['payment_status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
                                     <option value="failed" <?= ($transaction['payment_status'] ?? '') === 'failed' ? 'selected' : '' ?>>Failed</option>
                                 </select>
@@ -225,9 +228,9 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
 
                 const dueAmountField = document.getElementById('dueEmiAmount');
                 if (isEMI) {
-                    dueAmountField.setAttribute('required', 'required');
+                    dueAmountField.setAttribute('', '');
                 } else {
-                    dueAmountField.removeAttribute('required');
+                    dueAmountField.removeAttribute('');
                 }
             });
         }
@@ -252,19 +255,9 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
             }
         });
 
-        // Form validation
-        document.getElementById('transactionForm').addEventListener('submit', function(e) {
-            const paymentTypeValue = paymentType ? paymentType.value : '<?= $transaction["payment_type"] ?? "" ?>';
-            const dueAmount = parseFloat(document.getElementById('dueEmiAmount').value) || 0;
+document.getElementById('transactionForm').addEventListener('submit', function(e) {
+    return true;
+});
 
-            if (paymentTypeValue === 'emi' && dueAmount <= 0) {
-                e.preventDefault();
-                alert('Please enter a valid due amount for EMI');
-                document.getElementById('dueEmiAmount').focus();
-                return false;
-            }
-
-            return true;
-        });
     });
 </script>
