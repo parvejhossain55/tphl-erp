@@ -43,10 +43,11 @@ public function store()
     ];
 
     if ($this->deparmentModel->create($data)) {
+        setSuccess("Department created successfully.");
         header("Location: {$GLOBALS['base_url']}/departments");
         exit;
     } else {
-        echo "<h3 style='color:red'>Failed to create department</h3>";
+        setError("Failed to create department.");
     }
 }
 public function update()
@@ -60,10 +61,12 @@ public function update()
     // print_r($data); // debug: check values
 
     if ($this->deparmentModel->update($data)) {
+        setSuccess("Department updated successfully.");
         header("Location: {$GLOBALS['base_url']}/departments");
         exit;
     } else {
-        echo "Failed to update department";
+        setError("Failed to update department.");
+        // echo "Failed to update department";
     }
 }
 
@@ -85,6 +88,7 @@ public function update()
     $id = $_POST['id'] ?? 0;
 
     if ($id && $this->deparmentModel->delete($id)) {
+            setSuccess("Department deleted successfully.");
         header("Location: {$GLOBALS['base_url']}/departments");
         exit;
     } else {

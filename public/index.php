@@ -57,9 +57,11 @@ $routes = [
     "customer-lists"       => ["controller" => "CustomerController", "method" => "index"],
     "create-customer"      => ["controller" => "CustomerController", "method" => "create"],
     // permission
-    "permissions"          => ["controller" => "PermissionController", "method" => "index"],
-    "create-permission"    => ["controller" => "PermissionController", "method" => "create"],
-    "store-permission"     => ["controller" => "PermissionController", "method" => "store"],
+    "role-permissions"          => ["controller" => "RolePermissionController", "method" => "index"],
+    "permissions"    => ["controller" => "RolePermissionController", "method" => "permission"],
+    "store-permission"     => ["controller" => "RolePermissionController", "method" => "store"],
+    "update-permission"     => ["controller" => "RolePermissionController", "method" => "update"],
+    "delete-permission"     => ["controller" => "RolePermissionController", "method" => "delete"],
     // Roles
     "store-role"           => ["controller" => "RoleController", "method" => "store"],
     "get-role"      => ["controller" => "RoleController", "method" => "edit"],

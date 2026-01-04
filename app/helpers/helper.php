@@ -249,29 +249,54 @@ function db()
 }
 
 
-function hasPermission($permissionName)
+function hasPermission($permissionNames)
 {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
 
-    // session check
     if (!isset($_SESSION['user']['role_id'])) {
-        return false; // role_id missing
+        return false;
     }
 
-    $roleId = $_SESSION['user']['role_id'];
+    // Don't auto-allow Super Admin — use permissions from session
+    // if ($_SESSION['user']['role_id'] == 3) {
+    //     return true;
+    // }
 
-    // session থেকে permission array
     if (!isset($_SESSION['user']['permissions']) || !is_array($_SESSION['user']['permissions'])) {
-        return false; // permissions missing
+        return false;
     }
 
-    $permissions = array_map('strtolower', $_SESSION['user']['permissions']); // lowercase
-    $permissionName = strtolower($permissionName);
+    $userPermissions = array_map('strtolower', $_SESSION['user']['permissions']);
 
-    return in_array($permissionName, $permissions);
+    if (is_string($permissionNames)) {
+        $permissionNames = [$permissionNames];
+    }
+
+    $permissionNames = array_map('strtolower', $permissionNames);
+
+    foreach ($permissionNames as $perm) {
+        if (in_array($perm, $userPermissions)) {
+            return true;
+        }
+    }
+
+    return false;
 }
+
+function hasAllPermissions(array $requiredPermissions): bool {
+    // Assume $userPermissions is an array of all the current user's permissions
+    global $userPermissions; // adjust according to your app
+
+    foreach ($requiredPermissions as $perm) {
+        if (!in_array($perm, $userPermissions)) {
+            return false; // missing one → fail
+        }
+    }
+    return true; // has all → pass
+}
+
 
 function isAlreadyHashed($password)
 {

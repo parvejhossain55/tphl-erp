@@ -1,5 +1,5 @@
 <?php
-class PermissionController extends Controller
+class RolePermissionController extends Controller
 {
     protected $permissionModel;
     protected $roleModel;
@@ -13,9 +13,9 @@ class PermissionController extends Controller
     {
         $roles = $this->roleModel->getRolesWithPermissions();
         $permissions = $this->permissionModel->getAll();
-        $this->view("permissions/permission-list", [
-            "current_route" => "permissions",
-            "active" => "permissions",
+        $this->view("permissions/role-permission-list", [
+            "current_route" => "role-permissions",
+            "active" => "role-permissions",
             "page_title" => "Permissions List",
             "show_breadcrumb" => true,
             "permissions" => $permissions,
@@ -26,13 +26,15 @@ class PermissionController extends Controller
     }
 
     // Show create form
-    public function create()
+    public function permission()
     {
-        $this->view("permissions/create-permission", [
-            "current_route" => "create-permission",
-            "active" => "create-permission",
+            $permissions = $this->permissionModel->getAll();
+        $this->view("permissions/permissions", [
+            "current_route" => "permissions",
+            "active" => "permissions",
             "page_title" => "Create Permission",
-            "show_breadcrumb" => true
+            "show_breadcrumb" => true,
+            "permissions" => $permissions
             
         ]);
     }
@@ -48,24 +50,19 @@ public function store()
     $result = $this->permissionModel->create($data);
 
     if ($result) {
+        setSuccess('Permission Created Successfully');
         // Global base_url use
         header("Location: {$GLOBALS['base_url']}/permissions");
         exit;
     } else {
-        echo "<h3 style='color: red;'>Failed to Create Permission</h3>";
-        echo "<pre>";
-        var_dump($this->permissionModel->getDb()->error);
-        echo "</pre>";
+         setSuccess('Permission Created Failed');
+        // echo "<h3 style='color: red;'>Failed to Create Permission</h3>";
+        // echo "<pre>";
+        // var_dump($this->permissionModel->getDb()->error);
+        // echo "</pre>";
     }
 
 }
-
-
-
-
-
-
-    
     // Show edit form
     public function edit($id)
     {
@@ -80,20 +77,33 @@ public function store()
     }
 
     // Handle update submission
-    public function update($id, $data)
-    {
-        if ($this->permissionModel->update($id, $data)) {
-            header("Location: /permissions");
-        } else {
-            echo "Error updating permission";
-        }
+public function update()
+{
+    $data = [
+        'id'     => $_POST['id'] ?? 0,          
+        'name'   => $_POST['name'] ?? '',        
+        'status' => isset($_POST['status']) ? intval($_POST['status']) : 0, 
+    ];
+
+    // print_r($data); // debug: check values
+
+    if ($this->permissionModel->update($data)) {
+        setSuccess("Permission updated successfully.");
+        header("Location: {$GLOBALS['base_url']}/permissions");
+        exit;
+    } else {
+        setError("Failed to update permission.");
+        // echo "Failed to update permission";
     }
+}
+
 
     // Delete permission
-    public function delete($id)
+    public function delete()
     {
+           $id = $_POST['id'] ?? 0;
         if ($this->permissionModel->delete($id)) {
-            header("Location: /permissions");
+            header("Location: {$GLOBALS['base_url']}/permissions");
         } else {
             echo "Error deleting permission";
         }

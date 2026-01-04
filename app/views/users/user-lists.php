@@ -67,11 +67,12 @@ $show_breadcrumb = false;
                             <div class="employee__meta mb-15">
                                 <h4 class="mb-8"><?= htmlspecialchars($user['full_name'] ?: "No Name") ?></h4>
                                 <p><?= htmlspecialchars($user['designation_name'] ?: "No Designation") ?></p>
+                                <p> <span class="fw-semibold fs-6 pe-1">Role:</span><?= htmlspecialchars($user['role_name'] ?: "No role ") ?></p>
                             </div>
                             <div class="common-social mb-20">
                                 <a href="<?= $user['media_link1'] ?>"><i class="fa-brands fa-facebook-f"></i></a>
                                 <a href="<?= $user['media_link1'] ?>"><i class="fa-brands fa-linkedin-in"></i></a>
-                                <a href="tel:<?= htmlspecialchars($employee['phone']) ?>" title="Call">
+                                <a href="tel:<?= htmlspecialchars($user['phone']) ?>" title="Call">
                                     <i class="fa-solid fa-phone"></i>
                                 </a>
                             </div>

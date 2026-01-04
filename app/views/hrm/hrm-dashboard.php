@@ -17,7 +17,7 @@
                     <div class="card__icon"><span><i class="fa-regular fa-users"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Total Employees</h6>
-                        <h3 class="card__title"><?= $totalEmployees ?? '' ?></h3>
+                        <h3 class="card__title text-break text-success mb-10"><?= $totalEmployees ?? '' ?></h3>
                     </div>
                 </div>
             </div>
@@ -29,7 +29,7 @@
                     <div class="card__icon"><span><i class="fa-regular fa-user-check"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Present Today</h6>
-                        <h3 class="card__title">142</h3>
+                        <h3 class="card__title text-break text-success mb-10">142</h3>
                         <small>91% attendance</small>
                     </div>
                 </div>
@@ -42,7 +42,7 @@
                     <div class="card__icon"><span><i class="fa-regular fa-bed"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">On Leave</h6>
-                        <h3 class="card__title">8</h3>
+                        <h3 class="card__title text-break text-success mb-10">8</h3>
                     </div>
                 </div>
             </div>
@@ -54,7 +54,7 @@
                     <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Payroll </h6>
-                        <h3 class="card__title">BDT 42.5L</h3>
+                        <h3 class="card__title text-break text-success mb-10">BDT 42.5L</h3>
                     </div>
                 </div>
             </div>
@@ -72,7 +72,7 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Today Assigned Tasks</h6>
-                        <h3 class="card__title"><?= $todayTasks ?? 0 ?></h3>
+                        <h3 class="card__title text-break text-success mb-10"><?= $todayTasks ?? 0 ?></h3>
                     </div>
                 </div>
             </div>
@@ -87,7 +87,7 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Pending Tasks</h6>
-                        <h3 class="card__title"><?= $pendingTasks ?? 0 ?></h3>
+                        <h3 class="card__title text-break text-success mb-10"><?= $pendingTasks ?? 0 ?></h3>
                     </div>
                 </div>
             </div>
@@ -102,7 +102,7 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Completed Tasks</h6>
-                        <h3 class="card__title"><?= $completedTasks ?? 0 ?></h3>
+                        <h3 class="card__title text-break text-success mb-10"><?= $completedTasks ?? 0 ?></h3>
                     </div>
                 </div>
             </div>
@@ -117,7 +117,7 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Overdue Tasks</h6>
-                        <h3 class="card__title"><?= $overdueTasks ?? 0 ?></h3>
+                        <h3 class="card__title text-break text-success mb-10"><?= $overdueTasks ?? 0 ?></h3>
                     </div>
                 </div>
             </div>

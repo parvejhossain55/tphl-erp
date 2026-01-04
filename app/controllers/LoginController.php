@@ -51,6 +51,14 @@ class LoginController extends Controller
                         $redirect_url = "{$GLOBALS['base_url']}/home";
                     } elseif ($role === 'employee') {
                         $redirect_url = "{$GLOBALS['base_url']}/employee-dashboard";
+                    } elseif ($role === 'sales head') {
+                        $redirect_url = "{$GLOBALS['base_url']}/sales-dashboard";
+                    } elseif ($role === 'hr') {
+                        $redirect_url = "{$GLOBALS['base_url']}/hrm-dashboard";
+                    } elseif ($role === 'accounts ') {
+                        $redirect_url = "{$GLOBALS['base_url']}/account-dashboard";
+                    } elseif ($role === 'Clients Experiment ') {
+                        $redirect_url = "{$GLOBALS['base_url']}/clients-cash-in";
                     } elseif ($role === 'manager') {
                         $redirect_url = "{$GLOBALS['base_url']}/manager-dashboard";
                     } else {
