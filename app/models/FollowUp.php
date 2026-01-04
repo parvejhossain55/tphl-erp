@@ -34,7 +34,7 @@ class FollowUp extends Model
     {
         $stmt = $this->db->prepare("
             INSERT INTO lead_follow_ups 
-            (lead_id,project_id flat_id, follow_up_date, follow_up_time, follow_up_type, status, discussion_note, next_follow_up_date, next_action, created_by)
+            (lead_id,project_id, flat_id, follow_up_date, follow_up_time, follow_up_type, status, discussion_note, next_follow_up_date, next_action, created_by)
             VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 

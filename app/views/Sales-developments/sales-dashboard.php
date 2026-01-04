@@ -180,7 +180,7 @@ Array -->
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="7" class="text-center py-4">f
+                                <td colspan="7" class="text-center py-4">
                                     <div class="text-muted">
                                         No follow-ups found
                                     </div>
