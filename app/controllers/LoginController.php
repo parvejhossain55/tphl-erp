@@ -45,24 +45,23 @@ class LoginController extends Controller
                     $_SESSION['user']['permissions'] = $permissions;
 
                     // Role-based redirect
-                    $role = strtolower($user['role_name']);
+                    $role = (int) $user['role_id'];
 
-                    if (in_array($role, ['admin', 'super admin'])) {
+                    if (in_array($role, [1, 3], true)) {
                         $redirect_url = "{$GLOBALS['base_url']}/home";
-                    } elseif ($role === 'employee') {
+                    } elseif ($role === 2) {
                         $redirect_url = "{$GLOBALS['base_url']}/employee-dashboard";
-                    } elseif ($role === 'sales head') {
+                    } elseif ($role === 5) {
                         $redirect_url = "{$GLOBALS['base_url']}/sales-dashboard";
-                    } elseif ($role === 'hr') {
+                    } elseif ($role === 4) {
                         $redirect_url = "{$GLOBALS['base_url']}/hrm-dashboard";
-                    } elseif ($role === 'accounts ') {
+                    } elseif ($role === 6) {
                         $redirect_url = "{$GLOBALS['base_url']}/account-dashboard";
-                    } elseif ($role === 'Clients Experiment ') {
-                        $redirect_url = "{$GLOBALS['base_url']}/clients-cash-in";
-                    } elseif ($role === 'manager') {
-                        $redirect_url = "{$GLOBALS['base_url']}/manager-dashboard";
+                    } elseif ($role === 7) {
+                        $redirect_url = "{$GLOBALS['base_url']}/clients-cashin-view";
                     } else {
-                        $redirect_url = "{$GLOBALS['base_url']}/home";
+                        // fallback
+                        $redirect_url = "{$GLOBALS['base_url']}/login";
                     }
 
                     header("Location: $redirect_url");

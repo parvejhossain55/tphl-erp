@@ -158,7 +158,7 @@ class User extends Model
         return $result['total'];
     }
 
-    public function find($id): mixed
+    public function find($id)
     {
         $stmt = $this->db->prepare("
         SELECT 
