@@ -1,5 +1,5 @@
 <?php
-class AccountManagementCashOut extends Model
+class AccountManagementCashout extends Model
 {
     protected $db;
     protected $table = 'management_cashout';
@@ -18,7 +18,7 @@ class AccountManagementCashOut extends Model
                 FROM {$this->table} mc
                 LEFT JOIN management_categories cat ON mc.category_id = cat.id
                 LEFT JOIN users u ON mc.created_by = u.id
-                ORDER BY mc.created_at DESC";
+                ORDER BY mc.transaction_date DESC, mc.created_at DESC";
         
         $result = $this->db->query($sql);
         
@@ -33,6 +33,38 @@ class AccountManagementCashOut extends Model
         }
         
         $result->free();
+        return $transactions;
+    }
+
+    // Get transactions by date range - NEW METHOD
+    public function getTransactionsByDateRange($fromDate, $toDate)
+    {
+        $sql = "SELECT mc.*, 
+                cat.category_name,
+                u.full_name as created_by_name
+                FROM {$this->table} mc
+                LEFT JOIN management_categories cat ON mc.category_id = cat.id
+                LEFT JOIN users u ON mc.created_by = u.id
+                WHERE mc.transaction_date BETWEEN ? AND ?
+                ORDER BY mc.transaction_date DESC, mc.created_at DESC";
+        
+        $stmt = $this->db->prepare($sql);
+        
+        if (!$stmt) {
+            error_log("Prepare failed: " . $this->db->error);
+            return [];
+        }
+        
+        $stmt->bind_param("ss", $fromDate, $toDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $transactions = [];
+        while ($row = $result->fetch_assoc()) {
+            $transactions[] = $row;
+        }
+        
+        $stmt->close();
         return $transactions;
     }
 
@@ -270,3 +302,4 @@ class AccountManagementCashOut extends Model
         return $stats;
     }
 }
+?>

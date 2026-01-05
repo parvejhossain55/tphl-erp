@@ -92,11 +92,13 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="from__input-box">
-                                        <label class="form__input-title">Due Amount <span>*</span></label>
-                                        <input type="number" name="due_emi_amount" id="dueEmiAmount" class="form-control" step="0.01" min="0"
+                                        <label class="form__input-title">Due Amount</label>
+                                        <input type="number" name="due_emi_amount" id="dueEmiAmount" class="form-control"
+                                            step="0.01" min="0"
                                             value="<?= $emiSchedule['due_emi_amount'] ?? ($transaction['schedule_due_emi_amount'] ?? 0) ?>"
-                                            placeholder="Enter due amount for this EMI" <?= (($transaction['payment_type'] ?? '') === 'emi') ? 'required' : '' ?>>
-                                        <small class="text-muted">This amount is recorded in EMI schedule</small>
+                                            placeholder="Enter due amount for this EMI">
+
+                                            <small class="text-muted">This amount is recorded in EMI schedule</small>
                                     </div>
                                 </div>
 
@@ -183,6 +185,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                 <label class="form__input-title">Payment Status <span>*</span></label>
                                 <select name="payment_status" class="form-select" required>
                                     <option value="paid" <?= ($transaction['payment_status'] ?? '') === 'paid' ? 'selected' : '' ?>>Paid</option>
+                                    <option value="partially_paid" <?= ($transaction['payment_status'] ?? '') === 'partially_paid' ? 'selected' : '' ?>>Partially Paid</option>
                                     <option value="pending" <?= ($transaction['payment_status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
                                     <option value="failed" <?= ($transaction['payment_status'] ?? '') === 'failed' ? 'selected' : '' ?>>Failed</option>
                                 </select>
@@ -225,9 +228,9 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
 
                 const dueAmountField = document.getElementById('dueEmiAmount');
                 if (isEMI) {
-                    dueAmountField.setAttribute('required', 'required');
+                    dueAmountField.setAttribute('', '');
                 } else {
-                    dueAmountField.removeAttribute('required');
+                    dueAmountField.removeAttribute('');
                 }
             });
         }
@@ -252,19 +255,158 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
             }
         });
 
-        // Form validation
-        document.getElementById('transactionForm').addEventListener('submit', function(e) {
-            const paymentTypeValue = paymentType ? paymentType.value : '<?= $transaction["payment_type"] ?? "" ?>';
-            const dueAmount = parseFloat(document.getElementById('dueEmiAmount').value) || 0;
+document.getElementById('transactionForm').addEventListener('submit', function(e) {
+    return true;
+});
 
-            if (paymentTypeValue === 'emi' && dueAmount <= 0) {
-                e.preventDefault();
-                alert('Please enter a valid due amount for EMI');
-                document.getElementById('dueEmiAmount').focus();
-                return false;
+    });
+
+//Partial status 
+
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentType = document.getElementById('paymentType');
+    const paymentMethod = document.getElementById('paymentMethod');
+    const dueEmiAmountField = document.getElementById('dueEmiAmount');
+    const paymentStatusSelect = document.querySelector('select[name="payment_status"]');
+    const amountField = document.getElementById('amount') || document.getElementById('amountField');
+    
+    const emiFields = document.querySelectorAll('.emi-fields');
+    const bankFields = document.querySelectorAll('.bank-fields');
+    const chequeFields = document.querySelectorAll('.cheque-fields');
+    const onlineFields = document.querySelectorAll('.online-fields');
+    
+    // Function to control Partially Paid status
+    function controlPartiallyPaidStatus() {
+        const paymentTypeValue = paymentType ? paymentType.value : document.querySelector('input[name="payment_type"]')?.value;
+        const dueAmount = parseFloat(dueEmiAmountField?.value) || 0;
+        const partiallyPaidOption = paymentStatusSelect.querySelector('option[value="partially_paid"]');
+        
+        if (paymentTypeValue === 'emi') {
+            if (dueAmount > 0) {
+                // Enable Partially Paid option
+                partiallyPaidOption.disabled = false;
+                partiallyPaidOption.textContent = 'Partially Paid';
+            } else {
+                // Disable Partially Paid option
+                partiallyPaidOption.disabled = true;
+                partiallyPaidOption.textContent = 'Partially Paid (Due amount required)';
+                
+                // If currently selected, change to 'paid'
+                if (paymentStatusSelect.value === 'partially_paid') {
+                    paymentStatusSelect.value = 'paid';
+                }
             }
-
+        } else {
+            // For non-EMI payments, always disable partially_paid
+            partiallyPaidOption.disabled = true;
+            partiallyPaidOption.textContent = 'Partially Paid (Only for EMI)';
+            
+            // If currently selected, change to 'paid'
+            if (paymentStatusSelect.value === 'partially_paid') {
+                paymentStatusSelect.value = 'paid';
+            }
+        }
+    }
+    
+    // Show/hide EMI fields when payment type changes
+    if (paymentType) {
+        paymentType.addEventListener('change', function() {
+            const isEMI = this.value === 'emi';
+            
+            emiFields.forEach(field => field.style.display = isEMI ? 'block' : 'none');
+            
+            if (dueEmiAmountField) {
+                if (isEMI) {
+                    dueEmiAmountField.setAttribute('required', 'required');
+                } else {
+                    dueEmiAmountField.removeAttribute('required');
+                    dueEmiAmountField.value = ''; // Clear the value
+                }
+            }
+            
+            // Control partially paid status when payment type changes
+            controlPartiallyPaidStatus();
+        });
+    }
+    
+    // Listen to due amount field changes
+    if (dueEmiAmountField) {
+        dueEmiAmountField.addEventListener('input', function() {
+            controlPartiallyPaidStatus();
+        });
+        
+        dueEmiAmountField.addEventListener('change', function() {
+            controlPartiallyPaidStatus();
+        });
+    }
+    
+    // Show/hide payment method specific fields
+    if (paymentMethod) {
+        paymentMethod.addEventListener('change', function() {
+            const method = this.value;
+            
+            // Hide all fields first
+            bankFields.forEach(field => field.style.display = 'none');
+            chequeFields.forEach(field => field.style.display = 'none');
+            onlineFields.forEach(field => field.style.display = 'none');
+            
+            // Remove required attributes
+            bankFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
+            chequeFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
+            onlineFields.forEach(field => field.querySelector('select')?.removeAttribute('required'));
+            
+            // Show relevant fields
+            if (method === 'bank') {
+                bankFields.forEach(field => {
+                    field.style.display = 'block';
+                    field.querySelector('input')?.setAttribute('required', 'required');
+                });
+            } else if (method === 'cheque') {
+                bankFields.forEach(field => {
+                    field.style.display = 'block';
+                    field.querySelector('input')?.setAttribute('required', 'required');
+                });
+                chequeFields.forEach(field => {
+                    field.style.display = 'block';
+                    field.querySelector('input')?.setAttribute('required', 'required');
+                });
+            } else if (method === 'online') {
+                onlineFields.forEach(field => {
+                    field.style.display = 'block';
+                    field.querySelector('select')?.setAttribute('required', 'required');
+                });
+            }
+        });
+    }
+    
+    // Form validation
+    const transactionForm = document.getElementById('transactionForm');
+    if (transactionForm) {
+        transactionForm.addEventListener('submit', function(e) {
+            const paymentTypeValue = paymentType ? paymentType.value : document.querySelector('input[name="payment_type"]')?.value;
+            const amount = parseFloat(amountField?.value) || 0;
+            const dueAmount = parseFloat(dueEmiAmountField?.value) || 0;
+            const paymentStatus = paymentStatusSelect.value;
+            
+            // Validation for EMI payments
+            if (paymentTypeValue === 'emi') {
+                // Only validate due amount if payment status is 'partially_paid'
+                if (paymentStatus === 'partially_paid' && (!dueAmount || dueAmount <= 0)) {
+                    e.preventDefault();
+                    alert('Partially Paid status requires a due amount greater than 0.');
+                    dueEmiAmountField?.focus();
+                    return false;
+                }
+                
+                // For paid status, due amount can be 0 or null
+                // No validation needed
+            }
+            
             return true;
         });
-    });
+    }
+    
+    // Initial call to set the correct state on page load
+    controlPartiallyPaidStatus();
+});
 </script>

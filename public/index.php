@@ -271,29 +271,56 @@ $routes = [
     'delete-role' => ["controller" => "AccountManagementController", "method" => "deleteRole"],
     'toggle-role-status' => ["controller" => "AccountManagementController", "method" => "toggleRoleStatus"],
 
-    // ==================== MANAGEMENT CASH OUT ROUTES ====================
-    'management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "index"],
-    'add-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "showAddForm"],
-    'store-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "storeTransaction"],
-    'edit-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "showEditForm"],
-    'update-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "updateTransaction"],
-    'delete-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "deleteTransaction"],
-    'get-cashout-transaction-details' => ["controller" => "AccountManagementCashoutController", "method" => "getTransactionDetails"],
-    'export-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "exportTransactions"],
+// Add these routes to your routes array
 
-    // ==================== MANAGEMENT CATEGORIES ROUTES ====================
-    'management-categories' => ["controller" => "AccountManagementCategoryController", "method" => "index"],
-    'get-category-details' => ["controller" => "AccountManagementCategoryController", "method" => "getCategoryDetails"],
-    'add-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "addCategory"],
-    'update-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "updateCategory"],
-    'delete-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "deleteCategory"],
-    'toggle-category-status' => ["controller" => "AccountManagementCategoryController", "method" => "toggleCategoryStatus"],
+// ==================== CLIENT INVOICE ROUTES ====================
+'payment-invoice' => ["controller" => "AccountClientController", "method" => "viewPaymentInvoice"],
+'payment-invoice/(\d+)' => ["controller" => "AccountClientController", "method" => "viewPaymentInvoice"],
+// ==================== CLIENT STATEMENT ROUTES ====================
+'client-statement' => [
+    "controller" => "AccountClientController",
+    "method" => "viewClientStatement"
+],
+'client-statement/(\d+)' => [
+    "controller" => "AccountClientController",
+    "method" => "viewClientStatement"
+],
+
+
+'management-cash-in-statement' => ["controller" => "AccountManagementController", "method" => "viewManagementStatement"],
+'management-cash-in-invoice' => ["controller" => "AccountManagementController", "method" => "viewTransactionInvoice"],
+'management-cash-out-statement' => ["controller" => "AccountManagementCashoutController", "method" => "showStatement"],
+'management-cash-out-invoice' => ["controller" => "AccountManagementCashoutController", "method" => "showInvoice"],
+// ==================== MANAGEMENT CASH OUT ROUTES ====================
+'management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "index"],
+'add-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "showAddForm"],
+'store-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "storeTransaction"],
+'edit-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "showEditForm"],
+'update-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "updateTransaction"],
+'delete-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "deleteTransaction"],
+'get-cashout-transaction-details' => ["controller" => "AccountManagementCashoutController", "method" => "getTransactionDetails"],
+'export-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "exportTransactions"],
+
+
+// ==================== MANAGEMENT CATEGORIES ROUTES ====================
+'management-categories' => ["controller" => "AccountManagementCategoryController", "method" => "index"],
+'get-category-details' => ["controller" => "AccountManagementCategoryController", "method" => "getCategoryDetails"],
+'add-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "addCategory"],
+'update-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "updateCategory"],
+'delete-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "deleteCategory"],
+'toggle-category-status' => ["controller" => "AccountManagementCategoryController", "method" => "toggleCategoryStatus"],
 
 //===================Customer Experience Department====================
 'clients-cashin-view' => ["controller" => "AccountClientController", "method" => "indexView"],
 'clients-cash-in-history-view' => ["controller" => "AccountClientController", "method" => "indexTwoView"],
 'clients-cash-in-history-view/(\d+)' => ["controller" => "AccountClientController", "method" => "indexTwoView"],
-    //rafi End
+   
+
+// ==================== CENTRAL STATEMENT ROUTES ====================
+'central-statement' => ["controller" => "CentralStatementController", "method" => "index"],
+'central-statement-export' => ["controller" => "CentralStatementController", "method" => "exportCSV"],
+'central-statement-stats' => ["controller" => "CentralStatementController", "method" => "getQuickStats"],
+//rafi End
 
 
 ];

@@ -286,20 +286,28 @@ public function getTransactionsByBookingId($bookingId)
             $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
         }
         
-        // Add status badge class
+        // Add status badge class - FIXED HERE
         if (isset($transaction['payment_status'])) {
             switch ($transaction['payment_status']) {
                 case 'paid':
                     $transaction['status_class'] = 'bg-success';
                     $transaction['status_text'] = 'Paid';
                     break;
+                case 'partially_paid':
+                    $transaction['status_class'] = 'bg-info';
+                    $transaction['status_text'] = 'Partially Paid';
+                    break;
                 case 'pending':
                     $transaction['status_class'] = 'bg-warning';
                     $transaction['status_text'] = 'Pending';
                     break;
-                default:
+                case 'failed':
                     $transaction['status_class'] = 'bg-danger';
                     $transaction['status_text'] = 'Failed';
+                    break;
+                default:
+                    $transaction['status_class'] = 'bg-secondary';
+                    $transaction['status_text'] = ucfirst(str_replace('_', ' ', $transaction['payment_status']));
             }
         }
     }
@@ -426,6 +434,15 @@ public function getTransactionsByBookingId($bookingId)
 /**
  * Get payment summary by booking ID including EMI numbers
  */
+<<<<<<< HEAD
+=======
+/**
+ * Get payment summary by booking ID including EMI numbers
+ */
+/**
+ * Get payment summary by booking ID including EMI numbers
+ */
+>>>>>>> 540a74c4563983d1a670b4c40bb59bea8f3569ef
 public function getPaymentSummaryByBookingId($bookingId)
 {
     $summary = [
@@ -614,6 +631,28 @@ public function getPaymentSummaryByBookingId($bookingId)
     }
     $summary['formatted_pending_emi_numbers'] = implode(', ', $summary['expected_pending_numbers']);
 
+<<<<<<< HEAD
+=======
+
+        $dueQuery = $this->db->prepare("
+        SELECT 
+            SUM(es.due_emi_amount) as total_due_amount,
+            COUNT(*) as due_emi_count
+        FROM emi_schedules es
+        WHERE es.lead_booking_id = ?
+        AND es.due_emi_amount > 0
+    ");
+
+    $dueQuery->bind_param("i", $bookingId);
+    $dueQuery->execute();
+    $dueResult = $dueQuery->get_result();
+    $dueData = $dueResult ? $dueResult->fetch_assoc() : [];
+
+    // Add to summary array
+    $summary['total_due_amount'] = $dueData['total_due_amount'] ?? 0;
+    $summary['due_emi_count'] = $dueData['due_emi_count'] ?? 0;
+
+>>>>>>> 540a74c4563983d1a670b4c40bb59bea8f3569ef
     return $summary;
 }
 
@@ -691,15 +730,19 @@ public function getPaymentSummaryByBookingId($bookingId)
 /**
  * Update transaction with EMI schedule
  */
+/**
+ * Update transaction with EMI schedule and due amount tracking
+ */
 public function updateTransactionWithEMI($transactionData, $emiScheduleData = null)
 {
     error_log("=== MODEL: updateTransactionWithEMI START ===");
     error_log("Transaction Data: " . print_r($transactionData, true));
+    error_log("EMI Schedule Data: " . print_r($emiScheduleData, true));
 
     $this->db->begin_transaction();
 
     try {
-        // Update the payment transaction WITHOUT updated_by column
+        // Update the payment transaction
         $stmt = $this->db->prepare("
             UPDATE lead_payments SET
                 payment_type = ?,
@@ -720,7 +763,7 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
             throw new Exception("Prepare failed: " . $this->db->error);
         }
 
-        // Bind parameters WITHOUT updated_by
+        // Bind parameters
         $stmt->bind_param(
             "sdssssssssi",
             $transactionData['payment_type'],
@@ -749,7 +792,7 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
             
             // Check if EMI schedule already exists
             $checkStmt = $this->db->prepare("
-                SELECT id, emi_no FROM emi_schedules WHERE lead_payment_id = ?
+                SELECT id, emi_no, due_emi_amount FROM emi_schedules WHERE lead_payment_id = ?
             ");
             $checkStmt->bind_param("i", $transactionData['payment_id']);
             $checkStmt->execute();
@@ -773,8 +816,10 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
                     throw new Exception("EMI schedule prepare failed: " . $this->db->error);
                 }
 
-                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 'pending';
+                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 
+                         ($transactionData['payment_status'] === 'partially_paid' ? 'partially_paid' : 'pending');
                 
+                // Use the updated transaction amount (which includes additional payment)
                 $emiStmt->bind_param(
                     "ddssi",
                     $transactionData['amount'],
@@ -790,6 +835,16 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
                 }
                 
                 error_log("EMI schedule updated successfully");
+                
+                // Log the due amount change
+                $oldDue = (float)($emiScheduleData['old_due_amount'] ?? 0);
+                $newDue = (float)($emiScheduleData['due_emi_amount'] ?? 0);
+                
+                if ($oldDue > 0 && $newDue < $oldDue) {
+                    $reduction = $oldDue - $newDue;
+                    error_log("Due amount reduced by: " . $reduction);
+                    error_log("This amount has been added to the paid amount");
+                }
             } else {
                 error_log("Creating new EMI schedule...");
                 
@@ -819,7 +874,8 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
                     throw new Exception("EMI schedule insert prepare failed: " . $this->db->error);
                 }
 
-                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 'pending';
+                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 
+                         ($transactionData['payment_status'] === 'partially_paid' ? 'partially_paid' : 'pending');
                 
                 $emiStmt->bind_param(
                     "iiddssi",
@@ -925,4 +981,150 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
         $row = $result->fetch_assoc();
         return $row['count'] > 0;
     }
+
+
+    // Add this method to your AccountClient model class
+
+/**
+ * Get transactions by booking ID with date filter
+ */
+/**
+ * Get transactions by booking ID with date filter
+ */
+public function getFilteredTransactionsByBookingId($bookingId, $dateFilter = [])
+{
+    // Base query for all payments
+    $sql = "
+        SELECT 
+            lp.*,
+            l.lead_name as client_name,
+            p.name as project_name,
+            f.floor_no,
+            un.name as unit_name,
+            CONCAT('UNIT ', un.name, ' - FLOOR ', f.floor_no) as flat_no,
+            u.full_name as created_by_name,
+            es.emi_no,
+            es.emi_amount,
+            es.due_emi_amount,
+            es.due_date as emi_due_date,
+            es.status as emi_status,
+            CASE 
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 1 THEN '1st Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 2 THEN '2nd Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 3 THEN '3rd Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 4 THEN '4th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 5 THEN '5th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 6 THEN '6th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 7 THEN '7th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 8 THEN '8th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 9 THEN '9th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 10 THEN '10th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 11 THEN '11th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no = 12 THEN '12th Installment'
+                WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
+                    THEN CONCAT(es.emi_no, 
+                        CASE 
+                            WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
+                            WHEN es.emi_no % 10 = 1 THEN 'st'
+                            WHEN es.emi_no % 10 = 2 THEN 'nd'
+                            WHEN es.emi_no % 10 = 3 THEN 'rd'
+                            ELSE 'th'
+                        END, ' Installment'
+                    )
+                WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
+                WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
+                WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
+                ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
+            END as installment_label,
+            CASE 
+                WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
+                WHEN lp.payment_type = 'registration' THEN 'Registration Money'
+                WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
+                WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
+                ELSE 'Other Payment'
+            END as payment_details
+        FROM lead_payments lp
+        LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
+        LEFT JOIN leads l ON l.id = lb.lead_id
+        LEFT JOIN projects p ON p.id = lb.project_id
+        LEFT JOIN flats f ON f.id = lb.flat_id
+        LEFT JOIN units un ON un.id = f.unit_id
+        LEFT JOIN users u ON u.id = lp.created_by
+        LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+        WHERE lp.booking_id = ?
+    ";
+
+    $params = [$bookingId];
+    $types = "i";
+
+    // Add date filter if provided
+    if (!empty($dateFilter['from']) && !empty($dateFilter['to'])) {
+        $sql .= " AND lp.payment_date BETWEEN ? AND ?";
+        $params[] = $dateFilter['from'];
+        $params[] = $dateFilter['to'];
+        $types .= "ss";
+    }
+
+    $sql .= " ORDER BY 
+        CASE 
+            WHEN lp.payment_type = 'booking_money' THEN 1
+            WHEN lp.payment_type = 'registration' THEN 2
+            ELSE 3
+        END,
+        es.emi_no ASC,
+        lp.payment_date DESC
+    ";
+
+    $stmt = $this->db->prepare($sql);
+    
+    if (!$stmt) {
+        error_log("Prepare failed: " . $this->db->error);
+        return [];
+    }
+
+    // Bind parameters dynamically
+    $stmt->bind_param($types, ...$params);
+    
+    if (!$stmt->execute()) {
+        error_log("Execute failed: " . $stmt->error);
+        return [];
+    }
+    
+    $result = $stmt->get_result();
+    $transactions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    
+    // Format dates and add additional calculated fields
+    foreach ($transactions as &$transaction) {
+        if (isset($transaction['payment_date'])) {
+            $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
+        }
+        
+        // Add status badge class - FIXED: Added 'partially_paid' case
+        if (isset($transaction['payment_status'])) {
+            switch ($transaction['payment_status']) {
+                case 'paid':
+                    $transaction['status_class'] = 'bg-success';
+                    $transaction['status_text'] = 'Paid';
+                    break;
+                case 'partially_paid':
+                    $transaction['status_class'] = 'bg-info';
+                    $transaction['status_text'] = 'Partially Paid';
+                    break;
+                case 'pending':
+                    $transaction['status_class'] = 'bg-warning';
+                    $transaction['status_text'] = 'Pending';
+                    break;
+                case 'failed':
+                    $transaction['status_class'] = 'bg-danger';
+                    $transaction['status_text'] = 'Failed';
+                    break;
+                default:
+                    $transaction['status_class'] = 'bg-secondary';
+                    $transaction['status_text'] = ucfirst(str_replace('_', ' ', $transaction['payment_status']));
+            }
+        }
+    }
+
+    return $transactions;
+}
 }

@@ -5,21 +5,26 @@ $addPage = true;
 $show_breadcrumb = true;
 ?>
 <style>
-        .card__icon span {
-    color: var(--clr-theme-primary);
-    background: rgba(108, 95, 252, 0.1);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    text-align: center;
-    justify-content: center;
-    align-items: center;
-    font-size: 16px;
-}
-.card__title {
-    font-size: 1.25rem;
-}
+    .card__icon span {
+        color: var(--clr-theme-primary);
+        background: rgba(108, 95, 252, 0.1);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
+        font-size: 16px;
+    }
+
+    .card__title {
+        font-size: 1.25rem;
+    }
+    .table__icon{
+            background: #6c5ffc;
+    color: #fff;
+    }
 </style>
 <div class="row">
     <!-- Summary Cards -->
@@ -93,12 +98,18 @@ $show_breadcrumb = true;
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title" style="margin-top: -13px;">Cash Out Transactions</h5>
                 <div class="d-flex flex-wrap justify-content-end gap-2">
+                    <!-- In the action buttons section, add this after "Manage Categories" button -->
+                    <a href="<?= $GLOBALS['base_url'] ?>/management-cash-out-statement" class="btn btn-primary">
+                        <i class="fa-light fa-file-invoice me-2"></i> Get Statement
+                    </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/management-categories" class="btn btn-info">
                         <i class="fa-light fa-layer-group me-2"></i> Manage Categories
                     </a>
+                    
                     <a href="<?= $GLOBALS['base_url'] ?>/add-management-cash-out" class="btn btn-success">
                         <i class="fa-light fa-plus me-2"></i> Add Transaction
                     </a>
+                    
                 </div>
             </div>
             <div class="card__body">
@@ -188,7 +199,13 @@ $show_breadcrumb = true;
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-center justify-content-start gap-10">
-                                                <a href="<?= $GLOBALS['base_url'] ?>/edit-management-cash-out?id=<?= $transaction['id'] ?>" class="table__icon edit" title="Edit">
+                                            <a href="<?= $GLOBALS['base_url'] ?>/management-cash-out-invoice?id=<?= $transaction['id'] ?>" 
+   class="table__icon view" 
+   title="View Invoice" 
+   target="_blank">
+    <i class="fa-light fa-file-invoice"></i>
+</a>   
+                                            <a href="<?= $GLOBALS['base_url'] ?>/edit-management-cash-out?id=<?= $transaction['id'] ?>" class="table__icon edit" title="Edit">
                                                     <i class="fa-sharp fa-light fa-pen"></i>
                                                 </a>
                                                 <a href="#" class="removeBtn table__icon delete" onclick="deleteTransaction(<?= $transaction['id'] ?>)" title="Delete">
@@ -234,27 +251,27 @@ $show_breadcrumb = true;
 </div>
 
 <script>
-function deleteTransaction(transactionId) {
-    if (confirm('Are you sure you want to delete this cash out transaction?')) {
-        window.location.href = '<?= $GLOBALS['base_url'] ?>/delete-management-cash-out?id=' + transactionId;
+    function deleteTransaction(transactionId) {
+        if (confirm('Are you sure you want to delete this cash out transaction?')) {
+            window.location.href = '<?= $GLOBALS['base_url'] ?>/delete-management-cash-out?id=' + transactionId;
+        }
     }
-}
 
-function showFullDescription(transactionId) {
-    fetch('<?= $GLOBALS['base_url'] ?>/get-cashout-transaction-details?id=' + transactionId)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                document.getElementById('descriptionContent').innerHTML = data.error;
-            } else {
-                document.getElementById('descriptionContent').innerHTML = 
-                    data.description ? data.description.replace(/\n/g, '<br>') : 'No description provided.';
-            }
-            new bootstrap.Modal(document.getElementById('descriptionModal')).show();
-        })
-        .catch(error => {
-            document.getElementById('descriptionContent').innerHTML = 'Error loading description.';
-            new bootstrap.Modal(document.getElementById('descriptionModal')).show();
-        });
-}
+    function showFullDescription(transactionId) {
+        fetch('<?= $GLOBALS['base_url'] ?>/get-cashout-transaction-details?id=' + transactionId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('descriptionContent').innerHTML = data.error;
+                } else {
+                    document.getElementById('descriptionContent').innerHTML =
+                        data.description ? data.description.replace(/\n/g, '<br>') : 'No description provided.';
+                }
+                new bootstrap.Modal(document.getElementById('descriptionModal')).show();
+            })
+            .catch(error => {
+                document.getElementById('descriptionContent').innerHTML = 'Error loading description.';
+                new bootstrap.Modal(document.getElementById('descriptionModal')).show();
+            });
+    }
 </script>
