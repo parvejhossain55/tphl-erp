@@ -434,15 +434,12 @@ public function getTransactionsByBookingId($bookingId)
 /**
  * Get payment summary by booking ID including EMI numbers
  */
-<<<<<<< HEAD
-=======
 /**
  * Get payment summary by booking ID including EMI numbers
  */
 /**
  * Get payment summary by booking ID including EMI numbers
  */
->>>>>>> 540a74c4563983d1a670b4c40bb59bea8f3569ef
 public function getPaymentSummaryByBookingId($bookingId)
 {
     $summary = [
@@ -631,8 +628,6 @@ public function getPaymentSummaryByBookingId($bookingId)
     }
     $summary['formatted_pending_emi_numbers'] = implode(', ', $summary['expected_pending_numbers']);
 
-<<<<<<< HEAD
-=======
 
         $dueQuery = $this->db->prepare("
         SELECT 
@@ -652,7 +647,6 @@ public function getPaymentSummaryByBookingId($bookingId)
     $summary['total_due_amount'] = $dueData['total_due_amount'] ?? 0;
     $summary['due_emi_count'] = $dueData['due_emi_count'] ?? 0;
 
->>>>>>> 540a74c4563983d1a670b4c40bb59bea8f3569ef
     return $summary;
 }
 
@@ -684,7 +678,7 @@ public function getPaymentSummaryByBookingId($bookingId)
     }
 /**
 
-    /**
+
      * Get transaction by ID
      */
     public function getTransactionById($paymentId)
