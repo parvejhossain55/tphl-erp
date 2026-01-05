@@ -333,6 +333,8 @@ $disable_layout = true;
                     <p class="invoice-number">Date: <?= date('d M, Y', strtotime($payment['payment_date'] ?? 'now')) ?></p>
                     <?php if (($payment['payment_status'] ?? 'paid') === 'paid'): ?>
                         <span class="paid-stamp">PAID</span>
+                    <?php elseif (($payment['payment_status'] ?? 'partially_paid') === 'partially_paid'): ?>
+                        <span class="pending-stamp">Partially Paid</span>
                     <?php else: ?>
                         <span class="pending-stamp">PENDING</span>
                     <?php endif; ?>
@@ -472,7 +474,7 @@ $disable_layout = true;
                 <?php endif; ?>
                 <div class="method-item">
                     <span class="detail-label">Status:</span>
-                    <span class="detail-value"><?= strtoupper($emiSchedule['status'] ?? 'N/A') ?></span>
+                    <span class="detail-value"><?= strtoupper($payment['payment_status'] ?? 'N/A') ?></span>
                 </div>
             </div>
         </div>

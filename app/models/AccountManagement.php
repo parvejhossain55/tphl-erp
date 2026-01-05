@@ -2,6 +2,8 @@
 class AccountManagement extends Model
 {
     protected $db;
+        protected $managementModel;   
+    protected $roleModel; 
     protected $table = 'management_cashin';
 
     public function __construct($db)

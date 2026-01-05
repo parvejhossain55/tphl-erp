@@ -256,8 +256,8 @@ $show_breadcrumb = true;
                             <tr class="table__title table__sort">
                                 <th>Date</th>
                                 <th>Installment</th>
-                                <th>Type</th>
                                 <th>Paid Amount</th>
+                                <th>Due Ammount</th>
                                 <th>Status</th>
                                 <th>Method</th>
                                 <th>Payment Details</th>
@@ -295,11 +295,27 @@ $show_breadcrumb = true;
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?= strtoupper(str_replace('_', ' ', $transaction['payment_type'])) ?>
-                                        </td>
-                                        <td>
                                             <strong>৳<?= number_format($transaction['amount'] ?? 0, 2) ?></strong>
                                         </td>
+                                                                <td>
+                            <?php 
+                            $dueAmount = 0;
+                            
+                            // For EMI transactions, get due_emi_amount from emi_schedules
+                            if ($transaction['payment_type'] === 'emi' && isset($transaction['due_emi_amount'])) {
+                                $dueAmount = floatval($transaction['due_emi_amount']);
+                            }
+                            
+                            // Display due amount with styling
+                            if ($dueAmount > 0): 
+                            ?>
+                                <div class="d-flex align-items-center gap-1">
+                                    <strong style="color: #e74c3c;">৳<?= number_format($dueAmount, 2) ?></strong>
+                                </div>
+                            <?php else: ?>
+                                <span class="text-muted" style="font-size: 18px;">—</span>
+                            <?php endif; ?>
+                        </td>
                                         <td>
                                             <?php if (isset($transaction['status_class']) && isset($transaction['status_text'])): ?>
                                                 <span class="bd-badge <?= $transaction['status_class'] ?>">

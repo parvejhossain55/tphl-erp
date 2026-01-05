@@ -226,12 +226,15 @@ public function addTransaction()
                 'due_emi_amount' => $_POST['due_emi_amount'] ?? 0
             ];
 
-            // Validate EMI data
-            // if (empty($emiScheduleData['due_emi_amount']) || $emiScheduleData['due_emi_amount'] <= 0) {
-            //     setError("Please enter a valid due amount for EMI");
-            //     header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
-            //     exit;
-            // }
+            // UPDATED VALIDATION: Only require due amount for partially_paid status
+            if ($transactionData['payment_status'] === 'partially_paid') {
+                if (empty($emiScheduleData['due_emi_amount']) || $emiScheduleData['due_emi_amount'] <= 0) {
+                    setError("Partially Paid status requires a due amount greater than 0");
+                    header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
+                    exit;
+                }
+            }
+            // For 'paid' status, due_emi_amount can be 0 or null - no validation needed
         }
 
         // Add transaction with EMI schedule if applicable
@@ -327,7 +330,19 @@ public function updateTransaction()
         
         error_log("Session User ID: " . ($_SESSION['user_id'] ?? 'null'));
 
-        // Prepare transaction data WITHOUT updated_by (table doesn't have this column)
+        // Get the OLD transaction data to compare due amounts
+        $oldTransaction = $this->clientModel->getTransactionById($paymentId);
+        $oldEmiSchedule = null;
+        $oldDueAmount = 0;
+        
+        if ($oldTransaction && $oldTransaction['payment_type'] === 'emi') {
+            $oldEmiSchedule = $this->clientModel->getEMIScheduleByPaymentId($paymentId);
+            $oldDueAmount = (float)($oldEmiSchedule['due_emi_amount'] ?? 0);
+        }
+
+        error_log("Old Due Amount: " . $oldDueAmount);
+
+        // Prepare transaction data
         $transactionData = [
             'payment_id' => $paymentId,
             'booking_id' => $bookingId,
@@ -341,7 +356,6 @@ public function updateTransaction()
             'bank_account_no' => $_POST['bank_account_no'] ?? null,
             'cheque_no' => $_POST['cheque_no'] ?? null,
             'online_type' => $_POST['online_type'] ?? null
-            // Removed: 'updated_by' => $_SESSION['user_id'] ?? 1 (column doesn't exist)
         ];
 
         error_log("Transaction Data for update: " . print_r($transactionData, true));
@@ -349,17 +363,33 @@ public function updateTransaction()
         // EMI schedule data (only if payment type is EMI)
         $emiScheduleData = null;
         if ($transactionData['payment_type'] === 'emi') {
+            $newDueAmount = (float)($_POST['due_emi_amount'] ?? 0);
+            
             $emiScheduleData = [
-                'due_emi_amount' => $_POST['due_emi_amount'] ?? 0
+                'due_emi_amount' => $newDueAmount,
+                'old_due_amount' => $oldDueAmount  // Pass old due amount for calculation
             ];
 
+            error_log("New Due Amount: " . $newDueAmount);
             error_log("EMI Schedule Data: " . print_r($emiScheduleData, true));
 
-            // Validate EMI data
-            if (empty($emiScheduleData['due_emi_amount']) || $emiScheduleData['due_emi_amount'] <= 0) {
-                setError("Please enter a valid due amount for EMI");
-                header("Location: {$GLOBALS['base_url']}/edit-client-cash-in?payment_id={$paymentId}");
-                exit;
+            // UPDATED VALIDATION: Only require due amount for partially_paid status
+            if ($transactionData['payment_status'] === 'partially_paid') {
+                if (empty($emiScheduleData['due_emi_amount']) || $emiScheduleData['due_emi_amount'] <= 0) {
+                    setError("Partially Paid status requires a due amount greater than 0");
+                    header("Location: {$GLOBALS['base_url']}/edit-client-cash-in?payment_id={$paymentId}");
+                    exit;
+                }
+            }
+
+            // Calculate the additional payment made (if due amount decreased)
+            if ($oldDueAmount > 0 && $newDueAmount < $oldDueAmount) {
+                $additionalPayment = $oldDueAmount - $newDueAmount;
+                error_log("Additional payment detected: " . $additionalPayment);
+                
+                // Add this to the transaction amount
+                $transactionData['amount'] = (float)$transactionData['amount'] + $additionalPayment;
+                error_log("Updated transaction amount: " . $transactionData['amount']);
             }
         }
 

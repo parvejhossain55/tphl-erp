@@ -3,13 +3,16 @@ class AccountManagementCategoryController extends Controller
 {
     protected $db;
     protected $categoryModel;
+        protected $managementModel;   // ✅ MISSING
+    protected $roleModel; 
 
-    public function __construct($db)
-    {
-        $this->db = $db;
-        $this->categoryModel = new ManagementCategory($this->db);
-        if (session_status() === PHP_SESSION_NONE) session_start();
-    }
+public function __construct($db)
+{
+    $this->db = $db;
+    $this->managementModel = new AccountManagement($this->db);
+    $this->roleModel = new ManagementRole($this->db);  // This actually manages categories, not roles
+    if (session_status() === PHP_SESSION_NONE) session_start();
+}
 
     // Display categories list
     public function index()

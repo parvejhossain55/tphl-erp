@@ -628,6 +628,25 @@ public function getPaymentSummaryByBookingId($bookingId)
     }
     $summary['formatted_pending_emi_numbers'] = implode(', ', $summary['expected_pending_numbers']);
 
+
+        $dueQuery = $this->db->prepare("
+        SELECT 
+            SUM(es.due_emi_amount) as total_due_amount,
+            COUNT(*) as due_emi_count
+        FROM emi_schedules es
+        WHERE es.lead_booking_id = ?
+        AND es.due_emi_amount > 0
+    ");
+
+    $dueQuery->bind_param("i", $bookingId);
+    $dueQuery->execute();
+    $dueResult = $dueQuery->get_result();
+    $dueData = $dueResult ? $dueResult->fetch_assoc() : [];
+
+    // Add to summary array
+    $summary['total_due_amount'] = $dueData['total_due_amount'] ?? 0;
+    $summary['due_emi_count'] = $dueData['due_emi_count'] ?? 0;
+
     return $summary;
 }
 
@@ -705,15 +724,19 @@ public function getPaymentSummaryByBookingId($bookingId)
 /**
  * Update transaction with EMI schedule
  */
+/**
+ * Update transaction with EMI schedule and due amount tracking
+ */
 public function updateTransactionWithEMI($transactionData, $emiScheduleData = null)
 {
     error_log("=== MODEL: updateTransactionWithEMI START ===");
     error_log("Transaction Data: " . print_r($transactionData, true));
+    error_log("EMI Schedule Data: " . print_r($emiScheduleData, true));
 
     $this->db->begin_transaction();
 
     try {
-        // Update the payment transaction WITHOUT updated_by column
+        // Update the payment transaction
         $stmt = $this->db->prepare("
             UPDATE lead_payments SET
                 payment_type = ?,
@@ -734,7 +757,7 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
             throw new Exception("Prepare failed: " . $this->db->error);
         }
 
-        // Bind parameters WITHOUT updated_by
+        // Bind parameters
         $stmt->bind_param(
             "sdssssssssi",
             $transactionData['payment_type'],
@@ -763,7 +786,7 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
             
             // Check if EMI schedule already exists
             $checkStmt = $this->db->prepare("
-                SELECT id, emi_no FROM emi_schedules WHERE lead_payment_id = ?
+                SELECT id, emi_no, due_emi_amount FROM emi_schedules WHERE lead_payment_id = ?
             ");
             $checkStmt->bind_param("i", $transactionData['payment_id']);
             $checkStmt->execute();
@@ -787,8 +810,10 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
                     throw new Exception("EMI schedule prepare failed: " . $this->db->error);
                 }
 
-                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 'pending';
+                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 
+                         ($transactionData['payment_status'] === 'partially_paid' ? 'partially_paid' : 'pending');
                 
+                // Use the updated transaction amount (which includes additional payment)
                 $emiStmt->bind_param(
                     "ddssi",
                     $transactionData['amount'],
@@ -804,6 +829,16 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
                 }
                 
                 error_log("EMI schedule updated successfully");
+                
+                // Log the due amount change
+                $oldDue = (float)($emiScheduleData['old_due_amount'] ?? 0);
+                $newDue = (float)($emiScheduleData['due_emi_amount'] ?? 0);
+                
+                if ($oldDue > 0 && $newDue < $oldDue) {
+                    $reduction = $oldDue - $newDue;
+                    error_log("Due amount reduced by: " . $reduction);
+                    error_log("This amount has been added to the paid amount");
+                }
             } else {
                 error_log("Creating new EMI schedule...");
                 
@@ -833,7 +868,8 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
                     throw new Exception("EMI schedule insert prepare failed: " . $this->db->error);
                 }
 
-                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 'pending';
+                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 
+                         ($transactionData['payment_status'] === 'partially_paid' ? 'partially_paid' : 'pending');
                 
                 $emiStmt->bind_param(
                     "iiddssi",

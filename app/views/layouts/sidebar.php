@@ -343,6 +343,12 @@
                                <span class="sidebar__menu-label">Accounts Dashboard</span>
                            </a>
                        </li>
+                       <li class="slide <?= isActive('central-statement', $current_route) ?>">
+                           <a href="<?= $base_url ?>/central-statement" class="sidebar__menu-item <?= isActive('central-statement', $current_route) ?>">
+                               <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                               <span class="sidebar__menu-label">Central Statement</span>
+                           </a>
+                       </li>
 
                        <!-- Cash In Manage -->
                        <li class="slide has-sub <?= isActive(['clients-cash-in', 'management-cash-in'], $current_route) ?>">

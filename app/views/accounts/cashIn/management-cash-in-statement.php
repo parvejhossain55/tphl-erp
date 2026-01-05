@@ -30,44 +30,71 @@ foreach ($transactions as $transaction) {
 }
 
 // Function to convert number to English words
-function convertNumberToWords($number) {
+function convertNumberToWords($number)
+{
     // If number is 0
     if ($number == 0) {
         return "Zero Taka";
     }
-    
+
     // Remove commas and format
     $number = (float)str_replace(',', '', $number);
-    
+
     // Split into taka and paisa
     $parts = explode('.', number_format($number, 2, '.', ''));
     $taka = $parts[0];
     $paisa = isset($parts[1]) ? $parts[1] : '00';
-    
+
     // Word arrays
     $ones = array(
-        '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
-        'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 
-        'Seventeen', 'Eighteen', 'Nineteen'
+        '',
+        'One',
+        'Two',
+        'Three',
+        'Four',
+        'Five',
+        'Six',
+        'Seven',
+        'Eight',
+        'Nine',
+        'Ten',
+        'Eleven',
+        'Twelve',
+        'Thirteen',
+        'Fourteen',
+        'Fifteen',
+        'Sixteen',
+        'Seventeen',
+        'Eighteen',
+        'Nineteen'
     );
-    
+
     $tens = array(
-        '', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'
+        '',
+        '',
+        'Twenty',
+        'Thirty',
+        'Forty',
+        'Fifty',
+        'Sixty',
+        'Seventy',
+        'Eighty',
+        'Ninety'
     );
-    
+
     $thousands = array('', 'Thousand', 'Million', 'Billion');
-    
+
     // Nested function to convert a number less than 1000
-    $convertUnder1000 = function($num) use ($ones, $tens) {
+    $convertUnder1000 = function ($num) use ($ones, $tens) {
         $word = '';
         $num = (int)$num;
-        
+
         if ($num >= 100) {
             $word .= $ones[floor($num / 100)] . ' Hundred';
             $num %= 100;
             if ($num > 0) $word .= ' ';
         }
-        
+
         if ($num >= 20) {
             $word .= $tens[floor($num / 10)];
             $num %= 10;
@@ -75,26 +102,26 @@ function convertNumberToWords($number) {
         } elseif ($num > 0) {
             $word .= $ones[$num];
         }
-        
+
         return $word;
     };
-    
+
     // Convert taka
     $takaWords = '';
     $taka = (int)$taka;
-    
+
     if ($taka == 0) {
         $takaWords = '';
     } else {
         $groups = array();
         $i = 0;
-        
+
         while ($taka > 0) {
             $groups[$i] = $taka % 1000;
             $taka = (int)($taka / 1000);
             $i++;
         }
-        
+
         for ($j = count($groups) - 1; $j >= 0; $j--) {
             if ($groups[$j] != 0) {
                 $groupWords = $convertUnder1000($groups[$j]);
@@ -103,14 +130,14 @@ function convertNumberToWords($number) {
                 }
             }
         }
-        
+
         $takaWords = trim($takaWords) . ' Taka';
     }
-    
+
     // Convert paisa
     $paisaWords = '';
     $paisa = (int)$paisa;
-    
+
     if ($paisa > 0) {
         if ($paisa >= 20) {
             $paisaWords = $tens[floor($paisa / 10)];
@@ -123,7 +150,7 @@ function convertNumberToWords($number) {
         }
         $paisaWords .= ' Paisa';
     }
-    
+
     // Combine
     $result = '';
     if ($takaWords != '' && $paisaWords != '') {
@@ -135,7 +162,7 @@ function convertNumberToWords($number) {
     } else {
         $result = 'Zero Taka';
     }
-    
+
     return ucfirst(trim($result));
 }
 
@@ -144,6 +171,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -157,13 +185,15 @@ $totalAmountWords = convertNumberToWords($totalAmount);
 
         /* Print Styles */
         @media print {
-            .no-print { 
-                display: none !important; 
+            .no-print {
+                display: none !important;
             }
-            .no-pdf { 
-                display: none !important; 
+
+            .no-pdf {
+                display: none !important;
             }
-            body { 
+
+            body {
                 margin: 0 !important;
                 padding: 0 !important;
                 width: 210mm;
@@ -172,7 +202,8 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            .statement-container { 
+
+            .statement-container {
                 width: 210mm !important;
                 min-height: 297mm !important;
                 margin: 0 !important;
@@ -180,13 +211,16 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                 box-shadow: none !important;
                 border: none !important;
             }
-            .page-break { 
+
+            .page-break {
                 page-break-before: always;
                 margin-top: 20mm;
             }
+
             .avoid-break {
                 page-break-inside: avoid;
             }
+
             .period-filter,
             .action-buttons {
                 display: none !important;
@@ -510,7 +544,8 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             font-weight: bold;
         }
 
-        .status-pending, .status-failed {
+        .status-pending,
+        .status-failed {
             font-style: italic;
             color: #666;
         }
@@ -621,7 +656,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             background: #fff;
             padding: 2mm;
             border: 0.2mm solid #ccc;
-            box-shadow: 0 1mm 3mm rgba(0,0,0,0.1);
+            box-shadow: 0 1mm 3mm rgba(0, 0, 0, 0.1);
         }
 
         /* No Data */
@@ -634,16 +669,30 @@ $totalAmountWords = convertNumberToWords($totalAmount);
         }
 
         /* Utility */
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .text-bold { font-weight: bold; }
-        .monospace { font-family: 'Courier New', monospace; }
-        .uppercase { text-transform: uppercase; }
-        
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-bold {
+            font-weight: bold;
+        }
+
+        .monospace {
+            font-family: 'Courier New', monospace;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+        }
+
         .keep-together {
             page-break-inside: avoid;
         }
-        
+
         .no-pdf {
             display: block;
         }
@@ -695,6 +744,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
         }
     </style>
 </head>
+
 <body>
     <!-- Action Buttons -->
     <div class="action-buttons no-print no-pdf" style="margin-bottom: 66px;">
@@ -720,7 +770,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                         Phone: +8801958253300 | Email: info@dpremiumhomes.com
                     </div>
                 </div>
-                
+
                 <div class="statement-info">
                     <div class="statement-title">Management Statement</div>
                     <div class="statement-meta">
@@ -748,13 +798,13 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                     <option value="12" <?= (($period ?? '') === '12') ? 'selected' : '' ?>>Last 12 Months</option>
                     <option value="custom" <?= (($period ?? '') === 'custom') ? 'selected' : '' ?>>Custom Range</option>
                 </select>
-                
+
                 <div id="customDateRange" style="display: <?= (($period ?? '') === 'custom') ? 'flex' : 'none' ?>; gap: 1mm; align-items: center;">
                     <input type="date" id="fromDate" value="<?= htmlspecialchars($fromDate ?? '') ?>">
                     <span>to</span>
                     <input type="date" id="toDate" value="<?= htmlspecialchars($toDate ?? '') ?>">
                 </div>
-                
+
                 <button onclick="applyFilter()">Apply</button>
             </div>
         </div>
@@ -808,7 +858,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                     Showing <?= count($transactions) ?> transactions (<?= $paidTransactionCount ?> paid)
                 </span>
             </div>
-            
+
             <table class="transaction-table">
                 <thead>
                     <tr>
@@ -825,63 +875,62 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                     <?php if (!empty($transactions)): ?>
                         <?php $counter = 0; ?>
                         <?php foreach ($transactions as $transaction): ?>
-                            <?php 
-                            $counter++; 
+                            <?php
+                            $counter++;
                             $status = $transaction['payment_status'] ?? 'paid';
-                            $statusClass = ($status === 'paid') ? 'status-paid' : 
-                                         (($status === 'pending') ? 'status-pending' : 'status-failed');
+                            $statusClass = ($status === 'paid') ? 'status-paid' : (($status === 'pending') ? 'status-pending' : 'status-failed');
                             $statusText = strtoupper($status);
                             ?>
                             <?php if ($counter > 15): ?>
-                                </tbody>
-                                </table>
-                                <div class="page-break"></div>
-                                <table class="transaction-table">
-                                <thead>
-                                    <tr>
-                                        <th class="date">Date</th>
-                                        <th class="source">Source</th>
-                                        <th class="role">Role</th>
-                                        <th class="person">Person</th>
-                                        <th class="method">Method</th>
-                                        <th class="status">Status</th>
-                                        <th class="amount">Amount (৳)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                <?php $counter = 1; ?>
-                            <?php endif; ?>
-                            <tr class="keep-together">
-                                <td class="date">
-                                    <?= date('d-M-Y', strtotime($transaction['transaction_date'] ?? 'now')) ?>
-                                </td>
-                                <td class="source">
-                                    <?= htmlspecialchars($transaction['source'] ?? 'N/A') ?>
-                                </td>
-                                <td class="role">
-                                    <?= htmlspecialchars($transaction['role_name'] ?? 'N/A') ?>
-                                </td>
-                                <td class="person">
-                                    <?= htmlspecialchars($transaction['person_name'] ?? 'N/A') ?>
-                                </td>
-                                <td class="method">
-                                    <?= ucfirst($transaction['payment_method'] ?? 'N/A') ?>
-                                </td>
-                                <td class="status">
-                                    <span class="<?= $statusClass ?>"><?= $statusText ?></span>
-                                </td>
-                                <td class="amount">
-                                    <?= number_format($transaction['amount'] ?? 0, 2) ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="7" class="no-data">
-                                No transactions found for the selected period
-                            </td>
-                        </tr>
-                    <?php endif; ?>
+                </tbody>
+            </table>
+            <div class="page-break"></div>
+            <table class="transaction-table">
+                <thead>
+                    <tr>
+                        <th class="date">Date</th>
+                        <th class="source">Source</th>
+                        <th class="role">Role</th>
+                        <th class="person">Person</th>
+                        <th class="method">Method</th>
+                        <th class="status">Status</th>
+                        <th class="amount">Amount (৳)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $counter = 1; ?>
+                <?php endif; ?>
+                <tr class="keep-together">
+                    <td class="date">
+                        <?= date('d-M-Y', strtotime($transaction['transaction_date'] ?? 'now')) ?>
+                    </td>
+                    <td class="source">
+                        <?= htmlspecialchars($transaction['source'] ?? 'N/A') ?>
+                    </td>
+                    <td class="role">
+                        <?= htmlspecialchars($transaction['role_name'] ?? 'N/A') ?>
+                    </td>
+                    <td class="person">
+                        <?= htmlspecialchars($transaction['person_name'] ?? 'N/A') ?>
+                    </td>
+                    <td class="method">
+                        <?= ucfirst($transaction['payment_method'] ?? 'N/A') ?>
+                    </td>
+                    <td class="status">
+                        <span class="<?= $statusClass ?>"><?= $statusText ?></span>
+                    </td>
+                    <td class="amount">
+                        <?= number_format($transaction['amount'] ?? 0, 2) ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <tr>
+                <td colspan="7" class="no-data">
+                    No transactions found for the selected period
+                </td>
+            </tr>
+        <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -898,17 +947,17 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                     <td class="totals-value">৳<?= number_format($totalAmount, 2) ?></td>
                 </tr>
             </table>
-            
+
             <!-- Amount in Words -->
             <div class="amount-in-words">
                 <div class="label">Amount in Words:</div>
                 <div class="words"><?= htmlspecialchars($totalAmountWords) ?></div>
             </div>
-            
+
             <?php if (($statementSummary['transaction_count'] ?? 0) - $paidTransactionCount > 0): ?>
-            <div style="font-size: 8pt; color: #666; margin-top: 3mm; font-style: italic;">
-                Note: <?= ($statementSummary['transaction_count'] ?? 0) - $paidTransactionCount ?> transaction(s) with pending/failed status excluded from total amount
-            </div>
+                <div style="font-size: 8pt; color: #666; margin-top: 3mm; font-style: italic;">
+                    Note: <?= ($statementSummary['transaction_count'] ?? 0) - $paidTransactionCount ?> transaction(s) with pending/failed status excluded from total amount
+                </div>
             <?php endif; ?>
         </div>
 
@@ -920,140 +969,141 @@ $totalAmountWords = convertNumberToWords($totalAmount);
         </div>
     </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script>
-    function filterByPeriod() {
-        const period = document.getElementById('periodSelect').value;
-        const customRange = document.getElementById('customDateRange');
-        
-        if (period === 'custom') {
-            customRange.style.display = 'flex';
-            // Auto-fill dates if empty
-            if (!document.getElementById('fromDate').value) {
-                const today = new Date();
-                const lastMonth = new Date();
-                lastMonth.setMonth(today.getMonth() - 1);
-                
-                document.getElementById('fromDate').value = lastMonth.toISOString().split('T')[0];
-                document.getElementById('toDate').value = today.toISOString().split('T')[0];
-            }
-        } else {
-            customRange.style.display = 'none';
-        }
-    }
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        function filterByPeriod() {
+            const period = document.getElementById('periodSelect').value;
+            const customRange = document.getElementById('customDateRange');
 
-    function applyFilter() {
-        const period = document.getElementById('periodSelect').value;
-        let url = '<?= $GLOBALS['base_url'] ?>/management-cash-in-statement?period=' + period;
-        
-        if (period === 'custom') {
-            const fromDate = document.getElementById('fromDate').value;
-            const toDate = document.getElementById('toDate').value;
-            
-            if (!fromDate || !toDate) {
-                alert('Please select both from and to dates');
-                return;
-            }
-            
-            // Validate date order
-            if (fromDate > toDate) {
-                alert('From date cannot be later than To date');
-                return;
-            }
-            
-            url += '&from=' + fromDate + '&to=' + toDate;
-        }
-        
-        // Show loading indicator
-        const applyBtn = event?.target || document.querySelector('.period-filter button');
-        if (applyBtn) {
-            const originalText = applyBtn.textContent;
-            applyBtn.textContent = 'Applying...';
-            applyBtn.disabled = true;
-            
-            setTimeout(() => {
-                applyBtn.textContent = originalText;
-                applyBtn.disabled = false;
-                window.location.href = url;
-            }, 500);
-        } else {
-            window.location.href = url;
-        }
-    }
+            if (period === 'custom') {
+                customRange.style.display = 'flex';
+                // Auto-fill dates if empty
+                if (!document.getElementById('fromDate').value) {
+                    const today = new Date();
+                    const lastMonth = new Date();
+                    lastMonth.setMonth(today.getMonth() - 1);
 
-    function downloadPDF() {
-        const noPdfElements = document.querySelectorAll('.no-pdf');
-        noPdfElements.forEach(el => {
-            el.style.display = 'none';
-        });
-        
-        const element = document.getElementById('statement-content');
-        const opt = {
-            margin: [15, 15, 15, 15],
-            filename: 'MANAGEMENT_STATEMENT_ALL_ROLES_<?= date('Ymd_His') ?>.pdf',
-            image: { type: 'jpeg', quality: 1.0 },
-            html2canvas: { 
-                scale: 2,
-                useCORS: true,
-                letterRendering: true,
-                width: 794,
-                height: 1123,
-                ignoreElements: function(element) {
-                    return element.classList.contains('no-pdf');
+                    document.getElementById('fromDate').value = lastMonth.toISOString().split('T')[0];
+                    document.getElementById('toDate').value = today.toISOString().split('T')[0];
                 }
-            },
-            jsPDF: { 
-                unit: 'mm', 
-                format: 'a4', 
-                orientation: 'portrait',
-                compress: true
-            },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        };
-        
-        // Show loading indicator
-        const downloadBtn = document.querySelector('.btn-success');
-        if (downloadBtn) {
-            const originalText = downloadBtn.textContent;
-            downloadBtn.textContent = 'Generating PDF...';
-            downloadBtn.disabled = true;
+            } else {
+                customRange.style.display = 'none';
+            }
         }
-        
-        html2pdf().set(opt).from(element).save().then(() => {
-            noPdfElements.forEach(el => {
-                el.style.display = '';
-            });
-            
-            if (downloadBtn) {
-                downloadBtn.textContent = originalText;
-                downloadBtn.disabled = false;
+
+        function applyFilter() {
+            const period = document.getElementById('periodSelect').value;
+            let url = '<?= $GLOBALS['base_url'] ?>/management-cash-in-statement?period=' + period;
+
+            if (period === 'custom') {
+                const fromDate = document.getElementById('fromDate').value;
+                const toDate = document.getElementById('toDate').value;
+
+                if (!fromDate || !toDate) {
+                    alert('Please select both from and to dates');
+                    return;
+                }
+
+                // Validate date order
+                if (fromDate > toDate) {
+                    alert('From date cannot be later than To date');
+                    return;
+                }
+
+                url += '&from=' + fromDate + '&to=' + toDate;
             }
-        }).catch(error => {
-            alert('Error generating PDF: ' + error.message);
-            noPdfElements.forEach(el => {
-                el.style.display = '';
-            });
-            
-            if (downloadBtn) {
-                downloadBtn.textContent = originalText;
-                downloadBtn.disabled = false;
+
+            // Show loading indicator
+            const applyBtn = event?.target || document.querySelector('.period-filter button');
+            if (applyBtn) {
+                const originalText = applyBtn.textContent;
+                applyBtn.textContent = 'Applying...';
+                applyBtn.disabled = true;
+
+                setTimeout(() => {
+                    applyBtn.textContent = originalText;
+                    applyBtn.disabled = false;
+                    window.location.href = url;
+                }, 500);
+            } else {
+                window.location.href = url;
             }
+        }
+
+
+        function downloadPDF() {
+            const noPdfElements = document.querySelectorAll('.no-pdf');
+            noPdfElements.forEach(el => el.style.display = 'none');
+
+            const element = document.getElementById('statement-content');
+            const opt = {
+                margin: [15, 15, 15, 15],
+                filename: 'MANAGEMENT_STATEMENT_ALL_ROLES_<?= date('Ymd_His') ?>.pdf',
+                image: {
+                    type: 'jpeg',
+                    quality: 1.0
+                },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true,
+                    width: 794,
+                    height: 1123,
+                    ignoreElements: function(element) {
+                        return element.classList.contains('no-pdf');
+                    }
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'portrait',
+                    compress: true
+                },
+                pagebreak: {
+                    mode: ['avoid-all', 'css', 'legacy']
+                }
+            };
+
+            // Fix: declare originalText here
+            let originalText = '';
+            const downloadBtn = document.querySelector('.btn-success');
+            if (downloadBtn) {
+                originalText = downloadBtn.textContent;
+                downloadBtn.textContent = 'Generating PDF...';
+                downloadBtn.disabled = true;
+            }
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                noPdfElements.forEach(el => el.style.display = '');
+                if (downloadBtn) {
+                    downloadBtn.textContent = originalText;
+                    downloadBtn.disabled = false;
+                }
+            }).catch(error => {
+                alert('Error generating PDF: ' + error.message);
+                noPdfElements.forEach(el => el.style.display = '');
+                if (downloadBtn) {
+                    downloadBtn.textContent = originalText;
+                    downloadBtn.disabled = false;
+                }
+            });
+        }
+
+
+        // Initialize date pickers
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+
+            // Set max date for date inputs
+            const dateInputs = document.querySelectorAll('input[type="date"]');
+            dateInputs.forEach(input => {
+                input.max = today;
+            });
+
+            // Trigger filterByPeriod on page load to ensure correct state
+            filterByPeriod();
         });
-    }
-    
-    // Initialize date pickers
-    document.addEventListener('DOMContentLoaded', function() {
-        const today = new Date().toISOString().split('T')[0];
-        
-        // Set max date for date inputs
-        const dateInputs = document.querySelectorAll('input[type="date"]');
-        dateInputs.forEach(input => {
-            input.max = today;
-        });
-        
-        // Trigger filterByPeriod on page load to ensure correct state
-        filterByPeriod();
-    });
-</script>
+    </script>
 </body>
+
 </html>

@@ -287,7 +287,8 @@ $routes = [
 
 'management-cash-in-statement' => ["controller" => "AccountManagementController", "method" => "viewManagementStatement"],
 'management-cash-in-invoice' => ["controller" => "AccountManagementController", "method" => "viewTransactionInvoice"],
-
+'management-cash-out-statement' => ["controller" => "AccountManagementCashoutController", "method" => "showStatement"],
+'management-cash-out-invoice' => ["controller" => "AccountManagementCashoutController", "method" => "showInvoice"],
 // ==================== MANAGEMENT CASH OUT ROUTES ====================
 'management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "index"],
 'add-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "showAddForm"],
@@ -311,7 +312,13 @@ $routes = [
 'clients-cashin-view' => ["controller" => "AccountClientController", "method" => "indexView"],
 'clients-cash-in-history-view' => ["controller" => "AccountClientController", "method" => "indexTwoView"],
 'clients-cash-in-history-view/(\d+)' => ["controller" => "AccountClientController", "method" => "indexTwoView"],
-    //rafi End
+   
+
+// ==================== CENTRAL STATEMENT ROUTES ====================
+'central-statement' => ["controller" => "CentralStatementController", "method" => "index"],
+'central-statement-export' => ["controller" => "CentralStatementController", "method" => "exportCSV"],
+'central-statement-stats' => ["controller" => "CentralStatementController", "method" => "getQuickStats"],
+//rafi End
 
 
 ];

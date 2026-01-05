@@ -2,21 +2,21 @@
 class ManagementRole extends Model
 {
     protected $db;
-    protected $table = 'management_roles';
+    protected $table = 'management_categories';
 
     public function __construct($db)
     {
         $this->db = $db;
     }
 
-    // Get all active roles
-    public function getAllActiveRoles()
+    // Get all active categories
+    public function getAllActiveCategories()
     {
-        $sql = "SELECT mr.*, u.full_name as created_by_name
-                FROM {$this->table} mr
-                LEFT JOIN users u ON mr.created_by = u.id
-                WHERE mr.status = 1
-                ORDER BY mr.role_name ASC, mr.person_name ASC";
+        $sql = "SELECT mc.*, u.full_name as created_by_name
+                FROM {$this->table} mc
+                LEFT JOIN users u ON mc.created_by = u.id
+                WHERE mc.status = 'active'
+                ORDER BY mc.category_name ASC, mc.created_at DESC";
         
         $result = $this->db->query($sql);
         
@@ -25,22 +25,25 @@ class ManagementRole extends Model
             return [];
         }
         
-        $roles = [];
+        $categories = [];
         while ($row = $result->fetch_assoc()) {
-            $roles[] = $row;
+            $categories[] = $row;
         }
         
         $result->free();
-        return $roles;
+        return $categories;
     }
 
-    // Get all roles (including inactive)
-    public function getAllRoles()
+    // Get all categories (including inactive)
+    public function getAllCategories()
     {
-        $sql = "SELECT mr.*, u.full_name as created_by_name
-                FROM {$this->table} mr
-                LEFT JOIN users u ON mr.created_by = u.id
-                ORDER BY mr.status DESC, mr.role_name ASC, mr.person_name ASC";
+        $sql = "SELECT mc.*, u.full_name as created_by_name
+                FROM {$this->table} mc
+                LEFT JOIN users u ON mc.created_by = u.id
+                ORDER BY 
+                    CASE WHEN mc.status = 'active' THEN 1 ELSE 2 END,
+                    mc.category_name ASC,
+                    mc.created_at DESC";
         
         $result = $this->db->query($sql);
         
@@ -49,22 +52,22 @@ class ManagementRole extends Model
             return [];
         }
         
-        $roles = [];
+        $categories = [];
         while ($row = $result->fetch_assoc()) {
-            $roles[] = $row;
+            $categories[] = $row;
         }
         
         $result->free();
-        return $roles;
+        return $categories;
     }
 
-    // Get role by ID
-    public function getRoleById($id)
+    // Get category by ID
+    public function getCategoryById($id)
     {
-        $sql = "SELECT mr.*, u.full_name as created_by_name
-                FROM {$this->table} mr
-                LEFT JOIN users u ON mr.created_by = u.id
-                WHERE mr.id = ?";
+        $sql = "SELECT mc.*, u.full_name as created_by_name
+                FROM {$this->table} mc
+                LEFT JOIN users u ON mc.created_by = u.id
+                WHERE mc.id = ?";
         
         $stmt = $this->db->prepare($sql);
         
@@ -76,27 +79,26 @@ class ManagementRole extends Model
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result();
-        $role = $result->fetch_assoc();
+        $category = $result->fetch_assoc();
         
         $stmt->close();
-        return $role;
+        return $category;
     }
 
-    // Add new role
-    public function addRole($data)
+    // Add new category
+    public function addCategory($data)
     {
         try {
-            // Check if the EXACT COMBINATION of role_name AND person_name already exists
-            // This allows multiple Directors, but prevents duplicate "Director - John Doe"
-            if ($this->rolePersonCombinationExists($data['role_name'], $data['person_name'])) {
+            // Check if category name already exists
+            if ($this->categoryNameExists($data['category_name'])) {
                 return [
                     'success' => false,
-                    'message' => 'This role and person combination already exists.'
+                    'message' => 'Category name already exists.'
                 ];
             }
 
             $sql = "INSERT INTO {$this->table} 
-                    (role_name, person_name, status, created_by)
+                    (category_name, description, status, created_by)
                     VALUES (?, ?, ?, ?)";
             
             $stmt = $this->db->prepare($sql);
@@ -110,9 +112,9 @@ class ManagementRole extends Model
             }
             
             $stmt->bind_param(
-                "ssii",
-                $data['role_name'],
-                $data['person_name'],
+                "sssi",
+                $data['category_name'],
+                $data['description'],
                 $data['status'],
                 $data['created_by']
             );
@@ -124,14 +126,14 @@ class ManagementRole extends Model
             if ($result) {
                 return [
                     'success' => true,
-                    'message' => 'Role added successfully!',
+                    'message' => 'Category added successfully!',
                     'id' => $insertId
                 ];
             } else {
                 error_log("Execute failed: " . $this->db->error);
                 return [
                     'success' => false,
-                    'message' => 'Failed to add role.'
+                    'message' => 'Failed to add category.'
                 ];
             }
         } catch (Exception $e) {
@@ -143,22 +145,21 @@ class ManagementRole extends Model
         }
     }
 
-    // Update role
-    public function updateRole($data)
+    // Update category
+    public function updateCategory($data)
     {
         try {
-            // Check if the EXACT COMBINATION of role_name AND person_name already exists
-            // (excluding the current role being updated)
-            if ($this->rolePersonCombinationExists($data['role_name'], $data['person_name'], $data['id'])) {
+            // Check if category name already exists (excluding current category)
+            if ($this->categoryNameExists($data['category_name'], $data['id'])) {
                 return [
                     'success' => false,
-                    'message' => 'This role and person combination already exists.'
+                    'message' => 'Category name already exists.'
                 ];
             }
 
             $sql = "UPDATE {$this->table} SET
-                    role_name = ?,
-                    person_name = ?,
+                    category_name = ?,
+                    description = ?,
                     status = ?
                     WHERE id = ?";
             
@@ -173,9 +174,9 @@ class ManagementRole extends Model
             }
             
             $stmt->bind_param(
-                "ssii",
-                $data['role_name'],
-                $data['person_name'],
+                "sssi",
+                $data['category_name'],
+                $data['description'],
                 $data['status'],
                 $data['id']
             );
@@ -186,13 +187,13 @@ class ManagementRole extends Model
             if ($result) {
                 return [
                     'success' => true,
-                    'message' => 'Role updated successfully!'
+                    'message' => 'Category updated successfully!'
                 ];
             } else {
                 error_log("Execute failed: " . $this->db->error);
                 return [
                     'success' => false,
-                    'message' => 'Failed to update role.'
+                    'message' => 'Failed to update category.'
                 ];
             }
         } catch (Exception $e) {
@@ -204,15 +205,15 @@ class ManagementRole extends Model
         }
     }
 
-    // Delete role
-    public function deleteRole($id)
+    // Delete category
+    public function deleteCategory($id)
     {
         try {
-            // Check if role is being used in transactions
-            if ($this->roleInUse($id)) {
+            // Check if category is being used in transactions
+            if ($this->categoryInUse($id)) {
                 return [
                     'success' => false,
-                    'message' => 'Cannot delete role. It is being used in transactions.'
+                    'message' => 'Cannot delete category. It is being used in cash out transactions.'
                 ];
             }
 
@@ -234,13 +235,13 @@ class ManagementRole extends Model
             if ($result) {
                 return [
                     'success' => true,
-                    'message' => 'Role deleted successfully!'
+                    'message' => 'Category deleted successfully!'
                 ];
             } else {
                 error_log("Execute failed: " . $this->db->error);
                 return [
                     'success' => false,
-                    'message' => 'Failed to delete role.'
+                    'message' => 'Failed to delete category.'
                 ];
             }
         } catch (Exception $e) {
@@ -252,12 +253,12 @@ class ManagementRole extends Model
         }
     }
 
-    // Toggle role status
+    // Toggle category status
     public function toggleStatus($id)
     {
         try {
             $sql = "UPDATE {$this->table} 
-                    SET status = IF(status = 1, 0, 1) 
+                    SET status = IF(status = 'active', 'inactive', 'active') 
                     WHERE id = ?";
             
             $stmt = $this->db->prepare($sql);
@@ -279,13 +280,11 @@ class ManagementRole extends Model
         }
     }
 
-    // Check if the EXACT combination of role_name AND person_name exists
-    // This allows multiple people with the same role (e.g., multiple Directors)
-    // but prevents the same person from having the same role twice
-    private function rolePersonCombinationExists($roleName, $personName, $excludeId = null)
+    // Check if category name already exists
+    private function categoryNameExists($categoryName, $excludeId = null)
     {
         $sql = "SELECT id FROM {$this->table} 
-                WHERE role_name = ? AND person_name = ?";
+                WHERE category_name = ?";
         
         if ($excludeId) {
             $sql .= " AND id != ?";
@@ -298,9 +297,9 @@ class ManagementRole extends Model
         }
         
         if ($excludeId) {
-            $stmt->bind_param("ssi", $roleName, $personName, $excludeId);
+            $stmt->bind_param("si", $categoryName, $excludeId);
         } else {
-            $stmt->bind_param("ss", $roleName, $personName);
+            $stmt->bind_param("s", $categoryName);
         }
         
         $stmt->execute();
@@ -311,17 +310,17 @@ class ManagementRole extends Model
         return $exists;
     }
 
-    // Check if role is being used in transactions
-    private function roleInUse($roleId)
+    // Check if category is being used in cash out transactions
+    private function categoryInUse($categoryId)
     {
-        $sql = "SELECT id FROM management_cashin WHERE role_id = ? LIMIT 1";
+        $sql = "SELECT id FROM management_cashout WHERE category_id = ? LIMIT 1";
         $stmt = $this->db->prepare($sql);
         
         if (!$stmt) {
             return false;
         }
         
-        $stmt->bind_param("i", $roleId);
+        $stmt->bind_param("i", $categoryId);
         $stmt->execute();
         $result = $stmt->get_result();
         $inUse = $result->num_rows > 0;
@@ -330,11 +329,14 @@ class ManagementRole extends Model
         return $inUse;
     }
 
-    // Get count of roles by role name (useful for displaying "Director (3)" etc.)
-    public function getRoleCount($roleName)
+    // Get count of categories by status
+    public function getCategoryCount($status = null)
     {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table} 
-                WHERE role_name = ? AND status = 1";
+        $sql = "SELECT COUNT(*) as count FROM {$this->table}";
+        
+        if ($status) {
+            $sql .= " WHERE status = ?";
+        }
         
         $stmt = $this->db->prepare($sql);
         
@@ -342,12 +344,46 @@ class ManagementRole extends Model
             return 0;
         }
         
-        $stmt->bind_param("s", $roleName);
+        if ($status) {
+            $stmt->bind_param("s", $status);
+        }
+        
         $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
         $stmt->close();
         
         return $row['count'] ?? 0;
+    }
+
+    // Get categories with transaction counts
+    public function getCategoriesWithTransactionCounts()
+    {
+        $sql = "SELECT 
+                    mc.*,
+                    u.full_name as created_by_name,
+                    COUNT(mco.id) as transaction_count,
+                    COALESCE(SUM(mco.amount), 0) as total_amount
+                FROM {$this->table} mc
+                LEFT JOIN users u ON mc.created_by = u.id
+                LEFT JOIN management_cashout mco ON mc.id = mco.category_id
+                WHERE mc.status = 'active'
+                GROUP BY mc.id
+                ORDER BY mc.category_name ASC";
+        
+        $result = $this->db->query($sql);
+        
+        if (!$result) {
+            error_log("Database error: " . $this->db->error);
+            return [];
+        }
+        
+        $categories = [];
+        while ($row = $result->fetch_assoc()) {
+            $categories[] = $row;
+        }
+        
+        $result->free();
+        return $categories;
     }
 }

@@ -1,6 +1,114 @@
 <?php
 // Disable layout for this page
 $disable_layout = true;
+
+/**
+ * Convert number to words (for Bangladeshi currency)
+ */
+function numberToWords($number) {
+    $number = (float)$number;
+    
+    if ($number == 0) {
+        return 'Zero Taka Only';
+    }
+    
+    $integerPart = floor($number);
+    $decimalPart = round(($number - $integerPart) * 100);
+    
+    $ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    $teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    $tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    
+    $result = '';
+    
+    if ($integerPart >= 10000000) {
+        $crore = floor($integerPart / 10000000);
+        $result .= convertHelper($crore, $ones, $teens, $tens) . ' Crore ';
+        $integerPart %= 10000000;
+    }
+    
+    if ($integerPart >= 100000) {
+        $lakh = floor($integerPart / 100000);
+        $result .= convertHelper($lakh, $ones, $teens, $tens) . ' Lakh ';
+        $integerPart %= 100000;
+    }
+    
+    if ($integerPart >= 1000) {
+        $thousand = floor($integerPart / 1000);
+        $result .= convertHelper($thousand, $ones, $teens, $tens) . ' Thousand ';
+        $integerPart %= 1000;
+    }
+    
+    if ($integerPart >= 100) {
+        $hundred = floor($integerPart / 100);
+        $result .= $ones[$hundred] . ' Hundred ';
+        $integerPart %= 100;
+    }
+    
+    if ($integerPart > 0) {
+        $result .= convertHelper($integerPart, $ones, $teens, $tens);
+    }
+    
+    $result = trim($result) . ' Taka';
+    
+    if ($decimalPart > 0) {
+        $result .= ' and ' . convertHelper($decimalPart, $ones, $teens, $tens) . ' Paisa';
+    }
+    
+    return trim($result) . ' Only';
+}
+
+function convertHelper($number, $ones, $teens, $tens) {
+    $result = '';
+    
+    if ($number < 10) {
+        $result = $ones[$number];
+    } elseif ($number < 20) {
+        $result = $teens[$number - 10];
+    } elseif ($number < 100) {
+        $result = $tens[floor($number / 10)] . ' ' . $ones[$number % 10];
+    } else {
+        $result = $ones[floor($number / 100)] . ' Hundred ' . convertHelper($number % 100, $ones, $teens, $tens);
+    }
+    
+    return trim($result);
+}
+
+/**
+ * Calculate actual paid amount after deducting pending/due amounts
+ */
+function calculateActualPaidAmount(array $transactions): float
+{
+    $total = 0.0;
+
+    foreach ($transactions as $t) {
+        $status = strtolower($t['payment_status'] ?? '');
+
+        // Skip failed & pending completely
+        if (in_array($status, ['failed', 'pending'], true)) {
+            continue;
+        }
+
+        $amount = (float)($t['amount'] ?? 0);
+        $due    = (float)($t['due_emi_amount'] ?? 0);
+
+        if ($status === 'partially_paid') {
+            $total += max(0, $amount - $due);
+        } else {
+            $total += $amount;
+        }
+    }
+
+    return round($total, 2);
+}
+
+$validTransactions = array_values(array_filter($transactions, function ($t) {
+    $status = strtolower($t['payment_status'] ?? '');
+    return !in_array($status, ['failed', 'pending'], true);
+}));
+
+$actualPaidAmount = calculateActualPaidAmount($validTransactions);
+$amountInWords    = numberToWords($actualPaidAmount);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -139,92 +247,83 @@ $disable_layout = true;
             width: 25mm;
         }
 
-        /* Period Filter (Screen Only - Hidden for PDF) */
-.period-filter {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 14px 18px;
-    margin-bottom: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-}
+        /* Period Filter */
+        .period-filter {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        }
 
-/* Filter Row Layout */
-.period-filter .filter-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-}
+        .period-filter .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
 
-/* Label */
-.period-filter .filter-row span {
-    font-weight: 600;
-    color: #374151;
-    font-size: 14px;
-    white-space: nowrap;
-}
+        .period-filter .filter-row span {
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+            white-space: nowrap;
+        }
 
-/* Select & Date Inputs */
-.period-filter select,
-.period-filter input[type="date"] {
-    padding: 8px 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
-    color: #111827;
-    background-color: #fff;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
+        .period-filter select,
+        .period-filter input[type="date"] {
+            padding: 8px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #111827;
+            background-color: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
 
-/* Focus State */
-.period-filter select:focus,
-.period-filter input[type="date"]:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-    outline: none;
-}
+        .period-filter select:focus,
+        .period-filter input[type="date"]:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+            outline: none;
+        }
 
-/* Custom Date Range */
-#customDateRange {
-    background: #f9fafb;
-    padding: 6px 8px;
-    border-radius: 6px;
-    border: 1px dashed #d1d5db;
-}
+        #customDateRange {
+            background: #f9fafb;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px dashed #d1d5db;
+        }
 
-/* "to" text */
-#customDateRange span {
-    font-size: 13px;
-    color: #6b7280;
-    font-weight: 500;
-}
+        #customDateRange span {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+        }
 
-/* Apply Button */
-.period-filter button {
-    padding: 8px 16px;
-    background: linear-gradient(135deg, #2563eb, #1e40af);
-    color: #ffffff;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
-}
+        .period-filter button {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+        }
 
-/* Button Hover */
-.period-filter button:hover {
-    background: linear-gradient(135deg, #1e40af, #1e3a8a);
-    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
-    transform: translateY(-1px);
-}
+        .period-filter button:hover {
+            background: linear-gradient(135deg, #1e40af, #1e3a8a);
+            box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
+            transform: translateY(-1px);
+        }
 
-/* Button Active */
-.period-filter button:active {
-    transform: translateY(0);
-    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.2);
-}
+        .period-filter button:active {
+            transform: translateY(0);
+            box-shadow: 0 3px 8px rgba(37, 99, 235, 0.2);
+        }
 
         /* Client & Property Details */
         .details-section {
@@ -424,7 +523,23 @@ $disable_layout = true;
             font-size: 10pt;
         }
 
-        /* Footer */
+        .amount-in-words {
+            padding-top: 3mm;
+            font-style: italic;
+            text-align: right;
+            font-size: 8pt;
+            color: #333;
+        }
+
+        .calculation-note {
+            margin-top: 4mm;
+            padding: 2mm;
+            background: #f8f8f8;
+            border: 0.2mm solid #ccc;
+            font-size: 7pt;
+        }
+
+        /* Statement Footer */
         .statement-footer {
             position: absolute;
             bottom: 15mm;
@@ -455,7 +570,7 @@ $disable_layout = true;
             font-size: 8pt;
         }
 
-        /* Action Buttons (Screen Only - Hidden for PDF) */
+        /* Action Buttons */
         .action-buttons {
             position: fixed;
             top: 5mm;
@@ -485,101 +600,81 @@ $disable_layout = true;
         .monospace { font-family: 'Courier New', monospace; }
         .uppercase { text-transform: uppercase; }
         
-        /* For transaction rows that should stay together */
         .keep-together {
             page-break-inside: avoid;
         }
         
-        /* Class to hide elements in PDF */
         .no-pdf {
             display: block;
         }
-/* Base Button */
-.btn {
-    padding: 8px 16px;
-    font-size: 9pt;
-    font-weight: 600;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    line-height: 1;
-    transition: 
-        background-color 0.2s ease,
-        box-shadow 0.2s ease,
-        transform 0.1s ease,
-        opacity 0.2s ease;
-}
 
-/* Button Hover */
-.btn:hover {
-    opacity: 0.95;
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
-    transform: translateY(-1px);
-}
+        /* Button Styles */
+        .btn {
+            padding: 8px 16px;
+            font-size: 9pt;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease, opacity 0.2s ease;
+        }
 
-/* Button Active */
-.btn:active {
-    transform: translateY(0);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-}
+        .btn:hover {
+            opacity: 0.95;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
+        }
 
-/* Button Focus */
-.btn:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15);
-}
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+        }
 
-/* Success Button */
-.btn-success {
-    background: linear-gradient(135deg, #28a745, #1e7e34);
-    color: #ffffff;
-}
+        .btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15);
+        }
 
-/* Print Button */
-.btn-print {
-    background: linear-gradient(135deg, #ff3c00, #cc2f00);
-    color: #ffffff;
-}
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            color: #ffffff;
+        }
 
-/* Back Button */
-.btn-back {
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: #ffffff;
-    text-decoration: none;
-}
+        .btn-print {
+            background: linear-gradient(135deg, #ff3c00, #cc2f00);
+            color: #ffffff;
+        }
 
-/* Anchor buttons consistency */
-a.btn,
-a.btn-back {
-    text-decoration: none;
-}
+        .btn-back {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: #ffffff;
+            text-decoration: none;
+        }
 
-/* Disabled State */
-.btn:disabled,
-.btn[disabled] {
-    opacity: 0.6;
-    cursor: not-allowed;
-    box-shadow: none;
-    transform: none;
-}
+        a.btn, a.btn-back {
+            text-decoration: none;
+        }
 
-/* Print-safe */
-@media print {
-    .btn,
-    .btn-print,
-    .btn-back {
-        display: none !important;
-    }
-}
+        .btn:disabled, .btn[disabled] {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
 
+        @media print {
+            .btn, .btn-print, .btn-back {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- Action Buttons (Visible only on screen, hidden in PDF) -->
-
+    <!-- Action Buttons -->
     <div class="action-buttons no-print no-pdf" style="margin-bottom: 66px;">
         <button onclick="window.print()" class="btn btn-print">
             Print Statement
@@ -592,14 +687,14 @@ a.btn-back {
         </a>
     </div>
 
-    <div class="statement-container" id="statement-content" >
+    <div class="statement-container" id="statement-content">
         <!-- Header -->
         <div class="statement-header">
             <div class="company-header">
                 <div class="company-info">
                     <div class="company-name">The Premium Homes Ltd.</div>
                     <div class="company-details">
-                          Land View Commercial Center, 9th Floor 28 Gulshan North C/A, <br> Gulshan Circle-2, Dhaka<br>
+                        Land View Commercial Center, 9th Floor 28 Gulshan North C/A, <br> Gulshan Circle-2, Dhaka<br>
                         Phone: +8801958253300 | Email: info@dpremiumhomes.com
                     </div>
                 </div>
@@ -624,7 +719,7 @@ a.btn-back {
             </div>
         </div>
 
-        <!-- Period Filter (Visible only on screen, hidden in PDF) -->
+        <!-- Period Filter -->
         <div class="period-filter no-print no-pdf">
             <div class="filter-row">
                 <span>Statement Period:</span>
@@ -663,10 +758,6 @@ a.btn-back {
                         <span class="detail-label">Email:</span>
                         <span class="detail-value"><?= htmlspecialchars($clientDetails['email'] ?? 'N/A') ?></span>
                     </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Client ID:</span>
-                        <span class="detail-value"><?= str_pad($clientDetails['booking_id'], 6, '0', STR_PAD_LEFT) ?></span>
-                    </div>
                 </div>
 
                 <div class="details-box">
@@ -683,51 +774,17 @@ a.btn-back {
                         <span class="detail-label">Floor:</span>
                         <span class="detail-value"><?= htmlspecialchars($clientDetails['flat_no'] ?? 'N/A') ?></span>
                     </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Property ID:</span>
-                        <span class="detail-value">PRP-<?= str_pad($clientDetails['booking_id'], 6, '0', STR_PAD_LEFT) ?></span>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Account Summary -->
-        <div class="summary-section">
-            <div class="section-title">Account Summary</div>
-            <table class="summary-table">
-                <thead>
-                    <tr>
-                        <th style="width: 70%">Description</th>
-                        <th style="width: 30%">Amount (৳)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Total Property Value</td>
-                        <td class="amount"><?= number_format($paymentSummary['total_price'] ?? 0, 2) ?></td>
-                    </tr>
-                    <tr>
-                        <td>Total Paid (This Period)</td>
-                        <td class="amount"><?= number_format($statementSummary['total_paid'] ?? 0, 2) ?></td>
-                    </tr>
-                    <tr>
-                        <td>Outstanding Balance</td>
-                        <td class="amount"><?= number_format($paymentSummary['remaining_construction_fee'] ?? 0, 2) ?></td>
-                    </tr>
-                    <tr>
-                        <td>Total Transactions</td>
-                        <td class="amount"><?= $statementSummary['transaction_count'] ?? 0 ?></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
 
         <!-- Transaction History -->
         <div class="transaction-section">
             <div class="section-title">
                 Transaction History
                 <span style="float: right; font-weight: normal; font-size: 8pt;">
-                    Total Transactions: <?= $statementSummary['transaction_count'] ?? 0 ?>
+                    Total Transactions: <?= count($transactions) ?>
                 </span>
             </div>
             
@@ -797,6 +854,8 @@ a.btn-back {
                                 <td class="status">
                                     <?php if (($transaction['payment_status'] ?? 'paid') == 'paid'): ?>
                                         <span class="status-paid">PAID</span>
+                                    <?php elseif (($transaction['payment_status'] ?? '') == 'partially_paid'): ?>
+                                        <span class="status-pending">PARTIAL</span>
                                     <?php else: ?>
                                         <span class="status-pending">PENDING</span>
                                     <?php endif; ?>
@@ -822,16 +881,23 @@ a.btn-back {
             <table class="totals-table">
                 <tr>
                     <td class="totals-label">Subtotal (This Period):</td>
-                    <td class="totals-value">৳<?= number_format($statementSummary['total_paid'] ?? 0, 2) ?></td>
+                    <td class="totals-value">৳<?= number_format($actualPaidAmount, 2) ?></td>
                 </tr>
                 <tr class="grand-total">
                     <td class="totals-label">TOTAL PAID THIS PERIOD:</td>
-                    <td class="totals-value">৳<?= number_format($statementSummary['total_paid'] ?? 0, 2) ?></td>
+                    <td class="totals-value">৳<?= number_format($actualPaidAmount, 2) ?></td>
                 </tr>
             </table>
+            
+            <div class="amount-in-words">
+                <strong>Amount in Words:</strong> <?= $amountInWords ?>
+            </div>
+            
+            <div class="calculation-note">
+                <strong>Note:</strong> This total represents actual payments received. Pending transactions are excluded, 
+                and for partially paid transactions, the due amount has been deducted from the total.
+            </div>
         </div>
-
-
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -868,7 +934,6 @@ a.btn-back {
         }
 
         function downloadPDF() {
-            // Hide elements that should not appear in PDF
             const noPdfElements = document.querySelectorAll('.no-pdf');
             noPdfElements.forEach(el => {
                 el.style.display = 'none';
@@ -883,10 +948,9 @@ a.btn-back {
                     scale: 2,
                     useCORS: true,
                     letterRendering: true,
-                    width: 794, // A4 width in pixels at 96 DPI
-                    height: 1123, // A4 height in pixels at 96 DPI
+                    width: 794,
+                    height: 1123,
                     ignoreElements: function(element) {
-                        // Ignore elements with class 'no-pdf'
                         return element.classList.contains('no-pdf');
                     }
                 },
@@ -900,7 +964,6 @@ a.btn-back {
             };
             
             html2pdf().set(opt).from(element).save().then(() => {
-                // Restore elements after PDF generation
                 noPdfElements.forEach(el => {
                     el.style.display = '';
                 });

@@ -260,4 +260,153 @@ document.getElementById('transactionForm').addEventListener('submit', function(e
 });
 
     });
+
+//Partial status 
+
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentType = document.getElementById('paymentType');
+    const paymentMethod = document.getElementById('paymentMethod');
+    const dueEmiAmountField = document.getElementById('dueEmiAmount');
+    const paymentStatusSelect = document.querySelector('select[name="payment_status"]');
+    const amountField = document.getElementById('amount') || document.getElementById('amountField');
+    
+    const emiFields = document.querySelectorAll('.emi-fields');
+    const bankFields = document.querySelectorAll('.bank-fields');
+    const chequeFields = document.querySelectorAll('.cheque-fields');
+    const onlineFields = document.querySelectorAll('.online-fields');
+    
+    // Function to control Partially Paid status
+    function controlPartiallyPaidStatus() {
+        const paymentTypeValue = paymentType ? paymentType.value : document.querySelector('input[name="payment_type"]')?.value;
+        const dueAmount = parseFloat(dueEmiAmountField?.value) || 0;
+        const partiallyPaidOption = paymentStatusSelect.querySelector('option[value="partially_paid"]');
+        
+        if (paymentTypeValue === 'emi') {
+            if (dueAmount > 0) {
+                // Enable Partially Paid option
+                partiallyPaidOption.disabled = false;
+                partiallyPaidOption.textContent = 'Partially Paid';
+            } else {
+                // Disable Partially Paid option
+                partiallyPaidOption.disabled = true;
+                partiallyPaidOption.textContent = 'Partially Paid (Due amount required)';
+                
+                // If currently selected, change to 'paid'
+                if (paymentStatusSelect.value === 'partially_paid') {
+                    paymentStatusSelect.value = 'paid';
+                }
+            }
+        } else {
+            // For non-EMI payments, always disable partially_paid
+            partiallyPaidOption.disabled = true;
+            partiallyPaidOption.textContent = 'Partially Paid (Only for EMI)';
+            
+            // If currently selected, change to 'paid'
+            if (paymentStatusSelect.value === 'partially_paid') {
+                paymentStatusSelect.value = 'paid';
+            }
+        }
+    }
+    
+    // Show/hide EMI fields when payment type changes
+    if (paymentType) {
+        paymentType.addEventListener('change', function() {
+            const isEMI = this.value === 'emi';
+            
+            emiFields.forEach(field => field.style.display = isEMI ? 'block' : 'none');
+            
+            if (dueEmiAmountField) {
+                if (isEMI) {
+                    dueEmiAmountField.setAttribute('required', 'required');
+                } else {
+                    dueEmiAmountField.removeAttribute('required');
+                    dueEmiAmountField.value = ''; // Clear the value
+                }
+            }
+            
+            // Control partially paid status when payment type changes
+            controlPartiallyPaidStatus();
+        });
+    }
+    
+    // Listen to due amount field changes
+    if (dueEmiAmountField) {
+        dueEmiAmountField.addEventListener('input', function() {
+            controlPartiallyPaidStatus();
+        });
+        
+        dueEmiAmountField.addEventListener('change', function() {
+            controlPartiallyPaidStatus();
+        });
+    }
+    
+    // Show/hide payment method specific fields
+    if (paymentMethod) {
+        paymentMethod.addEventListener('change', function() {
+            const method = this.value;
+            
+            // Hide all fields first
+            bankFields.forEach(field => field.style.display = 'none');
+            chequeFields.forEach(field => field.style.display = 'none');
+            onlineFields.forEach(field => field.style.display = 'none');
+            
+            // Remove required attributes
+            bankFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
+            chequeFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
+            onlineFields.forEach(field => field.querySelector('select')?.removeAttribute('required'));
+            
+            // Show relevant fields
+            if (method === 'bank') {
+                bankFields.forEach(field => {
+                    field.style.display = 'block';
+                    field.querySelector('input')?.setAttribute('required', 'required');
+                });
+            } else if (method === 'cheque') {
+                bankFields.forEach(field => {
+                    field.style.display = 'block';
+                    field.querySelector('input')?.setAttribute('required', 'required');
+                });
+                chequeFields.forEach(field => {
+                    field.style.display = 'block';
+                    field.querySelector('input')?.setAttribute('required', 'required');
+                });
+            } else if (method === 'online') {
+                onlineFields.forEach(field => {
+                    field.style.display = 'block';
+                    field.querySelector('select')?.setAttribute('required', 'required');
+                });
+            }
+        });
+    }
+    
+    // Form validation
+    const transactionForm = document.getElementById('transactionForm');
+    if (transactionForm) {
+        transactionForm.addEventListener('submit', function(e) {
+            const paymentTypeValue = paymentType ? paymentType.value : document.querySelector('input[name="payment_type"]')?.value;
+            const amount = parseFloat(amountField?.value) || 0;
+            const dueAmount = parseFloat(dueEmiAmountField?.value) || 0;
+            const paymentStatus = paymentStatusSelect.value;
+            
+            // Validation for EMI payments
+            if (paymentTypeValue === 'emi') {
+                // Only validate due amount if payment status is 'partially_paid'
+                if (paymentStatus === 'partially_paid' && (!dueAmount || dueAmount <= 0)) {
+                    e.preventDefault();
+                    alert('Partially Paid status requires a due amount greater than 0.');
+                    dueEmiAmountField?.focus();
+                    return false;
+                }
+                
+                // For paid status, due amount can be 0 or null
+                // No validation needed
+            }
+            
+            return true;
+        });
+    }
+    
+    // Initial call to set the correct state on page load
+    controlPartiallyPaidStatus();
+});
 </script>

@@ -1,4 +1,8 @@
 <?php
+// Include required model files
+require_once __DIR__ . '/../models/AccountManagementCashOut.php';
+require_once __DIR__ . '/../models/ManagementCategory.php';
+
 class AccountManagementCashoutController extends Controller
 {
     protected $db;
@@ -253,11 +257,124 @@ class AccountManagementCashoutController extends Controller
         if (!$transaction) {
             echo json_encode(['error' => 'Transaction not found']);
         } else {
-            // Return only the description for the modal
             echo json_encode([
                 'description' => $transaction['description'] ?? ''
             ]);
         }
+        exit;
+    }
+
+    /**
+     * View cash out statement with period filter
+     */
+    public function showStatement()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        // Get period filter parameters
+        $period = $_GET['period'] ?? 'all';
+        $fromDate = $_GET['from'] ?? null;
+        $toDate = $_GET['to'] ?? null;
+
+        // Calculate date range based on period
+        $dateFilter = [];
+        $periodText = '';
+
+        if ($period === 'custom' && $fromDate && $toDate) {
+            $dateFilter['from'] = $fromDate;
+            $dateFilter['to'] = $toDate;
+            $periodText = date('d M, Y', strtotime($fromDate)) . ' to ' . date('d M, Y', strtotime($toDate));
+        } elseif ($period !== 'all' && is_numeric($period)) {
+            $months = (int)$period;
+            $dateFilter['from'] = date('Y-m-d', strtotime("-{$months} months"));
+            $dateFilter['to'] = date('Y-m-d');
+            $periodText = "Last {$months} Months (" . date('d M, Y', strtotime($dateFilter['from'])) . " to " . date('d M, Y') . ")";
+        } else {
+            $periodText = "All Transactions";
+        }
+
+        // Get filtered transactions
+        if (!empty($dateFilter)) {
+            $transactions = $this->cashoutModel->getTransactionsByDateRange($dateFilter['from'], $dateFilter['to']);
+        } else {
+            $transactions = $this->cashoutModel->getAllTransactions();
+        }
+
+        // Calculate statement summary for the period
+        $statementSummary = [
+            'transaction_count' => count($transactions),
+            'total_amount' => 0,
+            'paid_amount' => 0,
+            'pending_amount' => 0
+        ];
+
+        foreach ($transactions as $transaction) {
+            $amount = $transaction['amount'] ?? 0;
+            $status = $transaction['payment_status'] ?? 'paid';
+            
+            $statementSummary['total_amount'] += $amount;
+            
+            if ($status === 'paid') {
+                $statementSummary['paid_amount'] += $amount;
+            } else {
+                $statementSummary['pending_amount'] += $amount;
+            }
+        }
+
+        // Use absolute path from root
+        $root = dirname(dirname(__DIR__)); // Go up to project root
+        $viewPath = $root . '/app/views/accounts/cashout/management-cashout-statement.php';
+        
+        if (!file_exists($viewPath)) {
+            die("View file not found at: " . $viewPath);
+        }
+        
+        // Render the statement view
+        include $viewPath;
+        exit;
+    }
+
+    /**
+     * View individual transaction invoice
+     */
+    public function showInvoice($transactionId = null)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        // Get transaction_id from URL parameter or query string
+        if (!$transactionId) {
+            $transactionId = $_GET['id'] ?? null;
+        }
+
+        if (!$transactionId) {
+            setError("No transaction ID provided");
+            header("Location: {$GLOBALS['base_url']}/management-cash-out");
+            exit;
+        }
+
+        // Get transaction details
+        $transaction = $this->cashoutModel->getTransactionById($transactionId);
+
+        if (!$transaction) {
+            setError("Transaction not found");
+            header("Location: {$GLOBALS['base_url']}/management-cash-out");
+            exit;
+        }
+
+        // Use absolute path from root
+        $root = dirname(dirname(__DIR__)); // Go up to project root
+        $viewPath = $root . '/app/views/accounts/cashout/management-cashout-invoice.php';
+        
+        if (!file_exists($viewPath)) {
+            die("Invoice view file not found at: " . $viewPath);
+        }
+        
+        // Render the invoice view
+        include $viewPath;
         exit;
     }
 
@@ -308,17 +425,14 @@ class AccountManagementCashoutController extends Controller
     // Helper method to get current user ID from session
     private function getCurrentUserId()
     {
-        // Get user ID from $_SESSION['user']['id'] (your session structure)
         if (isset($_SESSION['user']['id']) && !empty($_SESSION['user']['id'])) {
             $userId = $_SESSION['user']['id'];
             
-            // Validate the user exists in database
             if ($this->validateUserExists($userId)) {
                 return $userId;
             }
         }
         
-        // Fallback: Get first available user from database
         return $this->getFirstValidUserId();
     }
 
@@ -352,7 +466,6 @@ class AccountManagementCashoutController extends Controller
             return $row['id'];
         }
         
-        // Absolute fallback
         return 1;
     }
 }
