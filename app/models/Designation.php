@@ -49,14 +49,15 @@ class Designation extends Model{
     
         $stmt = $this->db->prepare(
             "INSERT INTO designations
-            (name,  department_id)
-            VALUES (?, ?)"
+            (name,  department_id,created_by)
+            VALUES (?, ?,?)"
         );
     $stmt->bind_param(
-        "si",
+        "sii",
         $data['name'],
     
         $data['department_id'],
+        $data['created_by'],
     
     );
         if ($stmt->execute()) {

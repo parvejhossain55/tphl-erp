@@ -29,6 +29,7 @@ class FlatPurchaseRuleController extends Controller
 {
     $rules = $_POST['rules'] ?? []; // array of all input rules
     $status = isset($_POST['status']) ? 1 : 0;
+    $created_by   = $_SESSION['user']['id'] ?? null;
 
     if (empty($rules)) {
         setError('Please add at least one rule.');
@@ -42,7 +43,8 @@ class FlatPurchaseRuleController extends Controller
             if ($ruleDescription !== '') {
                 $this->ruleModel->create([
                     'rules_description' => $ruleDescription,
-                    'status' => $status
+                    'status' => $status,
+                    'created_by' => $created_by,
                 ]);
             }
         }
@@ -64,7 +66,8 @@ class FlatPurchaseRuleController extends Controller
         $data = [
             'id' => $_POST['id'] ?? 0,
             'rules_description' => $_POST['rules_description'] ?? '',
-            'status' => isset($_POST['status']) ? 1 : 0
+            'status' => isset($_POST['status']) ? 1 : 0,
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
         try {

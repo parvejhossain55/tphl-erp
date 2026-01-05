@@ -35,16 +35,16 @@ class FlatPurchaseRule extends Model
     // Create rule
     public function create($data)
     {
-        $stmt = $this->db->prepare("INSERT INTO flat_purchase_rules (rules_description, status, created_at, updated_at) VALUES (?, ?, NOW(), NOW())");
-        $stmt->bind_param("si", $data['rules_description'], $data['status']);
+        $stmt = $this->db->prepare("INSERT INTO flat_purchase_rules (rules_description, status,created_by, created_at, updated_at) VALUES (?, ?, NOW(), NOW())");
+        $stmt->bind_param("sii", $data['rules_description'], $data['status'], $data['created_by']);
         return $stmt->execute();
     }
 
     // Update rule
     public function update($id, $data)
     {
-        $stmt = $this->db->prepare("UPDATE flat_purchase_rules SET rules_description = ?, status = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->bind_param("sii", $data['rules_description'], $data['status'], $id);
+        $stmt = $this->db->prepare("UPDATE flat_purchase_rules SET rules_description = ?, status = ?,created_by = ? , updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("sii", $data['rules_description'], $data['status'],$data['created_by'],  $id);
         return $stmt->execute();
     }
 

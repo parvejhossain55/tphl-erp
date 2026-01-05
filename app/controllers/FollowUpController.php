@@ -75,7 +75,7 @@ class FollowUpController extends Controller
             'discussion_note' => $_POST['discussion_note'] ?? null,
             'next_follow_up_date' => $_POST['next_follow_up_date'] ?? null,
             'next_action' => $_POST['next_action'] ?? null,
-            'created_by' => $_SESSION['user_id'] ?? 1,
+            'created_by'      => $_SESSION['user']['id'] ?? null,
 
         ];
 
@@ -111,6 +111,7 @@ class FollowUpController extends Controller
             'discussion_note' => $_POST['discussion_note'] ?? null,
             'next_follow_up_date' => $_POST['next_follow_up_date'] ?: null,
             'next_action' => $_POST['next_action'] ?? null,
+            
         ];
 
 

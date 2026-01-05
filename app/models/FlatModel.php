@@ -101,8 +101,9 @@ class FlatModel extends Model
                 floor_no,
                 facing_site,
                 price_value,
-                facilities
-            ) VALUES (?,?,  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                facilities,
+                created_by,
+            ) VALUES (?,?,  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
         ");
 
         if (!$stmt) {
@@ -124,7 +125,8 @@ class FlatModel extends Model
             $data['floor_no'],
             $data['facing_site'],
             $data['price_value'],
-            $data['facilities']
+            $data['facilities'],
+            $data['created_by'],
         );
 
         return $stmt->execute();
@@ -156,7 +158,7 @@ class FlatModel extends Model
     {
         $sql = "UPDATE flats SET
         project_id = ?,flat_name=?,  sqft = ?, bhk = ?, bedroom = ?, bathroom = ?, balcony = ?,
-        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?
+        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?,created_by=?,
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -165,7 +167,7 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "isiiiiiiiisdsi",
+            "isiiiiiiiisdsii",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -179,6 +181,7 @@ class FlatModel extends Model
             $data['facing_site'],
             $data['price_value'],
             $data['facilities'],
+            $data['created_by'],
             $id
         );
 

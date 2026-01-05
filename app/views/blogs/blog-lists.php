@@ -40,7 +40,7 @@ $show_breadcrumb = true;
     <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6">
         <article class="bd-blog-wrapper">
             <div class="bd-blog-thumb">
-                <a href="index.php?page=blog-details"><img src="<?= getImage('blogs',$blog['image']) ?>"
+                <a href="<?= $GLOBALS['base_url'] ?>/blog-details/<?= $blog['id'] ?>"><img src="<?= getImage('blogs',$blog['image']) ?>"
                         alt="image"></a>
             </div>
             <div class="bd-blog-content">
@@ -49,17 +49,19 @@ $show_breadcrumb = true;
                         <span class="meta-icon">
                             <i class="fa-solid fa-user"></i>
                         </span>
-                        <span class="meta-text"><a class="meta-author" href="index.php?page=blog-details"></a></span>
+                        <span class="meta-text"><a class="meta-author" href="<?= $GLOBALS['base_url'] ?>/blog-details/<?= $blog['id'] ?>"></a></span>
                     </div>
                     <div class="bd-blog-meta-item">
                         <span class="meta-icon">
                             <i class="fa-sharp fa-light fa-calendar"></i>
                         </span>
-                        <span class="meta-text"><a href="index.php?page=blog-details">July 11,
-                                2024</a></span>
+                        <span class="meta-text"><a href="<?= $GLOBALS['base_url'] ?>/blog-details/<?= $blog['id'] ?>">  <?= !empty($blog['published_date'])
+                                            ? date('d F, Y', strtotime($blog['published_date']))
+                                            : ''
+                                        ?></a></span>
                     </div>
                 </div>
-                <h4 class="bd-blog-title"><a href="index.php?page=blog-details"><?= $blog['title'] ?? '' ?></a></h4>
+                <h4 class="bd-blog-title"><a href="<?= $GLOBALS['base_url'] ?>/blog-details/<?= $blog['id'] ?>"><?= $blog['title'] ?? '' ?></a></h4>
                 <p><?= $blog['excerpt'] ?? '' ?></p>
                 <div class="btn-text-icon p-relative">
                     <a href="<?= $GLOBALS['base_url'] ?>/blog-details/<?= $blog['id'] ?>">

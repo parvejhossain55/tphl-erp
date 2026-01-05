@@ -133,12 +133,12 @@ class Employee extends Model
          qualification, experience, address, pass_num, nid, department_id, 
          designation_id, dob, joining_date, account_holder_name, account_number, 
          bank_name, branch_name, social_media1, social_media2, social_media3, 
-         photo, make_user, password) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+         photo, make_user, password,created_by) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)"
         );
 
         $stmt->bind_param(
-            "sissssssssssiissssssssssis",
+            "sissssssssssiissssssssssisi",
             $data['full_name'],
             $data['basic_salary'],
             $data['username'],
@@ -164,7 +164,8 @@ class Employee extends Model
             $data['social_media3'],
             $photo,
             $data['make_user'],
-            $data['password']
+            $data['password'],
+            $data['created_by'],
         );
 
         if (!$stmt->execute()) {
@@ -238,7 +239,7 @@ class Employee extends Model
      */
     public function update($id, $data, $photoInputName = null)
     {
-        // 1️⃣ Get old employee
+        // 1 Get old employee
         $oldEmployee = $this->find($id);
         if (!$oldEmployee) {
             return false;
@@ -246,16 +247,16 @@ class Employee extends Model
 
         $oldPhoto = $oldEmployee['photo'] ?? '';
 
-        // 2️⃣ Upload new photo (if any)
+        // 2 Upload new photo (if any)
         $newPhoto = null;
         if ($photoInputName && !empty($_FILES[$photoInputName]['name'])) {
             $newPhoto = uploadImage($photoInputName, 'employees', 'fixed', 300, 300);
         }
 
-        // 3️⃣ Decide final photo
+        // 3 Decide final photo
         $finalPhoto = $newPhoto ?: $oldPhoto;
 
-        // 4️⃣ Delete old photo if new uploaded
+        // 4 Delete old photo if new uploaded
         if (
             $newPhoto &&
             !empty($oldPhoto) &&
@@ -264,7 +265,7 @@ class Employee extends Model
             unlink(dirname(__DIR__, 2) . "/public/uploads/employees/" . $oldPhoto);
         }
 
-        // 5️⃣ Update query (NO employee_id)
+        // 5 Update query (NO employee_id)
         $sql = "UPDATE employees SET
         full_name = ?, 
         basic_salary = ?, 
@@ -288,7 +289,8 @@ class Employee extends Model
         social_media1 = ?, 
         social_media2 = ?, 
         social_media3 = ?, 
-        photo = ?
+        photo = ?,
+        assigned_by = ?,
     WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -299,7 +301,7 @@ class Employee extends Model
         }
 
         $stmt->bind_param(
-            "sdsssssssssiiisssssssssi",
+            "sdsssssssssiiisssssssssii",
             $data['full_name'],
             $data['basic_salary'],
             $data['username'],
@@ -323,6 +325,7 @@ class Employee extends Model
             $data['social_media2'],
             $data['social_media3'],
             $finalPhoto,
+            $data['created_by'],
             $id
         );
 

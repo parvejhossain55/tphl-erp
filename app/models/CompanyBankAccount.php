@@ -36,8 +36,8 @@ public function create($data)
     // Module name দিয়ে photo upload
     $stmt = $this->db->prepare(
         "INSERT INTO company_bank_accounts
-        (account_name, account_number, bank_name, status)
-        VALUES (?, ?, ?, ?, ?)"
+        (account_name, account_number, bank_name, status,created_by)
+        VALUES (?, ?, ?, ?, ?,?)"
     );
 
 
@@ -46,7 +46,8 @@ $stmt->bind_param(
     $data['account_name'],
     $data['account_number'],
     $data['bank_name'],
-    $data['status']
+    $data['status'],
+    $data['created_by'],
 );
     if ($stmt->execute()) {
         return true;
@@ -62,18 +63,19 @@ $stmt->bind_param(
 public function update($data)
 {
     // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE company_bank_accounts SET account_name = ?, account_number = ?, bank_name = ?, status = ? WHERE id = ?");
+    $stmt = $this->db->prepare("UPDATE company_bank_accounts SET account_name = ?, account_number = ?, bank_name = ?, status = ?,created_by = ?, WHERE id = ?");
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;
     }
 
     $stmt->bind_param(
-        "ssssi",
+        "ssssii",
         $data['account_name'],
         $data['account_number'],
         $data['bank_name'],
         $data['status'],
+        $data['created_by'],
         $data['id']
     );
 

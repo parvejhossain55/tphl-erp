@@ -66,11 +66,11 @@ class Blog extends Model
 
 
 
-        $stmt = $this->db->prepare("INSERT INTO blogs (title,content,author,excerpt,published_date,read_time,image, status) VALUES (?,?,?,?,?,?,?,?)");
+        $stmt = $this->db->prepare("INSERT INTO blogs (title,content,author,excerpt,published_date,read_time,image, status,created_by) VALUES (?,?,?,?,?,?,?,?,?)");
 
 
         $stmt->bind_param(
-            "sssssssi",
+            "sssssssii",
             $data['title'],
             $data['content'],
             $data['author'],
@@ -79,7 +79,8 @@ class Blog extends Model
             $data['read_time'],
             $photo,
             $data['status'],
-            
+            $data['created_by'],
+
         );
         if ($stmt->execute()) {
             return true;
@@ -111,16 +112,16 @@ class Blog extends Model
         return $result['total'];
     }
 
-public function find($id)
-{
-    $stmt = $this->db->prepare("
+    public function find($id)
+    {
+        $stmt = $this->db->prepare("
         SELECT * FROM blogs WHERE id = ?
     ");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
 
-    return $stmt->get_result()->fetch_assoc();
-}
+        return $stmt->get_result()->fetch_assoc();
+    }
 
     // Update role name + permissions
     public function update($data, $id, $photoInputName = '')
@@ -143,7 +144,7 @@ public function find($id)
 
         // Prepare update statement
         $stmt = $this->db->prepare(
-            "UPDATE blogs SET title = ?, content = ?, author = ?, excerpt = ?, published_date = ?, read_time = ?, image = ?, status = ? WHERE id = ?"
+            "UPDATE blogs SET title = ?, content = ?, author = ?, excerpt = ?, published_date = ?, read_time = ?, image = ?, status = ?,created_by =? WHERE id = ?"
         );
         if (!$stmt) {
             echo "Prepare failed: " . $this->db->error;
@@ -151,7 +152,7 @@ public function find($id)
         }
 
         $stmt->bind_param(
-            "sssssssii",
+            "sssssssiii",
             $data['title'],
             $data['content'],
             $data['author'],
@@ -160,6 +161,7 @@ public function find($id)
             $data['read_time'],
             $finalPhoto,
             $data['status'],
+            $data['created_by'],
             $id
         );
 

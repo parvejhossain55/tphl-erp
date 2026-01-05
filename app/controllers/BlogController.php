@@ -53,7 +53,7 @@ class BlogController extends Controller
         $content = $_POST['content'] ?? '';
         $excerpt = $_POST['excerpt'] ?? '';
 
-     
+
 
         $read_time = calculateReadTime(strip_tags($content));
 
@@ -65,6 +65,7 @@ class BlogController extends Controller
             'read_time' => $read_time,
             'published_date' => $_POST['published_date'],
             'status' => (int)($_POST['status'] ?? 0),
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
         $photoInputName = 'image';
@@ -93,25 +94,26 @@ class BlogController extends Controller
     }
     public function update($id)
     {
-    $content = $_POST['content'] ?? '';
-$excerpt = $_POST['excerpt'] ?? '';
+        $content = $_POST['content'] ?? '';
+        $excerpt = $_POST['excerpt'] ?? '';
 
-// Strip all HTML tags
-$content = strip_tags($content);
-$excerpt = strip_tags($excerpt);
+        // Strip all HTML tags
+        $content = strip_tags($content);
+        $excerpt = strip_tags($excerpt);
 
-// Calculate read time from plain content
-$read_time = calculateReadTime($content);
+        // Calculate read time from plain content
+        $read_time = calculateReadTime($content);
 
-$data = [
-    'title' => $_POST['title'],
-    'excerpt' => trim($excerpt),
-    'content' => trim($content),
-    'author' => $_POST['author'],
-    'read_time' => $read_time,
-    'published_date' => $_POST['published_date'],
-    'status' => (int)($_POST['status'] ?? 0),
-];
+        $data = [
+            'title' => $_POST['title'],
+            'excerpt' => trim($excerpt),
+            'content' => trim($content),
+            'author' => $_POST['author'],
+            'read_time' => $read_time,
+            'published_date' => $_POST['published_date'],
+            'status' => (int)($_POST['status'] ?? 0),
+            'created_by'      => $_SESSION['user']['id'] ?? null,
+        ];
 
 
         $photoInputName = 'image';

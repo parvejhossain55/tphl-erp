@@ -36,15 +36,16 @@ public function create($data)
     // Module name দিয়ে photo upload
     $stmt = $this->db->prepare(
         "INSERT INTO communities
-        (name, status)
+        (name, status,created_by)
         VALUES (?, ?)"
     );
 
 
 $stmt->bind_param(
-    "si",
+    "sii",
     $data['name'],
     $data['status'],
+    $data['created_by'],
     
 );
     if ($stmt->execute()) {
@@ -61,7 +62,7 @@ $stmt->bind_param(
 public function update($data)
 {
     // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE communities SET name = ?, status = ? WHERE id = ?");
+    $stmt = $this->db->prepare("UPDATE communities SET name = ?, status = ?,created_by= ?, WHERE id = ?");
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;
@@ -71,6 +72,7 @@ public function update($data)
         "sii",
         $data['name'],    
         $data['status'],  
+        $data['created_by'],
         $data['id']       
     );
 

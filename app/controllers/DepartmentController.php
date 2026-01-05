@@ -9,66 +9,68 @@ class DepartmentController extends Controller
         $this->db = $db;
         $this->deparmentModel = new Department($this->db);
     }
-public function index()
-{
-    $searchTerm = $_GET['q'] ?? '';
-    $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
-    $perPage = 10;
-    $offset = ($currentPage - 1) * $perPage;
+    public function index()
+    {
+        $searchTerm = $_GET['q'] ?? '';
+        $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        $perPage = 10;
+        $offset = ($currentPage - 1) * $perPage;
 
-    // Total department count
-    $totalDepartments = $this->deparmentModel->countAll($searchTerm);
-    $totalPages = ceil($totalDepartments / $perPage);
+        // Total department count
+        $totalDepartments = $this->deparmentModel->countAll($searchTerm);
+        $totalPages = ceil($totalDepartments / $perPage);
 
-    // Get departments
-    $departments = $this->deparmentModel->getPaginated($perPage, $offset, $searchTerm);
+        // Get departments
+        $departments = $this->deparmentModel->getPaginated($perPage, $offset, $searchTerm);
 
-    $this->view("hrm/departments/departments", [
-        "current_route"   => "departments",
-        "page_title"      => "Departments List",
-        "departments"     => $departments,
-        "totalPages"      => $totalPages,
-        "currentPage"     => $currentPage,
-        "searchTerm"      => $searchTerm,
-    ]);
-}
+        $this->view("hrm/departments/departments", [
+            "current_route"   => "departments",
+            "page_title"      => "Departments List",
+            "departments"     => $departments,
+            "totalPages"      => $totalPages,
+            "currentPage"     => $currentPage,
+            "searchTerm"      => $searchTerm,
+        ]);
+    }
 
 
     // Handle form submission
-public function store()
-{
-    $data = [
-        'name'   => $_POST['name'] ?? '',
-        'status' => isset($_POST['status']) ? 1 : 0, // checkbox
-    ];
+    public function store()
+    {
+        $data = [
+            'name'   => $_POST['name'] ?? '',
+            'status' => isset($_POST['status']) ? 1 : 0, // checkbox
+            'created_by'      => $_SESSION['user']['id'] ?? null,
+        ];
 
-    if ($this->deparmentModel->create($data)) {
-        setSuccess("Department created successfully.");
-        header("Location: {$GLOBALS['base_url']}/departments");
-        exit;
-    } else {
-        setError("Failed to create department.");
+        if ($this->deparmentModel->create($data)) {
+            setSuccess("Department created successfully.");
+            header("Location: {$GLOBALS['base_url']}/departments");
+            exit;
+        } else {
+            setError("Failed to create department.");
+        }
     }
-}
-public function update()
-{
-    $data = [
-        'id'     => $_POST['id'] ?? 0,          
-        'name'   => $_POST['name'] ?? '',        
-        'status' => isset($_POST['status']) ? intval($_POST['status']) : 0, 
-    ];
+    public function update()
+    {
+        $data = [
+            'id'     => $_POST['id'] ?? 0,
+            'name'   => $_POST['name'] ?? '',
+            'status' => isset($_POST['status']) ? intval($_POST['status']) : 0,
+            'created_by'      => $_SESSION['user']['id'] ?? null,
+        ];
 
-    // print_r($data); // debug: check values
+        // print_r($data); // debug: check values
 
-    if ($this->deparmentModel->update($data)) {
-        setSuccess("Department updated successfully.");
-        header("Location: {$GLOBALS['base_url']}/departments");
-        exit;
-    } else {
-        setError("Failed to update department.");
-        // echo "Failed to update department";
+        if ($this->deparmentModel->update($data)) {
+            setSuccess("Department updated successfully.");
+            header("Location: {$GLOBALS['base_url']}/departments");
+            exit;
+        } else {
+            setError("Failed to update department.");
+            // echo "Failed to update department";
+        }
     }
-}
 
 
 
@@ -84,17 +86,15 @@ public function update()
     }
 
     public function delete()
-{
-    $id = $_POST['id'] ?? 0;
+    {
+        $id = $_POST['id'] ?? 0;
 
-    if ($id && $this->deparmentModel->delete($id)) {
+        if ($id && $this->deparmentModel->delete($id)) {
             setSuccess("Department deleted successfully.");
-        header("Location: {$GLOBALS['base_url']}/departments");
-        exit;
-    } else {
-        echo "<h3 style='color:red'>Failed to delete department</h3>";
+            header("Location: {$GLOBALS['base_url']}/departments");
+            exit;
+        } else {
+            echo "<h3 style='color:red'>Failed to delete department</h3>";
+        }
     }
-}
-
-   
 }

@@ -115,6 +115,7 @@ class EmployeeController extends Controller
             'social_media3'   => trim($_POST['social_media3'] ?? ''),
             'make_user'       => $makeUser,
             'password'        => $hashedPassword,
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
         $photoInputName = 'photo';
@@ -250,6 +251,7 @@ class EmployeeController extends Controller
             'social_media1'   => trim($_POST['social_media1'] ?? ''),
             'social_media2'   => trim($_POST['social_media2'] ?? ''),
             'social_media3'   => trim($_POST['social_media3'] ?? ''),
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
         $photoInputName = 'photo';
@@ -313,15 +315,14 @@ class EmployeeController extends Controller
 
 
     // Delete Employee
-   public function delete()
-{
-    $id = $_POST['id'] ?? 0;
-    if ($id && $this->employeeModel->delete($id)) {
-        header("Location: {$GLOBALS['base_url']}/employee-lists");
-        exit;
-    } else {
-        echo "<h3 style='color:red'>Failed to delete employee</h3>";
+    public function delete()
+    {
+        $id = $_POST['id'] ?? 0;
+        if ($id && $this->employeeModel->delete($id)) {
+            header("Location: {$GLOBALS['base_url']}/employee-lists");
+            exit;
+        } else {
+            echo "<h3 style='color:red'>Failed to delete employee</h3>";
+        }
     }
-}
-
 }

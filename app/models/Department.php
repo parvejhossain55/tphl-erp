@@ -57,8 +57,8 @@ public function create($data)
 
     $stmt = $this->db->prepare(
         "INSERT INTO departments
-        (name, status)
-        VALUES (?, ?)"
+        (name, status,created_by)
+        VALUES (?, ?,?)"
     );
 
 
@@ -66,6 +66,7 @@ $stmt->bind_param(
     "si",
     $data['name'],
     $data['status'],
+    $data['created_by'],
     
 );
     if ($stmt->execute()) {
@@ -101,16 +102,17 @@ public function countAll($search = '')
 public function update($data)
 {
     // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE departments SET name = ?, status = ? WHERE id = ?");
+    $stmt = $this->db->prepare("UPDATE departments SET name = ?, status = ?,created_by = ?, WHERE id = ?");
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;
     }
 
     $stmt->bind_param(
-        "sii",
+        "siii",
         $data['name'],    
         $data['status'],  
+        $data['created_by'],  
         $data['id']       
     );
 

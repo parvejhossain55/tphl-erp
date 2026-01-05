@@ -40,7 +40,7 @@ class Lead extends Model
             address, pref_location, designation,
             project_type, interest_on, pref_flat_size,
             communication_type, tags, description,
-            visibility, status, lead_quality, lead_type, company
+            visibility, status, lead_quality, lead_type, created_by,
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
@@ -74,11 +74,11 @@ class Lead extends Model
         $status = $data['status'] ?? 'active';
         $lead_quality = $data['lead_quality'] ?? 'Pending';
         $lead_type = $data['lead_type'] ?? null;
-        $company = $data['company'] ?? null;
+        $created_by = $data['created_by'] ?? null;
 
         // Bind parameters
         $stmt->bind_param(
-            "sssssssssssisssssssssssss",
+            "sssssssssssissssssssssssi",
             $lead_name,
             $father_name,
             $mother_name,
@@ -103,7 +103,7 @@ class Lead extends Model
             $status,
             $lead_quality,
             $lead_type,
-            $company
+            $created_by,
         );
 
         if ($stmt->execute()) {
@@ -178,7 +178,7 @@ public function update($id, $data)
         present_add_bn = ?, profession_bn = ?, nationality = ?, religion = ?, lead_image = ?,
         nominee_name = ?, relation_with_lead = ?, nomi_father_name = ?, nomi_mother_name = ?, nomi_profession = ?,
         nomi_dob = ?, nomi_phone = ?, nomi_email = ?, nomi_nid_passport = ?, nomi_present_add = ?, 
-        nomi_permanent_address = ?, nomi_image = ?, description = ?
+        nomi_permanent_address = ?, nomi_image = ?, description = ?,created_by = ?,
         WHERE id = ?";
 
     $stmt = $this->db->prepare($sql);
@@ -190,7 +190,7 @@ public function update($id, $data)
     // Bind all strings + id as integer
     // ======================
     $stmt->bind_param(
-        str_repeat("s", 34) . "i", // 34 strings + 1 integer for id
+        str_repeat("s", 34) . "ii", // 34 strings + 1 integer for id
         $data['lead_name'],
         $data['father_name'],
         $data['mother_name'],
@@ -225,6 +225,7 @@ public function update($id, $data)
         $data['nomi_permanent_address'],
         $nomi_image,
         $data['description'],
+        $data['created_by'],
         $id // integer
     );
 
