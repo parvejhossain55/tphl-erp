@@ -12,7 +12,7 @@ class EmployeeController extends Controller
         $this->db = $db;
         $this->employeeModel = new Employee($this->db);
         $this->departmentModel = new Department($this->db);
-        $this->designationModel = new Designation($this->db); // <-- ঠিক করা
+        $this->designationModel = new Designation($this->db); // 
 
         $this->userModel = new User($this->db);
     }
@@ -313,17 +313,15 @@ class EmployeeController extends Controller
 
 
     // Delete Employee
-    public function delete($id)
-
-
-
-
-    {
-        if ($this->employeeModel->delete($id)) {
-            header("Location: {$GLOBALS['base_url']}/employee-lists");
-            exit;
-        } else {
-            echo "<h3 style='color:red'>Failed to delete employee</h3>";
-        }
+   public function delete()
+{
+    $id = $_POST['id'] ?? 0;
+    if ($id && $this->employeeModel->delete($id)) {
+        header("Location: {$GLOBALS['base_url']}/employee-lists");
+        exit;
+    } else {
+        echo "<h3 style='color:red'>Failed to delete employee</h3>";
     }
+}
+
 }

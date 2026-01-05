@@ -4,7 +4,7 @@ $page = 'Employee Lists';
 $show_breadcrumb = true;
 
 ?>
-
+<form action="" method="get">
     <div class="row g-20 mb-20 justify-content-between align-items-end">
 
         <!-- Search -->
@@ -82,7 +82,12 @@ $show_breadcrumb = true;
                                 <a class="btn btn-outline-theme-border" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['id'] ?>">View</a>
                                 <!-- <a href="< $GLOBALS['base_url'] ?>/edit-employee?id=< $employee['id'] ?>">Edit</a> -->
                                 <a class="btn btn-outline-theme-border" href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>">Edit</a>
-                                <a class="btn btn-outline-theme-border removeBtnCust" href="#" <?= $employee['phone'] ?>">Delete</a>
+                               <button class="removeBtnCust table__icon delete"
+                                            data-id="<?= $employee['id'] ?>"
+                                            data-name="<?= $employee['full_name'] ?>"
+                                            data-action="delete-employee">
+                                            <i class="fa-regular fa-trash"></i>
+                                        </button>
                             </div>
                         </div>
                     </div>

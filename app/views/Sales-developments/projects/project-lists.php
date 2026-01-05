@@ -20,7 +20,7 @@ $show_breadcrumb = true;
 <div class="row">
     <div class="col-xxl-12">
         <div class="card__wrapper">
-            <div class="table__wrapper ">
+            <div class="table__wrapper table-responsive">
                 <table class="table mb-20 multiple_tables">
                     <thead>
                         <tr class="table__title">

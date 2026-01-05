@@ -8,9 +8,9 @@
 
     </div>
     <!-- KPI CARDS -->
-    <div class="row g-20 mb-4">
+    <div class="row g-20 mb-4 align-items-stretch">
 
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -24,7 +24,7 @@
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -38,7 +38,7 @@
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -52,7 +52,7 @@
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -69,8 +69,8 @@
     </div>
 
     <!-- REVENUE + CONVERSION -->
-    <div class="row g-20 mb-4">
-        <div class="col-xxl-3  col-md-3 col-6">
+    <div class="row g-20 mb-4 align-items-stretch">
+        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -84,7 +84,7 @@
             </div>
         </div>
         <!-- TOTAL PROJECT -->
-        <div class="col-xl-3 col-md-3 col-6">
+        <div class="col-xl-3 col-md-6 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -98,10 +98,9 @@
             </div>
         </div>
 
-        <!-- Warning: Array to string conversion in C:\xampp\htdocs\TPHL-ERP\app\views\sales-developments\sales-dashboard.php on line 67
-Array -->
+
         <!-- BOOKING MONEY COLLECTED -->
-        <div class="col-xl-3 col-md-3 col-6">
+        <div class="col-xl-3 col-md-6 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -118,7 +117,7 @@ Array -->
         </div>
 
         <!-- CONVERSION RATE -->
-        <div class="col-xl-3 col-md-3 col-6">
+        <div class="col-xl-3 col-md-6 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -135,6 +134,94 @@ Array -->
         </div>
 
     </div>
+
+
+    <!-- sales overview  -->
+
+    <div class="row g-20">
+        <div class="col-xxl-6 col-xl-6 col-lg-6 col-12 mb-3">
+            <div class="card__wrapper height-equal">
+                <div
+                    class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-25">
+                    <h5 class="card__heading-title">Sales Overview</h5>
+                    <div class="card__tab">
+                        <ul class="nav nav-pills" id="pills-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="pills-bar-year-tab" data-bs-toggle="pill"
+                                    data-bs-target="#pills-bar-year" type="button" role="tab"
+                                    aria-controls="pills-bar-year" aria-selected="true">1Y</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="pills-bar-month-tab" data-bs-toggle="pill"
+                                    data-bs-target="#pills-bar-month" type="button" role="tab"
+                                    aria-controls="pills-bar-month" aria-selected="false">1M</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="pills-bar-week-tab"
+                                    data-bs-toggle="pill" data-bs-target="#pills-bar-week" type="button"
+                                    role="tab" aria-controls="pills-bar-week"
+                                    aria-selected="false">1W</button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card__content">
+                    <div class="tab-content" id="pills-tabContent">
+                        <div class="tab-pane fade" id="pills-bar-year" role="tabpanel"
+                            aria-labelledby="pills-bar-year-tab">
+                            <div class="card__line-chart">
+                                <div id="salesChartYearly"></div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="pills-bar-month" role="tabpanel"
+                            aria-labelledby="pills-bar-month-tab">
+                            <div class="card__line-chart">
+                                <div id="salesChartMonthly"></div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade show active" id="pills-bar-week" role="tabpanel"
+                            aria-labelledby="pills-bar-week-tab">
+                            <div class="card__line-chart">
+                                <div id="salesChartWeek"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- project wise flat sale  -->
+
+        <div class="col-xxl-6 col-xl-6 col-lg-6 col-12 mb-3">
+            <div class="card-bg card-border mb-20 h-100">
+                <div class="card__wrapper style_two h-100 d-flex flex-column">
+
+                    <!-- Card Header -->
+                    <div class="card__title-wrap d-flex align-items-center justify-content-between">
+                        <h5 class="card__heading-title">Project wise Flat Sale</h5>
+                        <div class="dropdown">
+                            <button>
+                                <i class="fa-regular fa-ellipsis-vertical"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="card__content flex-grow-1 d-flex align-items-center">
+                        <div id="pieChart" style="width:100%; height:260px;"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- project wise flat sale  -->
+
+
+    </div>
+
+
     <!-- Todays Follow up -->
     <div class="col-12 mt-3">
         <div class="card__wrapper">
@@ -192,3 +279,110 @@ Array -->
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+
+        const labels = <?= json_encode($flatSalesLabels) ?>; // ['Project A', 'Project B', ...]
+        const series = <?= json_encode($flatSalesSeries) ?>; // [5, 3, 7, ...]
+
+        var options = {
+            series: series,
+            chart: {
+                type: 'pie',
+                height: 260
+            },
+            labels: labels,
+            legend: {
+                position: 'right',
+                labels: {
+                    colors: 'rgb(178,185,187)'
+                },
+                formatter: function(seriesName, opts) {
+                    const val = opts.w.globals.series[opts.seriesIndex];
+                    return seriesName + " = " + val + " Flats";
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: function(value) {
+                        return value + " Flats";
+                    }
+                }
+            },
+            responsive: [{
+                breakpoint: 768,
+                options: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }]
+        };
+
+        new ApexCharts(document.querySelector("#pieChart"), options).render();
+    });
+</script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // Weekly Sales
+    const weeklyLabels = <?= json_encode(array_column($weeklySales, 'date')) ?>; // Dates
+    const weeklyData = <?= json_encode(array_column($weeklySales, 'total')) ?>;  // Totals
+
+    new ApexCharts(document.querySelector("#salesChartWeek"), {
+        chart: { type: 'bar', height: 300, toolbar: { show: false } },
+        series: [{ name: 'Sales', data: weeklyData }],
+        xaxis: { categories: weeklyLabels },
+        tooltip: { y: { formatter: function(val) { return '৳ ' + val.toLocaleString(); } } }
+    }).render();
+
+
+    // Monthly Sales
+    const monthlyLabels = <?= json_encode(array_column($monthlySales, 'date')) ?>;
+    const monthlyData = <?= json_encode(array_column($monthlySales, 'total')) ?>;
+
+    new ApexCharts(document.querySelector("#salesChartMonthly"), {
+        chart: { type: 'bar', height: 300, toolbar: { show: false } },
+        series: [{ name: 'Sales', data: monthlyData }],
+        xaxis: { categories: monthlyLabels },
+        tooltip: { y: { formatter: function(val) { return '৳ ' + val.toLocaleString(); } } }
+    }).render();
+
+
+    // Yearly Sales
+    const yearlyLabels = <?= json_encode(array_column($yearlySales, 'month')) ?>;
+    const yearlyData = <?= json_encode(array_column($yearlySales, 'total')) ?>;
+
+    new ApexCharts(document.querySelector("#salesChartYearly"), {
+        chart: { type: 'bar', height: 300, toolbar: { show: false } },
+        series: [{ name: 'Sales', data: yearlyData }],
+        xaxis: { categories: yearlyLabels },
+        tooltip: { y: { formatter: function(val) { return '৳ ' + val.toLocaleString(); } } }
+    }).render();
+
+});
+</script>
+
+
+<style>
+    .card__title-wrap {
+        min-width: 0;
+    }
+
+
+    .card__title {
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    .card__wrapper {
+        height: 100%;
+    }
+</style>
+
+
+

@@ -11,7 +11,7 @@
 
     <!--  CARDS -->
     <div class="row g-20 mb-4">
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="col-xxl-4 col-xl-4 col-md-6 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-users"></i></span></div>
@@ -23,7 +23,7 @@
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="d-none col-xxl-3 col-xl-6 col-md-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-user-check"></i></span></div>
@@ -36,7 +36,7 @@
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="d-none col-xxl-3 col-xl-6 col-md-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-bed"></i></span></div>
@@ -48,13 +48,24 @@
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="col-xxl-4 col-xl-4 col-md-6 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Payroll </h6>
-                        <h3 class="card__title text-break text-success mb-10">BDT 42.5L</h3>
+                        <h6 class="card__sub-title mb-10">Salary Paid </h6>
+                        <h3 class="card__title text-break text-success mb-10">BDT <?= $totalPaidSalary ?></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl-4 col-xl-4 col-md-6 col-12">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Unpaid Salary  </h6>
+                        <h3 class="card__title text-break text-success mb-10">BDT <?= $totalUnpaidSalary ?></h3>
                     </div>
                 </div>
             </div>
@@ -64,7 +75,7 @@
     <div class="row g-20 mb-4">
 
         <!-- Today Assigned Tasks -->
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -79,7 +90,7 @@
         </div>
 
         <!-- Pending Tasks -->
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -94,7 +105,7 @@
         </div>
 
         <!-- Completed Tasks -->
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -109,7 +120,7 @@
         </div>
 
         <!-- Overdue Tasks -->
-        <div class="col-xxl-3 col-xl-6 col-md-6">
+        <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -223,31 +234,49 @@
 $maxEmployee = max(array_column($departmentEmpCount, 'total_employee'));
 ?>
 
-<div class="row g-20 mb-4">
-    <div class="col-xl-12">
-        <div class="card__wrapper">
-            <h6 class="card__sub-title mb-15">Department-wise Employee</h6>
 
-            <?php foreach ($departmentEmpCount as $dept):
-                $percent = $maxEmployee > 0
-                    ? round(($dept['total_employee'] / $maxEmployee) * 100)
-                    : 0;
-            ?>
-                <div class="mb-2">
-                    <?= htmlspecialchars($dept['dept_name']) ?>
-                    <span class="float-end"><?= $dept['total_employee'] ?></span>
-                </div>
 
-                <div class="progress mb-3">
-                    <div class="progress-bar bg-primary" style="width:<?= $percent ?>%"></div>
-                </div>
-            <?php endforeach; ?>
+  <!-- Department Wise Employees Card -->
+<div class="col-xxl-12 col-12">
+    <div class="card-bg card-border mb-20 h-100">
+        <div class="card__wrapper style_two h-100 d-flex flex-column">
+
+            <!-- Card Header -->
+            <div class="card__title-wrap d-flex align-items-center justify-content-between">
+                <h5 class="card__heading-title">Department Wise Employees</h5>
+            </div>
+
+            <!-- Card Body -->
+            <div class="card__content flex-grow-1 d-flex align-items-center justify-content-center">
+             <div id="deptPieChart" style="width:100%; height:<?= $chartHeight ?>px;"></div>
+            </div>
+
         </div>
     </div>
 </div>
 
 
-    <!-- DEPARTMENT WISE STAFF -->
-
-
 </div>
+<!-- ApexCharts Script -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const labels = <?= json_encode($deptLabels) ?>;
+    const series = <?= json_encode($deptSeries) ?>;
+
+    var options = {
+        series: series,
+        chart: { type: 'pie', height: <?= $chartHeight ?> },
+        labels: labels,
+        legend: { position: 'right', labels: { colors: 'rgb(178,185,187)' } },
+        tooltip: {
+            y: { formatter: function(value) { return value + " Employees"; } }
+        },
+        responsive: [{
+            breakpoint: 768,
+            options: { legend: { position: 'bottom' } }
+        }]
+    };
+
+    new ApexCharts(document.querySelector("#deptPieChart"), options).render();
+});
+</script>

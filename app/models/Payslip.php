@@ -103,11 +103,10 @@ public function update($data)
 
 public function delete($id)
 {
-    // Delete all designations linked to this department
-    // $stmt1 = $this->db->prepare("DELETE FROM payslip_details WHERE payslip_item_id = ?");
-    // $stmt1->bind_param("i", $id);
-    // $stmt1->execute();
-    // $stmt1->close();
+    $stmt1 = $this->db->prepare("DELETE FROM payslip_details WHERE payslip_id = ?");
+    $stmt1->bind_param("i", $id);
+    $stmt1->execute();
+    $stmt1->close();
 
     //  Delete the department
     $stmt2 = $this->db->prepare("DELETE FROM payslips WHERE id = ?");
@@ -174,6 +173,63 @@ public function getByIdWithItems($id) {
     return $payslip;
 }
 
+
+public function getPaidSalarySum() {
+    // SQL query
+    $query = "SELECT SUM(net_salary) AS total_paid FROM payslips WHERE status = ?";
+    
+    // Prepare statement
+    $stmt = $this->db->prepare($query);
+    if (!$stmt) {
+        echo "Prepare failed: " . $this->db->error;
+        return 0;
+    }
+
+    // Bind parameters (status = 'paid')
+    $status = 'paid';
+    $stmt->bind_param("s", $status);
+
+    // Execute
+    if (!$stmt->execute()) {
+        echo "Execute failed: " . $stmt->error;
+        return 0;
+    }
+
+    // Get result
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+
+    // Close statement
+    $stmt->close();
+
+    // Return total paid salary
+    return (float) ($row['total_paid'] ?? 0);
+}
+
+public function getUnpaidSalarySum(){
+    $query = "SELECT SUM(net_salary) AS total_unpaid FROM payslips WHERE status = ?";
+    $stmt = $this->db->prepare($query);
+
+    if(!$stmt){
+        echo "prepare Failed:". $this->db->error;
+    }
+
+    $status = 'pending';
+    $stmt->bind_param('s',$status);
+
+       if (!$stmt->execute()) {
+        echo "Execute failed: " . $stmt->error;
+        return 0;
+    }
+
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+        $stmt->close();
+
+    // Return total paid salary
+    return (float) ($row['total_unpaid'] ?? 0);
+
+}
 
 
 }

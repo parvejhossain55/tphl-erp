@@ -6,6 +6,7 @@ class HrmDashboardController extends Controller
     protected $employeeModel;
     protected $departmetModel;
     protected $taskModel;
+    protected $payslipModel;
     public function __construct($db)
     {
         $this->db = $db;
@@ -13,36 +14,58 @@ class HrmDashboardController extends Controller
         $this->departmetModel = new Department($this->db);
         $this->departmetModel = new Designation($this->db);
         $this->taskModel = new Task($this->db);
+        $this->payslipModel = new Payslip($this->db);
     }
 
-public function index()
-{
-    $totalEmployees = $this->employeeModel->getTotalCount();
-    $todayTasks      = $this->taskModel->getTaskCount("DATE(start_date) = CURDATE()");
-    $pendingTasks    = $this->taskModel->getTaskCount("status = 'pending'");
-    $inProgressTasks = $this->taskModel->getTaskCount("status = 'in_progress'");
-    $completedTasks  = $this->taskModel->getTaskCount("status = 'completed'");
-    $expiredTasks    = $this->taskModel->getTaskCount("status = 'expired'");
-    $departmentEmpCount = $this->employeeModel->getDepartmentWiseEmp();
-    $departmentCount = $this->departmetModel->getAll();
+    public function index()
+    {
+        $totalEmployees = $this->employeeModel->getTotalCount();
+        $todayTasks      = $this->taskModel->getTaskCount("DATE(start_date) = CURDATE()");
+        $pendingTasks    = $this->taskModel->getTaskCount("status = 'pending'");
+        $inProgressTasks = $this->taskModel->getTaskCount("status = 'in_progress'");
+        $completedTasks  = $this->taskModel->getTaskCount("status = 'completed'");
+        $expiredTasks    = $this->taskModel->getTaskCount("status = 'expired'");
+        $departmentEmpCount = $this->employeeModel->getDepartmentWiseEmp();
+        $departmentCount = $this->departmetModel->getAll();
+        $totalPaidSalary = $this->payslipModel->getPaidSalarySum();
+        $totalUnpaidSalary = $this->payslipModel->getUnpaidSalarySum();
+        // Max employee for progress bar calculation
 
-    $this->view("hrm/hrm-dashboard", [
-        "current_route"   => "hrm-dashboard",
-        "page_title"      => "HRM Dashboard",
-        "departmentCount"=> $departmentCount,
+        $departmentCount2 = count($departmentEmpCount);
+        $chartHeight = max(260, $departmentCount2 * 40); // minimum 260px, 1 dept ~ 40px
+        // Max employee for progress bar
+        $maxEmployee = 0;
+        $deptLabels = [];
+        $deptSeries = [];
 
-        "todayTasks"      => $todayTasks,
-        "pendingTasks"    => $pendingTasks,
-        "inProgressTasks" => $inProgressTasks,
-        "completedTasks"  => $completedTasks,
-        "expiredTasks"    => $expiredTasks,
-        "totalEmployees"    => $totalEmployees,
-        "departmentEmpCount"    => $departmentEmpCount,
-    ]);
+        foreach ($departmentEmpCount as $dept) {
+            $maxEmployee = max($maxEmployee, $dept['total_employee']);
+            $deptLabels[] = $dept['dept_name'] . " = " . $dept['total_employee'] . " Employees";
+            $deptSeries[] = (int)$dept['total_employee'];
+        }
 
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+        $this->view("hrm/hrm-dashboard", [
+            "current_route"   => "hrm-dashboard",
+            "page_title"      => "HRM Dashboard",
+            "departmentCount" => $departmentCount,
+
+            "todayTasks"      => $todayTasks,
+            "pendingTasks"    => $pendingTasks,
+            "inProgressTasks" => $inProgressTasks,
+            "completedTasks"  => $completedTasks,
+            "expiredTasks"    => $expiredTasks,
+            "totalEmployees"    => $totalEmployees,
+            "departmentEmpCount"    => $departmentEmpCount,
+            "totalPaidSalary"    => $totalPaidSalary,
+            "totalUnpaidSalary"    => $totalUnpaidSalary,
+            "deptLabels"    => $deptLabels,
+            "maxEmployee"    => $maxEmployee,
+            "deptSeries"    => $deptSeries,
+            "chartHeight" => $chartHeight
+        ]);
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
     }
-}
-
 }

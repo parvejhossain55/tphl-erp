@@ -188,8 +188,9 @@ class Employee extends Model
         return true;
     }
 
-public function getAllWithDesignation() {
-    $stmt = $this->db->prepare("
+    public function getAllWithDesignation()
+    {
+        $stmt = $this->db->prepare("
         SELECT 
             e.id,
             e.full_name,
@@ -204,17 +205,17 @@ public function getAllWithDesignation() {
         ORDER BY e.full_name ASC
     ");
 
-    if (!$stmt) {
-        die("Prepare failed: " . $this->db->error);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $data;
     }
-
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $data = $result->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
-
-    return $data;
-}
 
     //employee id find for edit
     public function find($id)
@@ -329,13 +330,27 @@ public function getAllWithDesignation() {
     }
 
 
+public function delete($id)
+{
+    $tables = ['payslips', 'tasks', 'employees'];
+    
+    foreach ($tables as $table) {
+        $stmt = $this->db->prepare($table == 'employees' 
+            ? "DELETE FROM employees WHERE id = ?" 
+            : "DELETE FROM $table WHERE employee_id = ?");
+        
+        if (!$stmt) {
+            error_log("Prepare failed for table $table: " . $this->db->error);
+            continue;
+        }
 
-    public function delete($id)
-    {
-        $stmt = $this->db->prepare("DELETE FROM employees WHERE id = ?");
         $stmt->bind_param("i", $id);
-        return $stmt->execute();
+        $stmt->execute();
+        $stmt->close();
     }
+
+    return true;
+}
 
     public function taskNotification()
     {

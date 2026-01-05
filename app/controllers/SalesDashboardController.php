@@ -64,7 +64,7 @@ class SalesDashboardController extends Controller
         $todayFollowUpData = $this->followUpModel->getTodaysFollowUps();
 
 
-                $weeklySalesQuery = "
+        $weeklySalesQuery = "
             SELECT DATE(payment_date) AS date, SUM(amount) AS total
             FROM lead_payments
             WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
@@ -116,6 +116,28 @@ class SalesDashboardController extends Controller
 
         $totalProjects = $this->projectModel->countProject();
 
+
+
+
+        $flatSalesQuery = "
+    SELECT p.name AS project_name, COUNT(lb.id) AS flat_sold
+    FROM lead_bookings lb
+    JOIN projects p ON p.id = lb.project_id
+    WHERE lb.booking_status = 'booked'
+    GROUP BY lb.project_id
+    ORDER BY flat_sold DESC
+";
+
+        $result = $this->db->query($flatSalesQuery);
+
+        $flatSalesLabels = [];
+        $flatSalesSeries = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $flatSalesLabels[] = $row['project_name'];
+            $flatSalesSeries[] = (int)$row['flat_sold'];
+        }
+
         // Pass variables to view
         $this->view("sales-developments/sales-dashboard", [
             "current_route" => "sales-dashboard",
@@ -133,6 +155,8 @@ class SalesDashboardController extends Controller
             "totalProjects" => $totalProjects,
             "todayFollowUpData" => $todayFollowUpData,
             "totalTodayFollowUps" => $totalTodayFollowUps,
+            "flatSalesLabels" => $flatSalesLabels,
+            "flatSalesSeries" => $flatSalesSeries
 
         ]);
     }

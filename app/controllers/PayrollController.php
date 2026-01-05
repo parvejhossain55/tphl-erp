@@ -137,27 +137,6 @@ class PayrollController extends Controller
 
 
 
-
-
-    // public function downloadPDF($id)
-    // {
-    //     ini_set('memory_limit', '1024M'); // Increase memory
-    //     require_once __DIR__ . '/../../vendor/autoload.php';
-
-    //     $payslip = $this->paymentModel->getByIdWithItems($id);
-    //     if (!$payslip) die('Payslip not found');
-
-    //     ob_start();
-    //     $this->view("payrolls/payslips/payslip-download", ["payslip" => $payslip]);
-    //     $html = ob_get_clean();
-
-    //     $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/../../tmp']); // tempDir optional
-    //     $mpdf->WriteHTML($html);
-    //     $mpdf->Output('payslip_'.$payslip['id'].'.pdf','D');
-    // }
-
-
-
     public function downloadPDF($id)
     {
         ini_set('memory_limit', '1024M');

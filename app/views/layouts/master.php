@@ -38,3 +38,7 @@ if (!empty($show_breadcrumb) && $show_breadcrumb === true) {
 <?php require __DIR__ . "/footer.php"; ?>
 
 
+?>
+<script>
+    window.BASE_URL = "<?= $GLOBALS['base_url'] ?>";
+</script>

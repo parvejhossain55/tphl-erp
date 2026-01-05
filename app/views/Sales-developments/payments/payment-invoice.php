@@ -1005,7 +1005,7 @@
             <!-- <a href="<= $GLOBALS['base_url'] ?>/download-payslip/<= $payslip['id'] ?>" target="_blank" class="btn-action btn-download">
                 <i class="fas fa-file-pdf"></i> Download PDF
             </a> -->
-            <button target="_blank" class="btn-action btn-print" onclick="downloadPaymentPdf()">
+            <button target="_blank" class="btn-action btn-print d-none" onclick="downloadPaymentPdf()">
                 <i class="mdi mdi-download"></i> Download PDF
             </button>
         </div>
