@@ -15,14 +15,14 @@ class SiteSettingController extends Controller
     }
 
     // Load settings page with existing data
- public function index()
-{
-    $settings = $this->siteSettingModel->getFirst(); // get first row or null
-    $this->view("site-manage/settings/site-settings", [
-        "page_title" => "Site Settings",
-        "settings" => $settings // এখানে settings হিসেবে পাঠাচ্ছি
-    ]);
-}
+    public function index()
+    {
+        $settings = $this->siteSettingModel->getFirst(); // get first row or null
+        $this->view("site-manage/settings/site-settings", [
+            "page_title" => "Site Settings",
+            "settings" => $settings // এখানে settings হিসেবে পাঠাচ্ছি
+        ]);
+    }
 
 
     // Handle both create and update
@@ -30,7 +30,7 @@ class SiteSettingController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
-
+            $data['created_by'] = $_SESSION['user']['id'] ?? null;
             // Check if settings already exist
             $existing = $this->siteSettingModel->getFirst();
 

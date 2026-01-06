@@ -36,15 +36,16 @@ public function create($data)
 
     $stmt = $this->db->prepare(
         "INSERT INTO payslip_items
-        (name, type)
-        VALUES (?, ?)"
+        (name, type,created_by)
+        VALUES (?, ?,?)"
     );
 
 
 $stmt->bind_param(
-    "ss",
+    "ssi",
     $data['name'],
     $data['type'],
+    $data['created_by']
     
 );
     if ($stmt->execute()) {

@@ -100,7 +100,7 @@ class PaymentBookingController extends Controller
 
         $this->view("sales-developments/payments/payment-invoice", [
             "invoice" => $invoice,
-            "current_route" => 'payment-invoice',
+            "current_route" => 'payment-booking-invoice',
             "page_title" => "Payment Invoice",
         
         ], false);

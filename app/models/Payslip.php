@@ -12,7 +12,7 @@ class Payslip extends Model
     // Get all Departments with paginate
 
 public function getAllWithEmployee() {
-    $stmt = $this->db->prepare("SELECT p.*,e.id AS employee_id,e.full_name AS employee_name ,e.email,e.joining_date,d.name AS desgination_name 
+    $stmt = $this->db->prepare("SELECT p.*,e.id AS employee_id,e.full_name AS employee_name , e.photo,e.email,e.joining_date,d.name AS desgination_name 
     FROM payslips AS p 
     LEFT JOIN employees AS e ON p.employee_id = e.id 
     LEFT JOIN designations AS d ON p.designation_id = d.id
@@ -54,19 +54,21 @@ public function getPendingCount(){
     {
         $stmt = $this->db->prepare("
             INSERT INTO payslips
-            (employee_id, designation_id, payslip_month, total_earning, total_deduction, net_salary, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (employee_id, designation_id, payslip_month, total_earning, total_deduction, net_salary, status,created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?,?)
         ");
 
         $stmt->bind_param(
-            "iisddds",
+            "iisdddsi",
             $data['employee_id'],
             $data['designation_id'],
             $data['payslip_month'],
             $data['total_earning'],
             $data['total_deduction'],
             $data['net_salary'],
-            $data['status']
+            $data['status'],
+            $data['created_by']
+
         );
 
         $stmt->execute();

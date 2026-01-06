@@ -180,7 +180,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                     <td><?= $p['created_by_name'] ?? '-' ?></td>
                                     <td>
                                         <a target="_blank"
-                                            href="<?= $GLOBALS['base_url'] ?>/payment-invoice/<?= $p['id'] ?>"
+                                            href="<?= $GLOBALS['base_url'] ?>/payment-booking-invoice/<?= $p['id'] ?>"
                                             class="btn btn-success btn-sm">
                                             Print Invoice
                                         </a>

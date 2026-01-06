@@ -212,10 +212,6 @@ class FollowUp extends Model
     }
 
 
-
-
-
-
     public function getTodaysFollowUps()
     {
         $today = date('Y-m-d'); // today date

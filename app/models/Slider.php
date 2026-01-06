@@ -42,16 +42,17 @@ class Slider extends Model
         }
 
         $stmt = $this->db->prepare(
-            "INSERT INTO sliders (title, subtitle, image, status, link) VALUES (?,?,?,?,?)"
+            "INSERT INTO sliders (title, subtitle, image, status, link,created_by) VALUES (?,?,?,?,?,?)"
         );
 
         $stmt->bind_param(
-            "sssis",
+            "sssisi",
             $data['title'],
             $data['subtitle'],
             $image,
             $data['status'],
-            $data['link']
+            $data['link'],
+            $data['created_by']
         );
 
         if ($stmt->execute()) {
@@ -66,16 +67,17 @@ class Slider extends Model
     public function update($data)
     {
         // Prepare update statement
-        $stmt = $this->db->prepare("UPDATE sliders SET name = ?, is_active = ? WHERE id = ?");
+        $stmt = $this->db->prepare("UPDATE sliders SET name = ?, is_active = ?,created_by = ? WHERE id = ?");
         if (!$stmt) {
             echo "Prepare failed: " . $this->db->error;
             return false;
         }
 
         $stmt->bind_param(
-            "sii",
+            "siii",
             $data['name'],
             $data['is_active'],
+            $data['created_by'],
             $data['id']
         );
 

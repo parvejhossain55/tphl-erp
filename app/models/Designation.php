@@ -57,7 +57,7 @@ class Designation extends Model{
         $data['name'],
     
         $data['department_id'],
-        $data['created_by'],
+        $data['created_by']
     
     );
         if ($stmt->execute()) {

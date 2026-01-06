@@ -11,25 +11,15 @@ class DepartmentController extends Controller
     }
     public function index()
     {
-        $searchTerm = $_GET['q'] ?? '';
-        $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
-        $perPage = 10;
-        $offset = ($currentPage - 1) * $perPage;
-
-        // Total department count
-        $totalDepartments = $this->deparmentModel->countAll($searchTerm);
-        $totalPages = ceil($totalDepartments / $perPage);
-
+        
         // Get departments
-        $departments = $this->deparmentModel->getPaginated($perPage, $offset, $searchTerm);
+        $departments = $this->deparmentModel->getAll();
 
         $this->view("hrm/departments/departments", [
             "current_route"   => "departments",
             "page_title"      => "Departments List",
             "departments"     => $departments,
-            "totalPages"      => $totalPages,
-            "currentPage"     => $currentPage,
-            "searchTerm"      => $searchTerm,
+        
         ]);
     }
 

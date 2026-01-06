@@ -32,7 +32,8 @@ class PayslipItemController extends Controller
     {
         $data = [
             'name'   => $_POST['name'] ?? '',
-            'type' => $_POST['type'] ?? '', // 'earning' or 'deduction'
+            'type' => $_POST['type'] ?? '',
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
         if ($this->payslipItemModel->create($data)) {

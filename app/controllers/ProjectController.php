@@ -98,6 +98,7 @@ class ProjectController extends Controller
 
             'map_link'          => $_POST['map_link'] ?? null,
             'description'       => $_POST['description'] ?? null,
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
         // ======================
@@ -176,6 +177,7 @@ public function update($id)
         'amenities_details' => $_POST['amenities_details'] ?? null,
         'map_link'          => $_POST['map_link'] ?? null,
         'description'       => $_POST['description'] ?? null,
+        'created_by'      => $_SESSION['user']['id'] ?? null,
     ];
 
     if ($this->projectModel->update($id, $data)) {

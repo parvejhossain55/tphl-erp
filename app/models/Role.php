@@ -21,8 +21,8 @@ class Role extends Model
     // Create a new role
     public function create($data)
     {
-        $stmt = $this->db->prepare("INSERT INTO roles (name) VALUES (?)");
-        $stmt->bind_param("s", $data['name']);
+        $stmt = $this->db->prepare("INSERT INTO roles (name,created_by) VALUES (?,?)");
+        $stmt->bind_param("si", $data['name'],$data['created_by'] );
         if ($stmt->execute()) {
             $role_id = $this->db->insert_id;
 
@@ -40,41 +40,6 @@ class Role extends Model
     }
 
 
-
-    // public function getRolesWithPermissions()
-    // {
-    //     $sql = "
-    //         SELECT r.id AS role_id, r.name AS role_name,
-    //                p.id AS permission_id, p.name AS permission_name
-    //         FROM roles r
-    //         LEFT JOIN role_permissions rp ON r.id = rp.role_id
-    //         LEFT JOIN permissions p ON rp.permission_id = p.id
-    //         ORDER BY r.id ASC
-    //     ";
-
-    //     $result = $this->db->query($sql);
-    //     $data = $result->fetch_all(MYSQLI_ASSOC);
-
-    //     $roles = [];
-
-    //     foreach ($data as $row) {
-    //         $role_id = $row['role_id'];
-
-    //         if (!isset($roles[$role_id])) {
-    //             $roles[$role_id] = [
-    //                 "role_id" => $role_id,
-    //                 "role_name" => $row['role_name'],
-    //                 "permissions" => []
-    //             ];
-    //         }
-
-    //         if ($row['permission_id']) {
-    //             $roles[$role_id]["permissions"][] = $row['permission_name'];
-    //         }
-    //     }
-
-    //     return $roles;
-    // }
 
 
 public function getRolesWithPermissions()
@@ -113,8 +78,8 @@ public function getRolesWithPermissions()
     
     {
         // Update role name
-        $stmt = $this->db->prepare("UPDATE roles SET name = ? WHERE id = ?");
-        $stmt->bind_param("si", $data['name'], $data['id']);
+        $stmt = $this->db->prepare("UPDATE roles SET name = ?,created_by =? WHERE id = ?");
+        $stmt->bind_param("sii", $data['name'],$data['created_by'], $data['id']);
         if (!$stmt->execute()) return false;
 
         // Remove old permissions

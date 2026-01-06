@@ -76,6 +76,7 @@ class UserController extends Controller
             'password'    => $_POST['password'] ?? '',
             'media_link1'    => $_POST['media_link1'] ?? '',
             'media_link2'    => $_POST['media_link2'] ?? '',
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
         // Call model create function
@@ -147,6 +148,7 @@ public function update($id)
         'password'     => $_POST['password'] ?? '',
         'media_link1'  => $_POST['media_link1'] ?? '',
         'media_link2'  => $_POST['media_link2'] ?? '',
+        'created_by'      => $_SESSION['user']['id'] ?? null,
         // 'photo' will be handled inside model
     ];
 
@@ -157,5 +159,17 @@ public function update($id)
         echo "<h3 style='color:red'>Failed to update user</h3>";
     }
 }
+
+  public function delete()
+    {
+        $id = $_POST['id'] ?? 0;
+        if ($id && $this->userModel->delete($id)) {
+            setSuccess("User deleted successfully");
+            header("Location: {$GLOBALS['base_url']}/user-lists");
+            exit;
+        } else {
+            setError("Failed To delete User");
+        }
+    }
 
 }
