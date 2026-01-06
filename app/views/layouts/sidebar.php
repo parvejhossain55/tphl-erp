@@ -205,7 +205,7 @@
 
                        <?php endif; ?>
                        <!--End HRM CATEGORY -->
-                       <?php if (hasPermission("account")):  ?>
+                       <?php if (hasPermission("accounts manage")):  ?>
                            <!--Accounts CATEGORY -->
                            <li class="sidebar__menu-category">
                                <span class="category-name">Accounts</span>
