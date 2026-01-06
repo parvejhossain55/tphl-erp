@@ -134,7 +134,7 @@ class Employee extends Model
          designation_id, dob, joining_date, account_holder_name, account_number, 
          bank_name, branch_name, social_media1, social_media2, social_media3, 
          photo, make_user, password,created_by) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)"
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)"
         );
 
         $stmt->bind_param(
@@ -165,11 +165,11 @@ class Employee extends Model
             $photo,
             $data['make_user'],
             $data['password'],
-            $data['created_by'],
+            $data['created_by']
         );
 
         if (!$stmt->execute()) {
-            error_log("Employee insert failed: " . $stmt->error);
+            error_log("Employee insert failed: " . $this->db->error);
             return false;
         }
 
@@ -290,7 +290,7 @@ class Employee extends Model
         social_media2 = ?, 
         social_media3 = ?, 
         photo = ?,
-        assigned_by = ?,
+        created_by = ?
     WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -333,27 +333,27 @@ class Employee extends Model
     }
 
 
-public function delete($id)
-{
-    $tables = ['payslips', 'tasks', 'employees'];
-    
-    foreach ($tables as $table) {
-        $stmt = $this->db->prepare($table == 'employees' 
-            ? "DELETE FROM employees WHERE id = ?" 
-            : "DELETE FROM $table WHERE employee_id = ?");
-        
-        if (!$stmt) {
-            error_log("Prepare failed for table $table: " . $this->db->error);
-            continue;
+    public function delete($id)
+    {
+        $tables = ['payslips', 'tasks', 'employees'];
+
+        foreach ($tables as $table) {
+            $stmt = $this->db->prepare($table == 'employees'
+                ? "DELETE FROM employees WHERE id = ?"
+                : "DELETE FROM $table WHERE employee_id = ?");
+
+            if (!$stmt) {
+                error_log("Prepare failed for table $table: " . $this->db->error);
+                continue;
+            }
+
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
         }
 
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $stmt->close();
+        return true;
     }
-
-    return true;
-}
 
     public function taskNotification()
     {

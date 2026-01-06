@@ -119,7 +119,7 @@ class User extends Model
             $photo,
             $data['media_link1'],
             $data['media_link2'],
-            $data['created_by'],
+            $data['created_by']
         );
 
         if ($stmt->execute()) {
@@ -203,7 +203,7 @@ public function update($id, $data)
             photo = COALESCE(?, photo),
             media_link1 = ?,
             media_link2 = ?,
-            created_by = ?,
+            created_by = ?
         WHERE id = ?"
     );
 
@@ -232,13 +232,6 @@ public function update($id, $data)
         return false;
     }
 }
-
-
-
-
-
-
-
 
     public function getPermissionsByRole($role_id)
     {
@@ -333,4 +326,32 @@ public function update($id, $data)
 
         return $result->fetch_assoc();
     }
+
+
+public function delete($id)
+{
+   
+        // Optional: check if user exists
+        $user = $this->find($id);
+        if (!$user) {
+            setError("User not found.");
+            return false;
+        }
+
+        // Delete the user
+        $stmt = $this->db->prepare("DELETE FROM users WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+
+        if ($stmt->affected_rows > 0) {
+            setSuccess("User deleted successfully.");
+            return true;
+        } else {
+            setError("Failed to delete user.");
+            return false;
+        }
+    
+}
+
+
 }

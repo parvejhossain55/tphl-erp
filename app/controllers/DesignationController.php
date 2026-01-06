@@ -12,17 +12,10 @@ class DesignationController extends Controller
     }
 public function index()
 {
-    $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
-    $perPage = 10;
-    $offset = ($currentPage - 1) * $perPage;
-
     // Get all designations with department names (no pagination)
-    $designations = $this->designationModel->getPaginate($perPage, $offset);
+    $designations = $this->designationModel->getAll();
 
-    // Total department count for pagination
-    $totalDepartments = $this->deparmentModel->countAll();
-    $totalPages = ceil($totalDepartments / $perPage);
-
+ 
     // Get paginated departments
     $departments = $this->deparmentModel->getAll();
 
@@ -31,8 +24,7 @@ public function index()
         "page_title"      => "Designations List",
         "designations"    => $designations,
         "departments"     => $departments,
-        "totalPages"      => $totalPages,
-        "currentPage"     => $currentPage
+ 
     ]);
 }
 

@@ -66,7 +66,7 @@ $stmt->bind_param(
     "si",
     $data['name'],
     $data['status'],
-    $data['created_by'],
+    $data['created_by']
     
 );
     if ($stmt->execute()) {

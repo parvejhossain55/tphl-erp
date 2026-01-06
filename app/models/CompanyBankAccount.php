@@ -47,7 +47,7 @@ $stmt->bind_param(
     $data['account_number'],
     $data['bank_name'],
     $data['status'],
-    $data['created_by'],
+    $data['created_by']
 );
     if ($stmt->execute()) {
         return true;
@@ -63,7 +63,7 @@ $stmt->bind_param(
 public function update($data)
 {
     // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE company_bank_accounts SET account_name = ?, account_number = ?, bank_name = ?, status = ?,created_by = ?, WHERE id = ?");
+    $stmt = $this->db->prepare("UPDATE company_bank_accounts SET account_name = ?, account_number = ?, bank_name = ?, status = ?,created_by = ? WHERE id = ?");
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;

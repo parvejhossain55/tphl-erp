@@ -83,7 +83,12 @@ $show_breadcrumb = false;
                                         href="<?= $base_url ?>/user-profile/<?= $user['id'] ?>">View</a>
                                     <a class="btn btn-outline-theme-border"
                                         href="<?= $base_url ?>/edit-user/<?= $user['id'] ?>">Edit</a>
-                                    <a class="btn btn-outline-theme-border" href="tel:<?= htmlspecialchars($user['phone']) ?>">Delete</a>
+                                    <button class="removeBtnCust btn btn-outline-theme-border delete"
+                                        data-id="<?= $user['id'] ?>"
+                                        data-name="<?= $user['full_name'] ?>"
+                                        data-action="delete-user">
+                                        Delete
+                                    </button>
                                 </div>
                             </div>
                         </div>

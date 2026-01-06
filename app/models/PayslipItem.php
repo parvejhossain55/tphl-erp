@@ -45,7 +45,7 @@ $stmt->bind_param(
     "ssi",
     $data['name'],
     $data['type'],
-    $data['created_by'],
+    $data['created_by']
     
 );
     if ($stmt->execute()) {

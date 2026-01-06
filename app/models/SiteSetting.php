@@ -43,7 +43,7 @@ class SiteSetting extends Model
             $data['youtube_link'],
             $data['header_code'],
             $data['body_code'],
-            $data['created_by'],
+            $data['created_by']
         );
 
         return $stmt->execute();

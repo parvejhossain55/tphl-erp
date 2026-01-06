@@ -101,7 +101,7 @@ $show_breadcrumb = true;
                                     <span class="table-avatar">
                                         <a class="employee__avatar mr-5" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><img
                                                 class="img-48 border-circle"
-                                                src="assets/images/avatar/avatar1.png"
+                                                src="<?= getImage('employees',$payslip['photo']) ?>"
                                                 alt="User Image"></a>
                                         <a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><?= $payslip['employee_name'] ?></a>
                                     </span>

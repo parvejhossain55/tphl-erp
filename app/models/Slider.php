@@ -52,7 +52,7 @@ class Slider extends Model
             $image,
             $data['status'],
             $data['link'],
-            $data['created_by'],
+            $data['created_by']
         );
 
         if ($stmt->execute()) {

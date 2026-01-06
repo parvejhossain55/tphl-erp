@@ -79,7 +79,7 @@ class Blog extends Model
             $data['read_time'],
             $photo,
             $data['status'],
-            $data['created_by'],
+            $data['created_by']
 
         );
         if ($stmt->execute()) {

@@ -41,7 +41,7 @@ public function create($data)
 $stmt->bind_param(
     "si",
     $data['name'],
-    $data['created_by'],
+    $data['created_by']
 
 
 );

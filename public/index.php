@@ -51,6 +51,7 @@ $routes = [
     "edit-user/(\d+)"          => ["controller" => "UserController", "method" => "edit"],
     "user-profile/(\d+)"          => ["controller" => "UserController", "method" => "show"],
     "update-user/(\d+)"          => ["controller" => "UserController", "method" => "update"],
+    "delete-user"          => ["controller" => "UserController", "method" => "delete"],
 
 
     "customer-lists"       => ["controller" => "CustomerController", "method" => "index"],

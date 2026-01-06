@@ -160,4 +160,16 @@ public function update($id)
     }
 }
 
+  public function delete()
+    {
+        $id = $_POST['id'] ?? 0;
+        if ($id && $this->userModel->delete($id)) {
+            setSuccess("User deleted successfully");
+            header("Location: {$GLOBALS['base_url']}/user-lists");
+            exit;
+        } else {
+            setError("Failed To delete User");
+        }
+    }
+
 }

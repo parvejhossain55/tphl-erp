@@ -45,7 +45,7 @@ $stmt->bind_param(
     "sii",
     $data['name'],
     $data['is_active'],
-    $data['created_by'],
+    $data['created_by']
     
 );
     if ($stmt->execute()) {

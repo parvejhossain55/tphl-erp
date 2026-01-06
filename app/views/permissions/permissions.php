@@ -9,9 +9,6 @@ $show_breadcrumb = true;
 
     </div>
 </div> -->
-
-
-
 <?php
 $page_title = "department Page";
 $page = 'Department';

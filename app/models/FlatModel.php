@@ -126,7 +126,7 @@ class FlatModel extends Model
             $data['facing_site'],
             $data['price_value'],
             $data['facilities'],
-            $data['created_by'],
+            $data['created_by']
         );
 
         return $stmt->execute();

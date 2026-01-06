@@ -114,7 +114,7 @@ $stmt->bind_param(
     $image2,
     $image3,
     $data['car_parking'],
-    $data['created_by'],
+    $data['created_by']
 );
 
     return $stmt->execute();
@@ -214,7 +214,7 @@ public function update($id, $data)
             image2 = ?, 
             image3 = ?,
             car_parking = ?,
-            created_by = ?,
+            created_by = ?
 
         WHERE id = ?
     ");
