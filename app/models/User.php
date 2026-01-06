@@ -101,12 +101,12 @@ class User extends Model
 
         $stmt = $this->db->prepare(
             "INSERT INTO users
-        (full_name, phone, email, designation_id, address, nid, role_id, user_name, password, photo, media_link1, media_link2)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        (full_name, phone, email, designation_id, address, nid, role_id, user_name, password, photo, media_link1, media_link2,created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)"
         );
 
         $stmt->bind_param(
-            "sssississsss",
+            "sssississsssi",
             $data['full_name'],
             $data['phone'],
             $data['email'],
@@ -118,7 +118,8 @@ class User extends Model
             $password,
             $photo,
             $data['media_link1'],
-            $data['media_link2']
+            $data['media_link2'],
+            $data['created_by'],
         );
 
         if ($stmt->execute()) {
@@ -201,12 +202,13 @@ public function update($id, $data)
             password = ?,
             photo = COALESCE(?, photo),
             media_link1 = ?,
-            media_link2 = ?
+            media_link2 = ?,
+            created_by = ?,
         WHERE id = ?"
     );
 
     $stmt->bind_param(
-        "sssississsssi",
+        "sssississsssii",
         $data['full_name'],
         $data['phone'],
         $data['email'],
@@ -219,6 +221,7 @@ public function update($id, $data)
         $photo,
         $data['media_link1'],
         $data['media_link2'],
+        $data['created_by'],
         $id
     );
 

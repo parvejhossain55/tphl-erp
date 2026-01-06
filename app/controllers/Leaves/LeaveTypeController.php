@@ -13,7 +13,7 @@ class LeaveTypeController extends Controller
     public function __construct($db)
     {
         $this->db = $db;
-        $this->leaveTypeModel =new LeaveType($db);
+        $this->leaveTypeModel = new LeaveType($db);
     }
     public function index()
     {
@@ -25,11 +25,12 @@ class LeaveTypeController extends Controller
         ]);
     }
     // Handle form submission
-  public function store()
+    public function store()
     {
         $data = [
             'name'      => $_POST['name'] ?? '',
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
         try {
@@ -50,14 +51,15 @@ class LeaveTypeController extends Controller
             'id'     => $_POST['id'] ?? 0,
             'name'   => $_POST['name'] ?? '',
             'is_active' => isset($_POST['is_active']) ? intval($_POST['is_active']) : 0,
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
-            if ($this->leaveTypeModel->update($data)) {
-                setSuccess("Leave Type Update successfully");
-        header("Location: {$GLOBALS['base_url']}/leave-types");
-        exit;
-    } else {
-             setError("Failed to update department");
-    }
+        if ($this->leaveTypeModel->update($data)) {
+            setSuccess("Leave Type Update successfully");
+            header("Location: {$GLOBALS['base_url']}/leave-types");
+            exit;
+        } else {
+            setError("Failed to update department");
+        }
     }
     public function show()
     {
@@ -76,15 +78,15 @@ class LeaveTypeController extends Controller
 
 
 
- public function delete()
-{
-    $id = $_POST['id'] ?? 0;
+    public function delete()
+    {
+        $id = $_POST['id'] ?? 0;
 
-    if ($id && $this->leaveTypeModel->delete($id)) {
-        header("Location: {$GLOBALS['base_url']}/leave-types");
-        exit;
-    } else {
-        echo "<h3 style='color:red'>Failed to delete leave type</h3>";
+        if ($id && $this->leaveTypeModel->delete($id)) {
+            header("Location: {$GLOBALS['base_url']}/leave-types");
+            exit;
+        } else {
+            echo "<h3 style='color:red'>Failed to delete leave type</h3>";
+        }
     }
-}
 }

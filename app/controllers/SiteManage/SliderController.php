@@ -34,6 +34,7 @@ class SliderController extends Controller
             
             'link'      => $_POST['link'] ?? '',
             'status' => isset($_POST['status']) ? 1 : 0,
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
         $photoInputName = 'image';
 

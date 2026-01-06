@@ -36,15 +36,16 @@ public function create($data)
 
     $stmt = $this->db->prepare(
         "INSERT INTO leave_types
-        (name, is_active)
-        VALUES (?, ?)"
+        (name, is_active,created_by)
+        VALUES (?, ?,?)"
     );
 
 
 $stmt->bind_param(
-    "si",
+    "sii",
     $data['name'],
     $data['is_active'],
+    $data['created_by'],
     
 );
     if ($stmt->execute()) {
@@ -61,16 +62,17 @@ $stmt->bind_param(
 public function update($data)
 {
     // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE leave_types SET name = ?, is_active = ? WHERE id = ?");
+    $stmt = $this->db->prepare("UPDATE leave_types SET name = ?, is_active = ?,created_by=? WHERE id = ?");
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;
     }
 
     $stmt->bind_param(
-        "sii",
+        "siii",
         $data['name'],    
         $data['is_active'],  
+        $data['created_by'],  
         $data['id']       
     );
 

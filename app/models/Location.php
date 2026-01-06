@@ -35,12 +35,16 @@ public function create($data)
    
 
     $stmt = $this->db->prepare(
-        "INSERT INTO locations(name) VALUES (?)");
+        "INSERT INTO locations (name,created_by) VALUES (?,?)");
 
 
 $stmt->bind_param(
-    "s",
-    $data['name']);
+    "si",
+    $data['name'],
+    $data['created_by'],
+
+
+);
     if ($stmt->execute()) {
         return true;
     } else {
@@ -52,15 +56,16 @@ $stmt->bind_param(
 public function update($data)
 {
     // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE locations SET name = ? WHERE id = ?");
+    $stmt = $this->db->prepare("UPDATE locations SET name = ?,created_by=? WHERE id = ?");
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;
     }
 
     $stmt->bind_param(
-        "si",
+        "sii",
         $data['name'],     
+        $data['created_by'],     
         $data['id']       
     );
 

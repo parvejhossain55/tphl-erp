@@ -73,8 +73,8 @@ public function create($data)
             description, apartment_count, amenities_details, amenities_image,
             map_image, map_link, passenger_lift, cargo_lift,
             rooftop_gardening, swimming_pool, convention, electricity_backup,
-            image, image2, image3,car_parking
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            image, image2, image3,car_parking,created_by
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
     if (!$stmt) {
@@ -83,7 +83,7 @@ public function create($data)
     }
 
 $stmt->bind_param(
-    "ssssssssssssssssssssssssssssss",
+    "ssssssssssssssssssssssssssssssi",
     $data['name'],
     $data['location_id'],
     $data['community_id'],
@@ -114,6 +114,7 @@ $stmt->bind_param(
     $image2,
     $image3,
     $data['car_parking'],
+    $data['created_by'],
 );
 
     return $stmt->execute();
@@ -212,7 +213,8 @@ public function update($id, $data)
             image = ?, 
             image2 = ?, 
             image3 = ?,
-            car_parking = ?
+            car_parking = ?,
+            created_by = ?,
 
         WHERE id = ?
     ");
@@ -223,7 +225,7 @@ public function update($id, $data)
     }
 
     $stmt->bind_param(
-        "ssssssssssssssssssssssssssssssi",
+        "ssssssssssssssssssssssssssssssii",
         $data['name'],
         $data['location_id'],
         $data['community_id'],
@@ -254,6 +256,7 @@ public function update($id, $data)
         $image2,
         $image3,
         $data['car_parking'],
+        $data['created_by'],
         $id
     );
 

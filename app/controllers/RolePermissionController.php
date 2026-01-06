@@ -44,7 +44,8 @@ public function store()
 {
     $data = [
         'name' => $_POST['name'] ?? '',
-        'status' => isset($_POST['status']) ? (int)$_POST['status'] : 0
+        'status' => isset($_POST['status']) ? (int)$_POST['status'] : 0,
+        'created_by'      => $_SESSION['user']['id'] ?? null,
     ];
 
     $result = $this->permissionModel->create($data);
@@ -83,6 +84,7 @@ public function update()
         'id'     => $_POST['id'] ?? 0,          
         'name'   => $_POST['name'] ?? '',        
         'status' => isset($_POST['status']) ? intval($_POST['status']) : 0, 
+        'created_by'      => $_SESSION['user']['id'] ?? null,
     ];
 
     // print_r($data); // debug: check values

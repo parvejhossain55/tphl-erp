@@ -29,7 +29,7 @@ class Permission extends Model
 public function create($data)
 {
     $stmt = $this->db->prepare(
-        "INSERT INTO permissions (name, status) VALUES (?, ?)"
+        "INSERT INTO permissions (name, status,created_by) VALUES (?, ?,?)"
     );
 
     if (!$stmt) {
@@ -37,8 +37,8 @@ public function create($data)
         return false;
     }
 
-    if (!$stmt->bind_param("si", $data['name'], $data['status'])) {
-        echo "❌ Bind Failed: " . $stmt->error;
+    if (!$stmt->bind_param("sii", $data['name'], $data['status'],$data['created_by'])) {
+        echo "Bind Failed: " . $stmt->error;
         return false;
     }
 
@@ -57,7 +57,7 @@ public function update($data)
 {
     $stmt = $this->db->prepare("
         UPDATE permissions 
-        SET name = ?, status = ? 
+        SET name = ?, status = ?,created_by = ?
         WHERE id = ?
     ");
 
@@ -66,9 +66,10 @@ public function update($data)
     }
 
     $stmt->bind_param(
-        "sii",
+        "siii",
         $data['name'],   
         $data['status'],  
+        $data['created_by'],  
         $data['id']       
     );
 

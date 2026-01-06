@@ -54,19 +54,21 @@ public function getPendingCount(){
     {
         $stmt = $this->db->prepare("
             INSERT INTO payslips
-            (employee_id, designation_id, payslip_month, total_earning, total_deduction, net_salary, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (employee_id, designation_id, payslip_month, total_earning, total_deduction, net_salary, status,created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?,?)
         ");
 
         $stmt->bind_param(
-            "iisddds",
+            "iisdddsi",
             $data['employee_id'],
             $data['designation_id'],
             $data['payslip_month'],
             $data['total_earning'],
             $data['total_deduction'],
             $data['net_salary'],
-            $data['status']
+            $data['status'],
+            $data['created_by'],
+
         );
 
         $stmt->execute();

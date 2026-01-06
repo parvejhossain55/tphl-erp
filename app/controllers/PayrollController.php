@@ -34,7 +34,6 @@ class PayrollController extends Controller
             "paidCount" => $paidCount,
             "pendingCount" => $pendingCount,
             "companyBanks" => $companyBanks,
-
         ]);
     }
     public function create()
@@ -66,7 +65,8 @@ class PayrollController extends Controller
             'total_earning'   => $payload['total_earning'],
             'total_deduction' => $payload['total_deduction'],
             'net_salary'      => $payload['net_salary'],
-            'status'          => 'pending'
+            'status'          => 'pending',
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ]);
 
         // Earnings

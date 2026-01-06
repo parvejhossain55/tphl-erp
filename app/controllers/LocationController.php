@@ -28,6 +28,7 @@ public function store()
 {
     $data = [
         'name'   => $_POST['name'] ?? '',
+        'created_by'      => $_SESSION['user']['id'] ?? null,
     ];
 
     if ($this->locationModel->create($data)) {
@@ -42,7 +43,8 @@ public function update()
 {
     $data = [
         'id'     => $_POST['id'] ?? 0,          
-        'name'   => $_POST['name'] ?? '',        
+        'name'   => $_POST['name'] ?? '',       
+        'created_by'      => $_SESSION['user']['id'] ?? null, 
     ];
 
 

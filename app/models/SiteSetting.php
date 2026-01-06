@@ -20,8 +20,8 @@ class SiteSetting extends Model
             INSERT INTO site_settings (
                 website_title, logo, phone, alt_phone, email, alt_email, address,
                 footer_text, copyright, facebook_link, messenger_link,
-                instagram_link, tiktok_link, x_link, youtube_link, header_code, body_code
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                instagram_link, tiktok_link, x_link, youtube_link, header_code, body_code,created_by
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
         $stmt->bind_param(
@@ -42,7 +42,8 @@ class SiteSetting extends Model
             $data['x_link'],
             $data['youtube_link'],
             $data['header_code'],
-            $data['body_code']
+            $data['body_code'],
+            $data['created_by'],
         );
 
         return $stmt->execute();
@@ -61,12 +62,12 @@ class SiteSetting extends Model
             UPDATE site_settings SET
                 website_title=?, logo=?, phone=?, alt_phone=?, email=?, alt_email=?, address=?,
                 footer_text=?, copyright=?, facebook_link=?, messenger_link=?,
-                instagram_link=?, tiktok_link=?, x_link=?, youtube_link=?, header_code=?, body_code=?
+                instagram_link=?, tiktok_link=?, x_link=?, youtube_link=?, header_code=?, body_code=?,created_by = ?
             WHERE id=?
         ");
 
         $stmt->bind_param(
-            "sssssssssssssssssi",
+            "sssssssssssssssssii",
             $data['website_title'],
             $logo,
             $data['phone'],
@@ -84,6 +85,7 @@ class SiteSetting extends Model
             $data['youtube_link'],
             $data['header_code'],
             $data['body_code'],
+            $data['created_by'],
             $id
         );
 

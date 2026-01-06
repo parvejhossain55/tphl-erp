@@ -76,6 +76,7 @@ class UserController extends Controller
             'password'    => $_POST['password'] ?? '',
             'media_link1'    => $_POST['media_link1'] ?? '',
             'media_link2'    => $_POST['media_link2'] ?? '',
+            'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
         // Call model create function
@@ -147,6 +148,7 @@ public function update($id)
         'password'     => $_POST['password'] ?? '',
         'media_link1'  => $_POST['media_link1'] ?? '',
         'media_link2'  => $_POST['media_link2'] ?? '',
+        'created_by'      => $_SESSION['user']['id'] ?? null,
         // 'photo' will be handled inside model
     ];
 
