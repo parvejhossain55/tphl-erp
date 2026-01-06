@@ -50,7 +50,14 @@ $disable_layout = true;
         .invoice-header {
             background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
             color: white;
-            padding: 40px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        .invoice-middle-header {
+            padding: 40px 0;
             position: relative;
             overflow: hidden;
             border-radius: 5px;
@@ -64,8 +71,7 @@ $disable_layout = true;
         }
 
         .company-logo h1 {
-            font-size: 28px;
-            margin-bottom: 5px;
+            font-size: 24px;
         }
 
         .company-logo p {
@@ -78,8 +84,7 @@ $disable_layout = true;
         }
 
         .invoice-title h2 {
-            font-size: 28px;
-            margin-bottom: 5px;
+            font-size: 22px;
         }
 
         .invoice-number {
@@ -327,6 +332,16 @@ $disable_layout = true;
     <div class="invoice-container" id="invoice-content">
         <!-- Header -->
         <div class="invoice-header">
+            <div class="company-info">
+                <div class="company-logo">
+                    <h1>The Premium Homes Ltd.</h1>
+                </div>
+                <div class="invoice-title">
+                    <h2>PAYMENT RECEIPT</h2>
+                </div>
+            </div>
+        </div>
+        <div class="invoice-middle-header">
             <div class="company-info">
                 <div class="company-logo">
                     <h1>The Premium Homes Ltd.</h1>

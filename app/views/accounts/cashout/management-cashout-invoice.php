@@ -128,7 +128,14 @@ $amountInWords = numberToWords($transaction['amount'] ?? 0);
         .invoice-header {
             background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
             color: white;
-            padding: 40px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        .invoice-middle-header {
+            padding: 40px 0;
             position: relative;
             overflow: hidden;
             border-radius: 5px;
@@ -142,8 +149,7 @@ $amountInWords = numberToWords($transaction['amount'] ?? 0);
         }
 
         .company-logo h1 {
-            font-size: 28px;
-            margin-bottom: 5px;
+            font-size: 24px;
         }
 
         .company-logo p {
@@ -156,8 +162,7 @@ $amountInWords = numberToWords($transaction['amount'] ?? 0);
         }
 
         .invoice-title h2 {
-            font-size: 28px;
-            margin-bottom: 5px;
+            font-size: 22px;
         }
 
         .invoice-number {
@@ -417,13 +422,21 @@ $amountInWords = numberToWords($transaction['amount'] ?? 0);
             <div class="company-info">
                 <div class="company-logo">
                     <h1>The Premium Homes Ltd.</h1>
+                </div>
+                <div class="invoice-title">
+                    <h2>CASH OUT RECEIPT</h2>
+                </div>
+            </div>
+        </div>
+        <div class="invoice-middle-header">
+            <div class="company-info">
+                <div class="company-logo">
                     <p>Real Estate & Property Management</p>
                     <p>Land View Commercial Center, 9th Floor 28 Gulshan North C/A, <br> Gulshan Circle-2, Dhaka</p>
                     <p>Phone: +8801958253300</p>
                     <p>Email: info@thepremiumhomes.com</p>
                 </div>
                 <div class="invoice-title">
-                    <h2>CASH OUT RECEIPT</h2>
                     <p class="invoice-number">#CO-<?= str_pad($transaction['id'] ?? '0', 6, '0', STR_PAD_LEFT) ?></p>
                     <p class="invoice-number">Date: <?= date('d M, Y', strtotime($transaction['transaction_date'] ?? 'now')) ?></p>
                     <?php

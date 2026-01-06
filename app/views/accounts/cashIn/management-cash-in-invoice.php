@@ -49,7 +49,14 @@ $disable_layout = true;
         .invoice-header {
             background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
             color: white;
-            padding: 40px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        .invoice-middle-header {
+            padding: 40px 0;
             position: relative;
             overflow: hidden;
             border-radius: 5px;
@@ -63,8 +70,7 @@ $disable_layout = true;
         }
 
         .company-logo h1 {
-            font-size: 28px;
-            margin-bottom: 5px;
+            font-size: 24px;
         }
 
         .company-logo p {
@@ -77,10 +83,8 @@ $disable_layout = true;
         }
 
         .invoice-title h2 {
-            font-size: 28px;
-            margin-bottom: 5px;
+            font-size: 22px;
         }
-
         .invoice-number {
             font-size: 14px;
         }
@@ -328,6 +332,15 @@ $disable_layout = true;
             <div class="company-info">
                 <div class="company-logo">
                     <h1>The Premium Homes Ltd.</h1>
+                </div>
+                <div class="invoice-title">
+                    <h2>TRANSACTION RECEIPT</h2>
+                </div>
+            </div>
+        </div>
+        <div class="invoice-middle-header">
+            <div class="company-info">
+                <div class="company-logo">
                     <p>Real Estate & Property Management</p>
                     <p>Land View Commercial Center, 9th Floor 28 Gulshan North C/A, <br> Gulshan Circle-2, Dhaka</p>
                     <p>Phone: +8801958253300</p>
@@ -355,7 +368,7 @@ $disable_layout = true;
                     <span class="detail-value"><?= htmlspecialchars($transaction['role_name'] ?? 'N/A') ?></span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Person Name:</span>
+                    <span class="detail-label"> Name:</span>
                     <span class="detail-value"><?= htmlspecialchars($transaction['person_name'] ?? 'N/A') ?></span>
                 </div>
 
