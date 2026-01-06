@@ -7,6 +7,16 @@ $show_breadcrumb = true;
 ?>
 
 <style>
+    @media print {
+        * {
+            animation: none !important;
+            transition: none !important;
+            filter: none !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+    }
+
     /* Regular view styles */
     .card__icon span {
         color: var(--clr-theme-primary);
@@ -24,28 +34,27 @@ $show_breadcrumb = true;
     .card__title {
         font-size: 1.25rem;
     }
-    
+
     .stat-card {
-        background: white;
         border-radius: 12px;
         padding: 20px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        border-left: 4px solid;
+        border-left: 4px solid ;
         margin-bottom: 20px;
     }
-    
+
     .stat-card.cash-in {
         border-left-color: #28a745;
     }
-    
+
     .stat-card.cash-out {
         border-left-color: #dc3545;
     }
-    
+
     .stat-card.net-balance {
         border-left-color: #007bff;
     }
-    
+
     .stat-card .label {
         font-size: 14px;
         color: #6c757d;
@@ -54,53 +63,53 @@ $show_breadcrumb = true;
         letter-spacing: 0.5px;
         margin-bottom: 8px;
     }
-    
+
     .stat-card .value {
         font-size: 28px;
         font-weight: 700;
         color: #212529;
         font-family: 'Courier New', monospace;
     }
-    
+
     .stat-card.cash-in .value {
         color: #28a745;
     }
-    
+
     .stat-card.cash-out .value {
         color: #dc3545;
     }
-    
+
     .stat-card.net-balance .value {
         color: #007bff;
     }
-    
+
     .positive {
         color: #28a745;
     }
-    
+
     .negative {
         color: #dc3545;
     }
-    
+
     .filter-group {
         display: flex;
         flex-wrap: wrap;
         gap: 15px;
         align-items: flex-end;
     }
-    
+
     .filter-item {
         display: flex;
         flex-direction: column;
         gap: 8px;
     }
-    
+
     .filter-item label {
         font-size: 14px;
         font-weight: 600;
         color: #495057;
     }
-    
+
     .filter-item select,
     .filter-item input {
         padding: 10px 14px;
@@ -111,37 +120,32 @@ $show_breadcrumb = true;
         transition: all 0.2s;
         min-width: 150px;
     }
-    
+
     .filter-item select:focus,
     .filter-item input:focus {
         border-color: var(--clr-theme-primary);
         outline: none;
         box-shadow: 0 0 0 3px rgba(108, 95, 252, 0.1);
     }
-    
+
     .period-info {
-        background: linear-gradient(135deg, var(--clr-theme-primary) 0%, #764ba2 100%);
-        color: white;
+        color: #fff;
         padding: 20px;
         border-radius: 12px;
         margin-bottom: 30px;
     }
-    
+
     .period-info h3 {
         font-size: 24px;
         font-weight: 700;
     }
-    
+
     .action-buttons {
-        position: fixed;
-        top: 100px;
-        right: 20px;
-        z-index: 1000;
         display: flex;
         gap: 10px;
-        flex-direction: column;
+
     }
-    
+
     .btn {
         padding: 10px 20px;
         font-size: 14px;
@@ -154,40 +158,29 @@ $show_breadcrumb = true;
         gap: 8px;
         transition: all 0.2s;
     }
-    
+
     .btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
-    
+
     .btn-success {
         background: linear-gradient(135deg, #28a745, #1e7e34);
         color: white;
     }
-    
+
     .btn-secondary {
         background: linear-gradient(135deg, #007bff, #0056b3);
         color: white;
     }
-    
+
     .btn-danger {
         background: linear-gradient(135deg, #dc3545, #c82333);
         color: white;
     }
 </style>
 
-<!-- Action Buttons -->
-<div class="action-buttons">
-    <button type="button" class="btn btn-success" onclick="downloadPDF()">
-        <i class="fa-light fa-download me-2"></i> Download PDF
-    </button>
-    <button type="button" class="btn btn-secondary" onclick="printStatement()">
-        <i class="fa-light fa-print me-2"></i> Print Statement
-    </button>
-    <button type="button" class="btn btn-danger" onclick="exportCSV()">
-        <i class="fa-light fa-file-csv me-2"></i> Export CSV
-    </button>
-</div>
+
 
 <div class="row">
     <!-- Filter Controls -->
@@ -249,6 +242,18 @@ $show_breadcrumb = true;
                                 <i class="fa-light fa-search me-2"></i> Search
                             </button>
                         </div>
+                        <!-- Action Buttons -->
+
+    <button type="button" class="btn btn-success" onclick="downloadPDF()">
+        <i class="fa-light fa-download me-2"></i> Download PDF
+    </button>
+    <button type="button" class="btn btn-secondary" onclick="printStatement()">
+        <i class="fa-light fa-print me-2"></i> Print Statement
+    </button>
+    <button type="button" class="btn btn-danger" onclick="exportCSV()">
+        <i class="fa-light fa-file-csv me-2"></i> Export CSV
+    </button>
+
                     </div>
                 </form>
             </div>
@@ -392,45 +397,45 @@ $show_breadcrumb = true;
 
     <!-- Summary -->
     <?php if (isset($statement_data['summary'])): ?>
-    <div class="col-xxl-12">
-        <div class="card__wrapper">
-            <div class="card__header d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card__title" style="margin-top: -13px;">Summary</h5>
-            </div>
-            <div class="card__body">
-                <div class="row">
-                    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                        <div class="d-flex justify-content-between align-items-center p-3 border rounded">
-                            <span class="label">Total Cash In:</span>
-                            <span class="value positive"><strong>৳<?= number_format($statement_data['summary']['total_cash_in'], 2) ?></strong></span>
+        <div class="col-xxl-12">
+            <div class="card__wrapper">
+                <div class="card__header d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card__title" style="margin-top: -13px;">Summary</h5>
+                </div>
+                <div class="card__body">
+                    <div class="row">
+                        <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                                <span class="label">Total Cash In:</span>
+                                <span class="value positive"><strong>৳<?= number_format($statement_data['summary']['total_cash_in'], 2) ?></strong></span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                        <div class="d-flex justify-content-between align-items-center p-3 border rounded">
-                            <span class="label">Total Cash Out:</span>
-                            <span class="value negative"><strong>৳<?= number_format($statement_data['summary']['total_cash_out'], 2) ?></strong></span>
+                        <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                                <span class="label">Total Cash Out:</span>
+                                <span class="value negative"><strong>৳<?= number_format($statement_data['summary']['total_cash_out'], 2) ?></strong></span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                        <div class="d-flex justify-content-between align-items-center p-3 border rounded">
-                            <span class="label">Net Balance:</span>
-                            <span class="value <?= $statement_data['summary']['net_balance'] >= 0 ? 'positive' : 'negative' ?>">
-                                <strong>৳<?= number_format($statement_data['summary']['net_balance'], 2) ?></strong>
-                            </span>
+                        <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                                <span class="label">Net Balance:</span>
+                                <span class="value <?= $statement_data['summary']['net_balance'] >= 0 ? 'positive' : 'negative' ?>">
+                                    <strong>৳<?= number_format($statement_data['summary']['net_balance'], 2) ?></strong>
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                        <div class="d-flex justify-content-between align-items-center p-3 border rounded">
-                            <span class="label">Final Balance:</span>
-                            <span class="value <?= $statement_data['summary']['final_balance'] >= 0 ? 'positive' : 'negative' ?>">
-                                <strong>৳<?= number_format($statement_data['summary']['final_balance'], 2) ?></strong>
-                            </span>
+                        <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                                <span class="label">Final Balance:</span>
+                                <span class="value <?= $statement_data['summary']['final_balance'] >= 0 ? 'positive' : 'negative' ?>">
+                                    <strong>৳<?= number_format($statement_data['summary']['final_balance'], 2) ?></strong>
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
     <?php endif; ?>
 </div>
 
@@ -484,16 +489,16 @@ $show_breadcrumb = true;
         const form = document.getElementById('filterForm');
         const formData = new FormData(form);
         const params = new URLSearchParams(formData);
-        
+
         // Show loading
         const btn = event.target;
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fa-light fa-spinner fa-spin me-2"></i>Generating PDF...';
         btn.disabled = true;
-        
+
         // Open print view in new tab for PDF generation
         const printWindow = window.open('<?= $GLOBALS['base_url'] ?>/central-statement?print=true&' + params.toString(), '_blank');
-        
+
         // Wait a moment for the page to load, then trigger print which can save as PDF
         setTimeout(function() {
             printWindow.print();

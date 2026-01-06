@@ -4,6 +4,7 @@ $disable_layout = true;
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,9 +12,19 @@ $disable_layout = true;
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @media print {
-            .no-print { display: none !important; }
-            body { margin: 0; padding: 20px; }
-            .invoice-container { box-shadow: none !important; margin: 0 !important; }
+                * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                margin: 0;
+                padding: 20px;
+            }
+
         }
 
         * {
@@ -32,14 +43,18 @@ $disable_layout = true;
             max-width: 800px;
             margin: 0 auto;
             background: white;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
             padding: 40px;
         }
 
         .invoice-header {
-            border-bottom: 3px solid #2c3e50;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 5px;
+            margin-bottom: 15px;
         }
 
         .company-info {
@@ -49,13 +64,11 @@ $disable_layout = true;
         }
 
         .company-logo h1 {
-            color: #2c3e50;
             font-size: 28px;
             margin-bottom: 5px;
         }
 
         .company-logo p {
-            color: #7f8c8d;
             font-size: 14px;
             line-height: 1.6;
         }
@@ -64,14 +77,12 @@ $disable_layout = true;
             text-align: right;
         }
 
-.invoice-title h2 {
-    color: #2c3e50;
-    font-size: 28px;
-    margin-bottom: 5px;
-}
+        .invoice-title h2 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
 
         .invoice-number {
-            color: #7f8c8d;
             font-size: 14px;
         }
 
@@ -107,7 +118,6 @@ $disable_layout = true;
         }
 
         .detail-section h3 {
-            color: #2c3e50;
             font-size: 16px;
             margin-bottom: 15px;
             text-transform: uppercase;
@@ -122,12 +132,10 @@ $disable_layout = true;
         }
 
         .detail-label {
-            color: #7f8c8d;
             font-weight: 500;
         }
 
         .detail-value {
-            color: #2c3e50;
             font-weight: 600;
         }
 
@@ -139,7 +147,6 @@ $disable_layout = true;
         }
 
         .payment-details h3 {
-            color: #2c3e50;
             margin-bottom: 20px;
             font-size: 18px;
         }
@@ -157,7 +164,6 @@ $disable_layout = true;
             padding-top: 15px;
             font-size: 20px;
             font-weight: bold;
-            color: #2c3e50;
         }
 
         .payment-method-details {
@@ -169,7 +175,6 @@ $disable_layout = true;
         }
 
         .payment-method-details h4 {
-            color: #2c3e50;
             margin-bottom: 15px;
             font-size: 16px;
         }
@@ -191,7 +196,6 @@ $disable_layout = true;
             padding-top: 20px;
             border-top: 2px solid #ecf0f1;
             text-align: center;
-            color: #7f8c8d;
             font-size: 13px;
         }
 
@@ -258,27 +262,32 @@ $disable_layout = true;
             display: inline-block;
         }
 
-        .badge-emi { background: #cce5ff; color: #004085; }
-        .badge-booking { background: #e2e3e5; color: #383d41; }
-
-
-        .signature-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            margin-top: 60px;
-            padding-top: 20px;
+        .badge-emi {
+            background: #cce5ff;
+            color: #004085;
         }
+
+        .badge-booking {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+
+.signature-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    padding-top: 20px;
+}
 
         .signature-box {
             text-align: center;
         }
 
         .signature-line {
-            border-top: 2px solid #2c3e50;
+            border-top: 2px solid #000;
             margin-top: 50px;
             padding-top: 10px;
-            color: #7f8c8d;
             font-weight: 600;
         }
 
@@ -291,18 +300,17 @@ $disable_layout = true;
         }
 
         .notes-section h4 {
-            color: #2c3e50;
             margin-bottom: 10px;
         }
 
         .notes-section p {
-            color: #7f8c8d;
             line-height: 1.6;
             font-size: 14px;
             margin: 5px 0;
         }
     </style>
 </head>
+
 <body>
     <div class="action-buttons no-print">
         <button onclick="window.print()" class="btn btn-primary">
@@ -399,10 +407,10 @@ $disable_layout = true;
                 <span style="font-weight: 600;"><?= date('d M, Y', strtotime($payment['payment_date'] ?? 'now')) ?></span>
             </div>
             <?php if (!empty($payment['transaction_ref'])): ?>
-            <div class="payment-row">
-                <span>Transaction Reference:</span>
-                <span style="font-weight: 600;"><?= htmlspecialchars($payment['transaction_ref']) ?></span>
-            </div>
+                <div class="payment-row">
+                    <span>Transaction Reference:</span>
+                    <span style="font-weight: 600;"><?= htmlspecialchars($payment['transaction_ref']) ?></span>
+                </div>
             <?php endif; ?>
             <div class="payment-row total">
                 <span>Amount Paid:</span>
@@ -412,72 +420,72 @@ $disable_layout = true;
 
         <!-- Payment Method Details -->
         <?php if ($payment['payment_method'] !== 'cash'): ?>
-        <div class="payment-method-details">
-            <h4>Payment Method: <?= strtoupper($payment['payment_method'] ?? 'N/A') ?></h4>
-            <div class="method-info">
-                <?php if ($payment['payment_method'] === 'bank'): ?>
-                    <?php if (!empty($payment['bank_name'])): ?>
-                    <div class="method-item">
-                        <span class="detail-label">Bank Name:</span>
-                        <span class="detail-value"><?= htmlspecialchars($payment['bank_name']) ?></span>
-                    </div>
+            <div class="payment-method-details">
+                <h4>Payment Method: <?= strtoupper($payment['payment_method'] ?? 'N/A') ?></h4>
+                <div class="method-info">
+                    <?php if ($payment['payment_method'] === 'bank'): ?>
+                        <?php if (!empty($payment['bank_name'])): ?>
+                            <div class="method-item">
+                                <span class="detail-label">Bank Name:</span>
+                                <span class="detail-value"><?= htmlspecialchars($payment['bank_name']) ?></span>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($payment['bank_account_no'])): ?>
+                            <div class="method-item">
+                                <span class="detail-label">Account Number:</span>
+                                <span class="detail-value"><?= htmlspecialchars($payment['bank_account_no']) ?></span>
+                            </div>
+                        <?php endif; ?>
+                    <?php elseif ($payment['payment_method'] === 'cheque'): ?>
+                        <?php if (!empty($payment['cheque_no'])): ?>
+                            <div class="method-item">
+                                <span class="detail-label">Cheque Number:</span>
+                                <span class="detail-value"><?= htmlspecialchars($payment['cheque_no']) ?></span>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($payment['bank_name'])): ?>
+                            <div class="method-item">
+                                <span class="detail-label">Bank Name:</span>
+                                <span class="detail-value"><?= htmlspecialchars($payment['bank_name']) ?></span>
+                            </div>
+                        <?php endif; ?>
+                    <?php elseif ($payment['payment_method'] === 'online'): ?>
+                        <?php if (!empty($payment['online_type'])): ?>
+                            <div class="method-item">
+                                <span class="detail-label">Online Service:</span>
+                                <span class="detail-value"><?= htmlspecialchars($payment['online_type']) ?></span>
+                            </div>
+                        <?php endif; ?>
                     <?php endif; ?>
-                    <?php if (!empty($payment['bank_account_no'])): ?>
-                    <div class="method-item">
-                        <span class="detail-label">Account Number:</span>
-                        <span class="detail-value"><?= htmlspecialchars($payment['bank_account_no']) ?></span>
-                    </div>
-                    <?php endif; ?>
-                <?php elseif ($payment['payment_method'] === 'cheque'): ?>
-                    <?php if (!empty($payment['cheque_no'])): ?>
-                    <div class="method-item">
-                        <span class="detail-label">Cheque Number:</span>
-                        <span class="detail-value"><?= htmlspecialchars($payment['cheque_no']) ?></span>
-                    </div>
-                    <?php endif; ?>
-                    <?php if (!empty($payment['bank_name'])): ?>
-                    <div class="method-item">
-                        <span class="detail-label">Bank Name:</span>
-                        <span class="detail-value"><?= htmlspecialchars($payment['bank_name']) ?></span>
-                    </div>
-                    <?php endif; ?>
-                <?php elseif ($payment['payment_method'] === 'online'): ?>
-                    <?php if (!empty($payment['online_type'])): ?>
-                    <div class="method-item">
-                        <span class="detail-label">Online Service:</span>
-                        <span class="detail-value"><?= htmlspecialchars($payment['online_type']) ?></span>
-                    </div>
-                    <?php endif; ?>
-                <?php endif; ?>
+                </div>
             </div>
-        </div>
         <?php endif; ?>
 
         <!-- EMI Schedule Info (if applicable) -->
         <?php if (!empty($emiSchedule)): ?>
-        <div class="payment-method-details">
-            <h4>EMI Schedule Information</h4>
-            <div class="method-info">
-                <div class="method-item">
-                    <span class="detail-label">Installment Number:</span>
-                    <span class="detail-value"><?= $emiSchedule['emi_no'] ?? 'N/A' ?></span>
-                </div>
-                <div class="method-item">
-                    <span class="detail-label">EMI Amount:</span>
-                    <span class="detail-value">৳<?= number_format($emiSchedule['emi_amount'] ?? 0, 2) ?></span>
-                </div>
-                <?php if (!empty($emiSchedule['due_emi_amount'])): ?>
-                <div class="method-item">
-                    <span class="detail-label">Due Amount:</span>
-                    <span class="detail-value">৳<?= number_format($emiSchedule['due_emi_amount'], 2) ?></span>
-                </div>
-                <?php endif; ?>
-                <div class="method-item">
-                    <span class="detail-label">Status:</span>
-                    <span class="detail-value"><?= strtoupper($payment['payment_status'] ?? 'N/A') ?></span>
+            <div class="payment-method-details">
+                <h4>EMI Schedule Information</h4>
+                <div class="method-info">
+                    <div class="method-item">
+                        <span class="detail-label">Installment Number:</span>
+                        <span class="detail-value"><?= $emiSchedule['emi_no'] ?? 'N/A' ?></span>
+                    </div>
+                    <div class="method-item">
+                        <span class="detail-label">EMI Amount:</span>
+                        <span class="detail-value">৳<?= number_format($emiSchedule['emi_amount'] ?? 0, 2) ?></span>
+                    </div>
+                    <?php if (!empty($emiSchedule['due_emi_amount'])): ?>
+                        <div class="method-item">
+                            <span class="detail-label">Due Amount:</span>
+                            <span class="detail-value">৳<?= number_format($emiSchedule['due_emi_amount'], 2) ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <div class="method-item">
+                        <span class="detail-label">Status:</span>
+                        <span class="detail-value"><?= strtoupper($payment['payment_status'] ?? 'N/A') ?></span>
+                    </div>
                 </div>
             </div>
-        </div>
         <?php endif; ?>
 
         <!-- Signature Section -->
@@ -492,16 +500,6 @@ $disable_layout = true;
             </div>
         </div>
 
-        <!-- Footer -->
-        <div class="invoice-footer">
-            <p><strong>Thank you for your payment!</strong></p>
-            <p style="margin-top: 10px; font-size: 12px;">
-                This receipt was generated on <?= date('d M, Y \a\t h:i A') ?>
-            </p>
-            <p style="margin-top: 5px; font-size: 11px;">
-                For support: info@dpremiumhomes.com | +8801958253300
-            </p>
-        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -509,15 +507,26 @@ $disable_layout = true;
         function downloadPDF() {
             const element = document.getElementById('invoice-content');
             const opt = {
-                
+
                 filename: 'Payment-Receipt-<?= str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT) ?>-<?= date('Ymd') ?>.pdf',
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, logging: false },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                image: {
+                    type: 'jpeg',
+                    quality: 0.98
+                },
+                html2canvas: {
+                    scale: 2,
+                    logging: false
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'portrait'
+                }
             };
-            
+
             html2pdf().set(opt).from(element).save();
         }
     </script>
 </body>
+
 </html>
