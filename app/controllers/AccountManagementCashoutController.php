@@ -12,7 +12,7 @@ class AccountManagementCashoutController extends Controller
     public function __construct($db)
     {
         $this->db = $db;
-        $this->cashoutModel = new AccountManagementCashOut($this->db);
+        $this->cashoutModel = new AccountManagementCashout($this->db);
         $this->categoryModel = new ManagementCategory($this->db);
         if (session_status() === PHP_SESSION_NONE) session_start();
     }
