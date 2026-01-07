@@ -8,14 +8,33 @@ $show_breadcrumb = true;
 $old_data = $_SESSION['old_form_data'] ?? [];
 unset($_SESSION['old_form_data']);
 ?>
+<style>
+    @media(max-width: 575px) {
+.card__wrapper {
+    padding: 38px 15px;
+}
+        .card__title {
+            font-size: 20px;
+            line-height: 1.4;
+        }
 
+        .mt-30 {
+            margin-top: 10px;
+        }
+
+        .btn {
+
+            padding: 6px 12px;
+        }
+    }
+</style>
 <div class="row">
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title" style="margin-top: -13px;">Add Management Transaction</h5>
                 <a href="<?= $GLOBALS['base_url'] ?>/management-cash-in" class="btn btn-secondary">
-                    <i class="fa-light fa-arrow-left me-2"></i> Back to List
+                    <i class="fa-light fa-arrow-left me-2"></i> Back
                 </a>
             </div>
             <div class="card__body">

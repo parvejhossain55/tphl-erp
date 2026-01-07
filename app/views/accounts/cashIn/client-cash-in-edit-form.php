@@ -15,7 +15,23 @@ $emiSchedule = $emiSchedule ?? null;
 error_log("View - Transaction Data: " . print_r($transaction, true));
 error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
 ?>
+<style>
+    @media(max-width: 575px) {
+        .card__title {
+            font-size: 24px;
+            line-height: 1.4;
+        }
 
+        .mt-30 {
+            margin-top: 10px;
+        }
+
+        .btn {
+
+            padding: 6px 12px;
+        }
+    }
+</style>
 <div class="row">
     <div class="col-xxl-12">
         <div class="card__wrapper">
@@ -27,27 +43,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
             </div>
 
             <div class="card__body">
-                <!-- Client Summary -->
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <div class="alert alert-info">
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <strong>Client:</strong> <br><?= htmlspecialchars($clientDetails['client_name'] ?? '') ?>
-                                </div>
-                                <div class="col-md-3">
-                                    <strong>Agreement Value:</strong> <br>৳<?= number_format($clientDetails['agreement_value'] ?? 0, 2) ?>
-                                </div>
-                                <div class="col-md-3">
-                                    <strong>Total Paid:</strong> <br>৳<?= number_format($clientDetails['total_paid'] ?? 0, 2) ?>
-                                </div>
-                                <div class="col-md-3">
-                                    <strong>Due Amount:</strong> <br>৳<?= number_format(($clientDetails['agreement_value'] ?? 0) - ($clientDetails['total_paid'] ?? 0), 2) ?>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+  
 
                 <!-- Transaction Form -->
                 <form action="<?= $GLOBALS['base_url'] ?>/update-transaction" method="post" id="transactionForm">

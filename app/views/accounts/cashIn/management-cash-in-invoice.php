@@ -11,12 +11,16 @@ $disable_layout = true;
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @media print {
-                * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
             .no-print {
                 display: none !important;
+                margin: 0;
+                padding: 0;
+                background: transparent;
             }
 
             body {
@@ -26,6 +30,8 @@ $disable_layout = true;
 
         }
 
+
+
         * {
             margin: 0;
             padding: 0;
@@ -34,18 +40,26 @@ $disable_layout = true;
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
             padding: 20px;
         }
 
+        body.pdf-mode .invoice-details {
+    grid-template-columns: 1fr 1fr !important;
+}
+
+          body.pdf-mode .invoice-container {
+            padding: 40px;
+        }
         .invoice-container {
             max-width: 800px;
             margin: 0 auto;
             background: white;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 0px;
+            
+        }
+          body.pdf-mode .invoice-container {
             padding: 40px;
         }
-
         .invoice-header {
             background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
             color: white;
@@ -55,7 +69,15 @@ $disable_layout = true;
             border-radius: 5px;
             margin-bottom: 5px;
         }
+
         .invoice-middle-header {
+            padding: 40px 0;
+            position: relative;
+            overflow: hidden;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+         body.pdf-mode .invoice-middle-header {
             padding: 40px 0;
             position: relative;
             overflow: hidden;
@@ -77,6 +99,14 @@ $disable_layout = true;
             font-size: 14px;
             line-height: 1.6;
         }
+         body.pdf-mode .company-logo h1 {
+            font-size: 24px;
+        }
+
+         body.pdf-mode .company-logo p {
+            font-size: 14px;
+            line-height: 1.6;
+        }
 
         .invoice-title {
             text-align: right;
@@ -85,7 +115,14 @@ $disable_layout = true;
         .invoice-title h2 {
             font-size: 22px;
         }
+         body.pdf-mode .invoice-title h2 {
+            font-size: 22px;
+        }
+
         .invoice-number {
+            font-size: 14px;
+        }
+         body.pdf-mode .invoice-number {
             font-size: 14px;
         }
 
@@ -120,7 +157,20 @@ $disable_layout = true;
             margin-bottom: 30px;
         }
 
+        body.pdf-mode  .invoice-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
         .detail-section h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+         body.pdf-mode  .detail-section h3 {
             font-size: 16px;
             margin-bottom: 15px;
             text-transform: uppercase;
@@ -128,6 +178,12 @@ $disable_layout = true;
         }
 
         .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        body.pdf-mode  .detail-row {
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
@@ -148,6 +204,12 @@ $disable_layout = true;
             border-radius: 8px;
             margin-bottom: 30px;
         }
+       body.pdf-mode   .payment-details {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
 
         .payment-details h3 {
             margin-bottom: 20px;
@@ -155,6 +217,12 @@ $disable_layout = true;
         }
 
         .payment-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            font-size: 15px;
+        }
+        body.pdf-mode  .payment-row {
             display: flex;
             justify-content: space-between;
             padding: 12px 0;
@@ -276,12 +344,12 @@ $disable_layout = true;
         }
 
 
-.signature-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-    padding-top: 20px;
-}
+        .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            padding-top: 20px;
+        }
 
         .signature-box {
             text-align: center;
@@ -310,6 +378,100 @@ $disable_layout = true;
             line-height: 1.6;
             font-size: 14px;
             margin: 5px 0;
+        }
+
+        @media(max-width: 575px) {
+            .action-buttons {
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+
+            .btn {
+                padding: 12px 12px;
+                font-size: 12px;
+            }
+
+            .invoice-container {
+
+                padding: 16px;
+            }
+
+            .invoice-header {
+                padding: 14px;
+                margin-bottom: 0px;
+            }
+
+            .invoice-middle-header {
+                padding: 28px 0;
+                margin-bottom: 10px;
+            }
+
+            .company-logo h1 {
+                font-size: 14px;
+            }
+
+            .invoice-title h2 {
+                font-size: 14px;
+            }
+
+            .company-logo p {
+                font-size: 10px;
+            }
+
+            .invoice-number {
+                font-size: 10px;
+            }
+
+            .paid-stamp {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+
+            .detail-section h3 {
+                font-size: 14px;
+                margin-bottom: 14px;
+            }
+
+            .detail-row {
+                padding: 8px 0;
+                font-size: 12px;
+            }
+
+            .invoice-details {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 30px;
+                margin-bottom: 14px;
+            }
+
+            .payment-details {
+                padding: 7px;
+                margin-bottom: 5px;
+            }
+
+            .payment-details h3 {
+                font-size: 14px
+            }
+
+            .payment-row {
+                font-size: 12px;
+            }
+
+            .badge {
+                padding: 0px 0px;
+            }
+
+            .payment-row.total {
+                font-size: 16px;
+            }
+
+            .amount-highlight {
+                font-size: 16px;
+            }
+
+            .signature-line {
+                font-size: 11px;
+            }
         }
     </style>
 </head>
@@ -477,11 +639,14 @@ $disable_layout = true;
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
-        function downloadPDF() {
+      function downloadPDF() {
             const element = document.getElementById('invoice-content');
-            const opt = {
 
-                filename: 'Management-Receipt-<?= str_pad($transaction['id'] ?? '0', 6, '0', STR_PAD_LEFT) ?>-<?= date('Ymd') ?>.pdf',
+            // Add PDF mode
+            document.body.classList.add('pdf-mode');
+
+            const opt = {
+                filename: 'Payment-Receipt-<?= str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT) ?>-<?= date('Ymd') ?>.pdf',
                 image: {
                     type: 'jpeg',
                     quality: 0.98
@@ -497,8 +662,16 @@ $disable_layout = true;
                 }
             };
 
-            html2pdf().set(opt).from(element).save();
-        }
+            html2pdf()
+                .set(opt)
+                .from(element)
+                .save()
+                .then(() => {
+                    // Remove PDF mode after download
+                    document.body.classList.remove('pdf-mode');
+                });
+
+          }
     </script>
 </body>
 </html>

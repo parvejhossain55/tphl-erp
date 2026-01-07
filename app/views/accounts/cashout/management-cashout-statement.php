@@ -30,38 +30,65 @@ foreach ($transactions as $transaction) {
 }
 
 // Function to convert number to English words
-function convertNumberToWords($number) {
+function convertNumberToWords($number)
+{
     if ($number == 0) {
         return "Zero Taka";
     }
-    
+
     $number = (float)str_replace(',', '', $number);
     $parts = explode('.', number_format($number, 2, '.', ''));
     $taka = $parts[0];
     $paisa = isset($parts[1]) ? $parts[1] : '00';
-    
+
     $ones = array(
-        '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
-        'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 
-        'Seventeen', 'Eighteen', 'Nineteen'
+        '',
+        'One',
+        'Two',
+        'Three',
+        'Four',
+        'Five',
+        'Six',
+        'Seven',
+        'Eight',
+        'Nine',
+        'Ten',
+        'Eleven',
+        'Twelve',
+        'Thirteen',
+        'Fourteen',
+        'Fifteen',
+        'Sixteen',
+        'Seventeen',
+        'Eighteen',
+        'Nineteen'
     );
-    
+
     $tens = array(
-        '', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'
+        '',
+        '',
+        'Twenty',
+        'Thirty',
+        'Forty',
+        'Fifty',
+        'Sixty',
+        'Seventy',
+        'Eighty',
+        'Ninety'
     );
-    
+
     $thousands = array('', 'Thousand', 'Million', 'Billion');
-    
-    $convertUnder1000 = function($num) use ($ones, $tens) {
+
+    $convertUnder1000 = function ($num) use ($ones, $tens) {
         $word = '';
         $num = (int)$num;
-        
+
         if ($num >= 100) {
             $word .= $ones[floor($num / 100)] . ' Hundred';
             $num %= 100;
             if ($num > 0) $word .= ' ';
         }
-        
+
         if ($num >= 20) {
             $word .= $tens[floor($num / 10)];
             $num %= 10;
@@ -69,25 +96,25 @@ function convertNumberToWords($number) {
         } elseif ($num > 0) {
             $word .= $ones[$num];
         }
-        
+
         return $word;
     };
-    
+
     $takaWords = '';
     $taka = (int)$taka;
-    
+
     if ($taka == 0) {
         $takaWords = '';
     } else {
         $groups = array();
         $i = 0;
-        
+
         while ($taka > 0) {
             $groups[$i] = $taka % 1000;
             $taka = (int)($taka / 1000);
             $i++;
         }
-        
+
         for ($j = count($groups) - 1; $j >= 0; $j--) {
             if ($groups[$j] != 0) {
                 $groupWords = $convertUnder1000($groups[$j]);
@@ -96,13 +123,13 @@ function convertNumberToWords($number) {
                 }
             }
         }
-        
+
         $takaWords = trim($takaWords) . ' Taka';
     }
-    
+
     $paisaWords = '';
     $paisa = (int)$paisa;
-    
+
     if ($paisa > 0) {
         if ($paisa >= 20) {
             $paisaWords = $tens[floor($paisa / 10)];
@@ -115,7 +142,7 @@ function convertNumberToWords($number) {
         }
         $paisaWords .= ' Paisa';
     }
-    
+
     $result = '';
     if ($takaWords != '' && $paisaWords != '') {
         $result = $takaWords . ' and ' . $paisaWords;
@@ -126,7 +153,7 @@ function convertNumberToWords($number) {
     } else {
         $result = 'Zero Taka';
     }
-    
+
     return ucfirst(trim($result));
 }
 
@@ -134,24 +161,26 @@ $totalAmountWords = convertNumberToWords($totalAmount);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cash Out Statement - All Categories</title>
     <style>
+        /* ==================== PRINT & PDF STYLES ==================== */
         @page {
             size: A4;
             margin: 15mm;
         }
 
         @media print {
-            .no-print { 
-                display: none !important; 
+
+            .no-print,
+            .no-pdf {
+                display: none !important;
             }
-            .no-pdf { 
-                display: none !important; 
-            }
-            body { 
+
+            body {
                 margin: 0 !important;
                 padding: 0 !important;
                 width: 210mm;
@@ -160,27 +189,39 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            .statement-container { 
+
+            .statement-container {
                 width: 210mm !important;
                 min-height: 297mm !important;
-                margin: 0 auto !important;
-                padding: 0 !important;
+                margin: 0 !important;
+                padding: 5mm !important;
                 box-shadow: none !important;
                 border: none !important;
+
             }
-            .page-break { 
-                page-break-before: always;
-                margin-top: 20mm;
+
+            .company-header {
+                flex-direction: row !important;
             }
-            .avoid-break {
-                page-break-inside: avoid;
+
+            .statement-info {
+                text-align: right !important;
+                border-left: 1px solid #ccc !important;
+                border-top: none !important;
+                padding-left: 15px !important;
+                padding-top: 0 !important;
             }
-            .period-filter,
-            .action-buttons {
-                display: none !important;
+
+            .details-grid {
+                grid-template-columns: 1fr 1fr !important;
+            }
+
+            .transaction-table {
+                font-size: 8pt !important;
             }
         }
 
+        /* ==================== BASE STYLES (Responsive) ==================== */
         * {
             margin: 0;
             padding: 0;
@@ -189,35 +230,35 @@ $totalAmountWords = convertNumberToWords($totalAmount);
 
         body {
             font-family: Arial, Helvetica, sans-serif;
-            background: #fff;
+            background: #f5f5f5;
             color: #000;
             line-height: 1.3;
-            font-size: 10pt;
-            width: 210mm;
-            min-height: 297mm;
-            margin: 0 auto;
-            padding: 0;
+            font-size: clamp(10pt, 2vw, 12pt);
+            margin: 0;
+            padding: clamp(10px, 3vw, 20px);
         }
 
         .statement-container {
-            width: 210mm;
-            min-height: 297mm;
+            max-width: 210mm;
             background: #fff;
-            padding: 15mm;
-            position: relative;
-            margin: 0 auto !important;
+            padding: clamp(12px, 3vw, 20px);
+            margin: 0 auto;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
+        /* ==================== HEADER (Responsive) ==================== */
         .statement-header {
-            margin-bottom: 12mm;
-            border-bottom: 0.5mm solid #000;
+            margin-bottom: clamp(15px, 5vw, 30px);
+            border-bottom: 2px solid #000;
+            padding-bottom: clamp(10px, 2vw, 15px);
         }
 
         .company-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 6mm;
+            gap: 20px;
+            margin-bottom: 15px;
         }
 
         .company-info {
@@ -225,47 +266,46 @@ $totalAmountWords = convertNumberToWords($totalAmount);
         }
 
         .company-name {
-            font-size: 14pt;
+            font-size: clamp(14px, 3vw, 18px);
             font-weight: bold;
-            margin-bottom: 1mm;
+            margin-bottom: 5px;
             text-transform: uppercase;
-            letter-spacing: 0.5pt;
         }
 
         .company-details {
-            font-size: 8pt;
-            line-height: 1.2;
+            font-size: clamp(9px, 2vw, 11px);
+            line-height: 1.4;
         }
 
         .statement-info {
             flex: 1;
             text-align: right;
-            border-left: 0.2mm solid #ccc;
-            padding-left: 4mm;
+            border-left: 1px solid #ccc;
+            padding-left: 15px;
         }
 
         .statement-title {
-            font-size: 14pt;
+            font-size: clamp(14px, 3vw, 18px);
             font-weight: bold;
             text-transform: uppercase;
-            margin-bottom: 2mm;
-            letter-spacing: 1pt;
+            margin-bottom: 10px;
         }
 
         .statement-meta {
-            font-size: 8pt;
+            font-size: clamp(9px, 2vw, 11px);
         }
 
         .meta-row {
-            margin-bottom: 0.5mm;
+            margin-bottom: 5px;
         }
 
         .meta-label {
             font-weight: bold;
             display: inline-block;
-            width: 25mm;
+            min-width: 90px;
         }
 
+        /* ==================== PERIOD FILTER (Responsive) ==================== */
         .period-filter {
             background: #ffffff;
             border: 1px solid #e5e7eb;
@@ -282,29 +322,13 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             gap: 10px;
         }
 
-        .period-filter .filter-row span {
-            font-weight: 600;
-            color: #374151;
-            font-size: 14px;
-            white-space: nowrap;
-        }
-
         .period-filter select,
         .period-filter input[type="date"] {
             padding: 8px 10px;
             border: 1px solid #d1d5db;
             border-radius: 6px;
             font-size: 14px;
-            color: #111827;
             background-color: #fff;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .period-filter select:focus,
-        .period-filter input[type="date"]:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-            outline: none;
         }
 
         #customDateRange {
@@ -312,12 +336,9 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             padding: 6px 8px;
             border-radius: 6px;
             border: 1px dashed #d1d5db;
-        }
-
-        #customDateRange span {
-            font-size: 13px;
-            color: #6b7280;
-            font-weight: 500;
+            display: flex;
+            gap: 8px;
+            align-items: center;
         }
 
         .period-filter button {
@@ -329,137 +350,90 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
         }
 
-        .period-filter button:hover {
-            background: linear-gradient(135deg, #1e40af, #1e3a8a);
-            box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
-            transform: translateY(-1px);
-        }
-
-        .period-filter button:active {
-            transform: translateY(0);
-            box-shadow: 0 3px 8px rgba(37, 99, 235, 0.2);
-        }
-
+        /* ==================== DETAILS SECTION (Responsive) ==================== */
         .details-section {
-            margin-bottom: 8mm;
+            margin-bottom: clamp(15px, 3vw, 20px);
         }
 
         .details-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5mm;
-            margin-bottom: 5mm;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: clamp(10px, 2vw, 15px);
+            margin-bottom: 15px;
         }
 
         .details-box {
-            border: 0.2mm solid #000;
-            padding: 3mm;
-            font-size: 9pt;
+            border: 1px solid #000;
+            padding: clamp(10px, 2vw, 15px);
+            font-size: clamp(11px, 2vw, 12px);
         }
 
         .details-title {
             font-weight: bold;
-            margin-bottom: 2mm;
-            padding-bottom: 1mm;
-            border-bottom: 0.2mm solid #000;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #000;
             text-transform: uppercase;
-            font-size: 9pt;
-            letter-spacing: 0.5pt;
+            font-size: clamp(12px, 2vw, 13px);
         }
 
         .detail-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 1mm;
-            page-break-inside: avoid;
-        }
-
-        .detail-label {
-            font-weight: normal;
+            margin-bottom: 8px;
+            gap: 10px;
         }
 
         .detail-value {
             font-weight: bold;
-        }
-
-        .summary-section {
-            margin-bottom: 8mm;
-        }
-
-        .summary-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 9pt;
-            margin-bottom: 5mm;
-        }
-
-        .summary-table th,
-        .summary-table td {
-            border: 0.2mm solid #000;
-            padding: 2mm 3mm;
-            vertical-align: middle;
-        }
-
-        .summary-table th {
-            background: #f8f8f8;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 8pt;
-            letter-spacing: 0.3pt;
-        }
-
-        .summary-table .amount {
             text-align: right;
-            font-weight: bold;
-            font-family: 'Courier New', monospace;
+            word-break: break-word;
         }
 
+        /* ==================== TRANSACTION TABLE (Responsive with Scroll) ==================== */
         .transaction-section {
-            margin-bottom: 8mm;
+            margin-bottom: 20px;
         }
 
         .section-title {
             font-weight: bold;
             text-transform: uppercase;
-            margin-bottom: 2mm;
-            padding-bottom: 1mm;
-            border-bottom: 0.2mm solid #000;
-            font-size: 10pt;
-            letter-spacing: 0.5pt;
-            background: transparent;
-            color: #000;
-            margin: 10px;
-            padding: 0;
-            display: block;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #000;
+            font-size: clamp(13px, 2.5vw, 14px);
+        }
+
+        .transaction-table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -5px;
+            padding: 0 5px;
         }
 
         .transaction-table {
+            min-width: 343px;
             width: 100%;
             border-collapse: collapse;
-            font-size: 8pt;
-            page-break-inside: auto;
+            font-size: clamp(9px, 2vw, 11px);
+
+        }
+
+        .transaction-table th,
+        .transaction-table td {
+            border: 1px solid #000;
+            padding: clamp(6px, 1.5vw, 10px) clamp(4px, 1vw, 8px);
+            vertical-align: middle;
         }
 
         .transaction-table th {
-            border: 0.2mm solid #000;
-            padding: 1.5mm 2mm;
-            text-align: left;
+            background: #f8f8f8;
             font-weight: bold;
             text-transform: uppercase;
-            background: #f8f8f8;
-            font-size: 7pt;
-            letter-spacing: 0.3pt;
-            vertical-align: middle;
-        }
-
-        .transaction-table td {
-            border: 0.2mm solid #000;
-            padding: 1.5mm 2mm;
-            vertical-align: middle;
-            page-break-inside: avoid;
+            font-size: clamp(8px, 1.8vw, 10px);
+            white-space: nowrap;
         }
 
         .transaction-table .amount {
@@ -468,60 +442,36 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             font-family: 'Courier New', monospace;
         }
 
-        .transaction-table .date {
-            white-space: nowrap;
-            width: 18mm;
-        }
-
-        .transaction-table .category {
-            width: 25mm;
-        }
-
-        .transaction-table .paid-to {
-            width: 25mm;
-        }
-
-        .transaction-table .method {
-            width: 15mm;
-        }
-
-        .transaction-table .status {
-            width: 15mm;
-            text-align: center;
-        }
-
         .status-paid {
             font-weight: bold;
         }
 
-        .status-pending, .status-failed {
+        .status-pending,
+        .status-failed {
             font-style: italic;
             color: #666;
         }
 
+        /* ==================== TOTALS (Responsive) ==================== */
         .totals-section {
-            margin-top: 5mm;
-            padding-top: 3mm;
-            border-top: 0.2mm solid #000;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #000;
         }
 
         .totals-table {
             width: 100%;
-            font-size: 9pt;
-            margin-bottom: 5mm;
-        }
-
-        .totals-table tr {
-            page-break-inside: avoid;
+            font-size: clamp(12px, 2.5vw, 13px);
+            margin-bottom: 15px;
         }
 
         .totals-table td {
-            padding: 1mm 0;
+            padding: 8px 0;
         }
 
         .totals-label {
             text-align: right;
-            padding-right: 5mm;
+            padding-right: clamp(10px, 3vw, 20px);
             font-weight: bold;
             width: 70%;
         }
@@ -530,29 +480,29 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             text-align: right;
             font-weight: bold;
             font-family: 'Courier New', monospace;
-            border-bottom: 0.1mm solid #000;
+            border-bottom: 1px solid #000;
             width: 30%;
-            padding-left: 2mm;
+            padding-left: 10px;
         }
 
         .grand-total td {
-            padding-top: 2mm;
-            border-top: 0.2mm solid #000;
-            font-size: 10pt;
+            padding-top: 10px;
+            border-top: 2px solid #000;
+            font-size: clamp(13px, 2.5vw, 14px);
         }
 
         .amount-in-words {
-            margin-top: 5mm;
-            padding: 3mm;
-            border: 0.2mm solid #000;
+            padding: 15px;
+            border: 1px solid #000;
             background: #f8f8f8;
-            font-size: 9pt;
+            font-size: clamp(10px, 2vw, 11px);
             line-height: 1.4;
+            margin-bottom: 15px;
         }
 
         .amount-in-words .label {
             font-weight: bold;
-            margin-bottom: 1mm;
+            margin-bottom: 5px;
             text-transform: uppercase;
         }
 
@@ -561,74 +511,24 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             text-transform: uppercase;
         }
 
-        .statement-footer {
-            position: absolute;
-            bottom: 15mm;
-            left: 15mm;
-            right: 15mm;
-            padding-top: 3mm;
-            border-top: 0.2mm solid #000;
-            font-size: 7pt;
-            line-height: 1.2;
-            color: #666;
-        }
-
-        .footer-disclaimer {
-            margin-bottom: 2mm;
-            font-style: italic;
-            text-align: center;
-        }
-
-        .footer-meta {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2mm;
-        }
-
-        .page-number {
-            text-align: center;
-            font-weight: bold;
-            font-size: 8pt;
-        }
-
+        /* ==================== ACTION BUTTONS (Responsive) ==================== */
         .action-buttons {
-            position: fixed;
-            top: 5mm;
-            right: 5mm;
+            position: sticky;
+            top: 10px;
             z-index: 1000;
             display: flex;
-            gap: 2mm;
-            background: #fff;
-            padding: 2mm;
-            border: 0.2mm solid #ccc;
-            box-shadow: 0 1mm 3mm rgba(0,0,0,0.1);
-        }
-
-        .no-data {
-            text-align: center;
-            padding: 10mm;
-            font-style: italic;
-            color: #666;
-            border: 0.2mm dashed #ccc;
-        }
-
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .text-bold { font-weight: bold; }
-        .monospace { font-family: 'Courier New', monospace; }
-        .uppercase { text-transform: uppercase; }
-        
-        .keep-together {
-            page-break-inside: avoid;
-        }
-        
-        .no-pdf {
-            display: block;
+            justify-content: end;
+            gap: 10px;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 66px;
         }
 
         .btn {
-            padding: 8px 16px;
-            font-size: 9pt;
+            padding: 10px 18px;
+            font-size: 13px;
             font-weight: 600;
             border: none;
             border-radius: 6px;
@@ -636,8 +536,9 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            line-height: 1;
             transition: all 0.2s ease;
+            white-space: nowrap;
+            text-decoration: none;
         }
 
         .btn:hover {
@@ -646,39 +547,123 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             transform: translateY(-1px);
         }
 
-        .btn:active {
-            transform: translateY(0);
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-        }
-
         .btn-success {
             background: linear-gradient(135deg, #28a745, #1e7e34);
-            color: #ffffff;
+            color: #fff;
         }
 
         .btn-print {
             background: linear-gradient(135deg, #ff3c00, #cc2f00);
-            color: #ffffff;
+            color: #fff;
         }
 
         .btn-back {
             background: linear-gradient(135deg, #007bff, #0056b3);
-            color: #ffffff;
-            text-decoration: none;
+            color: #fff;
         }
 
-        a.btn {
-            text-decoration: none;
+        /* ==================== MOBILE RESPONSIVENESS ==================== */
+        @media (max-width: 768px) {
+            .company-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .statement-info {
+                text-align: left;
+                border-left: none;
+                border-top: 1px solid #ccc;
+                padding-left: 0;
+                padding-top: 15px;
+            }
+
+            .period-filter .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .period-filter select,
+            .period-filter input[type="date"],
+            .period-filter button {
+                width: 100%;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .meta-label {
+                min-width: 70px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .section-title {
+                padding-bottom: 30px;
+                font-size: clamp(13px, 2.5vw, 14px);
+            }
+
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+
+
+            .action-buttons {
+
+            margin-bottom: 46px;
+                margin-bottom: 10px;
+            }
+        }
+
+        /* ==================== PDF GENERATION CLASS ==================== */
+        .pdf-generating .statement-container {
+            width: 210mm !important;
+            min-height: 297mm !important;
+            padding: 15mm !important;
+        }
+
+        .pdf-generating .company-header {
+            flex-direction: row !important;
+        }
+
+        .pdf-generating .statement-info {
+            text-align: right !important;
+            border-left: 1px solid #ccc !important;
+            border-top: none !important;
+            padding-left: 15px !important;
+            padding-top: 0 !important;
+        }
+
+        .pdf-generating .details-grid {
+            grid-template-columns: 1fr 1fr !important;
+        }
+
+        .pdf-generating .transaction-table {
+            font-size: 8pt !important;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+
+        .keep-together {
+            page-break-inside: avoid;
         }
     </style>
 </head>
+
 <body>
-    <div class="action-buttons no-print no-pdf" style="margin-bottom: 66px;">
+    <div class="action-buttons no-print no-pdf" style="">
         <button onclick="window.print()" class="btn btn-print">
             Print Statement
-        </button>
-        <button onclick="downloadPDF()" class="btn btn-success">
-            Download PDF
         </button>
         <a href="<?= $GLOBALS['base_url'] ?>/management-cash-out" class="btn btn-back">
             Back to Cash Out
@@ -695,7 +680,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                         Phone: +8801958253300 | Email: info@thepremiumhomes.com
                     </div>
                 </div>
-                
+
                 <div class="statement-info">
                     <div class="statement-title">Cash Out Statement</div>
                     <div class="statement-meta">
@@ -722,13 +707,13 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                     <option value="12" <?= (($period ?? '') === '12') ? 'selected' : '' ?>>Last 12 Months</option>
                     <option value="custom" <?= (($period ?? '') === 'custom') ? 'selected' : '' ?>>Custom Range</option>
                 </select>
-                
+
                 <div id="customDateRange" style="display: <?= (($period ?? '') === 'custom') ? 'flex' : 'none' ?>; gap: 1mm; align-items: center;">
                     <input type="date" id="fromDate" value="<?= htmlspecialchars($fromDate ?? '') ?>">
                     <span>to</span>
                     <input type="date" id="toDate" value="<?= htmlspecialchars($toDate ?? '') ?>">
                 </div>
-                
+
                 <button onclick="applyFilter()">Apply</button>
             </div>
         </div>
@@ -780,7 +765,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                     Showing <?= count($transactions) ?> transactions (<?= $paidTransactionCount ?> paid)
                 </span>
             </div>
-            
+
             <table class="transaction-table">
                 <thead>
                     <tr>
@@ -796,59 +781,58 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                     <?php if (!empty($transactions)): ?>
                         <?php $counter = 0; ?>
                         <?php foreach ($transactions as $transaction): ?>
-                            <?php 
-                            $counter++; 
+                            <?php
+                            $counter++;
                             $status = $transaction['payment_status'] ?? 'paid';
-                            $statusClass = ($status === 'paid') ? 'status-paid' : 
-                                         (($status === 'pending') ? 'status-pending' : 'status-failed');
+                            $statusClass = ($status === 'paid') ? 'status-paid' : (($status === 'pending') ? 'status-pending' : 'status-failed');
                             $statusText = strtoupper($status);
                             ?>
                             <?php if ($counter > 15): ?>
-                                </tbody>
-                                </table>
-                                <div class="page-break"></div>
-                                <table class="transaction-table">
-                                <thead>
-                                    <tr>
-                                        <th class="date">Date</th>
-                                        <th class="category">Category</th>
-                                        <th class="paid-to">Paid To</th>
-                                        <th class="method">Method</th>
-                                        <th class="status">Status</th>
-                                        <th class="amount">Amount (৳)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                <?php $counter = 1; ?>
-                            <?php endif; ?>
-                            <tr class="keep-together">
-                                <td class="date">
-                                    <?= date('d-M-Y', strtotime($transaction['transaction_date'] ?? 'now')) ?>
-                                </td>
-                                <td class="category">
-                                    <?= htmlspecialchars($transaction['category_name'] ?? 'N/A') ?>
-                                </td>
-                                <td class="paid-to">
-                                    <?= htmlspecialchars($transaction['paid_to'] ?? 'N/A') ?>
-                                </td>
-                                <td class="method">
-                                    <?= ucfirst($transaction['payment_method'] ?? 'N/A') ?>
-                                </td>
-                                <td class="status">
-                                    <span class="<?= $statusClass ?>"><?= $statusText ?></span>
-                                </td>
-                                <td class="amount">
-                                    <?= number_format($transaction['amount'] ?? 0, 2) ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="6" class="no-data">
-                                No transactions found for the selected period
-                            </td>
-                        </tr>
-                    <?php endif; ?>
+                </tbody>
+            </table>
+            <div class="page-break"></div>
+            <table class="transaction-table">
+                <thead>
+                    <tr>
+                        <th class="date">Date</th>
+                        <th class="category">Category</th>
+                        <th class="paid-to">Paid To</th>
+                        <th class="method">Method</th>
+                        <th class="status">Status</th>
+                        <th class="amount">Amount (৳)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $counter = 1; ?>
+                <?php endif; ?>
+                <tr class="keep-together">
+                    <td class="date">
+                        <?= date('d-M-Y', strtotime($transaction['transaction_date'] ?? 'now')) ?>
+                    </td>
+                    <td class="category">
+                        <?= htmlspecialchars($transaction['category_name'] ?? 'N/A') ?>
+                    </td>
+                    <td class="paid-to">
+                        <?= htmlspecialchars($transaction['paid_to'] ?? 'N/A') ?>
+                    </td>
+                    <td class="method">
+                        <?= ucfirst($transaction['payment_method'] ?? 'N/A') ?>
+                    </td>
+                    <td class="status">
+                        <span class="<?= $statusClass ?>"><?= $statusText ?></span>
+                    </td>
+                    <td class="amount">
+                        <?= number_format($transaction['amount'] ?? 0, 2) ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <tr>
+                <td colspan="6" class="no-data">
+                    No transactions found for the selected period
+                </td>
+            </tr>
+        <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -864,141 +848,153 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                     <td class="totals-value">৳<?= number_format($totalAmount, 2) ?></td>
                 </tr>
             </table>
-            
+
             <div class="amount-in-words">
                 <div class="label">Amount in Words:</div>
                 <div class="words"><?= htmlspecialchars($totalAmountWords) ?></div>
             </div>
-            
+
             <?php if (($statementSummary['transaction_count'] ?? 0) - $paidTransactionCount > 0): ?>
-            <div style="font-size: 8pt; color: #666; margin-top: 3mm; font-style: italic;">
-                Note: <?= ($statementSummary['transaction_count'] ?? 0) - $paidTransactionCount ?> transaction(s) with pending/failed status excluded from total amount
-            </div>
+                <div style="font-size: 8pt; color: #666; margin-top: 3mm; font-style: italic;">
+                    Note: <?= ($statementSummary['transaction_count'] ?? 0) - $paidTransactionCount ?> transaction(s) with pending/failed status excluded from total amount
+                </div>
             <?php endif; ?>
         </div>
 
         <div class="statement-footer">
             <div class="footer-disclaimer">
-                This is a computer-generated statement for ALL CASH OUT CATEGORIES and does not require a signature.
+                This is a computer-generated statement  and does not require a signature.
             </div>
         </div>
     </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script>
-    function filterByPeriod() {
-        const period = document.getElementById('periodSelect').value;
-        const customRange = document.getElementById('customDateRange');
-        
-        if (period === 'custom') {
-            customRange.style.display = 'flex';
-            if (!document.getElementById('fromDate').value) {
-                const today = new Date();
-                const lastMonth = new Date();
-                lastMonth.setMonth(today.getMonth() - 1);
-                
-                document.getElementById('fromDate').value = lastMonth.toISOString().split('T')[0];
-                document.getElementById('toDate').value = today.toISOString().split('T')[0];
-            }
-        } else {
-            customRange.style.display = 'none';
-        }
-    }
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        function filterByPeriod() {
+            const period = document.getElementById('periodSelect').value;
+            const customRange = document.getElementById('customDateRange');
 
-    function applyFilter() {
-        const period = document.getElementById('periodSelect').value;
-        let url = '<?= $GLOBALS['base_url'] ?>/management-cash-out-statement?period=' + period;
-        
-        if (period === 'custom') {
-            const fromDate = document.getElementById('fromDate').value;
-            const toDate = document.getElementById('toDate').value;
-            
-            if (!fromDate || !toDate) {
-                alert('Please select both from and to dates');
-                return;
+            if (period === 'custom') {
+                customRange.style.display = 'flex';
+                if (!document.getElementById('fromDate').value) {
+                    const today = new Date();
+                    const lastMonth = new Date();
+                    lastMonth.setMonth(today.getMonth() - 1);
+
+                    document.getElementById('fromDate').value = lastMonth.toISOString().split('T')[0];
+                    document.getElementById('toDate').value = today.toISOString().split('T')[0];
+                }
+            } else {
+                customRange.style.display = 'none';
             }
-            
-            if (fromDate > toDate) {
-                alert('From date cannot be later than To date');
-                return;
-            }
-            
-            url += '&from=' + fromDate + '&to=' + toDate;
         }
-        
-        const applyBtn = event?.target || document.querySelector('.period-filter button');
-        if (applyBtn) {
-            const originalText = applyBtn.textContent;
-            applyBtn.textContent = 'Applying...';
-            applyBtn.disabled = true;
-            
-            setTimeout(() => {
-                applyBtn.textContent = originalText;
-                applyBtn.disabled = false;
+
+        function applyFilter() {
+            const period = document.getElementById('periodSelect').value;
+            let url = '<?= $GLOBALS['base_url'] ?>/management-cash-out-statement?period=' + period;
+
+            if (period === 'custom') {
+                const fromDate = document.getElementById('fromDate').value;
+                const toDate = document.getElementById('toDate').value;
+
+                if (!fromDate || !toDate) {
+                    alert('Please select both from and to dates');
+                    return;
+                }
+
+                if (fromDate > toDate) {
+                    alert('From date cannot be later than To date');
+                    return;
+                }
+
+                url += '&from=' + fromDate + '&to=' + toDate;
+            }
+
+            const applyBtn = event?.target || document.querySelector('.period-filter button');
+            if (applyBtn) {
+                const originalText = applyBtn.textContent;
+                applyBtn.textContent = 'Applying...';
+                applyBtn.disabled = true;
+
+                setTimeout(() => {
+                    applyBtn.textContent = originalText;
+                    applyBtn.disabled = false;
+                    window.location.href = url;
+                }, 500);
+            } else {
                 window.location.href = url;
-            }, 500);
-        } else {
-            window.location.href = url;
-        }
-    }
-function downloadPDF() {
-    const noPdfElements = document.querySelectorAll('.no-pdf');
-    noPdfElements.forEach(el => el.style.display = 'none');
-    
-    const element = document.getElementById('statement-content');
-    const opt = {
-        margin: [15, 15, 15, 15],
-        filename: 'MANAGEMENT_STATEMENT_ALL_ROLES_<?= date('Ymd_His') ?>.pdf',
-        image: { type: 'jpeg', quality: 1.0 },
-        html2canvas: { 
-            scale: 2,
-            useCORS: true,
-            letterRendering: true,
-            width: 794,
-            height: 1123,
-            ignoreElements: function(element) {
-                return element.classList.contains('no-pdf');
             }
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-    
-    // Fix: declare originalText here
-    let originalText = '';
-    const downloadBtn = document.querySelector('.btn-success');
-    if (downloadBtn) {
-        originalText = downloadBtn.textContent;
-        downloadBtn.textContent = 'Generating PDF...';
-        downloadBtn.disabled = true;
-    }
-    
-    html2pdf().set(opt).from(element).save().then(() => {
-        noPdfElements.forEach(el => el.style.display = '');
-        if (downloadBtn) {
-            downloadBtn.textContent = originalText;
-            downloadBtn.disabled = false;
         }
-    }).catch(error => {
-        alert('Error generating PDF: ' + error.message);
-        noPdfElements.forEach(el => el.style.display = '');
-        if (downloadBtn) {
-            downloadBtn.textContent = originalText;
-            downloadBtn.disabled = false;
+
+        function downloadPDF() {
+            const noPdfElements = document.querySelectorAll('.no-pdf');
+            noPdfElements.forEach(el => el.style.display = 'none');
+
+            const element = document.getElementById('statement-content');
+            const opt = {
+                margin: [15, 15, 15, 15],
+                filename: 'MANAGEMENT_STATEMENT_ALL_ROLES_<?= date('Ymd_His') ?>.pdf',
+                image: {
+                    type: 'jpeg',
+                    quality: 1.0
+                },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true,
+                    width: 794,
+                    height: 1123,
+                    ignoreElements: function(element) {
+                        return element.classList.contains('no-pdf');
+                    }
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'portrait',
+                    compress: true
+                },
+                pagebreak: {
+                    mode: ['avoid-all', 'css', 'legacy']
+                }
+            };
+
+            // Fix: declare originalText here
+            let originalText = '';
+            const downloadBtn = document.querySelector('.btn-success');
+            if (downloadBtn) {
+                originalText = downloadBtn.textContent;
+                downloadBtn.textContent = 'Generating PDF...';
+                downloadBtn.disabled = true;
+            }
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                noPdfElements.forEach(el => el.style.display = '');
+                if (downloadBtn) {
+                    downloadBtn.textContent = originalText;
+                    downloadBtn.disabled = false;
+                }
+            }).catch(error => {
+                alert('Error generating PDF: ' + error.message);
+                noPdfElements.forEach(el => el.style.display = '');
+                if (downloadBtn) {
+                    downloadBtn.textContent = originalText;
+                    downloadBtn.disabled = false;
+                }
+            });
         }
-    });
-}
-    
-    document.addEventListener('DOMContentLoaded', function() {
-        const today = new Date().toISOString().split('T')[0];
-        
-        const dateInputs = document.querySelectorAll('input[type="date"]');
-        dateInputs.forEach(input => {
-            input.max = today;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+
+            const dateInputs = document.querySelectorAll('input[type="date"]');
+            dateInputs.forEach(input => {
+                input.max = today;
+            });
+
+            filterByPeriod();
         });
-        
-        filterByPeriod();
-    });
-</script>
+    </script>
 </body>
+
 </html>

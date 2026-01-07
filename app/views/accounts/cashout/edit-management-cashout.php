@@ -10,14 +10,34 @@ $transaction = $transaction ?? [];
 $old_data = $_SESSION['old_form_data'] ?? $transaction;
 unset($_SESSION['old_form_data']);
 ?>
+<style>
+    @media(max-width: 575px) {
+        .card__title {
+            font-size: 20px;
+            line-height: 1.4;
+        }
 
+        .card__wrapper {
+            padding: 31px 15px;
+        }
+
+        .mt-30 {
+            margin-top: 10px;
+        }
+
+        .btn {
+
+            padding: 6px 12px;
+        }
+    }
+</style>
 <div class="row">
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title" style="margin-top: -13px;">Edit Cash Out Transaction #<?= $transaction['id'] ?? '' ?></h5>
                 <a href="<?= $GLOBALS['base_url'] ?>/management-cash-out" class="btn btn-secondary">
-                    <i class="fa-light fa-arrow-left me-2"></i> Back to List
+                    <i class="fa-light fa-arrow-left me-2"></i> Back
                 </a>
             </div>
             <div class="card__body">
@@ -38,7 +58,7 @@ unset($_SESSION['old_form_data']);
 
                 <form action="<?= $GLOBALS['base_url'] ?>/update-management-cash-out" method="POST">
                     <input type="hidden" name="transaction_id" value="<?= $transaction['id'] ?? '' ?>">
-                    
+
                     <div class="row">
                         <!-- Category Selection -->
                         <div class="col-md-6 mb-3">
@@ -47,8 +67,8 @@ unset($_SESSION['old_form_data']);
                                 <option value="">-- Select Category --</option>
                                 <?php if (!empty($categories) && is_array($categories)): ?>
                                     <?php foreach ($categories as $category): ?>
-                                        <option value="<?= htmlspecialchars($category['id'] ?? '') ?>" 
-                                                <?= (!empty($old_data['category_id']) && $old_data['category_id'] == $category['id']) ? 'selected' : '' ?>>
+                                        <option value="<?= htmlspecialchars($category['id'] ?? '') ?>"
+                                            <?= (!empty($old_data['category_id']) && $old_data['category_id'] == $category['id']) ? 'selected' : '' ?>>
                                             <?= htmlspecialchars($category['category_name'] ?? 'Unknown') ?>
                                         </option>
                                     <?php endforeach; ?>
@@ -64,31 +84,31 @@ unset($_SESSION['old_form_data']);
                         <!-- Transaction Date -->
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Transaction Date: <span class="text-danger">*</span></label>
-                            <input type="date" name="transaction_date" class="form-control" 
-                                   value="<?= !empty($old_data['transaction_date']) ? htmlspecialchars($old_data['transaction_date']) : date('Y-m-d') ?>" required>
+                            <input type="date" name="transaction_date" class="form-control"
+                                value="<?= !empty($old_data['transaction_date']) ? htmlspecialchars($old_data['transaction_date']) : date('Y-m-d') ?>" required>
                         </div>
 
                         <!-- Paid To -->
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Paid To: <span class="text-danger">*</span></label>
-                            <input type="text" name="paid_to" class="form-control" 
-                                   placeholder="e.g., Contractor, Supplier, Employee, etc." 
-                                   value="<?= !empty($old_data['paid_to']) ? htmlspecialchars($old_data['paid_to']) : '' ?>" required>
+                            <input type="text" name="paid_to" class="form-control"
+                                placeholder="e.g., Contractor, Supplier, Employee, etc."
+                                value="<?= !empty($old_data['paid_to']) ? htmlspecialchars($old_data['paid_to']) : '' ?>" required>
                         </div>
 
                         <!-- Amount -->
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Amount (৳): <span class="text-danger">*</span></label>
-                            <input type="number" name="amount" class="form-control" 
-                                   placeholder="0.00" step="0.01" min="0.01" 
-                                   value="<?= !empty($old_data['amount']) ? htmlspecialchars($old_data['amount']) : '' ?>" required>
+                            <input type="number" name="amount" class="form-control"
+                                placeholder="0.00" step="0.01" min="0.01"
+                                value="<?= !empty($old_data['amount']) ? htmlspecialchars($old_data['amount']) : '' ?>" required>
                         </div>
 
                         <!-- Description -->
                         <div class="col-md-12 mb-3">
                             <label class="form-label">Description:</label>
-                            <textarea name="description" class="form-control" rows="3" 
-                                      placeholder="Enter transaction description..."><?= !empty($old_data['description']) ? htmlspecialchars($old_data['description']) : '' ?></textarea>
+                            <textarea name="description" class="form-control" rows="3"
+                                placeholder="Enter transaction description..."><?= !empty($old_data['description']) ? htmlspecialchars($old_data['description']) : '' ?></textarea>
                         </div>
 
                         <!-- Payment Method -->
@@ -117,15 +137,15 @@ unset($_SESSION['old_form_data']);
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Bank Name:</label>
-                                    <input type="text" name="bank_name" class="form-control" 
-                                           placeholder="e.g., DBBL, Brac Bank, City Bank, etc."
-                                           value="<?= !empty($old_data['bank_name']) ? htmlspecialchars($old_data['bank_name']) : '' ?>">
+                                    <input type="text" name="bank_name" class="form-control"
+                                        placeholder="e.g., DBBL, Brac Bank, City Bank, etc."
+                                        value="<?= !empty($old_data['bank_name']) ? htmlspecialchars($old_data['bank_name']) : '' ?>">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Bank Account No:</label>
-                                    <input type="text" name="bank_account_no" class="form-control" 
-                                           placeholder="Enter account number"
-                                           value="<?= !empty($old_data['bank_account_no']) ? htmlspecialchars($old_data['bank_account_no']) : '' ?>">
+                                    <input type="text" name="bank_account_no" class="form-control"
+                                        placeholder="Enter account number"
+                                        value="<?= !empty($old_data['bank_account_no']) ? htmlspecialchars($old_data['bank_account_no']) : '' ?>">
                                 </div>
                             </div>
                         </div>
@@ -135,9 +155,9 @@ unset($_SESSION['old_form_data']);
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Cheque No:</label>
-                                    <input type="text" name="cheque_no" class="form-control" 
-                                           placeholder="Enter cheque number"
-                                           value="<?= !empty($old_data['cheque_no']) ? htmlspecialchars($old_data['cheque_no']) : '' ?>">
+                                    <input type="text" name="cheque_no" class="form-control"
+                                        placeholder="Enter cheque number"
+                                        value="<?= !empty($old_data['cheque_no']) ? htmlspecialchars($old_data['cheque_no']) : '' ?>">
                                 </div>
                             </div>
                         </div>
@@ -162,20 +182,21 @@ unset($_SESSION['old_form_data']);
                         <!-- Transaction Reference -->
                         <div class="col-md-12 mb-3">
                             <label class="form-label">Transaction Reference/Note:</label>
-                            <input type="text" name="transaction_ref" class="form-control" 
-                                   placeholder="e.g., Transaction ID, Reference No, Note, etc."
-                                   value="<?= !empty($old_data['transaction_ref']) ? htmlspecialchars($old_data['transaction_ref']) : '' ?>">
+                            <input type="text" name="transaction_ref" class="form-control"
+                                placeholder="e.g., Transaction ID, Reference No, Note, etc."
+                                value="<?= !empty($old_data['transaction_ref']) ? htmlspecialchars($old_data['transaction_ref']) : '' ?>">
                         </div>
 
                         <!-- Submit Buttons -->
                         <div class="col-md-12 mt-4">
                             <div class="d-flex justify-content-end gap-10">
-                                <a href="<?= $GLOBALS['base_url'] ?>/management-cash-out" class="btn btn-secondary">
-                                    <i class="fa-light fa-times me-2"></i> Cancel
-                                </a>
                                 <button type="submit" class="btn btn-success">
                                     <i class="fa-light fa-check me-2"></i> Update Transaction
                                 </button>
+                                <a href="<?= $GLOBALS['base_url'] ?>/management-cash-out" class="btn btn-secondary">
+                                    <i class="fa-light fa-times me-2"></i> Cancel
+                                </a>
+
                             </div>
                         </div>
                     </div>
@@ -186,25 +207,25 @@ unset($_SESSION['old_form_data']);
 </div>
 
 <script>
-function togglePaymentFields() {
-    var paymentMethod = document.getElementById('payment_method').value;
-    
-    document.getElementById('bank_fields').style.display = 'none';
-    document.getElementById('cheque_fields').style.display = 'none';
-    document.getElementById('online_fields').style.display = 'none';
-    
-    if (paymentMethod === 'bank') {
-        document.getElementById('bank_fields').style.display = 'block';
-    } else if (paymentMethod === 'cheque') {
-        document.getElementById('bank_fields').style.display = 'block';
-        document.getElementById('cheque_fields').style.display = 'block';
-    } else if (paymentMethod === 'online') {
-        document.getElementById('online_fields').style.display = 'block';
-    }
-}
+    function togglePaymentFields() {
+        var paymentMethod = document.getElementById('payment_method').value;
 
-// Initialize fields on page load
-document.addEventListener('DOMContentLoaded', function() {
-    togglePaymentFields();
-});
+        document.getElementById('bank_fields').style.display = 'none';
+        document.getElementById('cheque_fields').style.display = 'none';
+        document.getElementById('online_fields').style.display = 'none';
+
+        if (paymentMethod === 'bank') {
+            document.getElementById('bank_fields').style.display = 'block';
+        } else if (paymentMethod === 'cheque') {
+            document.getElementById('bank_fields').style.display = 'block';
+            document.getElementById('cheque_fields').style.display = 'block';
+        } else if (paymentMethod === 'online') {
+            document.getElementById('online_fields').style.display = 'block';
+        }
+    }
+
+    // Initialize fields on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        togglePaymentFields();
+    });
 </script>

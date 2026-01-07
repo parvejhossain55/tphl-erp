@@ -8,7 +8,23 @@ $show_breadcrumb = true;
 $old_data = $_SESSION['old_form_data'] ?? [];
 unset($_SESSION['old_form_data']);
 ?>
+<style>
+    @media(max-width: 575px) {
+        .card__title {
+            font-size: 24px;
+            line-height: 1.4;
+        }
 
+        .mt-30 {
+            margin-top: 10px;
+        }
+
+        .btn {
+
+            padding: 6px 12px;
+        }
+    }
+</style>
 <div class="row">
     <div class="col-xxl-12">
         <div class="card__wrapper">

@@ -20,7 +20,7 @@ class CentralStatementController extends Controller
     {
         // Check if this is a print request
         $isPrint = isset($_GET['print']) && $_GET['print'] == 'true';
-        
+
         // If it's a print request, use the print method
         if ($isPrint) {
             $this->printStatement();
@@ -152,14 +152,17 @@ class CentralStatementController extends Controller
         $company_email = "info@thepremiumhomes.com";
 
         // Render the print view directly
-        ?>
+?>
         <!DOCTYPE html>
         <html lang="en">
+
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Central Financial Statement</title>
-            <style>
+           
+           
+           <style>
                 @page {
                     size: A4;
                     margin: 15mm;
@@ -173,13 +176,16 @@ class CentralStatementController extends Controller
                         -webkit-print-color-adjust: exact;
                         print-color-adjust: exact;
                     }
-                    .no-print { 
-                        display: none !important; 
+
+                    .no-print {
+                        display: none !important;
                     }
-                    .page-break { 
+
+                    .page-break {
                         page-break-before: always;
                         margin-top: 20mm;
                     }
+
                     .avoid-break {
                         page-break-inside: avoid;
                     }
@@ -389,7 +395,10 @@ class CentralStatementController extends Controller
                     color: #007bff;
                 }
             </style>
+
+            
         </head>
+
         <body>
             <!-- Header -->
             <div class="statement-header">
@@ -456,35 +465,35 @@ class CentralStatementController extends Controller
                         <?php foreach ($statementData['daily_data'] as $row): ?>
                             <?php $counter++; ?>
                             <?php if ($counter > 20): ?>
-                                </tbody>
-                                </table>
-                                <div class="page-break"></div>
-                                <div class="period-title">
-                                    DAILY STATEMENT - <?= htmlspecialchars($periodText) ?> (Continued)
-                                </div>
-                                <table class="statement-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Day</th>
-                                        <th class="text-right">Cash In (৳)</th>
-                                        <th class="text-right">Cash Out (৳)</th>
-                                        <th class="text-right">Net Amount (৳)</th>
-                                        <th class="text-right">Running Balance (৳)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                <?php $counter = 1; ?>
-                            <?php endif; ?>
-                            <tr class="avoid-break">
-                                <td><?= htmlspecialchars($row['formatted_date']) ?></td>
-                                <td><?= htmlspecialchars($row['day_name']) ?></td>
-                                <td class="text-right cash-in"><?= number_format($row['cash_in'], 2) ?></td>
-                                <td class="text-right cash-out"><?= number_format($row['cash_out'], 2) ?></td>
-                                <td class="text-right"><?= number_format($row['net_amount'], 2) ?></td>
-                                <td class="text-right"><?= number_format($row['running_balance'], 2) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <div class="page-break"></div>
+                <div class="period-title">
+                    DAILY STATEMENT - <?= htmlspecialchars($periodText) ?> (Continued)
+                </div>
+                <table class="statement-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Day</th>
+                            <th class="text-right">Cash In (৳)</th>
+                            <th class="text-right">Cash Out (৳)</th>
+                            <th class="text-right">Net Amount (৳)</th>
+                            <th class="text-right">Running Balance (৳)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php $counter = 1; ?>
+                    <?php endif; ?>
+                    <tr class="avoid-break">
+                        <td><?= htmlspecialchars($row['formatted_date']) ?></td>
+                        <td><?= htmlspecialchars($row['day_name']) ?></td>
+                        <td class="text-right cash-in"><?= number_format($row['cash_in'], 2) ?></td>
+                        <td class="text-right cash-out"><?= number_format($row['cash_out'], 2) ?></td>
+                        <td class="text-right"><?= number_format($row['net_amount'], 2) ?></td>
+                        <td class="text-right"><?= number_format($row['running_balance'], 2) ?></td>
+                    </tr>
+                <?php endforeach; ?>
                     </tbody>
                 </table>
             <?php elseif (isset($statementData['monthly_data'])): ?>
@@ -518,31 +527,31 @@ class CentralStatementController extends Controller
 
             <!-- Summary -->
             <?php if (isset($statementData['summary'])): ?>
-            <div class="summary-section">
-                <div class="summary-title">PERIOD SUMMARY</div>
-                <div class="summary-grid">
-                    <div class="summary-box">
-                        <div class="summary-row">
-                            <span class="summary-label">Total Cash In:</span>
-                            <span class="summary-value cash-in">৳<?= number_format($statementData['summary']['total_cash_in'], 2) ?></span>
+                <div class="summary-section">
+                    <div class="summary-title">PERIOD SUMMARY</div>
+                    <div class="summary-grid">
+                        <div class="summary-box">
+                            <div class="summary-row">
+                                <span class="summary-label">Total Cash In:</span>
+                                <span class="summary-value cash-in">৳<?= number_format($statementData['summary']['total_cash_in'], 2) ?></span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Total Cash Out:</span>
+                                <span class="summary-value cash-out">৳<?= number_format($statementData['summary']['total_cash_out'], 2) ?></span>
+                            </div>
                         </div>
-                        <div class="summary-row">
-                            <span class="summary-label">Total Cash Out:</span>
-                            <span class="summary-value cash-out">৳<?= number_format($statementData['summary']['total_cash_out'], 2) ?></span>
-                        </div>
-                    </div>
-                    <div class="summary-box">
-                        <div class="summary-row">
-                            <span class="summary-label">Net Balance:</span>
-                            <span class="summary-value">৳<?= number_format($statementData['summary']['net_balance'], 2) ?></span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-label">Final Balance:</span>
-                            <span class="summary-value">৳<?= number_format($statementData['summary']['final_balance'], 2) ?></span>
+                        <div class="summary-box">
+                            <div class="summary-row">
+                                <span class="summary-label">Net Balance:</span>
+                                <span class="summary-value">৳<?= number_format($statementData['summary']['net_balance'], 2) ?></span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Final Balance:</span>
+                                <span class="summary-value">৳<?= number_format($statementData['summary']['final_balance'], 2) ?></span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             <?php endif; ?>
 
             <!-- Footer -->
@@ -564,8 +573,9 @@ class CentralStatementController extends Controller
                 };
             </script>
         </body>
+
         </html>
-        <?php
+<?php
         exit;
     }
 
@@ -683,9 +693,9 @@ class CentralStatementController extends Controller
     public function getQuickStats()
     {
         header('Content-Type: application/json');
-        
+
         $stats = $this->statementModel->getOverallStatistics();
-        
+
         echo json_encode([
             'success' => true,
             'data' => $stats

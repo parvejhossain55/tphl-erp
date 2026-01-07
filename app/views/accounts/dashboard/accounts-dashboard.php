@@ -42,6 +42,11 @@ if (!empty($monthlyData)) {
         position: relative;
         height: 350px;
     }
+    @media (max-width: 575px) {
+.bd-badge {
+    min-width: 118px;
+}
+    }
 </style>
 
 <div class="row">
