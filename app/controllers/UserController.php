@@ -152,12 +152,17 @@ public function update($id)
         // 'photo' will be handled inside model
     ];
 
-    if ($this->userModel->update($id, $data)) {
+   try {
+    if ($this->userModel->update($data, $id)) {
+        setSuccess('User updated successfully');
         header("Location: {$GLOBALS['base_url']}/user-lists");
         exit;
-    } else {
-        echo "<h3 style='color:red'>Failed to update user</h3>";
     }
+} catch (\Throwable $th) {
+    setError('Failed to update user: ' . $th->getMessage());
+    error_log('User update error: ' . $th->__toString());
+}
+
 }
 
   public function delete()

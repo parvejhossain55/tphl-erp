@@ -147,8 +147,266 @@
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/sidebar.js"></script>
 
 
-    
+
         <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.14.0-beta3/js/bootstrap-select.min.js"></script>
+
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+
+                const labels = <?= json_encode($flatSalesLabels) ?>;
+                const series = <?= json_encode($flatSalesSeries) ?>;
+
+                const options = {
+                    series: series,
+                    chart: {
+                        type: 'donut',
+                        height: 260
+                    },
+
+                    labels: labels,
+
+                    plotOptions: {
+                        pie: {
+                            donut: {
+                                size: '68%',
+                                labels: {
+                                    show: true,
+
+                                    name: {
+                                        show: true,
+                                        fontSize: '12px',
+                                        offsetY: -6,
+                                        color: '#63666bff'
+
+                                    },
+
+                                    value: {
+                                        show: true,
+                                        fontSize: '16px',
+                                        fontWeight: 600,
+                                        offsetY: 6,
+                                        formatter: val => val + ' Flats'
+                                    },
+
+                                    total: {
+                                        show: true,
+                                        label: 'Total',
+                                        fontSize: '13px',
+                                        color: '#7c7f85ff',
+                                        formatter: function(w) {
+                                            return w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+
+                    stroke: {
+                        width: 2,
+                        colors: ['#fff']
+                    },
+
+                    fill: {
+                        type: 'gradient',
+                        gradient: {
+                            shade: 'light',
+                            type: 'radial',
+                            shadeIntensity: 0.4,
+                            gradientToColors: [
+                                '#008FFB',
+                                '#00E396',
+                                '#FEB019',
+                                '#FF4560',
+                                '#775DD0'
+                            ],
+                            opacityFrom: 1,
+                            opacityTo: 1,
+                            stops: [70, 100]
+                        }
+                    },
+
+                    colors: [
+                        '#59b6fc',
+                        '#59edbb',
+                        '#fecc6a',
+                        '#ff8698',
+                        '#a796e0'
+                    ],
+
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            colors: '#707174ff'
+                        },
+                        formatter: function(seriesName, opts) {
+                            return `${seriesName} (${opts.w.globals.series[opts.seriesIndex]})`;
+                        }
+                    },
+
+                    tooltip: {
+                        y: {
+                            formatter: val => val + ' Flats'
+                        }
+                    },
+
+                    responsive: [{
+                            breakpoint: 1200, // Laptop
+                            options: {
+                                dataLabels: {
+                                    enabled: true // ❌ hide %
+                                },
+                                plotOptions: {
+                                    pie: {
+                                        donut: {
+                                            size: '72%',
+                                            labels: {
+                                                name: {
+                                                    fontSize: '11px'
+                                                },
+                                                value: {
+                                                    fontSize: '14px'
+                                                },
+                                                total: {
+                                                    fontSize: '12px'
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            breakpoint: 768, // Tablet & Mobile
+                            options: {
+                                dataLabels: {
+                                    enabled: true // ❌ hide %
+                                },
+                                plotOptions: {
+                                    pie: {
+                                        donut: {
+                                            size: '78%',
+                                            labels: {
+                                                show: false // ❌ hide center text
+                                            }
+                                        }
+                                    }
+                                },
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    ]
+
+                };
+
+                new ApexCharts(document.querySelector("#pieChart"), options).render();
+            });
+        </script>
+
+
+
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+
+                const salesData = {
+                    week: {
+                        labels: <?= json_encode(array_column($weeklySales, 'date')) ?>,
+                        totals: <?= json_encode(array_column($weeklySales, 'total')) ?>
+                    },
+                    month: {
+                        labels: <?= json_encode(array_column($monthlySales, 'date')) ?>,
+                        totals: <?= json_encode(array_column($monthlySales, 'total')) ?>
+                    },
+                    year: {
+                        labels: <?= json_encode(array_column($yearlySales, 'month')) ?>,
+                        totals: <?= json_encode(array_column($yearlySales, 'total')) ?>
+                    }
+                };
+
+                const colors = ['#1a6e40ff', '#23bb95ff'];
+
+                function getAlternatingColors(length) {
+                    return Array.from({
+                        length
+                    }, (_, i) => colors[i % colors.length]);
+                }
+
+                let options = {
+                    chart: {
+                        type: 'bar',
+                        height: 300,
+                        toolbar: {
+                            show: false
+                        }
+                    },
+
+                    plotOptions: {
+                        bar: {
+                            distributed: true,
+                            borderRadius: 4,
+                            columnWidth: '40%'
+                        }
+                    },
+
+                    dataLabels: {
+                        enabled: true, // default ON (week)
+                        formatter: val => '৳ ' + val.toLocaleString()
+                    },
+
+                    series: [{
+                        name: 'Sales',
+                        data: salesData.week.totals
+                    }],
+
+                    xaxis: {
+                        categories: salesData.week.labels
+                    },
+
+                    colors: getAlternatingColors(salesData.week.totals.length),
+
+                    tooltip: {
+                        y: {
+                            formatter: val => '৳ ' + val.toLocaleString()
+                        }
+                    }
+                };
+
+                const chart = new ApexCharts(document.querySelector("#salesChart"), options);
+                chart.render();
+
+                // Tabs
+                document.querySelectorAll('.nav-link').forEach(button => {
+                    button.addEventListener('click', function() {
+
+                        document.querySelectorAll('.nav-link')
+                            .forEach(btn => btn.classList.remove('active'));
+                        this.classList.add('active');
+
+                        const period = this.dataset.period;
+
+                        chart.updateOptions({
+                            series: [{
+                                data: salesData[period].totals
+                            }],
+                            xaxis: {
+                                categories: salesData[period].labels
+                            },
+                            colors: getAlternatingColors(salesData[period].totals.length),
+
+                            // 🔥 KEY PART
+                            dataLabels: {
+                                enabled: period !== 'month' // ❌ monthly = OFF
+                            }
+                        });
+                    });
+                });
+
+            });
+        </script>
 
 
         </body>

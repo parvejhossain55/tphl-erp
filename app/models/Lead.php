@@ -32,16 +32,15 @@ class Lead extends Model
 
     public function create($data)
     {
-        $stmt = $this->db->prepare("
-        INSERT INTO leads (
+        $stmt = $this->db->prepare("INSERT INTO leads (
             lead_name, father_name, mother_name, dob, permanent_address, nid_or_passport,
             phone, alt_phone_number, email,
             source_type_id, assigned_id,
             address, pref_location, designation,
-            project_type, interest_on, pref_flat_size,
+            project_type, pref_flat_size,
             communication_type, tags, description,
-            visibility, status, lead_quality, lead_type, created_by,
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            visibility, status, lead_quality, lead_type, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
         if (!$stmt) {
@@ -65,7 +64,6 @@ class Lead extends Model
         $pref_location = $data['pref_location'] ?? null;
         $designation = $data['designation'] ?? null;
         $project_type = $data['project_type'] ?? null;
-        $interest_on = $data['interest_on'] ?? null;
         $pref_flat_size = $data['pref_flat_size'] ?? null;
         $communication_type = $data['communication_type'] ?? null;
         $tags = $data['tags'] ?? null;
@@ -78,7 +76,7 @@ class Lead extends Model
 
         // Bind parameters
         $stmt->bind_param(
-            "sssssssssssissssssssssssi",
+            "sssssssssssisssssssssssi",
             $lead_name,
             $father_name,
             $mother_name,
@@ -94,7 +92,6 @@ class Lead extends Model
             $pref_location,
             $designation,
             $project_type,
-            $interest_on,
             $pref_flat_size,
             $communication_type,
             $tags,
@@ -239,19 +236,19 @@ public function update($id, $data)
 
 
 
-    //     public function getById($lead_id)
-    // {
-    //     $stmt = $this->db->prepare("
-    //         SELECT *
-    //         FROM leads
-    //         WHERE id = ?
-    //         LIMIT 1
-    //     ");
-    //     $stmt->bind_param("i", $lead_id);
-    //     $stmt->execute();
-    //     $result = $stmt->get_result();
-    //     return $result->fetch_assoc(); // single record
-    // }
+   public function countLeadsByMonth($year, $month)
+{
+    $stmt = $this->db->prepare("
+        SELECT COUNT(*) AS total
+        FROM leads
+        WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?
+    ");
+    $stmt->bind_param("ii", $year, $month);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    return (int)($result['total'] ?? 0);
+}
+
     public function delete($id)
     {
         $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");
