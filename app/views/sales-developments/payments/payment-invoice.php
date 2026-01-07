@@ -87,7 +87,9 @@
             background: #0f4c3a;
         }
 
-
+        .print-document-header {
+            display: none;
+        }
 
         .section-title {
             font-family: 'Playfair Display', serif;
@@ -116,8 +118,8 @@
 
         /* FIELDS */
         .field-label {
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 700;
             color: #555;
             margin-bottom: 4px;
             display: block;
@@ -141,6 +143,9 @@
             width: auto;
         }
 
+        .info-card {
+            margin-top: 15px
+        }
 
         /* .action-buttons{
     display:flex;
@@ -161,45 +166,290 @@
         }
 
 
-        /* PRINT */
-        @media print {
+        /* =========================
+   RESPONSIVE STYLES
+========================= */
+
+        /* Tablet: 570px - 768px */
+        @media (max-width: 768px) and (min-width: 570px) {
             body {
-                padding: 0;
-                background: #ffffff !important;
+                padding: 10px 0 !important;
+            }
+/* 
+            .document-container {
+                padding: 16px;
+            } */
+
+            .site-logo img {
+                max-height: 60px;
+                width: auto;
+                display: block;
+                margin: auto;
             }
 
+            .document-header {
+                text-align: center;
+                padding: 12px;
+            }
+
+            .document-title {
+                font-size: 20px;
+            }
+
+            .company p {
+                font-size: 13px;
+                margin: 2px 0;
+            }
+
+            .fields-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 10px;
+            }
+
+            .field-label {
+                font-size: 13px;
+            }
+
+            .field-input {
+                font-size: 13px;
+                padding: 6px 8px;
+            }
+
+            .section-title {
+                font-size: 1.3rem;
+            }
+
+            .section-header::after {
+                width: 80px;
+            }
+
+            img {
+                max-width: 140px !important;
+                max-height: 140px !important;
+            }
+        }
+
+        /* Mobile: <570px */
+        @media (max-width: 569px) {
+            body {
+                padding: 10px 0 !important;
+            }
+
+            /* .document-container {
+                padding: 12px;
+            } */
+
+            /* Logo & company info stacked */
+            .site-logo img {
+                max-height: 50px;
+                margin-bottom: 10px;
+            }
+
+            .document-header {
+                text-align: center;
+                padding: 10px;
+            }
+
+            .document-title {
+                font-size: 18px;
+            }
+
+            .company p {
+                font-size: 11px;
+                margin: 1px 0;
+            }
+
+            /* Section Titles */
+            .section-title {
+                font-size: 1.2rem;
+            }
+
+            .section-header::after {
+                width: 60px;
+            }
+
+            /* Fields Grid: 2 columns */
+            .fields-grid {
+                grid-template-columns: repeat(2, 1fr);
+                /* দুই column per row */
+                gap: 8px;
+            }
+
+            .field-label {
+                font-size: 12px;
+            }
+
+            .field-input {
+                font-size: 12px;
+                padding: 5px 6px;
+            }
+
+            /* Images responsive inside container */
+            img {
+                max-width: 100% !important;
+                height: auto !important;
+                display: block;
+                margin: 5px 0;
+            }
+
+            /* Client / Nominee Image alignment */
+            .row.align-items-start {
+                flex-direction: column !important;
+            }
+
+            .col-3.col-md-3.text-end {
+                text-align: left !important;
+                margin-top: 8px;
+            }
+
+            /* Section spacing reduce */
+            .section {
+                margin-bottom: 16px;
+            }
+
+            /* Print button / action spacing */
+            .action-section {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+
+
+
+        /* PRINT */
+        @media print {
+
+            /* PAGE SETUP */
+            @page {
+                size: A4;
+                margin: 10mm;
+            }
+
+            body {
+                padding: 0;
+                margin: 0;
+                font-size: 10px;
+                line-height: 1.25;
+                background: #fff !important;
+            }
+
+            /* SHOW ONLY PRINT HEADER */
+            .print-document-header {
+                display: block !important;
+                text-align: center;
+                margin-bottom: 10px;
+            }
+
+            /* HIDE NON PRINT */
             .no-print,
+            .site-logo,
             .document-header {
                 display: none !important;
             }
 
+            /* CONTAINER */
             .document-container {
                 border: none;
                 max-width: 100%;
             }
 
+            .document-body {
+                padding: 10px;
+            }
+
+            /* SECTION SPACING REDUCE */
+            .section {
+                margin-bottom: 10px;
+                page-break-inside: avoid;
+            }
+
+            .section-header {
+                padding-bottom: 4px;
+                margin-bottom: 6px;
+                border-bottom: 1px solid #999;
+            }
+
+            .section-header::after {
+                display: none;
+            }
+
+            .print-title {
+                color: #0f4c3a;
+                font-size: 12px;
+                font-weight: 700;
+
+            }
+
+            .section-title,
+            .section-title2 {
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+            /* GRID → 4 COLUMN */
             .fields-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
             }
 
-            input,
+            /* LABEL + INPUT SMALL */
+            .field-label {
+                font-size: 10px;
+                margin-bottom: 2px;
+                font-weight: 700;
+            }
+
+            .field-input,
             textarea {
-                border: 1px solid #999 !important;
-                background: #ffffff !important;
-                color: #000 !important;
+                font-size: 10px;
+                padding: 4px 6px;
+                min-height: auto;
+                border: 1px solid #999;
+                background: #fff !important;
             }
 
+            .info-card {
+                margin-top: 10px;
+            }
+
+            textarea {
+                line-height: 1.2;
+            }
+
+            /* FULL WIDTH OVERRIDE */
+            .full-width {
+                grid-column: span 4;
+            }
+
+            /* IMAGES SMALL */
+            img {
+                max-width: 90px !important;
+                max-height: 90px !important;
+            }
+
+            /* RULES + DECLARATION COMPACT */
+            ul {
+                font-size: 9.5px;
+                margin-bottom: 6px;
+            }
+
+            li {
+                margin-bottom: 3px;
+            }
+
+            /* SIGNATURE AREA */
+            .signature,
+            .signature div {
+                font-size: 9px;
+            }
+
+            /* REMOVE EXTRA EFFECTS */
             * {
+                box-shadow: none !important;
                 animation: none !important;
                 transition: none !important;
-                box-shadow: none !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
-            }
-
-            .section-icon {
-                display: none;
             }
         }
     </style>
@@ -232,12 +482,22 @@
         </div>
 
 
+        <div class="print-document-header">
+            <div class="print-header-content">
+                <h3 class="print-document-title">Property Booking Document</h3>
+                <div class="print-company ">
+                    <p class="print-title"> <?= getSetting('website_title', '') ?></p>
+                    <p>Phone: <?= getSetting('phone', '') ?></p>
+                    <p>Email: <?= getSetting('email', '') ?></p>
+                </div>
+            </div>
+        </div>
         <div class="document-header">
             <div class="header-content">
-                <h1 class="document-title">Property Booking Document</h1>
+                <h3 class="document-title">Property Booking Document</h3>
                 <div class="company ">
-                    <h2><?= getSetting('website_title', '') ?></h2>
                     <p>Real Estate & Property Developer</p>
+                    <p> <?= getSetting('website_title', '') ?></p>
                     <p>Phone: <?= getSetting('phone', '') ?></p>
                     <p>Email: <?= getSetting('email', '') ?></p>
                 </div>
@@ -352,6 +612,17 @@
                         <label class="field-label">E-mail Address</label>
                         <input type="email" class="field-input" value="<?= $invoice['email'] ?>">
                     </div>
+                    <!-- Nationality -->
+                    <div class="field-group">
+                        <label class="field-label">Nationality</label>
+                        <input type="text" class="field-input" value="<?= $invoice['nationality'] ?>">
+                    </div>
+
+                    <!-- Religion -->
+                    <div class="field-group">
+                        <label class="field-label">Religion</label>
+                        <input type="text" class="field-input" value="<?= $invoice['religion'] ?>">
+                    </div>
 
                     <!-- Addresses -->
                     <div class="field-group">
@@ -364,17 +635,7 @@
                         <textarea class="field-input" readonly><?= $invoice['permanent_address'] ?></textarea>
                     </div>
 
-                    <!-- Nationality -->
-                    <div class="field-group">
-                        <label class="field-label">Nationality</label>
-                        <input type="text" class="field-input" value="<?= $invoice['nationality'] ?>">
-                    </div>
 
-                    <!-- Religion -->
-                    <div class="field-group">
-                        <label class="field-label">Religion</label>
-                        <input type="text" class="field-input" value="<?= $invoice['religion'] ?>">
-                    </div>
 
                 </div>
             </div>
