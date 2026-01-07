@@ -11,71 +11,70 @@
 
     <!--  CARDS -->
     <div class="row g-20 mb-4">
-        <div class="col-xxl-4 col-xl-4 col-md-6 col-12">
+        <div class="col-xxl-4 col-xl-4 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-users"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Total Employees</h6>
-                        <h3 class="card__title text-break text-success mb-10"><?= $totalEmployees ?? '' ?></h3>
+                        <h4 class="card__title text-break text-success mb-10"><?= $totalEmployees ?? '' ?></h4>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="d-none col-xxl-3 col-xl-6 col-md-6">
+        <div class="d-none col-xxl-3 col-xl-6 col-md-6 col-sm-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-user-check"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Present Today</h6>
-                        <h3 class="card__title text-break text-success mb-10">142</h3>
+                        <h4 class="card__title text-break text-success mb-10">142</h4>
                         <small>91% attendance</small>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="d-none col-xxl-3 col-xl-6 col-md-6">
+        <div class="d-none col-xxl-3 col-xl-6 col-md-6 col-sm-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-bed"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">On Leave</h6>
-                        <h3 class="card__title text-break text-success mb-10">8</h3>
+                        <h4 class="card__title text-break text-success mb-10">8</h4>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xxl-4 col-xl-4 col-md-6 col-12">
+        <div class="col-xxl-4 col-xl-4 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Salary Paid </h6>
-                        <h3 class="card__title text-break text-success mb-10">BDT <?= $totalPaidSalary ?></h3>
+                        <h4 class="card__title text-break text-success mb-10"> &#2547; <?= $totalPaidSalary ?></h4>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xxl-4 col-xl-4 col-md-6 col-12">
+        <div class="col-xxl-4 col-xl-4 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Unpaid Salary  </h6>
-                        <h3 class="card__title text-break text-success mb-10">BDT <?= $totalUnpaidSalary ?></h3>
+                        <h4 class="card__title text-break text-success mb-10"> &#2547; <?= $totalUnpaidSalary ?></h4>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="row g-20 mb-4">
+
 
         <!-- Today Assigned Tasks -->
-        <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
+        <div class="col-xxl-4 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -83,14 +82,14 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Today Assigned Tasks</h6>
-                        <h3 class="card__title text-break text-success mb-10"><?= $todayTasks ?? 0 ?></h3>
+                        <h4 class="card__title text-break text-success mb-10"><?= $todayTasks ?? 0 ?></h4>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Pending Tasks -->
-        <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
+        <div class="col-xxl-4 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -98,14 +97,14 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Pending Tasks</h6>
-                        <h3 class="card__title text-break text-success mb-10"><?= $pendingTasks ?? 0 ?></h3>
+                        <h4 class="card__title text-break text-success mb-10"><?= $pendingTasks ?? 0 ?></h4>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Completed Tasks -->
-        <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
+        <div class="col-xxl-4 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -113,14 +112,14 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Completed Tasks</h6>
-                        <h3 class="card__title text-break text-success mb-10"><?= $completedTasks ?? 0 ?></h3>
+                        <h4 class="card__title text-break text-success mb-10"><?= $completedTasks ?? 0 ?></h4>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Overdue Tasks -->
-        <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
+        <div class="col-xxl-3 d-none col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -128,14 +127,13 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Overdue Tasks</h6>
-                        <h3 class="card__title text-break text-success mb-10"><?= $overdueTasks ?? 0 ?></h3>
+                        <h4 class="card__title text-break text-success mb-10"><?= $overdueTasks ?? 0 ?></h4>
                     </div>
                 </div>
             </div>
         </div>
 
     </div>
-
 
 
     <!-- TODAY'S ATTENDANCE -->

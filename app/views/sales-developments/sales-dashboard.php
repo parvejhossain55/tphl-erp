@@ -18,7 +18,7 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-success mb-5">Total Leads</h6>
-                        <h3 class="card__title"><?= $totalLeadsCount ?? '' ?></h3>
+                        <h4 class="card__title"><?= $totalLeadsCount ?? '' ?></h4>
                     </div>
                 </div>
             </div>
@@ -32,7 +32,7 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-success mb-10">New Leads Today</h6>
-                        <h3 class="card__title"><?= $todayLeads ?? '' ?></h3>
+                        <h4 class="card__title"><?= $todayLeads ?? '' ?></h4>
                     </div>
                 </div>
             </div>
@@ -46,7 +46,7 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-success mb-10">Follow-ups Due</h6>
-                        <h3 class="card__title"><?= $followUpsDue ?? '' ?></h3>
+                        <h4 class="card__title"><?= $followUpsDue ?? '' ?></h4>
                     </div>
                 </div>
             </div>
@@ -60,7 +60,7 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-success mb-10">Today Follow Up</h6>
-                        <h3 class="card__title"><?= $totalTodayFollowUps ?></h3>
+                        <h4 class="card__title"><?= $totalTodayFollowUps ?></h4>
                     </div>
                 </div>
             </div>
@@ -78,13 +78,13 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-success mb-10">Total Flat Booking</h6>
-                        <h3 class="card__title"><?= $onboardedClients ?></h3>
+                        <h4 class="card__title"><?= $onboardedClients ?></h4>
                     </div>
                 </div>
             </div>
         </div>
         <!-- TOTAL PROJECT -->
-        <div class="col-xl-3 col-md-6 col-12 mb-2">
+        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -92,7 +92,7 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-success mb-10">Total Project</h6>
-                        <h3 class="card__title"><?= $totalProjects ?></h3>
+                        <h4 class="card__title"><?= $totalProjects ?></h4>
                     </div>
                 </div>
             </div>
@@ -100,7 +100,7 @@
 
 
         <!-- BOOKING MONEY COLLECTED -->
-        <div class="col-xl-3 col-md-6 col-12 mb-2">
+        <div class="col-xxl-3  col-xl-6 col-md-6 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -108,16 +108,16 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-success mb-10">Booking Money Collected</h6>
-                        <h3 class="card__title">
-                            BDT <?= number_format($bookingCollected, 2) ?>
-                        </h3>
+                        <h4 class="card__title">
+                          <?= number_format($bookingCollected, 2) ?>
+                        </h4>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- CONVERSION RATE -->
-        <div class="col-xl-3 col-md-6 col-12 mb-2">
+        <div class="col-xxl-3  col-xl-6 col-md-6 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -125,9 +125,9 @@
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-success mb-10">Conversion Rate</h6>
-                        <h3 class="card__title">
+                        <h4 class="card__title">
                             <?= number_format($conversionRate, 2) ?>%
-                        </h3>
+                        </h4>
                     </div>
                 </div>
             </div>
@@ -139,61 +139,33 @@
     <!-- sales overview  -->
 
     <div class="row g-20">
-        <div class="col-xxl-6 col-xl-6 col-lg-6 col-12 mb-3">
+        <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
             <div class="card__wrapper height-equal">
-                <div
-                    class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-25">
+                <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-25">
                     <h5 class="card__heading-title">Sales Overview</h5>
                     <div class="card__tab">
                         <ul class="nav nav-pills" id="pills-tab" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="pills-bar-year-tab" data-bs-toggle="pill"
-                                    data-bs-target="#pills-bar-year" type="button" role="tab"
-                                    aria-controls="pills-bar-year" aria-selected="true">1Y</button>
+                                <button class="nav-link" id="pills-bar-year-tab" data-period="year" type="button">1Y</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="pills-bar-month-tab" data-bs-toggle="pill"
-                                    data-bs-target="#pills-bar-month" type="button" role="tab"
-                                    aria-controls="pills-bar-month" aria-selected="false">1M</button>
+                                <button class="nav-link" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="pills-bar-week-tab"
-                                    data-bs-toggle="pill" data-bs-target="#pills-bar-week" type="button"
-                                    role="tab" aria-controls="pills-bar-week"
-                                    aria-selected="false">1W</button>
+                                <button class="nav-link active" id="pills-bar-week-tab" data-period="week" type="button">1W</button>
                             </li>
                         </ul>
                     </div>
                 </div>
                 <div class="card__content">
-                    <div class="tab-content" id="pills-tabContent">
-                        <div class="tab-pane fade" id="pills-bar-year" role="tabpanel"
-                            aria-labelledby="pills-bar-year-tab">
-                            <div class="card__line-chart">
-                                <div id="salesChartYearly"></div>
-                            </div>
-                        </div>
-                        <div class="tab-pane fade" id="pills-bar-month" role="tabpanel"
-                            aria-labelledby="pills-bar-month-tab">
-                            <div class="card__line-chart">
-                                <div id="salesChartMonthly"></div>
-                            </div>
-                        </div>
-                        <div class="tab-pane fade show active" id="pills-bar-week" role="tabpanel"
-                            aria-labelledby="pills-bar-week-tab">
-                            <div class="card__line-chart">
-                                <div id="salesChartWeek"></div>
-                            </div>
-                        </div>
+                    <div class="card__line-chart">
+                        <div id="salesChart"></div>
                     </div>
                 </div>
             </div>
         </div>
 
-
-        <!-- project wise flat sale  -->
-
-        <div class="col-xxl-6 col-xl-6 col-lg-6 col-12 mb-3">
+        <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
             <div class="card-bg card-border mb-20 h-100">
                 <div class="card__wrapper style_two h-100 d-flex flex-column">
 
@@ -280,91 +252,7 @@
     </div>
 </div>
 
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
 
-        const labels = <?= json_encode($flatSalesLabels) ?>; // ['Project A', 'Project B', ...]
-        const series = <?= json_encode($flatSalesSeries) ?>; // [5, 3, 7, ...]
-
-        var options = {
-            series: series,
-            chart: {
-                type: 'pie',
-                height: 260
-            },
-            labels: labels,
-            legend: {
-                position: 'right',
-                labels: {
-                    colors: 'rgb(178,185,187)'
-                },
-                formatter: function(seriesName, opts) {
-                    const val = opts.w.globals.series[opts.seriesIndex];
-                    return seriesName + " = " + val + " Flats";
-                }
-            },
-            tooltip: {
-                y: {
-                    formatter: function(value) {
-                        return value + " Flats";
-                    }
-                }
-            },
-            responsive: [{
-                breakpoint: 768,
-                options: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }]
-        };
-
-        new ApexCharts(document.querySelector("#pieChart"), options).render();
-    });
-</script>
-
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-
-    // Weekly Sales
-    const weeklyLabels = <?= json_encode(array_column($weeklySales, 'date')) ?>; // Dates
-    const weeklyData = <?= json_encode(array_column($weeklySales, 'total')) ?>;  // Totals
-
-    new ApexCharts(document.querySelector("#salesChartWeek"), {
-        chart: { type: 'bar', height: 300, toolbar: { show: false } },
-        series: [{ name: 'Sales', data: weeklyData }],
-        xaxis: { categories: weeklyLabels },
-        tooltip: { y: { formatter: function(val) { return '৳ ' + val.toLocaleString(); } } }
-    }).render();
-
-
-    // Monthly Sales
-    const monthlyLabels = <?= json_encode(array_column($monthlySales, 'date')) ?>;
-    const monthlyData = <?= json_encode(array_column($monthlySales, 'total')) ?>;
-
-    new ApexCharts(document.querySelector("#salesChartMonthly"), {
-        chart: { type: 'bar', height: 300, toolbar: { show: false } },
-        series: [{ name: 'Sales', data: monthlyData }],
-        xaxis: { categories: monthlyLabels },
-        tooltip: { y: { formatter: function(val) { return '৳ ' + val.toLocaleString(); } } }
-    }).render();
-
-
-    // Yearly Sales
-    const yearlyLabels = <?= json_encode(array_column($yearlySales, 'month')) ?>;
-    const yearlyData = <?= json_encode(array_column($yearlySales, 'total')) ?>;
-
-    new ApexCharts(document.querySelector("#salesChartYearly"), {
-        chart: { type: 'bar', height: 300, toolbar: { show: false } },
-        series: [{ name: 'Sales', data: yearlyData }],
-        xaxis: { categories: yearlyLabels },
-        tooltip: { y: { formatter: function(val) { return '৳ ' + val.toLocaleString(); } } }
-    }).render();
-
-});
-</script>
 
 
 <style>
@@ -383,6 +271,3 @@ document.addEventListener("DOMContentLoaded", function () {
         height: 100%;
     }
 </style>
-
-
-

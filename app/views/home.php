@@ -10,7 +10,7 @@ $page_title = "Home Dashboard";
 $show_breadcrumb = false;
 ?>
 <div class="row g-20">
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-6">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -26,7 +26,7 @@ $show_breadcrumb = false;
             </div>
         </div>
     </div>
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-6">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -48,7 +48,7 @@ $show_breadcrumb = false;
             </div>
         </div>
     </div>
-    <div class="col-xxl-4  col-xl-4 col-lg-4 col-md-6 col-sm-6">
+    <div class="col-xxl-3  col-xl-4 col-lg-4 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -64,7 +64,7 @@ $show_breadcrumb = false;
             </div>
         </div>
     </div>
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-6">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -82,7 +82,7 @@ $show_breadcrumb = false;
     </div>
 
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-6">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="d-flex align-items-center gap-2 h-100">
@@ -98,7 +98,7 @@ $show_breadcrumb = false;
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-6">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="d-flex align-items-center gap-2 h-100">
@@ -115,7 +115,7 @@ $show_breadcrumb = false;
     </div>
 
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-6">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon icon-success">
@@ -133,7 +133,7 @@ $show_breadcrumb = false;
 
 
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-6">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -151,7 +151,7 @@ $show_breadcrumb = false;
     </div>
 
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-6 mb-3">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
             <div class="d-flex align-items-center gap-2 h-100">
                 <div class="card__icon icon-primary">
@@ -165,7 +165,7 @@ $show_breadcrumb = false;
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-6 mb-3">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
             <div class="d-flex align-items-center gap-2 h-100">
                 <div class="card__icon icon-purple">
@@ -179,7 +179,7 @@ $show_breadcrumb = false;
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-6 mb-3">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
             <div class="d-flex align-items-center gap-2 h-100">
                 <div class="card__icon icon-teal">
@@ -193,7 +193,7 @@ $show_breadcrumb = false;
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-6 mb-3">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
             <div class="d-flex align-items-center gap-2 h-100">
                 <div class="card__icon icon-indigo">
@@ -210,7 +210,7 @@ $show_breadcrumb = false;
 
 
 
-    <div class="d-none col-xxl-4  col-lg-4 col-md-6 col-sm-6">
+    <div class="d-none col-xxl-3  col-lg-4 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
