@@ -21,6 +21,16 @@ $show_breadcrumb = true;
 .card__title {
     font-size: 1.25rem;
 }
+@media (max-width: 575px) {
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+    font-size: 12px;
+    padding: 6px 8px;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    font-size: 12px;
+    padding: 6px 16px;
+}
+}
 </style>
 <div class="row">
 

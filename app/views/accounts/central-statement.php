@@ -6,181 +6,407 @@ $addPage = false;
 $show_breadcrumb = true;
 ?>
 
-<style>
-    @media print {
-        * {
-            animation: none !important;
-            transition: none !important;
-            filter: none !important;
-            box-shadow: none !important;
-            text-shadow: none !important;
+ <style>
+        /* ==================== PRINT & PDF STYLES (Unchanged) ==================== */
+        @page {
+            size: A4;
+            margin: 15mm;
         }
-    }
 
-    /* Regular view styles */
-    .card__icon span {
-        color: var(--clr-theme-primary);
-        background: rgba(108, 95, 252, 0.1);
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        text-align: center;
-        justify-content: center;
-        align-items: center;
-        font-size: 16px;
-    }
+        @media print {
+            .no-print, .no-pdf { display: none !important; }
+            body { 
+                margin: 0 !important; padding: 0 !important;
+                width: 210mm; height: 297mm; font-size: 10pt;
+                -webkit-print-color-adjust: exact; print-color-adjust: exact;
+            }
+            .statement-container { 
+                width: 210mm !important; min-height: 297mm !important;
+                margin: 0 !important; padding: 5mm !important;
+                box-shadow: none !important; border: none !important;
+            }
+            .company-header { flex-direction: row !important; }
+            .statement-info {
+                text-align: right !important;
+                border-left: 1px solid #ccc !important;
+                border-top: none !important;
+                padding-left: 15px !important;
+                padding-top: 0 !important;
+            }
+            .details-grid { grid-template-columns: 1fr 1fr !important; }
+            .transaction-table { font-size: 8pt !important; }
+        }
 
-    .card__title {
-        font-size: 1.25rem;
-    }
+        /* ==================== BASE STYLES (Responsive) ==================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    .stat-card {
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        border-left: 4px solid ;
-        margin-bottom: 20px;
-    }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f5f5f5;
+            color: #000;
+            line-height: 1.3;
+            font-size: clamp(10pt, 2vw, 12pt);
+            margin: 0;
+            padding: clamp(10px, 3vw, 20px);
+        }
 
-    .stat-card.cash-in {
-        border-left-color: #28a745;
-    }
+        .statement-container {
+            max-width: 210mm;
+            background: #fff;
+            padding: clamp(12px, 3vw, 20px);
+            margin: 0 auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
 
-    .stat-card.cash-out {
-        border-left-color: #dc3545;
-    }
+        /* ==================== HEADER (Responsive) ==================== */
+        .statement-header {
+            margin-bottom: clamp(15px, 5vw, 30px);
+            border-bottom: 2px solid #000;
+            padding-bottom: clamp(10px, 2vw, 15px);
+        }
 
-    .stat-card.net-balance {
-        border-left-color: #007bff;
-    }
+        .company-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
 
-    .stat-card .label {
-        font-size: 14px;
-        color: #6c757d;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-    }
+        .company-info { flex: 2; }
 
-    .stat-card .value {
-        font-size: 28px;
-        font-weight: 700;
-        color: #212529;
-        font-family: 'Courier New', monospace;
-    }
+        .company-name {
+            font-size: clamp(14px, 3vw, 18px);
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
 
-    .stat-card.cash-in .value {
-        color: #28a745;
-    }
+        .company-details {
+            font-size: clamp(9px, 2vw, 11px);
+            line-height: 1.4;
+        }
 
-    .stat-card.cash-out .value {
-        color: #dc3545;
-    }
+        .statement-info {
+            flex: 1;
+            text-align: right;
+            border-left: 1px solid #ccc;
+            padding-left: 15px;
+        }
 
-    .stat-card.net-balance .value {
-        color: #007bff;
-    }
+        .statement-title {
+            font-size: clamp(14px, 3vw, 18px);
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
 
-    .positive {
-        color: #28a745;
-    }
+        .statement-meta { font-size: clamp(9px, 2vw, 11px); }
+        .meta-row { margin-bottom: 5px; }
+        .meta-label {
+            font-weight: bold;
+            display: inline-block;
+            min-width: 90px;
+        }
 
-    .negative {
-        color: #dc3545;
-    }
+        /* ==================== PERIOD FILTER (Responsive) ==================== */
+        .period-filter {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        }
 
-    .filter-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 15px;
-        align-items: flex-end;
-    }
+        .period-filter .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
 
-    .filter-item {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
+        .period-filter select,
+        .period-filter input[type="date"] {
+            padding: 8px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            background-color: #fff;
+        }
 
-    .filter-item label {
-        font-size: 14px;
-        font-weight: 600;
-        color: #495057;
-    }
+        #customDateRange {
+            background: #f9fafb;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px dashed #d1d5db;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
 
-    .filter-item select,
-    .filter-item input {
-        padding: 10px 14px;
-        border: 2px solid #dee2e6;
-        border-radius: 8px;
-        font-size: 14px;
-        background: white;
-        transition: all 0.2s;
-        min-width: 150px;
-    }
+        .period-filter button {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
 
-    .filter-item select:focus,
-    .filter-item input:focus {
-        border-color: var(--clr-theme-primary);
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(108, 95, 252, 0.1);
-    }
+        /* ==================== DETAILS SECTION (Responsive) ==================== */
+        .details-section { margin-bottom: clamp(15px, 3vw, 20px); }
 
-    .period-info {
-        color: #fff;
-        padding: 20px;
-        border-radius: 12px;
-        margin-bottom: 30px;
-    }
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: clamp(10px, 2vw, 15px);
+            margin-bottom: 15px;
+        }
 
-    .period-info h3 {
-        font-size: 24px;
-        font-weight: 700;
-    }
+        .details-box {
+            border: 1px solid #000;
+            padding: clamp(10px, 2vw, 15px);
+            font-size: clamp(11px, 2vw, 12px);
+        }
 
-    .action-buttons {
-        display: flex;
-        gap: 10px;
+        .details-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #000;
+            text-transform: uppercase;
+            font-size: clamp(12px, 2vw, 13px);
+        }
 
-    }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            gap: 10px;
+        }
 
-    .btn {
-        padding: 10px 20px;
-        font-size: 14px;
-        font-weight: 600;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.2s;
-    }
+        .detail-value {
+            font-weight: bold;
+            text-align: right;
+            word-break: break-word;
+        }
 
-    .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
+        /* ==================== TRANSACTION TABLE (Responsive with Scroll) ==================== */
+        .transaction-section { margin-bottom: 20px; }
 
-    .btn-success {
-        background: linear-gradient(135deg, #28a745, #1e7e34);
-        color: white;
-    }
+        .section-title {
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #000;
+            font-size: clamp(13px, 2.5vw, 14px);
+        }
 
-    .btn-secondary {
-        background: linear-gradient(135deg, #007bff, #0056b3);
-        color: white;
-    }
+        .transaction-table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -5px;
+            padding: 0 5px;
+        }
 
-    .btn-danger {
-        background: linear-gradient(135deg, #dc3545, #c82333);
-        color: white;
-    }
-</style>
+        .transaction-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: clamp(9px, 2vw, 11px);
+            min-width: 343px;
+        }
 
+        .transaction-table th,
+        .transaction-table td {
+            border: 1px solid #000;
+            padding: clamp(6px, 1.5vw, 10px) clamp(4px, 1vw, 8px);
+            vertical-align: middle;
+        }
 
+        .transaction-table th {
+            background: #f8f8f8;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: clamp(8px, 1.8vw, 10px);
+            white-space: nowrap;
+        }
+
+        .transaction-table .amount {
+            text-align: right;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-paid { font-weight: bold; }
+        .status-pending { font-style: italic; color: #666; }
+
+        /* ==================== TOTALS (Responsive) ==================== */
+        .totals-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #000;
+        }
+
+        .totals-table {
+            width: 100%;
+            font-size: clamp(12px, 2.5vw, 13px);
+            margin-bottom: 15px;
+        }
+
+        .totals-table td { padding: 8px 0; }
+
+        .totals-label {
+            text-align: right;
+            padding-right: clamp(10px, 3vw, 20px);
+            font-weight: bold;
+            width: 70%;
+        }
+
+        .totals-value {
+            text-align: right;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            border-bottom: 1px solid #000;
+            width: 30%;
+            padding-left: 10px;
+        }
+
+        .grand-total td {
+            padding-top: 10px;
+            border-top: 2px solid #000;
+            font-size: clamp(13px, 2.5vw, 14px);
+        }
+
+        .amount-in-words {
+            padding-top: 15px;
+            font-style: italic;
+            text-align: right;
+            font-size: clamp(10px, 2vw, 11px);
+            color: #333;
+        }
+
+        .calculation-note {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f8f8;
+            border: 1px solid #ccc;
+            font-size: clamp(9px, 1.8vw, 10px);
+        }
+
+        /* ==================== ACTION BUTTONS (Responsive) ==================== */
+        .action-buttons {
+            position: sticky;
+            top: 10px;
+            z-index: 1000;
+            display: flex;
+            justify-content: end;
+            gap: 10px;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            opacity: 0.95;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .btn-success { background: linear-gradient(135deg, #28a745, #1e7e34); color: #fff; }
+        .btn-print { background: linear-gradient(135deg, #ff3c00, #cc2f00); color: #fff; }
+        .btn-back { background: linear-gradient(135deg, #007bff, #0056b3); color: #fff; }
+
+        /* ==================== MOBILE RESPONSIVENESS ==================== */
+        @media (max-width: 768px) {
+            .company-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .statement-info {
+                text-align: left;
+                border-left: none;
+                border-top: 1px solid #ccc;
+                padding-left: 0;
+                padding-top: 15px;
+            }
+            
+            .period-filter .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .period-filter select,
+            .period-filter input[type="date"],
+            .period-filter button {
+                width: 100%;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .meta-label {
+                min-width: 70px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .transaction-table {
+                min-width: 343px;
+                width:100%
+            }
+        }
+
+        /* ==================== PDF GENERATION CLASS ==================== */
+        .pdf-generating .statement-container {
+            width: 210mm !important;
+            min-height: 297mm !important;
+            padding: 15mm !important;
+        }
+
+        .pdf-generating .company-header { flex-direction: row !important; }
+        
+        .pdf-generating .statement-info {
+            text-align: right !important;
+            border-left: 1px solid #ccc !important;
+            border-top: none !important;
+            padding-left: 15px !important;
+            padding-top: 0 !important;
+        }
+        
+        .pdf-generating .details-grid { grid-template-columns: 1fr 1fr !important; }
+        .pdf-generating .transaction-table { font-size: 8pt !important; }
+    </style>
 
 <div class="row">
     <!-- Filter Controls -->
@@ -242,18 +468,19 @@ $show_breadcrumb = true;
                                 <i class="fa-light fa-search me-2"></i> Search
                             </button>
                         </div>
-                        <!-- Action Buttons -->
+                    </div>
 
-    <button type="button" class="btn btn-success" onclick="downloadPDF()">
-        <i class="fa-light fa-download me-2"></i> Download PDF
-    </button>
-    <button type="button" class="btn btn-secondary" onclick="printStatement()">
-        <i class="fa-light fa-print me-2"></i> Print Statement
-    </button>
-    <button type="button" class="btn btn-danger" onclick="exportCSV()">
-        <i class="fa-light fa-file-csv me-2"></i> Export CSV
-    </button>
-
+                    <!-- Action Buttons -->
+                    <div class="action-buttons no-print">
+                        <button type="button" class="btn btn-success" onclick="downloadPDF()">
+                            <i class="fa-light fa-download me-2"></i> <span class="d-none d-sm-inline">Download </span>PDF
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="printStatement()">
+                            <i class="fa-light fa-print me-2"></i> <span class="d-none d-sm-inline">Print </span><span class="d-inline d-sm-none">Print</span>
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="exportCSV()">
+                            <i class="fa-light fa-file-csv me-2"></i> <span class="d-none d-sm-inline">Export </span>CSV
+                        </button>
                     </div>
                 </form>
             </div>
@@ -405,19 +632,19 @@ $show_breadcrumb = true;
                 <div class="card__body">
                     <div class="row">
                         <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                            <div class="summary-card">
                                 <span class="label">Total Cash In:</span>
                                 <span class="value positive"><strong>৳<?= number_format($statement_data['summary']['total_cash_in'], 2) ?></strong></span>
                             </div>
                         </div>
                         <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                            <div class="summary-card">
                                 <span class="label">Total Cash Out:</span>
                                 <span class="value negative"><strong>৳<?= number_format($statement_data['summary']['total_cash_out'], 2) ?></strong></span>
                             </div>
                         </div>
                         <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                            <div class="summary-card">
                                 <span class="label">Net Balance:</span>
                                 <span class="value <?= $statement_data['summary']['net_balance'] >= 0 ? 'positive' : 'negative' ?>">
                                     <strong>৳<?= number_format($statement_data['summary']['net_balance'], 2) ?></strong>
@@ -425,7 +652,7 @@ $show_breadcrumb = true;
                             </div>
                         </div>
                         <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                            <div class="summary-card">
                                 <span class="label">Final Balance:</span>
                                 <span class="value <?= $statement_data['summary']['final_balance'] >= 0 ? 'positive' : 'negative' ?>">
                                     <strong>৳<?= number_format($statement_data['summary']['final_balance'], 2) ?></strong>
@@ -493,7 +720,7 @@ $show_breadcrumb = true;
         // Show loading
         const btn = event.target;
         const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-light fa-spinner fa-spin me-2"></i>Generating PDF...';
+        btn.innerHTML = '<i class="fa-light fa-spinner fa-spin me-2"></i>Generating...';
         btn.disabled = true;
 
         // Open print view in new tab for PDF generation
@@ -501,7 +728,9 @@ $show_breadcrumb = true;
 
         // Wait a moment for the page to load, then trigger print which can save as PDF
         setTimeout(function() {
-            printWindow.print();
+            if (printWindow) {
+                printWindow.print();
+            }
             btn.innerHTML = originalText;
             btn.disabled = false;
         }, 1000);

@@ -5,21 +5,106 @@ $addPage = true;
 $show_breadcrumb = true;
 ?>
 <style>
-        .card__icon span {
-    color: var(--clr-theme-primary);
-    background: rgba(108, 95, 252, 0.1);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    text-align: center;
-    justify-content: center;
-    align-items: center;
-    font-size: 16px;
+    .card__icon span {
+        color: var(--clr-theme-primary);
+        background: rgba(108, 95, 252, 0.1);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
+        font-size: 16px;
+    }
+
+    .card__title {
+        font-size: 1.25rem;
+    }
+
+    .action-transaction-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: end;
+    }
+
+    @media (max-width: 640px) {
+        .card__wrapper {
+            padding: 26px 15px;
+        }
+
+        .card__header {
+            margin-top: 5px;
+            flex-direction: column;
+        }
+
+        .action-transaction-buttons {
+            margin-top: 10px;
+            flex-wrap: nowrap
+        }
+
+        .btn {
+            font-size: 16px;
+            border-radius: 6px;
+            padding: 8px;
+            display: inline-block;
+            margin-top: 6px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            font-size: 12px;
+            padding: 6px 16px;
+        }
+    }
+
+    @media (max-width: 575px) {
+        .card__wrapper {
+            padding: 26px 15px;
+        }
+
+        .card__header {
+            margin-top: 5px;
+            flex-direction: column;
+        }
+
+        .action-transaction-buttons {
+            margin-top: 10px;
+            flex-wrap: nowrap
+        }
+
+.btn {
+    font-size: 14px;
+    border-radius: 6px;
+    padding: 12px;
+    display: inline-block;
+    margin-top: 15px;
 }
-.card__title {
-    font-size: 1.25rem;
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            font-size: 12px;
+            padding: 6px 16px;
+        }
+    }
+
+    @media (max-width: 400px) {
+.btn {
+    font-size: 12px;
+    border-radius: 6px;
+    padding: 10px;
+    display: inline-block;
+    margin-top: 15px;
 }
+    }
 </style>
 <div class="row">
     <div class="col-xxl-12">

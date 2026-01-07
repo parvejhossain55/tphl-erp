@@ -3,11 +3,336 @@ class ManagementRole extends Model
 {
     protected $db;
     protected $table = 'management_categories';
+    protected $rolesTable = 'management_roles'; // Add roles table
 
     public function __construct($db)
     {
         $this->db = $db;
     }
+
+    // ==================== ROLES METHODS ====================
+    
+    // Get all roles
+    public function getAllRoles()
+    {
+        $sql = "SELECT mr.*, u.full_name as created_by_name
+                FROM {$this->rolesTable} mr
+                LEFT JOIN users u ON mr.created_by = u.id
+                ORDER BY 
+                    CASE WHEN mr.status = 1 THEN 1 ELSE 2 END,
+                    mr.role_name ASC,
+                    mr.created_at DESC";
+        
+        $result = $this->db->query($sql);
+        
+        if (!$result) {
+            error_log("Database error: " . $this->db->error);
+            return [];
+        }
+        
+        $roles = [];
+        while ($row = $result->fetch_assoc()) {
+            $roles[] = $row;
+        }
+        
+        $result->free();
+        return $roles;
+    }
+
+    // Get all active roles
+    public function getAllActiveRoles()
+    {
+        $sql = "SELECT mr.*, u.full_name as created_by_name
+                FROM {$this->rolesTable} mr
+                LEFT JOIN users u ON mr.created_by = u.id
+                WHERE mr.status = 1
+                ORDER BY mr.role_name ASC, mr.created_at DESC";
+        
+        $result = $this->db->query($sql);
+        
+        if (!$result) {
+            error_log("Database error: " . $this->db->error);
+            return [];
+        }
+        
+        $roles = [];
+        while ($row = $result->fetch_assoc()) {
+            $roles[] = $row;
+        }
+        
+        $result->free();
+        return $roles;
+    }
+
+    // Get role by ID
+    public function getRoleById($id)
+    {
+        $sql = "SELECT mr.*, u.full_name as created_by_name
+                FROM {$this->rolesTable} mr
+                LEFT JOIN users u ON mr.created_by = u.id
+                WHERE mr.id = ?";
+        
+        $stmt = $this->db->prepare($sql);
+        
+        if (!$stmt) {
+            error_log("Prepare failed: " . $this->db->error);
+            return false;
+        }
+        
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $role = $result->fetch_assoc();
+        
+        $stmt->close();
+        return $role;
+    }
+
+    // Add new role
+    public function addRole($data)
+    {
+        try {
+            // Check if role name already exists for the same person
+            if ($this->roleExists($data['role_name'], $data['person_name'])) {
+                return [
+                    'success' => false,
+                    'message' => 'This role and person combination already exists.'
+                ];
+            }
+
+            $sql = "INSERT INTO {$this->rolesTable} 
+                    (role_name, person_name, status, created_by)
+                    VALUES (?, ?, ?, ?)";
+            
+            $stmt = $this->db->prepare($sql);
+            
+            if (!$stmt) {
+                error_log("Prepare failed: " . $this->db->error);
+                return [
+                    'success' => false,
+                    'message' => 'Database prepare failed.'
+                ];
+            }
+            
+            $stmt->bind_param(
+                "ssii",
+                $data['role_name'],
+                $data['person_name'],
+                $data['status'],
+                $data['created_by']
+            );
+            
+            $result = $stmt->execute();
+            $insertId = $this->db->insert_id;
+            $stmt->close();
+            
+            if ($result) {
+                return [
+                    'success' => true,
+                    'message' => 'Role added successfully!',
+                    'id' => $insertId
+                ];
+            } else {
+                error_log("Execute failed: " . $this->db->error);
+                return [
+                    'success' => false,
+                    'message' => 'Failed to add role.'
+                ];
+            }
+        } catch (Exception $e) {
+            error_log("Exception: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    // Update role
+    public function updateRole($data)
+    {
+        try {
+            // Check if role exists (excluding current role)
+            if ($this->roleExists($data['role_name'], $data['person_name'], $data['id'])) {
+                return [
+                    'success' => false,
+                    'message' => 'This role and person combination already exists.'
+                ];
+            }
+
+            $sql = "UPDATE {$this->rolesTable} SET
+                    role_name = ?,
+                    person_name = ?,
+                    status = ?
+                    WHERE id = ?";
+            
+            $stmt = $this->db->prepare($sql);
+            
+            if (!$stmt) {
+                error_log("Prepare failed: " . $this->db->error);
+                return [
+                    'success' => false,
+                    'message' => 'Database prepare failed.'
+                ];
+            }
+            
+            $stmt->bind_param(
+                "ssii",
+                $data['role_name'],
+                $data['person_name'],
+                $data['status'],
+                $data['id']
+            );
+            
+            $result = $stmt->execute();
+            $stmt->close();
+            
+            if ($result) {
+                return [
+                    'success' => true,
+                    'message' => 'Role updated successfully!'
+                ];
+            } else {
+                error_log("Execute failed: " . $this->db->error);
+                return [
+                    'success' => false,
+                    'message' => 'Failed to update role.'
+                ];
+            }
+        } catch (Exception $e) {
+            error_log("Exception: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    // Delete role
+    public function deleteRole($id)
+    {
+        try {
+            // Check if role is being used in transactions
+            if ($this->roleInUse($id)) {
+                return [
+                    'success' => false,
+                    'message' => 'Cannot delete role. It is being used in transactions.'
+                ];
+            }
+
+            $sql = "DELETE FROM {$this->rolesTable} WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            
+            if (!$stmt) {
+                error_log("Prepare failed: " . $this->db->error);
+                return [
+                    'success' => false,
+                    'message' => 'Database prepare failed.'
+                ];
+            }
+            
+            $stmt->bind_param("i", $id);
+            $result = $stmt->execute();
+            $stmt->close();
+            
+            if ($result) {
+                return [
+                    'success' => true,
+                    'message' => 'Role deleted successfully!'
+                ];
+            } else {
+                error_log("Execute failed: " . $this->db->error);
+                return [
+                    'success' => false,
+                    'message' => 'Failed to delete role.'
+                ];
+            }
+        } catch (Exception $e) {
+            error_log("Exception: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    // Toggle role status
+    public function toggleRoleStatus($id)
+    {
+        try {
+            $sql = "UPDATE {$this->rolesTable} 
+                    SET status = IF(status = 1, 0, 1) 
+                    WHERE id = ?";
+            
+            $stmt = $this->db->prepare($sql);
+            
+            if (!$stmt) {
+                return ['success' => false, 'message' => 'Database error'];
+            }
+            
+            $stmt->bind_param("i", $id);
+            $result = $stmt->execute();
+            $stmt->close();
+            
+            return [
+                'success' => $result,
+                'message' => $result ? 'Status updated successfully!' : 'Failed to update status'
+            ];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    // Check if role exists
+    private function roleExists($roleName, $personName, $excludeId = null)
+    {
+        $sql = "SELECT id FROM {$this->rolesTable} 
+                WHERE role_name = ? AND person_name = ?";
+        
+        if ($excludeId) {
+            $sql .= " AND id != ?";
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        
+        if (!$stmt) {
+            return false;
+        }
+        
+        if ($excludeId) {
+            $stmt->bind_param("ssi", $roleName, $personName, $excludeId);
+        } else {
+            $stmt->bind_param("ss", $roleName, $personName);
+        }
+        
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $exists = $result->num_rows > 0;
+        $stmt->close();
+        
+        return $exists;
+    }
+
+    // Check if role is being used in transactions
+    private function roleInUse($roleId)
+    {
+        $sql = "SELECT id FROM management_cashin WHERE role_id = ? LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        
+        if (!$stmt) {
+            return false;
+        }
+        
+        $stmt->bind_param("i", $roleId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $inUse = $result->num_rows > 0;
+        $stmt->close();
+        
+        return $inUse;
+    }
+
+    // ==================== CATEGORIES METHODS ====================
 
     // Get all active categories
     public function getAllActiveCategories()

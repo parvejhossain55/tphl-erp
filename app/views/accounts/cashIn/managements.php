@@ -17,8 +17,82 @@ $show_breadcrumb = true;
         align-items: center;
         font-size: 16px;
     }
+
     .card__title {
         font-size: 1.25rem;
+    }
+
+    .action-transaction-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: end;
+    }
+
+    @media (max-width: 640px) {
+        .card__wrapper {
+            padding: 26px 15px;
+        }
+
+        .card__header {
+            margin-top: 5px;
+            flex-direction: column;
+        }
+
+        .action-transaction-buttons {
+            margin-top: 10px;
+            flex-wrap: nowrap
+        }
+
+        .btn {
+            font-size: 16px;
+            border-radius: 6px;
+            padding: 8px;
+            display: inline-block;
+            margin-top: 6px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            font-size: 12px;
+            padding: 6px 16px;
+        }
+    }
+
+    @media (max-width: 575px) {
+        .card__wrapper {
+            padding: 26px 15px;
+        }
+
+        .card__header {
+            margin-top: 5px;
+            flex-direction: column;
+        }
+
+        .action-transaction-buttons {
+            margin-top: 10px;
+            flex-wrap: nowrap
+        }
+
+        .btn {
+            font-size: 12px;
+            border-radius: 6px;
+            padding: 5px;
+            display: inline-block;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            font-size: 12px;
+            padding: 6px 16px;
+        }
     }
 </style>
 <div class="row">
@@ -92,7 +166,7 @@ $show_breadcrumb = true;
         <div class="card__wrapper">
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title" style="margin-top: -13px;">Management Transactions</h5>
-                <div class="d-flex flex-wrap justify-content-end gap-2">
+                <div class="action-transaction-buttons gap-2">
                     <a href="<?= $GLOBALS['base_url'] ?>/management-cash-in-statement" class="btn btn-primary">
                         <i class="fa-light fa-file-lines me-2"></i> View Statement
                     </a>
@@ -196,21 +270,21 @@ $show_breadcrumb = true;
                                         <td>
                                             <div class="d-flex align-items-center justify-content-start gap-10">
                                                 <!-- INVOICE BUTTON -->
-      <?php if (($transaction['payment_status'] ?? 'paid') === 'paid'): ?>
-    <a href="<?= $GLOBALS['base_url'] ?>/management-cash-in-invoice?transaction_id=<?= $transaction['id'] ?>"
-       class="table__icon invoice"
-       style="color: #fff; background-color: #6c5ffc;"
-       title="View Invoice"
-       target="_blank">
-       <i class="fa-light fa-file-invoice"></i>
-    </a>
-<?php else: ?>
-    <span class="table__icon invoice"
-          style="color: #999; background-color: #e9ecef; cursor: not-allowed;"
-          title="Invoice not available for <?= htmlspecialchars($transaction['payment_status'] ?? 'pending') ?> transactions">
-        <i class="fa-light fa-file-invoice"></i>
-    </span>
-<?php endif; ?>
+                                                <?php if (($transaction['payment_status'] ?? 'paid') === 'paid'): ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/management-cash-in-invoice?transaction_id=<?= $transaction['id'] ?>"
+                                                        class="table__icon invoice"
+                                                        style="color: #fff; background-color: #6c5ffc;"
+                                                        title="View Invoice"
+                                                        target="_blank">
+                                                        <i class="fa-light fa-file-invoice"></i>
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="table__icon invoice"
+                                                        style="color: #999; background-color: #e9ecef; cursor: not-allowed;"
+                                                        title="Invoice not available for <?= htmlspecialchars($transaction['payment_status'] ?? 'pending') ?> transactions">
+                                                        <i class="fa-light fa-file-invoice"></i>
+                                                    </span>
+                                                <?php endif; ?>
                                                 <!-- EDIT BUTTON -->
                                                 <a href="<?= $GLOBALS['base_url'] ?>/edit-management-cash-in?id=<?= $transaction['id'] ?>" class="table__icon edit" title="Edit">
                                                     <i class="fa-sharp fa-light fa-pen"></i>
@@ -259,27 +333,27 @@ $show_breadcrumb = true;
 </div>
 
 <script>
-function deleteTransaction(transactionId) {
-    if (confirm('Are you sure you want to delete this transaction?')) {
-        window.location.href = '<?= $GLOBALS['base_url'] ?>/delete-management-cash-in?id=' + transactionId;
+    function deleteTransaction(transactionId) {
+        if (confirm('Are you sure you want to delete this transaction?')) {
+            window.location.href = '<?= $GLOBALS['base_url'] ?>/delete-management-cash-in?id=' + transactionId;
+        }
     }
-}
 
-function showFullDescription(transactionId) {
-    fetch('<?= $GLOBALS['base_url'] ?>/get-transaction-details?id=' + transactionId)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                document.getElementById('descriptionContent').innerHTML = data.error;
-            } else {
-                document.getElementById('descriptionContent').innerHTML = 
-                    data.description ? data.description.replace(/\n/g, '<br>') : 'No description provided.';
-            }
-            new bootstrap.Modal(document.getElementById('descriptionModal')).show();
-        })
-        .catch(error => {
-            document.getElementById('descriptionContent').innerHTML = 'Error loading description.';
-            new bootstrap.Modal(document.getElementById('descriptionModal')).show();
-        });
-}
+    function showFullDescription(transactionId) {
+        fetch('<?= $GLOBALS['base_url'] ?>/get-transaction-details?id=' + transactionId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('descriptionContent').innerHTML = data.error;
+                } else {
+                    document.getElementById('descriptionContent').innerHTML =
+                        data.description ? data.description.replace(/\n/g, '<br>') : 'No description provided.';
+                }
+                new bootstrap.Modal(document.getElementById('descriptionModal')).show();
+            })
+            .catch(error => {
+                document.getElementById('descriptionContent').innerHTML = 'Error loading description.';
+                new bootstrap.Modal(document.getElementById('descriptionModal')).show();
+            });
+    }
 </script>

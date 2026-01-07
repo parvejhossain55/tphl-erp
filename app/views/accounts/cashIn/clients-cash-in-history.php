@@ -22,6 +22,47 @@ $show_breadcrumb = true;
     .card__title {
         font-size: 1.25rem;
     }
+
+    
+@media (max-width: 975px) {
+    .card__wrapper .card__body h3{
+        font-size: 1.3rem;
+    }
+    .card__title {
+    font-size: 1rem;
+}
+    }
+
+    @media (max-width: 768px) { 
+            .btn {
+    font-size: 14px;
+    padding: 6px 24px;
+}
+    }
+    @media (min-width: 575px) {
+.position{
+    justify-content: end !important;
+}
+    }
+    @media (max-width: 575px) {
+
+    }
+    @media (max-width: 480px) {
+    .btn {
+    font-size: 16px;
+    padding: 6px 21px;
+}
+.position{
+    justify-content: start !important;
+}
+    }
+    @media (max-width: 400px) {
+.btn {
+    font-size: 14px;
+    padding: 6px 14px;
+}
+    }
+
 </style>
 <div class="row">
     <!-- Client Header Section -->
@@ -29,7 +70,7 @@ $show_breadcrumb = true;
 
         <div class="card__wrapper">
             <div class="card__body">
-                <h3 class="mb-2">
+                <h3 class="mb-2 card__icon">
                     <i class="fa-light fa-user-circle me-2"></i>
                     <?= htmlspecialchars($clientDetails['client_name'] ?? 'N/A') ?>
                 </h3>
@@ -241,7 +282,7 @@ $show_breadcrumb = true;
                 <h5 class="card__title">Transaction History</h5>
             </div>
             <div class="col-xxl-12 mb-4">
-                <div class="d-flex flex-wrap justify-content-end gap-2">
+                <div class="mt-3 d-flex gap-2 position ">
                     <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                         <i class="fa-light fa-plus me-2"></i> Add Transaction
                     </a>

@@ -379,4 +379,118 @@ public function getCashInByPaymentMethod()
         $stmt->close();
         return $data;
     }
+    // Add these methods to your Dashboard.php class
+
+/**
+ * Get Weekly Cash In/Out Data
+ */
+public function getWeeklyTransactionData($viewType = 'cashin')
+{
+    $startOfWeek = date('Y-m-d', strtotime('monday this week'));
+    $endOfWeek = date('Y-m-d', strtotime('sunday this week'));
+    
+    if ($viewType === 'cashin') {
+        $sql = "
+            SELECT 
+                DAYNAME(date) as day,
+                DATE(date) as date,
+                COALESCE(SUM(amount), 0) as total
+            FROM (
+                SELECT payment_date as date, amount 
+                FROM lead_payments 
+                WHERE payment_status = 'paid'
+                UNION ALL
+                SELECT transaction_date as date, amount 
+                FROM management_cashin 
+                WHERE payment_status = 'paid'
+            ) as combined
+            WHERE date BETWEEN ? AND ?
+            GROUP BY DAYOFWEEK(date), DAYNAME(date)
+            ORDER BY DAYOFWEEK(date)
+        ";
+    } else {
+        $sql = "
+            SELECT 
+                DAYNAME(transaction_date) as day,
+                DATE(transaction_date) as date,
+                COALESCE(SUM(amount), 0) as total
+            FROM management_cashout
+            WHERE payment_status = 'paid'
+            AND transaction_date BETWEEN ? AND ?
+            GROUP BY DAYOFWEEK(transaction_date), DAYNAME(transaction_date)
+            ORDER BY DAYOFWEEK(transaction_date)
+        ";
+    }
+    
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("ss", $startOfWeek, $endOfWeek);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $data = [];
+    $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    
+    // Initialize all days with 0
+    foreach ($days as $day) {
+        $data[$day] = 0;
+    }
+    
+    // Fill with actual data
+    while ($row = $result->fetch_assoc()) {
+        $data[$row['day']] = floatval($row['total']);
+    }
+    
+    $stmt->close();
+    return array_values($data);
+}
+
+/**
+ * Get Yearly Transaction Data
+ */
+public function getYearlyTransactionData($viewType = 'cashin', $years = 3)
+{
+    if ($viewType === 'cashin') {
+        $sql = "
+            SELECT 
+                YEAR(date) as year,
+                COALESCE(SUM(amount), 0) as total
+            FROM (
+                SELECT payment_date as date, amount 
+                FROM lead_payments 
+                WHERE payment_status = 'paid'
+                UNION ALL
+                SELECT transaction_date as date, amount 
+                FROM management_cashin 
+                WHERE payment_status = 'paid'
+            ) as combined
+            WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL ? YEAR)
+            GROUP BY YEAR(date)
+            ORDER BY YEAR(date) ASC
+        ";
+    } else {
+        $sql = "
+            SELECT 
+                YEAR(transaction_date) as year,
+                COALESCE(SUM(amount), 0) as total
+            FROM management_cashout
+            WHERE payment_status = 'paid'
+            AND transaction_date >= DATE_SUB(CURRENT_DATE(), INTERVAL ? YEAR)
+            GROUP BY YEAR(transaction_date)
+            ORDER BY YEAR(transaction_date) ASC
+        ";
+    }
+    
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("i", $years);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = $row;
+    }
+    
+    $stmt->close();
+    return $data;
+}
 }

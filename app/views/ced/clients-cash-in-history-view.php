@@ -6,21 +6,63 @@ $addPage = true;
 $show_breadcrumb = true;
 ?>
 <style>
-        .card__icon span {
-    color: var(--clr-theme-primary);
-    background: rgba(108, 95, 252, 0.1);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    text-align: center;
-    justify-content: center;
-    align-items: center;
+    .card__icon span {
+        color: var(--clr-theme-primary);
+        background: rgba(108, 95, 252, 0.1);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
+        font-size: 16px;
+    }
+
+    .card__title {
+        font-size: 1.25rem;
+    }
+
+    
+@media (max-width: 975px) {
+    .card__wrapper .card__body h3{
+        font-size: 1.3rem;
+    }
+    .card__title {
+    font-size: 1rem;
+}
+    }
+
+    @media (max-width: 768px) { 
+            .btn {
+    font-size: 14px;
+    padding: 6px 24px;
+}
+    }
+    @media (min-width: 575px) {
+.position{
+    justify-content: end !important;
+}
+    }
+    @media (max-width: 575px) {
+
+    }
+    @media (max-width: 480px) {
+    .btn {
     font-size: 16px;
+    padding: 6px 21px;
 }
-.card__title {
-    font-size: 1.25rem;
+.position{
+    justify-content: start !important;
 }
+    }
+    @media (max-width: 400px) {
+.btn {
+    font-size: 14px;
+    padding: 6px 14px;
+}
+    }
+
 </style>
 <div class="row">
     <!-- Client Header Section -->

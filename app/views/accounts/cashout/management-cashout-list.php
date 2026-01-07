@@ -21,9 +21,84 @@ $show_breadcrumb = true;
     .card__title {
         font-size: 1.25rem;
     }
-    .table__icon{
-            background: #6c5ffc;
-    color: #fff;
+
+    .action-transaction-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: end;
+    }
+
+    @media(max-width:768px){
+    .action-transaction-buttons {
+    margin-top: 10px;
+}
+    }
+
+    @media (max-width: 640px) {
+        .card__wrapper {
+            padding: 26px 15px;
+        }
+
+        .card__header {
+            margin-top: 5px;
+            flex-direction: column;
+        }
+
+        .action-transaction-buttons {
+            margin-top: 10px;
+            flex-wrap: nowrap
+        }
+
+        .btn {
+            font-size: 16px;
+            border-radius: 6px;
+            padding: 8px;
+            display: inline-block;
+            margin-top: 6px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            font-size: 12px;
+            padding: 6px 16px;
+        }
+    }
+
+    @media (max-width: 575px) {
+        .card__wrapper {
+            padding: 26px 15px;
+        }
+
+        .card__header {
+            margin-top: 5px;
+            flex-direction: column;
+        }
+
+        .action-transaction-buttons {
+            margin-top: 10px;
+            flex-wrap: nowrap
+        }
+
+        .btn {
+            font-size: 12px;
+            border-radius: 6px;
+            padding: 5px;
+            display: inline-block;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            font-size: 12px;
+            padding: 6px 16px;
+        }
     }
 </style>
 <div class="row">
@@ -95,9 +170,9 @@ $show_breadcrumb = true;
     <!-- Transaction Table -->
     <div class="col-xxl-12 mb-4">
         <div class="card__wrapper">
-            <div class="card__header d-flex justify-content-between align-items-center mb-3">
+            <div class="card__header mb-3">
                 <h5 class="card__title" style="margin-top: -13px;">Cash Out Transactions</h5>
-                <div class="d-flex flex-wrap justify-content-end gap-2">
+                <div class="action-transaction-buttons gap-2">
                     <!-- In the action buttons section, add this after "Manage Categories" button -->
                     <a href="<?= $GLOBALS['base_url'] ?>/management-cash-out-statement" class="btn btn-primary">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement

@@ -177,18 +177,15 @@ $totalAmountWords = convertNumberToWords($totalAmount);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Management Statement - All Roles</title>
     <style>
-        /* A4 Page Dimensions: 210mm x 297mm */
+        /* ==================== PRINT & PDF STYLES ==================== */
         @page {
             size: A4;
             margin: 15mm;
         }
 
-        /* Print Styles */
         @media print {
-            .no-print {
-                display: none !important;
-            }
 
+            .no-print,
             .no-pdf {
                 display: none !important;
             }
@@ -207,27 +204,34 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                 width: 210mm !important;
                 min-height: 297mm !important;
                 margin: 0 !important;
-                padding: 0 !important;
+                padding: 5mm !important;
                 box-shadow: none !important;
                 border: none !important;
+    
             }
 
-            .page-break {
-                page-break-before: always;
-                margin-top: 20mm;
+            .company-header {
+                flex-direction: row !important;
             }
 
-            .avoid-break {
-                page-break-inside: avoid;
+            .statement-info {
+                text-align: right !important;
+                border-left: 1px solid #ccc !important;
+                border-top: none !important;
+                padding-left: 15px !important;
+                padding-top: 0 !important;
             }
 
-            .period-filter,
-            .action-buttons {
-                display: none !important;
+            .details-grid {
+                grid-template-columns: 1fr 1fr !important;
+            }
+
+            .transaction-table {
+                font-size: 8pt !important;
             }
         }
 
-        /* Base Styles */
+        /* ==================== BASE STYLES (Responsive) ==================== */
         * {
             margin: 0;
             padding: 0;
@@ -236,35 +240,35 @@ $totalAmountWords = convertNumberToWords($totalAmount);
 
         body {
             font-family: Arial, Helvetica, sans-serif;
-            background: #fff;
+            background: #f5f5f5;
             color: #000;
             line-height: 1.3;
-            font-size: 10pt;
-            width: 210mm;
-            min-height: 297mm;
-            margin: 0 auto;
-            padding: 0;
+            font-size: clamp(10pt, 2vw, 12pt);
+            margin: 0;
+            padding: clamp(10px, 3vw, 20px);
         }
 
         .statement-container {
-            width: 210mm;
-            min-height: 297mm;
+            max-width: 210mm;
             background: #fff;
-            padding: 15mm;
-            position: relative;
+            padding: clamp(12px, 3vw, 20px);
+            margin: 0 auto;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
-        /* Header */
+        /* ==================== HEADER (Responsive) ==================== */
         .statement-header {
-            margin-bottom: 12mm;
-            border-bottom: 0.5mm solid #000;
+            margin-bottom: clamp(15px, 5vw, 30px);
+            border-bottom: 2px solid #000;
+            padding-bottom: clamp(10px, 2vw, 15px);
         }
 
         .company-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 6mm;
+            gap: 20px;
+            margin-bottom: 15px;
         }
 
         .company-info {
@@ -272,48 +276,46 @@ $totalAmountWords = convertNumberToWords($totalAmount);
         }
 
         .company-name {
-            font-size: 14pt;
+            font-size: clamp(14px, 3vw, 18px);
             font-weight: bold;
-            margin-bottom: 1mm;
+            margin-bottom: 5px;
             text-transform: uppercase;
-            letter-spacing: 0.5pt;
         }
 
         .company-details {
-            font-size: 8pt;
-            line-height: 1.2;
+            font-size: clamp(9px, 2vw, 11px);
+            line-height: 1.4;
         }
 
         .statement-info {
             flex: 1;
             text-align: right;
-            border-left: 0.2mm solid #ccc;
-            padding-left: 4mm;
+            border-left: 1px solid #ccc;
+            padding-left: 15px;
         }
 
         .statement-title {
-            font-size: 14pt;
+            font-size: clamp(14px, 3vw, 18px);
             font-weight: bold;
             text-transform: uppercase;
-            margin-bottom: 2mm;
-            letter-spacing: 1pt;
+            margin-bottom: 10px;
         }
 
         .statement-meta {
-            font-size: 8pt;
+            font-size: clamp(9px, 2vw, 11px);
         }
 
         .meta-row {
-            margin-bottom: 0.5mm;
+            margin-bottom: 5px;
         }
 
         .meta-label {
             font-weight: bold;
             display: inline-block;
-            width: 25mm;
+            min-width: 90px;
         }
 
-        /* Period Filter */
+        /* ==================== PERIOD FILTER (Responsive) ==================== */
         .period-filter {
             background: #ffffff;
             border: 1px solid #e5e7eb;
@@ -330,29 +332,13 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             gap: 10px;
         }
 
-        .period-filter .filter-row span {
-            font-weight: 600;
-            color: #374151;
-            font-size: 14px;
-            white-space: nowrap;
-        }
-
         .period-filter select,
         .period-filter input[type="date"] {
             padding: 8px 10px;
             border: 1px solid #d1d5db;
             border-radius: 6px;
             font-size: 14px;
-            color: #111827;
             background-color: #fff;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .period-filter select:focus,
-        .period-filter input[type="date"]:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-            outline: none;
         }
 
         #customDateRange {
@@ -360,12 +346,9 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             padding: 6px 8px;
             border-radius: 6px;
             border: 1px dashed #d1d5db;
-        }
-
-        #customDateRange span {
-            font-size: 13px;
-            color: #6b7280;
-            font-weight: 500;
+            display: flex;
+            gap: 8px;
+            align-items: center;
         }
 
         .period-filter button {
@@ -377,167 +360,96 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
         }
 
-        .period-filter button:hover {
-            background: linear-gradient(135deg, #1e40af, #1e3a8a);
-            box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
-            transform: translateY(-1px);
-        }
-
-        .period-filter button:active {
-            transform: translateY(0);
-            box-shadow: 0 3px 8px rgba(37, 99, 235, 0.2);
-        }
-
-        /* Details Section */
+        /* ==================== DETAILS SECTION (Responsive) ==================== */
         .details-section {
-            margin-bottom: 8mm;
+            margin-bottom: clamp(15px, 3vw, 20px);
         }
 
         .details-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5mm;
-            margin-bottom: 5mm;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: clamp(10px, 2vw, 15px);
+            margin-bottom: 15px;
         }
 
         .details-box {
-            border: 0.2mm solid #000;
-            padding: 3mm;
-            font-size: 9pt;
+            border: 1px solid #000;
+            padding: clamp(10px, 2vw, 15px);
+            font-size: clamp(11px, 2vw, 12px);
         }
 
         .details-title {
             font-weight: bold;
-            margin-bottom: 2mm;
-            padding-bottom: 1mm;
-            border-bottom: 0.2mm solid #000;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #000;
             text-transform: uppercase;
-            font-size: 9pt;
-            letter-spacing: 0.5pt;
+            font-size: clamp(12px, 2vw, 13px);
         }
 
         .detail-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 1mm;
-            page-break-inside: avoid;
-        }
-
-        .detail-label {
-            font-weight: normal;
+            margin-bottom: 8px;
+            gap: 10px;
         }
 
         .detail-value {
             font-weight: bold;
-        }
-
-        /* Summary */
-        .summary-section {
-            margin-bottom: 8mm;
-        }
-
-        .summary-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 9pt;
-            margin-bottom: 5mm;
-        }
-
-        .summary-table th,
-        .summary-table td {
-            border: 0.2mm solid #000;
-            padding: 2mm 3mm;
-            vertical-align: middle;
-        }
-
-        .summary-table th {
-            background: #f8f8f8;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 8pt;
-            letter-spacing: 0.3pt;
-        }
-
-        .summary-table .amount {
             text-align: right;
-            font-weight: bold;
-            font-family: 'Courier New', monospace;
+            word-break: break-word;
         }
 
-        /* Transaction History */
+        /* ==================== TRANSACTION TABLE (Responsive with Scroll) ==================== */
         .transaction-section {
-            margin-bottom: 8mm;
+            margin-bottom: 20px;
         }
 
         .section-title {
             font-weight: bold;
             text-transform: uppercase;
-            margin-bottom: 2mm;
-            padding-bottom: 1mm;
-            border-bottom: 0.2mm solid #000;
-            font-size: 10pt;
-            letter-spacing: 0.5pt;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #000;
+            font-size: clamp(13px, 2.5vw, 14px);
+        }
+
+        .transaction-table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -5px;
+            padding: 0 5px;
         }
 
         .transaction-table {
+            min-width: 343px;
             width: 100%;
             border-collapse: collapse;
-            font-size: 8pt;
-            page-break-inside: auto;
+            font-size: clamp(9px, 2vw, 11px);
+
+        }
+
+        .transaction-table th,
+        .transaction-table td {
+            border: 1px solid #000;
+            padding: clamp(6px, 1.5vw, 10px) clamp(4px, 1vw, 8px);
+            vertical-align: middle;
         }
 
         .transaction-table th {
-            border: 0.2mm solid #000;
-            padding: 1.5mm 2mm;
-            text-align: left;
+            background: #f8f8f8;
             font-weight: bold;
             text-transform: uppercase;
-            background: #f8f8f8;
-            font-size: 7pt;
-            letter-spacing: 0.3pt;
-            vertical-align: middle;
-        }
-
-        .transaction-table td {
-            border: 0.2mm solid #000;
-            padding: 1.5mm 2mm;
-            vertical-align: middle;
-            page-break-inside: avoid;
+            font-size: clamp(8px, 1.8vw, 10px);
+            white-space: nowrap;
         }
 
         .transaction-table .amount {
             text-align: right;
             font-weight: bold;
             font-family: 'Courier New', monospace;
-        }
-
-        .transaction-table .date {
-            white-space: nowrap;
-            width: 18mm;
-        }
-
-        .transaction-table .source {
-            width: 25mm;
-        }
-
-        .transaction-table .role {
-            width: 20mm;
-        }
-
-        .transaction-table .person {
-            width: 20mm;
-        }
-
-        .transaction-table .method {
-            width: 15mm;
-        }
-
-        .transaction-table .status {
-            width: 15mm;
-            text-align: center;
         }
 
         .status-paid {
@@ -550,30 +462,26 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             color: #666;
         }
 
-        /* Totals */
+        /* ==================== TOTALS (Responsive) ==================== */
         .totals-section {
-            margin-top: 5mm;
-            padding-top: 3mm;
-            border-top: 0.2mm solid #000;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #000;
         }
 
         .totals-table {
             width: 100%;
-            font-size: 9pt;
-            margin-bottom: 5mm;
-        }
-
-        .totals-table tr {
-            page-break-inside: avoid;
+            font-size: clamp(12px, 2.5vw, 13px);
+            margin-bottom: 15px;
         }
 
         .totals-table td {
-            padding: 1mm 0;
+            padding: 8px 0;
         }
 
         .totals-label {
             text-align: right;
-            padding-right: 5mm;
+            padding-right: clamp(10px, 3vw, 20px);
             font-weight: bold;
             width: 70%;
         }
@@ -582,30 +490,29 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             text-align: right;
             font-weight: bold;
             font-family: 'Courier New', monospace;
-            border-bottom: 0.1mm solid #000;
+            border-bottom: 1px solid #000;
             width: 30%;
-            padding-left: 2mm;
+            padding-left: 10px;
         }
 
         .grand-total td {
-            padding-top: 2mm;
-            border-top: 0.2mm solid #000;
-            font-size: 10pt;
+            padding-top: 10px;
+            border-top: 2px solid #000;
+            font-size: clamp(13px, 2.5vw, 14px);
         }
 
-        /* Amount in Words */
         .amount-in-words {
-            margin-top: 5mm;
-            padding: 3mm;
-            border: 0.2mm solid #000;
+            padding: 15px;
+            border: 1px solid #000;
             background: #f8f8f8;
-            font-size: 9pt;
+            font-size: clamp(10px, 2vw, 11px);
             line-height: 1.4;
+            margin-bottom: 15px;
         }
 
         .amount-in-words .label {
             font-weight: bold;
-            margin-bottom: 1mm;
+            margin-bottom: 5px;
             text-transform: uppercase;
         }
 
@@ -614,93 +521,23 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             text-transform: uppercase;
         }
 
-        /* Footer */
-        .statement-footer {
-            position: absolute;
-            bottom: 15mm;
-            left: 15mm;
-            right: 15mm;
-            padding-top: 3mm;
-            border-top: 0.2mm solid #000;
-            font-size: 7pt;
-            line-height: 1.2;
-            color: #666;
-        }
-
-        .footer-disclaimer {
-            margin-bottom: 2mm;
-            font-style: italic;
-            text-align: center;
-        }
-
-        .footer-meta {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2mm;
-        }
-
-        .page-number {
-            text-align: center;
-            font-weight: bold;
-            font-size: 8pt;
-        }
-
-        /* Action Buttons */
+        /* ==================== ACTION BUTTONS (Responsive) ==================== */
         .action-buttons {
-            position: fixed;
-            top: 5mm;
-            right: 5mm;
+            position: sticky;
+            top: 10px;
             z-index: 1000;
             display: flex;
-            gap: 2mm;
-            background: #fff;
-            padding: 2mm;
-            border: 0.2mm solid #ccc;
-            box-shadow: 0 1mm 3mm rgba(0, 0, 0, 0.1);
+            justify-content: end;
+            gap: 10px;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
 
-        /* No Data */
-        .no-data {
-            text-align: center;
-            padding: 10mm;
-            font-style: italic;
-            color: #666;
-            border: 0.2mm dashed #ccc;
-        }
-
-        /* Utility */
-        .text-right {
-            text-align: right;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .text-bold {
-            font-weight: bold;
-        }
-
-        .monospace {
-            font-family: 'Courier New', monospace;
-        }
-
-        .uppercase {
-            text-transform: uppercase;
-        }
-
-        .keep-together {
-            page-break-inside: avoid;
-        }
-
-        .no-pdf {
-            display: block;
-        }
-
-        /* Buttons */
         .btn {
-            padding: 8px 16px;
-            font-size: 9pt;
+            padding: 10px 18px;
+            font-size: 13px;
             font-weight: 600;
             border: none;
             border-radius: 6px;
@@ -708,8 +545,9 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            line-height: 1;
             transition: all 0.2s ease;
+            white-space: nowrap;
+            text-decoration: none;
         }
 
         .btn:hover {
@@ -718,29 +556,113 @@ $totalAmountWords = convertNumberToWords($totalAmount);
             transform: translateY(-1px);
         }
 
-        .btn:active {
-            transform: translateY(0);
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-        }
-
         .btn-success {
             background: linear-gradient(135deg, #28a745, #1e7e34);
-            color: #ffffff;
+            color: #fff;
         }
 
         .btn-print {
             background: linear-gradient(135deg, #ff3c00, #cc2f00);
-            color: #ffffff;
+            color: #fff;
         }
 
         .btn-back {
             background: linear-gradient(135deg, #007bff, #0056b3);
-            color: #ffffff;
-            text-decoration: none;
+            color: #fff;
         }
 
-        a.btn {
-            text-decoration: none;
+        /* ==================== MOBILE RESPONSIVENESS ==================== */
+        @media (max-width: 768px) {
+            .company-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .statement-info {
+                text-align: left;
+                border-left: none;
+                border-top: 1px solid #ccc;
+                padding-left: 0;
+                padding-top: 15px;
+            }
+
+            .period-filter .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .period-filter select,
+            .period-filter input[type="date"],
+            .period-filter button {
+                width: 100%;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .meta-label {
+                min-width: 70px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .section-title {
+                padding-bottom: 30px;
+                font-size: clamp(13px, 2.5vw, 14px);
+            }
+
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+
+
+            .action-buttons {
+                margin-bottom: 10px;
+            }
+        }
+
+        /* ==================== PDF GENERATION CLASS ==================== */
+        .pdf-generating .statement-container {
+            width: 210mm !important;
+            min-height: 297mm !important;
+            padding: 15mm !important;
+        }
+
+        .pdf-generating .company-header {
+            flex-direction: row !important;
+        }
+
+        .pdf-generating .statement-info {
+            text-align: right !important;
+            border-left: 1px solid #ccc !important;
+            border-top: none !important;
+            padding-left: 15px !important;
+            padding-top: 0 !important;
+        }
+
+        .pdf-generating .details-grid {
+            grid-template-columns: 1fr 1fr !important;
+        }
+
+        .pdf-generating .transaction-table {
+            font-size: 8pt !important;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+
+        .keep-together {
+            page-break-inside: avoid;
         }
     </style>
 </head>
@@ -750,9 +672,6 @@ $totalAmountWords = convertNumberToWords($totalAmount);
     <div class="action-buttons no-print no-pdf" style="margin-bottom: 66px;">
         <button onclick="window.print()" class="btn btn-print">
             Print Statement
-        </button>
-        <button onclick="downloadPDF()" class="btn btn-success">
-            Download PDF
         </button>
         <a href="<?= $GLOBALS['base_url'] ?>/management-cash-in" class="btn btn-back">
             Back to Management
@@ -854,7 +773,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
         <div class="transaction-section">
             <div class="section-title">
                 Transaction History - All Roles
-                <span style="float: right; font-weight: normal; font-size: 8pt;">
+                <span style="float: right; font-weight: normal; font-size: 8pt; margin-top: 10px;">
                     Showing <?= count($transactions) ?> transactions (<?= $paidTransactionCount ?> paid)
                 </span>
             </div>
@@ -1032,77 +951,38 @@ $totalAmountWords = convertNumberToWords($totalAmount);
 
 
         function downloadPDF() {
-            const noPdfElements = document.querySelectorAll('.no-pdf');
-            noPdfElements.forEach(el => el.style.display = 'none');
+            const element = document.getElementById('invoice-content');
 
-            const element = document.getElementById('statement-content');
+            // Add PDF mode
+            document.body.classList.add('pdf-mode');
+
             const opt = {
-                margin: [15, 15, 15, 15],
-                filename: 'MANAGEMENT_STATEMENT_ALL_ROLES_<?= date('Ymd_His') ?>.pdf',
+                filename: 'Payment-Receipt-<?= str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT) ?>-<?= date('Ymd') ?>.pdf',
                 image: {
                     type: 'jpeg',
-                    quality: 1.0
+                    quality: 0.98
                 },
                 html2canvas: {
                     scale: 2,
-                    useCORS: true,
-                    letterRendering: true,
-                    width: 794,
-                    height: 1123,
-                    ignoreElements: function(element) {
-                        return element.classList.contains('no-pdf');
-                    }
+                    logging: false
                 },
                 jsPDF: {
                     unit: 'mm',
                     format: 'a4',
-                    orientation: 'portrait',
-                    compress: true
-                },
-                pagebreak: {
-                    mode: ['avoid-all', 'css', 'legacy']
+                    orientation: 'portrait'
                 }
             };
 
-            // Fix: declare originalText here
-            let originalText = '';
-            const downloadBtn = document.querySelector('.btn-success');
-            if (downloadBtn) {
-                originalText = downloadBtn.textContent;
-                downloadBtn.textContent = 'Generating PDF...';
-                downloadBtn.disabled = true;
-            }
+            html2pdf()
+                .set(opt)
+                .from(element)
+                .save()
+                .then(() => {
+                    // Remove PDF mode after download
+                    document.body.classList.remove('pdf-mode');
+                });
 
-            html2pdf().set(opt).from(element).save().then(() => {
-                noPdfElements.forEach(el => el.style.display = '');
-                if (downloadBtn) {
-                    downloadBtn.textContent = originalText;
-                    downloadBtn.disabled = false;
-                }
-            }).catch(error => {
-                alert('Error generating PDF: ' + error.message);
-                noPdfElements.forEach(el => el.style.display = '');
-                if (downloadBtn) {
-                    downloadBtn.textContent = originalText;
-                    downloadBtn.disabled = false;
-                }
-            });
         }
-
-
-        // Initialize date pickers
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-
-            // Set max date for date inputs
-            const dateInputs = document.querySelectorAll('input[type="date"]');
-            dateInputs.forEach(input => {
-                input.max = today;
-            });
-
-            // Trigger filterByPeriod on page load to ensure correct state
-            filterByPeriod();
-        });
     </script>
 </body>
 
