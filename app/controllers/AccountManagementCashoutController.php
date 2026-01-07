@@ -1,6 +1,6 @@
 <?php
 // Include required model files
-require_once __DIR__ . '/../models/AccountManagementCashOut.php';
+require_once __DIR__ . '/../models/AccountManagementCashout.php';
 require_once __DIR__ . '/../models/ManagementCategory.php';
 
 class AccountManagementCashoutController extends Controller
