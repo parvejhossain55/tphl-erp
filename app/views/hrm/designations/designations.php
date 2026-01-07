@@ -6,27 +6,7 @@ $show_breadcrumb = true;
 
 ?>
 
-<?php if (!empty($_SESSION['success']) || !empty($_SESSION['error'])): ?>
-    <div class="message-swiper-container">
-        <div class="swiper-wrapper">
 
-            <?php if (!empty($_SESSION['success'])): ?>
-                <div class="swiper-slide success-slide">
-                    <?= $_SESSION['success']; ?>
-                </div>
-            <?php unset($_SESSION['success']);
-            endif; ?>
-
-            <?php if (!empty($_SESSION['error'])): ?>
-                <div class="swiper-slide error-slide">
-                    <?= $_SESSION['error']; ?>
-                </div>
-            <?php unset($_SESSION['error']);
-            endif; ?>
-
-        </div>
-    </div>
-<?php endif; ?>
 
 <div class="breadcrumb__btn my-3">
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDesignation">Add Designation</button>

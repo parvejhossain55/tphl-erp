@@ -1,4 +1,4 @@
-<div class="app__slide-wrapper p-4">
+<div class="app__slide-wrapper">
 
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-4">
