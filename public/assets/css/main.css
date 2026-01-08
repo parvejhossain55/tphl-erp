@@ -12096,7 +12096,7 @@ div.dataTables_wrapper div.dataTables_filter {
 }
 
 .dataTables_wrapper .dataTables_info {
-  padding-top: 30px;
+  padding: 30px;
   color: var(--clr-text-label);
 }
 
@@ -15357,8 +15357,8 @@ strong ~ p {
 }
 
 .alert-success {
-  background-color: #34b53a;
-  border-color: #34b53a;
+  background-color: #0f4c3a;
+  border-color: #0f4c3a;
   color: #FFFFFF;
 }
 .alert-success p {

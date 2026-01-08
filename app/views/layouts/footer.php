@@ -216,8 +216,8 @@
                             shadeIntensity: 0.4,
                             gradientToColors: [
                                 '#008FFB',
-                                '#00E396',
-                                '#FEB019',
+                                '#13684aff',
+                                '#da950cff',
                                 '#FF4560',
                                 '#775DD0'
                             ],
@@ -228,8 +228,8 @@
                     },
 
                     colors: [
-                        '#59b6fc',
-                        '#59edbb',
+                        '#48aefcff',
+                        '#12976bff',
                         '#fecc6a',
                         '#ff8698',
                         '#a796e0'
@@ -281,14 +281,14 @@
                             breakpoint: 768, // Tablet & Mobile
                             options: {
                                 dataLabels: {
-                                    enabled: true // ❌ hide %
+                                    enabled: false // hide %
                                 },
                                 plotOptions: {
                                     pie: {
                                         donut: {
                                             size: '78%',
                                             labels: {
-                                                show: false // ❌ hide center text
+                                                show: true // ❌ hide center text
                                             }
                                         }
                                     }
@@ -353,7 +353,7 @@
                     },
 
                     dataLabels: {
-                        enabled: true, // default ON (week)
+                        enabled: true,
                         formatter: val => '৳ ' + val.toLocaleString()
                     },
 
@@ -363,7 +363,24 @@
                     }],
 
                     xaxis: {
-                        categories: salesData.week.labels
+                        categories: salesData.week.labels,
+                        labels: {
+                            style: {
+                                colors: getAlternatingColors(salesData.week.labels.length), // x-axis label colors (optional)
+                                fontSize: '12px',
+                                fontWeight: 500
+                            }
+                        }
+                    },
+
+                    yaxis: {
+                        labels: {
+                            style: {
+                                colors: '#1a6e40', // 🔥 left side y-axis label color
+                                fontSize: '12px',
+                                fontWeight: 700
+                            }
+                        }
                     },
 
                     colors: getAlternatingColors(salesData.week.totals.length),
@@ -374,6 +391,7 @@
                         }
                     }
                 };
+
 
                 const chart = new ApexCharts(document.querySelector("#salesChart"), options);
                 chart.render();

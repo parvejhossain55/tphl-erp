@@ -10,9 +10,9 @@
     <!-- KPI CARDS -->
     <div class="row g-20 mb-4 align-items-stretch">
 
-        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
+        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
+                <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-regular fa-users"></i></span>
                     </div>
@@ -24,9 +24,9 @@
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
+        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
+                <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-regular fa-user-plus"></i></span>
                     </div>
@@ -38,9 +38,9 @@
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
+        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
+                <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-regular fa-bell"></i></span>
                     </div>
@@ -52,9 +52,9 @@
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
+        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
+                <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-regular fa-circle-check"></i></span>
                     </div>
@@ -66,13 +66,11 @@
             </div>
         </div>
 
-    </div>
-
+ 
     <!-- REVENUE + CONVERSION -->
-    <div class="row g-20 mb-4 align-items-stretch">
-        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
+        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
+                <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-regular fa-circle-check"></i></span>
                     </div>
@@ -84,9 +82,9 @@
             </div>
         </div>
         <!-- TOTAL PROJECT -->
-        <div class="col-xxl-3 col-xl-6 col-md-6 col-12 mb-2">
+        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
+                <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-solid fa-building"></i></span>
                     </div>
@@ -100,9 +98,9 @@
 
 
         <!-- BOOKING MONEY COLLECTED -->
-        <div class="col-xxl-3  col-xl-6 col-md-6 col-12 mb-2">
+        <div class="col-xxl-3  col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
+                <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span>
                     </div>
@@ -117,9 +115,9 @@
         </div>
 
         <!-- CONVERSION RATE -->
-        <div class="col-xxl-3  col-xl-6 col-md-6 col-12 mb-2">
+        <div class="col-xxl-3  col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
+                <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-solid fa-chart-line"></i></span>
                     </div>

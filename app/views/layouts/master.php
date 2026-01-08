@@ -40,5 +40,6 @@ if (!empty($show_breadcrumb) && $show_breadcrumb === true) {
 
 ?>
 <script>
-    window.BASE_URL = "<?= $GLOBALS['base_url'] ?>";
+ const base_url = "<?= $GLOBALS['base_url'] ?>"; 
+
 </script>

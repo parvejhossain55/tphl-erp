@@ -872,10 +872,10 @@
                     </div>
                 </div>
                 <!-- Footer Section -->
-                <div class="section-header mt-2">
+                <div class="section-header my-2">
                     <h2 class="section-title2">DECLARATION</h2>
                 </div>
-                <div style="margin-top: 3rem; display: flex; flex-direction: column; gap: 2rem; font-size: 0.95rem;">
+                <div style=" display: flex; flex-direction: column; gap: 2rem; font-size: 0.95rem;">
                     <ul style="list-style-type: decimal; padding-left: 1.5rem; text-align: left; color: var(--primary); font-weight: 600;">
 
                         <oi><?= getSetting('client_declaration') ?? 'N/A' ?></oi>

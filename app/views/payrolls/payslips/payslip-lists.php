@@ -3,7 +3,7 @@ $page_title = "Payroll Lists";
 $page = 'Payroll List';
 $show_breadcrumb = true;
 ?>
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+<div class="d-none flex-wrap justify-content-between align-items-center mb-4">
 
     <h4 class="mb-2 mb-md-0">
         Payroll Manage
@@ -14,6 +14,93 @@ $show_breadcrumb = true;
     </div>
 
 </div>
+
+
+
+<form action="" method="get">
+    <div class="row  mb-3 align-items-end">
+
+        <?php
+        $currentYear = date('Y');
+        $startYear   = $currentYear - 10;
+        $selectedYear = $slectedYear ?? '';
+        ?>
+        <!-- Year Select -->
+        <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
+            <div class="card__wrapper h-100">
+                <div class="from__input-box">
+                    <select class="form-control" name="year">
+                        <option value="">Year Select</option>
+
+                        <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
+                            <option
+                                value="<?= $year ?>"
+                                <?= $selectedYear == $year ? 'selected' : '' ?>>
+                                <?= $year ?>
+                            </option>
+                        <?php endfor; ?>
+
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <?php
+        $months = [
+            1 => 'January',
+            2 => 'February',
+            3 => 'March',
+            4 => 'April',
+            5 => 'May',
+            6 => 'June',
+            7 => 'July',
+            8 => 'August',
+            9 => 'September',
+            10 => 'October',
+            11 => 'November',
+            12 => 'December'
+        ];
+        $selectedMonth = $_GET['month'] ?? '';
+        ?>
+
+        <!-- Month Select -->
+        <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
+            <div class="card__wrapper h-100">
+                <div class="from__input-box">
+                    <select class="form-control" name="month">
+                        <option value="">Month Select</option>
+                        <?php foreach ($months as $id => $name): ?>
+
+                            <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
+                                <?= $name ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="col-xxl-4 col-xl-12 col-lg-12 col-md-12 col-12">
+            <div class="card__wrapper h-100">
+                <div class="d-flex flex-column flex-sm-row gap-2">
+                    <button type="submit" class="btn btn-secondary w-100">
+                        Payslip Search
+                    </button>
+
+                    <a
+                        class="btn btn-primary w-100"
+                        href="<?= $GLOBALS['base_url'] ?>/create-payslip">
+                        Create Payslip
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</form>
+
 
 <div class="row">
     <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
@@ -101,7 +188,7 @@ $show_breadcrumb = true;
                                     <span class="table-avatar">
                                         <a class="employee__avatar mr-5" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><img
                                                 class="img-48 border-circle"
-                                                src="<?= getImage('employees',$payslip['photo']) ?>"
+                                                src="<?= getImage('employees', $payslip['photo']) ?>"
                                                 alt="User Image"></a>
                                         <a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><?= $payslip['employee_name'] ?></a>
                                     </span>
@@ -160,9 +247,6 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
-
-<!-- Pay Payslip Modal -->
-
 <!-- Pay Payslip Modal -->
 <div id="payPayslipModal" class="modal custom-modal fade" role="dialog">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">

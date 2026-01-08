@@ -8,7 +8,7 @@ $show_breadcrumb = false;
     <div class="row g-20 mb-20 justify-content-between align-items-end">
 
         <!-- Search by Name / Phone / Email -->
-        <div class="col-xxl-4 col-xl-5 col-lg-4 col-md-4">
+        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4">
             <div class="card__wrapper">
                 <div class="search-box">
                     <input type="text" class="form-control" name="q" placeholder="User Name / Phone / Email"
@@ -18,7 +18,7 @@ $show_breadcrumb = false;
         </div>
 
         <!-- Role Filter -->
-        <div class="col-xxl-4 col-xl-5 col-lg-4 col-md-4">
+        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4">
             <div class="card__wrapper">
                 <div class="from__input-box">
                     <select class="form-control" name="role">
@@ -34,7 +34,7 @@ $show_breadcrumb = false;
         </div>
 
         <!-- Buttons -->
-        <div class="col-xxl-4 col-xl-5 col-lg-4 col-md-4">
+        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center justify-content-between gap-15">
                     <button type="submit" class="btn btn-secondary">Filters</button>
@@ -104,10 +104,13 @@ $show_breadcrumb = false;
 
 
 <!-- Pagination -->
-<div class="row mt-4">
+<div class="row my-4">
     <div class="col-12 d-flex justify-content-center">
         <?= paginateLinksSecondary($base_url . "/user-lists", $currentPage, $totalPages); ?>
 
 
     </div>
 </div>
+<script>
+    const base_url = "<?=  $GLOBALS['base_url']?>";
+</script>

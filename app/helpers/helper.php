@@ -122,23 +122,22 @@ function getImage($module, $filename)
 
 function paginateLinksSecondary($route, $currentPage, $totalPages)
 {
-    // Make sure page numbers are integer
     $currentPage = intval($currentPage);
     $totalPages  = intval($totalPages);
 
-    if ($totalPages <= 1) return ""; // pagination no need
+    if ($totalPages <= 1) return ""; // no need for pagination
 
-    $html  = '<nav>';
+    $html  = '<nav class="my-4">';
     $html .= '<ul class="pagination pagination-secondary">';
 
     // Previous Button
     if ($currentPage > 1) {
         $html .= '<li class="page-item">
-                    <a class="page-link" href="' . $route . '?page=' . ($currentPage - 1) . '">Previous</a>
+                    <a class="page-link btn-outline-border" href="' . $route . '?page=' . ($currentPage - 1) . '">&laquo; Previous</a>
                   </li>';
     } else {
         $html .= '<li class="page-item disabled">
-                    <span class="page-link">Previous</span>
+                    <span class="page-link btn-outline-border">« Previous</span>
                   </li>';
     }
 
@@ -147,18 +146,18 @@ function paginateLinksSecondary($route, $currentPage, $totalPages)
         $active = ($i == $currentPage) ? "active" : "";
 
         $html .= '<li class="page-item ' . $active . '">
-                    <a class="page-link" href="' . $route . '?page=' . $i . '">' . $i . '</a>
+                    <a class="page-link btn-outline-border ' . $active . '" href="' . $route . '?page=' . $i . '">' . $i . '</a>
                   </li>';
     }
 
     // Next Button
     if ($currentPage < $totalPages) {
         $html .= '<li class="page-item">
-                    <a class="page-link" href="' . $route . '?page=' . ($currentPage + 1) . '">Next</a>
+                    <a class="page-link btn-outline-border" href="' . $route . '?page=' . ($currentPage + 1) . '">Next &raquo;</a>
                   </li>';
     } else {
         $html .= '<li class="page-item disabled">
-                    <span class="page-link">Next</span>
+                    <span class="page-link btn-outline-border">Next »</span>
                   </li>';
     }
 
@@ -167,6 +166,7 @@ function paginateLinksSecondary($route, $currentPage, $totalPages)
 
     return $html;
 }
+
 
 
 function checkLogin()

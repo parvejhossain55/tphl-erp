@@ -2,48 +2,601 @@
         $page_title = "Employee Dashboard ";
         ?>
 
+        <style>
+            .empty-state {
+                text-align: center;
+                padding: 27px 20px;
+                background: linear-gradient(135deg, #66eae1 0%, #137a0e 100%);
+                border-radius: 10px;
+                color: white;
+                margin-top: 20px;
+            }
 
+            .empty-state-icon {
+                font-size: 4rem;
+                margin-bottom: 20px;
+                opacity: 0.9;
+            }
 
+            .empty-state h4 {
+                font-weight: 700;
+                margin-bottom: 10px;
+                color: white;
+            }
+
+            .empty-state p {
+                color: rgba(255, 255, 255, 0.8);
+                margin: 0;
+            }
+
+            .tasks-container {
+                animation: fadeIn 0.5s ease-in;
+            }
+
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .animate-slide-in {
+                animation: slideIn 0.4s ease-out;
+            }
+
+            @keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(-20px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            .task-card {
+                background: transparent;
+                border-radius: 12px;
+                padding: 20px;
+                border: 1px solid #e2e8f0;
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .task-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 4px;
+                height: 100%;
+                background: linear-gradient(180deg, #4facfe 0%, #00f2fe 100%);
+            }
+
+            .task-card:hover {
+                border-color: #cbd5e1;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            }
+
+            .card-pending::before {
+                background: linear-gradient(180deg, #f093fb 0%, #f5576c 100%);
+            }
+
+            .card-progress::before {
+                background: linear-gradient(180deg, #4facfe 0%, #00f2fe 100%);
+            }
+
+            .card-completed::before {
+                background: linear-gradient(180deg, #43e97b 0%, #38f9d7 100%);
+            }
+
+            .task-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 16px;
+                gap: 15px;
+            }
+
+            .task-title-wrapper {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                flex: 1;
+            }
+
+            .task-title {
+                font-size: 1.1rem;
+                font-weight: 600;
+                color: #696d72;
+                margin: 0;
+                line-height: 1.4;
+            }
+
+            .task-icon {
+                color: #64748b;
+                font-size: 1.3rem;
+                flex-shrink: 0;
+            }
+
+            .badge {
+                padding: 6px 16px;
+                border-radius: 20px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                letter-spacing: 0.3px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            .badge-pending {
+                background: linear-gradient(135deg, #fff4e6 0%, #ffe4e6 100%);
+                color: #dc2626;
+                border: 1px solid #fecaca;
+            }
+
+            .badge-progress {
+                background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+                color: #2563eb;
+                border: 1px solid #bfdbfe;
+            }
+
+            .badge-completed {
+                background: linear-gradient(135deg, #d1fae5 0%, #dcfce7 100%);
+                color: #16a34a;
+                border: 1px solid #bbf7d0;
+            }
+
+            .assigned-info {
+                background: #f8fafc;
+                padding: 10px 14px;
+                border-radius: 8px;
+                border: 1px solid #e2e8f0;
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 16px;
+            }
+
+            .avatar-circle {
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 1rem;
+                flex-shrink: 0;
+            }
+
+            .assigned-text {
+                line-height: 1.3;
+            }
+
+            .assigned-text small {
+                display: block;
+                font-size: 0.7rem;
+                color: #64748b;
+                margin-bottom: 2px;
+            }
+
+            .assigned-text strong {
+                font-size: 0.85rem;
+                color: #1e293b;
+            }
+
+            .task-description {
+                background: #fffbeb;
+                padding: 12px 14px;
+                border-radius: 8px;
+                border-left: 3px solid #fbbf24;
+                color: #92400e;
+                line-height: 1.6;
+                font-size: 0.9rem;
+                margin-bottom: 16px;
+            }
+
+            .date-section {
+                display: flex;
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+
+            .date-box {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 12px;
+                border-radius: 8px;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                transition: all 0.2s;
+            }
+
+            .date-box:hover {
+                background: #f1f5f9;
+                border-color: #cbd5e1;
+            }
+
+            .date-box i {
+                font-size: 1.2rem;
+                color: #64748b;
+                flex-shrink: 0;
+            }
+
+            .date-content {
+                line-height: 1.3;
+            }
+
+            .date-content small {
+                display: block;
+                font-size: 0.7rem;
+                color: #64748b;
+                margin-bottom: 2px;
+            }
+
+            .date-content strong {
+                font-size: 0.85rem;
+                color: #1e293b;
+            }
+
+            .date-deadline .date-content strong {
+                color: #dc2626 !important;
+            }
+
+            .progress-section {
+                background: #f8fafc;
+                padding: 14px;
+                border-radius: 8px;
+                margin-bottom: 16px;
+            }
+
+            .progress-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+
+            .progress-label {
+                font-size: 0.8rem;
+                font-weight: 600;
+                color: #64748b;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .progress-percentage {
+                font-weight: 700;
+                font-size: 1rem;
+                color: #2563eb;
+            }
+
+            .custom-progress {
+                height: 10px;
+                background: #e2e8f0;
+                border-radius: 20px;
+                overflow: hidden;
+                position: relative;
+            }
+
+            .custom-progress-bar {
+                height: 100%;
+                border-radius: 20px;
+                transition: width 0.6s ease;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .custom-progress-bar::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                right: 0;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+                animation: shimmer 2s infinite;
+            }
+
+            @keyframes shimmer {
+                0% {
+                    transform: translateX(-100%);
+                }
+
+                100% {
+                    transform: translateX(100%);
+                }
+            }
+
+            .progress-bar-pending {
+                background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+            }
+
+            .progress-bar-in-progress {
+                background: linear-gradient(90deg, #35db96 0%, #00f2fe 100%);
+            }
+
+            .progress-bar-completed {
+                background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+            }
+
+            .action-form {
+                margin-top: 0;
+            }
+
+            .btn-accept {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                font-weight: 600;
+                font-size: 0.9rem;
+                border-radius: 8px;
+                transition: all 0.3s;
+            }
+
+            .btn-accept:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+                color: white;
+            }
+
+            .input-group {
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            }
+
+            .input-group-text {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-right: none;
+                color: #64748b;
+                padding: 0 12px;
+            }
+
+            .input-group .form-control {
+                border: 1px solid #e2e8f0;
+                border-left: none;
+                border-right: none;
+                padding: 10px 14px;
+                font-size: 0.9rem;
+            }
+
+            .input-group .form-control:focus {
+                border-color: #4facfe;
+                box-shadow: none;
+                z-index: 2;
+            }
+
+            .btn-update {
+                background: linear-gradient(135deg, #39c568 0%, #00f2fe 100%);
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                font-weight: 600;
+                font-size: 0.9rem;
+                transition: all 0.3s;
+            }
+
+            .btn-update:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
+                color: white;
+            }
+
+            .collapse-toggle {
+                background: none;
+                border: none;
+                color: #64748b;
+                padding: 4px;
+                cursor: pointer;
+                transition: all 0.3s;
+                border-radius: 4px;
+            }
+
+            .collapse-toggle:hover {
+                background: #f1f5f9;
+                color: #1e293b;
+            }
+
+            .collapse-toggle i {
+                transition: transform 0.3s;
+            }
+
+            .collapse-toggle[aria-expanded="true"] i {
+                transform: rotate(180deg);
+            }
+
+            /* Responsive */
+            @media (max-width: 768px) {
+                .task-card {
+                    padding: 16px;
+                }
+
+                .task-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+
+                .task-title {
+                    font-size: 1rem;
+                }
+
+                .date-section {
+                    flex-direction: column;
+                }
+
+                .badge {
+                    align-self: flex-start;
+                }
+            }
+        </style>
+
+        <!-- Task Notification Section -->
         <?php if (!empty($pendingTasks)): ?>
-            <?php foreach ($pendingTasks as $task): ?>
-                <div class="card__wrapper mb-2 p-2">
-                    <h5><?= htmlspecialchars($task['title']) ?></h5>
-                    <p><?=$task['description'] ?></p>
+            <div class="tasks-container">
+                <div class="row g-3">
+                    <?php foreach ($pendingTasks as $task): ?>
+                        <?php
+                        // Determine status and styling
+                        $status = 'pending';
+                        $statusBadge = '<span class="badge badge-pending"><i class="bi bi-clock-history me-1"></i>Pending</span>';
+                        $cardGradient = 'card-pending';
 
-                    <?php if ($task['employee_accept'] == 0): ?>
-                        <!-- Accept button -->
-                        <form action="<?= $GLOBALS['base_url'] ?>/update-task-status" method="POST">
-                            <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
-                            <button type="submit" name="accept" class="btn btn-success btn-sm">Accept</button>
-                        </form>
-                    <?php else: ?>
-                        <!-- Working / Update Progress -->
-                        <form action="<?= $GLOBALS['base_url'] ?>/update-task-progress" method="POST" class="d-flex align-items-center gap-2">
-                            <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
-                            <input type="number" name="progress" min="<?= $task['progress'] ?>" max="100" value="<?= $task['progress'] ?>" class="form-control" style="width: 80px;">
-                            <button type="submit" class="btn btn-primary btn-sm">Update Progress</button>
-                        </form>
-                    <?php endif; ?>
+                        if ($task['employee_accept'] == 1) {
+                            if ($task['progress'] >= 100) {
+                                $status = 'completed';
+                                $statusBadge = '<span class="badge badge-completed"><i class="bi bi-check-circle-fill me-1"></i>Completed</span>';
+                                $cardGradient = 'card-completed';
+                            } else {
+                                $status = 'in-progress';
+                                $statusBadge = '<span class="badge badge-progress"><i class="bi bi-arrow-repeat me-1"></i>In Progress</span>';
+                                $cardGradient = 'card-progress';
+                            }
+                        }
+                        ?>
 
-                    <!-- Progress bar -->
-                    <div class="progress mt-2" style="height: 20px;">
-                        <div class="progress-bar" role="progressbar"
-                            style="width: <?= $task['progress'] ?>%;"
-                            aria-valuenow="<?= $task['progress'] ?>"
-                            aria-valuemin="0" aria-valuemax="100">
-                            <?= $task['progress'] ?>%
+                        <div class="col-12">
+                            <div class="task-card <?= $cardGradient ?> animate-slide-in">
+                                <!-- Task Header: Title and Status in Same Row -->
+                                <div class="task-header">
+                                    <div class="task-title-wrapper">
+                                        <i class="bi bi-clipboard-check task-icon"></i>
+                                        <h5 class="task-title"><?= htmlspecialchars($task['title']) ?></h5>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <?= $statusBadge ?>
+                                        <button class="collapse-toggle" type="button" data-bs-toggle="collapse"
+                                            data-bs-target="#task-<?= $task['id'] ?>" aria-expanded="true">
+                                            <i class="bi bi-chevron-down fs-5"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Collapsible Content -->
+                                <div class="collapse show" id="task-<?= $task['id'] ?>">
+                                    <!-- Assigned By -->
+                                    <div class="col-xxl-12 col-xl-12 col-lg-12 col-md-12 col-sm-12">
+                                        <div class="card__wrapper">
+                                            <div class="d-flex align-items-center gap-sm">
+                                                <div class="card__icon">
+                                                    <span><i class="fa-sharp fa-regular fa-gear"></i></span>
+                                                </div>
+                                                <div class="card__title-wrap">
+                                                    <h6 class="card__sub-title mb-10">Task Assigned</h6>
+                                                    <div class="d-flex flex-wrap align-items-end gap-10 mt-3">
+                                                        <div class="avatar-circle mt-2">
+
+                                                        </div>
+                                                        <strong>Assigned by:</strong>
+                                                        <p class="ms-2 fw-semibold"><?= htmlspecialchars($task['assigned_by_name'] ?? 'System') ?></p>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <h5 class="task-title mb-2">Task Description</h5>
+                                    <!-- Description -->
+                                    <?php if (!empty($task['description'])): ?>
+                                        <div class="task-description fw-semibold">
+                                            <?= $task['description'] ?>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <!-- Date Info -->
+                                    <div class="date-section">
+                                        <div class="date-box date-start">
+                                            <i class="bi bi-calendar-check"></i>
+                                            <div class="date-content">
+                                                <small class="fw-bold fs-5">Start Date</small>
+                                                <strong><?= !empty($task['start_date']) ? date('d M, Y', strtotime($task['start_date'])) : 'N/A' ?></strong>
+                                            </div>
+                                        </div>
+                                        <div class="date-box date-deadline">
+                                            <i class="bi bi-calendar-x"></i>
+                                            <div class="date-content">
+                                                <small class="fw-bold fs-5">Deadline</small>
+                                                <strong><?= !empty($task['deadline']) ? date('d M, Y', strtotime($task['deadline'])) : 'N/A' ?></strong>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Progress Bar -->
+                                    <div class="progress-section">
+                                        <div class="progress-header">
+                                            <span class="progress-label">Progress</span>
+                                            <span class="progress-percentage"><?= $task['progress'] ?>%</span>
+                                        </div>
+                                        <div class="custom-progress">
+                                            <div class="custom-progress-bar progress-bar-<?= $status ?>"
+                                                style="width: <?= $task['progress'] ?>%;"
+                                                data-progress="<?= $task['progress'] ?>">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Form -->
+                                    <form action="<?= $GLOBALS['base_url'] ?>/<?= $task['employee_accept'] == 0 ? 'update-task-status' : 'update-task-progress' ?>"
+                                        method="POST" class="action-form">
+                                        <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
+
+                                        <?php if ($task['employee_accept'] == 0): ?>
+                                            <!-- Accept Button -->
+                                            <button type="submit" name="accept" class="btn btn-accept w-100">
+                                                <i class="bi bi-hand-thumbs-up me-2"></i>
+                                                Accept Task
+                                            </button>
+                                        <?php else: ?>
+                                            <!-- Update Progress -->
+                                            <div class="input-group">
+                                                <span class="input-group-text">
+                                                    <i class="bi bi-percent"></i>
+                                                </span>
+                                                <input type="number"
+                                                    name="progress"
+                                                    min="<?= $task['progress'] ?>"
+                                                    max="100"
+                                                    value="<?= $task['progress'] ?>"
+                                                    class="form-control"
+                                                    placeholder="Enter progress percentage">
+                                                <button type="submit" class="btn btn-update">
+                                                    <i class="bi bi-arrow-clockwise me-2"></i>
+                                                    Update
+                                                </button>
+                                            </div>
+                                        <?php endif; ?>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
-            <?php endforeach; ?>
+            </div>
+
         <?php else: ?>
-            <p>No pending tasks</p>
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="bi bi-clipboard-check"></i>
+                </div>
+                <h4>No Pending Tasks</h4>
+                <p class="text-muted">You're all caught up! No tasks assigned at the moment.</p>
+            </div>
         <?php endif; ?>
-
-
-
-
-
 
         <!-- App side area start -->
         <div class="app__slide-wrapper">
@@ -61,8 +614,12 @@
                                                 <strong class="d-block"><?= htmlspecialchars($note['message'] ?? '') ?></strong>
                                                 <strong class="d-block">Assigned by: <?= htmlspecialchars($note['assigned_by_name'] ?? 'System') ?></strong>
                                                 <div class="row d-flex justify-content-between">
-                                                    <span class="text-dark">Start Task:</span> <?= date('d F, Y', strtotime($note['start_date'])) ?>
-                                                    <span class="text-dark">Deadline:</span> <?= date('d F, Y', strtotime($note['deadline'])) ?>
+                                                    <span class="text-dark">Start Task:</span>
+                                                    <?= !empty($note['start_date']) ? date('d F, Y', strtotime($note['start_date'])) : 'N/A' ?>
+
+                                                    <span class="text-dark">Deadline:</span>
+                                                    <?= !empty($note['deadline']) ? date('d F, Y', strtotime($note['deadline'])) : 'N/A' ?>
+
                                                 </div>
                                             </div>
                                         </div>

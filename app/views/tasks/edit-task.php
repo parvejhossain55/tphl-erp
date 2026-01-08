@@ -114,16 +114,14 @@
                                       </div>
 
                                       <!-- Description -->
-                                      <div class="col-md-12">
-                                          <div class="from__input-box">
-                                              <div class="form__input-title">
-                                                  <label>Task Description <span>*</span></label>
-                                              </div>
-                                              <div class="form__input">
-                                                  <textarea id="tinymce_simple_textarea" name="description"><?= htmlspecialchars($task['description']) ?></textarea>
-                                              </div>
-                                          </div>
+                                      <!-- Amenities -->
+                                      <div class="col-12">
+                                          <label>Task Description</label>
+                                            <textarea name="amenities_details" id="tinymce_simple_textarea">
+                                                <?= htmlspecialchars($task['description'] ?? '') ?>
+                                            </textarea>
                                       </div>
+
 
                                   </div>
                               </div>

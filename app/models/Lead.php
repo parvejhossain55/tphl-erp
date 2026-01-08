@@ -27,6 +27,48 @@ class Lead extends Model
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+public function getAllWithFilter($year = null, $month = null)
+{
+    $sql = "
+        SELECT 
+            l.*,
+            u.id AS assigned_id,
+            u.full_name AS agent_name
+        FROM leads AS l
+        LEFT JOIN users AS u ON l.assigned_id = u.id
+        WHERE 1
+    ";
+
+    $params = [];
+    $types  = "";
+
+    if (!empty($year)) {
+        $sql .= " AND YEAR(l.created_at) = ?";
+        $params[] = $year;
+        $types   .= "i";
+    }
+
+    if (!empty($month)) {
+        $sql .= " AND MONTH(l.created_at) = ?";
+        $params[] = $month;
+        $types   .= "i";
+    }
+
+    $sql .= " ORDER BY l.id DESC";
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    if (!$stmt->execute()) {
+        return [];
+    }
+
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
 
 
 
@@ -100,7 +142,7 @@ class Lead extends Model
             $status,
             $lead_quality,
             $lead_type,
-            $created_by,
+            $created_by
         );
 
         if ($stmt->execute()) {
@@ -175,7 +217,7 @@ public function update($id, $data)
         present_add_bn = ?, profession_bn = ?, nationality = ?, religion = ?, lead_image = ?,
         nominee_name = ?, relation_with_lead = ?, nomi_father_name = ?, nomi_mother_name = ?, nomi_profession = ?,
         nomi_dob = ?, nomi_phone = ?, nomi_email = ?, nomi_nid_passport = ?, nomi_present_add = ?, 
-        nomi_permanent_address = ?, nomi_image = ?, description = ?,created_by = ?,
+        nomi_permanent_address = ?, nomi_image = ?, description = ?,created_by = ?
         WHERE id = ?";
 
     $stmt = $this->db->prepare($sql);
