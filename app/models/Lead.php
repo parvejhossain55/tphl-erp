@@ -27,6 +27,48 @@ class Lead extends Model
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+public function getAllWithFilter($year = null, $month = null)
+{
+    $sql = "
+        SELECT 
+            l.*,
+            u.id AS assigned_id,
+            u.full_name AS agent_name
+        FROM leads AS l
+        LEFT JOIN users AS u ON l.assigned_id = u.id
+        WHERE 1
+    ";
+
+    $params = [];
+    $types  = "";
+
+    if (!empty($year)) {
+        $sql .= " AND YEAR(l.created_at) = ?";
+        $params[] = $year;
+        $types   .= "i";
+    }
+
+    if (!empty($month)) {
+        $sql .= " AND MONTH(l.created_at) = ?";
+        $params[] = $month;
+        $types   .= "i";
+    }
+
+    $sql .= " ORDER BY l.id DESC";
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    if (!$stmt->execute()) {
+        return [];
+    }
+
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
 
 
 

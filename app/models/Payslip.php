@@ -11,46 +11,49 @@ class Payslip extends Model
 
     // Get all Departments with paginate
 
-public function getAllWithEmployee() {
-    $stmt = $this->db->prepare("SELECT p.*,e.id AS employee_id,e.full_name AS employee_name , e.photo,e.email,e.joining_date,d.name AS desgination_name 
+    public function getAllWithEmployee()
+    {
+        $stmt = $this->db->prepare("SELECT p.*,e.id AS employee_id,e.full_name AS employee_name , e.photo,e.email,e.joining_date,d.name AS desgination_name 
     FROM payslips AS p 
     LEFT JOIN employees AS e ON p.employee_id = e.id 
     LEFT JOIN designations AS d ON p.designation_id = d.id
     ORDER BY p.id DESC");
-    
-    if (!$stmt) {
-        die("Prepare failed: " . $this->db->error);
+
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $data;
     }
 
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $data = $result->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
+    public function getPaidCount()
+    {
+        $stmt = $this->db->prepare("SELECT count(*) as paid_count FROM payslips WHERE status ='paid'");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_assoc();
+        $stmt->close();
 
-    return $data;
-}
+        return $data['paid_count'];
+    }
+    public function getPendingCount()
+    {
+        $stmt = $this->db->prepare("SELECT count(*) as pending_count FROM payslips WHERE status ='pending'");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_assoc();
+        $stmt->close();
 
-public function getPaidCount(){
-    $stmt = $this->db->prepare("SELECT count(*) as paid_count FROM payslips WHERE status ='paid'");
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $data = $result->fetch_assoc();
-    $stmt->close();
-
-    return $data['paid_count'];
-}
-public function getPendingCount(){
-    $stmt = $this->db->prepare("SELECT count(*) as pending_count FROM payslips WHERE status ='pending'");
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $data = $result->fetch_assoc();
-    $stmt->close();
-
-    return $data['pending_count'];
-}
+        return $data['pending_count'];
+    }
     // Create a new role
 
-  public function create($data)
+    public function create($data)
     {
         $stmt = $this->db->prepare("
             INSERT INTO payslips
@@ -77,51 +80,51 @@ public function getPendingCount(){
 
 
 
- // Update role name + permissions
-public function update($data)
-{
-    // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE payslips SET name = ?, type = ? WHERE id = ?");
-    if (!$stmt) {
-        echo "Prepare failed: " . $this->db->error;
-        return false;
+    // Update role name + permissions
+    public function update($data)
+    {
+        // Prepare update statement
+        $stmt = $this->db->prepare("UPDATE payslips SET name = ?, type = ? WHERE id = ?");
+        if (!$stmt) {
+            echo "Prepare failed: " . $this->db->error;
+            return false;
+        }
+
+        $stmt->bind_param(
+            "ssi",
+            $data['name'],
+            $data['type'],
+            $data['id']
+        );
+
+        if (!$stmt->execute()) {
+            echo "Execute failed: " . $stmt->error;
+            return false;
+        }
+
+        $stmt->close();
+        return true;
     }
 
-    $stmt->bind_param(
-        "ssi",
-        $data['name'],    
-        $data['type'],  
-        $data['id']       
-    );
+    public function delete($id)
+    {
+        $stmt1 = $this->db->prepare("DELETE FROM payslip_details WHERE payslip_id = ?");
+        $stmt1->bind_param("i", $id);
+        $stmt1->execute();
+        $stmt1->close();
 
-    if (!$stmt->execute()) {
-        echo "Execute failed: " . $stmt->error;
-        return false;
+        //  Delete the department
+        $stmt2 = $this->db->prepare("DELETE FROM payslips WHERE id = ?");
+        $stmt2->bind_param("i", $id);
+        $stmt2->execute();
+        $stmt2->close();
+
+        return true;
     }
 
-    $stmt->close();
-    return true;
-}
-
-public function delete($id)
-{
-    $stmt1 = $this->db->prepare("DELETE FROM payslip_details WHERE payslip_id = ?");
-    $stmt1->bind_param("i", $id);
-    $stmt1->execute();
-    $stmt1->close();
-
-    //  Delete the department
-    $stmt2 = $this->db->prepare("DELETE FROM payslips WHERE id = ?");
-    $stmt2->bind_param("i", $id);
-    $stmt2->execute();
-    $stmt2->close();
-
-    return true;
-}
-
-public function payPayslip($payslipId, $paymentMethod, $companyBankId = null)
-{
-    $stmt = $this->db->prepare("
+    public function payPayslip($payslipId, $paymentMethod, $companyBankId = null)
+    {
+        $stmt = $this->db->prepare("
         UPDATE payslips 
         SET status = 'paid', 
             payment_method = ?, 
@@ -129,16 +132,17 @@ public function payPayslip($payslipId, $paymentMethod, $companyBankId = null)
             updated_at = NOW() 
         WHERE id = ?
     ");
-    $stmt->bind_param("sii", $paymentMethod, $companyBankId, $payslipId);
-    $stmt->execute();
-    $affectedRows = $stmt->affected_rows;
-    $stmt->close();
-    return $affectedRows > 0; // returns true if updated
-}
+        $stmt->bind_param("sii", $paymentMethod, $companyBankId, $payslipId);
+        $stmt->execute();
+        $affectedRows = $stmt->affected_rows;
+        $stmt->close();
+        return $affectedRows > 0; // returns true if updated
+    }
 
-public function getByIdWithItems($id) {
-    //  Get main payslip
-    $stmt = $this->db->prepare("
+    public function getByIdWithItems($id)
+    {
+        //  Get main payslip
+        $stmt = $this->db->prepare("
         SELECT p.*, cb.bank_name, cb.account_name, cb.account_number,e.employee_id,e.full_name AS employee_name, e.email,e.joining_date,e.phone,e.basic_salary,
         d.name AS designation_name ,dept.name AS department_name
         FROM payslips AS p
@@ -148,90 +152,138 @@ public function getByIdWithItems($id) {
         LEFT JOIN departments AS dept ON e.department_id = dept.id
         WHERE p.id = ?
     ");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $payslip = $result->fetch_assoc();
-    $stmt->close();
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $payslip = $result->fetch_assoc();
+        $stmt->close();
 
-    if (!$payslip) return null;
+        if (!$payslip) return null;
 
-    // 2 Get item details for this payslip
-    $stmt2 = $this->db->prepare("
+        // 2 Get item details for this payslip
+        $stmt2 = $this->db->prepare("
         SELECT pd.*, pi.name AS item_name, pi.type AS item_type
         FROM payslip_details AS pd
         LEFT JOIN payslip_items AS pi ON pd.payslip_item_id = pi.id
         WHERE pd.payslip_id = ?
     ");
-    $stmt2->bind_param("i", $id);
-    $stmt2->execute();
-    $itemsResult = $stmt2->get_result();
-    $items = $itemsResult->fetch_all(MYSQLI_ASSOC);
-    $stmt2->close();
+        $stmt2->bind_param("i", $id);
+        $stmt2->execute();
+        $itemsResult = $stmt2->get_result();
+        $items = $itemsResult->fetch_all(MYSQLI_ASSOC);
+        $stmt2->close();
 
-    // 3 Attach items to payslip array
-    $payslip['items'] = $items;
+        // 3 Attach items to payslip array
+        $payslip['items'] = $items;
 
-    return $payslip;
-}
-
-
-public function getPaidSalarySum() {
-    // SQL query
-    $query = "SELECT SUM(net_salary) AS total_paid FROM payslips WHERE status = ?";
-    
-    // Prepare statement
-    $stmt = $this->db->prepare($query);
-    if (!$stmt) {
-        echo "Prepare failed: " . $this->db->error;
-        return 0;
+        return $payslip;
     }
 
-    // Bind parameters (status = 'paid')
-    $status = 'paid';
-    $stmt->bind_param("s", $status);
 
-    // Execute
-    if (!$stmt->execute()) {
-        echo "Execute failed: " . $stmt->error;
-        return 0;
-    }
+    public function getPaidSalarySum()
+    {
+        // SQL query
+        $query = "SELECT SUM(net_salary) AS total_paid FROM payslips WHERE status = ?";
 
-    // Get result
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
+        // Prepare statement
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            echo "Prepare failed: " . $this->db->error;
+            return 0;
+        }
 
-    // Close statement
-    $stmt->close();
+        // Bind parameters (status = 'paid')
+        $status = 'paid';
+        $stmt->bind_param("s", $status);
 
-    // Return total paid salary
-    return (float) ($row['total_paid'] ?? 0);
-}
+        // Execute
+        if (!$stmt->execute()) {
+            echo "Execute failed: " . $stmt->error;
+            return 0;
+        }
 
-public function getUnpaidSalarySum(){
-    $query = "SELECT SUM(net_salary) AS total_unpaid FROM payslips WHERE status = ?";
-    $stmt = $this->db->prepare($query);
+        // Get result
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
 
-    if(!$stmt){
-        echo "prepare Failed:". $this->db->error;
-    }
-
-    $status = 'pending';
-    $stmt->bind_param('s',$status);
-
-       if (!$stmt->execute()) {
-        echo "Execute failed: " . $stmt->error;
-        return 0;
-    }
-
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
+        // Close statement
         $stmt->close();
 
-    // Return total paid salary
-    return (float) ($row['total_unpaid'] ?? 0);
+        // Return total paid salary
+        return (float) ($row['total_paid'] ?? 0);
+    }
 
-}
+    public function getUnpaidSalarySum()
+    {
+        $query = "SELECT SUM(net_salary) AS total_unpaid FROM payslips WHERE status = ?";
+        $stmt = $this->db->prepare($query);
+
+        if (!$stmt) {
+            echo "prepare Failed:" . $this->db->error;
+        }
+
+        $status = 'pending';
+        $stmt->bind_param('s', $status);
+
+        if (!$stmt->execute()) {
+            echo "Execute failed: " . $stmt->error;
+            return 0;
+        }
+
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+
+        // Return total paid salary
+        return (float) ($row['total_unpaid'] ?? 0);
+    }
 
 
+
+    public function getAllWithEmployeeFiltered($year = null, $month = null)
+    {
+        $sql = "
+        SELECT p.*, 
+               e.id AS employee_id,
+               e.full_name AS employee_name,
+               e.photo,
+               e.email,
+               e.joining_date,
+               d.name AS desgination_name
+        FROM payslips AS p
+        LEFT JOIN employees AS e ON p.employee_id = e.id
+        LEFT JOIN designations AS d ON p.designation_id = d.id
+        WHERE 1
+    ";
+
+        $params = [];
+        $types  = "";
+
+        if (!empty($year)) {
+            $sql .= " AND YEAR(p.payslip_month) = ?";
+            $params[] = $year;
+            $types .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(p.payslip_month) = ?";
+            $params[] = $month;
+            $types .= "i";
+        }
+
+        $sql .= " ORDER BY p.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $data;
+    }
 }

@@ -422,6 +422,33 @@
     flex-grow: 1;
 }
 
+/* table wrap sticky  */
+/* Scroll container */
+/* 
+.table__wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+    max-height: calc(100vh - 200px);
+}
+.table thead {
+    position: sticky;
+    top: 16px;
+    z-index: 99;
+    background-color: #19915a;
+}
+
+.table th:first-child {
+     position: sticky;
+    background-color: #4634ff;
+    color: white;
+    z-index: 10;
+}
+.table th:first-child, .table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background-color:#19915a;
+} */
 
 @media (max-width: 768px) {
     .row {

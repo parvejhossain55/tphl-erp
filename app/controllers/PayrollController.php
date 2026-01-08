@@ -18,9 +18,14 @@ class PayrollController extends Controller
 
     public function index()
     {
+    
+     $year  = $_GET['year']  ?? null;
+    $month = $_GET['month'] ?? null;
+
+    $payslips = $this->paymentModel->getAllWithEmployeeFiltered($year, $month);
 
         $totalEmployees = $this->employeeModel->getTotalCount();
-        $payslips = $this->paymentModel->getAllWithEmployee();
+        // $payslips = $this->paymentModel->getAllWithEmployee();
         $paidCount = $this->paymentModel->getPaidCount();
         $pendingCount = $this->paymentModel->getPendingCount();
         // Get all company banks

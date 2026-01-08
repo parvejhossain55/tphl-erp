@@ -17,8 +17,10 @@ class LeadController extends Controller
     }
     public function index()
     {
+    $year  = $_GET['year']  ?? null;
+    $month = $_GET['month'] ?? null;
         $owners = $this->userModel->getAll();
-        $leads = $this->leadModel->getAll();
+        $leads = $this->leadModel->getAllWithFilter($year,$month);
         $leadCounts = count($leads);
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
