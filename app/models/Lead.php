@@ -100,7 +100,7 @@ class Lead extends Model
             $status,
             $lead_quality,
             $lead_type,
-            $created_by,
+            $created_by
         );
 
         if ($stmt->execute()) {
@@ -175,7 +175,7 @@ public function update($id, $data)
         present_add_bn = ?, profession_bn = ?, nationality = ?, religion = ?, lead_image = ?,
         nominee_name = ?, relation_with_lead = ?, nomi_father_name = ?, nomi_mother_name = ?, nomi_profession = ?,
         nomi_dob = ?, nomi_phone = ?, nomi_email = ?, nomi_nid_passport = ?, nomi_present_add = ?, 
-        nomi_permanent_address = ?, nomi_image = ?, description = ?,created_by = ?,
+        nomi_permanent_address = ?, nomi_image = ?, description = ?,created_by = ?
         WHERE id = ?";
 
     $stmt = $this->db->prepare($sql);

@@ -8,7 +8,7 @@ $show_breadcrumb = true;
     <div class="row g-20 mb-20 justify-content-between align-items-end">
 
         <!-- Search -->
-        <div class="col-xxl-4 col-xl-5 col-lg-4 col-md-4">
+        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
             <div class="card__wrapper">
                 <div class="search-box">
                     <input type="text" class="form-control" name="q" id="employeeName"
@@ -20,7 +20,7 @@ $show_breadcrumb = true;
 
 
         <!-- Department Filter -->
-        <div class="col-xxl-4 col-xl-5 col-lg-4 col-md-4">
+        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
             <div class="card__wrapper">
                 <div class="from__input-box">
                     <select class="form-control" name="department_id">
@@ -37,7 +37,7 @@ $show_breadcrumb = true;
         </div>
 
         <!-- Submit -->
-        <div class="col-xxl-4 col-xl-5 col-lg-4 col-md-4">
+        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center justify-content-between gap-15">
                     <button type="submit" class="btn btn-secondary"> Filter</button>
@@ -102,3 +102,7 @@ $show_breadcrumb = true;
         <button type="button" class="btn btn-primary">Load More</button>
     </div>
 </div>
+<script>
+ const base_url = "<?= $GLOBALS['base_url'] ?>"; 
+
+</script>

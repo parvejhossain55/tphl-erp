@@ -1793,10 +1793,11 @@ function bd_settings_append($x) {
 $(document).ready(function () {
     $('.removeBtnCust').on('click', function (e) {
         e.preventDefault();
+        // alert("ok");
 
         const itemId = $(this).data('id');
         const itemName = $(this).data('name');
-        const actionUrl = $(this).data('action');
+        const actionUrl = $(this).attr('data-action'); // <- change here
 
         Swal.fire({
             title: "Are you sure?",
@@ -1807,10 +1808,11 @@ $(document).ready(function () {
         }).then((result) => {
             if (result.isConfirmed) {
 
-                const form = $('<form>', {
-                    method: 'POST',
-                    action: window.BASE_URL + '/' + actionUrl
-                });
+               const form = $('<form>', {
+					method: 'POST',
+					action: base_url + '/' + actionUrl
+				});
+
 
                 form.append($('<input>', {
                     type: 'hidden',
