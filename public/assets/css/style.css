@@ -337,88 +337,99 @@
         margin-left: 8px;
     }
 
-
-.apexcharts-legend {
+/* pagination  */
+.pagination-secondary {
     display: flex;
-    overflow: auto;
-    padding: 0 10px;
-}
-
-.apexcharts-legend.apx-legend-position-bottom,
-.apexcharts-legend.apx-legend-position-top {
-    flex-wrap: wrap
-}
-
-.apexcharts-legend.apx-legend-position-right,
-.apexcharts-legend.apx-legend-position-left {
-    flex-direction: column;
-    bottom: 0;
-}
-
-.apexcharts-legend.apx-legend-position-bottom.apexcharts-align-left,
-.apexcharts-legend.apx-legend-position-top.apexcharts-align-left,
-.apexcharts-legend.apx-legend-position-right,
-.apexcharts-legend.apx-legend-position-left {
-    justify-content: flex-start;
-}
-
-.apexcharts-legend.apx-legend-position-bottom.apexcharts-align-center,
-.apexcharts-legend.apx-legend-position-top.apexcharts-align-center {
+    gap: 8px;
     justify-content: center;
+    flex-wrap: wrap;
+    padding-left: 0;
+    list-style: none;
 }
 
-.apexcharts-legend.apx-legend-position-bottom.apexcharts-align-right,
-.apexcharts-legend.apx-legend-position-top.apexcharts-align-right {
-    justify-content: flex-end;
+.page-item {
+    margin: 2px;
 }
 
-.apexcharts-legend-series {
-    cursor: pointer;
-    line-height: normal;
+/* Outline buttons always visible */
+.page-link.btn-outline-border {
+    display: inline-block;
+    padding: 6px 14px;
+    border: 1px solid #19915a; /* always show border */
+    color: #19915a;             /* text color */
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.3s;
+    font-weight: 500;
+    background-color: transparent; /* default transparent */
 }
 
-.apexcharts-legend.apx-legend-position-bottom .apexcharts-legend-series,
-.apexcharts-legend.apx-legend-position-top .apexcharts-legend-series {
-    display: flex;
-    align-items: center;
+/* Hover fills background */
+.page-link.btn-outline-border:hover {
+    background-color: #19915a; /* fill on hover */
+    color: #fff;               /* text color on hover */
 }
 
-.apexcharts-legend-text {
-    position: relative;
-    font-size: 14px;
-}
-
-.apexcharts-legend-text *,
-.apexcharts-legend-marker * {
+/* Active page: filled always */
+.page-item.active .page-link.btn-outline-border {
+    background-color: #19915a;
+    color: #fff;
+    cursor: default;
     pointer-events: none;
 }
 
-.apexcharts-legend-marker {
-    position: relative;
-    display: inline-block;
-    cursor: pointer;
-    margin-right: 3px;
-    border-style: solid;
+/* Disabled buttons */
+.page-item.disabled .page-link.btn-outline-border {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
-.apexcharts-legend.apexcharts-align-right .apexcharts-legend-series,
-.apexcharts-legend.apexcharts-align-left .apexcharts-legend-series {
-    display: inline-block;
+/* pagination  */
+.card__title{
+    font-size: 17px;
 }
 
-.apexcharts-legend-series.apexcharts-no-click {
-    cursor: auto;
+
+
+/* Make all columns stretch full height */
+.row.align-items-stretch {
+    display: flex;
+    flex-wrap: wrap;
 }
 
-.apexcharts-legend .apexcharts-hidden-zero-series,
-.apexcharts-legend .apexcharts-hidden-null-series {
-    display: none !important;
+/* Make card wrapper take full height of column */
+.row.align-items-stretch > .col-xxl-3,
+.row.align-items-stretch > .col-xl-4,
+.row.align-items-stretch > .col-lg-4,
+.row.align-items-stretch > .col-md-6,
+.row.align-items-stretch > .col-sm-6 {
+    display: flex;
+    flex-direction: column;
 }
 
-.apexcharts-inactive-legend {
-    opacity: 0.45;
+/* Card wrapper fills column height */
+.card__wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* content top to bottom */
+    flex-grow: 1;
+   
 }
 
-.card__title {
-    
+/* Optional: inner flex to align items nicely */
+.card__wrapper > .d-flex {
+    flex-grow: 1;
+}
+
+
+@media (max-width: 768px) {
+    .row {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    .row > * {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
 }

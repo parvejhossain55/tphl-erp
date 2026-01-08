@@ -15,7 +15,7 @@ $show_breadcrumb = true;
 
         <div class="d-flex gap-2">
             <button
-                class="btn btn-outline-success"
+                class="d-none btn btn-outline-success"
                 data-bs-toggle="modal"
                 data-bs-target="#importCsvModal">
                 <i class="fa-light fa-file-arrow-up me-1"></i>

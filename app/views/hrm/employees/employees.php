@@ -97,10 +97,14 @@ $show_breadcrumb = true;
     <?php endforeach ?>
 
 
+<!-- Pagination -->
+<div class="row my-4">
+    <div class="col-12 d-flex justify-content-center">
+        <?= paginateLinksSecondary($base_url . "/user-lists", $currentPage, $totalPages); ?>
 
-    <div class="d-none d-flex justify-content-center mt-20 mb-20">
-        <button type="button" class="btn btn-primary">Load More</button>
+
     </div>
+</div>
 </div>
 <script>
  const base_url = "<?= $GLOBALS['base_url'] ?>"; 
