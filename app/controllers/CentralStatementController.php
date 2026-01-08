@@ -560,7 +560,7 @@ public function index()
                                 <span class="summary-value">৳<?= number_format($statementData['summary']['net_balance'], 2) ?></span>
                             </div>
                             <div class="summary-row">
-                                <span class="summary-label">Final Balance:</span>
+                                <span class="summary-label">Available Balance:</span>
                                 <span class="summary-value">৳<?= number_format($statementData['summary']['final_balance'], 2) ?></span>
                             </div>
                         </div>
