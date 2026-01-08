@@ -39,7 +39,7 @@ $show_breadcrumb = true;
         border-radius: 12px;
         padding: 20px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        border-left: 4px solid ;
+        border-left: 4px solid;
         margin-bottom: 20px;
     }
 
@@ -244,15 +244,15 @@ $show_breadcrumb = true;
                         </div>
                         <!-- Action Buttons -->
 
-    <button type="button" class="btn btn-success" onclick="downloadPDF()">
-        <i class="fa-light fa-download me-2"></i> Download PDF
-    </button>
-    <button type="button" class="btn btn-secondary" onclick="printStatement()">
-        <i class="fa-light fa-print me-2"></i> Print Statement
-    </button>
-    <button type="button" class="btn btn-danger" onclick="exportCSV()">
-        <i class="fa-light fa-file-csv me-2"></i> Export CSV
-    </button>
+                        <button type="button" class="btn btn-success" onclick="downloadPDF()">
+                            <i class="fa-light fa-download me-2"></i> Download PDF
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="printStatement()">
+                            <i class="fa-light fa-print me-2"></i> Print Statement
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="exportCSV()">
+                            <i class="fa-light fa-file-csv me-2"></i> Export CSV
+                        </button>
 
                     </div>
                 </form>
@@ -440,36 +440,63 @@ $show_breadcrumb = true;
 </div>
 
 <script>
-    function handlePeriodChange() {
-        const periodType = document.getElementById('periodType').value;
-        const yearFilter = document.getElementById('yearFilter');
-        const monthFilter = document.getElementById('monthFilter');
-        const startDateFilter = document.getElementById('startDateFilter');
-        const endDateFilter = document.getElementById('endDateFilter');
 
-        // Reset visibility
-        yearFilter.style.display = 'flex';
-        monthFilter.style.display = 'none';
-        startDateFilter.style.display = 'none';
-        endDateFilter.style.display = 'none';
+function handlePeriodChange() {
+    const periodType = document.getElementById('periodType').value;
 
-        switch (periodType) {
-            case 'monthly':
-                monthFilter.style.display = 'flex';
-                break;
-            case '6months':
-                monthFilter.style.display = 'flex';
-                break;
-            case 'yearly':
-                // Only year needed
-                break;
-            case 'custom':
-                yearFilter.style.display = 'none';
-                startDateFilter.style.display = 'flex';
-                endDateFilter.style.display = 'flex';
-                break;
-        }
+    const yearFilter = document.getElementById('yearFilter');
+    const monthFilter = document.getElementById('monthFilter');
+    const startDateFilter = document.getElementById('startDateFilter');
+    const endDateFilter = document.getElementById('endDateFilter');
+
+    const yearSelect = document.getElementById('year');
+    const monthSelect = document.getElementById('month');
+    const startDate = document.getElementById('startDate');
+    const endDate = document.getElementById('endDate');
+
+    // Hide all
+    yearFilter.style.display = 'none';
+    monthFilter.style.display = 'none';
+    startDateFilter.style.display = 'none';
+    endDateFilter.style.display = 'none';
+
+    yearSelect.disabled = true;
+    monthSelect.disabled = true;
+    startDate.disabled = true;
+    endDate.disabled = true;
+
+    switch (periodType) {
+        case 'monthly':
+            yearFilter.style.display = 'block';
+            monthFilter.style.display = 'block';
+            yearSelect.disabled = false;
+            monthSelect.disabled = false;
+            break;
+
+        case '6months':
+            yearFilter.style.display = 'block';
+            monthFilter.style.display = 'block';
+            yearSelect.disabled = false;
+            monthSelect.disabled = false;
+            break;
+
+        case 'yearly':
+            yearFilter.style.display = 'block';
+            yearSelect.disabled = false;
+            break;
+
+        case 'custom':
+            startDateFilter.style.display = 'block';
+            endDateFilter.style.display = 'block';
+            startDate.disabled = false;
+            endDate.disabled = false;
+            break;
     }
+}
+
+document.addEventListener('DOMContentLoaded', handlePeriodChange);
+
+
 
     function exportCSV() {
         const form = document.getElementById('filterForm');
