@@ -181,7 +181,11 @@ $show_breadcrumb = true;
 </style>
 
 
-
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log(document.getElementById('year').innerHTML);
+    });
+</script>
 <div class="row">
     <!-- Filter Controls -->
     <div class="col-xxl-12 mb-4">
@@ -202,14 +206,19 @@ $show_breadcrumb = true;
                             </select>
                         </div>
 
+
                         <div class="filter-item" id="yearFilter">
                             <label>Year</label>
                             <select name="year" id="year" class="form-select">
                                 <?php
-                                $currentYear = date('Y');
+                                $currentYear  = (int)date('Y');
+                                $selectedYear = isset($year) ? (int)$year : $currentYear;
+
                                 for ($y = $currentYear; $y >= ($currentYear - 5); $y--):
                                 ?>
-                                    <option value="<?= $y ?>" <?= ($year ?? '') == $y ? 'selected' : '' ?>><?= $y ?></option>
+                                    <option value="<?= $y ?>" <?= $selectedYear === $y ? 'selected' : '' ?>>
+                                        <?= $y ?>
+                                    </option>
                                 <?php endfor; ?>
                             </select>
                         </div>
@@ -440,61 +449,75 @@ $show_breadcrumb = true;
 </div>
 
 <script>
-
-function handlePeriodChange() {
-    const periodType = document.getElementById('periodType').value;
-
-    const yearFilter = document.getElementById('yearFilter');
-    const monthFilter = document.getElementById('monthFilter');
-    const startDateFilter = document.getElementById('startDateFilter');
-    const endDateFilter = document.getElementById('endDateFilter');
-
+    document.addEventListener('DOMContentLoaded', function () {
     const yearSelect = document.getElementById('year');
-    const monthSelect = document.getElementById('month');
-    const startDate = document.getElementById('startDate');
-    const endDate = document.getElementById('endDate');
 
-    // Hide all
-    yearFilter.style.display = 'none';
-    monthFilter.style.display = 'none';
-    startDateFilter.style.display = 'none';
-    endDateFilter.style.display = 'none';
-
-    yearSelect.disabled = true;
-    monthSelect.disabled = true;
-    startDate.disabled = true;
-    endDate.disabled = true;
-
-    switch (periodType) {
-        case 'monthly':
-            yearFilter.style.display = 'block';
-            monthFilter.style.display = 'block';
-            yearSelect.disabled = false;
-            monthSelect.disabled = false;
-            break;
-
-        case '6months':
-            yearFilter.style.display = 'block';
-            monthFilter.style.display = 'block';
-            yearSelect.disabled = false;
-            monthSelect.disabled = false;
-            break;
-
-        case 'yearly':
-            yearFilter.style.display = 'block';
-            yearSelect.disabled = false;
-            break;
-
-        case 'custom':
-            startDateFilter.style.display = 'block';
-            endDateFilter.style.display = 'block';
-            startDate.disabled = false;
-            endDate.disabled = false;
-            break;
+    // If JS destroyed options, rebuild them
+    if (yearSelect && yearSelect.options.length === 0) {
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear; y >= currentYear - 5; y--) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            yearSelect.appendChild(opt);
+        }
     }
-}
+});
+    function handlePeriodChange() {
+        const periodType = document.getElementById('periodType').value;
 
-document.addEventListener('DOMContentLoaded', handlePeriodChange);
+        const yearFilter = document.getElementById('yearFilter');
+        const monthFilter = document.getElementById('monthFilter');
+        const startDateFilter = document.getElementById('startDateFilter');
+        const endDateFilter = document.getElementById('endDateFilter');
+
+        const yearSelect = document.getElementById('year');
+        const monthSelect = document.getElementById('month');
+        const startDate = document.getElementById('startDate');
+        const endDate = document.getElementById('endDate');
+
+        // Hide all
+        yearFilter.style.display = 'none';
+        monthFilter.style.display = 'none';
+        startDateFilter.style.display = 'none';
+        endDateFilter.style.display = 'none';
+
+        yearSelect.disabled = false;
+        monthSelect.disabled = true;
+        startDate.disabled = true;
+        endDate.disabled = true;
+
+        switch (periodType) {
+            case 'monthly':
+                yearFilter.style.display = 'block';
+                monthFilter.style.display = 'block';
+                yearSelect.disabled = false;
+                monthSelect.disabled = false;
+                break;
+
+            case '6months':
+                yearFilter.style.display = 'block';
+                monthFilter.style.display = 'block';
+                yearSelect.disabled = false;
+                monthSelect.disabled = false;
+                break;
+
+            case 'yearly':
+                yearFilter.style.display = 'block';
+                yearFilter.style.color = '#000';
+                yearSelect.disabled = false;
+                break;
+
+            case 'custom':
+                startDateFilter.style.display = 'block';
+                endDateFilter.style.display = 'block';
+                startDate.disabled = false;
+                endDate.disabled = false;
+                break;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', handlePeriodChange);
 
 
 

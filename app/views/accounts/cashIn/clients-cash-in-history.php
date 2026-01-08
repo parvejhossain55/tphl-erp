@@ -286,7 +286,7 @@ $show_breadcrumb = true;
                     <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                         <i class="fa-light fa-plus me-2"></i> Add Transaction
                     </a>
-                    <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
+                    <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
 

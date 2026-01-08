@@ -14,10 +14,20 @@ class CentralStatement extends Model
      */
     public function getMonthlyStatement($year, $month)
     {
+        // Ensure proper formatting
+        $year = (int)$year;
+        $month = (int)$month;
+        
         // Get all dates in the month
         $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
-        $startDate = "$year-$month-01";
-        $endDate = "$year-$month-$daysInMonth";
+        $monthPadded = sprintf("%02d", $month);
+        $daysPadded = sprintf("%02d", $daysInMonth);
+        
+        $startDate = "$year-$monthPadded-01";
+        $endDate = "$year-$monthPadded-$daysPadded";
+
+        // Get opening balance (all transactions before this month)
+        $openingBalance = $this->getOpeningBalance($startDate);
 
         // Get daily cash-in totals (from lead_payments - clients)
         $cashInQuery = "
@@ -25,7 +35,7 @@ class CentralStatement extends Model
                 DATE(payment_date) as transaction_date,
                 SUM(amount) as total_amount
             FROM lead_payments
-            WHERE payment_date BETWEEN ? AND ?
+            WHERE DATE(payment_date) BETWEEN ? AND ?
             AND payment_status = 'paid'
             GROUP BY DATE(payment_date)
         ";
@@ -36,7 +46,7 @@ class CentralStatement extends Model
                 DATE(transaction_date) as transaction_date,
                 SUM(amount) as total_amount
             FROM management_cashin
-            WHERE transaction_date BETWEEN ? AND ?
+            WHERE DATE(transaction_date) BETWEEN ? AND ?
             AND payment_status = 'paid'
             GROUP BY DATE(transaction_date)
         ";
@@ -47,12 +57,12 @@ class CentralStatement extends Model
                 DATE(transaction_date) as transaction_date,
                 SUM(amount) as total_amount
             FROM management_cashout
-            WHERE transaction_date BETWEEN ? AND ?
+            WHERE DATE(transaction_date) BETWEEN ? AND ?
             AND payment_status = 'paid'
             GROUP BY DATE(transaction_date)
         ";
 
-        // Execute queries
+        // Execute queries and build data arrays
         $cashInStmt = $this->db->prepare($cashInQuery);
         $cashInStmt->bind_param("ss", $startDate, $endDate);
         $cashInStmt->execute();
@@ -82,14 +92,21 @@ class CentralStatement extends Model
 
         // Build daily statement
         $dailyStatement = [];
-        $runningBalance = 0;
+        $runningBalance = $openingBalance; // Start with opening balance
+        $totalCashIn = 0;
+        $totalCashOut = 0;
 
         for ($day = 1; $day <= $daysInMonth; $day++) {
-            $date = sprintf("%s-%02d", "$year-$month", $day);
+            $dayPadded = sprintf("%02d", $day);
+            $date = "$year-$monthPadded-$dayPadded";
             $cashIn = $cashInData[$date] ?? 0;
             $cashOut = $cashOutData[$date] ?? 0;
             $netAmount = $cashIn - $cashOut;
             $runningBalance += $netAmount;
+            
+            // Accumulate totals
+            $totalCashIn += $cashIn;
+            $totalCashOut += $cashOut;
 
             $dailyStatement[] = [
                 'date' => $date,
@@ -106,11 +123,12 @@ class CentralStatement extends Model
             'period' => date('F Y', strtotime($startDate)),
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'opening_balance' => $openingBalance,
             'daily_data' => $dailyStatement,
             'summary' => [
-                'total_cash_in' => array_sum($cashInData),
-                'total_cash_out' => array_sum($cashOutData),
-                'net_balance' => array_sum($cashInData) - array_sum($cashOutData),
+                'total_cash_in' => $totalCashIn,
+                'total_cash_out' => $totalCashOut,
+                'net_balance' => $totalCashIn - $totalCashOut,
                 'final_balance' => $runningBalance
             ]
         ];
@@ -122,11 +140,15 @@ class CentralStatement extends Model
     public function getSixMonthStatement($endYear, $endMonth)
     {
         $monthlyData = [];
-        $runningBalance = 0;
-
+        
         // Calculate 6 months back
         $startDate = date('Y-m-01', strtotime("-5 months", strtotime("$endYear-$endMonth-01")));
         $endDate = date('Y-m-t', strtotime("$endYear-$endMonth-01"));
+        
+        // Get opening balance before the 6-month period
+        $runningBalance = $this->getOpeningBalance($startDate);
+        $totalCashIn = 0;
+        $totalCashOut = 0;
 
         for ($i = 5; $i >= 0; $i--) {
             $date = date('Y-m-01', strtotime("-$i months", strtotime("$endYear-$endMonth-01")));
@@ -140,6 +162,10 @@ class CentralStatement extends Model
             $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd);
             $netAmount = $cashIn - $cashOut;
             $runningBalance += $netAmount;
+            
+            // Accumulate totals
+            $totalCashIn += $cashIn;
+            $totalCashOut += $cashOut;
 
             $monthlyData[] = [
                 'month' => date('F Y', strtotime($date)),
@@ -156,11 +182,12 @@ class CentralStatement extends Model
             'period' => 'Last 6 Months',
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'opening_balance' => $this->getOpeningBalance($startDate),
             'monthly_data' => $monthlyData,
             'summary' => [
-                'total_cash_in' => array_sum(array_column($monthlyData, 'cash_in')),
-                'total_cash_out' => array_sum(array_column($monthlyData, 'cash_out')),
-                'net_balance' => array_sum(array_column($monthlyData, 'net_amount')),
+                'total_cash_in' => $totalCashIn,
+                'total_cash_out' => $totalCashOut,
+                'net_balance' => $totalCashIn - $totalCashOut,
                 'final_balance' => $runningBalance
             ]
         ];
@@ -172,7 +199,12 @@ class CentralStatement extends Model
     public function getYearlyStatement($year)
     {
         $monthlyData = [];
-        $runningBalance = 0;
+        $startDate = "$year-01-01";
+        
+        // Get opening balance before the year
+        $runningBalance = $this->getOpeningBalance($startDate);
+        $totalCashIn = 0;
+        $totalCashOut = 0;
 
         for ($month = 1; $month <= 12; $month++) {
             $monthStart = sprintf("%s-%02d-01", $year, $month);
@@ -182,6 +214,10 @@ class CentralStatement extends Model
             $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd);
             $netAmount = $cashIn - $cashOut;
             $runningBalance += $netAmount;
+            
+            // Accumulate totals
+            $totalCashIn += $cashIn;
+            $totalCashOut += $cashOut;
 
             $monthlyData[] = [
                 'month' => date('F Y', strtotime($monthStart)),
@@ -198,11 +234,12 @@ class CentralStatement extends Model
             'period' => "Year $year",
             'start_date' => "$year-01-01",
             'end_date' => "$year-12-31",
+            'opening_balance' => $this->getOpeningBalance($startDate),
             'monthly_data' => $monthlyData,
             'summary' => [
-                'total_cash_in' => array_sum(array_column($monthlyData, 'cash_in')),
-                'total_cash_out' => array_sum(array_column($monthlyData, 'cash_out')),
-                'net_balance' => array_sum(array_column($monthlyData, 'net_amount')),
+                'total_cash_in' => $totalCashIn,
+                'total_cash_out' => $totalCashOut,
+                'net_balance' => $totalCashIn - $totalCashOut,
                 'final_balance' => $runningBalance
             ]
         ];
@@ -218,10 +255,8 @@ class CentralStatement extends Model
         $daysDiff = ($end - $start) / (60 * 60 * 24);
 
         if ($daysDiff <= 31) {
-            // Show daily breakdown
             return $this->getCustomDailyStatement($startDate, $endDate);
         } else {
-            // Show monthly breakdown
             return $this->getCustomMonthlyStatement($startDate, $endDate);
         }
     }
@@ -234,7 +269,11 @@ class CentralStatement extends Model
         $start = strtotime($startDate);
         $end = strtotime($endDate);
         $dailyData = [];
-        $runningBalance = 0;
+        
+        // Get opening balance before the period
+        $runningBalance = $this->getOpeningBalance($startDate);
+        $totalCashIn = 0;
+        $totalCashOut = 0;
 
         // Get data for each day
         for ($current = $start; $current <= $end; $current += 86400) {
@@ -243,6 +282,10 @@ class CentralStatement extends Model
             $cashOut = $this->getDailyCashOut($date);
             $netAmount = $cashIn - $cashOut;
             $runningBalance += $netAmount;
+            
+            // Accumulate totals
+            $totalCashIn += $cashIn;
+            $totalCashOut += $cashOut;
 
             $dailyData[] = [
                 'date' => $date,
@@ -259,11 +302,12 @@ class CentralStatement extends Model
             'period' => 'Custom Range (Daily)',
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'opening_balance' => $this->getOpeningBalance($startDate),
             'daily_data' => $dailyData,
             'summary' => [
-                'total_cash_in' => array_sum(array_column($dailyData, 'cash_in')),
-                'total_cash_out' => array_sum(array_column($dailyData, 'cash_out')),
-                'net_balance' => array_sum(array_column($dailyData, 'net_amount')),
+                'total_cash_in' => $totalCashIn,
+                'total_cash_out' => $totalCashOut,
+                'net_balance' => $totalCashIn - $totalCashOut,
                 'final_balance' => $runningBalance
             ]
         ];
@@ -275,10 +319,14 @@ class CentralStatement extends Model
     private function getCustomMonthlyStatement($startDate, $endDate)
     {
         $monthlyData = [];
-        $runningBalance = 0;
-
+        
         $start = strtotime(date('Y-m-01', strtotime($startDate)));
         $end = strtotime(date('Y-m-t', strtotime($endDate)));
+        
+        // Get opening balance before the period
+        $runningBalance = $this->getOpeningBalance(date('Y-m-01', strtotime($startDate)));
+        $totalCashIn = 0;
+        $totalCashOut = 0;
 
         $current = $start;
         while ($current <= $end) {
@@ -289,6 +337,10 @@ class CentralStatement extends Model
             $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd);
             $netAmount = $cashIn - $cashOut;
             $runningBalance += $netAmount;
+            
+            // Accumulate totals
+            $totalCashIn += $cashIn;
+            $totalCashOut += $cashOut;
 
             $monthlyData[] = [
                 'month' => date('F Y', $current),
@@ -307,14 +359,68 @@ class CentralStatement extends Model
             'period' => 'Custom Range (Monthly)',
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'opening_balance' => $this->getOpeningBalance(date('Y-m-01', strtotime($startDate))),
             'monthly_data' => $monthlyData,
             'summary' => [
-                'total_cash_in' => array_sum(array_column($monthlyData, 'cash_in')),
-                'total_cash_out' => array_sum(array_column($monthlyData, 'cash_out')),
-                'net_balance' => array_sum(array_column($monthlyData, 'net_amount')),
+                'total_cash_in' => $totalCashIn,
+                'total_cash_out' => $totalCashOut,
+                'net_balance' => $totalCashIn - $totalCashOut,
                 'final_balance' => $runningBalance
             ]
         ];
+    }
+
+    /**
+     * Helper: Get opening balance before a specific date
+     */
+    private function getOpeningBalance($startDate)
+    {
+        // Get all cash-in before start date
+        $cashInQuery = "
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM (
+                SELECT amount FROM lead_payments 
+                WHERE DATE(payment_date) < ? AND payment_status = 'paid'
+                UNION ALL
+                SELECT amount FROM management_cashin 
+                WHERE DATE(transaction_date) < ? AND payment_status = 'paid'
+            ) as combined
+        ";
+        
+        // Get all cash-out before start date
+        $cashOutQuery = "
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM management_cashout
+            WHERE DATE(transaction_date) < ? AND payment_status = 'paid'
+        ";
+        
+        $totalCashIn = 0;
+        $stmt = $this->db->prepare($cashInQuery);
+        $stmt->bind_param("ss", $startDate, $startDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $totalCashIn = (float)$row['total'];
+        }
+        
+        $totalCashOut = 0;
+        $stmt = $this->db->prepare($cashOutQuery);
+        $stmt->bind_param("s", $startDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $totalCashOut = (float)$row['total'];
+        }
+        
+        $openingBalance = $totalCashIn - $totalCashOut;
+        
+        // Debug log
+        error_log("Opening Balance Calculation for $startDate:");
+        error_log("Total Cash In before start: " . $totalCashIn);
+        error_log("Total Cash Out before start: " . $totalCashOut);
+        error_log("Opening Balance: " . $openingBalance);
+        
+        return $openingBalance;
     }
 
     /**
@@ -371,10 +477,10 @@ class CentralStatement extends Model
                 COALESCE(SUM(amount), 0) as total
             FROM (
                 SELECT amount FROM lead_payments 
-                WHERE payment_date BETWEEN ? AND ? AND payment_status = 'paid'
+                WHERE DATE(payment_date) BETWEEN ? AND ? AND payment_status = 'paid'
                 UNION ALL
                 SELECT amount FROM management_cashin 
-                WHERE transaction_date BETWEEN ? AND ? AND payment_status = 'paid'
+                WHERE DATE(transaction_date) BETWEEN ? AND ? AND payment_status = 'paid'
             ) as combined
         ";
 
@@ -394,7 +500,7 @@ class CentralStatement extends Model
         $query = "
             SELECT COALESCE(SUM(amount), 0) as total
             FROM management_cashout
-            WHERE transaction_date BETWEEN ? AND ? AND payment_status = 'paid'
+            WHERE DATE(transaction_date) BETWEEN ? AND ? AND payment_status = 'paid'
         ";
 
         $stmt = $this->db->prepare($query);

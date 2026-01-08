@@ -167,8 +167,8 @@ $show_breadcrumb = true;
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title" style="margin-top: -13px;">Management Transactions</h5>
                 <div class="action-transaction-buttons gap-2">
-                    <a href="<?= $GLOBALS['base_url'] ?>/management-cash-in-statement" class="btn btn-primary">
-                        <i class="fa-light fa-file-lines me-2"></i> View Statement
+                    <a href="<?= $GLOBALS['base_url'] ?>/management-cash-in-statement" target="_blank" class="btn btn-primary">
+                        <i class="fa-light fa-file-lines me-2"></i> Get Statement
                     </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/management-roles" class="btn btn-info">
                         <i class="fa-light fa-users-gear me-2"></i> Manage Roles

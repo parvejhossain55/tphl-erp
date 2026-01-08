@@ -28,10 +28,10 @@ $show_breadcrumb = true;
         justify-content: end;
     }
 
-    @media(max-width:768px){
-    .action-transaction-buttons {
-    margin-top: 10px;
-}
+    @media(max-width:768px) {
+        .action-transaction-buttons {
+            margin-top: 10px;
+        }
     }
 
     @media (max-width: 640px) {
@@ -180,11 +180,11 @@ $show_breadcrumb = true;
                     <a href="<?= $GLOBALS['base_url'] ?>/management-categories" class="btn btn-info">
                         <i class="fa-light fa-layer-group me-2"></i> Manage Categories
                     </a>
-                    
+
                     <a href="<?= $GLOBALS['base_url'] ?>/add-management-cash-out" class="btn btn-success">
                         <i class="fa-light fa-plus me-2"></i> Add Transaction
                     </a>
-                    
+
                 </div>
             </div>
             <div class="card__body">
@@ -274,13 +274,13 @@ $show_breadcrumb = true;
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-center justify-content-start gap-10">
-                                            <a href="<?= $GLOBALS['base_url'] ?>/management-cash-out-invoice?id=<?= $transaction['id'] ?>" 
-   class="table__icon view" 
-   title="View Invoice" 
-   target="_blank">
-    <i class="fa-light fa-file-invoice"></i>
-</a>   
-                                            <a href="<?= $GLOBALS['base_url'] ?>/edit-management-cash-out?id=<?= $transaction['id'] ?>" class="table__icon edit" title="Edit">
+                                                <a href="<?= $GLOBALS['base_url'] ?>/management-cash-out-invoice?id=<?= $transaction['id'] ?>"
+                                                    class="table__icon view"
+                                                    title="View Invoice"
+                                                    target="_blank">
+                                                    <i class="fa-light fa-file-invoice" style="background:#6c5ffc; color: white; padding:7px 9px; border-radius: 5px;"></i>
+                                                </a>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/edit-management-cash-out?id=<?= $transaction['id'] ?>" class="table__icon edit" title="Edit">
                                                     <i class="fa-sharp fa-light fa-pen"></i>
                                                 </a>
                                                 <a href="#" class="removeBtn table__icon delete" onclick="deleteTransaction(<?= $transaction['id'] ?>)" title="Delete">

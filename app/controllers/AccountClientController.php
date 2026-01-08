@@ -228,7 +228,7 @@ public function addTransaction()
 
             // UPDATED VALIDATION: Only require due amount for partially_paid status
             if ($transactionData['payment_status'] === 'partially_paid') {
-                if (empty($emiScheduleData['due_emi_amount']) || $emiScheduleData['due_emi_amount'] <= 0) {
+                if ( $emiScheduleData['due_emi_amount'] <= 0) {
                     setError("Partially Paid status requires a due amount greater than 0");
                     header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
                     exit;

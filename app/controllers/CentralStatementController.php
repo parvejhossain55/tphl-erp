@@ -16,81 +16,95 @@ class CentralStatementController extends Controller
     /**
      * Main index - Show central statement page
      */
-    public function index()
-    {
-        // Check if this is a print request
-        $isPrint = isset($_GET['print']) && $_GET['print'] == 'true';
+/**
+ * Main index - Show central statement page
+ */
+public function index()
+{
+    // Check if this is a print request
+    $isPrint = isset($_GET['print']) && $_GET['print'] == 'true';
 
-        // If it's a print request, use the print method
-        if ($isPrint) {
-            $this->printStatement();
-            return;
-        }
+    // If it's a print request, use the print method
+    if ($isPrint) {
+        $this->printStatement();
+        return;
+    }
 
-        // Get period type from query params
-        $periodType = $_GET['period_type'] ?? 'monthly';
-        $year = $_GET['year'] ?? date('Y');
-        $month = $_GET['month'] ?? date('m');
-        $startDate = $_GET['start_date'] ?? null;
-        $endDate = $_GET['end_date'] ?? null;
+    // Get period type from query params with proper defaults
+    $periodType = $_GET['period_type'] ?? 'monthly';
+    $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+    $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+    $startDate = $_GET['start_date'] ?? null;
+    $endDate = $_GET['end_date'] ?? null;
 
-        // Get statement data based on period type
-        $statementData = null;
-        $periodText = '';
+    // Debug log
+    error_log("Central Statement Index - Period Type: $periodType, Year: $year, Month: $month");
 
-        switch ($periodType) {
-            case 'monthly':
+    // Get statement data based on period type
+    $statementData = null;
+    $periodText = '';
+
+    switch ($periodType) {
+        case 'monthly':
+            $statementData = $this->statementModel->getMonthlyStatement($year, $month);
+            $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $month) . "-01"));
+            break;
+
+        case '6months':
+            $statementData = $this->statementModel->getSixMonthStatement($year, $month);
+            $periodText = 'Last 6 Months';
+            break;
+
+        case 'yearly':
+            $statementData = $this->statementModel->getYearlyStatement($year);
+            $periodText = "Year $year";
+            break;
+
+        case 'custom':
+            if ($startDate && $endDate) {
+                $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate);
+                $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
+            } else {
+                // Default to current month if dates not provided
+                $year = (int)date('Y');
+                $month = (int)date('m');
                 $statementData = $this->statementModel->getMonthlyStatement($year, $month);
-                $periodText = date('F Y', strtotime("$year-$month-01"));
-                break;
-
-            case '6months':
-                $statementData = $this->statementModel->getSixMonthStatement($year, $month);
-                $periodText = 'Last 6 Months';
-                break;
-
-            case 'yearly':
-                $statementData = $this->statementModel->getYearlyStatement($year);
-                $periodText = "Year $year";
-                break;
-
-            case 'custom':
-                if ($startDate && $endDate) {
-                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate);
-                    $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
-                } else {
-                    // Default to current month if dates not provided
-                    $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'));
-                    $periodText = date('F Y');
-                    $periodType = 'monthly';
-                }
-                break;
-
-            default:
-                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'));
                 $periodText = date('F Y');
                 $periodType = 'monthly';
-        }
+            }
+            break;
 
-        // Get overall statistics
-        $overallStats = $this->statementModel->getOverallStatistics();
-
-        // Prepare view data
-        $viewData = [
-            'current_route' => 'central-statement',
-            'page_title' => 'Central Financial Statement',
-            'period_type' => $periodType,
-            'period_text' => $periodText,
-            'year' => $year,
-            'month' => $month,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'statement_data' => $statementData,
-            'overall_stats' => $overallStats
-        ];
-
-        $this->view('accounts/central-statement', $viewData);
+        default:
+            $year = (int)date('Y');
+            $month = (int)date('m');
+            $statementData = $this->statementModel->getMonthlyStatement($year, $month);
+            $periodText = date('F Y');
+            $periodType = 'monthly';
     }
+
+    // Get overall statistics
+    $overallStats = $this->statementModel->getOverallStatistics();
+
+    // Prepare view data
+    $viewData = [
+        'current_route' => 'central-statement',
+        'page_title' => 'Central Financial Statement',
+        'period_type' => $periodType,
+        'period_text' => $periodText,
+        'year' => $year,
+        'month' => sprintf('%02d', $month), // Ensure 2-digit format
+        'start_date' => $startDate,
+        'end_date' => $endDate,
+        'statement_data' => $statementData,
+        'overall_stats' => $overallStats
+    ];
+
+    // Debug log
+    error_log("View Data - Year: " . $viewData['year'] . ", Month: " . $viewData['month']);
+    error_log("Statement Data Keys: " . json_encode(array_keys($statementData ?? [])));
+
+    $this->view('accounts/central-statement', $viewData);
+}
 
     /**
      * Print statement - separate method for print view
@@ -213,7 +227,7 @@ class CentralStatementController extends Controller
                     text-align: center;
                     margin-bottom: 12mm;
                     border-bottom: 1mm solid #000;
-                    padding-bottom: 6mm;
+                    
                 }
 
                 .company-name {

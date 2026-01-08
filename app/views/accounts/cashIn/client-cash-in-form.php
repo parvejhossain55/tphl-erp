@@ -80,13 +80,7 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
                             </small>
                         </div>
 
-                        <!-- EMI Details Section -->
-                        <div class="col-md-6 mb-3" id="emiDetailsSection" style="display: none;">
-                            <label class="form-label">Due EMI Amount: <span class="text-danger">*</span></label>
-                            <input type="number" name="due_emi_amount" class="form-control" step="0.01" min="0.01"
-                                value="<?= $_POST['due_emi_amount'] ?? '' ?>">
-                            <small class="text-muted">Enter the due amount for this EMI installment</small>
-                        </div>
+
 
                         <!-- Amount -->
                         <div class="col-md-6">
@@ -96,14 +90,14 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
                             </div>
                         </div>
 
-                        <!-- EMI Details (Visible only for EMI type) -->
                         <div class="col-md-12 emi-fields" style="display: none;">
                             <div class="from__input-box">
-                                <label class="form__input-title">Due Amount <span>*</span></label>
+                                <label class="form__input-title">Due Amount</label>
                                 <input type="number" name="due_emi_amount" id="dueEmiAmount" class="form-control" step="0.01" min="0" placeholder="Enter due amount for this EMI">
-                                <small class="text-muted">This will be added to EMI schedule</small>
+                                <small class="text-muted">This will be added to EMI schedule (optional)</small>
                             </div>
                         </div>
+
 
                         <!-- Payment Method -->
                         <div class="col-md-6">
@@ -212,15 +206,13 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
         const onlineFields = document.querySelectorAll('.online-fields');
 
         // Show/hide EMI fields
-        paymentType.addEventListener('change', function() {
-            if (this.value === 'emi') {
-                emiFields.forEach(field => field.style.display = 'block');
-                document.getElementById('dueEmiAmount').removeAttribute('required', 'required');
-            } else {
-                emiFields.forEach(field => field.style.display = 'none');
-                document.getElementById('dueEmiAmount').removeAttribute('required');
-            }
-        });
+        if (isEMI) {
+            emiFields.forEach(field => field.style.display = 'block');
+        } else {
+            emiFields.forEach(field => field.style.display = 'none');
+            dueEmiAmountField.value = ''; // optional: clear value when EMI not selected
+        }
+
 
         // Show/hide payment method specific fields
         paymentMethod.addEventListener('change', function() {
@@ -325,14 +317,13 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
 
                 emiFields.forEach(field => field.style.display = isEMI ? 'block' : 'none');
 
-                if (dueEmiAmountField) {
-                    if (isEMI) {
-                        dueEmiAmountField.setAttribute('required', 'required');
-                    } else {
-                        dueEmiAmountField.removeAttribute('required');
-                        dueEmiAmountField.value = ''; // Clear the value
-                    }
+                if (isEMI) {
+                    emiFields.forEach(field => field.style.display = 'block');
+                } else {
+                    emiFields.forEach(field => field.style.display = 'none');
+                    dueEmiAmountField.value = ''; // optional: clear value when EMI not selected
                 }
+
 
                 // Control partially paid status when payment type changes
                 controlPartiallyPaidStatus();
