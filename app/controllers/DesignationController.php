@@ -12,62 +12,83 @@ class DesignationController extends Controller
     }
 public function index()
 {
-    // Get all designations with department names (no pagination)
+    // Get all designations with department names
     $designations = $this->designationModel->getAll();
 
- 
-    // Get paginated departments
+    // Group designations by department safely
+  $grouped = [];
+if (is_array($designations)) {
+    foreach ($designations as $d) {
+        if (!is_array($d)) continue; // ignore invalid data
+
+        $deptName = $d['department_name'] ?? 'Unknown';
+        $designationName = $d['designation_name'] ?? 'Unnamed';
+
+        // Skip "No Department"
+        if (strtolower($deptName) === 'no department') continue;
+
+        if (!isset($grouped[$deptName])) {
+            $grouped[$deptName] = [];
+        }
+        $grouped[$deptName][] = $designationName;
+    }
+}
+
+
+    // Get all departments
     $departments = $this->deparmentModel->getAll();
 
     $this->view("hrm/designations/designations", [
-        "current_route"   => "designations",
-        "page_title"      => "Designations List",
-        "designations"    => $designations,
-        "departments"     => $departments,
- 
+        "current_route"       => "designations",
+        "page_title"          => "Designations List",
+        "designations"        => $designations,
+        "departments"         => $departments,
+        "groupedDesignations" => $grouped
     ]);
 }
 
 
 
+
+
+
     // Handle form submission
-public function store()
-{
-    $data = [
-        'name'   => $_POST['name'] ?? '',
-        'department_id'   => $_POST['department_id'] ?? '',
-       
-    ];
+    public function store()
+    {
+        $data = [
+            'name'   => $_POST['name'] ?? '',
+            'department_id'   => $_POST['department_id'] ?? '',
 
-    if ($this->designationModel->create($data)) {
-        setSuccess("Designation created successfully.");
-        header("Location: {$GLOBALS['base_url']}/designations");
-        exit;
-    } else {
-      setError("Failed to create designation.");
-        echo "<h3 style='color:red'>Failed to create designation</h3>";
+        ];
+
+        if ($this->designationModel->create($data)) {
+            setSuccess("Designation created successfully.");
+            header("Location: {$GLOBALS['base_url']}/designations");
+            exit;
+        } else {
+            setError("Failed to create designation.");
+            echo "<h3 style='color:red'>Failed to create designation</h3>";
+        }
     }
-}
 
 
-public function update()
-{
+    public function update()
+    {
 
         $id = $_POST['id'];
         $name = $_POST['name'];
         $department_id = $_POST['department_id'];
 
-   $updated = $this->designationModel->update($id, $name, $department_id);
+        $updated = $this->designationModel->update($id, $name, $department_id);
 
         if ($updated) {
             setSuccess("Updated successfully.");
-             header("Location: {$GLOBALS['base_url']}/designations");
+            header("Location: {$GLOBALS['base_url']}/designations");
         } else {
             setError("Update failed!");
         }
         exit;
-    
-}
+    }
 
 
 
@@ -83,19 +104,14 @@ public function update()
     }
 
     public function delete()
-{
-    $id = $_POST['id'] ?? 0;
+    {
+        $id = $_POST['id'] ?? 0;
 
-    if ($id && $this->designationModel->delete($id)) {
-        header("Location: {$GLOBALS['base_url']}/designations");
-        exit;
-    } else {
-        echo "<h3 style='color:red'>Failed to delete department</h3>";
+        if ($id && $this->designationModel->delete($id)) {
+            header("Location: {$GLOBALS['base_url']}/designations");
+            exit;
+        } else {
+            echo "<h3 style='color:red'>Failed to delete department</h3>";
+        }
     }
-}
-
-
-
-
-   
 }

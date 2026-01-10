@@ -66,6 +66,9 @@ $routes = [
     "user-profile/(\d+)"          => ["controller" => "UserController", "method" => "show"],
     "update-user/(\d+)"          => ["controller" => "UserController", "method" => "update"],
     "delete-user"          => ["controller" => "UserController", "method" => "delete"],
+    "user-dashboard"          => ["controller" => "UserDashboardController", "method" => "index"],
+    "update-call-status"          => ["controller" => "UserDashboardController", "method" => "updateCallStatus"],
+    "update-call-notes"          => ["controller" => "UserDashboardController", "method" => "updateCallNote"],
 
 
     "customer-lists"       => ["controller" => "CustomerController", "method" => "index"],
@@ -147,10 +150,16 @@ $routes = [
     "edit-lead/(\d+)" => ["controller" => "LeadController", "method" => "edit"],
     "view-lead/(\d+)" => ["controller" => "LeadController", "method" => "show"],
     "leads-import-csv" => ["controller" => "LeadController", "method" => "importCsv"],
-
+     "onboarding-clients" => ["controller" => "LeadController", "method" => "showOnboardClient"],
     "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
     "update-last_leadAction/(\d+)" => ["controller" => "LeadController", "method" => "updateLastleadAction"],
     "lead-delete" => ["controller" => "LeadController", "method" => "delete"],
+    "assign-multiple-leads" => ["controller" => "LeadController", "method" => "assignMultipleLeads"],
+
+
+
+
+
     // leads Source
     "leadSource-lists" => ["controller" => "LeadSourceController", "method" => "index"],
     // "create-leadSource" => ["controller" => "LeadSourceController", "method" => "create"],
@@ -297,6 +306,8 @@ $routes = [
     // ==================== CLIENT CASH IN ROUTES ====================
 
     "clients-cash-in" => ["controller" => "AccountClientController", "method" => "index"],
+    "get-client-lands" => ["controller" => "AccountClientController","method" => "getClientLands"
+],
     // client's cash in history 
     "clients-cash-in-history" => ["controller" => "AccountClientController", "method" => "indexTwo"],
     "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],

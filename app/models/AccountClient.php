@@ -12,7 +12,47 @@ class AccountClient extends Model
     /**
      * Get all clients (booked leads) with full details including flat price
      */
-    public function getAllClients()
+     public function getAllClients()
+    {
+        $sql = $this->db->prepare("
+            SELECT DISTINCT
+                l.id as lead_id,
+                l.full_name as client_name,
+                l.phone,
+                l.email,
+                l.designation,
+                u.full_name as agent_name,
+                COUNT(DISTINCT lb.id) as total_lands,
+                SUM(lb.agreement_value) as total_agreement_value,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id IN (
+                         SELECT id FROM lead_bookings WHERE lead_id = l.id
+                     ) AND lp.payment_status = 'paid'), 
+                    0
+                ) as total_paid,
+                COALESCE(
+                    (SELECT MAX(lp.payment_date) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id IN (
+                         SELECT id FROM lead_bookings WHERE lead_id = l.id
+                     ) AND lp.payment_status = 'paid'), 
+                    NULL
+                ) as last_payment_date
+            FROM leads l
+            LEFT JOIN lead_bookings lb ON l.id = lb.lead_id AND lb.booking_status != 'cancelled'
+            LEFT JOIN users u ON l.assigned_id = u.id
+            WHERE EXISTS (SELECT 1 FROM lead_bookings WHERE lead_id = l.id AND booking_status != 'cancelled')
+            GROUP BY l.id, l.full_name, l.phone, l.email, l.designation, u.full_name
+            ORDER BY l.full_name
+        ");
+        
+        $sql->execute();
+        $result = $sql->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+    public function getLandsByLeadId($leadId)
     {
         $sql = $this->db->prepare("
             SELECT 
@@ -20,12 +60,9 @@ class AccountClient extends Model
                 lb.booking_date,
                 lb.agreement_value,
                 lb.booking_status,
-                l.id as lead_id,
-                l.lead_name as client_name,
-                l.phone,
-                l.email,
-                l.designation,
-                u.full_name as agent_name,
+                lb.landshare_status,
+                lb.service_fee_balance,
+                p.id as project_id,
                 p.name as project_name,
                 p.types as project_type,
                 f.id as flat_id,
@@ -33,7 +70,6 @@ class AccountClient extends Model
                 f.sqft as flat_size,
                 f.price_value as total_price,
                 un.name as unit_name,
-                -- Total paid amount (sum of all payments)
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
@@ -42,6 +78,13 @@ class AccountClient extends Model
                     0
                 ) as total_paid,
                 COALESCE(
+                    (SELECT SUM(lp.service_fee) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status = 'paid'), 
+                    0
+                ) as total_service_fee,
+                COALESCE(
                     (SELECT MAX(lp.payment_date) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
@@ -49,15 +92,15 @@ class AccountClient extends Model
                     NULL
                 ) as last_payment_date
             FROM lead_bookings lb
-            INNER JOIN leads l ON lb.lead_id = l.id
             INNER JOIN projects p ON lb.project_id = p.id
             INNER JOIN flats f ON lb.flat_id = f.id
             INNER JOIN units un ON f.unit_id = un.id
-            LEFT JOIN users u ON l.assigned_id = u.id
-            WHERE (lb.booking_status = 'booked' OR lb.booking_status = '' OR lb.booking_status IS NULL)
+            WHERE lb.lead_id = ? 
+            AND (lb.booking_status = 'booked' OR lb.booking_status = '' OR lb.booking_status IS NULL)
             ORDER BY lb.booking_date DESC
         ");
         
+        $sql->bind_param("i", $leadId);
         $sql->execute();
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -70,7 +113,7 @@ class AccountClient extends Model
     {
         $sql = $this->db->prepare("
             SELECT 
-                COUNT(DISTINCT lb.id) as total_clients,
+                COUNT(DISTINCT l.id) as total_clients,
                 COUNT(DISTINCT CASE 
                     WHEN (SELECT SUM(lp.amount) 
                           FROM lead_payments lp 
@@ -81,15 +124,17 @@ class AccountClient extends Model
                 COUNT(DISTINCT CASE 
                     WHEN lb.booking_status = 'booked' 
                     THEN lb.id 
-                END) as approved_bookings
-            FROM lead_bookings lb
+                END) as approved_bookings,
+                COALESCE(SUM(lp.service_fee), 0) as total_service_fee_collected
+            FROM leads l
+            INNER JOIN lead_bookings lb ON l.id = lb.lead_id
+            LEFT JOIN lead_payments lp ON lb.id = lp.booking_id AND lp.payment_status = 'paid'
         ");
 
         $sql->execute();
         $result = $sql->get_result();
         return $result ? $result->fetch_assoc() : [];
     }
-
     /**
      * Get booking money transaction from database
      */
@@ -98,7 +143,7 @@ class AccountClient extends Model
         $stmt = $this->db->prepare("
             SELECT 
                 lp.*,
-                l.lead_name as client_name,
+                l.full_name as client_name,
                 p.name as project_name,
                 f.id as flat_id,
                 f.floor_no,
@@ -134,82 +179,114 @@ class AccountClient extends Model
 /**
  * Get client details by booking ID with payment summary and flat price
  */
-public function getClientByBookingId($bookingId)
-{
-    if (empty($bookingId) || !is_numeric($bookingId)) {
-        error_log("Invalid booking ID provided: " . print_r($bookingId, true));
-        return null;
-    }
+ public function getClientByBookingId($bookingId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT 
+                lb.id as booking_id,
+                lb.lead_id,
+                lb.booking_date,
+                lb.agreement_value,
+                lb.booking_status,
+                lb.landshare_status,
+                lb.service_fee_balance,
+                l.id as lead_id,
+                l.full_name as client_name,
+                l.phone,
+                l.email,
+                l.designation,
+                p.id as project_id,
+                p.name as project_name,
+                p.types as project_type,
+                f.id as flat_id,
+                f.floor_no as flat_no,
+                f.sqft as flat_size,
+                f.price_value as total_price,
+                un.id as unit_id,
+                un.name as unit_name,
+                u.full_name as agent_name,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status = 'paid'), 
+                    0
+                ) as total_paid,
+                COALESCE(
+                    (SELECT SUM(lp.service_fee) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status = 'paid'), 
+                    0
+                ) as total_service_fee
+            FROM lead_bookings lb
+            INNER JOIN leads l ON lb.lead_id = l.id
+            INNER JOIN projects p ON lb.project_id = p.id
+            INNER JOIN flats f ON lb.flat_id = f.id
+            INNER JOIN units un ON f.unit_id = un.id
+            LEFT JOIN users u ON l.assigned_id = u.id
+            WHERE lb.id = ?
+        ");
 
-    $stmt = $this->db->prepare("
-        SELECT 
-            lb.id as booking_id,
-            lb.booking_date,
-            lb.agreement_value,
-            lb.booking_status,
-            l.id as lead_id,
-            l.lead_name as client_name,
-            l.phone,
-            l.email,
-            l.designation,
-            p.id as project_id,
-            p.name as project_name,
-            p.types as project_type,
-            f.id as flat_id,
-            f.floor_no as flat_no,
-            f.sqft as flat_size,
-            f.price_value as total_price,
-            un.id as unit_id,
-            un.name as unit_name,
-            u.full_name as agent_name,
-            COALESCE(
-                (SELECT SUM(lp.amount) 
-                 FROM lead_payments lp 
-                 WHERE lp.booking_id = lb.id 
-                 AND lp.payment_status = 'paid'), 
-                0
-            ) as total_paid
-        FROM lead_bookings lb
-        INNER JOIN leads l ON lb.lead_id = l.id
-        INNER JOIN projects p ON lb.project_id = p.id
-        INNER JOIN flats f ON lb.flat_id = f.id
-        INNER JOIN units un ON f.unit_id = un.id
-        LEFT JOIN users u ON l.assigned_id = u.id
-        WHERE lb.id = ?
-    ");
+        if (!$stmt) {
+            error_log("Prepare statement failed: " . $this->db->error);
+            return null;
+        }
 
-    if (!$stmt) {
-        error_log("Prepare statement failed: " . $this->db->error);
-        return null;
+        $stmt->bind_param("i", $bookingId);
+        
+        if (!$stmt->execute()) {
+            error_log("Execute failed: " . $stmt->error);
+            return null;
+        }
+        
+        $result = $stmt->get_result();
+        $clientDetails = $result ? $result->fetch_assoc() : null;
+        
+        if ($clientDetails) {
+            $clientDetails['due_amount'] = $clientDetails['total_price'] - $clientDetails['total_paid'];
+            $clientDetails['net_paid'] = $clientDetails['total_paid'] - $clientDetails['total_service_fee'];
+        }
+        
+        return $clientDetails;
     }
+public function getClientByLeadId($leadId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT 
+                l.id as lead_id,
+                l.full_name as client_name,
+                l.phone,
+                l.email,
+                l.designation,
+                u.full_name as agent_name
+            FROM leads l
+            LEFT JOIN users u ON l.assigned_id = u.id
+            WHERE l.id = ?
+        ");
 
-    $stmt->bind_param("i", $bookingId);
-    
-    if (!$stmt->execute()) {
-        error_log("Execute failed: " . $stmt->error);
-        return null;
-    }
-    
-    $result = $stmt->get_result();
-    $clientDetails = $result ? $result->fetch_assoc() : null;
-    
-    if ($clientDetails) {
-        // Add calculated fields
-        $clientDetails['due_amount'] = $clientDetails['total_price'] - $clientDetails['total_paid'];
-    } else {
-        error_log("No client found for booking ID: " . $bookingId);
-    }
-    
-    return $clientDetails;
-}
+        if (!$stmt) {
+            error_log("Prepare statement failed: " . $this->db->error);
+            return null;
+        }
 
+        $stmt->bind_param("i", $leadId);
+        
+        if (!$stmt->execute()) {
+            error_log("Execute failed: " . $stmt->error);
+            return null;
+        }
+        
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_assoc() : null;
+    }
 public function getTransactionsByBookingId($bookingId)
 {
     // Get all payments from lead_payments table ONLY
     $paymentsStmt = $this->db->prepare("
         SELECT 
             lp.*,
-            l.lead_name as client_name,
+            l.full_name as client_name,
             p.name as project_name,
             f.floor_no,
             un.name as unit_name,
@@ -431,6 +508,120 @@ public function getTransactionsByBookingId($bookingId)
         }
     }
 
+ public function addTransactionWithServiceFee($transactionData, $emiScheduleData = null)
+    {
+        $this->db->begin_transaction();
+
+        try {
+            // Calculate service fee (10% of EMI amount)
+            $serviceFee = 0;
+            if ($transactionData['payment_type'] === 'emi') {
+                $serviceFee = $transactionData['amount'] * 0.10;
+            }
+
+            $stmt = $this->db->prepare("
+                INSERT INTO lead_payments (
+                    booking_id, payment_type, amount, service_fee, payment_method,
+                    payment_status, payment_date, transaction_ref, 
+                    bank_name, bank_account_no, cheque_no, online_type, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+
+            if (!$stmt) {
+                throw new Exception("Prepare failed: " . $this->db->error);
+            }
+
+            $stmt->bind_param(
+                "isddsdssssssi",
+                $transactionData['booking_id'],
+                $transactionData['payment_type'],
+                $transactionData['amount'],
+                $serviceFee,
+                $transactionData['payment_method'],
+                $transactionData['payment_status'],
+                $transactionData['payment_date'],
+                $transactionData['transaction_ref'],
+                $transactionData['bank_name'],
+                $transactionData['bank_account_no'],
+                $transactionData['cheque_no'],
+                $transactionData['online_type'],
+                $transactionData['created_by']
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Transaction insert failed: " . $stmt->error);
+            }
+
+            $paymentId = $this->db->insert_id;
+
+            // Update service fee balance in lead_bookings
+            $updateServiceFeeStmt = $this->db->prepare("
+                UPDATE lead_bookings 
+                SET service_fee_balance = service_fee_balance + ? 
+                WHERE id = ?
+            ");
+            $updateServiceFeeStmt->bind_param("di", $serviceFee, $transactionData['booking_id']);
+            $updateServiceFeeStmt->execute();
+
+            if ($transactionData['payment_type'] === 'emi' && $emiScheduleData) {
+                // Get the next EMI number
+                $emiNoStmt = $this->db->prepare("
+                    SELECT COALESCE(MAX(emi_no), 0) + 1 as next_emi_no 
+                    FROM emi_schedules 
+                    WHERE lead_booking_id = ?
+                ");
+                $emiNoStmt->bind_param("i", $transactionData['booking_id']);
+                $emiNoStmt->execute();
+                $emiNoResult = $emiNoStmt->get_result();
+                $emiNoRow = $emiNoResult->fetch_assoc();
+                $nextEmiNo = $emiNoRow ? $emiNoRow['next_emi_no'] : 1;
+
+                $emiStmt = $this->db->prepare("
+                    INSERT INTO emi_schedules (
+                        lead_booking_id, emi_no, emi_amount, 
+                        due_emi_amount, due_date, status, lead_payment_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ");
+
+                if (!$emiStmt) {
+                    throw new Exception("EMI schedule prepare failed: " . $this->db->error);
+                }
+
+                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 'pending';
+                
+                $emiStmt->bind_param(
+                    "iiddssi",
+                    $transactionData['booking_id'],
+                    $nextEmiNo,
+                    $transactionData['amount'],
+                    $emiScheduleData['due_emi_amount'],
+                    $transactionData['payment_date'],
+                    $status,
+                    $paymentId
+                );
+
+                if (!$emiStmt->execute()) {
+                    throw new Exception("EMI schedule insert failed: " . $emiStmt->error);
+                }
+            }
+
+            $this->db->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Transaction added successfully!' . ($emiScheduleData ? ' EMI schedule created.' : '') . ($serviceFee > 0 ? ' Service fee calculated.' : ''),
+                'payment_id' => $paymentId,
+                'service_fee' => $serviceFee
+            ];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return [
+                'success' => false,
+                'message' => 'Transaction failed: ' . $e->getMessage()
+            ];
+        }
+    }
+
 /**
  * Get payment summary by booking ID including EMI numbers
  */
@@ -451,14 +642,17 @@ public function getPaymentSummaryByBookingId($bookingId)
         'total_paid' => 0,
         'due_amount' => 0,
         'avg_emi_amount' => 0,
-        'total_emi' => 0, // Total expected EMIs from lead_payments.total_emi_no
-        'completed_emi' => 0, // Actually paid EMI count from emi_schedules
-        'pending_emi' => 0, // total_emi - completed_emi
+        'total_emi' => 0,
+        'completed_emi' => 0,
+        'pending_emi' => 0,
         'remaining_construction_fee' => 0,
         'last_payment_date' => null,
-        'emi_numbers' => [], // EMI sequence numbers from emi_schedules
-        'paid_emi_numbers' => [], // Paid EMI numbers
-        'pending_emi_numbers' => [] // Expected but not paid EMI numbers
+        'emi_numbers' => [],
+        'paid_emi_numbers' => [],
+        'pending_emi_numbers' => [],
+        'total_service_fee' => 0,
+        'service_fee_balance' => 0,
+        'net_received' => 0
     ];
 
     // Get booking details
@@ -466,6 +660,7 @@ public function getPaymentSummaryByBookingId($bookingId)
         SELECT 
             lb.agreement_value,
             lb.booking_date,
+            lb.service_fee_balance,
             f.price_value as flat_price
         FROM lead_bookings lb
         LEFT JOIN flats f ON f.id = lb.flat_id
@@ -480,6 +675,7 @@ public function getPaymentSummaryByBookingId($bookingId)
     if ($booking) {
         $summary['booking_money'] = $booking['agreement_value'] ?? 0;
         $summary['total_price'] = $booking['flat_price'] ?? 0;
+        $summary['service_fee_balance'] = $booking['service_fee_balance'] ?? 0;
     }
 
     // 1. GET TOTAL EXPECTED EMI COUNT from lead_payments.total_emi_no
@@ -581,10 +777,11 @@ public function getPaymentSummaryByBookingId($bookingId)
     
     $summary['registration_money'] = $regData['total_registration_paid'] ?? 0;
 
-    // Get other payments (non-EMI)
+    // Get other payments (non-EMI) and service fee
     $stmt = $this->db->prepare("
         SELECT 
             SUM(amount) as total_other_paid,
+            SUM(service_fee) as total_service_fee,
             MAX(payment_date) as last_payment
         FROM lead_payments 
         WHERE booking_id = ? 
@@ -598,6 +795,23 @@ public function getPaymentSummaryByBookingId($bookingId)
     $otherData = $result ? $result->fetch_assoc() : [];
     
     $summary['total_paid'] = ($otherData['total_other_paid'] ?? 0) + $summary['construction_fee_paid'];
+    $summary['total_service_fee'] = ($otherData['total_service_fee'] ?? 0);
+    
+    // Also get service fee from EMI payments
+    $emiServiceFeeStmt = $this->db->prepare("
+        SELECT SUM(service_fee) as emi_service_fee
+        FROM lead_payments 
+        WHERE booking_id = ? 
+        AND payment_status = 'paid'
+        AND payment_type = 'emi'
+    ");
+    
+    $emiServiceFeeStmt->bind_param("i", $bookingId);
+    $emiServiceFeeStmt->execute();
+    $emiServiceFeeResult = $emiServiceFeeStmt->get_result();
+    $emiServiceFeeData = $emiServiceFeeResult ? $emiServiceFeeResult->fetch_assoc() : [];
+    
+    $summary['total_service_fee'] += ($emiServiceFeeData['emi_service_fee'] ?? 0);
     
     if (!$summary['last_payment_date'] && ($otherData['last_payment'] ?? false)) {
         $summary['last_payment_date'] = $otherData['last_payment'];
@@ -612,6 +826,9 @@ public function getPaymentSummaryByBookingId($bookingId)
     
     // 3. Calculate Due Amount
     $summary['due_amount'] = $summary['total_price'] - $summary['total_paid'];
+    
+    // 4. Calculate net received
+    $summary['net_received'] = $summary['total_paid'] - $summary['total_service_fee'];
 
     // Format EMI numbers for display
     $summary['formatted_all_emi_numbers'] = implode(', ', $summary['all_emi_numbers']);
@@ -628,8 +845,8 @@ public function getPaymentSummaryByBookingId($bookingId)
     }
     $summary['formatted_pending_emi_numbers'] = implode(', ', $summary['expected_pending_numbers']);
 
-
-        $dueQuery = $this->db->prepare("
+    // Get due amounts for partially paid EMI
+    $dueQuery = $this->db->prepare("
         SELECT 
             SUM(es.due_emi_amount) as total_due_amount,
             COUNT(*) as due_emi_count
@@ -649,7 +866,6 @@ public function getPaymentSummaryByBookingId($bookingId)
 
     return $summary;
 }
-
     /**
      * Calculate EMI statistics based on construction fee and paid EMIs
      * Now uses total_emi from lead_bookings table
@@ -685,7 +901,7 @@ public function getPaymentSummaryByBookingId($bookingId)
     {
         $stmt = $this->db->prepare("
             SELECT lp.*,
-                   l.lead_name as client_name,
+                   l.full_name as client_name,
                    p.name as project_name,
                    f.floor_no as flat_no
             FROM lead_payments lp
@@ -991,7 +1207,7 @@ public function getFilteredTransactionsByBookingId($bookingId, $dateFilter = [])
     $sql = "
         SELECT 
             lp.*,
-            l.lead_name as client_name,
+            l.full_name as client_name,
             p.name as project_name,
             f.floor_no,
             un.name as unit_name,

@@ -14,7 +14,7 @@ class BookingLead extends Model
     public function getAllOnBoard()
     {
         $sql = "SELECT lb.*, 
-       l.lead_name, 
+       l.full_name, 
        p.name AS project_name, 
        u2.name AS flat_name, 
        u1.full_name AS created_by_name
@@ -30,6 +30,64 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         $result = $this->db->query($sql);
         return $result->fetch_all(MYSQLI_ASSOC);
     }
+
+public function getAllOnboardClient($year = null, $month = null)
+{
+    $sql = "SELECT 
+                lb.*, 
+                l.full_name, 
+                l.id as lead_id,
+                l.phone,
+                l.email,
+                p.name AS project_name, 
+                u2.name AS flat_name, 
+                lp.payment_method ,
+                lp.amount,
+                lp.created_at As booking_pay_date,
+                u1.full_name AS created_by_name,
+                f.flat_name ,f.sqft,
+                f.price_value
+            FROM lead_bookings lb
+            LEFT JOIN leads l ON lb.lead_id = l.id
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            LEFT JOIN units u2 ON f.unit_id = u2.id
+            LEFT JOIN projects p ON f.project_id = p.id
+            LEFT JOIN users u1 ON lb.created_by = u1.id
+            LEFT JOIN  lead_payments AS lp ON lp.booking_id = lb.id
+            WHERE lb.deleted_at IS NULL
+              AND lb.booking_status = 'completed'";
+
+    $params = [];
+    $types  = "";
+
+    if (!empty($year)) {
+        $sql .= " AND YEAR(l.created_at) = ?";
+        $params[] = (int)$year;
+        $types   .= "i";
+    }
+
+    if (!empty($month)) {
+        $sql .= " AND MONTH(l.created_at) = ?";
+        $params[] = (int)$month;
+        $types   .= "i";
+    }
+
+    //  single ORDER BY at the end
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    if (!$stmt->execute()) {
+        return [];
+    }
+
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
 
     //dashboard
     public function getTotalBookings($period = null)
@@ -220,7 +278,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     {
         $stmt = $this->db->prepare("
         SELECT lb.*, 
-               l.lead_name, 
+               l.full_name, 
                p.name AS project_name,
                p.total_share,
                f.floor_no, 
@@ -244,7 +302,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
     public function getAllBooking()
     {
-        $stmt = $this->db->prepare("SELECT lb.*, l.lead_name,l.lead_image,l.phone, p.name AS project_name,f.price_value,f.flat_name,f.sqft,f.is_booked
+        $stmt = $this->db->prepare("SELECT lb.*, l.full_name,l.lead_image,l.phone, p.name AS project_name,f.price_value,f.flat_name,f.sqft,f.is_booked
             FROM lead_bookings lb LEFT JOIN leads l ON lb.lead_id = l.id 
             LEFT JOIN projects p ON lb.project_id = p.id
             LEFT JOIN flats f ON lb.flat_id = f.id

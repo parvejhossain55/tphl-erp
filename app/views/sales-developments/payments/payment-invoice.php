@@ -538,7 +538,7 @@
                     <!-- Full Name -->
                     <div class="field-group">
                         <label class="field-label">Full Name (Block Letters)</label>
-                        <input type="text" class="field-input uppercase" value="<?= $invoice['lead_name'] ?>">
+                        <input type="text" class="field-input uppercase" value="<?= $invoice['full_name'] ?>">
                     </div>
 
                     <!-- Full Name Bangla -->

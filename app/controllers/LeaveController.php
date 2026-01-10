@@ -17,18 +17,18 @@ class LeaveController extends Controller
     }
     public function index()
     {
-        // Get all designations with department names (no pagination)
-        // $designations = $this->designationModel->getAll();
 
 
-        // // Get paginated departments
-        // $departments = $this->deparmentModel->getAll();
         $leaveData = $this->leaveModel->getAll();
+        $leaveSatatusCounts = $this->leaveModel->getLeaveCount();
+        $totalLeave = $this->leaveModel->totalLeaveCount();
+
         $this->view("hrm/emp-leaves/leave-lists", [
             "current_route"   => "leave-lists",
             "page_title"      => "Leave List",
             "leaveData"    => $leaveData,
-            // "departments"     => $departments,
+            "leaveSatatusCounts"     => $leaveSatatusCounts,
+            "totalLeave"     => $totalLeave,
 
         ]);
     }
@@ -104,7 +104,10 @@ class LeaveController extends Controller
             'approval_status' => 'pending',
             'reason'        => $_POST['reason'] ?? '',
         ];
-
+//    echo "<pre>";
+//     print_r($data);
+//     echo "</pre>";
+//     exit; 
         // 1. Create leave
         $leave_id = $this->leaveModel->create($data);
 
@@ -113,6 +116,8 @@ class LeaveController extends Controller
             header("Location: {$GLOBALS['base_url']}/create-employee-leave");
             exit;
         }
+
+    
 
         // 2. Create approval request for management
         $approvalData = [
@@ -139,12 +144,4 @@ class LeaveController extends Controller
         header("Location: {$GLOBALS['base_url']}/leave-lists");
         exit;
     }
-
-
-
-
-
-
-
-
 }

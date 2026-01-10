@@ -42,6 +42,8 @@ class Designation extends Model{
                 return $result->fetch_all(MYSQLI_ASSOC);
     }
 
+    
+
 
     public function create($data)
     {
@@ -82,6 +84,7 @@ public function update($id, $name, $department_id)
         SET name = ?, department_id = ? 
         WHERE id = ?
     ");
+
 
     $stmt->bind_param("sii", $name, $department_id, $id);
 

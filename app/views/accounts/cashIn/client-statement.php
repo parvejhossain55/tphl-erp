@@ -119,7 +119,7 @@ $amountInWords    = numberToWords($actualPaidAmount);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Account Statement - <?= htmlspecialchars($clientDetails['client_name'] ?? 'N/A') ?></title>
- <style>
+    <style>
         /* ==================== PRINT & PDF STYLES (Unchanged) ==================== */
         @page {
             size: A4;
@@ -127,18 +127,35 @@ $amountInWords    = numberToWords($actualPaidAmount);
         }
 
         @media print {
-            .no-print, .no-pdf { display: none !important; }
-            body { 
-                margin: 0 !important; padding: 0 !important;
-                width: 210mm; height: 297mm; font-size: 10pt;
-                -webkit-print-color-adjust: exact; print-color-adjust: exact;
+
+            .no-print,
+            .no-pdf {
+                display: none !important;
             }
-            .statement-container { 
-                width: 210mm !important; min-height: 297mm !important;
-                margin: 0 !important; padding: 5mm !important;
-                box-shadow: none !important; border: none !important;
+
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 210mm;
+                height: 297mm;
+                font-size: 10pt;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
-            .company-header { flex-direction: row !important; }
+
+            .statement-container {
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 !important;
+                padding: 5mm !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+
+            .company-header {
+                flex-direction: row !important;
+            }
+
             .statement-info {
                 text-align: right !important;
                 border-left: 1px solid #ccc !important;
@@ -146,12 +163,22 @@ $amountInWords    = numberToWords($actualPaidAmount);
                 padding-left: 15px !important;
                 padding-top: 0 !important;
             }
-            .details-grid { grid-template-columns: 1fr 1fr !important; }
-            .transaction-table { font-size: 8pt !important; }
+
+            .details-grid {
+                grid-template-columns: 1fr 1fr !important;
+            }
+
+            .transaction-table {
+                font-size: 8pt !important;
+            }
         }
 
         /* ==================== BASE STYLES (Responsive) ==================== */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
             font-family: Arial, Helvetica, sans-serif;
@@ -168,7 +195,7 @@ $amountInWords    = numberToWords($actualPaidAmount);
             background: #fff;
             padding: clamp(12px, 3vw, 20px);
             margin: 0 auto;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         /* ==================== HEADER (Responsive) ==================== */
@@ -186,7 +213,9 @@ $amountInWords    = numberToWords($actualPaidAmount);
             margin-bottom: 15px;
         }
 
-        .company-info { flex: 2; }
+        .company-info {
+            flex: 2;
+        }
 
         .company-name {
             font-size: clamp(14px, 3vw, 18px);
@@ -214,23 +243,21 @@ $amountInWords    = numberToWords($actualPaidAmount);
             margin-bottom: 10px;
         }
 
-        .statement-meta { font-size: clamp(9px, 2vw, 11px); }
-        .meta-row { margin-bottom: 5px; }
+        .statement-meta {
+            font-size: clamp(9px, 2vw, 11px);
+        }
+
+        .meta-row {
+            margin-bottom: 5px;
+        }
+
         .meta-label {
             font-weight: bold;
             display: inline-block;
             min-width: 90px;
         }
 
-        /* ==================== PERIOD FILTER (Responsive) ==================== */
-        .period-filter {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 14px 18px;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-        }
+
 
         .period-filter .filter-row {
             display: flex;
@@ -270,7 +297,9 @@ $amountInWords    = numberToWords($actualPaidAmount);
         }
 
         /* ==================== DETAILS SECTION (Responsive) ==================== */
-        .details-section { margin-bottom: clamp(15px, 3vw, 20px); }
+        .details-section {
+            margin-bottom: clamp(15px, 3vw, 20px);
+        }
 
         .details-grid {
             display: grid;
@@ -308,7 +337,9 @@ $amountInWords    = numberToWords($actualPaidAmount);
         }
 
         /* ==================== TRANSACTION TABLE (Responsive with Scroll) ==================== */
-        .transaction-section { margin-bottom: 20px; }
+        .transaction-section {
+            margin-bottom: 20px;
+        }
 
         .section-title {
             font-weight: bold;
@@ -354,8 +385,14 @@ $amountInWords    = numberToWords($actualPaidAmount);
             font-family: 'Courier New', monospace;
         }
 
-        .status-paid { font-weight: bold; }
-        .status-pending { font-style: italic; color: #666; }
+        .status-paid {
+            font-weight: bold;
+        }
+
+        .status-pending {
+            font-style: italic;
+            color: #666;
+        }
 
         /* ==================== TOTALS (Responsive) ==================== */
         .totals-section {
@@ -370,7 +407,9 @@ $amountInWords    = numberToWords($actualPaidAmount);
             margin-bottom: 15px;
         }
 
-        .totals-table td { padding: 8px 0; }
+        .totals-table td {
+            padding: 8px 0;
+        }
 
         .totals-label {
             text-align: right;
@@ -445,9 +484,20 @@ $amountInWords    = numberToWords($actualPaidAmount);
             transform: translateY(-1px);
         }
 
-        .btn-success { background: linear-gradient(135deg, #28a745, #1e7e34); color: #fff; }
-        .btn-print { background: linear-gradient(135deg, #ff3c00, #cc2f00); color: #fff; }
-        .btn-back { background: linear-gradient(135deg, #007bff, #0056b3); color: #fff; }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            color: #fff;
+        }
+
+        .btn-print {
+            background: linear-gradient(135deg, #ff3c00, #cc2f00);
+            color: #fff;
+        }
+
+        .btn-back {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: #fff;
+        }
 
         /* ==================== MOBILE RESPONSIVENESS ==================== */
         @media (max-width: 768px) {
@@ -455,7 +505,7 @@ $amountInWords    = numberToWords($actualPaidAmount);
                 flex-direction: column;
                 gap: 15px;
             }
-            
+
             .statement-info {
                 text-align: left;
                 border-left: none;
@@ -463,27 +513,27 @@ $amountInWords    = numberToWords($actualPaidAmount);
                 padding-left: 0;
                 padding-top: 15px;
             }
-            
+
             .period-filter .filter-row {
                 flex-direction: column;
                 align-items: stretch;
             }
-            
+
             .period-filter select,
             .period-filter input[type="date"],
             .period-filter button {
                 width: 100%;
             }
-            
+
             .action-buttons {
                 flex-direction: column;
             }
-            
+
             .btn {
                 width: 100%;
                 justify-content: center;
             }
-            
+
             .meta-label {
                 min-width: 70px;
             }
@@ -493,10 +543,10 @@ $amountInWords    = numberToWords($actualPaidAmount);
             .details-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .transaction-table {
                 min-width: 343px;
-                width:100%
+                width: 100%
             }
         }
 
@@ -507,8 +557,10 @@ $amountInWords    = numberToWords($actualPaidAmount);
             padding: 15mm !important;
         }
 
-        .pdf-generating .company-header { flex-direction: row !important; }
-        
+        .pdf-generating .company-header {
+            flex-direction: row !important;
+        }
+
         .pdf-generating .statement-info {
             text-align: right !important;
             border-left: 1px solid #ccc !important;
@@ -516,15 +568,41 @@ $amountInWords    = numberToWords($actualPaidAmount);
             padding-left: 15px !important;
             padding-top: 0 !important;
         }
-        
-        .pdf-generating .details-grid { grid-template-columns: 1fr 1fr !important; }
-        .pdf-generating .transaction-table { font-size: 8pt !important; }
+
+        .pdf-generating .details-grid {
+            grid-template-columns: 1fr 1fr !important;
+        }
+
+        .pdf-generating .transaction-table {
+            font-size: 8pt !important;
+        }
     </style>
 </head>
 
 <body>
+
     <!-- Action Buttons -->
     <div class="action-buttons no-print no-pdf" style="margin-bottom: 66px; @media (max-width: 480px) {margin-bottom: 10px;}">
+        <!-- Period Filter -->
+        <div class="period-filter no-print no-pdf">
+            <div class="filter-row">
+                <select id="periodSelect" onchange="filterByPeriod()">
+                    <option value="all" <?= ($period === 'all') ? 'selected' : '' ?>>All Transactions</option>
+                    <option value="3" <?= ($period === '3') ? 'selected' : '' ?>>Last 3 Months</option>
+                    <option value="6" <?= ($period === '6') ? 'selected' : '' ?>>Last 6 Months</option>
+                    <option value="12" <?= ($period === '12') ? 'selected' : '' ?>>Last 12 Months</option>
+                    <option value="custom" <?= ($period === 'custom') ? 'selected' : '' ?>>Custom Range</option>
+                </select>
+
+                <div id="customDateRange" style="display: <?= ($period === 'custom') ? 'flex' : 'none' ?>; gap: 1mm; align-items: center;">
+                    <input type="date" id="fromDate" value="<?= $fromDate ?? '' ?>">
+                    <span>to</span>
+                    <input type="date" id="toDate" value="<?= $toDate ?? '' ?>">
+                </div>
+
+                <button onclick="applyFilter()">Apply</button>
+            </div>
+        </div>
         <button onclick="window.print()" class="btn btn-print">
             Print Statement
         </button>
@@ -565,27 +643,7 @@ $amountInWords    = numberToWords($actualPaidAmount);
             </div>
         </div>
 
-        <!-- Period Filter -->
-        <div class="period-filter no-print no-pdf">
-            <div class="filter-row">
-                <span>Statement Period:</span>
-                <select id="periodSelect" onchange="filterByPeriod()">
-                    <option value="all" <?= ($period === 'all') ? 'selected' : '' ?>>All Transactions</option>
-                    <option value="3" <?= ($period === '3') ? 'selected' : '' ?>>Last 3 Months</option>
-                    <option value="6" <?= ($period === '6') ? 'selected' : '' ?>>Last 6 Months</option>
-                    <option value="12" <?= ($period === '12') ? 'selected' : '' ?>>Last 12 Months</option>
-                    <option value="custom" <?= ($period === 'custom') ? 'selected' : '' ?>>Custom Range</option>
-                </select>
 
-                <div id="customDateRange" style="display: <?= ($period === 'custom') ? 'flex' : 'none' ?>; gap: 1mm; align-items: center;">
-                    <input type="date" id="fromDate" value="<?= $fromDate ?? '' ?>">
-                    <span>to</span>
-                    <input type="date" id="toDate" value="<?= $toDate ?? '' ?>">
-                </div>
-
-                <button onclick="applyFilter()">Apply</button>
-            </div>
-        </div>
 
         <!-- Client & Property Details -->
         <div class="details-section">
@@ -779,7 +837,7 @@ $amountInWords    = numberToWords($actualPaidAmount);
             window.location.href = url;
         }
 
-      function downloadPDF() {
+        function downloadPDF() {
             const element = document.getElementById('invoice-content');
 
             // Add PDF mode
@@ -811,7 +869,7 @@ $amountInWords    = numberToWords($actualPaidAmount);
                     document.body.classList.remove('pdf-mode');
                 });
 
-          }
+        }
     </script>
 </body>
 

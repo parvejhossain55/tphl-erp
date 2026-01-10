@@ -32,19 +32,19 @@ $show_breadcrumb = true;
                     <div class="col-lg-6 mb-3">
                         <label for="contactnumber">Contact Number <span>*</span></label>
 
-                        <input class="form-control" minlength="11" maxlength="11" name="phone" min="11" max="11" id="contactnumber" type="text" required>
+                        <input class="form-control" minlength="11" maxlength="11" name="phone" min="11" max="11" id="contactnumber" type="text" >
                     </div>
 
                     <!-- Email -->
                     <div class="col-lg-6 mb-3">
                         <label for="email">Email <span>*</span></label>
-                        <input class="form-control" name="email" id="email" type="email" required>
+                        <input class="form-control" name="email" id="email" type="email" >
                     </div>
 
                     <!-- Designation -->
                     <div class="col-lg-6 mb-3">
                         <label for="designation">Designation <span>*</span></label>
-                        <select class="form-control" name="designation_id" id="designation_id" required>
+                        <select class="form-control" name="designation_id" id="designation_id" >
                             <option value="">Select Designation</option>
                             <?php foreach ($designations as $designation): ?>
                                 <option value="<?= $designation['id'] ?>"><?= $designation['designation_name'] ?></option>
@@ -61,7 +61,7 @@ $show_breadcrumb = true;
                     <!-- NID -->
                     <div class="col-lg-6 mb-3">
                         <label for="nid">NID Number <span>*</span></label>
-                        <input class="form-control" name="nid" id="nid" type="text" required>
+                        <input class="form-control" name="nid" id="nid" type="text" >
                     </div>
 
 
@@ -85,19 +85,19 @@ $show_breadcrumb = true;
 
                     <!-- Designation -->
                     <div class="col-lg-6 mb-3">
-                        <label for="designation">First Media Link<span>*</span></label>
-                        <input class="form-control" name="media_link1" id="media_link1" type="text" required>
+                        <label for="designation">First Media Link<span></span></label>
+                        <input class="form-control" name="media_link1" id="media_link1" type="text" >
                     </div>
                     <!-- media_link2 -->
                     <div class="col-lg-6 mb-3">
-                        <label for="media_link1">Second Media Link <span>*</span></label>
-                        <input class="form-control" name="media_link2" id="media_link2" type="text" required>
+                        <label for="media_link1">Second Media Link <span></span></label>
+                        <input class="form-control" name="media_link2" id="media_link2" type="text" >
                     </div>
 
                     <!-- Password -->
                     <div class="col-lg-6 mb-3">
                         <label for="password">Password <span>*</span></label>
-                        <input class="form-control" name="password" id="password" type="password" required>
+                        <input class="form-control" name="password" id="password" type="password" >
                     </div>
 
                     <!-- Photo -->

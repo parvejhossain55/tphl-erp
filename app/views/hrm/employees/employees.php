@@ -41,7 +41,9 @@ $show_breadcrumb = true;
             <div class="card__wrapper">
                 <div class="d-flex align-items-center justify-content-between gap-15">
                     <button type="submit" class="btn btn-secondary"> Filter</button>
-
+                    <a href="<?= $GLOBALS['base_url'] ?>/employee-lists" class="btn btn-success w-100">
+                        Reset
+                    </a>
                     <a type="button" class="btn btn-primary w-100" href="<?= $GLOBALS['base_url'] ?>/create-employee">
                         Add Employee</a>
                 </div>
@@ -82,12 +84,12 @@ $show_breadcrumb = true;
                                 <a class="btn btn-outline-theme-border" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['id'] ?>">View</a>
                                 <!-- <a href="< $GLOBALS['base_url'] ?>/edit-employee?id=< $employee['id'] ?>">Edit</a> -->
                                 <a class="btn btn-outline-theme-border" href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>">Edit</a>
-                               <button class="removeBtnCust btn btn-outline-theme-border delete"
-                                            data-id="<?= $employee['id'] ?>"
-                                            data-name="<?= $employee['full_name'] ?>"
-                                            data-action="delete-employee">
-                                           Delete
-                                        </button>
+                                <button class="removeBtnCust btn btn-outline-theme-border delete"
+                                    data-id="<?= $employee['id'] ?>"
+                                    data-name="<?= $employee['full_name'] ?>"
+                                    data-action="delete-employee">
+                                    Delete
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -97,16 +99,15 @@ $show_breadcrumb = true;
     <?php endforeach ?>
 
 
-<!-- Pagination -->
-<div class="row my-4">
-    <div class="col-12 d-flex justify-content-center">
-        <?= paginateLinksSecondary($base_url . "/user-lists", $currentPage, $totalPages); ?>
+    <!-- Pagination -->
+    <div class="row my-4">
+        <div class="col-12 d-flex justify-content-center">
+            <?= paginateLinksSecondary($base_url . "/user-lists", $currentPage, $totalPages); ?>
 
 
+        </div>
     </div>
 </div>
-</div>
 <script>
- const base_url = "<?= $GLOBALS['base_url'] ?>"; 
-
+    const base_url = "<?= $GLOBALS['base_url'] ?>";
 </script>

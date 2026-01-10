@@ -18,35 +18,18 @@ $show_breadcrumb = true;
 
 
 <form action="" method="get">
-    <div class="row  mb-3 align-items-end">
+    <div class="row mb-3 align-items-end">
 
         <?php
-        $currentYear = date('Y');
-        $startYear   = $currentYear - 10;
-        $selectedYear = $slectedYear ?? '';
-        ?>
-        <!-- Year Select -->
-        <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
-            <div class="card__wrapper h-100">
-                <div class="from__input-box">
-                    <select class="form-control" name="year">
-                        <option value="">Year Select</option>
+        $currentYear  = date('Y');
+        $currentMonth = date('m');
 
-                        <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
-                            <option
-                                value="<?= $year ?>"
-                                <?= $selectedYear == $year ? 'selected' : '' ?>>
-                                <?= $year ?>
-                            </option>
-                        <?php endfor; ?>
+        // Controller theke pass kora selected value, fallback to current month/year
+        $selectedYear  = $selectedYear ?? $currentYear;
+        $selectedMonth = $selectedMonth ?? $currentMonth;
 
-                    </select>
-                </div>
-            </div>
-        </div>
+        $startYear = $currentYear - 10;
 
-
-        <?php
         $months = [
             1 => 'January',
             2 => 'February',
@@ -61,46 +44,64 @@ $show_breadcrumb = true;
             11 => 'November',
             12 => 'December'
         ];
-        $selectedMonth = $_GET['month'] ?? '';
         ?>
+
+        <!-- Year Select -->
+        <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
+            <div class="card__wrapper h-100">
+                <div class="from__input-box">
+                    <select name="year" class="form-control">
+                        <option value="">Year Select</option>
+                        <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
+                            <option value="<?= $year ?>" <?= ($selectedYear == $year) ? 'selected' : '' ?>>
+                                <?= $year ?>
+                            </option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+            </div>
+        </div>
 
         <!-- Month Select -->
         <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
             <div class="card__wrapper h-100">
                 <div class="from__input-box">
-                    <select class="form-control" name="month">
+                    <select name="month" class="form-control">
                         <option value="">Month Select</option>
                         <?php foreach ($months as $id => $name): ?>
-
-                            <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
+                            <option value="<?= $id ?>" <?= ($selectedMonth == $id) ? 'selected' : '' ?>>
                                 <?= $name ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
-
                 </div>
             </div>
         </div>
 
         <!-- Buttons -->
         <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-12 col-12">
-            <div class="card__wrapper h-100">
+            <div class="card__wrapper ">
                 <div class="d-flex flex-column flex-sm-row gap-2">
-                    <button type="submit" class="btn btn-secondary w-100">
+                    <button type="submit" class="btn btn-secondary w-100 px-0">
                         Payslip Search
                     </button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists" class="btn btn-success w-100 px-0">
+                        Reset
+                    </a>
 
-                    <a
-                        class="btn btn-primary w-100"
-                        href="<?= $GLOBALS['base_url'] ?>/create-payslip">
+                    <a href="<?= $GLOBALS['base_url'] ?>/create-payslip" class="btn btn-primary w-100 px-0">
                         Create Payslip
                     </a>
                 </div>
             </div>
         </div>
 
+
     </div>
+
+
 </form>
+
 
 
 <div class="row">

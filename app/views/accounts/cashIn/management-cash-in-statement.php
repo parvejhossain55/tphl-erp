@@ -316,14 +316,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
         }
 
         /* ==================== PERIOD FILTER (Responsive) ==================== */
-        .period-filter {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 14px 18px;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-        }
+
 
         .period-filter .filter-row {
             display: flex;
@@ -670,6 +663,26 @@ $totalAmountWords = convertNumberToWords($totalAmount);
 <body>
     <!-- Action Buttons -->
     <div class="action-buttons no-print no-pdf" style="margin-bottom: 66px;">
+                <div class="period-filter no-print no-pdf">
+            <div class="filter-row">
+              
+                <select id="periodSelect" onchange="filterByPeriod()">
+                    <option value="all" <?= (($period ?? 'all') === 'all') ? 'selected' : '' ?>>All Transactions</option>
+                    <option value="3" <?= (($period ?? '') === '3') ? 'selected' : '' ?>>Last 3 Months</option>
+                    <option value="6" <?= (($period ?? '') === '6') ? 'selected' : '' ?>>Last 6 Months</option>
+                    <option value="12" <?= (($period ?? '') === '12') ? 'selected' : '' ?>>Last 12 Months</option>
+                    <option value="custom" <?= (($period ?? '') === 'custom') ? 'selected' : '' ?>>Custom Range</option>
+                </select>
+
+                <div id="customDateRange" style="display: <?= (($period ?? '') === 'custom') ? 'flex' : 'none' ?>; gap: 1mm; align-items: center;">
+                    <input type="date" id="fromDate" value="<?= htmlspecialchars($fromDate ?? '') ?>">
+                    <span>to</span>
+                    <input type="date" id="toDate" value="<?= htmlspecialchars($toDate ?? '') ?>">
+                </div>
+
+                <button onclick="applyFilter()">Apply</button>
+            </div>
+        </div>
         <button onclick="window.print()" class="btn btn-print">
             Print Statement
         </button>
@@ -707,26 +720,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
         </div>
 
         <!-- Period Filter -->
-        <div class="period-filter no-print no-pdf">
-            <div class="filter-row">
-                <span>Statement Period:</span>
-                <select id="periodSelect" onchange="filterByPeriod()">
-                    <option value="all" <?= (($period ?? 'all') === 'all') ? 'selected' : '' ?>>All Transactions</option>
-                    <option value="3" <?= (($period ?? '') === '3') ? 'selected' : '' ?>>Last 3 Months</option>
-                    <option value="6" <?= (($period ?? '') === '6') ? 'selected' : '' ?>>Last 6 Months</option>
-                    <option value="12" <?= (($period ?? '') === '12') ? 'selected' : '' ?>>Last 12 Months</option>
-                    <option value="custom" <?= (($period ?? '') === 'custom') ? 'selected' : '' ?>>Custom Range</option>
-                </select>
 
-                <div id="customDateRange" style="display: <?= (($period ?? '') === 'custom') ? 'flex' : 'none' ?>; gap: 1mm; align-items: center;">
-                    <input type="date" id="fromDate" value="<?= htmlspecialchars($fromDate ?? '') ?>">
-                    <span>to</span>
-                    <input type="date" id="toDate" value="<?= htmlspecialchars($toDate ?? '') ?>">
-                </div>
-
-                <button onclick="applyFilter()">Apply</button>
-            </div>
-        </div>
 
         <!-- Statement Summary -->
         <div class="details-section">
