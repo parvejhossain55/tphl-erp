@@ -117,107 +117,109 @@ class Employee extends Model
         $result = $stmt->get_result()->fetch_assoc();
         return $result['total'];
     }
-public function create($data, $photoInputName = '')
-{
-    // Upload photo
-    $photo = '';
-    if (!empty($_FILES[$photoInputName]['name'])) {
-        $photo = uploadImage($photoInputName, 'employees', 'fixed', 300, 300);
-    }
+    public function create($data, $photoInputName = '')
+    {
+        // Upload photo
+        $photo = '';
+        if (!empty($_FILES[$photoInputName]['name'])) {
+            $photo = uploadImage($photoInputName, 'employees', 'fixed', 300, 300);
+        }
 
-    // Force all values (avoid NULL for bind_param)
-    $full_name = $data['full_name'] ?? '';
-    $basic_salary = !empty($data['basic_salary']) ? $data['basic_salary'] : 0;
-    $username = $data['username'] ?? '';
-    $email = $data['email'] ?? '';
-    $father_name = $data['father_name'] ?? '';
-    $phone = $data['phone'] ?? '';
-    $emergency_contact = $data['emergency_contact'] ?? '';
-    $qualification = $data['qualification'] ?? '';
-    $experience = $data['experience'] ?? '';
-    $address = $data['address'] ?? '';
-    $pass_num = $data['pass_num'] ?? '';
-    $nid = $data['nid'] ?? '';
-    $department_id = !empty($data['department_id']) ? $data['department_id'] : 0;
-    $designation_id = !empty($data['designation_id']) ? $data['designation_id'] : 0;
-    $dob = !empty($data['dob']) ? date('Y-m-d', strtotime($data['dob'])) : '';
-    $joining_date = !empty($data['joining_date']) ? date('Y-m-d', strtotime($data['joining_date'])) : '';
-    $account_holder_name = $data['account_holder_name'] ?? '';
-    $account_number = $data['account_number'] ?? '';
-    $bank_name = $data['bank_name'] ?? '';
-    $branch_name = $data['branch_name'] ?? '';
-    $social_media1 = $data['social_media1'] ?? '';
-    $social_media2 = $data['social_media2'] ?? '';
-    $social_media3 = $data['social_media3'] ?? '';
-    $make_user = !empty($data['make_user']) ? $data['make_user'] : 0;
-    $password = $data['password'] ?? '';
-    $created_by = !empty($data['created_by']) ? $data['created_by'] : 0;
+        // Force all values (avoid NULL for bind_param)
+        $full_name = $data['full_name'] ?? '';
+        $basic_salary = !empty($data['basic_salary']) ? $data['basic_salary'] : 0;
+        $username = $data['username'] ?? '';
+        $email = $data['email'] ?? '';
+        $father_name = $data['father_name'] ?? '';
+        $phone = $data['phone'] ?? '';
+        $emergency_contact = $data['emergency_contact'] ?? '';
+        $qualification = $data['qualification'] ?? '';
+        $experience = $data['experience'] ?? '';
+        $address = $data['address'] ?? '';
+        $pass_num = $data['pass_num'] ?? '';
+        $nid = $data['nid'] ?? '';
+        $department_id = !empty($data['department_id']) ? $data['department_id'] : 0;
+        $designation_id = !empty($data['designation_id']) ? $data['designation_id'] : 0;
+        $dob = !empty($data['dob']) ? date('Y-m-d', strtotime($data['dob'])) : '';
+        $joining_date = !empty($data['joining_date']) ? date('Y-m-d', strtotime($data['joining_date'])) : '';
+        $account_holder_name = $data['account_holder_name'] ?? '';
+        $account_number = $data['account_number'] ?? '';
+        $bank_name = $data['bank_name'] ?? '';
+        $branch_name = $data['branch_name'] ?? '';
+        $social_media1 = $data['social_media1'] ?? '';
+        $social_media2 = $data['social_media2'] ?? '';
+        $social_media3 = $data['social_media3'] ?? '';
+        $make_user = !empty($data['make_user']) ? $data['make_user'] : 0;
+        $password = $data['password'] ?? '';
+        $created_by = !empty($data['created_by']) ? $data['created_by'] : 0;
+        $employee_type = $data['employee_type'] ?? 'permanent';
+        $employee_status = $data['employee_status'] ?? 'active';
 
-    // Temporary employee_id (required by DB)
-    $tempEmployeeId = ''; // empty string, will update later
+        // Temporary employee_id (required by DB)
+        $tempEmployeeId = ''; // empty string, will update later
 
-    $stmt = $this->db->prepare(
-        "INSERT INTO employees 
+        $stmt = $this->db->prepare(
+            "INSERT INTO employees 
         (employee_id, full_name, basic_salary, username, email, father_name, phone, emergency_contact, 
         qualification, experience, address, pass_num, nid, department_id, designation_id, 
         dob, joining_date, account_holder_name, account_number, bank_name, branch_name, 
-        social_media1, social_media2, social_media3, photo, make_user, password, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    );
-
-    $stmt->bind_param(
-        "ssdssssssssssiissssssssssisi",
-        $tempEmployeeId,    // 1
-        $full_name,         // 2
-        $basic_salary,      // 3
-        $username,          // 4
-        $email,             // 5
-        $father_name,       // 6
-        $phone,             
-        $emergency_contact, 
-        $qualification,     
-        $experience,        
-        $address,           
-        $pass_num,          
-        $nid,               
-        $department_id,    
-        $designation_id,   
-        $dob,             
-        $joining_date,      
-        $account_holder_name,
-        $account_number,     
-        $bank_name,          
-        $branch_name,        
-        $social_media1,      
-        $social_media2,     
-        $social_media3,     
-        $photo,            
-        $make_user,          
-        $password,         
-        $created_by         
-    );
-
-    if (!$stmt->execute()) {
-        die(
-            "EMPLOYEE CREATE FAILED<br>" .
-            "ERROR: " . $stmt->error . "<br>" .
-            "ERRNO: " . $stmt->errno
+        social_media1, social_media2, social_media3, photo, make_user, password, created_by,employee_type,employee_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)"
         );
+
+        $stmt->bind_param(
+            "ssdssssssssssiissssssssssisiss",
+            $tempEmployeeId,    // 1
+            $full_name,         // 2
+            $basic_salary,      // 3
+            $username,          // 4
+            $email,             // 5
+            $father_name,       // 6
+            $phone,
+            $emergency_contact,
+            $qualification,
+            $experience,
+            $address,
+            $pass_num,
+            $nid,
+            $department_id,
+            $designation_id,
+            $dob,
+            $joining_date,
+            $account_holder_name,
+            $account_number,
+            $bank_name,
+            $branch_name,
+            $social_media1,
+            $social_media2,
+            $social_media3,
+            $photo,
+            $make_user,
+            $password,
+            $created_by,
+            $employee_type,
+            $employee_status
+        );
+
+        if (!$stmt->execute()) {
+            die("EMPLOYEE CREATE FAILED<br>" .
+                "ERROR: " . $stmt->error . "<br>" .
+                "ERRNO: " . $stmt->errno);
+        }
+
+        // Get inserted ID
+        $id = $this->db->insert_id;
+
+        // Generate employee_id
+        $employeeCode = 'EMP-' . str_pad($id, 5, '0', STR_PAD_LEFT);
+
+        // Update employee_id
+        $update = $this->db->prepare("UPDATE employees SET employee_id = ? WHERE id = ?");
+        $update->bind_param("si", $employeeCode, $id);
+        $update->execute();
+
+        return $id;
     }
-
-    // Get inserted ID
-    $id = $this->db->insert_id;
-
-    // Generate employee_id
-    $employeeCode = 'EMP-' . str_pad($id, 5, '0', STR_PAD_LEFT);
-
-    // Update employee_id
-    $update = $this->db->prepare("UPDATE employees SET employee_id = ? WHERE id = ?");
-    $update->bind_param("si", $employeeCode, $id);
-    $update->execute();
-
-    return $id;
-}
 
 
     public function getAllWithDesignation()
@@ -321,7 +323,9 @@ public function create($data, $photoInputName = '')
         social_media2 = ?, 
         social_media3 = ?, 
         photo = ?,
-        created_by = ?
+        created_by = ?,
+        employee_type = ?,
+        employee_status = ?
     WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -331,43 +335,44 @@ public function create($data, $photoInputName = '')
             return false;
         }
 
-      $stmt->bind_param(
-   "sdsssssssssiissssssssssii",
-    $data['full_name'],
-    $data['basic_salary'],
-    $data['username'],
-    $data['email'],
-    $data['father_name'],
-    $data['phone'],
-    $data['emergency_contact'],
-    $data['qualification'],
-    $data['experience'],
-    $data['address'],
-    $data['pass_num'],
-    $data['department_id'],
-    $data['designation_id'],
-    $data['dob'],
-    $data['joining_date'],
-    $data['account_holder_name'],
-    $data['account_number'],
-    $data['bank_name'],
-    $data['branch_name'],
-    $data['social_media1'],
-    $data['social_media2'],
-    $data['social_media3'],
-    $finalPhoto,
-    $data['created_by'],
-    $id
-);
+        $stmt->bind_param(
+            "sdsssssssssiissssssssssisss",
+            $data['full_name'],        // s
+            $data['basic_salary'],     // d
+            $data['username'],         // s
+            $data['email'],            // s
+            $data['father_name'],      // s
+            $data['phone'],            // s
+            $data['emergency_contact'], // s
+            $data['qualification'],    // s
+            $data['experience'],       // s
+            $data['address'],          // s
+            $data['pass_num'],         // s
+            $data['department_id'],    // i
+            $data['designation_id'],   // i
+            $data['dob'],              // s
+            $data['joining_date'],     // s
+            $data['account_holder_name'], // s
+            $data['account_number'],      // s
+            $data['bank_name'],           // s
+            $data['branch_name'],         // s
+            $data['social_media1'],      // s
+            $data['social_media2'],      // s
+            $data['social_media3'],      // s
+            $finalPhoto,                  // s
+            $data['created_by'],          // i
+            $data['employee_type'],       // s
+            $data['employee_status'],     // s 
+            $id                           // i
+        );
 
-           if (!$stmt->execute()) {
-    die(
-        "EMPLOYEE UPDATE FAILED<br>" .
-        "ERROR: " . $stmt->error . "<br>" .
-        "ERRNO: " . $stmt->errno
-    );
-}
-return true;
+
+        if (!$stmt->execute()) {
+            die("EMPLOYEE UPDATE FAILED<br>" .
+                "ERROR: " . $stmt->error . "<br>" .
+                "ERRNO: " . $stmt->errno);
+        }
+        return true;
     }
 
 

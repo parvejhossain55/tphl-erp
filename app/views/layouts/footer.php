@@ -51,6 +51,7 @@
                     altInput: true,
                     altFormat: "F j, Y",
                     dateFormat: "Y-m-d",
+                    defaultDate: "<?= !empty($employee['dob']) ? $employee['dob'] : '' ?>" // set value
                 });
             });
         </script>

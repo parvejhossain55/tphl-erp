@@ -116,6 +116,9 @@ class EmployeeController extends Controller
             'make_user'       => $makeUser,
             'password'        => $hashedPassword,
             'created_by'      => $_SESSION['user']['id'] ?? null,
+            'employee_type'      => $_POST['employee_type'] ,
+            'employee_status'    => $_POST['employee_status'] 
+            
         ];
 
         $photoInputName = 'photo';
@@ -216,7 +219,7 @@ class EmployeeController extends Controller
 
         /* ===============================
        1 Password validation
-    ================================ */
+        ================================ */
         if ($makeUser == 1 && empty($plainPassword)) {
             $_SESSION['error'] = "Password is required when creating/updating user account!";
             header("Location: {$GLOBALS['base_url']}/edit-employee/$id");
@@ -230,7 +233,7 @@ class EmployeeController extends Controller
 
         /* ===============================
        2 Employee data
-    ================================ */
+        ================================ */
         $employeeData = [
             'full_name'            => trim($_POST['full_name'] ?? ''),
             'username'             => trim($_POST['username'] ?? ''),
@@ -256,6 +259,8 @@ class EmployeeController extends Controller
             'social_media2'        => trim($_POST['social_media2'] ?? ''),
             'social_media3'        => trim($_POST['social_media3'] ?? ''),
             'created_by'           => $_SESSION['user']['id'] ?? null,
+             'employee_type'      => $_POST['employee_type'] ,
+            'employee_status'    => $_POST['employee_status'] 
         ];
 
         /* ===============================

@@ -71,11 +71,17 @@ COMMIT;
 -- Added By Rafi 5 jan-2026 . Table lead_payments added payment_status field to track payment status like paid, partially_paid, pending, failed.
 
 
---10-1-2026 Farzana 
+--10-1-2026 Start Added By Farzana 
 --1
 ALTER TABLE flats 
-ADD COLUMN status ENUM('available','booked','sold') DEFAULT 'available';
+ADD COLUMN status ENUM('available','booked','sold') DEFAULT 'available'
+AFTER created_by,
+--2
+ALTER TABLE employees
+ADD employee_type ENUM('permanent','contract','director') 
+AFTER photo,
 
-
-
-
+ADD employee_status ENUM('active','inactive','resigned','terminated','on_leave')
+DEFAULT 'active'
+AFTER employee_type;
+--10-1-2026 End Added By Farzana 

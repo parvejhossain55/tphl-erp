@@ -133,7 +133,7 @@ $show_breadcrumb = false;
                                 <td><span class="badge bg-success p-2"><?= $row['available_flats'] ?></span></td>
                                 <td ><span class="badge bg-primary text-dark p-2"><?= $row['booked_flats'] ?></span></td>
                                 <td class="d-none"><span class="badge bg-dark text-white p-2"><?= $row['sold_flats'] ?? 0 ?></span></td>
-                                <td><strong><?= number_format($row['total_flat_value']) ?> ৳</strong></td>
+                                <td><strong><?= format_bdt($row['total_flat_value']) ?> ৳</strong></td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-primary show-flats-btn" data-target="flats<?= $index ?>">Show Details</button>
                                 </td>
@@ -142,16 +142,18 @@ $show_breadcrumb = false;
                             <!-- Hidden Flat Rows -->
                             <?php if (!empty($row['flats'])): ?>
                                 <?php foreach ($row['flats'] as $flat): ?>
-                                    <tr class="flat-details-row" id="flats<?= $index ?>" style="display:none; background-color:#f9f9f9;">
+                                    <tr class="flat-details-row" id="flats<?= $index ?>" style="display:none; background-color:rgb(253 246 246);">
                                         
-                                        <td colspan="2" class="text-start ps-4">Flat: <strong><?= htmlspecialchars($flat['flat_name']) ?></strong></td>
+                                        <td class="text-start ps-4"><strong class="me-1">Flat: </strong><?= htmlspecialchars($flat['flat_name']) ?>; <span><strong class="ms-2">Size:</strong><?= $flat['sqft'] ?> sqft</span></td>
+                                           <td><strong class="pe-3">BHK-</strong><span><?= $flat['bhk'] ?></span></td>
                                         <td >
                                     
                                             <?= isset($flat['agreement_value']) && $flat['agreement_value'] > 0
-                                                ?       '<span class="fw-semibold fs-6"> Booking Money: </span>'. number_format($flat['agreement_value']) . " ৳"
+                                                ?       '<span class="fw-semibold fs-6"> Booking Money: </span>'. format_bdt($flat['agreement_value']) . " ৳"
                                                 : '<span class="bd-badge bg-primary text-dark p-2">Not Yet Booked</span>'; ?>
                                         </td>
 
+                                     
                                         <td>
                                             <?php
                                             switch ($flat['status']) {
@@ -168,7 +170,7 @@ $show_breadcrumb = false;
                                             }
                                             ?>
                                         </td>
-                                         <td><span class="fw-semibold ">Price:</span><?= number_format($flat['price_value']) ?> ৳</td>
+                                         <td><span class="fw-semibold ">Price:</span><?= format_bdt($flat['price_value']) ?> ৳</td>
 
                                         <td>
                                             <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>" class="btn btn-sm btn-success me-1">Edit</a>

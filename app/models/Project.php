@@ -303,6 +303,8 @@ $stmt2 = $this->db->prepare("
         f.id,
         f.project_id,
         f.flat_name,
+        f.sqft,
+        f.bhk,
         f.price_value,
         f.is_booked,
         f.status,

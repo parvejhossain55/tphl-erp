@@ -240,6 +240,29 @@
                                  </div>
                              </div>
                          </div>
+                         <div class="col-lg-6">
+                             <div class="from__input-box">
+                                 <label class="form__input-title" for="employee_type">Employee Type</label>
+                                 <select name="employee_type" id="employee_type" class="form-select">
+                                     <option value="">Select</option>
+                                     <option value="permanent">Permanent</option>
+                                     <option value="contract">Contract</option>
+                                     <option value="director">Director</option>
+                                 </select>
+                             </div>
+                         </div>
+                         <div class="col-lg-6">
+                             <div class="from__input-box">
+                                 <label class="form__input-title" for="employeeStatus">Employee Status</label>
+                                 <select name="employee_status" id="employeeStatus" class="form-select">
+                                     <option value="">Select</option>
+                                     <option value="active">Active</option>
+                                     <option value="inactive">Inactive</option>
+                                     <option value="resigned">Resigned</option>
+                                     <option value="terminated">Terminated</option>
+                                 </select>
+                             </div>
+                         </div>
 
 
 

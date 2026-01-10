@@ -555,6 +555,34 @@ function truncateText($text, $limit = 50) {
 }
 
 
+function formatDate($date)
+{
+    if (!$date || $date === '0000-00-00') {
+        return '';
+    }
+    return date('d F, Y', strtotime($date));
+}
+
+// for bd taka decimal format
+
+function format_bdt($number) {
+    $decimal = '';
+    if(strpos($number, '.') !== false) {
+        $parts = explode('.', $number);
+        $number = $parts[0];   // integer part
+        $decimal = '.' . $parts[1]; // decimal part
+    }
+    $last3 = substr($number, -3);
+    $rest = substr($number, 0, -3);
+    if($rest != '') {
+        $rest = preg_replace("/\B(?=(\d{2})+(?!\d))/", ",", $rest);
+        $formatted = $rest . ',' . $last3 . $decimal;
+    } else {
+        $formatted = $last3 . $decimal;
+    }
+    return $formatted;
+}
+
 
 // $readTime = calculateReadTime($_POST['content']);
 

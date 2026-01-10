@@ -65,7 +65,7 @@
                          value="<?= htmlspecialchars($employee['qualification']) ?>">
                  </div>
 
-               
+
 
                  <!-- Department -->
                  <div class="col-lg-6">
@@ -97,8 +97,8 @@
                  <!-- Designation -->
                  <div class="col-lg-6">
                      <label>Basic Salary <span>*</span></label>
-                      <input class="form-control" name="basic_salary" id="basic_salary" type="number"
-                         value="<?=$employee['basic_salary']?>">
+                     <input class="form-control" name="basic_salary" id="basic_salary" type="number"
+                         value="<?= $employee['basic_salary'] ?>">
                  </div>
                  <?php
                     $joiningDate = $employee['joining_date'];
@@ -160,17 +160,11 @@
                          <img src="<?= $GLOBALS['base_url'] ?>/uploads/employees/<?= $employee['photo'] ?>" width="100" class="mt-2">
                      <?php endif; ?>
                  </div>
-
-
                  <!-- Address -->
                  <div class="col-lg-6">
                      <label for="address">Address <span>*</span></label>
                      <textarea class="form-control" name="address" id="address"><?= htmlspecialchars($employee['address']) ?></textarea>
                  </div>
-
-                   
-
-
                  <!-- Social Media -->
                  <div class="col-lg-6">
                      <label for="social_media1">Social Media Link 1</label>
@@ -182,21 +176,44 @@
                      <input class="form-control" name="social_media2" id="social_media2" type="text"
                          value="<?= htmlspecialchars($employee['social_media2']) ?>">
                  </div>
-                    <div class="col-lg-12">
-                         <div class="form__input-box">
-                             <div class="form__input-box">
-                                 <label>
-                                     <input type="checkbox" id="make_user" name="make_user" value="1">
-                                     Create User Account?
-                                 </label>
 
-                                 <div id="password_box" style="display:none;">
-                                     <label>Password</label>
-                                     <input type="password" name="password" class="form-control">
-                                 </div>
+                 <div class="col-lg-6">
+                     <label>Employee Type </label>
+                     <select name="employee_type" class="form-select">
+
+                         <option value="permanent" <?= ($employee['employee_type'] ?? '') == 'permanent' ? 'selected' : '' ?>>Permanent</option>
+                         <option value="contract" <?= ($employee['employee_type'] ?? '') == 'contract' ? 'selected' : '' ?>>Contract</option>
+                         <option value="director" <?= ($employee['employee_type'] ?? '') == 'director' ? 'selected' : '' ?>>Director</option>
+                     
+                     </select>
+                 </div>
+                 <div class="col-lg-6">
+                     <label>Employee Type </label>
+                     <select name="employee_status" class="form-select">
+
+                         <option value="active" <?= ($employee['employee_status'] ?? '') == 'active' ? 'selected' : '' ?>>Active</option>
+                         <option value="inactive" <?= ($employee['employee_status'] ?? '') == 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                         <option value="resigned" <?= ($employee['employee_status'] ?? '') == 'resigned' ? 'selected' : '' ?>>Resigned</option>
+                         <option value="terminated" <?= ($employee['employee_status'] ?? '') == 'terminated' ? 'selected' : '' ?>>Terminated</option>
+                     </select>
+                 </div>
+
+
+                 <div class="col-lg-12">
+                     <div class="form__input-box">
+                         <div class="form__input-box">
+                             <label>
+                                 <input type="checkbox" id="make_user" name="make_user" value="1">
+                                 Create User Account?
+                             </label>
+
+                             <div id="password_box" style="display:none;">
+                                 <label>Password</label>
+                                 <input type="password" name="password" class="form-control">
                              </div>
                          </div>
                      </div>
+                 </div>
 
 
 
@@ -216,7 +233,7 @@
      </div>
  </div>
 
-  <script>
+ <script>
      document.getElementById("make_user").addEventListener("change", function() {
          if (this.checked) {
              document.getElementById("password_box").style.display = "block";

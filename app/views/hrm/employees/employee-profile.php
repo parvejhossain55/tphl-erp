@@ -23,12 +23,13 @@ $show_breadcrumb = true;
                             </div>
                         </div>
                         <div class="profile-info">
-                            <h3 class="user-name mb-15"><?= $employee['full_name'] ?? '' ?></h3>
+                            <h4 class="user-name mb-15"><?= $employee['full_name'] ?? '' ?></h4>
                             <h6 class="text-muted mb-5"><?= $employee['department_name'] ?? '' ?></h6>
                             <span class="d-block text-muted mb-5"><?= $employee['designation_name'] ?? '' ?></span>
                             <h6 class="small employee-id text-black mb-5">Employee ID :<?= $employee['employee_id'] ?></h6>
                             <span class="d-block text-muted ">Date of Join : <?= $employee['joining_date'] ?  date('d F, Y', strtotime($employee['joining_date'])) : '' ?></span>
                             <span class="small employee-id text-black mb-5">Basic Salary :<?= $employee['basic_salary'] ?? 0 ?></span>
+                            <p><span class="small employee-id text-black mb-5">Employee Type :<?= $employee['employee_type'] ?? 'none' ?></span></p>
                             <div class="employee-msg d-none my-3"><a class="btn btn-primary" href="chat.html">Send Message</a></div>
                         </div>
                     </div>
@@ -47,17 +48,17 @@ $show_breadcrumb = true;
                                 </div>
                             </li>
                             <li class="d-flex mb-2">
-                                <div class="fw-bold me-2" style="min-width:130px;">Birthday:</div>
-                                <div class="text"><?= $employee['dob'] ? date('d F, Y', strtotime($employee['dob'])) : '' ?></div>
+                                <div class="fw-bold me-2" style="min-width:130px;">Date Of Birth:</div>
+                                <div class="text"><?= formatDate($employee['dob']) ?></div>
                             </li>
                             <li class="d-flex mb-2">
                                 <div class="fw-bold me-2" style="min-width:130px;">Address:</div>
                                 <div class="text"><?= $employee['address'] ?></div>
                             </li>
-                            <!-- <li class="d-flex mb-2">
-            <div class="fw-bold me-2" style="min-width:130px;">Gender:</div>
-            <div class="text">Male</div>
-        </li> -->
+                            <li class="d-flex mb-2">
+                                <div class="fw-bold me-2" style="min-width:130px;">Employee Status:</div>
+                                <div class="bd-badge bg-primary"><?= $employee['employee_status'] ?></div>
+                            </li>
                         </ul>
                     </div>
 

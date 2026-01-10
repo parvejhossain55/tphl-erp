@@ -449,6 +449,9 @@
     z-index: 5;
     background-color:#19915a;
 } */
+ .flat-details-row{
+     background-color: #efeaea;
+ }
 
 @media (max-width: 768px) {
     .row {

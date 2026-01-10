@@ -82,7 +82,7 @@ $show_breadcrumb = true;
         </div>
 
         <!-- Buttons -->
-        <div class="col-xxl-4 col-xl-12 col-lg-12 col-md-12 col-12">
+        <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-12 col-12">
             <div class="card__wrapper h-100">
                 <div class="d-flex flex-column flex-sm-row gap-2">
                     <button type="submit" class="btn btn-secondary w-100">
@@ -103,7 +103,7 @@ $show_breadcrumb = true;
 
 
 <div class="row">
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -118,7 +118,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -133,7 +133,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -149,7 +149,7 @@ $show_breadcrumb = true;
         </div>
     </div>
 
-    <div class="d-none col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="d-none col-xxl-3 col-xl-6 col-lg-4 col-md-4 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
