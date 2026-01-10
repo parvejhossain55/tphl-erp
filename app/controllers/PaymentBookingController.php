@@ -57,12 +57,12 @@ class PaymentBookingController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $data = [
-            'booking_id' => $_POST['booking_id'],
-            'payment_type' => $_POST['payment_type'],
-            'amount' => $_POST['amount'],
+            'booking_id' => $_POST['booking_id'] ?? 0,
+            'payment_type' => $_POST['payment_type'] ?? 'booking_money',
+            'amount' => floatval($_POST['amount'] ?? 0),
             'payment_method' => $_POST['payment_method'] ?? 'cash',
             'payment_status' => $_POST['payment_status'] ?? 'paid',
-            'payment_date' => $_POST['payment_date'],
+            'payment_date' => $_POST['payment_date'] ?? date('Y-m-d'),
             'transaction_ref' => $_POST['transaction_ref'] ?? null,
             'bank_name' => $_POST['bank_name'] ?? null,
             'bank_account_no' => $_POST['bank_account_no'] ?? null,
@@ -72,6 +72,13 @@ class PaymentBookingController extends Controller
             'created_by' => $_SESSION['user']['id'] ?? 1,
         ];
 
+        // Validate required fields
+        if (!$data['booking_id'] || !$data['amount'] || !$data['payment_type']) {
+            setError("Required data missing!");
+            header("Location: {$GLOBALS['base_url']}/payments-booking/" . ($data['booking_id'] ?? 0));
+            exit;
+        }
+
         $created = $this->paymentModel->create($data);
 
         if ($created !== false) {
@@ -80,9 +87,11 @@ class PaymentBookingController extends Controller
             setError("Failed to create payment!");
         }
 
-        header("Location: {$GLOBALS['base_url']}/payments-booking/" . $_POST['booking_id']);
+        // Redirect must be before any output
+        header("Location: {$GLOBALS['base_url']}/payments-booking/" . $data['booking_id']);
         exit;
     }
+
 
 
     public function invoice($payment_id)
@@ -102,7 +111,7 @@ class PaymentBookingController extends Controller
             "invoice" => $invoice,
             "current_route" => 'payment-booking-invoice',
             "page_title" => "Payment Invoice",
-        
+
         ], false);
     }
 

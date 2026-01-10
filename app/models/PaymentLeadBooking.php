@@ -32,51 +32,83 @@ class PaymentLeadBooking extends Model
 
 public function create($data)
 {
-    $stmt = $this->db->prepare("
-        INSERT INTO lead_payments
-        (booking_id, bank_name, bank_account_no, cheque_no, online_type, payment_type, amount, payment_method, payment_status, payment_date, transaction_ref, total_emi_no,created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)
-    ");
+    // Start transaction
+    $this->db->begin_transaction();
 
-    $stmt->bind_param(
-        "isssssdssssii",
-        $data['booking_id'],
-        $data['bank_name'],
-        $data['bank_account_no'],
-        $data['cheque_no'],
-        $data['online_type'],
-        $data['payment_type'],
-        $data['amount'],
-        $data['payment_method'],
-        $data['payment_status'],
-        $data['payment_date'],
-        $data['transaction_ref'],
-        $data['total_emi_no'],
-        $data['created_by']
-    );
+    try {
+        // 1 Insert payment
+        $stmt = $this->db->prepare("
+            INSERT INTO lead_payments
+            (booking_id, bank_name, bank_account_no, cheque_no, online_type, payment_type, amount, payment_method, payment_status, payment_date, transaction_ref, total_emi_no, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
 
-    if ($stmt->execute()) {
-        if ($data['payment_type'] === 'booking') {
-            $this->markFlatBooked($data['booking_id']);
+        $stmt->bind_param(
+            "isssssdssssii",
+            $data['booking_id'],
+            $data['bank_name'],
+            $data['bank_account_no'],
+            $data['cheque_no'],
+            $data['online_type'],
+            $data['payment_type'],
+            $data['amount'],
+            $data['payment_method'],
+            $data['payment_status'],
+            $data['payment_date'],
+            $data['transaction_ref'],
+            $data['total_emi_no'],
+            $data['created_by']
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception("Payment insert failed: " . $stmt->error);
         }
-        return $this->db->insert_id;
-    }
 
-    return false;
+        $payment_id = $this->db->insert_id;
+
+        // 2 Mark flat booked if booking money
+        if ($data['payment_type'] === 'booking_money') {
+
+            $sql = "UPDATE flats f
+                    JOIN lead_bookings b ON b.flat_id = f.id
+                    SET f.is_booked = 1,
+                        f.status = 'booked'
+                    WHERE b.id = ?";
+            $stmt2 = $this->db->prepare($sql);
+            $stmt2->bind_param("i", $data['booking_id']);
+
+            if (!$stmt2->execute()) {
+                throw new Exception("Flat booking update failed: " . $stmt2->error);
+            }
+        }
+        // 3 Commit transaction
+        $this->db->commit();
+        return $payment_id;
+
+    } catch (Exception $e) {
+        // Rollback on error
+        $this->db->rollback();
+        // Optional: log error
+        error_log($e->getMessage());
+        return false;
+    }
 }
 
 
+
     // Flat is_booked update
-    private function markFlatBooked($booking_id)
-    {
-        $sql = "UPDATE flats f
-                JOIN lead_bookings b ON b.flat_id = f.id
-                SET f.is_booked = 1
-                WHERE b.id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("i", $booking_id);
-        $stmt->execute();
-    }
+private function markFlatBooked($booking_id)
+{
+    $sql = "UPDATE flats f
+            JOIN lead_bookings b ON b.flat_id = f.id
+            SET f.is_booked = 1,
+                f.status = 'booked'
+            WHERE b.id = ?";
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("i", $booking_id);
+    $stmt->execute();
+}
+
 
     // All payments for a booking
     public function getByBooking($booking_id)

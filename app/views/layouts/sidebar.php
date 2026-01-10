@@ -106,6 +106,14 @@
                                </ul>
                            </li>
 
+                           <!-- Inventroy -->
+                           <li class="slide ">
+                               <a href="<?= $base_url ?>/inventory-lists" class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
+                                   <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
+                                   <span class="sidebar__menu-label">Inventory Manage</span>
+                               </a>
+                           </li>
+
                        <?php endif; ?>
 
                        <!--End Sales CATEGORY -->
@@ -114,7 +122,7 @@
                        <?php if (hasPermission("Hrm Manage")):  ?>
                            <!--HRM CATEGORY -->
                            <li class="sidebar__menu-category">
-                               <span class="category-name">HRM Manage</span>
+                               <span class="category-name">HR Manage</span>
                            </li>
 
                            <!-- Sales Dashboard -->

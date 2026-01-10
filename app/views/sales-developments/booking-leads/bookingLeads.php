@@ -72,7 +72,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             id="flatPrice"
                             readonly>
                     </div>
-
                     <!-- Agreement Value -->
                     <div class="col-lg-6">
                         <label class="form-label">Agreement Value/Booking Money *</label>
@@ -124,7 +123,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                     <td><?= $index + 1 ?></td>
                                     <td><?= $lead['lead_name'] ?? '' ?></td>
                                     <td><?= $or['project_name'] ?? '' ?></td>
-                                    <td><?= $or['flat_name'] ?? '' ?> (Floor: <?= $or['floor_no'] ?? '' ?>, <?= $or['sqft'] ?? '' ?> sqft)</td>
+                                    <td><?= $or['flat_name'] ?? '' ?> ( Floor No: <?= $or['floor_no'] ?? '' ?>, <?= $or['sqft'] ?? '' ?> sqft)</td>
                                     <td><?= $_SESSION['user']['name'] ?? '' ?></td>
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
@@ -137,6 +136,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                 data-flat="<?= $or['flat_id'] ?>"
                                                 data-date="<?= $or['booking_date'] ?>"
                                                 data-agreement="<?= $or['agreement_value'] ?>"
+                                           
                                                 data-status="<?= $or['booking_status'] ?>">
                                                 Edit
                                             </button>

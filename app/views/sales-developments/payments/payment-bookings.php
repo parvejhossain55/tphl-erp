@@ -51,7 +51,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <label class="form__input-title">Agreement Value</label>
                             <input type="text" class="form-control" value="<?= number_format($booking['agreement_value'], 2) ?>" readonly>
                         </div>
-                        <div class="col-lg-6">
+                        <div class="d-none col-lg-6">
                             <label class="form__input-title">Discount Value</label>
                             <input type="text" class="form-control"  value="<?= number_format($booking['discount_amount'] ?? 0, 2) ?>"  readonly>
                         </div>

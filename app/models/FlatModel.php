@@ -8,9 +8,6 @@ class FlatModel extends Model
     {
         parent::__construct($db);
     }
-
-
-
     /* =========================
        Get All Projects
     ========================== */
@@ -75,12 +72,6 @@ class FlatModel extends Model
             'available' => 0
         ];
     }
-
-
-
-
-
-
     /* =========================
        Create Project
     ========================== */
@@ -132,9 +123,6 @@ class FlatModel extends Model
         return $stmt->execute();
     }
 
-
-
-
     /* =========================
        Find Project (Edit)
     ========================== */
@@ -158,7 +146,7 @@ class FlatModel extends Model
     {
         $sql = "UPDATE flats SET
         project_id = ?,flat_name=?,  sqft = ?, bhk = ?, bedroom = ?, bathroom = ?, balcony = ?,
-        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?,created_by=?,
+        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?,created_by=?
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -191,9 +179,6 @@ class FlatModel extends Model
         }
         return true;
     }
-
-
-
     public function getProjectsFromFlats()
     {
         $sql = "SELECT DISTINCT p.id, p.name
@@ -249,4 +234,30 @@ class FlatModel extends Model
         $stmt->bind_param("i", $id);
         return $stmt->execute();
     }
+
+
+
+    
+//     private function updateFlatStatusIfSold($booking_id)
+// {
+//     // get flat id and total price
+//     $sql = "SELECT f.id AS flat_id, f.price_value, SUM(p.amount) AS total_price
+//             FROM flats f
+//             JOIN lead_bookings b ON b.flat_id = f.id
+//             JOIN lead_payments p ON p.booking_id = b.id
+//             WHERE b.id = ?
+//             GROUP BY f.id";
+//     $stmt = $this->db->prepare($sql);
+//     $stmt->bind_param("i", $booking_id);
+//     $stmt->execute();
+//     $result = $stmt->get_result()->fetch_assoc();
+
+//     if ($result && $result['total_paid'] >= $result['price_value']) {
+//         // mark as sold
+//         $sql2 = "UPDATE flats SET status = 'sold', is_booked = 1 WHERE id = ?";
+//         $stmt2 = $this->db->prepare($sql2);
+//         $stmt2->bind_param("i", $result['flat_id']);
+//         $stmt2->execute();
+//     }
+// }
 }

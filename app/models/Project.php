@@ -269,4 +269,81 @@ public function update($id, $data)
         $stmt->bind_param("i", $id);
         return $stmt->execute();
     }
+
+
+public function inventoryGetAll()
+{
+    // 1. Fetch all projects summary
+    $projects = [];
+    $stmt = $this->db->prepare("
+        SELECT 
+            p.id AS project_id,
+            p.name AS project_name,
+            COUNT(f.id) AS total_flats,
+            SUM(f.is_booked = 0) AS available_flats,
+            SUM(f.is_booked = 1 AND f.status = 'booked') AS booked_flats,
+            SUM(f.status = 'sold') AS sold_flats,
+            SUM(f.status = 'cancelled') AS cancelled_flats,
+            SUM(f.price_value) AS total_flat_value
+        FROM projects p
+        LEFT JOIN flats f ON f.project_id = p.id
+        GROUP BY p.id
+    ");
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        $projects[$row['project_id']] = $row;
+    }
+
+    // 2. Fetch all flats grouped by project
+$stmt2 = $this->db->prepare("
+    SELECT 
+        f.id,
+        f.project_id,
+        f.flat_name,
+        f.price_value,
+        f.is_booked,
+        f.status,
+        CASE 
+            WHEN f.is_booked = 1 OR f.status = 'booked' 
+            THEN lb.agreement_value
+            ELSE NULL
+        END AS agreement_value
+    FROM flats f
+    LEFT JOIN lead_bookings lb 
+        ON lb.flat_id = f.id
+    ORDER BY f.project_id, f.flat_name
+");
+
+
+    $stmt2->execute();
+    $flatsResult = $stmt2->get_result();
+
+    while ($flat = $flatsResult->fetch_assoc()) {
+        $projects[$flat['project_id']]['flats'][] = $flat;
+    }
+
+    return array_values($projects); // return numeric array
+}
+
+
+
+
+
+// SELECT
+//     p.name AS project_name,
+//     COUNT(f.id) AS total_flats,
+//     SUM(f.is_booked = 0) AS available_flats,
+//     SUM(f.is_booked = 1 AND f.status = 'booked') AS booked_flats,
+//     SUM(f.status = 'sold') AS sold_flats,
+//     SUM(f.status = 'cancelled') AS cancelled_flats,
+//     SUM(f.price_value) AS total_project_value
+// FROM projects p
+// LEFT JOIN flats f ON f.project_id = p.id
+// WHERE p.id = :project_id
+// GROUP BY p.id;
+
+
 }

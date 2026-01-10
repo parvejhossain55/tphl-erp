@@ -1,7 +1,5 @@
-<<<<<<< HEAD
 -- 05/01/2025 Farzana
 -- all Table's add a column created_by excluding which table already has tasks,lead_bookings,leads_follow_ups,lead_payments
-=======
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
@@ -71,4 +69,13 @@ ALTER TABLE `lead_payments`
 COMMIT;
 
 -- Added By Rafi 5 jan-2026 . Table lead_payments added payment_status field to track payment status like paid, partially_paid, pending, failed.
->>>>>>> 540a74c4563983d1a670b4c40bb59bea8f3569ef
+
+
+--10-1-2026 Farzana 
+--1
+ALTER TABLE flats 
+ADD COLUMN status ENUM('available','booked','sold') DEFAULT 'available';
+
+
+
+

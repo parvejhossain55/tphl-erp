@@ -137,8 +137,8 @@ class FlatController extends Controller
         $projects   = $this->projectModel->getAll();
         $flat = $this->flatModel->find($id);
         $this->view("sales-developments/flats/edit-flat", [
-            "current_route"   => "edit-lead",
-            "page_title"      => "Edit Lead",
+            "current_route"   => "edit-flat",
+            "page_title"      => "Edit Flat",
             "projects"       => $projects,
             "flat"     => $flat,
             "show_breadcrumb" => true,

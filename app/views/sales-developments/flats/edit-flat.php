@@ -1,6 +1,6 @@
 <?php
-$page_title = "Edit Project";
-$page = 'Edit Project';
+$page_title = "Edit Flat";
+$page = 'Edit Flat';
 $show_breadcrumb = true;
 
 

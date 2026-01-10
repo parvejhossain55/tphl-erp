@@ -167,6 +167,8 @@ $routes = [
     "update-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "update"],
     "delete-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "delete"],
 
+    // ==========SALES & BUISENESS======//
+
     //project
     "project-lists" => ["controller" => "ProjectController", "method" => "index"],
     "create-project" => ["controller" => "ProjectController", "method" => "create"],
@@ -197,19 +199,20 @@ $routes = [
     "booking-store" => ["controller" => "BookingController", "method" => "store"],
     "get-flats-by-project/(\d+)" => ["controller" => "BookingController", "method" => "getFlatsByProject"],
     "update-flats-by-project" => ["controller" => "BookingController", "method" => "update"],
-
-
     // payments_booking
     "payments-booking/(\d+)" => ["controller" => "PaymentBookingController", "method" => "index"],
     "payment-booking-store" => ["controller" => "PaymentBookingController", "method" => "store"],
     "payment-booking-invoice/(\d+)" => ["controller" => "PaymentBookingController", "method" => "invoice"],
-
+    
     //SalesDashboard
 
     "sales-dashboard" => ["controller" => "SalesDashboardController", "method" => "index"],
+    "inventory-lists" => ["controller" => "ProjectInventoryController", "method" => "index"],
+
+    // ==========END SALES & BUISENESS======//
 
 
-    //payrolls
+    //======payrolls===========//
     //--payslips lists
     "payslip-lists" => ["controller" => "PayrollController", "method" => "index"],
     "create-payslip" => ["controller" => "PayrollController", "method" => "create"],
@@ -231,7 +234,7 @@ $routes = [
     //company bank accounts
     "company-bank-accounts" => ["controller" => "BankAccountController", "method" => "index"],
 
-
+   //======payrolls==========//
 
 
     //Rafi Start  Accounts
@@ -272,7 +275,6 @@ $routes = [
     'toggle-role-status' => ["controller" => "AccountManagementController", "method" => "toggleRoleStatus"],
 
     // Add these routes to your routes array
-
     // ==================== CLIENT INVOICE ROUTES ====================
     'payment-invoice' => ["controller" => "AccountClientController", "method" => "viewPaymentInvoice"],
     'payment-invoice/(\d+)' => ["controller" => "AccountClientController", "method" => "viewPaymentInvoice"],
@@ -285,8 +287,6 @@ $routes = [
         "controller" => "AccountClientController",
         "method" => "viewClientStatement"
     ],
-
-
     'management-cash-in-statement' => ["controller" => "AccountManagementController", "method" => "viewManagementStatement"],
     'management-cash-in-invoice' => ["controller" => "AccountManagementController", "method" => "viewTransactionInvoice"],
     'management-cash-out-statement' => ["controller" => "AccountManagementCashoutController", "method" => "showStatement"],
