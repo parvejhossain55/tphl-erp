@@ -41,7 +41,7 @@ $show_breadcrumb = true;
                                     }
                                 }
                                 ?>
-                                <label><span><?= htmlspecialchars($perm_name) ?></span></label>
+                                <label class="mb-2"><span><?= htmlspecialchars($perm_name) ?></span></label>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <span class="text-muted">No Permissions</span>

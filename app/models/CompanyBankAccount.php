@@ -33,16 +33,15 @@ public function getAll() {
 
 public function create($data)
 {
-    // Module name দিয়ে photo upload
     $stmt = $this->db->prepare(
         "INSERT INTO company_bank_accounts
         (account_name, account_number, bank_name, status,created_by)
-        VALUES (?, ?, ?, ?, ?,?)"
+        VALUES (?, ?, ?, ?, ?)"
     );
 
 
 $stmt->bind_param(
-    "ssss",
+    "ssssi",
     $data['account_name'],
     $data['account_number'],
     $data['bank_name'],
@@ -52,7 +51,7 @@ $stmt->bind_param(
     if ($stmt->execute()) {
         return true;
     } else {
-        echo "ERROR: " . $stmt->error;
+        echo "ERROR: " . $this->db->error;
         return false;
     }
 }
@@ -62,15 +61,23 @@ $stmt->bind_param(
  // Update role name + permissions
 public function update($data)
 {
-    // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE company_bank_accounts SET account_name = ?, account_number = ?, bank_name = ?, status = ?,created_by = ? WHERE id = ?");
+    $stmt = $this->db->prepare("
+        UPDATE company_bank_accounts 
+        SET account_name = ?, 
+            account_number = ?, 
+            bank_name = ?, 
+            status = ?, 
+            created_by = ?
+        WHERE id = ?
+    ");
+
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;
     }
 
     $stmt->bind_param(
-        "ssssii",
+        "ssssii", // 🔥 status is STRING (ENUM)
         $data['account_name'],
         $data['account_number'],
         $data['bank_name'],
@@ -79,25 +86,19 @@ public function update($data)
         $data['id']
     );
 
-    if (!$stmt->execute()) {
-        echo "Execute failed: " . $stmt->error;
-        return false;
-    }
-
+    $result = $stmt->execute();
     $stmt->close();
-    return true;
+
+    return $result;
 }
+
 
 public function delete($id)
 {
-    // 1️⃣ Delete all designations linked to this communitie
-    $stmt1 = $this->db->prepare("DELETE FROM projects WHERE community_id = ?");
-    $stmt1->bind_param("i", $id);
-    $stmt1->execute();
-    $stmt1->close();
 
-    // 2️⃣ Delete the communitie
-    $stmt2 = $this->db->prepare("DELETE FROM communities WHERE id = ?");
+
+    // 2 Delete the communitie
+    $stmt2 = $this->db->prepare("DELETE FROM company_bank_accounts WHERE id = ?");
     $stmt2->bind_param("i", $id);
     $stmt2->execute();
     $stmt2->close();

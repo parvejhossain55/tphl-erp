@@ -66,8 +66,8 @@
             </div>
         </div>
 
- 
-    <!-- REVENUE + CONVERSION -->
+
+        <!-- REVENUE + CONVERSION -->
         <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
@@ -107,7 +107,7 @@
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-success mb-10">Booking Money Collected</h6>
                         <h4 class="card__title">
-                          <?= number_format($bookingCollected, 2) ?>
+                            <?= format_bdt($bookingCollected) ?>
                         </h4>
                     </div>
                 </div>
@@ -124,7 +124,7 @@
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-success mb-10">Conversion Rate</h6>
                         <h4 class="card__title">
-                            <?= number_format($conversionRate, 2) ?>%
+                            <?= format_bdt($conversionRate) ?>%
                         </h4>
                     </div>
                 </div>
@@ -132,10 +132,7 @@
         </div>
 
     </div>
-
-
     <!-- sales overview  -->
-
     <div class="row g-20">
         <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
             <div class="card__wrapper height-equal">
@@ -147,10 +144,10 @@
                                 <button class="nav-link" id="pills-bar-year-tab" data-period="year" type="button">1Y</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
+                                <button class="nav-link active" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="pills-bar-week-tab" data-period="week" type="button">1W</button>
+                                <button class="nav-link " id="pills-bar-week-tab" data-period="week" type="button">1W</button>
                             </li>
                         </ul>
                     </div>
@@ -187,8 +184,6 @@
         </div>
 
         <!-- project wise flat sale  -->
-
-
     </div>
 
 

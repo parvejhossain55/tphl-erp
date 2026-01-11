@@ -161,12 +161,18 @@ $routes = [
     // site-Setting 
     "site-settings" => ["controller" => "SiteManage\\SiteSettingController", "method" => "index"],
     "store-site-setting" => ["controller" => "SiteManage\\SiteSettingController", "method" => "storeOrUpdate"],
+
     // flat purchase rules
     "flat-purchase-rules" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "index"],
     "store-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "store"],
     "update-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "update"],
     "delete-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "delete"],
 
+   //company bank accounts
+    "company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "index"],
+    "store-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "store"],
+    "update-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "update"],
+    "delete-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "delete"],
     // ==========SALES & BUISENESS======//
 
     //project
@@ -231,8 +237,7 @@ $routes = [
     "delete-payslip-item" => ["controller" => "PayslipItemController", "method" => "delete"],
 
 
-    //company bank accounts
-    "company-bank-accounts" => ["controller" => "BankAccountController", "method" => "index"],
+ 
 
    //======payrolls==========//
 

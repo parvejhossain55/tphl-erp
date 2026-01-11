@@ -37,7 +37,7 @@ $show_breadcrumb = true;
 
                                 <!-- Serial number -->
                                 <td>#<?= $index + 1 ?></td>
-                                <td><?= htmlspecialchars($account['name']) ?></td>
+                                <td><?= htmlspecialchars($account['bank_name']) ?? '' ?></td>
                                 <td><?= htmlspecialchars($account['account_name']) ?></td>
                                 <td><?= htmlspecialchars($account['account_number']) ?></td>
                                 <td>
@@ -55,15 +55,17 @@ $show_breadcrumb = true;
                                             data-bs-toggle="modal"
                                             data-bs-target="#editDepartment"
                                             data-id="<?= $account['id'] ?>"
-                                            data-name="<?= htmlspecialchars($account['name']) ?>"
+                                            data-name="<?= htmlspecialchars($account['bank_name']) ?>"
+                                            data-account-holder="<?= htmlspecialchars($account['account_name']) ?>"
+                                            data-account-number="<?= htmlspecialchars($account['account_number']) ?>"
                                             data-status="<?= $account['status'] ?>">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </button>
 
                                         <button class="removeBtnCust table__icon delete"
                                             data-id="<?= $account['id'] ?>"
-                                            data-name="<?= $account['name'] ?>"
-                                            data-action="delete-department">
+                                            data-name="<?= $account['bank_name'] ?>"
+                                            data-action="delete-company-bank-accounts">
                                             <i class="fa-regular fa-trash"></i>
                                         </button>
 
@@ -81,7 +83,7 @@ $show_breadcrumb = true;
     </div>
 </div>
 
-<!-- new lead modal start -->
+<!-- new bank account  modal start -->
 <div id="addNewDepartment" class="modal custom-modal fade" role="dialog">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div class="modal-content">
@@ -91,13 +93,13 @@ $show_breadcrumb = true;
                         class="fa-solid fa-xmark-large"></i></button>
             </div>
             <div class="modal-body">
-                <form action="<?= $GLOBALS['base_url'] ?>/store-bank-account" method="POST">
+                <form action="<?= $GLOBALS['base_url'] ?>/store-company-bank-accounts" method="POST">
 
                     <div class="row gy-10">
                         <div class="col-xl-12">
                             <div class="card__wrapper">
                                 <div class="row gy-20">
-                                    <div class="col-lg-12">
+                                    <div class="col-lg-6">
                                         <div class="from__input-box">
                                             <div class="form__input-title">
                                                 <label for="department">Bank Name with Branch<span>*</span></label>
@@ -107,7 +109,7 @@ $show_breadcrumb = true;
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-lg-12">
+                                    <div class="col-lg-6">
                                         <div class="from__input-box">
                                             <div class="form__input-title">
                                                 <label for="department">Account Holder Name<span>*</span></label>
@@ -169,7 +171,7 @@ $show_breadcrumb = true;
             </div>
 
             <div class="modal-body">
-                <form id="editDepartmentForm" action="<?= $GLOBALS['base_url'] ?>/update-bank-account" method="POST">
+                <form id="editDepartmentForm" action="<?= $GLOBALS['base_url'] ?>/update-company-bank-accounts" method="POST">
                     <input type="hidden" name="id" id="edit_department_id">
 
                     <div class="row gy-10">
@@ -184,7 +186,7 @@ $show_breadcrumb = true;
                                                 <label for="edit_department">Bank Name <span>*</span></label>
                                             </div>
                                             <div class="form__input">
-                                                <input class="form-control" name="bank_name" id="edit_department" type="text" required>
+                                                <input class="form-control" name="bank_name" id="edit_bank_name" type="text" required>
                                             </div>
                                         </div>
                                     </div>
@@ -195,7 +197,7 @@ $show_breadcrumb = true;
                                                 <label for="edit_account">Account Holder Name<span>*</span></label>
                                             </div>
                                             <div class="form__input">
-                                                <input class="form-control" name="account_name" id="edit_account" type="text" required>
+                                                <input class="form-control" name="account_name" id="edit_account_name" type="text" required>
                                             </div>
                                         </div>
                                     </div>
@@ -260,15 +262,18 @@ $show_breadcrumb = true;
             // Get data attributes
             const id = button.getAttribute('data-id');
             const name = button.getAttribute('data-name');
+            const account_name = button.getAttribute('data-account-holder');
+            const account_number = button.getAttribute('data-account-number');
             const status = button.getAttribute('data-status');
 
             // Fill form fields
             document.getElementById('edit_department_id').value = id;
-            document.getElementById('edit_department').value = name;
-            console.log("Button clicked:", button);
-            console.log("Department ID:", id, "Name:", name, "Status:", status);
-
-            if (status === "1") {
+            document.getElementById('edit_bank_name').value = name;
+            document.getElementById('edit_account_name').value = account_name;
+            document.getElementById('edit_account_number').value = account_number;
+            document.getElementById('editStatusInactive').value = status;
+   
+            if (status === "active") {
                 document.getElementById('editStatusActive').checked = true;
             } else {
                 document.getElementById('editStatusInactive').checked = true;

@@ -131,7 +131,7 @@ $show_breadcrumb = false;
                                     </span>
                                 </td>
                                 <td><span class="badge bg-success p-2"><?= $row['available_flats'] ?></span></td>
-                                <td ><span class="badge bg-primary text-dark p-2"><?= $row['booked_flats'] ?></span></td>
+                                <td ><span class="badge bg-danger p-2"><?= $row['booked_flats'] ?></span></td>
                                 <td class="d-none"><span class="badge bg-dark text-white p-2"><?= $row['sold_flats'] ?? 0 ?></span></td>
                                 <td><strong><?= format_bdt($row['total_flat_value']) ?> ৳</strong></td>
                                 <td>
@@ -150,7 +150,7 @@ $show_breadcrumb = false;
                                     
                                             <?= isset($flat['agreement_value']) && $flat['agreement_value'] > 0
                                                 ?       '<span class="fw-semibold fs-6"> Booking Money: </span>'. format_bdt($flat['agreement_value']) . " ৳"
-                                                : '<span class="bd-badge bg-primary text-dark p-2">Not Yet Booked</span>'; ?>
+                                                : '<span class="bd-badge bg-primary  p-2">Not Yet Booked</span>'; ?>
                                         </td>
 
                                      
@@ -161,7 +161,7 @@ $show_breadcrumb = false;
                                                     echo '<span class=" badge bg-success p-2">Available</span>';
                                                     break;
                                                 case 'booked':
-                                                    echo '<span class="badge bg-warning text-dark p-2">Booked</span>';
+                                                    echo '<span class="badge bg-danger p-2">Booked</span>';
                                                     break;
                                                 case 'sold':
                                                     echo '<span class="badge bg-dark text-white p-2">Sold</span>';

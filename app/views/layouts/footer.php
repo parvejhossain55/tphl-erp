@@ -216,7 +216,7 @@
                             type: 'radial',
                             shadeIntensity: 0.4,
                             gradientToColors: [
-                                '#008FFB',
+                                '#9f00fb',
                                 '#13684aff',
                                 '#da950cff',
                                 '#FF4560',
@@ -229,7 +229,7 @@
                     },
 
                     colors: [
-                        '#48aefcff',
+                        'rgb(252, 72, 171)',
                         '#12976bff',
                         '#fecc6a',
                         '#ff8698',
@@ -256,7 +256,7 @@
                             breakpoint: 1200, // Laptop
                             options: {
                                 dataLabels: {
-                                    enabled: true // ❌ hide %
+                                    enabled: true //  hide %
                                 },
                                 plotOptions: {
                                     pie: {
@@ -289,7 +289,7 @@
                                         donut: {
                                             size: '78%',
                                             labels: {
-                                                show: true // ❌ hide center text
+                                                show: true //  hide center text
                                             }
                                         }
                                     }
@@ -310,122 +310,114 @@
 
 
 
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
+<script>
+document.addEventListener("DOMContentLoaded", function () {
 
-                const salesData = {
-                    week: {
-                        labels: <?= json_encode(array_column($weeklySales, 'date')) ?>,
-                        totals: <?= json_encode(array_column($weeklySales, 'total')) ?>
-                    },
-                    month: {
-                        labels: <?= json_encode(array_column($monthlySales, 'date')) ?>,
-                        totals: <?= json_encode(array_column($monthlySales, 'total')) ?>
-                    },
-                    year: {
-                        labels: <?= json_encode(array_column($yearlySales, 'month')) ?>,
-                        totals: <?= json_encode(array_column($yearlySales, 'total')) ?>
-                    }
-                };
+    const salesData = {
+        week: {
+            labels: <?= json_encode(array_column($weeklySales, 'date')) ?>,
+            totals: <?= json_encode(array_column($weeklySales, 'total')) ?>
+        },
+        month: {
+            labels: <?= json_encode(array_column($monthlySales, 'date')) ?>,
+            totals: <?= json_encode(array_column($monthlySales, 'total')) ?>
+        },
+        year: {
+            labels: <?= json_encode(array_column($yearlySales, 'month')) ?>,
+            totals: <?= json_encode(array_column($yearlySales, 'total')) ?>
+        }
+    };
 
-                const colors = ['#1a6e40ff', '#23bb95ff'];
+    // 🔥 THIS PART YOU MISSED
+    const activeBtn = document.querySelector('.nav-link.active');
+    const defaultPeriod = activeBtn ? activeBtn.dataset.period : 'week';
 
-                function getAlternatingColors(length) {
-                    return Array.from({
-                        length
-                    }, (_, i) => colors[i % colors.length]);
+    const colors = ['#1a6e40ff', '#23bb95ff'];
+
+    function getAlternatingColors(length) {
+        return Array.from({ length }, (_, i) => colors[i % colors.length]);
+    }
+
+    let options = {
+        chart: {
+            type: 'bar',
+            height: 300,
+            toolbar: { show: false }
+        },
+
+        plotOptions: {
+            bar: {
+                distributed: true,
+                borderRadius: 4,
+                columnWidth: '40%'
+            }
+        },
+
+        dataLabels: {
+            enabled: defaultPeriod !== 'month',
+            formatter: val => '৳ ' + val.toLocaleString()
+        },
+
+        series: [{
+            name: 'Sales',
+            data: salesData[defaultPeriod].totals
+        }],
+
+        xaxis: {
+            categories: salesData[defaultPeriod].labels,
+            labels: {
+                style: {
+                    colors: getAlternatingColors(salesData[defaultPeriod].labels.length),
+                    fontSize: '12px',
+                    fontWeight: 500
                 }
+            }
+        },
 
-                let options = {
-                    chart: {
-                        type: 'bar',
-                        height: 300,
-                        toolbar: {
-                            show: false
-                        }
-                    },
+        yaxis: {
+            labels: {
+                style: {
+                    colors: '#1a6e40',
+                    fontSize: '12px',
+                    fontWeight: 700
+                }
+            }
+        },
 
-                    plotOptions: {
-                        bar: {
-                            distributed: true,
-                            borderRadius: 4,
-                            columnWidth: '40%'
-                        }
-                    },
+        colors: getAlternatingColors(salesData[defaultPeriod].totals.length),
 
-                    dataLabels: {
-                        enabled: true,
-                        formatter: val => '৳ ' + val.toLocaleString()
-                    },
+        tooltip: {
+            y: {
+                formatter: val => '৳ ' + val.toLocaleString()
+            }
+        }
+    };
 
-                    series: [{
-                        name: 'Sales',
-                        data: salesData.week.totals
-                    }],
+    const chart = new ApexCharts(document.querySelector("#salesChart"), options);
+    chart.render();
 
-                    xaxis: {
-                        categories: salesData.week.labels,
-                        labels: {
-                            style: {
-                                colors: getAlternatingColors(salesData.week.labels.length), // x-axis label colors (optional)
-                                fontSize: '12px',
-                                fontWeight: 500
-                            }
-                        }
-                    },
+    // Tabs click
+    document.querySelectorAll('.nav-link').forEach(button => {
+        button.addEventListener('click', function () {
 
-                    yaxis: {
-                        labels: {
-                            style: {
-                                colors: '#1a6e40', // 🔥 left side y-axis label color
-                                fontSize: '12px',
-                                fontWeight: 700
-                            }
-                        }
-                    },
+            document.querySelectorAll('.nav-link')
+                .forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
 
-                    colors: getAlternatingColors(salesData.week.totals.length),
+            const period = this.dataset.period;
 
-                    tooltip: {
-                        y: {
-                            formatter: val => '৳ ' + val.toLocaleString()
-                        }
-                    }
-                };
-
-
-                const chart = new ApexCharts(document.querySelector("#salesChart"), options);
-                chart.render();
-
-                // Tabs
-                document.querySelectorAll('.nav-link').forEach(button => {
-                    button.addEventListener('click', function() {
-
-                        document.querySelectorAll('.nav-link')
-                            .forEach(btn => btn.classList.remove('active'));
-                        this.classList.add('active');
-
-                        const period = this.dataset.period;
-
-                        chart.updateOptions({
-                            series: [{
-                                data: salesData[period].totals
-                            }],
-                            xaxis: {
-                                categories: salesData[period].labels
-                            },
-                            colors: getAlternatingColors(salesData[period].totals.length),
-
-                            // 🔥 KEY PART
-                            dataLabels: {
-                                enabled: period !== 'month' // ❌ monthly = OFF
-                            }
-                        });
-                    });
-                });
-
+            chart.updateOptions({
+                series: [{ data: salesData[period].totals }],
+                xaxis: { categories: salesData[period].labels },
+                colors: getAlternatingColors(salesData[period].totals.length),
+                dataLabels: { enabled: period !== 'month' }
             });
-        </script>
+        });
+    });
+
+});
+</script>
+
 
 
         </body>

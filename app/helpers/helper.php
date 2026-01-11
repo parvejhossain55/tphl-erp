@@ -1,5 +1,6 @@
 <?php
-function uploadImage(  $input,$module = 'general', $mode = 'original',  $width = 300,   $height = 300) {
+function uploadImage($input, $module = 'general', $mode = 'original',  $width = 300,   $height = 300)
+{
     // 1. File check
     if (!isset($_FILES[$input]) || $_FILES[$input]['error'] !== UPLOAD_ERR_OK) {
         return null;
@@ -176,7 +177,7 @@ function checkLogin()
     }
 
     if (!isset($_SESSION['user'])) {
-     header("Location: " . $GLOBALS['base_url'] . "/admin-login");
+        header("Location: " . $GLOBALS['base_url'] . "/admin-login");
 
         exit;
     }
@@ -255,29 +256,20 @@ function hasPermission($permissionNames)
         session_start();
     }
 
-    if (!isset($_SESSION['user']['role_id'])) {
-        return false;
-    }
-
-    // Don't auto-allow Super Admin — use permissions from session
-    // if ($_SESSION['user']['role_id'] == 3) {
-    //     return true;
-    // }
-
     if (!isset($_SESSION['user']['permissions']) || !is_array($_SESSION['user']['permissions'])) {
         return false;
     }
-
-    $userPermissions = array_map('strtolower', $_SESSION['user']['permissions']);
 
     if (is_string($permissionNames)) {
         $permissionNames = [$permissionNames];
     }
 
-    $permissionNames = array_map('strtolower', $permissionNames);
+    $userPermissions = array_map(fn($p) => trim(strtolower($p)), $_SESSION['user']['permissions']);
+    
+    $permissionNames = array_map(fn($p) => trim(strtolower($p)), $permissionNames);
 
     foreach ($permissionNames as $perm) {
-        if (in_array($perm, $userPermissions)) {
+        if (in_array($perm, $userPermissions, true)) {
             return true;
         }
     }
@@ -285,7 +277,8 @@ function hasPermission($permissionNames)
     return false;
 }
 
-function hasAllPermissions(array $requiredPermissions): bool {
+function hasAllPermissions(array $requiredPermissions): bool
+{
     // Assume $userPermissions is an array of all the current user's permissions
     global $userPermissions; // adjust according to your app
 
@@ -509,7 +502,7 @@ function getFlatRulesArray()
     static $rulesCache = null;
 
     if ($rulesCache === null) {
-        $db = $GLOBALS['db']; 
+        $db = $GLOBALS['db'];
         $rulesCache = [];
         $query = "SELECT rules_description FROM flat_purchase_rules WHERE status = 1 ORDER BY id ASC";
         $result = $db->query($query);
@@ -525,7 +518,7 @@ function getFlatRulesArray()
 
     return $rulesCache; // array return
 }
-  if (!function_exists('amountInWords')) {
+if (!function_exists('amountInWords')) {
     function amountInWords($amount)
     {
         if ($amount === null || $amount === '') {
@@ -546,7 +539,8 @@ function getFlatRulesArray()
 }
 
 // truncate text to N characters
-function truncateText($text, $limit = 50) {
+function truncateText($text, $limit = 50)
+{
     $text = strip_tags($text); // remove HTML
     if (strlen($text) > $limit) {
         return substr($text, 0, $limit) . '...';
@@ -565,16 +559,17 @@ function formatDate($date)
 
 // for bd taka decimal format
 
-function format_bdt($number) {
+function format_bdt($number)
+{
     $decimal = '';
-    if(strpos($number, '.') !== false) {
+    if (strpos($number, '.') !== false) {
         $parts = explode('.', $number);
         $number = $parts[0];   // integer part
         $decimal = '.' . $parts[1]; // decimal part
     }
     $last3 = substr($number, -3);
     $rest = substr($number, 0, -3);
-    if($rest != '') {
+    if ($rest != '') {
         $rest = preg_replace("/\B(?=(\d{2})+(?!\d))/", ",", $rest);
         $formatted = $rest . ',' . $last3 . $decimal;
     } else {
@@ -585,4 +580,3 @@ function format_bdt($number) {
 
 
 // $readTime = calculateReadTime($_POST['content']);
-

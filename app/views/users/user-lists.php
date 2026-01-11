@@ -57,17 +57,18 @@ $show_breadcrumb = false;
             <div class="col-xxl-3 col-xl-4 col-lg-6 col-md-6">
                 <div class="card__wrapper">
                     <div class="employee__wrapper text-center">
-                        <div class="employee__thumb mb-15">
+                        <div class="employee__thumb mb-10">
 
                             <!-- <img src=  "<=getImage('users',filename: $user['photo'])?>" alt="img not found"> -->
                             <img src="<?= getUserProfileImage($user) ?>" alt="img not found">
 
                         </div>
                         <div class="employee__content">
-                            <div class="employee__meta mb-15">
+                            <div class="employee__meta ">
                                 <h4 class="mb-8"><?= htmlspecialchars($user['full_name'] ?: "No Name") ?></h4>
-                                <p><?= htmlspecialchars($user['designation_name'] ?: "No Designation") ?></p>
-                                <p> <span class="fw-semibold fs-6 pe-1">Role:</span><?= htmlspecialchars($user['role_name'] ?: "No role ") ?></p>
+                                <p class="mb-0"><?= htmlspecialchars($user['designation_name'] ?: "No Designation") ?></p>
+                                <p class="mb-0"><?= htmlspecialchars($user['email'] ?: "No email") ?></p>
+                                <p class="mb-2"> <span class="fw-semibold fs-6 pe-1">Role:</span><?= htmlspecialchars($user['role_name'] ?: "No role ") ?></p>
                             </div>
                             <div class="common-social mb-20">
                                 <a href="<?= $user['media_link1'] ?>"><i class="fa-brands fa-facebook-f"></i></a>

@@ -4,50 +4,50 @@
                         <div class="card_wrapper">
                             <div class="card__body">
                                 <form action="<?= $GLOBALS['base_url'] ?>/store-payslip" method="POST" id="payslipForm">
-                                     <div class="form-header p-3 mb-4 border-bottom">
+                                    <div class="form-header p-3 mb-4 border-bottom">
                                         <h4 class="card__title text-center mb-4">
                                             Payslip for the month of <span id="paydateText"></span>
                                         </h4>
-                                        
-                                                             <div class="row g-20 gy-20">
-                                <div class="col-md-7">
-                                    <div class="invoice__logo mb-20">
-                                        <img class=" d-nonelight-logo" src="<?= getImage('settings', getSetting('logo')); ?>" alt="payslip logo">
-                                        <img class="d-none dark-logo" src="assets/images/logo/logo-white.svg" alt="payslip logo">
-                                    </div>
-                                    <h4 class="mb-5"><?= getSetting('website_title') ?></h4>
-                                    <p class="mb-5"><?= getSetting('website_address') ?></p>
-                                    <p class="mb-5"><?= getSetting('website_email') ?></p>
-                                    <p class="mb-5"><?= getSetting('website_phone') ?></p>
-                                </div>
-                                <div class="col-md-5">
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-3">
-                                            <div class="form__input-title">
-                                                <label for="invoiceNumber">Invoice No.</label>
+
+                                        <div class="row g-20 gy-20">
+                                            <div class="col-md-7">
+                                                <div class="invoice__logo mb-10">
+                                                    <img class="light-logo" src="<?= getImage('settings', getSetting('logo')); ?>" alt="payslip logo">
+                                                    <img class=" dark-logo" src="<?= getImage('settings', getSetting('logo')); ?>"  alt="payslip logo">
+                                                </div>
+                                                <p class="mb-5"><?= getSetting('website_address') ?></p>
+                                                <p class="mb-5"><?= getSetting('address') ?></p>
+                                                <p class="mb-5"><?= getSetting('email') ?></p>
+                                                <p class="mb-5"><?= getSetting('website_phone') ?></p>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <div class="row align-items-center mb-10">
+                                                    <div class="col-lg-3">
+                                                        <div class="form__input-title">
+                                                            <label for="invoiceNumber">Invoice No.</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-lg-9">
+                                                        <div class="form__input">
+                                                            <input id="invoiceNumber" type="text" class="form-control" placeholder="#MZ-00114">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row align-items-center mb-10">
+                                                    <div class="col-lg-3">
+                                                        <div class="form__input-title">
+                                                            <label for="basicInput">Date</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-lg-9">
+                                                        <div class="form__input">
+                                                            <input class="form-control flatpickr-input active" id="paydate" type="date" placeholder="Select Date">
+                                                        </div>
+                                                    </div>
+                                                </div>
+
                                             </div>
                                         </div>
-                                        <div class="col-lg-9">
-                                            <div class="form__input">
-                                                <input id="invoiceNumber" type="text" class="form-control" placeholder="#MZ-00114">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row align-items-center mb-10">
-                                        <div class="col-lg-3">
-                                            <div class="form__input-title">
-                                                <label for="basicInput">Date</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-9">
-                                            <div class="form__input">
-                                                <input class="form-control flatpickr-input active" id="paydate" type="date" placeholder="Select Date" >
-                                            </div>
-                                        </div>
-                                    </div>
-                                   
-                                </div>
-                            </div>
                                         <!-- <div class="row align-items-center">
                                             <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
                                                 <img src="<= getImage('settings', getSetting('logo')); ?>" class="inv-logo mb-2" alt="Logo" style="max-width:150px;">
@@ -67,7 +67,7 @@
                                             </div>
                                         </div> -->
                                     </div>
-                                <!-- new here  -->
+                                    <!-- new here  -->
                                     <!-- Employee Info -->
                                     <div class="row mb-4">
                                         <div class="col-sm-6">
@@ -83,7 +83,7 @@
                                                             data-empid="<?= $emp['employee_id'] ?>"
                                                             data-email="<?= $emp['email'] ?>"
                                                             data-basic-salary="<?= $emp['basic_salary'] ?>">
-                                                            <?= htmlspecialchars($emp['full_name']) ?>
+                                                            <?= htmlspecialchars($emp['full_name']) ?> - <?= $emp['employee_id'] ?>
                                                         </option>
                                                     <?php endforeach; ?>
                                                 </select>
@@ -309,15 +309,3 @@
                     // Init
                     document.addEventListener('DOMContentLoaded', restorePayslipData);
                 </script>
-
-
-
-
-
-
-
-
-
-
-
-

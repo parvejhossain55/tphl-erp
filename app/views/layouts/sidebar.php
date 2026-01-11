@@ -1,4 +1,7 @@
-       <!-- app-sidebar-start -->
+<!-- app-sidebar-start -->
+<!-- <pre>
+<php print_r($_SESSION['user']['permissions']); ?>
+</pre> -->
 
        <div class="app-sidebar" id="sidebar">
            <div class="main-sidebar-header">
@@ -119,7 +122,7 @@
                        <!--End Sales CATEGORY -->
 
 
-                       <?php if (hasPermission("Hrm Manage")):  ?>
+                       <?php if (hasPermission("Hr Manage")):  ?>
                            <!--HRM CATEGORY -->
                            <li class="sidebar__menu-category">
                                <span class="category-name">HR Manage</span>
@@ -337,6 +340,13 @@
                                </ul>
                            </li>
 
+                           <!-- Location -->
+                           <li class="slide ">
+                               <a href="<?= $base_url ?>/company-bank-accounts" class="sidebar__menu-item <?= isActive('company-bank-accounts', $current_route) ?>">
+                                   <div class="side-menu__icon"><i class="fa-solid fa-landmark"></i></div>
+                                   <span class="sidebar__menu-label">Company Bank Accounts</span>
+                               </a>
+                           </li>
 
 
                            <!-- Site Manage -->
@@ -377,10 +387,9 @@
                                    </li>
                                </ul>
                            </li>
+
+
                        <?php endif; ?>
-
-
-
 
                        <li class="slide ">
                            <a class="sidebar__menu-item " href="<?= $GLOBALS['base_url']  ?>/logout"><svg width="18" height="18" viewBox="0 0 18 18"

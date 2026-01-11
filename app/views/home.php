@@ -17,7 +17,7 @@ $show_breadcrumb = false;
                     <span><i class="fa-sharp fa-regular fa-user"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Employee</h6>
+                    <h6 class="card__sub-title mb-10">Total Employees</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
                         <h3 class="card__title"><?= $totalEmployee ?? '' ?></h3>
 
@@ -55,7 +55,7 @@ $show_breadcrumb = false;
                     <span><i class="fa-sharp fa-regular fa-gear"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Project</h6>
+                    <h6 class="card__sub-title mb-10">Total Projects</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
                         <h3 class="card__title"><?= $totalProjects ?? '' ?></h3>
 
@@ -91,7 +91,7 @@ $show_breadcrumb = false;
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Total Cash In</h6>
-                        <h4 class="card__title mb-0 text-success text-break">৳<?= number_format($overviewStats['total_cashin'], 2) ?></h4>
+                        <h4 class="card__title mb-0 text-success text-break">৳<?= format_bdt($overviewStats['total_cashin'])?></h4>
                     </div>
                 </div>
             </div>
@@ -107,7 +107,7 @@ $show_breadcrumb = false;
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Total Cash Out</h6>
-                        <h4 class="card__title mb-0 text-danger text-break">৳<?= number_format($overviewStats['total_cashout'], 2) ?></h4>
+                        <h4 class="card__title mb-0 text-danger text-break">৳<?= format_bdt($overviewStats['total_cashout'])?></h4>
                     </div>
                 </div>
             </div>
@@ -124,7 +124,7 @@ $show_breadcrumb = false;
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted">Net Balance</h6>
                     <h4 class="card__title mb-0 text-break <?= $overviewStats['net_balance'] >= 0 ? 'text-success' : 'text-danger' ?>">
-                        ৳<?= number_format($overviewStats['net_balance'], 2) ?>
+                        ৳<?= format_bdt($overviewStats['net_balance'])?>
                     </h4>
                 </div>
             </div>
@@ -159,7 +159,7 @@ $show_breadcrumb = false;
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted">Client Payments</h6>
-                    <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['lead_payments'], 2) ?></h4>
+                    <h4 class="card__title mb-0 text-break">৳<?= format_bdt($statistics['lead_payments'])?></h4>
                 </div>
             </div>
         </div>
@@ -173,7 +173,7 @@ $show_breadcrumb = false;
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted">Management Cash In</h6>
-                    <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['management_cashin'], 2) ?></h4>
+                    <h4 class="card__title mb-0 text-break">৳<?= format_bdt($statistics['management_cashin'])?></h4>
                 </div>
             </div>
         </div>
@@ -187,7 +187,7 @@ $show_breadcrumb = false;
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted">Booking Money</h6>
-                    <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['booking_money'], 2) ?></h4>
+                    <h4 class="card__title mb-0 text-break">৳<?= format_bdt($statistics['booking_money'])?></h4>
                 </div>
             </div>
         </div>
@@ -201,7 +201,7 @@ $show_breadcrumb = false;
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted">Registration Money</h6>
-                    <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['registration_money'], 2) ?></h4>
+                    <h4 class="card__title mb-0 text-break">৳<?= format_bdt($statistics['registration_money'])?></h4>
                 </div>
             </div>
         </div>
@@ -242,10 +242,10 @@ $show_breadcrumb = false;
                             <button class="nav-link" id="pills-bar-year-tab" data-period="year" type="button">1Y</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
+                            <button class="nav-link active" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="pills-bar-week-tab" data-period="week" type="button">1W</button>
+                            <button class="nav-link " id="pills-bar-week-tab" data-period="week" type="button">1W</button>
                         </li>
                     </ul>
                 </div>

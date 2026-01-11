@@ -32,7 +32,7 @@ class RolePermissionController extends Controller
         $this->view("permissions/permissions", [
             "current_route" => "permissions",
             "active" => "permissions",
-            "page_title" => "Create Permission",
+            "page_title" => "Permission",
             "show_breadcrumb" => true,
             "permissions" => $permissions
             
