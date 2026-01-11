@@ -1,6 +1,6 @@
 <?php
-$page_title = "Create Project";
-$page = 'Add Project';
+$page_title = "Create flat";
+$page = 'Add flat';
 $show_breadcrumb = true;
 ?>
 

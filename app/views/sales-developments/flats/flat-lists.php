@@ -100,9 +100,7 @@ $show_breadcrumb = false;
                             <th>Project</th>
                             <th>Flat/Unit</th>
                             <th>BHK</th>
-                            <th>Bedroom</th>
-                            <th>Bathroom</th>
-                            <th>Balcony</th>
+                            
                             <th>Floor No</th>
                             <th>Facing Site</th>
                             <th>Sqft</th>
@@ -119,9 +117,7 @@ $show_breadcrumb = false;
                                 <td><?= htmlspecialchars($flat['project_name'] ?? '') ?></td>
                                 <td><?= htmlspecialchars($flat['flat_name'] ?? 'N/A') ?></td>
                                 <td><?= htmlspecialchars($flat['bhk']) ?></td>
-                                <td><?= htmlspecialchars($flat['bedroom']) ?></td>
-                                <td><?= htmlspecialchars($flat['bathroom']) ?></td>
-                                <td><?= htmlspecialchars($flat['balcony']) ?></td>
+                               
                                 <td><?= htmlspecialchars($flat['floor_no']) ?></td>
                                 <td><?= htmlspecialchars($flat['facing_site']) ?></td>
                                 <td><?= htmlspecialchars($flat['sqft']) ?></td>
@@ -143,6 +139,9 @@ $show_breadcrumb = false;
                                     <div class="d-flex align-items-center justify-content-center gap-10">
                                         <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>" class="table__icon edit">
                                             <i class="fa-sharp fa-light fa-pen"></i>
+                                        </a>
+                                          <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/flat-details/<?= $flat['id'] ?>"
+                                            title="View Transaction History"> <i class="fa-regular fa-eye"></i>
                                         </a>
                                         <button class="table__icon delete" data-id="<?= $flat['id'] ?>">
                                             <i class="fa-regular fa-trash"></i>

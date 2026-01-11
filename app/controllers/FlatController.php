@@ -220,7 +220,15 @@ class FlatController extends Controller
             setSuccess("CSV imported successfully");
         }
     }
-
+    
+    public function show($id){
+        $flat = $this->flatModel->find($id);
+        $this->view('sales-developments/flats/flat-details',[
+            'current_route'=>'flat-details',
+            'page_title' => 'flat-details',
+            'flat' => $flat,
+        ]);
+    }
 
 
 

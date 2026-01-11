@@ -180,7 +180,7 @@ $routes = [
     "create-project" => ["controller" => "ProjectController", "method" => "create"],
     "store-project" => ["controller" => "ProjectController", "method" => "store"],
     "edit-project/(\d+)" => ["controller" => "ProjectController", "method" => "edit"],
-    "projects-import-csv" => ["controller" => "ProjectController", "method" => "importCsv"],
+    "project-details/(\d+)" => ["controller" => "ProjectController", "method" => "show"],
     "update-project/(\d+)" => ["controller" => "ProjectController", "method" => "update"],
     "delete-project/(\d+)" => ["controller" => "ProjectController", "method" => "delete"],
 
@@ -189,7 +189,7 @@ $routes = [
     "create-flat" => ["controller" => "FlatController", "method" => "create"],
     "store-flat" => ["controller" => "FlatController", "method" => "store"],
     "edit-flat/(\d+)" => ["controller" => "FlatController", "method" => "edit"],
-    "flats-import-csv" => ["controller" => "FlatController", "method" => "importCsv"],
+    "flat-details/(\d+)" => ["controller" => "FlatController", "method" => "show"],
     "update-flat/(\d+)" => ["controller" => "FlatController", "method" => "update"],
     "delete-flat/(\d+)" => ["controller" => "FlatController", "method" => "delete"],
 

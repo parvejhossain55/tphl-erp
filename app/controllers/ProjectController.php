@@ -124,7 +124,15 @@ class ProjectController extends Controller
         exit;
     }
 
+    public function show($id){
+        $project = $this->projectModel->find($id);
 
+        $this->view("sales-developments/projects/show-project",[
+            'current_route' =>'project-details',
+            'page_title' =>'project-details',
+            'project' =>$project,
+        ]);
+    }
 
     // Edit Employee Page
     public function edit($id)
@@ -142,54 +150,54 @@ class ProjectController extends Controller
         ]);
     }
 
-public function update($id)
-{
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    public function update($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
-    $data = [
-        'name'              => $_POST['name'] ?? null,
-        'location_id'       => $_POST['location_id'] ?? null,
-        'community_id'      => $_POST['community_id'] ?? null,
+        $data = [
+            'name'              => $_POST['name'] ?? null,
+            'location_id'       => $_POST['location_id'] ?? null,
+            'community_id'      => $_POST['community_id'] ?? null,
 
-        'building_type'     => $_POST['building_type'] ?? null,
-        'total_share'       => $_POST['total_share'] ?? null,
-        'unit_per_floor'    => $_POST['unit_per_floor'] ?? null,
-        'front_road'        => $_POST['front_road'] ?? null,
+            'building_type'     => $_POST['building_type'] ?? null,
+            'total_share'       => $_POST['total_share'] ?? null,
+            'unit_per_floor'    => $_POST['unit_per_floor'] ?? null,
+            'front_road'        => $_POST['front_road'] ?? null,
 
-        'types'             => $_POST['types'] ?? null,
-        'price_range'       => $_POST['price_range'] ?? null,
-        'apartment_count'   => $_POST['apartment_count'] ?? null,
+            'types'             => $_POST['types'] ?? null,
+            'price_range'       => $_POST['price_range'] ?? null,
+            'apartment_count'   => $_POST['apartment_count'] ?? null,
 
-        'hover_text'        => $_POST['hover_text'] ?? null,
-        'plot_size'         => $_POST['plot_size'] ?? null,
-        'plot_no'           => $_POST['plot_no'] ?? null,
-        'block_no'        => $_POST['block_no'] ?? null,
+            'hover_text'        => $_POST['hover_text'] ?? null,
+            'plot_size'         => $_POST['plot_size'] ?? null,
+            'plot_no'           => $_POST['plot_no'] ?? null,
+            'block_no'        => $_POST['block_no'] ?? null,
 
-        'brochure_link'     => $_POST['brochure_link'] ?? null,
-        'passenger_lift'    => $_POST['passenger_lift'] ?? null,
-        'cargo_lift'        => $_POST['cargo_lift'] ?? null,
+            'brochure_link'     => $_POST['brochure_link'] ?? null,
+            'passenger_lift'    => $_POST['passenger_lift'] ?? null,
+            'cargo_lift'        => $_POST['cargo_lift'] ?? null,
 
-        'rooftop_gardening' => isset($_POST['rooftop_gardening']) ? 1 : 0,
-        'car_parking'       => isset($_POST['car_parking']) ? 1 : 0,
-        'convention'        => isset($_POST['convention']) ? 1 : 0,
-        'electricity_backup'=> isset($_POST['electricity_backup']) ? 1 : 0,
+            'rooftop_gardening' => isset($_POST['rooftop_gardening']) ? 1 : 0,
+            'car_parking'       => isset($_POST['car_parking']) ? 1 : 0,
+            'convention'        => isset($_POST['convention']) ? 1 : 0,
+            'electricity_backup'=> isset($_POST['electricity_backup']) ? 1 : 0,
 
-        'amenities_details' => $_POST['amenities_details'] ?? null,
-        'map_link'          => $_POST['map_link'] ?? null,
-        'description'       => $_POST['description'] ?? null,
-        'created_by'      => $_SESSION['user']['id'] ?? null,
-    ];
+            'amenities_details' => $_POST['amenities_details'] ?? null,
+            'map_link'          => $_POST['map_link'] ?? null,
+            'description'       => $_POST['description'] ?? null,
+            'created_by'      => $_SESSION['user']['id'] ?? null,
+        ];
 
-    if ($this->projectModel->update($id, $data)) {
-        setSuccess("Project updated successfully!");
-        header("Location: {$GLOBALS['base_url']}/project-lists");
+        if ($this->projectModel->update($id, $data)) {
+            setSuccess("Project updated successfully!");
+            header("Location: {$GLOBALS['base_url']}/project-lists");
+            exit;
+        }
+
+        setError("Project update failed");
+        header("Location: {$GLOBALS['base_url']}/edit-project/$id");
         exit;
     }
-
-    setError("Project update failed");
-    header("Location: {$GLOBALS['base_url']}/edit-project/$id");
-    exit;
-}
 
 
     public function importCsv()

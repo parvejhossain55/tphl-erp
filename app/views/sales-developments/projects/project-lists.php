@@ -66,19 +66,20 @@ $show_breadcrumb = true;
                                         <a href="<?= $project['brochure_link'] ?>" target="_blank">Link</a>
                                     <?php endif; ?>
                                 </td>
-                 
+
 
                                 <td class="table__icon-box">
                                     <div class="d-flex align-items-center justify-content-center gap-10">
                                         <a href=" download.php?id=<?= $project['id'] ?>" class="d-none table__icon download">
                                             <i class="d-none fa-regular fa-arrow-down-to-bracket"></i>
                                         </a>
+                                        <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/project-details/<?= $project['id'] ?>"
+                                            title="View Transaction History"> <i class="fa-regular fa-eye"></i>
+                                        </a>
                                         <a href="<?= $GLOBALS['base_url'] ?>/edit-project/<?= $project['id'] ?>" class="table__icon edit">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </a>
-                                        <button type="button" class="table__icon view" data-bs-toggle="modal" data-bs-target="#showItemsModal_<?= $project['id'] ?>">
-                                            <i class="fa-regular fa-eye"></i>
-                                        </button>
+
                                     </div>
                                 </td>
                             </tr>
