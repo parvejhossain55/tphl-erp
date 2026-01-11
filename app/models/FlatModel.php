@@ -191,7 +191,7 @@ class FlatModel extends Model
 
     public function getFlatsByProject($projectId)
     {
-        $stmt = $this->db->prepare("SELECT f.id, f.flat_name
+        $stmt = $this->db->prepare("SELECT f.id, f.flat_name,f.is_booked,f.sqft,f.floor_no
                                      FROM flats f
                                      INNER JOIN units u ON f.unit_id = u.id
                                      WHERE f.project_id = ?

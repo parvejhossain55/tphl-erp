@@ -29,7 +29,7 @@ $show_breadcrumb = true;
             <h5>Create Follow Up</h5>
             <form action="<?= $GLOBALS['base_url'] ?>/store-follow-up" method="POST">
                 <div class="row gy-3">
-    <input type="hidden" name="lead_id" value="<?= $selected_lead_id ?? '' ?>">
+                    <input type="hidden" name="lead_id" value="<?= $selected_lead_id ?? '' ?>">
                     <!-- Lead -->
                     <!-- <div class="col-lg-6">
                         <label class="form-label">Select Lead*</label>
@@ -53,9 +53,17 @@ $show_breadcrumb = true;
                     </div>
 
                     <!-- Flat -->
-                    <div class="col-lg-6">
+                    <!-- <div class="col-lg-6">
                         <label class="form-label">Flat</label>
                         <select name="flat_id" id="flatSelect" class="form-select">
+                            <option value="">Select Flat</option>
+                        </select>
+                    </div> -->
+                    <!-- Flat -->
+                    <div class="col-lg-6">
+                        <label class="form-label">Flat / Unit *</label>
+                        <select id="flatSelect" name="flat_id" class="form-select " data-live-search="true">
+
                             <option value="">Select Flat</option>
                         </select>
                     </div>
@@ -205,16 +213,25 @@ $show_breadcrumb = true;
 
         fetch(`<?= $GLOBALS['base_url'] ?>/get-flats/${projectId}`)
             .then(res => res.json())
-            .then(flats => {
-                targetSelect.innerHTML = '<option value="">Select Flat</option>';
-                flats.forEach(f => {
-                    const opt = document.createElement('option');
-                    opt.value = f.id;
-                    opt.textContent = f.flat_name;
-                    if (selectedFlatId && f.id == selectedFlatId) opt.selected = true;
-                    targetSelect.appendChild(opt);
-                });
-            });
+             .then(data => {
+                        flatData = data;
+                        flatSelect.innerHTML = '<option value="">Select Flat</option>';
+
+                        data.forEach(flat => {
+                            const option = document.createElement('option');
+                            option.value = flat.flat_id;
+
+                            if (flat.is_booked == 1) {
+                                option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
+                                option.classList.add('booked-option');
+                                option.disabled = true; // Disable booked flats
+                            } else {
+                                option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
+                            }
+
+                            flatSelect.appendChild(option)
+                        });
+                    });
     }
 
     projectSel.addEventListener('change', function() {

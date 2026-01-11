@@ -165,7 +165,7 @@ $show_breadcrumb = true;
                         </div>
 
                         <!-- Type -->
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="from__input-box">
                                 <label>Type</label>
                                 <select name="type"

@@ -453,6 +453,22 @@
      background-color: #efeaea;
  }
 
+ .bd-blog-wrapper {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.bd-blog-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.employee__btn,
+.btn-text-icon {
+    margin-top: auto;
+}
+
+
 @media (max-width: 768px) {
     .row {
         margin-left: 0 !important;
@@ -463,3 +479,5 @@
         padding-right: 0 !important;
     }
 }
+
+

@@ -63,15 +63,15 @@ $show_breadcrumb = true;
                                 <td><?= htmlspecialchars($project['price_range']) ?></td>
                                 <td>
                                     <?php if (!empty($project['brochure_link'])): ?>
-                                        <a href="<?= $project['brochure_link'] ?>" target="_blank">show</a>
+                                        <a href="<?= $project['brochure_link'] ?>" target="_blank">Link</a>
                                     <?php endif; ?>
                                 </td>
                  
 
                                 <td class="table__icon-box">
                                     <div class="d-flex align-items-center justify-content-center gap-10">
-                                        <a href="download.php?id=<?= $project['id'] ?>" class="table__icon download">
-                                            <i class="fa-regular fa-arrow-down-to-bracket"></i>
+                                        <a href=" download.php?id=<?= $project['id'] ?>" class="d-none table__icon download">
+                                            <i class="d-none fa-regular fa-arrow-down-to-bracket"></i>
                                         </a>
                                         <a href="<?= $GLOBALS['base_url'] ?>/edit-project/<?= $project['id'] ?>" class="table__icon edit">
                                             <i class="fa-sharp fa-light fa-pen"></i>

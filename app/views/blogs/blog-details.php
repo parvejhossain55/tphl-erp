@@ -40,7 +40,7 @@ $show_breadcrumb = true;
             </div>
         </div>
 
-        <div class="card__wrapper">
+        <div class="card__wrapper d-none">
             <div class="post-comment-form">
                 <div class="post-comments-title">
                     <h4 class="mb-15">Leave a Comment</h4>
