@@ -18,11 +18,11 @@ class PayrollController extends Controller
 
     public function index()
     {
-    
-     $year  = $_GET['year']  ?? null;
-    $month = $_GET['month'] ?? null;
 
-    $payslips = $this->paymentModel->getAllWithEmployeeFiltered($year, $month);
+        $year  = $_GET['year']  ?? null;
+        $month = $_GET['month'] ?? null;
+
+        $payslips = $this->paymentModel->getAllWithEmployeeFiltered($year, $month);
 
         $totalEmployees = $this->employeeModel->getTotalCount();
         // $payslips = $this->paymentModel->getAllWithEmployee();
@@ -139,42 +139,19 @@ class PayrollController extends Controller
         ], false);
     }
 
+ public function dueEmployeePayslip() {
+        header('Content-Type: application/json');
 
-
-
-    public function downloadPDF($id)
-    {
-        ini_set('memory_limit', '1024M');
-        require_once __DIR__ . '/../../vendor/autoload.php';
-
-        $payslip = $this->paymentModel->getByIdWithItems($id);
-        if (!$payslip) {
-            die('Payslip not found');
+        $month = $_GET['month'] ?? null;
+        if (!$month) {
+            echo json_encode([]);
+            exit;
         }
 
-        ob_start();
-        $isPdf = true;
-        $this->view("payrolls/payslips/payslip-download", [
-            "current_route" => "download-payslip",
-            "isPdf" => $isPdf,
-            "payslip" => $payslip
-        ]);
-        $html = ob_get_clean();
-
-        $mpdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'margin_top' => 15,
-            'margin_bottom' => 15,
-            'margin_left' => 15,
-            'margin_right' => 15,
-            'default_font' => 'dejavusans'
-        ]);
-
-        $mpdf->WriteHTML($html);
-        $mpdf->Output(
-            'Payslip_' . $payslip['employee_name'] . '.pdf',
-            \Mpdf\Output\Destination::INLINE
-        );
+        $dueEmployees = $this->paymentModel->getDueEmployeePayslip($month);
+        echo json_encode($dueEmployees);
+        exit;
     }
+
+
 }

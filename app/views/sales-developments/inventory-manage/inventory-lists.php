@@ -6,51 +6,51 @@ $show_breadcrumb = false;
 
 
 <h4 class="mb-4">
-  Project Inventory Lists
+    Project Inventory Lists
 </h4>
 <form action="" method="get">
     <div class="row flat-select">
 
         <!-- Search -->
         <!-- Department Filter -->
-         <div class="row d-none">
+        <div class="row d-none">
 
-             <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
-                 <div class="card__wrapper">
-                     <div class="from__input-box">
-                         <select class="form-control" name="department_id">
-                             <option value="">Select Project</option>
-                             <?php foreach ($projects as $project): ?>
-                                 <option value="<?= $project['id'] ?>"
-                                     <?= $selectedProject == $project['id'] ? 'selected' : '' ?>>
-                                     <?= $project['name'] ?>
-                                 </option>
-                             <?php endforeach ?>
-                         </select>
-                     </div>
-                 </div>
-             </div>
-             <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
-                 <div class="card__wrapper">
-                     <div class="search-box">
-                         <input type="text" class="form-control" name="q" id="bookedOrAvailable"
-                             placeholder="Booked/"
-                             value="">
-                     </div>
-                 </div>
-             </div>
-     
-             <!-- Submit -->
-             <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
-                 <div class="card__wrapper">
-                     <div class="d-grid">
-                         <button type="submit" class="btn btn-secondary w-100">
-                             Filter
-                         </button>
-                     </div>
-                 </div>
-             </div>
-         </div>
+            <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
+                <div class="card__wrapper">
+                    <div class="from__input-box">
+                        <select class="form-control" name="department_id">
+                            <option value="">Select Project</option>
+                            <?php foreach ($projects as $project): ?>
+                                <option value="<?= $project['id'] ?>"
+                                    <?= $selectedProject == $project['id'] ? 'selected' : '' ?>>
+                                    <?= $project['name'] ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
+                <div class="card__wrapper">
+                    <div class="search-box">
+                        <input type="text" class="form-control" name="q" id="bookedOrAvailable"
+                            placeholder="Booked/"
+                            value="">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
+                <div class="card__wrapper">
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-secondary w-100">
+                            Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="col-xxl-4 col-xl-4 col-lg-4 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
@@ -105,7 +105,7 @@ $show_breadcrumb = false;
 </form>
 
 <div class="row">
-  <div class="col-xxl-12">
+    <div class="col-xxl-12">
         <div class="card__wrapper p-3">
             <div class="table__wrapper table-responsive">
                 <table class="table table-bordered table-hover mb-0 text-center align-middle" id="inventoryTable">
@@ -131,7 +131,7 @@ $show_breadcrumb = false;
                                     </span>
                                 </td>
                                 <td><span class="badge bg-success p-2"><?= $row['available_flats'] ?></span></td>
-                                <td ><span class="badge bg-danger p-2"><?= $row['booked_flats'] ?></span></td>
+                                <td><span class="badge bg-danger p-2"><?= $row['booked_flats'] ?></span></td>
                                 <td class="d-none"><span class="badge bg-dark text-white p-2"><?= $row['sold_flats'] ?? 0 ?></span></td>
                                 <td><strong><?= format_bdt($row['total_flat_value']) ?> ৳</strong></td>
                                 <td>
@@ -143,17 +143,17 @@ $show_breadcrumb = false;
                             <?php if (!empty($row['flats'])): ?>
                                 <?php foreach ($row['flats'] as $flat): ?>
                                     <tr class="flat-details-row" id="flats<?= $index ?>" style="display:none; background-color:rgb(253 246 246);">
-                                        
+
                                         <td class="text-start ps-4"><strong class="me-1">Flat: </strong><?= htmlspecialchars($flat['flat_name']) ?>; <span><strong class="ms-2">Size:</strong><?= $flat['sqft'] ?> sqft</span></td>
-                                           <td><strong class="pe-3">BHK-</strong><span><?= $flat['bhk'] ?></span></td>
-                                        <td >
-                                    
+                                        <td><strong class="pe-3">BHK-</strong><span><?= $flat['bhk'] ?></span></td>
+                                        <td>
+
                                             <?= isset($flat['agreement_value']) && $flat['agreement_value'] > 0
-                                                ?       '<span class="fw-semibold fs-6"> Booking Money: </span>'. format_bdt($flat['agreement_value']) . " ৳"
+                                                ?       '<span class="fw-semibold fs-6"> Booking Money: </span>' . format_bdt($flat['agreement_value']) . " ৳"
                                                 : '<span class="bd-badge bg-primary  p-2">Not Yet Booked</span>'; ?>
                                         </td>
 
-                                     
+
                                         <td>
                                             <?php
                                             switch ($flat['status']) {
@@ -166,14 +166,14 @@ $show_breadcrumb = false;
                                                 case 'sold':
                                                     echo '<span class="badge bg-dark text-white p-2">Sold</span>';
                                                     break;
-                                             
                                             }
                                             ?>
                                         </td>
-                                         <td><span class="fw-semibold ">Price:</span><?= format_bdt($flat['price_value']) ?> ৳</td>
+                                        <td><span class="fw-semibold ">Price:</span><?= format_bdt($flat['price_value']) ?> ৳</td>
 
                                         <td>
-                                            <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>" class="btn btn-sm btn-success me-1">Edit</a>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>" class="btn btn-sm btn-secondary me-1">Edit</a>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/flat-details/<?= $flat['id'] ?>" class="btn btn-sm btn-primary me-1">Details</a>
 
                                         </td>
                                     </tr>

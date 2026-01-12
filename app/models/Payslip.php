@@ -286,4 +286,29 @@ class Payslip extends Model
 
         return $data;
     }
+
+
+ public function getDueEmployeePayslip($month) {
+        $sql = "SELECT e.id, e.full_name, e.employee_id, e.email, e.designation, e.designation_id, e.basic_salary
+                FROM employees e
+                LEFT JOIN payslips p 
+                ON p.employee_id = e.id AND DATE_FORMAT(p.month, '%Y-%m') = ?
+                WHERE p.id IS NULL";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) die("Prepare failed: " . $this->db->error);
+
+        $stmt->bind_param("s", $month);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $employees = [];
+        while($row = $result->fetch_assoc()) {
+            $employees[] = $row;
+        }
+
+        $stmt->close();
+        return $employees;
+    }
+
 }

@@ -100,3 +100,168 @@ cpanel e upload korle
 -- public/.htaccess e e just domain er moddhe kono folder thakle tar nam dibo just demo-1 (like domain/demo-1)
 -- public/index.php e base_url, r base_folder er just domain er moddhe kono folder thakle tar nam dibo just demo-1 (like domain/demo-1)
 -- view/layouts/header.php e base_url er just domain er moddhe kono folder thakle tar nam dibo just demo-1 (like domain/demo-1)
+
+
+
+
+CREATE TABLE cameras (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    project_id INT NOT NULL,       -- Link to your project
+    camera_name VARCHAR(255),
+    ip_address VARCHAR(50) NOT NULL,
+    port INT DEFAULT 80,           -- HTTP/RTSP port
+    username VARCHAR(50),
+    password VARCHAR(255),         -- Store safely (hashed/encrypted if possible)
+    location VARCHAR(255),         -- e.g., "Main Gate", "Lobby"
+    status ENUM('active','inactive') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+
+documentattion
+3️⃣ Secure the Cameras
+
+CCTV/IP cameras are often hacked if exposed directly to the internet. Follow these:
+
+Change default username/password on all cameras.
+
+Use HTTPS/SSL if camera supports it.
+
+Network isolation:
+
+Keep cameras in a separate VLAN or subnet.
+
+Access to camera feeds only through your server.
+
+Avoid exposing cameras directly to the public internet.
+
+Use your backend as a proxy for streaming.
+
+Strong passwords and optionally OTP or VPN for remote access.
+
+4️⃣ Backend Integration
+
+Your PHP/Laravel backend (or whichever framework) will:
+
+Store all camera info in DB.
+
+Generate dynamic URLs for streaming, e.g.:
+
+$cameraUrl = "http://{$camera['ip_address']}:{$camera['port']}/video";
+
+
+Optional: If RTSP streaming is used:
+
+Convert RTSP → HLS using FFmpeg on server.
+
+Serve HLS to frontend (works in browser without plugins).
+
+5️⃣ Frontend Display
+
+Use a grid layout per project:
+
+<div class="project-cameras">
+  <?php foreach ($cameras as $cam): ?>
+    <div class="camera-box">
+      <h5><?= htmlspecialchars($cam['camera_name']) ?></h5>
+      <video
+        src="<?= $cam['stream_url'] ?>"
+        autoplay
+        muted
+        controls
+        width="320"
+        height="240">
+      </video>
+    </div>
+  <?php endforeach; ?>
+</div>
+
+
+
+===== Server Secuirty VPN server =====
+
+
+Exactly! ✅ Using a VPN server is one of the safest ways to protect your IP cameras, especially in a construction site or real estate project. Let me explain carefully:
+
+Why a VPN helps for IP cameras
+
+Cameras stay on a private network
+
+Your cameras are never exposed to the public internet.
+
+Only devices connected through VPN can access them.
+
+Encrypted traffic
+
+All video streams (RTSP/HTTP) are encrypted between the camera and the user’s device.
+
+Prevents hacking or packet sniffing.
+
+Centralized access
+
+You can give access to multiple users (admin, manager, security) without opening ports on your router.
+
+How to set up VPN for cameras
+
+1.Choose VPN type
+
+2.OpenVPN → widely supported, strong security.
+
+3.WireGuard → modern, fast, easier to configure.
+
+4.Avoid free public VPNs for this; you want self-hosted or trusted paid.
+
+5.Install VPN server
+
+6.On a small server at the site, or in the cloud.
+
+7.Example: Raspberry Pi, Linux VPS, or your project server.
+
+8.Connect cameras to VPN
+
+9.If the camera supports VPN client → configure it to connect automatically.
+
+10.Otherwise, connect the network the cameras are on to VPN (site router VPN client).
+
+11.Connect your backend/app to VPN
+
+12.Your PHP app or admin PC will connect to the VPN.
+
+13.Now your app can fetch camera streams using private IPs.
+
+14.Alternatives if VPN isn’t possible
+
+15.Reverse Proxy with authentication (like Nginx or Apache + HTTPS + basic auth).
+
+16.Port Knocking or firewall rules → only specific IPs can access cameras.
+
+17.Cloud camera solutions (Dahua, Hikvision, Reolink) → manage cameras through vendor apps securely.
+
+⚠️ Important Security Notes
+
+Don’t expose camera IPs directly to the internet.
+
+Use strong passwords for both cameras and VPN.
+
+Keep firmware up to date.
+
+Log all accesses to streams.
+
+💡 My suggestion:
+If your goal is maximum security, go with VPN + backend proxy. The cameras stay private, the backend can dynamically manage streams, and your app can show live feeds safely.
+
+If you want, I can draw a full architecture diagram showing your real estate project → cameras → VPN → backend → admin/users, so you can see how it will work in practice.
+
+Do you want me to do that?
+
+
+
+5️⃣ Dynamic Camera Management
+
+Database table: project_cameras
+
+id	camera_name	  ip_address	  location	          rtsp_url	                             status
+1	  Site Entrance	  192.168.1.10	Gate / Entrance	  rtsp://192.168.1.10:554/...	           active
+2	  Storage Room	  192.168.1.11	Storage Area	    rtsp://192.168.1.11:554/...	           active

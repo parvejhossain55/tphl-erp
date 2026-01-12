@@ -168,7 +168,7 @@ $routes = [
     "update-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "update"],
     "delete-flat-purchase-rule" => ["controller" => "SiteManage\\FlatPurchaseRuleController", "method" => "delete"],
 
-   //company bank accounts
+    //company bank accounts
     "company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "index"],
     "store-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "store"],
     "update-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "update"],
@@ -209,7 +209,7 @@ $routes = [
     "payments-booking/(\d+)" => ["controller" => "PaymentBookingController", "method" => "index"],
     "payment-booking-store" => ["controller" => "PaymentBookingController", "method" => "store"],
     "payment-booking-invoice/(\d+)" => ["controller" => "PaymentBookingController", "method" => "invoice"],
-    
+
     //SalesDashboard
 
     "sales-dashboard" => ["controller" => "SalesDashboardController", "method" => "index"],
@@ -227,8 +227,8 @@ $routes = [
     "pay-payslip" => ["controller" => "PayrollController", "method" => "updatePay"],
     "show-payslip/(\d+)" => ["controller" => "PayrollController", "method" => "show"],
     "print-payslip/(\d+)" => ["controller" => "PayrollController", "method" => "print"],
+    "get-due-employees" => ["controller" => "PayrollController", "method" => "dueEmployeePayslip"],
 
-    "download-payslip/(\d+)" => ["controller" => "PayrollController", "method" => "downloadPDF"],
 
     //--payslip Item
     "payslip-items" => ["controller" => "PayslipItemController", "method" => "index"],
@@ -237,9 +237,9 @@ $routes = [
     "delete-payslip-item" => ["controller" => "PayslipItemController", "method" => "delete"],
 
 
- 
 
-   //======payrolls==========//
+
+    //======payrolls==========//
 
 
     //Rafi Start  Accounts

@@ -48,8 +48,6 @@ $show_breadcrumb = false;
     </div>
 </form>
 
-
-
 <div class="row">
     <?php if (!empty($users)): ?>
         <?php foreach ($users as $user): ?>
@@ -78,7 +76,7 @@ $show_breadcrumb = false;
                                 </a>
                             </div>
                             <div class="employee__btn">
-                                <div class="d-flex align-items-center justify-content-center gap-15">
+                                <div class="d-flex align-items-center justify-content-center gap-10">
 
                                     <a class="btn btn-outline-theme-border"
                                         href="<?= $base_url ?>/user-profile/<?= $user['id'] ?>">View</a>

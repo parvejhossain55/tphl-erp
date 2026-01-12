@@ -3,8 +3,6 @@ $addPage = true;
 $show_breadcrumb = false;
 
 ?>
-
-
 <h4 class="mb-2">
     Flat Management
 </h4>

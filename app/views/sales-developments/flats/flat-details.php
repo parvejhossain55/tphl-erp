@@ -22,6 +22,15 @@ $show_breadcrumb = true;
                             </h4>
                         </div>
                         <div class="d-flex gap-2">
+                            <?php if ($flat['is_booked'] === 1): ?>
+                                <button class="btn btn-danger cursor-none">
+                                    <span>Sold Out</span>
+                                </button>
+                            <?php else: ?>
+                                <button class="btn btn-success cursor-none">
+                                    <span>Available</span>
+                                </button>
+                            <?php endif ?>
                             <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>"
                                 class="btn btn-primary">
                                 <i class="fa-solid fa-edit"></i> Edit
@@ -42,7 +51,7 @@ $show_breadcrumb = true;
                         <div class="price-box p-4 text-center border rounded bg-primary bg-gradient text-white">
                             <h2 class="mb-0">
                                 <i class="fa-solid fa-bangladeshi-taka-sign me-2 text-light"></i>
-                               <span class="text-light"><?= number_format($flat['price_value'], 2) ?> BDT</span> 
+                                <span class="text-light"><?= format_bdt($flat['price_value']) ?> </span>
                             </h2>
                             <strong class="text-light">Flat/Unit Price</strong>
                         </div>
@@ -170,9 +179,6 @@ $show_breadcrumb = true;
                                 </div>
                             <?php endif; ?>
                         </div>
-
-
-
                     </div>
                 </div>
             <?php endif; ?>
@@ -226,7 +232,7 @@ $show_breadcrumb = true;
                                     <?php if (!empty($flat['price_value'])): ?>
                                         <li class="mb-2">
                                             <i class="fa-solid fa-check-circle text-success me-2"></i>
-                                            <strong>Price:</strong> ৳ <?= number_format($flat['price_value'], 2) ?>
+                                            <strong>Price:</strong> ৳ <?= format_bdt($flat['price_value']) ?>
                                         </li>
                                     <?php endif; ?>
                                 </ul>
@@ -285,6 +291,10 @@ $show_breadcrumb = true;
 
     .facilities-box {
         line-height: 1.8;
+    }
+
+    .cursor-none {
+        cursor: none !important;
     }
 
     @media (max-width: 768px) {
