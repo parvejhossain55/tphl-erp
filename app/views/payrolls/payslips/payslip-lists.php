@@ -168,11 +168,11 @@ $show_breadcrumb = true;
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
-                <table class="table hover mb-20" id="dataTableDefualt">
+                <table class="table hover mb-20" id="">
                     <thead>
                         <tr class="table__title">
-                            <th>Employee ID</th>
-                            <th>Employee Name</th>
+                            <th class="th_1">Employee ID</th>
+                            <th class="th_2">Employee Name</th>
                             <th>Designation</th>
                             <th>Email</th>
                             <th>Joining Date</th>
@@ -184,8 +184,8 @@ $show_breadcrumb = true;
                     <tbody class="table__body">
                         <?php foreach ($payslips as $payslip): ?>
                             <tr>
-                                <td class="table__employee-id">EMP-<?= $payslip['employee_id'] ?></td>
-                                <td>
+                                <td class="table__employee-id td_1">EMP-<?= $payslip['employee_id'] ?></td>
+                                <td class="td_2">
                                     <span class="table-avatar">
                                         <a class="employee__avatar mr-5" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><img
                                                 class="img-48 border-circle"

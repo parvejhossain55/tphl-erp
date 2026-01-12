@@ -18,14 +18,14 @@ $show_breadcrumb = true;
     <table class="table table-bordered perm-table align-middle">
         <thead>
             <tr>
-                <th class="thead-secondary text-light" width="25%">Role</th>
+                <th class="thead-secondary text-light th_1" width="25%">Role</th>
                 <th class="text-light">Permissions</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($roles as $role): ?>
                 <tr>
-                    <td class="perm-module">
+                    <td class="perm-module td_1">
                         <?= htmlspecialchars($role["role_name"]) ?>
                     </td>
 

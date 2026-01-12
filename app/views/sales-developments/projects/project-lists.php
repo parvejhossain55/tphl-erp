@@ -21,12 +21,12 @@ $show_breadcrumb = true;
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables">
+                <table class="table mb-20">
                     <thead>
                         <tr class="table__title">
-                            <th><input type="checkbox" id="selectall"></th>
+                         
                             <th>Image</th>
-                            <th>Name</th>
+                            <th class="th_1">Name</th>
                             <th>Location</th>
                             <th>Community</th>
                             <th>Building Type</th>
@@ -35,7 +35,7 @@ $show_breadcrumb = true;
                             <th class="d-none">Type</th>
                             <th>Front Road</th>
                             <th>Plot Size</th>
-                            <th>Price Range</th>
+                           
                             <th>Brochure</th>
                             <th>Actions</th>
                         </tr>
@@ -43,7 +43,7 @@ $show_breadcrumb = true;
                     <tbody class="table__body">
                         <?php foreach ($projects as $project): ?>
                             <tr>
-                                <td><input type="checkbox" class="selectedId" name="selectedId[]" value="<?= $project['id'] ?>"></td>
+                              
 
                                 <td>
                                     <?php if (!empty($project['image'])): ?>
@@ -51,7 +51,7 @@ $show_breadcrumb = true;
                                     <?php endif; ?>
                                 </td>
 
-                                <td><?= htmlspecialchars($project['name']) ?></td>
+                                <td class="td_1"> <?= htmlspecialchars($project['name']) ?></td>
                                 <td><?= htmlspecialchars($project['location_name'] ?? '') ?></td>
                                 <td><?= htmlspecialchars($project['community_name'] ?? '') ?> </td>
                                 <td><?= htmlspecialchars($project['building_type']) ?></td>
@@ -60,7 +60,7 @@ $show_breadcrumb = true;
                                 <td class="d-none"><?= htmlspecialchars($project['types']) ?></td>
                                 <td><?= htmlspecialchars($project['front_road']) ?></td>
                                 <td><?= $project['plot_size'] ?? 'N/A' ?></td>
-                                <td><?= htmlspecialchars($project['price_range']) ?></td>
+                              
                                 <td>
                                     <?php if (!empty($project['brochure_link'])): ?>
                                         <a href="<?= $project['brochure_link'] ?>" target="_blank">Link</a>

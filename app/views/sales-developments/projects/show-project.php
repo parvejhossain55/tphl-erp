@@ -9,19 +9,19 @@ $show_breadcrumb = true;
 <div class="row">
     <div class="card__wrapper">
         <div class="project-details">
-            
+
             <!-- Project Header -->
-            <div class="row mb-4">
+            <div class="row m-4">
                 <div class="col-12">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3 class="mb-0"><?= $project['name'] ?? 'Project Name' ?></h3>
-                        <div class="d-flex gap-2">
-                            <a href="<?= $GLOBALS['base_url'] ?>/edit-project/<?= $project['id'] ?>" 
-                               class="btn btn-primary">
+                    <div class="d-flex justify-content-between  align-items-center">
+                        <h3 class="mb-0 project_name"><?= $project['name'] ?? 'Project Name' ?></h3>
+                        <div class="d-flex gap-2 btn_actions">
+                            <a href="<?= $GLOBALS['base_url'] ?>/edit-project/<?= $project['id'] ?>"
+                                class="btn btn-primary btn_edit">
                                 <i class="fa-solid fa-edit"></i> Edit
                             </a>
-                            <a href="<?= $GLOBALS['base_url'] ?>/project-lists" 
-                               class="btn btn-secondary">
+                            <a href="<?= $GLOBALS['base_url'] ?>/project-lists"
+                                class="btn btn-secondary btn_back">
                                 <i class="fa-solid fa-arrow-left"></i> Back to List
                             </a>
                         </div>
@@ -31,50 +31,50 @@ $show_breadcrumb = true;
 
             <!-- Project Images -->
             <?php if (!empty($project['image']) || !empty($project['image2']) || !empty($project['image3'])): ?>
-            <div class="row mb-4">
-                <div class="col-12">
-                    <h5 class="mb-3">Project Images</h5>
-                </div>
-                <?php if (!empty($project['image'])): ?>
-                <div class="col-md-4 mb-3">
-                    <div class="project-image">
-                        <img src="<?= getImage('projects',$project['image']) ?>" 
-                             alt="Main Image" 
-                             class="img-fluid rounded" 
-                             style="width: 100%; height: 250px; object-fit: cover;">
-                        <p class="text-center mt-2 mb-0"><small class="text-muted">Main Image</small></p>
+                <div class="row m-4">
+                    <div class="col-12">
+                        <h5 class="mb-3">Project Images</h5>
                     </div>
+                    <?php if (!empty($project['image'])): ?>
+                        <div class="col-md-4 mb-3">
+                            <div class="project-image">
+                                <img src="<?= getImage('projects', $project['image']) ?>"
+                                    alt="Main Image"
+                                    class="img-fluid rounded"
+                                    style="width: 100%; height: 250px; object-fit: cover;">
+                                <p class="text-center mt-2 mb-0"><small class="text-muted">Main Image</small></p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($project['image2'])): ?>
+                        <div class="col-md-4 mb-3">
+                            <div class="project-image">
+                                <img src="<?= getImage('projects', $project['image2']) ?>"
+                                    alt="Image 2"
+                                    class="img-fluid rounded"
+                                    style="width: 100%; height: 250px; object-fit: cover;">
+                                <p class="text-center mt-2 mb-0"><small class="text-muted">Image 2</small></p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($project['image3'])): ?>
+                        <div class="col-md-4 mb-3">
+                            <div class="project-image">
+                                <img src="<?= getImage('projects', $project['image']) ?>"
+                                    alt="Image 3"
+                                    class="img-fluid rounded"
+                                    style="width: 100%; height: 250px; object-fit: cover;">
+                                <p class="text-center mt-2 mb-0"><small class="text-muted">Image 3</small></p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
-                <?php endif; ?>
-                
-                <?php if (!empty($project['image2'])): ?>
-                <div class="col-md-4 mb-3">
-                    <div class="project-image">
-                        <img src="<?= getImage('projects',$project['image2']) ?>" 
-                             alt="Image 2" 
-                             class="img-fluid rounded" 
-                             style="width: 100%; height: 250px; object-fit: cover;">
-                        <p class="text-center mt-2 mb-0"><small class="text-muted">Image 2</small></p>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <?php if (!empty($project['image3'])): ?>
-                <div class="col-md-4 mb-3">
-                    <div class="project-image">
-                        <img src="<?= getImage('projects',$project['image']) ?>" 
-                             alt="Image 3" 
-                             class="img-fluid rounded" 
-                             style="width: 100%; height: 250px; object-fit: cover;">
-                        <p class="text-center mt-2 mb-0"><small class="text-muted">Image 3</small></p>
-                    </div>
-                </div>
-                <?php endif; ?>
-            </div>
             <?php endif; ?>
 
             <!-- Basic Information -->
-            <div class="row mb-4">
+            <div class="row m-4">
                 <div class="col-12">
                     <h5 class="mb-3">Basic Information</h5>
                 </div>
@@ -117,7 +117,7 @@ $show_breadcrumb = true;
             </div>
 
             <!-- Property Details -->
-            <div class="row mb-4">
+            <div class="row m-4">
                 <div class="col-12">
                     <h5 class="mb-3">Property Details</h5>
                 </div>
@@ -178,128 +178,132 @@ $show_breadcrumb = true;
             </div>
 
             <!-- Facilities -->
-            <div class="row mb-4">
+            <div class="row m-4">
                 <div class="col-12">
                     <h5 class="mb-3">Facilities</h5>
                 </div>
                 <div class="col-12">
                     <div class="facilities-grid d-flex flex-wrap gap-3 g-5">
                         <?php if (!empty($project['rooftop_gardening'])): ?>
-                        <div class="facility-badge p-3 border rounded">
-                            <i class="fa-solid fa-seedling text-success me-2"></i>
-                            <span>Rooftop Gardening</span>
-                        </div>
+                            <div class="facility-badge p-3 border rounded">
+                                <i class="fa-solid fa-seedling text-success me-2"></i>
+                                <span>Rooftop Gardening</span>
+                            </div>
                         <?php endif; ?>
-                        
+
                         <?php if (!empty($project['car_parking'])): ?>
-                        <div class="facility-badge p-3 border rounded">
-                            <i class="fa-solid fa-car text-primary me-2"></i>
-                            <span>Car Parking</span>
-                        </div>
+                            <div class="facility-badge p-3 border rounded">
+                                <i class="fa-solid fa-car text-primary me-2"></i>
+                                <span>Car Parking</span>
+                            </div>
                         <?php endif; ?>
-                        
+
                         <?php if (!empty($project['convention'])): ?>
-                        <div class="facility-badge p-3 border rounded">
-                            <i class="fa-solid fa-building-columns text-warning me-2"></i>
-                            <span>Convention Hall</span>
-                        </div>
+                            <div class="facility-badge p-3 border rounded">
+                                <i class="fa-solid fa-building-columns text-warning me-2"></i>
+                                <span>Convention Hall</span>
+                            </div>
                         <?php endif; ?>
-                        
+
                         <?php if (!empty($project['electricity_backup'])): ?>
-                        <div class="facility-badge p-3 border rounded">
-                            <i class="fa-solid fa-bolt text-danger me-2"></i>
-                            <span>Electricity Backup</span>
+                            <div class="facility-badge p-3 border rounded">
+                                <i class="fa-solid fa-bolt text-danger me-2"></i>
+                                <span>Electricity Backup</span>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (
+                            empty($project['rooftop_gardening']) && empty($project['car_parking']) &&
+                            empty($project['convention']) && empty($project['electricity_backup'])
+                        ): ?>
+                            <p class="text-muted">No facilities available</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row m-4">
+                <!-- Description -->
+                <?php if (!empty($project['description'])): ?>
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="mb-3">Project Description</h5>
+                            <div class="description-box p-3 fw-semibold border rounded bg-light">
+                                <?= $project['description'] ?>
+                            </div>
                         </div>
-                        <?php endif; ?>
-                        
-                        <?php if (empty($project['rooftop_gardening']) && empty($project['car_parking']) && 
-                                  empty($project['convention']) && empty($project['electricity_backup'])): ?>
-                        <p class="text-muted">No facilities available</p>
-                        <?php endif; ?>
                     </div>
-                </div>
-            </div>
+                <?php endif; ?>
 
-            <!-- Description -->
-            <?php if (!empty($project['description'])): ?>
-            <div class="row mb-4">
-                <div class="col-12">
-                    <h5 class="mb-3">Project Description</h5>
-                    <div class="description-box p-3 fw-semibold border rounded bg-light">
-                        <?= $project['description'] ?>
+                <!-- Amenities Details -->
+                <?php if (!empty($project['amenities_details'])): ?>
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="mb-3">Amenities Details</h5>
+                            <div class="amenities-box p-3 fw-semibold border rounded bg-light">
+                                <?= $project['amenities_details'] ?>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                <?php endif; ?>
             </div>
-            <?php endif; ?>
-
-            <!-- Amenities Details -->
-            <?php if (!empty($project['amenities_details'])): ?>
-            <div class="row mb-4">
-                <div class="col-12">
-                    <h5 class="mb-3">Amenities Details</h5>
-                    <div class="amenities-box p-3 fw-semibold border rounded bg-light">
-                        <?= $project['amenities_details'] ?>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
 
             <!-- Documents & Media -->
-            <div class="row mb-4">
+            <div class="row m-4">
                 <div class="col-12">
                     <h5 class="mb-3">Documents & Media</h5>
                 </div>
-                
+
                 <?php if (!empty($project['brochure_link'])): ?>
-                <div class="col-md-4 mb-3">
-                    <div class="info-box p-3 border rounded">
-                        <label class="text-muted mb-2"><small>Brochure</small></label>
-                        <a href="<?= $project['brochure_link'] ?>" 
-                           target="_blank" 
-                           class="btn btn-outline-primary btn-sm w-100">
-                            <i class="fa-solid fa-file-pdf me-1"></i> View Brochure
-                        </a>
+                    <div class="col-md-4 mb-3">
+                        <div class="info-box p-3 border rounded">
+                            <label class="text-muted mb-2"><small>Brochure</small></label>
+                            <a href="<?= $project['brochure_link'] ?>"
+                                target="_blank"
+                                class="btn btn-outline-primary btn-sm w-100">
+                                <i class="fa-solid fa-file-pdf me-1"></i> View Brochure
+                            </a>
+                        </div>
                     </div>
-                </div>
                 <?php endif; ?>
-                
+
                 <?php if (!empty($project['map_link'])): ?>
-                <div class="col-md-4 mb-3">
-                    <div class="info-box p-3 border rounded">
-                        <label class="text-muted mb-2"><small>Location Map</small></label>
-                        <a href="<?= $project['map_link'] ?>" 
-                           target="_blank" 
-                           class="btn btn-outline-success btn-sm w-100">
-                            <i class="fa-solid fa-map-location-dot me-1"></i> View on Map
-                        </a>
+                    <div class="col-md-4 mb-3">
+                        <div class="info-box p-3 border rounded">
+                            <label class="text-muted mb-2"><small>Location Map</small></label>
+                            <a href="<?= $project['map_link'] ?>"
+                                target="_blank"
+                                class="btn btn-outline-success btn-sm w-100">
+                                <i class="fa-solid fa-map-location-dot me-1"></i> View on Map
+                            </a>
+                        </div>
                     </div>
-                </div>
                 <?php endif; ?>
-                
+
                 <?php if (!empty($project['amenities_image'])): ?>
-                <div class="col-md-4 mb-3">
-                    <div class="info-box p-3 border rounded">
-                        <label class="text-muted mb-2"><small>Amenities Image</small></label>
-                        <a href="<?= getImage('projects',$project['amenities_image']) ?>" 
-                           target="_blank" 
-                           class="btn btn-outline-info btn-sm w-100">
-                            <i class="fa-solid fa-image me-1"></i> View Image
-                        </a>
+                    <div class="col-md-4 mb-3">
+                        <div class="info-box p-3 border rounded">
+                            <label class="text-muted mb-2"><small>Amenities Image</small></label>
+                            <a href="<?= getImage('projects', $project['amenities_image']) ?>"
+                                target="_blank"
+                                class="btn btn-outline-info btn-sm w-100">
+                                <i class="fa-solid fa-image me-1"></i> View Image
+                            </a>
+                        </div>
                     </div>
-                </div>
                 <?php endif; ?>
-                
+
                 <?php if (!empty($project['map_image'])): ?>
-                <div class="col-md-4 mb-3">
-                    <div class="info-box p-3 border rounded">
-                        <label class="text-muted mb-2"><small>Map Image</small></label>
-                        <a href="<?= getImage('projects', $project['map_image']) ?>" 
-                           target="_blank" 
-                           class="btn btn-outline-warning btn-sm w-100">
-                            <i class="fa-solid fa-image me-1"></i> View Map Image
-                        </a>
+                    <div class="col-md-4 mb-3">
+                        <div class="info-box p-3 border rounded">
+                            <label class="text-muted mb-2"><small>Map Image</small></label>
+                            <a href="<?= getImage('projects', $project['map_image']) ?>"
+                                target="_blank"
+                                class="btn btn-outline-warning btn-sm w-100">
+                                <i class="fa-solid fa-image me-1"></i> View Map Image
+                            </a>
+                        </div>
                     </div>
-                </div>
                 <?php endif; ?>
             </div>
 
@@ -308,36 +312,59 @@ $show_breadcrumb = true;
 </div>
 
 <style>
-.info-box {
-    transition: all 0.3s ease;
-}
+    .info-box {
+        transition: all 0.3s ease;
+    }
 
-.info-box:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    transform: translateY(-2px);
-}
+    .info-box:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
 
-.facility-badge {
-    display: inline-flex;
-    align-items: center;
-    background-color: #f8f9fa;
-    transition: all 0.3s ease;
-}
+    .facility-badge {
+        display: inline-flex;
+        align-items: center;
+        background-color: #f8f9fa;
+        transition: all 0.3s ease;
+    }
 
-.facility-badge:hover {
-    background-color: #f4f7fa;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+    .facility-badge:hover {
+        background-color: #f4f7fa;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
 
-.project-image img {
-    transition: transform 0.3s ease;
-}
+    .project-image img {
+        transition: transform 0.3s ease;
+    }
 
-.project-image:hover img {
-    transform: scale(1.05);
-}
+    .project-image:hover img {
+        transform: scale(1.05);
+    }
 
-.description-box, .amenities-box {
-    line-height: 1.8;
-}
+    .description-box,
+    .amenities-box {
+        line-height: 1.8;
+    }
+
+    @media (max-width:768px) {
+        .project_name {
+            font-size: 15px;
+        }
+        .btn{
+            padding:0 10px!important;
+        }
+
+        .btn_actions {
+            padding: 0 0;
+        }
+
+        .btn_edit,
+        .btn_back {
+            font-size: 13px;
+        }
+
+        .project-image {
+            height: 70%;
+        }
+    }
 </style>

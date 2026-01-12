@@ -111,7 +111,7 @@ $show_breadcrumb = false;
                 <table class="table table-bordered table-hover mb-0 text-center align-middle" id="inventoryTable">
                     <thead class="table-dark">
                         <tr>
-                            <th>Project Name</th>
+                            <th class="th_1">Project Name</th>
                             <th>Total Flats</th>
                             <th>Stock/Available</th>
                             <th>Booked</th>
@@ -124,7 +124,7 @@ $show_breadcrumb = false;
                         <?php foreach ($inventoryProjects as $index => $row): ?>
                             <!-- Project Summary Row -->
                             <tr class="fw-bold table-secondary">
-                                <td class="text-start"><?= htmlspecialchars($row['project_name']) ?></td>
+                                <td class="text-start td_1"><?= htmlspecialchars($row['project_name']) ?></td>
                                 <td>
                                     <span class=" bd-badge border border-secondary  bg-secondary bg-opacity-10 px-3 py-1 mt-2">
                                         <?= $row['total_flats'] ?>
@@ -144,7 +144,7 @@ $show_breadcrumb = false;
                                 <?php foreach ($row['flats'] as $flat): ?>
                                     <tr class="flat-details-row" id="flats<?= $index ?>" style="display:none; background-color:rgb(253 246 246);">
 
-                                        <td class="text-start ps-4"><strong class="me-1">Flat: </strong><?= htmlspecialchars($flat['flat_name']) ?>; <span><strong class="ms-2">Size:</strong><?= $flat['sqft'] ?> sqft</span></td>
+                                        <td class="text-start ps-4 td_1"><strong class="me-1">Flat: </strong><?= htmlspecialchars($flat['flat_name']) ?>; <span><strong class="ms-2">Size:</strong><?= $flat['sqft'] ?> sqft</span></td>
                                         <td><strong class="pe-3">BHK-</strong><span><?= $flat['bhk'] ?></span></td>
                                         <td>
 

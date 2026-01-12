@@ -26,8 +26,7 @@ $show_breadcrumb = true;
                 <table class="table mb-20 multiple_tables">
                     <thead>
                         <tr class="table__title table__sort">
-                            <th class="no-sort sorting"><input type="checkbox" id="selectall"></input>
-                            </th>
+
                             <th>S/L</th>
                             <th>Payslip Item</th>
                             <th>Type</th>
@@ -39,9 +38,6 @@ $show_breadcrumb = true;
 
                         <?php foreach ($items as $index => $item): ?>
                             <tr>
-                                <!-- Checkbox with payslip-item id -->
-                                <td><input type="checkbox" class="selectedId" name="selectedId[]" value="<?= $item['id'] ?>"></td>
-
                                 <!-- Serial number -->
                                 <td>#<?= $index + 1 ?></td>
                                 <td><?= htmlspecialchars($item['name']) ?></td>

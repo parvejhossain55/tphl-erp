@@ -168,21 +168,20 @@ $show_breadcrumb = true;
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables">
+                <table class="table mb-20 ">
                     <thead>
                         <tr class="table__title table__sort">
 
 
                             <th style="min-width:60px;">S/L</th> <!-- non-sticky first column -->
-                            <th class="th-sticky-left-1">Create Lead</th>
-                            <th class="th-sticky-left-2">Lead Name</th>
+                            <th class="">Create Lead</th>
+                            <th class="th_1">Lead Name</th>
 
                             <th>Phone</th>
                             <!-- <th>Alt Phone</th> -->
                             <th>Email</th>
                             <!-- <th>Source Type</th> -->
-                            <th>Assigned Agent</th>
-                            <th>Preferred Location</th>
+                           
                             <th>Follow Up</th>
                             <th>Booking</th>
                             <th>Preferred Project </th>
@@ -195,12 +194,11 @@ $show_breadcrumb = true;
                         <?php foreach ($leads as $key => $lead): ?>
                             <tr>
                                 <td><?= $key + 1 ?></td>
-                                <td class="td-sticky-left-1"><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
-                                <td class="td-sticky-left-2"><?= $lead['lead_name'] ?? '' ?></td>
+                                <td class=""><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
+                                <td class="td_1"><?= $lead['lead_name'] ?? '' ?></td>
                                 <td><?= $lead['phone'] ?? '' ?></td>
                                 <td><?= $lead['email'] ?? '' ?></td>
-                                <td><?= $lead['agent_name'] ?? '' ?></td>
-                                <td><?= $lead['pref_location'] ?? 'N/A' ?></td>
+                               
                                 <td>
                                     <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
                                         class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">

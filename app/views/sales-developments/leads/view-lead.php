@@ -6,56 +6,59 @@ $page = "View Lead";
 
     <!-- Header -->
     <!-- Lead Header with Image -->
- <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
 
-    <!-- Left Section: Badges + Image + Name -->
-    <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-3">
-        
-        <!-- Badges -->
-        <div class="card__wrapper me-sm-3 w-100">
-            <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-                <!-- Lead Follow Up -->
-                <span class="bd-badge bg-secondary fw-semibold p-2 text-dark d-flex align-items-center gap-1">
-                    Lead Follow Up
-                    <?php if (!empty($followUpCounts[$leadData['id']])): ?>
-                        <span class="badge bg-danger ms-1"><?= $followUpCounts[$leadData['id']] ?></span>
-                    <?php endif; ?>
-                </span>
+        <!-- Left Section: Badges + Image + Name -->
+        <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-3">
 
-                <!-- Lead Booking -->
-                <span class="bd-badge bg-secondary fw-semibold p-2 text-dark d-flex align-items-center gap-1">
-                    Flat Booking
-                    <?php if (!empty($bookingCount[$leadData['id']])): ?>
-                        <span class="badge bg-danger ms-1"><?= $bookingCount[$leadData['id']] ?></span>
-                    <?php endif; ?>
-                </span>
-            </div>
-        </div>
+            <!-- Badges -->
+            <div class="card__wrapper me-sm-3 w-100">
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                    <!-- Lead Follow Up -->
+                    <span class="bd-badge bg-secondary fw-semibold p-2 text-dark d-flex align-items-center gap-1">
+                        Lead Follow Up
+                        <?php if (!empty($followUpCounts[$leadData['id']])): ?>
+                            <span class="badge bg-danger ms-1"><?= $followUpCounts[$leadData['id']] ?></span>
+                        <?php endif; ?>
+                    </span>
 
-        <!-- Lead Image -->
-        <div class="flex-shrink-0">
-            <?php if ($leadData['lead_image']): ?>
-                <div class="employee__thumb">
-                    <img src="<?= getImage('leads', $leadData['lead_image']) ?? '' ?>" 
-                         alt="Lead Image" 
-                         class="img-fluid rounded-circle"
-                         style="width:80px; height:80px; object-fit:cover;">
+                    <!-- Lead Booking -->
+                    <span class="bd-badge bg-secondary fw-semibold p-2 text-dark d-flex align-items-center gap-1">
+                        Flat Booking
+                        <?php if (!empty($bookingCount[$leadData['id']])): ?>
+                            <span class="badge bg-danger ms-1"><?= $bookingCount[$leadData['id']] ?></span>
+                        <?php endif; ?>
+                    </span>
                 </div>
-            <?php else: ?>
-                <i class="fa-light fa-user-circle fa-3x text-muted"></i>
-            <?php endif ?>
+            </div>
+
+            <!-- Lead Image -->
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+
+                <?php if ($leadData['lead_image']): ?>
+                    <div class="employee__thumb">
+                        <img src="<?= getImage('leads', $leadData['lead_image']) ?>"
+                            class="img-fluid rounded-circle"
+                            style="width:80px;height:80px;object-fit:cover;">
+                    </div>
+                <?php else: ?>
+                    <i class="fa-light fa-user-circle fa-3x text-muted"></i>
+                <?php endif ?>
+
+                <h4 class="mb-0 lead-name">
+                    <?= htmlspecialchars($leadData['lead_name'] ?? 'N/A') ?>
+                </h4>
+            </div>
+
         </div>
 
-        <!-- Lead Name -->
-        <h3 class="mb-0"><?= htmlspecialchars($leadData['lead_name'] ?? 'N/A') ?></h3>
-    </div>
 
-    <!-- Right Section: Buttons -->
-    <div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
-        <a href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $leadData['id'] ?>" class="btn btn-primary btn-sm">Edit</a>
-        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-secondary btn-sm">← Back</a>
+        <!-- Right Section: Buttons -->
+        <div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
+            <a href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $leadData['id'] ?>" class="btn btn-primary btn-sm">Edit</a>
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-secondary btn-sm">← Back</a>
+        </div>
     </div>
-</div>
 
 
     <!-- Basic + Contact Info Card -->

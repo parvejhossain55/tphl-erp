@@ -851,7 +851,7 @@ input[type=file] {
 
 /* primary button css start */
 .btn-primary {
-  background-color: var(--clr-theme-primary);
+  background-color: #09663b;
   color: #FFFFFF;
   border: none;
 }
@@ -16012,6 +16012,7 @@ strong ~ p {
   margin-inline-end: 0;
 }
 .bd-badge.bg-success {
+  height: auto;
   background-color: var(--clr-action-success) !important;
 }
 .bd-badge.bg-theme {

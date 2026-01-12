@@ -1,7 +1,6 @@
 <?php
 $addPage = true;
 $show_breadcrumb = false;
-
 ?>
 <h4 class="mb-2">
     Flat Management
@@ -37,7 +36,7 @@ $show_breadcrumb = false;
         </div>
 
         <!-- Submit -->
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
+        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center justify-content-between gap-15">
                     <button type="submit" class="btn btn-secondary"> Filter</button>
@@ -91,12 +90,11 @@ $show_breadcrumb = false;
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables">
+                <table class="table mb-20">
                     <thead>
                         <tr class="table__title">
-                            <th><input type="checkbox" id="selectall"></th>
-                            <th>Project</th>
-                            <th>Flat/Unit</th>
+                            <th class="th_1">Project</th>
+                            <th class="th_2">Flat/Unit</th>
                             <th>BHK</th>
                             
                             <th>Floor No</th>
@@ -111,9 +109,8 @@ $show_breadcrumb = false;
                     <tbody class="table__body">
                         <?php foreach ($flats as $flat): ?>
                             <tr>
-                                <td><input type="checkbox" class="selectedId" name="selectedId[]" value="<?= $flat['id'] ?>"></td>
-                                <td><?= htmlspecialchars($flat['project_name'] ?? '') ?></td>
-                                <td><?= htmlspecialchars($flat['flat_name'] ?? 'N/A') ?></td>
+                                <td class="td_1"><?= htmlspecialchars($flat['project_name'] ?? '') ?></td>
+                                <td class="td_2"><?= htmlspecialchars($flat['flat_name'] ?? 'N/A') ?></td>
                                 <td><?= htmlspecialchars($flat['bhk']) ?></td>
                                
                                 <td><?= htmlspecialchars($flat['floor_no']) ?></td>

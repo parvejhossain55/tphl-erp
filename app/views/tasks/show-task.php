@@ -60,25 +60,25 @@
                     </div>
                     <?= $task['description'] ?>
                     <div class="row gy-3 mb-15">
-                        <div class="col-lg-3 col-sm-6">
+                        <div class="col-lg-3 col-sm-6 col-6">
                             <div>
                                 <p class="mb-5 fw-medium">Create Date:</p>
                                 <h5 class="fs-15 mb-0"><?= $task['start_date'] ?  date('d F, Y', strtotime($task['start_date'])) : '' ?></h5>
                             </div>
                         </div>
-                        <div class="col-lg-3 col-sm-6">
+                        <div class="col-lg-3 col-sm-6 col-6">
                             <div>
                                 <p class="mb-5 fw-medium">Deadline:</p>
                                 <h5 class="fs-15 mb-0"><?= $task['deadline'] ?  date('d F, Y', strtotime($task['deadline'])) : ''  ?></h5>
                             </div>
                         </div>
-                        <div class="col-lg-3 col-sm-6">
+                        <div class="col-lg-3 col-sm-6 col-6">
                             <div>
                                 <p class="mb-5 fw-medium">Priority:</p>
                                 <span class="bd-badge bg-success fs-12"><?= $task['priority'] ?></span>
                             </div>
                         </div>
-                        <div class="col-lg-3 col-sm-6">
+                        <div class="col-lg-3 col-sm-6 col-6">
                             <div>
                                 <p class="mb-5 fw-medium">Status:</p>
                                 <span class="bd-badge bg-warning fs-12"><?= $task['status'] ?></span>

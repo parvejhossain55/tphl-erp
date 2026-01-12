@@ -1,6 +1,6 @@
 <?php
 $page_title = "Flat Details";
-$page = 'View Flat';
+$page = ' Flat details';
 $show_breadcrumb = true;
 
 // Assuming $flat variable contains the flat data with project information from database
@@ -11,26 +11,18 @@ $show_breadcrumb = true;
         <div class="flat-details">
 
             <!-- Flat Header -->
-            <div class="row mb-4">
+            <div class="row m-4">
                 <div class="col-12">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h3 class="mb-1"><?= $flat['flat_name'] ?? 'Flat Details' ?></h3>
-                            <h4 class="text-muted mb-0">
+                            <h4 class="mb-1 flat_name"><?= $flat['flat_name'] ?? 'Flat Details' ?></h4>
+                            <h5 class="text-muted mb-0 project_name">
                                 <i class="fa-solid fa-building me-2"></i>
                                 <strong>Project:</strong> <?= $flat['project_name'] ?? 'N/A' ?>
-                            </h4>
+                            </h5>
                         </div>
                         <div class="d-flex gap-2">
-                            <?php if ($flat['is_booked'] === 1): ?>
-                                <button class="btn btn-danger cursor-none">
-                                    <span>Sold Out</span>
-                                </button>
-                            <?php else: ?>
-                                <button class="btn btn-success cursor-none">
-                                    <span>Available</span>
-                                </button>
-                            <?php endif ?>
+                           
                             <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>"
                                 class="btn btn-primary">
                                 <i class="fa-solid fa-edit"></i> Edit
@@ -46,13 +38,24 @@ $show_breadcrumb = true;
 
             <!-- Price Highlight -->
             <?php if (!empty($flat['price_value'])): ?>
-                <div class="row mb-4">
+                <div class="row m-4">
                     <div class="col-12">
-                        <div class="price-box p-4 text-center border rounded bg-primary bg-gradient text-white">
-                            <h2 class="mb-0">
+                        <div class="price-box p-2 text-center border rounded bg-primary bg-gradient text-white">
+                            <div class=" mb-2">
+                                 <?php if ($flat['is_booked'] === 1): ?>
+                                <button class="btn btn-danger cursor-none">
+                                    <span>Sold Out</span>
+                                </button>
+                            <?php else: ?>
+                                <button class="btn btn-primary cursor-none">
+                                    <span>Available</span>
+                                </button>
+                            <?php endif ?>
+                            </div>
+                            <h3 class="mb-0">
                                 <i class="fa-solid fa-bangladeshi-taka-sign me-2 text-light"></i>
                                 <span class="text-light"><?= format_bdt($flat['price_value']) ?> </span>
-                            </h2>
+                            </h3>
                             <strong class="text-light">Flat/Unit Price</strong>
                         </div>
                     </div>
@@ -60,7 +63,7 @@ $show_breadcrumb = true;
             <?php endif; ?>
 
             <!-- Basic Information -->
-            <div class="row mb-4">
+            <div class="row m-4">
                 <div class="col-12">
                     <h5 class="mb-3"><i class="fa-solid fa-info-circle me-2"></i>Basic Information</h5>
                 </div>
@@ -93,12 +96,12 @@ $show_breadcrumb = true;
             </div>
 
             <!-- Space Details -->
-            <div class="row mb-4">
+            <div class="row m-4">
                 <div class="col-12">
                     <h5 class="mb-3"><i class="fa-solid fa-ruler-combined me-2"></i>Space & Layout</h5>
                 </div>
 
-                <div class="col-md-6 col-lg-3 mb-3">
+                <div class="col-md-6 col-lg-3 col-6 mb-3">
                     <div class="info-box p-3 border rounded text-center">
                         <div class="icon-wrapper mb-2">
                             <i class="fa-solid fa-expand fa-2x text-primary"></i>
@@ -108,7 +111,7 @@ $show_breadcrumb = true;
                     </div>
                 </div>
 
-                <div class="col-md-6 col-lg-3 mb-3">
+                <div class="col-md-6 col-lg-3 col-6 mb-3">
                     <div class="info-box p-3 border rounded text-center">
                         <div class="icon-wrapper mb-2">
                             <i class="fa-solid fa-bed fa-2x text-success"></i>
@@ -118,7 +121,7 @@ $show_breadcrumb = true;
                     </div>
                 </div>
 
-                <div class="col-md-6 col-lg-3 mb-3">
+                <div class="col-md-6 col-lg-3 col-6 mb-3">
                     <div class="info-box p-3 border rounded text-center">
                         <div class="icon-wrapper mb-2">
                             <i class="fa-solid fa-bath fa-2x text-info"></i>
@@ -128,7 +131,7 @@ $show_breadcrumb = true;
                     </div>
                 </div>
 
-                <div class="col-md-6 col-lg-3 mb-3">
+                <div class="col-md-6 col-lg-3 col-6 mb-3">
                     <div class="info-box p-3 border rounded text-center">
                         <div class="icon-wrapper mb-2">
                             <i class="fa-solid fa-door-open fa-2x text-warning"></i>
@@ -139,7 +142,7 @@ $show_breadcrumb = true;
                 </div>
 
                 <?php if (!empty($flat['bhk'])): ?>
-                    <div class="col-md-6 col-lg-6 mb-3">
+                    <div class="col-md-6 col-lg-6 col-6 mb-3">
                         <div class="info-box p-3 border rounded">
                             <label class="text-muted mb-1"><small><i class="fa-solid fa-home me-1"></i>BHK</small></label>
                             <p class="mb-0 fw-bold"><?= $flat['bhk'] ?> BHK</p>
@@ -148,7 +151,7 @@ $show_breadcrumb = true;
                 <?php endif; ?>
 
                 <?php if (!empty($flat['facing_site'])): ?>
-                    <div class="col-md-6 col-lg-6  mb-3">
+                    <div class="col-md-6 col-lg-6 col-6 mb-3">
                         <div class="info-box p-3 border rounded">
                             <label class="text-muted mb-1"><small><i class="fa-solid fa-compass me-1"></i>Facing Site</small></label>
                             <p class="mb-0 fw-bold"><?= $flat['facing_site'] ?></p>
@@ -159,11 +162,11 @@ $show_breadcrumb = true;
 
             <!-- Room Configuration -->
             <?php if (!empty($flat['drawing_dining_kitchen']) || !empty($flat['common_dining'])): ?>
-                <div class="row mb-4">
+                <div class="row m-4">
                     <div class="col-12">
                         <h5 class="mb-3"><i class="fa-solid fa-couch me-2"></i>Room Configuration</h5>
                     </div>
-                    <div class="col-12">
+                    <div class="col-12 ">
                         <div class="configuration-grid d-flex flex-wrap">
                             <?php if (!empty($flat['drawing_dining_kitchen'])): ?>
                                 <div class="config-badge p-3 border rounded me-3 mb-3">
@@ -185,7 +188,7 @@ $show_breadcrumb = true;
 
             <!-- Facilities -->
             <?php if (!empty($flat['facilities'])): ?>
-                <div class="row mb-4">
+                <div class="row m-4">
                     <div class="col-12">
                         <h5 class="mb-3"><i class="fa-solid fa-star me-2"></i>Facilities</h5>
                     </div>
@@ -302,8 +305,16 @@ $show_breadcrumb = true;
             flex-direction: column;
         }
 
+        .flat_name{
+            font-size:17px;
+            margin-bottom:10px;
+        }
+        .project_name{
+            font-size: 15px;
+            margin-top:10px;
+        }
         .btn {
-            width: 100%;
+            padding: 5px;
         }
     }
 </style>

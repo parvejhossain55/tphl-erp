@@ -3,9 +3,16 @@
     $page = 'Task Lists';
     $show_breadcrumb = true;
     ?>
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
 
-<div class="row">
-    <h2></h2>
+    <h4 class="mb-2 mb-md-0">
+       Task Management
+    </h4>
+
+    <div class="d-flex gap-2">
+        <a href="<?= $GLOBALS['base_url'] ?>/create-task" class="btn btn-primary"> <i class="fa-light fa-plus me-1"></i> Add Task</a>
+    </div>
+
 </div>
 
   <div class="row align-items-stretch">
@@ -16,7 +23,7 @@
             // print_r($tasks);
             ?>
 
-          <div class="col-xxl-4 d-flex">
+          <div class="col-xxl-4 col-md-6 col-12 d-flex">
 
               <div class="card__wrapper flex-column w-100 h-100">
                   <div class="task__wrapper flex-grow-1">
