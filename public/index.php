@@ -332,21 +332,29 @@ $routes = [
 
 $route = trim(strtok($_SERVER["REQUEST_URI"], '?'), '/');
 
-// Remove base folder if present
 $base_folder = 'TPHL-ERP';
-
 if (strpos($route, $base_folder) === 0) {
     $route = substr($route, strlen($base_folder));
 }
-
 $route = trim($route, '/');
 
-// Skip routes that don't need login
-$skip_routes = ["admin-login", "admin-registration", "logout"];
+/**
+ * 🔐 GLOBAL AUTH CHECK
+ */
+$public_routes = [
+    '',
+    'admin-login',
+    'logout',
+    'admin-registration'
+];
 
-// কোন routes skip হবে
-if (!in_array($route, $skip_routes)) {
+if (!in_array($route, $public_routes)) {
     checkLogin();
+} else {
+    // logged in user cannot see login page
+    if (!empty($_SESSION['user']['id']) && ($route === '' || $route === 'admin-login')) {
+        redirectByRole();
+    }
 }
 
 

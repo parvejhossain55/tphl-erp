@@ -61,7 +61,7 @@ class LoginController extends Controller
                         $redirect_url = "{$GLOBALS['base_url']}/clients-cashin-view";
                     } else {
                         // fallback
-                        $redirect_url = "{$GLOBALS['base_url']}/login";
+                        $redirect_url = "{$GLOBALS['base_url']}/admin-login";
                     }
 
                     header("Location: $redirect_url");

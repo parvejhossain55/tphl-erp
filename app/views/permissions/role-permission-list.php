@@ -67,7 +67,7 @@ $show_breadcrumb = true;
         <div class="modal-content">
             <div class="modal-header">
                 <h5>Edit Role: <?= htmlspecialchars($role['role_name']) ?></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close text-light" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form action="<?= $GLOBALS['base_url'] ?>/update-role" method="POST">

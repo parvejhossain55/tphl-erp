@@ -29,19 +29,29 @@ class SiteSettingController extends Controller
     public function storeOrUpdate()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
             $data = $_POST;
             $data['created_by'] = $_SESSION['user']['id'] ?? null;
-            // Check if settings already exist
+
             $existing = $this->siteSettingModel->getFirst();
 
             try {
                 if ($existing) {
-                    // Update existing
-                    $this->siteSettingModel->update($existing['id'], $data, 'logo');
+                    // Update
+                    $this->siteSettingModel->update(
+                        $existing['id'],
+                        $data,
+                        'white_logo',
+                        'dark_logo'
+                    );
                     setSuccess("Settings updated successfully!");
                 } else {
-                    // Create new
-                    $this->siteSettingModel->create($data, 'logo');
+                    // Create
+                    $this->siteSettingModel->create(
+                        $data,
+                        'white_logo',
+                        'dark_logo'
+                    );
                     setSuccess("Settings created successfully!");
                 }
 

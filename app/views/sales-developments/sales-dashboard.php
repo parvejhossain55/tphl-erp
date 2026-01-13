@@ -17,7 +17,7 @@
                         <span><i class="fa-regular fa-users"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-success mb-5">Total Leads</h6>
+                        <h6 class="card__title text-break text-primary mb-5">Total Leads</h6>
                         <h4 class="card__title"><?= $totalLeadsCount ?? '' ?></h4>
                     </div>
                 </div>
@@ -31,7 +31,7 @@
                         <span><i class="fa-regular fa-user-plus"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-success mb-10">New Leads Today</h6>
+                        <h6 class="card__title text-break text-primary mb-10">New Leads Today</h6>
                         <h4 class="card__title"><?= $todayLeads ?? '' ?></h4>
                     </div>
                 </div>
@@ -45,7 +45,7 @@
                         <span><i class="fa-regular fa-bell"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-success mb-10">Follow-ups Due</h6>
+                        <h6 class="card__title text-break text-primary mb-10">Follow-ups Due</h6>
                         <h4 class="card__title"><?= $followUpsDue ?? '' ?></h4>
                     </div>
                 </div>
@@ -59,7 +59,7 @@
                         <span><i class="fa-regular fa-circle-check"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-success mb-10">Today Follow Up</h6>
+                        <h6 class="card__title text-break text-primary mb-10">Today Follow Up</h6>
                         <h4 class="card__title"><?= $totalTodayFollowUps ?></h4>
                     </div>
                 </div>
@@ -75,7 +75,7 @@
                         <span><i class="fa-regular fa-circle-check"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-success mb-10">Total Flat Booking</h6>
+                        <h6 class="card__title text-break text-primary mb-10">Total Flat Booking</h6>
                         <h4 class="card__title"><?= $onboardedClients ?></h4>
                     </div>
                 </div>
@@ -89,7 +89,7 @@
                         <span><i class="fa-solid fa-building"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-success mb-10">Total Project</h6>
+                        <h6 class="card__title text-break text-primary mb-10">Total Project</h6>
                         <h4 class="card__title"><?= $totalProjects ?></h4>
                     </div>
                 </div>
@@ -105,7 +105,7 @@
                         <span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-success mb-10">Booking Money Collected</h6>
+                        <h6 class="card__title text-break text-primary mb-10">Booking Money Collected</h6>
                         <h4 class="card__title">
                             <?= format_bdt($bookingCollected) ?>
                         </h4>
@@ -122,7 +122,7 @@
                         <span><i class="fa-solid fa-chart-line"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-success mb-10">Conversion Rate</h6>
+                        <h6 class="card__title text-break text-primary mb-10">Conversion Rate</h6>
                         <h4 class="card__title">
                             <?= format_bdt($conversionRate) ?>%
                         </h4>

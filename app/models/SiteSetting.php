@@ -9,25 +9,49 @@ class SiteSetting extends Model
         return $stmt->get_result()->fetch_assoc();
     }
 
-    public function create($data, $logoInput = null)
+    public function create($data, $whiteLogoInput = 'white_logo', $darkLogoInput = 'dark_logo')
     {
-        $logo = null;
-        if ($logoInput && !empty($_FILES[$logoInput]['name'])) {
-            $logo = uploadImage($logoInput, 'settings', 'original');
+        $white_logo = null;
+        $dark_logo  = null;
+
+        if (!empty($_FILES[$whiteLogoInput]['name'])) {
+            $white_logo = uploadImage($whiteLogoInput, 'settings', 'original');
+        }
+
+        if (!empty($_FILES[$darkLogoInput]['name'])) {
+            $dark_logo = uploadImage($darkLogoInput, 'settings', 'original');
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO site_settings (
-                website_title, logo, phone, alt_phone, email, alt_email, address,
-                footer_text, copyright, facebook_link, messenger_link,
-                instagram_link, tiktok_link, x_link, youtube_link, header_code, body_code,created_by
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ");
+        INSERT INTO site_settings (
+            website_title,
+            white_logo,
+            dark_logo,
+            phone,
+            alt_phone,
+            email,
+            alt_email,
+            address,
+            footer_text,
+            copyright,
+            facebook_link,
+            messenger_link,
+            instagram_link,
+            tiktok_link,
+            x_link,
+            youtube_link,
+            client_declaration,
+            header_code,
+            body_code,
+            created_by
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ");
 
         $stmt->bind_param(
-            "sssssssssssssssss",
+            "ssssssssssssssssssss",
             $data['website_title'],
-            $logo,
+            $white_logo,
+            $dark_logo,
             $data['phone'],
             $data['alt_phone'],
             $data['email'],
@@ -41,6 +65,7 @@ class SiteSetting extends Model
             $data['tiktok_link'],
             $data['x_link'],
             $data['youtube_link'],
+            $data['client_declaration'],
             $data['header_code'],
             $data['body_code'],
             $data['created_by']
@@ -49,27 +74,54 @@ class SiteSetting extends Model
         return $stmt->execute();
     }
 
-    public function update($id, $data, $logoInput = null)
+    public function update($id, $data, $whiteLogoInput = 'white_logo', $darkLogoInput = 'dark_logo')
     {
         $existing = $this->getById($id);
 
-        $logo = $existing['logo'];
-        if ($logoInput && !empty($_FILES[$logoInput]['name'])) {
-            $logo = uploadImage($logoInput, 'settings', 'original');
+        // Default old logos
+        $white_logo = $existing['white_logo'];
+        $dark_logo  = $existing['dark_logo'];
+
+        // New white logo
+        if (!empty($_FILES[$whiteLogoInput]['name'])) {
+            $white_logo = uploadImage($whiteLogoInput, 'settings', 'original');
+        }
+
+        // New dark logo
+        if (!empty($_FILES[$darkLogoInput]['name'])) {
+            $dark_logo = uploadImage($darkLogoInput, 'settings', 'original');
         }
 
         $stmt = $this->db->prepare("
-            UPDATE site_settings SET
-                website_title=?, logo=?, phone=?, alt_phone=?, email=?, alt_email=?, address=?,
-                footer_text=?, copyright=?, facebook_link=?, messenger_link=?,
-                instagram_link=?, tiktok_link=?, x_link=?, youtube_link=?, header_code=?, body_code=?,created_by = ?
-            WHERE id=?
-        ");
+        UPDATE site_settings SET
+            website_title=?,
+            white_logo=?,
+            dark_logo=?,
+            phone=?,
+            alt_phone=?,
+            email=?,
+            alt_email=?,
+            address=?,
+            footer_text=?,
+            copyright=?,
+            facebook_link=?,
+            messenger_link=?,
+            instagram_link=?,
+            tiktok_link=?,
+            x_link=?,
+            youtube_link=?,
+            client_declaration=?,
+            header_code=?,
+            body_code=?,
+            created_by=?
+        WHERE id=?
+    ");
 
         $stmt->bind_param(
-            "sssssssssssssssssii",
+            "sssssssssssssssssssii",
             $data['website_title'],
-            $logo,
+            $white_logo,
+            $dark_logo,
             $data['phone'],
             $data['alt_phone'],
             $data['email'],
@@ -83,6 +135,7 @@ class SiteSetting extends Model
             $data['tiktok_link'],
             $data['x_link'],
             $data['youtube_link'],
+            $data['client_declaration'],
             $data['header_code'],
             $data['body_code'],
             $data['created_by'],
@@ -91,6 +144,7 @@ class SiteSetting extends Model
 
         return $stmt->execute();
     }
+
 
     public function getById($id)
     {

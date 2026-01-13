@@ -91,7 +91,7 @@ $show_breadcrumb = false;
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Total Cash In</h6>
-                        <h4 class="card__title mb-0 text-success text-break">৳<?= format_bdt($overviewStats['total_cashin'])?></h4>
+                        <h4 class="card__title mb-0 text-primary text-break">৳<?= format_bdt($overviewStats['total_cashin'])?></h4>
                     </div>
                 </div>
             </div>
@@ -123,7 +123,7 @@ $show_breadcrumb = false;
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted">Net Balance</h6>
-                    <h4 class="card__title mb-0 text-break <?= $overviewStats['net_balance'] >= 0 ? 'text-success' : 'text-danger' ?>">
+                    <h4 class="card__title mb-0 text-break <?= $overviewStats['net_balance'] >= 0 ? 'text-primary' : 'text-danger' ?>">
                         ৳<?= format_bdt($overviewStats['net_balance'])?>
                     </h4>
                 </div>

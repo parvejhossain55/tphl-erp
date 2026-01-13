@@ -21,13 +21,23 @@ $settings = $settings ?? []; // Controller থেকে পাঠানো হ�
             </div>
         </div>
 
-        <!-- Logo -->
+        <!--White Logo -->
         <div class="col-md-6">
             <div class="from__input-box">
-                <label class="form__input-title">Logo</label>
-                <input type="file" name="logo" class="form-control">
-                <?php if (!empty($settings['logo'])): ?>
-                    <img src="<?= getImage('settings', $settings['logo']) ?>" alt="" width="100" class="mt-2">
+                <label class="form__input-title">Theme White Logo</label>
+                <input type="file" name="white_logo" class="form-control">
+                <?php if (!empty($settings['white_logo'])): ?>
+                    <img src="<?= getImage('settings', $settings['white_logo']) ?>" alt="" width="100" class="mt-2">
+                <?php endif; ?>
+            </div>
+        </div>
+        <!--Dark Logo -->
+        <div class="col-md-6">
+            <div class="from__input-box">
+                <label class="form__input-title">Theme Dark Logo</label>
+                <input type="file" name="dark_logo" class="form-control">
+                <?php if (!empty($settings['dark_logo'])): ?>
+                    <img src="<?= getImage('settings', $settings['dark_logo']) ?>" alt="" width="100" class="mt-2">
                 <?php endif; ?>
             </div>
         </div>
@@ -145,13 +155,20 @@ $settings = $settings ?? []; // Controller থেকে পাঠানো হ�
         <!-- Header Code -->
         <div class="col-md-12">
             <div class="from__input-box">
-                <label>Ruls of flat Purchasing With Land</label>
+                <label>Client Declaration</label>
+                <textarea name="client_declaration" rows="4" class="form-control"><?= $settings['client_declaration'] ?? '' ?></textarea>
+            </div>
+        </div>
+        <!-- Header Code -->
+        <div class="d-none col-md-12">
+            <div class="from__input-box">
+                <label>Header Code </label>
                 <textarea name="header_code" rows="4" class="form-control"><?= $settings['header_code'] ?? '' ?></textarea>
             </div>
         </div>
 
         <!-- Body Code -->
-        <div class="col-md-12">
+        <div class="d-none col-md-12">
             <div class="from__input-box">
                 <label>Body Code</label>
                 <textarea name="body_code" rows="4" class="form-control"><?= $settings['body_code'] ?? '' ?></textarea>

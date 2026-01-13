@@ -176,13 +176,70 @@ function checkLogin()
         session_start();
     }
 
+    $maxLifetime = 60 * 60 * 24; // 1 day
+
+    if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY']) > $maxLifetime) {
+        session_unset();
+        session_destroy();
+        header("Location: " . $GLOBALS['base_url'] . "/admin-login");
+        exit;
+    }
+
+    $_SESSION['LAST_ACTIVITY'] = time();
+
     if (!isset($_SESSION['user'])) {
         header("Location: " . $GLOBALS['base_url'] . "/admin-login");
-
         exit;
     }
 }
 
+
+function redirectByRole()
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    if (empty($_SESSION['user']['role_id'])) {
+        header("Location: {$GLOBALS['base_url']}/admin-login");
+        exit;
+    }
+
+    $role = (int) $_SESSION['user']['role_id'];
+
+    switch ($role) {
+        case 1: // Super Admin
+        case 3: // Admin
+            $url = "{$GLOBALS['base_url']}/home";
+            break;
+
+        case 2: // Employee
+            $url = "{$GLOBALS['base_url']}/employee-dashboard";
+            break;
+
+        case 5: // Sales
+            $url = "{$GLOBALS['base_url']}/sales-dashboard";
+            break;
+
+        case 4: // HRM
+            $url = "{$GLOBALS['base_url']}/hrm-dashboard";
+            break;
+
+        case 6: // Accounts
+            $url = "{$GLOBALS['base_url']}/account-dashboard";
+            break;
+
+        case 7: // Client Cash In
+            $url = "{$GLOBALS['base_url']}/clients-cashin-view";
+            break;
+
+        default:
+            $url = "{$GLOBALS['base_url']}/admin-login";
+    }
+
+    header("Location: $url");
+    exit;
+}
 
 
 

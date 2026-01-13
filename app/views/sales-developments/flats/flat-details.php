@@ -11,7 +11,7 @@ $show_breadcrumb = true;
         <div class="flat-details">
 
             <!-- Flat Header -->
-            <div class="row m-4">
+            <div class="row m-3">
                 <div class="col-12">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -38,7 +38,7 @@ $show_breadcrumb = true;
 
             <!-- Price Highlight -->
             <?php if (!empty($flat['price_value'])): ?>
-                <div class="row m-4">
+                <div class="row m-3">
                     <div class="col-12">
                         <div class="price-box p-2 text-center border rounded bg-primary bg-gradient text-white">
                             <div class=" mb-2">
@@ -63,7 +63,7 @@ $show_breadcrumb = true;
             <?php endif; ?>
 
             <!-- Basic Information -->
-            <div class="row m-4">
+            <div class="row m-3">
                 <div class="col-12">
                     <h5 class="mb-3"><i class="fa-solid fa-info-circle me-2"></i>Basic Information</h5>
                 </div>
@@ -96,7 +96,7 @@ $show_breadcrumb = true;
             </div>
 
             <!-- Space Details -->
-            <div class="row m-4">
+            <div class="row m-3">
                 <div class="col-12">
                     <h5 class="mb-3"><i class="fa-solid fa-ruler-combined me-2"></i>Space & Layout</h5>
                 </div>
@@ -162,7 +162,7 @@ $show_breadcrumb = true;
 
             <!-- Room Configuration -->
             <?php if (!empty($flat['drawing_dining_kitchen']) || !empty($flat['common_dining'])): ?>
-                <div class="row m-4">
+                <div class="row m-3">
                     <div class="col-12">
                         <h5 class="mb-3"><i class="fa-solid fa-couch me-2"></i>Room Configuration</h5>
                     </div>
@@ -188,7 +188,7 @@ $show_breadcrumb = true;
 
             <!-- Facilities -->
             <?php if (!empty($flat['facilities'])): ?>
-                <div class="row m-4">
+                <div class="row m-3">
                     <div class="col-12">
                         <h5 class="mb-3"><i class="fa-solid fa-star me-2"></i>Facilities</h5>
                     </div>
@@ -201,7 +201,7 @@ $show_breadcrumb = true;
             <?php endif; ?>
 
             <!-- Quick Summary Card -->
-            <div class="row">
+            <div class="row m-3">
                 <div class="col-12">
                     <div class="summary-card p-4 border rounded ">
                         <h5 class="mb-3"><i class="fa-solid fa-clipboard-list me-2"></i>Quick Summary</h5>

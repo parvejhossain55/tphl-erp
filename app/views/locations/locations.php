@@ -1,5 +1,5 @@
 <?php
-$page = 'Locatiopn';
+$page = 'Locations';
 $addPage = true;
 $show_breadcrumb = true;
 
