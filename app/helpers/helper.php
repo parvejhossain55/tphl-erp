@@ -561,22 +561,26 @@ function formatDate($date)
 
 function format_bdt($number)
 {
-    $decimal = '';
-    if (strpos($number, '.') !== false) {
-        $parts = explode('.', $number);
-        $number = $parts[0];   // integer part
-        $decimal = '.' . $parts[1]; // decimal part
-    }
-    $last3 = substr($number, -3);
-    $rest = substr($number, 0, -3);
+    // Step 1: round to 2 decimal places
+    $number = round((float)$number, 2);
+
+    // Step 2: split integer & decimal
+    $parts = explode('.', number_format($number, 2, '.', ''));
+    $integer = $parts[0];
+    $decimal = '.' . $parts[1];
+
+    // Step 3: BDT comma formatting
+    $last3 = substr($integer, -3);
+    $rest  = substr($integer, 0, -3);
+
     if ($rest != '') {
         $rest = preg_replace("/\B(?=(\d{2})+(?!\d))/", ",", $rest);
-        $formatted = $rest . ',' . $last3 . $decimal;
-    } else {
-        $formatted = $last3 . $decimal;
+        return $rest . ',' . $last3 . $decimal;
     }
-    return $formatted;
+
+    return $last3 . $decimal;
 }
+
 
 
 // $readTime = calculateReadTime($_POST['content']);

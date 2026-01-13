@@ -11,10 +11,10 @@ $show_breadcrumb = true;
         <div class="project-details">
 
             <!-- Project Header -->
-            <div class="row m-4">
+            <div class="row m-3">
                 <div class="col-12">
                     <div class="d-flex justify-content-between  align-items-center">
-                        <h3 class="mb-0 project_name"><?= $project['name'] ?? 'Project Name' ?></h3>
+                        <h3 class="mb-0 project_name me-2"><?= $project['name'] ?? 'Project Name' ?></h3>
                         <div class="d-flex gap-2 btn_actions">
                             <a href="<?= $GLOBALS['base_url'] ?>/edit-project/<?= $project['id'] ?>"
                                 class="btn btn-primary btn_edit">
@@ -31,7 +31,7 @@ $show_breadcrumb = true;
 
             <!-- Project Images -->
             <?php if (!empty($project['image']) || !empty($project['image2']) || !empty($project['image3'])): ?>
-                <div class="row m-4">
+                <div class="row m-3">
                     <div class="col-12">
                         <h5 class="mb-3">Project Images</h5>
                     </div>
@@ -74,7 +74,7 @@ $show_breadcrumb = true;
             <?php endif; ?>
 
             <!-- Basic Information -->
-            <div class="row m-4">
+            <div class="row m-3">
                 <div class="col-12">
                     <h5 class="mb-3">Basic Information</h5>
                 </div>
@@ -117,7 +117,7 @@ $show_breadcrumb = true;
             </div>
 
             <!-- Property Details -->
-            <div class="row m-4">
+            <div class="row m-3">
                 <div class="col-12">
                     <h5 class="mb-3">Property Details</h5>
                 </div>
@@ -178,7 +178,7 @@ $show_breadcrumb = true;
             </div>
 
             <!-- Facilities -->
-            <div class="row m-4">
+            <div class="row m-3">
                 <div class="col-12">
                     <h5 class="mb-3">Facilities</h5>
                 </div>
@@ -222,7 +222,7 @@ $show_breadcrumb = true;
                 </div>
             </div>
 
-            <div class="row m-4">
+            <div class="row m-3">
                 <!-- Description -->
                 <?php if (!empty($project['description'])): ?>
                     <div class="row mb-4">
@@ -249,7 +249,7 @@ $show_breadcrumb = true;
             </div>
 
             <!-- Documents & Media -->
-            <div class="row m-4">
+            <div class="row m-3">
                 <div class="col-12">
                     <h5 class="mb-3">Documents & Media</h5>
                 </div>

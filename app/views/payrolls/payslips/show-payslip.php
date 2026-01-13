@@ -535,12 +535,17 @@
 
     <div class="payslip-wrapper" id="payslip">
 
+
         <!-- HEADER -->
         <div class="company-header">
             <div class="header-block">
-                <?php if (getSetting('logo')): ?>
-                    <img src="<?= getImage('settings', getSetting('logo')) ?>" class="company-logo">
+                <?php if (getSetting('white_logo')): ?>
+                    <img
+                        src="<?= getImage('settings', getSetting('white_logo')) ?>"
+                        class="company-logo"
+                        alt="Company Logo">
                 <?php endif; ?>
+
 
                 <div class="company-info">
                     <div class="company-name"><?= getSetting('wesite_title') ?></div>
@@ -688,7 +693,7 @@
             </div>
 
         </div>
-          <!-- Footer -->
+        <!-- Footer -->
         <div class="payslip-footer">
             <!-- <p><i class="fas fa-info-circle"></i> This is a computer-generated payslip. No signature is required.</p>
     <p>For any queries, please contact the HR Department</p> -->
@@ -722,14 +727,14 @@
 
         </div>
 
-      
+
 
     </div>
     <script>
         function printPayslip() {
             window.print();
         }
-         // Auto-print if ?print=1 is in URL
+        // Auto-print if ?print=1 is in URL
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('print') === '1') {

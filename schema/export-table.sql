@@ -85,3 +85,12 @@ ADD employee_status ENUM('active','inactive','resigned','terminated','on_leave')
 DEFAULT 'active'
 AFTER employee_type;
 --10-1-2026 End Added By Farzana 
+
+
+--13-1-2026 added by farzana
+change logo name alter with white_logo
+
+  ALTER TABLE site_settings
+  ADD COLUMN dark_logo  varchar(200) DEFAULT NULL 
+  AFTER white_logo
+--13-1-2026 END  added by farzana

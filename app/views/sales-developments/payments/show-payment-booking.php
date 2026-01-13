@@ -223,7 +223,7 @@
 
         <!-- LOGO CENTERED -->
         <div class="site-logo mt-3">
-            <img src="<?= getImage('settings', getSetting('logo')) ?>" alt="<?= getSetting('website_title', 'Site Logo') ?>">
+            <img src="<?= getImage('settings', getSetting('white_logo')) ?>" alt="<?= getSetting('website_title', 'Site Logo') ?>">
         </div>
 
         <div class="print-btn">

@@ -171,8 +171,7 @@ $show_breadcrumb = true;
                 <table class="table hover mb-20" id="">
                     <thead>
                         <tr class="table__title">
-                            <th class="th_1">Employee ID</th>
-                            <th class="th_2">Employee Name</th>
+                            <th class="th_1">Employee</th>
                             <th>Designation</th>
                             <th>Email</th>
                             <th>Joining Date</th>
@@ -184,13 +183,12 @@ $show_breadcrumb = true;
                     <tbody class="table__body">
                         <?php foreach ($payslips as $payslip): ?>
                             <tr>
-                                <td class="table__employee-id td_1">EMP-<?= $payslip['employee_id'] ?></td>
-                                <td class="td_2">
+                                <td class="td_1">
                                     <span class="table-avatar">
                                         <a class="employee__avatar mr-5" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><img
                                                 class="img-48 border-circle"
                                                 src="<?= getImage('employees', $payslip['photo']) ?>"
-                                                alt="User Image"></a>
+                                                alt="User Image"><strong class="ps-2">EMP-<?= $payslip['employee_id'] ?></strong></a>
                                         <a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><?= $payslip['employee_name'] ?></a>
                                     </span>
                                 </td>

@@ -53,7 +53,7 @@ $show_breadcrumb = true;
 
 <div class="row">
     <?php foreach ($employees as $employee): ?>
-        <div class="col-xxl-3 col-xl-4 col-lg-6 col-md-6">
+        <div class="col-xxl-3 col-xl-4 col-lg-6 col-md-6 px-2">
             <div class="card__wrapper">
                 <div class="employee__wrapper text-center">
                     <div class="employee__thumb mb-15">
@@ -77,7 +77,7 @@ $show_breadcrumb = true;
 
                         </div>
                         <div class="employee__btn">
-                            <div class="d-flex align-items-center justify-content-center gap-15">
+                            <div class="d-flex align-items-center justify-content-center gap-10">
 
                                 <a class="btn btn-outline-theme-border" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['id'] ?>">View</a>
                                 <!-- <a href="< $GLOBALS['base_url'] ?>/edit-employee?id=< $employee['id'] ?>">Edit</a> -->

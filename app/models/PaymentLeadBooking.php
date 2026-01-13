@@ -194,6 +194,7 @@ public function getPaymentCount()
             lb.agreement_value,
             lb.discount_amount,
             lb.booking_date,
+            l.id AS lead_id,
             l.lead_name AS lead_name,
             l.father_name,l.mother_name,l.email,l.address,l.nid_or_passport,l.permanent_address,l.dob,l.phone,l.designation AS profession,
             l.lead_name_bn,

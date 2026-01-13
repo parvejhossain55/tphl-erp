@@ -12,8 +12,8 @@
                           <div class="row g-20 gy-20">
                               <div class="col-md-7">
                                   <div class="invoice__logo mb-10">
-                                      <img class="light-logo" src="<?= getImage('settings', getSetting('logo')); ?>" alt="payslip logo">
-                                      <img class=" dark-logo" src="<?= getImage('settings', getSetting('logo')); ?>" alt="payslip logo">
+                                      <img class="light-logo" src="<?= getImage('settings', getSetting('white_logo')); ?>" alt="payslip logo">
+                                      <img class=" dark-logo" src="<?= getImage('settings', getSetting('dark_logo')); ?>" alt="payslip logo">
                                   </div>
                                   <p class="mb-5"><?= getSetting('website_address') ?></p>
                                   <p class="mb-5"><?= getSetting('address') ?></p>

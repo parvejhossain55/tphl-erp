@@ -469,7 +469,7 @@
         <button onclick="downloadPDF()" class="btn btn-success">
             <i class="fas fa-download"></i> Download PDF
         </button>
-        <a href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history?booking_id=<?= $clientDetails['booking_id'] ?>"
+        <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $invoice['id'] ?>"
             class="btn btn-secondary">
             <i class="fas fa-arrow-left"></i> Back
         </a>
@@ -478,7 +478,7 @@
     <div class="document-container" id="payment_booking">
         <!-- HEADER -->
         <div class="site-logo mt-3 mb-3">
-            <img src="<?= getImage('settings', getSetting('logo')) ?>" alt="<?= getSetting('website_title', 'Site Logo') ?>">
+            <img src="<?= getImage('settings', getSetting('white_logo')) ?>" alt="<?= getSetting('website_title', 'Site Logo') ?>">
         </div>
 
 
@@ -526,7 +526,7 @@
                             <img
                                 src="<?= getImage('leads', $invoice['lead_image']) ?>"
                                 alt="Lead Image"
-                                style="max-width:150px; border:1px solid #ddd; padding:4px; border-radius:6px;">
+                                style="max-width:150px; border:1px solid #ddd; padding:10px; border-radius:6px;">
                         </div>
                     </div>
                 </div>
@@ -659,7 +659,7 @@
                             <img
                                 src="<?= getImage('leads', $invoice['nomi_image']) ?>"
                                 alt="Lead Image"
-                                style="max-width:150px; border:1px solid #ddd; padding:4px; border-radius:6px;">
+                                style="max-width:150px; border:1px solid #ddd; padding:10px; border-radius:6px;">
                         </div>
                     </div>
                 </div>

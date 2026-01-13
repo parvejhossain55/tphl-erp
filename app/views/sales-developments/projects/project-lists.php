@@ -24,8 +24,7 @@ $show_breadcrumb = true;
                 <table class="table mb-20">
                     <thead>
                         <tr class="table__title">
-                         
-                            <th>Image</th>
+
                             <th class="th_1">Name</th>
                             <th>Location</th>
                             <th>Community</th>
@@ -35,7 +34,7 @@ $show_breadcrumb = true;
                             <th class="d-none">Type</th>
                             <th>Front Road</th>
                             <th>Plot Size</th>
-                           
+
                             <th>Brochure</th>
                             <th>Actions</th>
                         </tr>
@@ -43,15 +42,9 @@ $show_breadcrumb = true;
                     <tbody class="table__body">
                         <?php foreach ($projects as $project): ?>
                             <tr>
-                              
-
-                                <td>
-                                    <?php if (!empty($project['image'])): ?>
-                                        <img src="<?= getImage('projects', $project['image']) ?>" alt="image" width="50">
-                                    <?php endif; ?>
+                                <td class="td_1"> 
+                                    <?= htmlspecialchars($project['name']) ?>
                                 </td>
-
-                                <td class="td_1"> <?= htmlspecialchars($project['name']) ?></td>
                                 <td><?= htmlspecialchars($project['location_name'] ?? '') ?></td>
                                 <td><?= htmlspecialchars($project['community_name'] ?? '') ?> </td>
                                 <td><?= htmlspecialchars($project['building_type']) ?></td>
@@ -60,7 +53,7 @@ $show_breadcrumb = true;
                                 <td class="d-none"><?= htmlspecialchars($project['types']) ?></td>
                                 <td><?= htmlspecialchars($project['front_road']) ?></td>
                                 <td><?= $project['plot_size'] ?? 'N/A' ?></td>
-                              
+
                                 <td>
                                     <?php if (!empty($project['brochure_link'])): ?>
                                         <a href="<?= $project['brochure_link'] ?>" target="_blank">Link</a>
