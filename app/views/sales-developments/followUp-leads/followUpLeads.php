@@ -217,20 +217,24 @@ $show_breadcrumb = true;
                         flatData = data;
                         flatSelect.innerHTML = '<option value="">Select Flat</option>';
 
-                        data.forEach(flat => {
-                            const option = document.createElement('option');
-                            option.value = flat.flat_id;
+                       data.forEach(flat => {
+    const option = document.createElement('option');
+    const flatId = flat.flat_id ?? flat.id; // fallback: try flat.id
+    if (!flatId) return; // skip invalid entries
 
-                            if (flat.is_booked == 1) {
-                                option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
-                                option.classList.add('booked-option');
-                                option.disabled = true; // Disable booked flats
-                            } else {
-                                option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
-                            }
+    option.value = flatId;
 
-                            flatSelect.appendChild(option)
-                        });
+    if (flat.is_booked == 1) {
+        option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
+        option.classList.add('booked-option');
+        option.disabled = true;
+    } else {
+        option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
+    }
+
+    flatSelect.appendChild(option);
+});
+
                     });
     }
 

@@ -70,7 +70,7 @@ $page = "View Lead";
     }
 
     .info-card {
-        background: white;
+        background: #f1eeee;
         border-radius: 15px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         margin-bottom: 1.5rem;
