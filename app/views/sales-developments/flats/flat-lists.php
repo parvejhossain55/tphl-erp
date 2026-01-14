@@ -138,7 +138,10 @@ $show_breadcrumb = false;
                                           <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/flat-details/<?= $flat['id'] ?>"
                                             title="View Transaction History"> <i class="fa-regular fa-eye"></i>
                                         </a>
-                                        <button class="table__icon delete" data-id="<?= $flat['id'] ?>">
+                                        <button class="table__icon delete removeBtnCust  "
+                                        data-name="<?= $flat['flat_name'] ?>"
+                                        data-action="delete-flat"
+                                        data-id="<?= $flat['id'] ?>">
                                             <i class="fa-regular fa-trash"></i>
                                         </button>
                                     </div>
@@ -151,3 +154,6 @@ $show_breadcrumb = false;
         </div>
     </div>
 </div>
+<script>
+    const base_url = "<?= $GLOBALS['base_url'] ?>"
+</script>

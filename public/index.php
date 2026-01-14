@@ -182,7 +182,7 @@ $routes = [
     "edit-project/(\d+)" => ["controller" => "ProjectController", "method" => "edit"],
     "project-details/(\d+)" => ["controller" => "ProjectController", "method" => "show"],
     "update-project/(\d+)" => ["controller" => "ProjectController", "method" => "update"],
-    "delete-project/(\d+)" => ["controller" => "ProjectController", "method" => "delete"],
+    "delete-project" => ["controller" => "ProjectController", "method" => "delete"],
 
     //flat
     "flat-lists" => ["controller" => "FlatController", "method" => "index"],
@@ -191,7 +191,7 @@ $routes = [
     "edit-flat/(\d+)" => ["controller" => "FlatController", "method" => "edit"],
     "flat-details/(\d+)" => ["controller" => "FlatController", "method" => "show"],
     "update-flat/(\d+)" => ["controller" => "FlatController", "method" => "update"],
-    "delete-flat/(\d+)" => ["controller" => "FlatController", "method" => "delete"],
+    "delete-flat" => ["controller" => "FlatController", "method" => "delete"],
 
     //follow-up-leads
     "follow-up-leads/(\d+)" => ["controller" => "FollowUpController", "method" => "index"],
@@ -339,7 +339,7 @@ if (strpos($route, $base_folder) === 0) {
 $route = trim($route, '/');
 
 /**
- * 🔐 GLOBAL AUTH CHECK
+ *  GLOBAL AUTH CHECK
  */
 $public_routes = [
     '',

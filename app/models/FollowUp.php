@@ -24,6 +24,7 @@ class FollowUp extends Model
         LEFT JOIN units u2 ON f.unit_id = u2.id
         LEFT JOIN projects p ON f.project_id = p.id
         LEFT JOIN users u1 ON fu.created_by = u1.id
+         WHERE fu.deleted_at IS NULL
         ORDER BY fu.follow_up_date DESC, fu.follow_up_time ASC ";
         $result = $this->db->query($sql);
         return $result->fetch_all(MYSQLI_ASSOC);
@@ -132,9 +133,7 @@ class FollowUp extends Model
     }
     public function getByLead($lead_id)
     {
-        $lead_id = (int)$lead_id; // sanitize input
-
-        $sql = "
+        $stmt = $this->db->prepare("
         SELECT f.*, 
                l.lead_name, 
                p.name AS project_name,
@@ -147,21 +146,25 @@ class FollowUp extends Model
         LEFT JOIN flats fl ON f.flat_id = fl.id
         LEFT JOIN units u ON fl.unit_id = u.id
         LEFT JOIN users usr ON f.created_by = usr.id
-        WHERE f.lead_id = $lead_id
+        WHERE f.deleted_at IS NULL
+          AND f.lead_id = ?
+          AND fl.deleted_at IS NULL
+          AND p.deleted_at IS NULL
         ORDER BY f.follow_up_date DESC, f.follow_up_time DESC
-    ";
+    ");
 
-        $result = $this->db->query($sql);
-
-        $followUps = [];
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $followUps[] = $row;
-            }
+        if (!$stmt) {
+            setError($this->db->error);
+            return [];
         }
 
-        return $followUps;
+        $stmt->bind_param("i", $lead_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+
 
 
     public function getFollowUpCountByLead()
@@ -169,6 +172,7 @@ class FollowUp extends Model
         $sql = "
         SELECT lead_id, COUNT(*) AS follow_up_count
         FROM lead_follow_ups
+        WHERE lead_follow_ups.deleted_at IS NULL
         GROUP BY lead_id
     ";
 
@@ -184,23 +188,27 @@ class FollowUp extends Model
 
 
     public function getTodayFollowUpCountByLead()
-{
-    $sql = "
-    SELECT lead_id, COUNT(*) AS follow_up_count
-    FROM lead_follow_ups
-    WHERE DATE(next_follow_up_date) = CURDATE()
-    GROUP BY lead_id
+    {
+        $sql = "
+    SELECT lf.lead_id, COUNT(*) AS follow_up_count
+FROM lead_follow_ups lf
+WHERE lf.deleted_at IS NULL
+  AND lf.next_follow_up_date >= CURDATE()
+  AND lf.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+GROUP BY lf.lead_id
+ORDER BY follow_up_count DESC
+
     ";
 
-    $result = $this->db->query($sql);
-    $data = [];
+        $result = $this->db->query($sql);
+        $data = [];
 
-    while ($row = $result->fetch_assoc()) {
-        $data[$row['lead_id']] = $row['follow_up_count'];
+        while ($row = $result->fetch_assoc()) {
+            $data[$row['lead_id']] = $row['follow_up_count'];
+        }
+
+        return $data;
     }
-
-    return $data;
-}
 
 
     // Delete follow-up by ID

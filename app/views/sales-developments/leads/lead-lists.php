@@ -156,7 +156,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Today Follow Up</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentCount ?></h4>
+                        <h4 class="card__title"><?= $totalTodayFollowUps ?></h4>
                     </div>
                 </div>
             </div>

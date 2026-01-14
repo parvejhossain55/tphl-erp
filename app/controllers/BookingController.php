@@ -49,9 +49,6 @@ class BookingController extends Controller
         ]);
     }
 
-
-
-
     // AJAX: Get flats by project
     public function getFlatsByProject($projectId)
     {

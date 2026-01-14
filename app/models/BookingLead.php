@@ -14,17 +14,19 @@ class BookingLead extends Model
     public function getAllOnBoard()
     {
         $sql = "SELECT lb.*, 
-               l.lead_name, 
-               p.name AS project_name, 
-               u2.name AS flat_name, 
-               u1.full_name AS created_by_name
-        FROM lead_bookings lb
-        LEFT JOIN leads l ON lb.lead_id = l.id
-        LEFT JOIN flats f ON lb.flat_id = f.id
-        LEFT JOIN units u2 ON f.unit_id = u2.id
-        LEFT JOIN projects p ON f.project_id = p.id
-        LEFT JOIN users u1 ON lb.created_by = u1.id
-        ORDER BY fu.follow_up_date DESC, fu.follow_up_time ASC ";
+       l.lead_name, 
+       p.name AS project_name, 
+       u2.name AS flat_name, 
+       u1.full_name AS created_by_name
+FROM lead_bookings lb
+LEFT JOIN leads l ON lb.lead_id = l.id
+LEFT JOIN flats f ON lb.flat_id = f.id
+LEFT JOIN units u2 ON f.unit_id = u2.id
+LEFT JOIN projects p ON f.project_id = p.id
+LEFT JOIN users u1 ON lb.created_by = u1.id
+WHERE lb.deleted_at IS NULL
+ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
+";
         $result = $this->db->query($sql);
         return $result->fetch_all(MYSQLI_ASSOC);
     }
@@ -113,20 +115,35 @@ class BookingLead extends Model
     }
 
     // Optional: get onboard records by lead
-    public function getByLead($lead_id)
-    {
-        $stmt = $this->db->prepare("
-        SELECT o.*, p.name AS project_name, f.floor_no,f.flat_name, f.sqft,f.price_value, u.name AS unit_name
+public function getByLead($lead_id)
+{
+    $stmt = $this->db->prepare("
+        SELECT o.*, 
+               p.name AS project_name, 
+               f.floor_no,
+               f.flat_name, 
+               f.sqft,
+               f.price_value, 
+               u.name AS unit_name
         FROM lead_bookings o
         LEFT JOIN projects p ON o.project_id = p.id
         LEFT JOIN flats f ON o.flat_id = f.id
         LEFT JOIN units u ON f.unit_id = u.id
-        WHERE o.lead_id = ?
+        WHERE o.deleted_at IS NULL
+          AND o.lead_id = ?
     ");
-        $stmt->bind_param("i", $lead_id);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    if (!$stmt) {
+        setError($this->db->error);
+        return [];
     }
+
+    $stmt->bind_param("i", $lead_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
     public function getBookingCountByLead()
     {
         $stmt = $this->db->prepare(

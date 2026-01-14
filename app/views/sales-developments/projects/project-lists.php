@@ -42,7 +42,7 @@ $show_breadcrumb = true;
                     <tbody class="table__body">
                         <?php foreach ($projects as $project): ?>
                             <tr>
-                                <td class="td_1"> 
+                                <td class="td_1">
                                     <?= htmlspecialchars($project['name']) ?>
                                 </td>
                                 <td><?= htmlspecialchars($project['location_name'] ?? '') ?></td>
@@ -63,15 +63,20 @@ $show_breadcrumb = true;
 
                                 <td class="table__icon-box">
                                     <div class="d-flex align-items-center justify-content-center gap-10">
-                                        <a href=" download.php?id=<?= $project['id'] ?>" class="d-none table__icon download">
-                                            <i class="d-none fa-regular fa-arrow-down-to-bracket"></i>
-                                        </a>
+
                                         <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/project-details/<?= $project['id'] ?>"
                                             title="View Transaction History"> <i class="fa-regular fa-eye"></i>
                                         </a>
                                         <a href="<?= $GLOBALS['base_url'] ?>/edit-project/<?= $project['id'] ?>" class="table__icon edit">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </a>
+
+                                        <button class="table__icon delete removeBtnCust  "
+                                            data-id="<?= $project['id'] ?>"
+                                            data-name="<?= $project['name'] ?>"
+                                            data-action="delete-project">
+                                            <i class="fa-regular fa-trash"></i>
+                                        </button>
 
                                     </div>
                                 </td>
@@ -83,3 +88,6 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
+<script>
+    const base_url = "<?= $GLOBALS['base_url'] ?>";
+</script>

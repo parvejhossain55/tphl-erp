@@ -21,7 +21,7 @@ class FlatModel extends Model
         FROM flats AS f
         LEFT JOIN projects AS p ON f.project_id = p.id
         LEFT JOIN units AS u ON f.unit_id = u.id
-        WHERE 1
+        WHERE f.deleted_at IS NULL
     ";
 
         $params = [];
@@ -81,7 +81,6 @@ class FlatModel extends Model
             INSERT INTO flats (
                 project_id,
                 flat_name,
-               
                 sqft,
                 bhk,
                 bedroom,
@@ -93,8 +92,8 @@ class FlatModel extends Model
                 facing_site,
                 price_value,
                 facilities,
-                created_by,
-            ) VALUES (?,?,  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
+                created_by
+            ) VALUES (?,?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
         ");
 
         if (!$stmt) {
@@ -103,7 +102,7 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "isiiiiiiiiids",
+            "isiiiiiiiiidsi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -137,8 +136,6 @@ class FlatModel extends Model
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
     }
-
-                // project_id, unit_id,sqft,bhk,   bedroom, bathroom, balcony, drawing_dining_kitchen, common_dining, floor_no,  facing_site,price_value,  facilities
     /**
      * Update lead
      */
@@ -193,9 +190,8 @@ class FlatModel extends Model
     {
         $stmt = $this->db->prepare("SELECT f.id, f.flat_name,f.is_booked,f.sqft,f.floor_no
                                      FROM flats f
-                                     INNER JOIN units u ON f.unit_id = u.id
                                      WHERE f.project_id = ?
-                                     ORDER BY u.name ASC");
+                                     ORDER BY f.flat_name ASC");
         $stmt->bind_param("i", $projectId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -213,12 +209,10 @@ class FlatModel extends Model
                 f.sqft,
                 f.bhk,
                 f.price_value,
-                u.name AS unit_name,
                 f.flat_name
             FROM flats f
-            JOIN units u ON f.unit_id = u.id
             WHERE f.project_id = ?
-            ORDER BY f.floor_no ASC, u.name ASC
+            ORDER BY f.floor_no ASC,f.flat_name ASC
         ");
 
         $stmt->bind_param("i", $projectId);
@@ -228,36 +222,36 @@ class FlatModel extends Model
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function delete($id)
+    public function softDelete($flatId)
     {
-        $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        return $stmt->execute();
+        $this->db->begin_transaction();
+
+        try {
+            $now = date('Y-m-d H:i:s');
+
+            $tables = [
+                ['flats', 'id'],
+                ['lead_follow_ups', 'flat_id'],
+                ['lead_bookings', 'flat_id'],
+            ];
+
+            foreach ($tables as [$table, $col]) {
+                $stmt = $this->db->prepare(
+                    "UPDATE $table SET deleted_at=? WHERE $col=?"
+                );
+                $stmt->bind_param("si", $now, $flatId);
+                $stmt->execute();
+                $stmt->close();
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            throw $e;
+        }
     }
 
 
 
-    
-//     private function updateFlatStatusIfSold($booking_id)
-// {
-//     // get flat id and total price
-//     $sql = "SELECT f.id AS flat_id, f.price_value, SUM(p.amount) AS total_price
-//             FROM flats f
-//             JOIN lead_bookings b ON b.flat_id = f.id
-//             JOIN lead_payments p ON p.booking_id = b.id
-//             WHERE b.id = ?
-//             GROUP BY f.id";
-//     $stmt = $this->db->prepare($sql);
-//     $stmt->bind_param("i", $booking_id);
-//     $stmt->execute();
-//     $result = $stmt->get_result()->fetch_assoc();
-
-//     if ($result && $result['total_paid'] >= $result['price_value']) {
-//         // mark as sold
-//         $sql2 = "UPDATE flats SET status = 'sold', is_booked = 1 WHERE id = ?";
-//         $stmt2 = $this->db->prepare($sql2);
-//         $stmt2->bind_param("i", $result['flat_id']);
-//         $stmt2->execute();
-//     }
-// }
 }

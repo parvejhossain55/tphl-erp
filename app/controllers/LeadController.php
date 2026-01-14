@@ -23,6 +23,8 @@ class LeadController extends Controller
         $leads = $this->leadModel->getAllWithFilter($year,$month);
         $leadCounts = count($leads);
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
+        $todayFollowUp =(new FollowUp($this->db))->getTodayFollowUpCountByLead();
+        $totalTodayFollowUps = array_sum($todayFollowUp);
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
         if (session_status() === PHP_SESSION_NONE) {
@@ -39,6 +41,7 @@ class LeadController extends Controller
             "bookingCount" => $bookingCount,
             "paymentCount" => $paymentCount,
             "leadCounts" => $leadCounts,
+            "totalTodayFollowUps" => $totalTodayFollowUps,
         ]);
     }
 

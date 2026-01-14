@@ -182,44 +182,6 @@ class FlatController extends Controller
         }
     }
 
-
-    public function importCsv()
-    {
-        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
-            setError("CSV upload failed");
-            return;
-        }
-
-        $fileTmp = $_FILES['csv_file']['tmp_name'];
-        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
-
-        if ($ext !== 'csv') {
-            setError("Only CSV files allowed");
-            return;
-        }
-
-        if (($handle = fopen($fileTmp, "r")) !== false) {
-
-            $header = fgetcsv($handle); // first row → header
-
-            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
-
-                // 🔑 CSV → DB column mapping
-                $data = array_combine($header, $row);
-
-                // defaults & safety
-                $data['value_amount'] = (float)($data['value_amount'] ?? 0);
-                $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
-                $data['status'] = (int)($data['status'] ?? 0);
-                $data['visibility'] = $data['visibility'] ?? 'public';
-
-                $this->flatModel->create($data);
-            }
-
-            fclose($handle);
-            setSuccess("CSV imported successfully");
-        }
-    }
     
     public function show($id){
         $flat = $this->flatModel->find($id);
@@ -233,5 +195,36 @@ class FlatController extends Controller
 
 
     // Delete Employee
-    public function delete($id) {}
+    public function delete() {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    $id = $_POST['id'] ?? 0;
+
+    if (!$id) {
+        setError("Invalid Flat ID");
+        header("Location:{$GLOBALS['base_url']}/flat-lists");
+        exit;
+    }
+
+    try {
+        $deleted = $this->flatModel->softDelete($id);
+
+        if ($deleted) {
+            setSuccess("Flat Deleted Successfully");
+        } else {
+            setError("Something went wrong. Please try again.");
+        }
+
+    } catch (Exception $e) {
+        // Catch DB exceptions
+        setError("Error: " . $e->getMessage());
+    }
+
+    // Redirect after setting flash message
+    header("Location:{$GLOBALS['base_url']}/flat-lists");
+    exit;
+}
+
 }
