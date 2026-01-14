@@ -172,8 +172,8 @@ $show_breadcrumb = false;
                                         <td><span class="fw-semibold ">Price:</span><?= format_bdt($flat['price_value']) ?> ৳</td>
 
                                         <td>
-                                            <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>" class="btn btn-sm btn-secondary me-1">Edit</a>
-                                            <a href="<?= $GLOBALS['base_url'] ?>/flat-details/<?= $flat['id'] ?>" class="btn btn-sm btn-primary me-1">Details</a>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>" class="btn btn-sm btn-secondary ">Edit</a>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/flat-details/<?= $flat['id'] ?>" class="btn btn-sm btn-primary m-1">Details</a>
 
                                         </td>
                                     </tr>

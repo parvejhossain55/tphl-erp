@@ -315,6 +315,8 @@ class Project extends Model
             SUM(f.price_value) AS total_flat_value
         FROM projects p
         LEFT JOIN flats f ON f.project_id = p.id
+        WHERE p.deleted_at IS NULL
+        AND f.deleted_at IS NULL 
         GROUP BY p.id
     ");
 
@@ -344,6 +346,7 @@ class Project extends Model
     FROM flats f
     LEFT JOIN lead_bookings lb 
         ON lb.flat_id = f.id
+        WHERE f.deleted_at IS NULL
     ORDER BY f.project_id, f.flat_name
 ");
 

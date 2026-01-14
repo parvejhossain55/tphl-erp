@@ -35,12 +35,12 @@ class SalesDashboardController extends Controller
         $todayLeads = $todayLeadsResult->fetch_assoc()['today_count'] ?? 0;
 
         //  Follow-ups Due
-        $followUpsQuery = "SELECT COUNT(*) AS due FROM lead_follow_ups WHERE follow_up_date <= CURDATE() AND status = 'pending'";
+        $followUpsQuery = "SELECT COUNT(*) AS due FROM lead_follow_ups WHERE follow_up_date <= CURDATE() AND status = 'pending' AND lead_follow_ups.deleted_at IS NULL";
         $followUpsResult = $this->db->query($followUpsQuery);
         $followUpsDue = $todayLeads;
 
         //  Onboarded Clients
-        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'booked'";
+        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'booked' AND lead_bookings.deleted_at IS NULL";
         $onboardedResult = $this->db->query($onboardedQuery);
         $onboardedClients = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
 
@@ -53,7 +53,7 @@ class SalesDashboardController extends Controller
         $conversionRate = $totalLeadsCount > 0 ? ($onboardedClients / $totalLeadsCount) * 100 : 0;
 
         //  New Follow-ups Today (optional)
-        $newFollowUpsQuery = "SELECT COUNT(*) AS new_followups FROM lead_follow_ups WHERE DATE(created_at) = CURDATE()";
+        $newFollowUpsQuery = "SELECT COUNT(*) AS new_followups FROM lead_follow_ups WHERE DATE(created_at) = CURDATE() AND lead_follow_ups.deleted_at IS NULL";
         $newFollowUpsResult = $this->db->query($newFollowUpsQuery);
         $newFollowUpsToday = $newFollowUpsResult->fetch_assoc()['new_followups'] ?? 0;
 
@@ -124,6 +124,7 @@ class SalesDashboardController extends Controller
     FROM lead_bookings lb
     JOIN projects p ON p.id = lb.project_id
     WHERE lb.booking_status = 'booked'
+    AND lb.deleted_at IS NULL
     GROUP BY lb.project_id
     ORDER BY flat_sold DESC
 ";

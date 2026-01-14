@@ -58,7 +58,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <!-- Flat -->
                     <div class="col-lg-6">
                         <label class="form-label">Flat / Unit *</label>
-                        <select id="flatSelect" name="flat_id" class="form-select " data-live-search="true">
+                        <select id="flatSelect" name="flat_id" class="form-select" data-live-search="true">
 
                             <option value="">Select Flat</option>
                         </select>
@@ -282,9 +282,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 <script>
     document.addEventListener('DOMContentLoaded', function() {
 
-        // ===============================
-        // Update Booking Modal Logic
-        // ===============================
         let flatDataEdit = []; // store flats for edit modal
 
         const editProjectSelect = document.getElementById('edit_project');

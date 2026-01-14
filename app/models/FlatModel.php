@@ -64,6 +64,7 @@ class FlatModel extends Model
             SUM(CASE WHEN is_booked = 1 THEN 1 ELSE 0 END) AS booked,
             SUM(CASE WHEN is_booked = 0 THEN 1 ELSE 0 END) AS available
         FROM flats
+        WHERE flats.deleted_at IS NULL
     ");
 
         $sql->execute();
@@ -212,6 +213,7 @@ class FlatModel extends Model
                 f.flat_name
             FROM flats f
             WHERE f.project_id = ?
+            AND f.deleted_at IS NULL
             ORDER BY f.floor_no ASC,f.flat_name ASC
         ");
 

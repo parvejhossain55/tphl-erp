@@ -112,7 +112,7 @@ $routes = [
     "view-lead/(\d+)" => ["controller" => "LeadController", "method" => "show"],
     "leads-import-csv" => ["controller" => "LeadController", "method" => "importCsv"],
     "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
-    "delete-lead/(\d+)" => ["controller" => "LeadController", "method" => "delete"],
+    "lead-delete" => ["controller" => "LeadController", "method" => "delete"],
     // leads Source
     "leadSource-lists" => ["controller" => "LeadSourceController", "method" => "index"],
     // "create-leadSource" => ["controller" => "LeadSourceController", "method" => "create"],

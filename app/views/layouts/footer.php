@@ -310,113 +310,113 @@
 
 
 
-<script>
-document.addEventListener("DOMContentLoaded", function () {
+        <script>
+        document.addEventListener("DOMContentLoaded", function () {
 
-    const salesData = {
-        week: {
-            labels: <?= json_encode(array_column($weeklySales, 'date')) ?>,
-            totals: <?= json_encode(array_column($weeklySales, 'total')) ?>
-        },
-        month: {
-            labels: <?= json_encode(array_column($monthlySales, 'date')) ?>,
-            totals: <?= json_encode(array_column($monthlySales, 'total')) ?>
-        },
-        year: {
-            labels: <?= json_encode(array_column($yearlySales, 'month')) ?>,
-            totals: <?= json_encode(array_column($yearlySales, 'total')) ?>
-        }
-    };
-
-    // 🔥 THIS PART YOU MISSED
-    const activeBtn = document.querySelector('.nav-link.active');
-    const defaultPeriod = activeBtn ? activeBtn.dataset.period : 'week';
-
-    const colors = ['#1a6e40ff', '#23bb95ff'];
-
-    function getAlternatingColors(length) {
-        return Array.from({ length }, (_, i) => colors[i % colors.length]);
-    }
-
-    let options = {
-        chart: {
-            type: 'bar',
-            height: 300,
-            toolbar: { show: false }
-        },
-
-        plotOptions: {
-            bar: {
-                distributed: true,
-                borderRadius: 4,
-                columnWidth: '40%'
-            }
-        },
-
-        dataLabels: {
-            enabled: defaultPeriod !== 'month',
-            formatter: val => '৳ ' + val.toLocaleString()
-        },
-
-        series: [{
-            name: 'Sales',
-            data: salesData[defaultPeriod].totals
-        }],
-
-        xaxis: {
-            categories: salesData[defaultPeriod].labels,
-            labels: {
-                style: {
-                    colors: getAlternatingColors(salesData[defaultPeriod].labels.length),
-                    fontSize: '12px',
-                    fontWeight: 500
+            const salesData = {
+                week: {
+                    labels: <?= json_encode(array_column($weeklySales, 'date')) ?>,
+                    totals: <?= json_encode(array_column($weeklySales, 'total')) ?>
+                },
+                month: {
+                    labels: <?= json_encode(array_column($monthlySales, 'date')) ?>,
+                    totals: <?= json_encode(array_column($monthlySales, 'total')) ?>
+                },
+                year: {
+                    labels: <?= json_encode(array_column($yearlySales, 'month')) ?>,
+                    totals: <?= json_encode(array_column($yearlySales, 'total')) ?>
                 }
-            }
-        },
+            };
 
-        yaxis: {
-            labels: {
-                style: {
-                    colors: '#1a6e40',
-                    fontSize: '12px',
-                    fontWeight: 700
+            // 🔥 THIS PART YOU MISSED
+            const activeBtn = document.querySelector('.nav-link.active');
+            const defaultPeriod = activeBtn ? activeBtn.dataset.period : 'week';
+
+            const colors = ['#1a6e40ff', '#23bb95ff'];
+
+            function getAlternatingColors(length) {
+                return Array.from({ length }, (_, i) => colors[i % colors.length]);
+            }
+
+            let options = {
+                chart: {
+                    type: 'bar',
+                    height: 300,
+                    toolbar: { show: false }
+                },
+
+                plotOptions: {
+                    bar: {
+                        distributed: true,
+                        borderRadius: 4,
+                        columnWidth: '40%'
+                    }
+                },
+
+                dataLabels: {
+                    enabled: defaultPeriod !== 'month',
+                    formatter: val => '৳ ' + val.toLocaleString()
+                },
+
+                series: [{
+                    name: 'Sales',
+                    data: salesData[defaultPeriod].totals
+                }],
+
+                xaxis: {
+                    categories: salesData[defaultPeriod].labels,
+                    labels: {
+                        style: {
+                            colors: getAlternatingColors(salesData[defaultPeriod].labels.length),
+                            fontSize: '12px',
+                            fontWeight: 500
+                        }
+                    }
+                },
+
+                yaxis: {
+                    labels: {
+                        style: {
+                            colors: '#1a6e40',
+                            fontSize: '12px',
+                            fontWeight: 700
+                        }
+                    }
+                },
+
+                colors: getAlternatingColors(salesData[defaultPeriod].totals.length),
+
+                tooltip: {
+                    y: {
+                        formatter: val => '৳ ' + val.toLocaleString()
+                    }
                 }
-            }
-        },
+            };
 
-        colors: getAlternatingColors(salesData[defaultPeriod].totals.length),
+            const chart = new ApexCharts(document.querySelector("#salesChart"), options);
+            chart.render();
 
-        tooltip: {
-            y: {
-                formatter: val => '৳ ' + val.toLocaleString()
-            }
-        }
-    };
+            // Tabs click
+            document.querySelectorAll('.nav-link').forEach(button => {
+                button.addEventListener('click', function () {
 
-    const chart = new ApexCharts(document.querySelector("#salesChart"), options);
-    chart.render();
+                    document.querySelectorAll('.nav-link')
+                        .forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
 
-    // Tabs click
-    document.querySelectorAll('.nav-link').forEach(button => {
-        button.addEventListener('click', function () {
+                    const period = this.dataset.period;
 
-            document.querySelectorAll('.nav-link')
-                .forEach(btn => btn.classList.remove('active'));
-            this.classList.add('active');
-
-            const period = this.dataset.period;
-
-            chart.updateOptions({
-                series: [{ data: salesData[period].totals }],
-                xaxis: { categories: salesData[period].labels },
-                colors: getAlternatingColors(salesData[period].totals.length),
-                dataLabels: { enabled: period !== 'month' }
+                    chart.updateOptions({
+                        series: [{ data: salesData[period].totals }],
+                        xaxis: { categories: salesData[period].labels },
+                        colors: getAlternatingColors(salesData[period].totals.length),
+                        dataLabels: { enabled: period !== 'month' }
+                    });
+                });
             });
-        });
-    });
 
-});
-</script>
+        });
+        </script>
 
 
 

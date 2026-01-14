@@ -248,7 +248,7 @@ $page = "View Lead";
                             </div>
                         <?php endif ?>
 
-                        <div class="lead-name-section">
+                        <div class="lead-name-section me-2">
                             <h2 class="mb-0">
                                 <?= htmlspecialchars($leadData['lead_name'] ?? 'N/A') ?>
                             </h2>
@@ -548,3 +548,5 @@ $page = "View Lead";
 
     </div>
 </div>
+
+

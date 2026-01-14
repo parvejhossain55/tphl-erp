@@ -17,13 +17,13 @@ class LeadController extends Controller
     }
     public function index()
     {
-    $year  = $_GET['year']  ?? null;
-    $month = $_GET['month'] ?? null;
+        $year  = $_GET['year']  ?? null;
+        $month = $_GET['month'] ?? null;
         $owners = $this->userModel->getAll();
-        $leads = $this->leadModel->getAllWithFilter($year,$month);
+        $leads = $this->leadModel->getAllWithFilter($year, $month);
         $leadCounts = count($leads);
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
-        $todayFollowUp =(new FollowUp($this->db))->getTodayFollowUpCountByLead();
+        $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
         $totalTodayFollowUps = array_sum($todayFollowUp);
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
@@ -93,6 +93,7 @@ class LeadController extends Controller
             'status' => $_POST['status'] ?? 'active',
             'lead_quality' => $_POST['lead_quality'] ?? 'Pending',
             'created_by'      => $_SESSION['user']['id'] ?? null,
+
         ];
 
         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -138,10 +139,6 @@ class LeadController extends Controller
             "show_breadcrumb" => true,
         ]);
     }
-
-
-
-
 
     public function update($id)
     {
@@ -266,5 +263,37 @@ class LeadController extends Controller
 
 
     // Delete Employee
-    public function delete($id) {}
+public function delete()
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        setError("Invalid Request");
+        header("Location:{$GLOBALS['base_url']}/lead-lists");
+        exit;
+    }
+
+    $id = (int)($_POST['id'] ?? 0);
+
+    if ($id <= 0) {
+        setError("Invalid Lead ID");
+        header("Location:{$GLOBALS['base_url']}/lead-lists");
+        exit;
+    }
+
+    try {
+        $leadDelete = $this->leadModel->softDelete($id);
+
+        if ($leadDelete) {
+            setSuccess("Lead deleted Successfully");
+        } else {
+            setError("Something Went Wrong");
+        }
+
+    } catch (\Throwable $th) {
+        setError("Error: " . $th->getMessage());
+    }
+
+    header("Location:{$GLOBALS['base_url']}/lead-lists");
+    exit;
+}
+
 }

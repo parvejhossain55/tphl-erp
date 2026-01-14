@@ -10,7 +10,7 @@
     <!-- KPI CARDS -->
     <div class="row g-20 mb-4 align-items-stretch">
 
-        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
+        <div class="col-xxl-4 col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -24,7 +24,7 @@
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
+        <div class="col-xxl-4 col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -38,21 +38,21 @@
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
+        <div class=" d-none col-xxl-4 col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-regular fa-bell"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-primary mb-10">Follow-ups Due</h6>
+                        <h6 class="card__title text-break text-primary mb-10">Today Call Due For Add New Lead</h6>
                         <h4 class="card__title"><?= $followUpsDue ?? '' ?></h4>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
+        <div class="col-xxl-4 col-xl-4 col-md-4 col-12 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">

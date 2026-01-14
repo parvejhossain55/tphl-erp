@@ -12,12 +12,16 @@ class Lead extends Model
     public function getAll()
     {
         $sql = $this->db->prepare("
-        SELECT 
+       SELECT 
             l.*,
             u.id AS assigned_id,
             u.full_name AS agent_name
         FROM leads AS l
         LEFT JOIN users AS u ON l.assigned_id = u.id
+        WHERE l.status = 'active'
+        AND l.deleted_at IS NULL;
+
+
     ");
         $sql->execute();
         if (!$sql->execute()) {
@@ -27,48 +31,50 @@ class Lead extends Model
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-public function getAllWithFilter($year = null, $month = null)
-{
-    $sql = "
+    public function getAllWithFilter($year = null, $month = null)
+    {
+        $sql = "
         SELECT 
             l.*,
             u.id AS assigned_id,
             u.full_name AS agent_name
         FROM leads AS l
         LEFT JOIN users AS u ON l.assigned_id = u.id
-        WHERE 1
-    ";
+        WHERE l.status = 'active'
+        AND l.deleted_at IS NULL
+        ";
 
-    $params = [];
-    $types  = "";
 
-    if (!empty($year)) {
-        $sql .= " AND YEAR(l.created_at) = ?";
-        $params[] = $year;
-        $types   .= "i";
+        $params = [];
+        $types  = "";
+
+        if (!empty($year)) {
+            $sql .= " AND YEAR(l.created_at) = ?";
+            $params[] = $year;
+            $types   .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(l.created_at) = ?";
+            $params[] = $month;
+            $types   .= "i";
+        }
+
+        $sql .= " ORDER BY l.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        if (!$stmt->execute()) {
+            return [];
+        }
+
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-
-    if (!empty($month)) {
-        $sql .= " AND MONTH(l.created_at) = ?";
-        $params[] = $month;
-        $types   .= "i";
-    }
-
-    $sql .= " ORDER BY l.id DESC";
-
-    $stmt = $this->db->prepare($sql);
-
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-
-    if (!$stmt->execute()) {
-        return [];
-    }
-
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
 
 
 
@@ -189,28 +195,28 @@ public function getAllWithFilter($year = null, $month = null)
     /**
      * Update lead
      */
-public function update($id, $data)
-{
-    $old = $this->find($id);
-    if (!$old) {
-        return false;
-    }
+    public function update($id, $data)
+    {
+        $old = $this->find($id);
+        if (!$old) {
+            return false;
+        }
 
-    // ======================
-    // Image Upload (fallback old)
-    // ======================
-    $lead_image = !empty($_FILES['lead_image']['name'])
-        ? uploadImage('lead_image', 'leads', 'fixed')
-        : $old['lead_image'];
+        // ======================
+        // Image Upload (fallback old)
+        // ======================
+        $lead_image = !empty($_FILES['lead_image']['name'])
+            ? uploadImage('lead_image', 'leads', 'fixed')
+            : $old['lead_image'];
 
-    $nomi_image = !empty($_FILES['nomi_image']['name'])
-        ? uploadImage('nomi_image', 'leads', 'fixed')
-        : $old['nomi_image'];
+        $nomi_image = !empty($_FILES['nomi_image']['name'])
+            ? uploadImage('nomi_image', 'leads', 'fixed')
+            : $old['nomi_image'];
 
-    // ======================
-    // Prepare SQL
-    // ======================
-    $sql = "UPDATE leads SET
+        // ======================
+        // Prepare SQL
+        // ======================
+        $sql = "UPDATE leads SET
         lead_name = ?, father_name = ?, mother_name = ?, dob = ?, permanent_address = ?, nid_or_passport = ?,
         phone = ?, alt_phone_number = ?, email = ?, address = ?, designation = ?,
         lead_name_bn = ?, father_name_bn = ?, mother_name_bn = ?, identity_type = ?, permanent_add_bn = ?,
@@ -220,81 +226,127 @@ public function update($id, $data)
         nomi_permanent_address = ?, nomi_image = ?, description = ?,created_by = ?
         WHERE id = ?";
 
-    $stmt = $this->db->prepare($sql);
-    if (!$stmt) {
-        throw new Exception("Prepare failed: " . $this->db->error);
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $this->db->error);
+        }
+
+        // ======================
+        // Bind all strings + id as integer
+        // ======================
+        $stmt->bind_param(
+            str_repeat("s", 34) . "ii", // 34 strings + 1 integer for id
+            $data['lead_name'],
+            $data['father_name'],
+            $data['mother_name'],
+            $data['dob'],
+            $data['permanent_address'],
+            $data['nid_or_passport'],
+            $data['phone'],
+            $data['alt_phone_number'],
+            $data['email'],
+            $data['address'],
+            $data['designation'],
+            $data['lead_name_bn'],
+            $data['father_name_bn'],
+            $data['mother_name_bn'],
+            $data['identity_type'],
+            $data['permanent_add_bn'],
+            $data['present_add_bn'],
+            $data['profession_bn'],
+            $data['nationality'],
+            $data['religion'],
+            $lead_image,
+            $data['nominee_name'],
+            $data['relation_with_lead'],
+            $data['nomi_father_name'],
+            $data['nomi_mother_name'],
+            $data['nomi_profession'],
+            $data['nomi_dob'],
+            $data['nomi_phone'],
+            $data['nomi_email'],
+            $data['nomi_nid_passport'],
+            $data['nomi_present_add'],
+            $data['nomi_permanent_address'],
+            $nomi_image,
+            $data['description'],
+            $data['created_by'],
+            $id // integer
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception("Update failed: " . $stmt->error);
+        }
+
+        return true;
     }
 
-    // ======================
-    // Bind all strings + id as integer
-    // ======================
-    $stmt->bind_param(
-        str_repeat("s", 34) . "ii", // 34 strings + 1 integer for id
-        $data['lead_name'],
-        $data['father_name'],
-        $data['mother_name'],
-        $data['dob'],
-        $data['permanent_address'],
-        $data['nid_or_passport'],
-        $data['phone'],
-        $data['alt_phone_number'],
-        $data['email'],
-        $data['address'],
-        $data['designation'],
-        $data['lead_name_bn'],
-        $data['father_name_bn'],
-        $data['mother_name_bn'],
-        $data['identity_type'],
-        $data['permanent_add_bn'],
-        $data['present_add_bn'],
-        $data['profession_bn'],
-        $data['nationality'],
-        $data['religion'],
-        $lead_image,
-        $data['nominee_name'],
-        $data['relation_with_lead'],
-        $data['nomi_father_name'],
-        $data['nomi_mother_name'],
-        $data['nomi_profession'],
-        $data['nomi_dob'],
-        $data['nomi_phone'],
-        $data['nomi_email'],
-        $data['nomi_nid_passport'],
-        $data['nomi_present_add'],
-        $data['nomi_permanent_address'],
-        $nomi_image,
-        $data['description'],
-        $data['created_by'],
-        $id // integer
-    );
-
-    if (!$stmt->execute()) {
-        throw new Exception("Update failed: " . $stmt->error);
-    }
-
-    return true;
-}
 
 
 
-
-   public function countLeadsByMonth($year, $month)
-{
-    $stmt = $this->db->prepare("
+    public function countLeadsByMonth($year, $month)
+    {
+        $stmt = $this->db->prepare("
         SELECT COUNT(*) AS total
         FROM leads
         WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?
     ");
-    $stmt->bind_param("ii", $year, $month);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return (int)($result['total'] ?? 0);
-}
+        $stmt->bind_param("ii", $year, $month);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return (int)($result['total'] ?? 0);
+    }
 
-    public function delete($id)
+    // public function delete($id)
+    // {
+    //     $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");
+    //     $stmt->bind_param("i", $id);
+    //     return $stmt->execute();
+    // }
+
+
+    public function softDelete($leadId)
     {
-        $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        return $stmt->execute();
+        $this->db->begin_transaction();
+
+        try {
+            $now = date('Y-m-d H:i:s');
+
+            // 1. Leads table (also update status)
+            $stmt = $this->db->prepare("
+            UPDATE leads 
+            SET deleted_at = ?, status = 'inactive'
+            WHERE id = ?
+        ");
+            $stmt->bind_param("si", $now, $leadId);
+            $stmt->execute();
+            $stmt->close();
+
+            // 2. Lead bookings
+            $stmt = $this->db->prepare("
+            UPDATE lead_bookings 
+            SET deleted_at = ?
+            WHERE lead_id = ?
+        ");
+            $stmt->bind_param("si", $now, $leadId);
+            $stmt->execute();
+            $stmt->close();
+
+            // 3. Lead follow ups
+            $stmt = $this->db->prepare("
+            UPDATE lead_follow_ups 
+            SET deleted_at = ?
+            WHERE lead_id = ?
+        ");
+            $stmt->bind_param("si", $now, $leadId);
+            $stmt->execute();
+            $stmt->close();
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return false;
+        }
     }
 }

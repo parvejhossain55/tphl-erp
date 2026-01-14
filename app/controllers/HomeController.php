@@ -35,8 +35,6 @@ class HomeController extends Controller
         $totalLeads = $this->leadModel->getAll();
         $totalLeadsCount = count($totalLeads);
 
-
-
         // Current month
         $currentYear = date('Y');
         $currentMonth = date('m');
@@ -55,8 +53,6 @@ class HomeController extends Controller
         } else {
             $leadsPercentChange = round((($currentMonthLeads - $lastMonthLeads) / $lastMonthLeads) * 100, 2);
         }
-
-
         // accounts part 
         $viewType = $_GET['view'] ?? 'cashin';
 
@@ -86,7 +82,7 @@ class HomeController extends Controller
         //end accounts
 
                 //  Onboarded Clients
-        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'booked'";
+        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'booked' AND lead_bookings.deleted_at IS NULL";
         $onboardedResult = $this->db->query($onboardedQuery);
         $totalFlatsBooking = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
 
@@ -146,11 +142,7 @@ class HomeController extends Controller
 
         $totalProjects = $this->projectModel->countProject();
 
-
-
-
-        $flatSalesQuery = "
-    SELECT p.name AS project_name, COUNT(lb.id) AS flat_sold
+$flatSalesQuery = "SELECT p.name AS project_name, COUNT(lb.id) AS flat_sold
     FROM lead_bookings lb
     JOIN projects p ON p.id = lb.project_id
     WHERE lb.booking_status = 'booked'

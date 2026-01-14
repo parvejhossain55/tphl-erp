@@ -235,7 +235,10 @@ $show_breadcrumb = true;
                                         <a class="table__icon edit" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </a>
-                                        <button class="removeBtn table__icon delete">
+                                         <button class="table__icon delete removeBtnCust  "
+                                        data-name="<?= $lead['lead_name'] ?>"
+                                        data-action="lead-delete"
+                                        data-id="<?= $lead['id'] ?>">
                                             <i class="fa-regular fa-trash"></i>
                                         </button>
                                     </div>
@@ -293,6 +296,7 @@ $show_breadcrumb = true;
     </div>
 </div>
 <script>
+    const base_url = "<?= $GLOBALS['base_url'] ?>";
     // Disable right-click context menu
     document.addEventListener('contextmenu', function(e) {
         e.preventDefault();

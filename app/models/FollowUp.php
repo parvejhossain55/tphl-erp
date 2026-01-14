@@ -189,16 +189,14 @@ class FollowUp extends Model
 
     public function getTodayFollowUpCountByLead()
     {
-        $sql = "
-    SELECT lf.lead_id, COUNT(*) AS follow_up_count
-FROM lead_follow_ups lf
-WHERE lf.deleted_at IS NULL
-  AND lf.next_follow_up_date >= CURDATE()
-  AND lf.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
-GROUP BY lf.lead_id
-ORDER BY follow_up_count DESC
-
-    ";
+        $sql ="SELECT lf.lead_id, COUNT(*) AS follow_up_count
+        FROM lead_follow_ups lf
+        WHERE lf.deleted_at IS NULL
+        AND lf.next_follow_up_date >= CURDATE()
+        AND lf.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+        AND lf.deleted_at IS NULL
+        GROUP BY lf.lead_id
+        ORDER BY follow_up_count DESC";
 
         $result = $this->db->query($sql);
         $data = [];
@@ -240,6 +238,7 @@ ORDER BY follow_up_count DESC
     LEFT JOIN users usr ON f.created_by = usr.id
     LEFT JOIN employees emp ON f.assigned_with = emp.id
     WHERE DATE(f.next_follow_up_date) = '$today'
+    AND f.deleted_at IS NULL
     ORDER BY f.follow_up_date DESC, f.follow_up_time DESC
     ";
 

@@ -216,7 +216,7 @@ $show_breadcrumb = true;
                                             </button>
                                         <?php else: ?>
                                             <button
-                                                class="btn btn-success btn-sm desabled">
+                                                class="btn btn-primary btn-sm desabled">
                                                 Completed
                                             </button>
                                         <?php endif; ?>
