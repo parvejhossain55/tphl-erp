@@ -1,7 +1,4 @@
-<!-- config/config.php  -->
 <?php
-
-
 return [
     "db_host" => "localhost",
     "db_user" => "root",

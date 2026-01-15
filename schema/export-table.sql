@@ -94,3 +94,23 @@ change logo name alter with white_logo
   ADD COLUMN dark_logo  varchar(200) DEFAULT NULL 
   AFTER white_logo
 --13-1-2026 END  added by farzana
+
+
+--15-1-2026 added By Farzana For AI Chatbox
+
+CREATE TABLE chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_role INT(11) NOT NULL, -- role_id from session
+    message TEXT NOT NULL,
+    reply TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id VARCHAR(100),
+    sender ENUM('user','bot'),
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

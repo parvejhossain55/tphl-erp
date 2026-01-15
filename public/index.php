@@ -12,6 +12,24 @@ $GLOBALS['base_url'] = '/TPHL-ERP';
 
 
 // folder er moddhe o chaile folder kore controller nite parbo abr folder chara o controller
+// spl_autoload_register(function ($class) use ($root) {
+//     $class = str_replace('\\', '/', $class);
+
+//     $paths = [
+//         $root . "/app/core/$class.php",
+//         $root . "/app/models/$class.php",
+//         $root . "/app/controllers/$class.php",
+//     ];
+
+//     foreach ($paths as $file) {
+//         if (file_exists($file)) {
+//             require $file;
+//             return;
+//         }
+//     }
+// });
+
+
 spl_autoload_register(function ($class) use ($root) {
     $class = str_replace('\\', '/', $class);
 
@@ -19,6 +37,9 @@ spl_autoload_register(function ($class) use ($root) {
         $root . "/app/core/$class.php",
         $root . "/app/models/$class.php",
         $root . "/app/controllers/$class.php",
+        $root . "/app/services/$class.php",
+        $root . "/app/helpers/$class.php",
+        $root . "/app/ai/$class.php"
     ];
 
     foreach ($paths as $file) {
@@ -28,6 +49,7 @@ spl_autoload_register(function ($class) use ($root) {
         }
     }
 });
+
 
 // Load config
 $config = require $root . "/app/config/config.php";
@@ -235,11 +257,12 @@ $routes = [
     "store-payslip-item" => ["controller" => "PayslipItemController", "method" => "store"],
     "update-payslip-item" => ["controller" => "PayslipItemController", "method" => "update"],
     "delete-payslip-item" => ["controller" => "PayslipItemController", "method" => "delete"],
-
-
-
-
     //======payrolls==========//
+
+
+
+    //===== AI ChatBox Generate====//
+     "ai-chatbox" => ["controller" => "Ai\\ChatController", "method" => "handleMessage"],
 
 
     //Rafi Start  Accounts

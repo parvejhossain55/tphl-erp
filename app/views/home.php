@@ -1,9 +1,4 @@
-<?php
-// session_start();
-// echo "<pre>";
-// print_r($_SESSION['user']);
-// echo "</pre>";
-?>
+
 
 <?php
 $page_title = "Home Dashboard";
@@ -207,27 +202,6 @@ $show_breadcrumb = false;
         </div>
     </div>
 
-
-
-
-    <div class="d-none col-xxl-3  col-lg-4 col-md-6 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-10">
-                <div class="card__icon">
-                    <span><i class="icon-tickets1"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Orders</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h3 class="card__title">55</h3>
-                        <span class="card__desc style_two"><span class="price-increase"><i
-                                    class="fa-light fa-arrow-up"></i> +2.15%</span> Than Last
-                            Month</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- script in footer  -->
@@ -283,6 +257,9 @@ $show_breadcrumb = false;
     </div>
 
     <!-- project wise flat sale  -->
+
+
+    
     <!-- Charts Section -->
     <div class="d-none col-xxl-6 col-xl-6 col-lg-6">
         <div class="card__wrapper height-equal">
@@ -426,6 +403,13 @@ $show_breadcrumb = false;
     </div>
 </div>
 </div>
+
+<?php 
+// include("./components/chatbox.php");
+include_once __DIR__.'/components/chatbox.php';
+
+?>
+
 
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>

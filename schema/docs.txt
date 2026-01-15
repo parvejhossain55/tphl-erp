@@ -265,3 +265,13 @@ Database table: project_cameras
 id	camera_name	  ip_address	  location	          rtsp_url	                             status
 1	  Site Entrance	  192.168.1.10	Gate / Entrance	  rtsp://192.168.1.10:554/...	           active
 2	  Storage Room	  192.168.1.11	Storage Area	    rtsp://192.168.1.11:554/...	           active
+
+
+ ├── Services
+ │     ├── IntentService.php    <-- detects intent from user question
+ │     ├── SalesService.php     <-- sales / revenue queries
+ │     ├── HRService.php        <-- hr related queries
+ │     ├── AccountService.php   <-- payment / pending queries
+ │     └── ProjectService.php   <-- project progress, flats etc
+ ├── AI
+ │     └── OpenAI.php           <-- call OpenAI / LLM
