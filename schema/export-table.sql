@@ -100,17 +100,31 @@ change logo name alter with white_logo
 
 CREATE TABLE chat_messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_role INT(11) NOT NULL, -- role_id from session
+    user_role_id INT(11) NOT NULL, -- role_id from session
     message TEXT NOT NULL,
     reply TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE chat_messages (
+
+--17-1-2026 added By Farzana For AI Chatbox
+
+CREATE TABLE head_notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    session_id VARCHAR(100),
-    sender ENUM('user','bot'),
-    message TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+    user_id INT NOT NULL,                 -- notification receiver
+    type ENUM('lead','booking','task','activity') NOT NULL,
+
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    url VARCHAR(255) DEFAULT NULL,
+
+    is_read TINYINT(1) DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_user_read (user_id, is_read),
+    INDEX idx_type (type)
 );
+
 
