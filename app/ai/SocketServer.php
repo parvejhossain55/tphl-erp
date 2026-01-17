@@ -3,63 +3,77 @@ namespace ai;
 
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
+use AiBrain;
 
-class SocketServer implements MessageComponentInterface {
+// Include Database & services (no namespace)
+require_once __DIR__ . '/../core/Database.php';
+require_once __DIR__ . '/../services/EmployeeService.php';
+require_once __DIR__ . '/../services/ProjectService.php';
+require_once __DIR__ . '/../services/AccountService.php';
 
+class SocketServer implements MessageComponentInterface
+{
     private \SplObjectStorage $clients;
-    private ContextManager $contextManager;
+    private \mysqli $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->clients = new \SplObjectStorage();
-        $this->contextManager = new ContextManager();
-        echo "SocketServer started...\n";
+
+        $config = require __DIR__ . '/../config/config.php';
+        $database = new \Database($config); // no namespace
+        $this->db = $database->conn;
+
+        // ⚡ Services are namespace-free, use global namespace
+        // \EmployeeService::setDb($this->db);
+        // \ProjectService::setDb($this->db);
+        // \AccountService::setDb($this->db);
+
+        echo "✅ SocketServer started...\n";
     }
 
-    /**
-     * @param ConnectionInterface|\Ratchet\WebSocket\WsConnection $conn
-     */
-    public function onOpen(ConnectionInterface $conn) {
+    public function onOpen(ConnectionInterface $conn)
+    {
         $this->clients->attach($conn);
-
-        // Resource ID safe handle
-        $resourceId = $conn->resourceId ?? spl_object_id($conn);
-        echo "New connection: ({$resourceId})\n";
+        $id = $conn->resourceId ?? spl_object_id($conn);
+        echo "🔌 New connection: {$id}\n";
     }
 
-    public function onMessage(ConnectionInterface $from, $msg) {
-        $data = json_decode($msg, true);
-        $sessionId = $from->resourceId ?? spl_object_id($from);
+public function onMessage(ConnectionInterface $from, $msg)
+{
+    $data = json_decode($msg, true);
+    $question = trim($data['message'] ?? '');
+    if (!$question) return;
 
-        $userMessage = trim($data['message'] ?? '');
-        if (!$userMessage) return;
+    $roleId = $data['role_id'] ?? 0; // CLI/WebSocket cannot use $_SESSION
 
-        // Add user message to context
-        $this->contextManager::addMessage($sessionId, 'user', $userMessage);
+    // Typing indicator
+    $from->send(json_encode(['reply' => 'typing...']));
 
-        // ====== Call your AI logic / ChatController here ======
-        // For now placeholder:
-        $reply = "AI Response: " . $userMessage;
+    // ⚡ AI Brain call (pass db!)
+    $reply = \ai\AiBrain::handleMessage($question, $roleId, $this->db);
 
-        // Add AI reply to context
-        $this->contextManager::addMessage($sessionId, 'bot', $reply);
+    // Send reply only to sender
+    $from->send(json_encode(['reply' => $reply]));
+}
 
-        // Send to all clients (broadcast)
-        foreach ($this->clients as $client) {
-            $client->send(json_encode(['reply' => $reply]));
-        }
+
+public function onClose(ConnectionInterface $conn) {
+    $this->clients->detach($conn);
+    $id = $conn->resourceId ?? spl_object_id($conn);
+
+    if (class_exists('\ai\ContextManager')) {
+        \ai\ContextManager::clearContext($id);
     }
 
-    public function onClose(ConnectionInterface $conn) {
-        $resourceId = $conn->resourceId ?? spl_object_id($conn);
-        $this->clients->detach($conn);
-        echo "Connection {$resourceId} has disconnected\n";
+    echo "❌ Connection closed: {$id}\n";
+}
 
-        $this->contextManager::clearContext($resourceId);
-    }
 
-    public function onError(ConnectionInterface $conn, \Exception $e) {
-        $resourceId = $conn->resourceId ?? spl_object_id($conn);
-        echo "Error on connection {$resourceId}: {$e->getMessage()}\n";
+    public function onError(ConnectionInterface $conn, \Exception $e)
+    {
+        $id = $conn->resourceId ?? spl_object_id($conn);
+        echo "🔥 Error {$id}: {$e->getMessage()}\n";
         $conn->close();
     }
 }

@@ -60,3 +60,35 @@ echo json_encode(['reply'=>$reply]);
 
 }
 
+// namespace ai;
+
+// use Controller;
+// use ai\AiBrain; // lowercase ai
+
+// class ChatController extends Controller
+// {
+//     public function handleMessage()
+//     {
+//         global $db;
+//         if (session_status() === PHP_SESSION_NONE) session_start();
+
+//         $input = json_decode(file_get_contents('php://input'), true);
+//         $message = trim($input['message'] ?? '');
+
+//         if ($message === 'init') {
+//             echo json_encode(['reply' => 'হ্যালো! 👋 আমি আপনার AI Assistant।']);
+//             return;
+//         }
+
+//         if (!$message) {
+//             echo json_encode(['reply' => 'Message empty!']);
+//             return;
+//         }
+
+//         $role_id = $_SESSION['user']['role_id'] ?? 0;
+
+//         $reply = AiBrain::handleMessage($message, $role_id, $db);
+
+//         echo json_encode(['reply' => $reply]);
+//     }
+// }

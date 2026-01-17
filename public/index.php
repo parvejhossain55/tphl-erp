@@ -11,25 +11,6 @@ $root = dirname(__DIR__);
 $GLOBALS['base_url'] = '/TPHL-ERP';
 
 
-// folder er moddhe o chaile folder kore controller nite parbo abr folder chara o controller
-// spl_autoload_register(function ($class) use ($root) {
-//     $class = str_replace('\\', '/', $class);
-
-//     $paths = [
-//         $root . "/app/core/$class.php",
-//         $root . "/app/models/$class.php",
-//         $root . "/app/controllers/$class.php",
-//     ];
-
-//     foreach ($paths as $file) {
-//         if (file_exists($file)) {
-//             require $file;
-//             return;
-//         }
-//     }
-// });
-
-
 spl_autoload_register(function ($class) use ($root) {
     $class = str_replace('\\', '/', $class);
 

@@ -275,3 +275,49 @@ id	camera_name	  ip_address	  location	          rtsp_url	                      
  │     └── ProjectService.php   <-- project progress, flats etc
  ├── AI
  │     └── OpenAI.php           <-- call OpenAI / LLM
+
+// ai browser
+ Browser (JS)
+   ⬇ WebSocket
+PHP Ratchet Server (SocketServer)
+   ⬇
+ContextManager (memory)
+   ⬇
+Service / Controller (Employee, Project, Sales)
+   ⬇
+Reply → Browser
+
+
+but php er jonno rule based ai e dorkar
+🔹  Recommendation
+
+For  ERP right now:
+
+Stick with Rule-Based AI inside PHP (AiBrain).
+
+You already have AiBrain::handle() with employee, project, sales, cash.
+
+Just make it modular: every new “intent” is a function in AiBrain.
+
+No need for WebSocket, no need to run a server in terminal.
+
+Browser chatbox can directly POST to your PHP controller, get response instantly.
+
+In short: Keep it simple → controller + AiBrain + chatbox via AJAX.
+
+Only go real-time (WebSocket) if in future:
+
+You want multiple users seeing live updates simultaneously, or
+
+You want AI suggestions/learning beyond static rules.
+
+💡 Extra tip:
+Even with rule-based AI, your chatbox can feel interactive if you:
+
+Show “typing…” animation.
+
+Delay response 200–500ms to simulate thinking.
+
+Use quick suggestion buttons dynamically.
+
+This gives the “smart AI feel” without WebSocket headaches.

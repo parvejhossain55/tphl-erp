@@ -1,47 +1,26 @@
 <?php
-namespace ai; // small letters
+namespace ai;
 
 class ContextManager
 {
-    private static $contexts = []; // memory for all sessions
-
-    public static function getContext($sessionId)
-    {
-        if (!isset(self::$contexts[$sessionId])) {
-            self::$contexts[$sessionId] = [];
-        }
-
-        if(!isset(self::$contexts[$sessionId])){
-            self::$contexts[$sessionId] = [];
-
-        }
-
-        return self::$contexts[$sessionId];
-    }
+    private static array $memory = [];
 
     public static function addMessage($sessionId, $role, $message)
     {
-        if (!isset(self::$contexts[$sessionId])) {
-            self::$contexts[$sessionId] = [];
-        }
-
-        self::$contexts[$sessionId][] = [
+        self::$memory[$sessionId][] = [
             'role' => $role,
-            'message' => $message,
-            'timestamp' => date('Y-m-d H:i:s')
+            'content' => $message,
+            'time' => time()
         ];
+    }
 
-        // Keep max 50 messages
-        if (count(self::$contexts[$sessionId]) > 50) {
-            array_shift(self::$contexts[$sessionId]);
-        }
+    public static function getContext($sessionId)
+    {
+        return self::$memory[$sessionId] ?? [];
     }
 
     public static function clearContext($sessionId)
     {
-        unset(self::$contexts[$sessionId]);
-
-        
+        unset(self::$memory[$sessionId]);
     }
 }
-

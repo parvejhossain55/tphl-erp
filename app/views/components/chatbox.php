@@ -386,6 +386,8 @@ document.addEventListener('DOMContentLoaded', function(){
     const chatbotMessages = document.getElementById('chatbotMessages');
     const typingIndicator = document.getElementById('typingIndicator');
 
+    console.log(base_url);
+    
     // Toggle chatbot
     chatbotToggle.addEventListener('click', function(){
         chatbotToggle.classList.toggle('active');
