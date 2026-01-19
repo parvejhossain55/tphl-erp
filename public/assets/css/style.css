@@ -474,6 +474,48 @@
 }
 
 
+/* lead action update button  */
+.last-action-select {
+    min-width: 135px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    padding-right: 1.5rem;
+}
+
+/* remove arrow */
+.last-action-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+/* Status colors */
+.action-not_called {
+    background-color: #05bb60; /* gray */
+}
+
+.action-calling {
+    background-color: #fd7e14; /* orange */
+}
+
+.action-called {
+    background-color: #198754; /* green */
+}
+
+.action-visited {
+    background-color: #033113; /* blue */
+}
+
+/* hover polish */
+.last-action-select:hover {
+    opacity: 0.9;
+}
+
+
+
+
 
 
 @media (max-width: 768px) {

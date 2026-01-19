@@ -214,6 +214,37 @@ class LeadController extends Controller
         }
     }
 
+    public function updateLastleadAction($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $leadId     = (int) $id;
+        $lastAction = $_POST['last_lead_action'] ?? null;
+
+        // Allowed enum values (important for security)
+        $allowedActions = ['not_called', 'calling', 'called', 'visited'];
+
+        if (!$leadId || !in_array($lastAction, $allowedActions)) {
+            setError("Invalid lead action selected.");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        try {
+            $this->leadModel->updateLastLeadAction($leadId, $lastAction);
+
+            setSuccess("Lead last action updated successfully!");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        } catch (Exception $e) {
+            setError($e->getMessage());
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+    }
+
 
     public function importCsv()
     {
@@ -262,38 +293,38 @@ class LeadController extends Controller
     }
 
 
+
+
     // Delete Employee
-public function delete()
-{
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        setError("Invalid Request");
-        header("Location:{$GLOBALS['base_url']}/lead-lists");
-        exit;
-    }
-
-    $id = (int)($_POST['id'] ?? 0);
-
-    if ($id <= 0) {
-        setError("Invalid Lead ID");
-        header("Location:{$GLOBALS['base_url']}/lead-lists");
-        exit;
-    }
-
-    try {
-        $leadDelete = $this->leadModel->softDelete($id);
-
-        if ($leadDelete) {
-            setSuccess("Lead deleted Successfully");
-        } else {
-            setError("Something Went Wrong");
+    public function delete()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            setError("Invalid Request");
+            header("Location:{$GLOBALS['base_url']}/lead-lists");
+            exit;
         }
 
-    } catch (\Throwable $th) {
-        setError("Error: " . $th->getMessage());
+        $id = (int)($_POST['id'] ?? 0);
+
+        if ($id <= 0) {
+            setError("Invalid Lead ID");
+            header("Location:{$GLOBALS['base_url']}/lead-lists");
+            exit;
+        }
+
+        try {
+            $leadDelete = $this->leadModel->softDelete($id);
+
+            if ($leadDelete) {
+                setSuccess("Lead deleted Successfully");
+            } else {
+                setError("Something Went Wrong");
+            }
+        } catch (\Throwable $th) {
+            setError("Error: " . $th->getMessage());
+        }
+
+        header("Location:{$GLOBALS['base_url']}/lead-lists");
+        exit;
     }
-
-    header("Location:{$GLOBALS['base_url']}/lead-lists");
-    exit;
-}
-
 }

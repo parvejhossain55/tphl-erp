@@ -34,7 +34,7 @@ class HomeController extends Controller
         $completedTasks  = $this->taskModel->getTaskCount("status = 'completed'");
         $totalLeads = $this->leadModel->getAll();
         $totalLeadsCount = count($totalLeads);
-
+        $totalVisitedCount = $this->leadModel->getVisitedLeadCount();
         // Current month
         $currentYear = date('Y');
         $currentMonth = date('m');
@@ -75,13 +75,13 @@ class HomeController extends Controller
             $recentTransactions = $this->dashboardModel->getRecentCashOutTransactions(10);
             $monthlyData = $this->dashboardModel->getMonthlyCashOutData();
         }
-        
+
         // Get combined overview statistics (always shown)
         $overviewStats = $this->dashboardModel->getOverviewStatistics();
 
         //end accounts
 
-                //  Onboarded Clients
+        //  Onboarded Clients
         $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'booked' AND lead_bookings.deleted_at IS NULL";
         $onboardedResult = $this->db->query($onboardedQuery);
         $totalFlatsBooking = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
@@ -89,7 +89,7 @@ class HomeController extends Controller
 
 
         // chart value get 
-        
+
         $weeklySalesQuery = "
             SELECT DATE(payment_date) AS date, SUM(amount) AS total
             FROM lead_payments
@@ -142,7 +142,7 @@ class HomeController extends Controller
 
         $totalProjects = $this->projectModel->countProject();
 
-$flatSalesQuery = "SELECT p.name AS project_name, COUNT(lb.id) AS flat_sold
+        $flatSalesQuery = "SELECT p.name AS project_name, COUNT(lb.id) AS flat_sold
     FROM lead_bookings lb
     JOIN projects p ON p.id = lb.project_id
     WHERE lb.booking_status = 'booked'
@@ -159,6 +159,15 @@ $flatSalesQuery = "SELECT p.name AS project_name, COUNT(lb.id) AS flat_sold
             $flatSalesLabels[] = $row['project_name'];
             $flatSalesSeries[] = (int)$row['flat_sold'];
         }
+
+        // Get combined Cash In and Cash Out data
+        $cashInData = $this->dashboardModel->getMonthlyCashInData();   // example: ['Jan'=>50000, 'Feb'=>40000,...]
+        $cashOutData = $this->dashboardModel->getMonthlyCashOutData();
+
+        // Get overview statistics (optional)
+        $overviewStats2 = $this->dashboardModel->getOverviewStatistics();
+
+
 
 
         $this->view("home", [
@@ -177,12 +186,16 @@ $flatSalesQuery = "SELECT p.name AS project_name, COUNT(lb.id) AS flat_sold
             "overviewStats" => $overviewStats,
             "totalFlatsBooking" => $totalFlatsBooking,
 
-             "weeklySales" => $weeklySales,
+            "weeklySales" => $weeklySales,
             "monthlySales" => $monthlySales,
             "yearlySales" => $yearlySales,
-            
+
             "flatSalesLabels" => $flatSalesLabels,
-            "flatSalesSeries" => $flatSalesSeries
+            "flatSalesSeries" => $flatSalesSeries,
+            "totalVisitedCount" => $totalVisitedCount,
+            "cashInData" => $cashInData,
+            "cashOutData" => $cashOutData,
+                 "overviewStats2" => $overviewStats2,
         ]);
     }
 }

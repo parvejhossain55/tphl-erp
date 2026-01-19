@@ -77,6 +77,23 @@ class Lead extends Model
     }
 
 
+public function getVisitedLeadCount()
+{
+    $sql = $this->db->prepare("
+        SELECT COUNT(*) AS total_visited
+        FROM leads
+        WHERE status = 'active'
+        AND deleted_at IS NULL
+        AND last_lead_action = 'visited'
+    ");
+
+    $sql->execute();
+    $result = $sql->get_result()->fetch_assoc();
+
+    return $result['total_visited'] ?? 0;
+}
+
+
 
     public function create($data)
     {
@@ -303,6 +320,26 @@ class Lead extends Model
     //     $stmt->bind_param("i", $id);
     //     return $stmt->execute();
     // }
+
+    public function updateLastLeadAction($leadId, $lastAction)
+    {
+        $allowedActions = ['not_called', 'calling', 'called', 'visited'];
+
+        if (!in_array($lastAction, $allowedActions)) {
+            return false;
+        }
+
+        $sql = "UPDATE leads 
+            SET last_lead_action = ?, 
+                updated_at = NOW()
+            WHERE id = ?";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("si", $lastAction, $leadId);
+
+        return $stmt->execute();
+    }
+
 
 
     public function softDelete($leadId)
