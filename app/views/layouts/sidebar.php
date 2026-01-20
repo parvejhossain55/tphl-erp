@@ -340,6 +340,23 @@
                                </ul>
                            </li>
 
+                           <li class="slide has-sub <?= isActive(['create-review', 'review-lists'], $current_route) ?>">
+                               <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-review', 'review-lists'], $current_route) ?>">
+                                   <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                   <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i>
+                                   </div>
+                                   <span class="sidebar__menu-label">Review Manage</span>
+                               </a>
+                               <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-review', 'review-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                                   <li class="slide <?= isActive('create-review', $current_route) ?>">
+                                       <a class="sidebar__menu-item <?= isActive('create-review', $current_route) ?>" href="<?= $base_url ?>/create-review">Add Review</a>
+                                   </li>
+                                   <li class="slide <?= isActive('review-lists', $current_route) ?>">
+                                       <a class="sidebar__menu-item <?= isActive('review-lists', $current_route) ?>" href="<?= $base_url ?>/review-lists">Review List</a>
+                                   </li>
+                               </ul>
+                           </li>
+
                            <!-- Location -->
                            <li class="slide ">
                                <a href="<?= $base_url ?>/company-bank-accounts" class="sidebar__menu-item <?= isActive('company-bank-accounts', $current_route) ?>">

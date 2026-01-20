@@ -158,7 +158,7 @@ $routes = [
     "delete-leave-type" => ["controller" => "Leaves\\LeaveTypeController", "method" => "delete"],
 
 
-    // Site controller 
+    //Others Site controller 
     "slider-manage" => ["controller" => "SiteManage\\SliderController", "method" => "index"],
     "store-slider" => ["controller" => "SiteManage\\SliderController", "method" => "store"],
     // "store-leave-type" => ["controller" => "Leaves\\LeaveTypeController","method" => "store" ],
@@ -178,6 +178,13 @@ $routes = [
     "store-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "store"],
     "update-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "update"],
     "delete-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "delete"],
+    //company bank accounts
+    "review-lists" => ["controller" => "ReviewController", "method" => "index"],
+    "create-review" => ["controller" => "ReviewController", "method" => "create"],
+    "store-review" => ["controller" => "ReviewController", "method" => "store"],
+    "edit-review/(\d+)" => ["controller" => "ReviewController", "method" => "edit"],
+    "update-review/(\d+)" => ["controller" => "ReviewController", "method" => "update"],
+    "delete-review" => ["controller" => "ReviewController", "method" => "delete"],
     // ==========SALES & BUISENESS======//
 
     //project

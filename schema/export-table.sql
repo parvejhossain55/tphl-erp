@@ -127,4 +127,29 @@ CREATE TABLE head_notifications (
     INDEX idx_type (type)
 );
 
+--20-1-2026 added By Farzana For AI Chatbox
+CREATE TABLE property_reviews (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 
+    reviewer_name VARCHAR(150) NOT NULL,
+    reviewer_role VARCHAR(100) NULL,
+    project_id INT NULL,
+
+    reviewer_image VARCHAR(255) NULL,
+    review_video_url VARCHAR(255) NULL,
+
+    rating TINYINT UNSIGNED NOT NULL CHECK (rating BETWEEN 1 AND 5),
+
+    review_text TEXT NOT NULL,
+
+    review_date DATE NULL,
+
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    `created_by` int(10) UNSIGNED NOT NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL
+);
+
+-- https://youtu.be/qM5_UKR-vzk
+--20-1-2026 END added By Farzana For AI Chatbox
