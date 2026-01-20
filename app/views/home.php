@@ -235,52 +235,96 @@ $show_breadcrumb = false;
         </div>
     </div>
 
-    <!-- Charts Section -->
+    <!--Accounts Charts Section -->
 
-    
-<div class="col-xxl-6 col-xl-12 col-lg-12 mb-3">
-    <div class="card__wrapper height-equal">
-        <div class="card__title-wrap d-flex align-items-center justify-content-between mb-3">
-            <h5 class="card__heading-title">Transaction Overview</h5>
-        </div>
-        <div class="card__content">
-            <div class="chart-container">
-                <canvas id="transactionChart"></canvas>
+
+    <div class="col-xxl-6 col-xl-12 col-lg-12 mb-3">
+        <div class="card__wrapper height-equal">
+            <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-50">
+                <h5 class="card__heading-title">Accounts Overview</h5>
+                <div class="d-none d-flex align-items-center gap-2">
+                    <label class="mb-0 fw-bold">View:</label>
+                    <select id="viewTypeSelector" class="form-select" style="width: auto; min-width: 150px;">
+                        <option value="cashin" <?= $viewType === 'cashin' ? 'selected' : '' ?>>Cash In</option>
+                        <option value="cashout" <?= $viewType === 'cashout' ? 'selected' : '' ?>>Cash Out</option>
+                    </select>
+                </div>
+                <div class="card__tab">
+                    <ul class="nav nav-pills" id="pills-tab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="pills-bar-year-tab" data-bs-toggle="pill"
+                                data-bs-target="#pills-bar-year" type="button" role="tab"
+                                aria-controls="pills-bar-year" aria-selected="true">1Y</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="pills-bar-month-tab" data-bs-toggle="pill"
+                                data-bs-target="#pills-bar-month" type="button" role="tab"
+                                aria-controls="pills-bar-month" aria-selected="false">1M</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="pills-bar-week-tab"
+                                data-bs-toggle="pill" data-bs-target="#pills-bar-week" type="button"
+                                role="tab" aria-controls="pills-bar-week"
+                                aria-selected="false">1W</button>
+                        </li>
+                    </ul>
+                </div>
             </div>
-        </div>
-    </div>
-</div>
-
-
-    <!-- project wise  -->
-    <div class="d-none col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
-        <div class="card-bg card-border mb-20 h-100">
-            <div class="card__wrapper style_two h-100 d-flex flex-column">
-
-                <!-- Card Header -->
-                <div class="card__title-wrap d-flex align-items-center justify-content-between">
-                    <h5 class="card__heading-title">Project wise Flat Sale</h5>
-                    <div class="dropdown">
-                        <button>
-                            <i class="fa-regular fa-ellipsis-vertical"></i>
-                        </button>
+            <div class="card__content">
+                <div class="tab-content" id="pills-tabContent">
+                    <div class="tab-pane fade" id="pills-bar-year" role="tabpanel"
+                        aria-labelledby="pills-bar-year-tab">
+                        <div class="chart-container">
+                            <canvas id="transactionChartYearly" class="card__title"></canvas>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="pills-bar-month" role="tabpanel"
+                        aria-labelledby="pills-bar-month-tab">
+                        <div class="chart-container">
+                            <canvas id="transactionChartMonthly" class="card__title"></canvas>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade show active" id="pills-bar-week" role="tabpanel"
+                        aria-labelledby="pills-bar-week-tab">
+                        <div class="chart-container">
+                            <canvas id="transactionChartWeek" class="card__title"></canvas>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Card Body -->
-                <div class="card__content flex-grow-1 d-flex align-items-center">
-                    <div id="pieChart" style="width:100%; height:260px;"></div>
-                </div>
-
             </div>
         </div>
     </div>
 
-    <!-- project wise flat sale  -->
-   
-
-
 </div>
+<!-- project wise  -->
+<div class="d-none col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
+    <div class="card-bg card-border mb-20 h-100">
+        <div class="card__wrapper style_two h-100 d-flex flex-column">
+
+            <!-- Card Header -->
+            <div class="card__title-wrap d-flex align-items-center justify-content-between">
+                <h5 class="card__heading-title">Project wise Flat Sale</h5>
+                <div class="dropdown">
+                    <button>
+                        <i class="fa-regular fa-ellipsis-vertical"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card Body -->
+            <div class="card__content flex-grow-1 d-flex align-items-center">
+                <div id="pieChart" style="width:100%; height:260px;"></div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- project wise flat sale  -->
+
+
+
+
 
 <!-- Booking Overview Section -->
 <div class="container-fluid py-4">
@@ -293,7 +337,7 @@ $show_breadcrumb = false;
 
 
     <!-- Payment Methods & Recent Bookings -->
-    <div class="row g-3">
+    <div class="row g-3 equal-height-row">
 
         <!-- Project-wise Bookings (Top Projects) -->
         <div class="d-none col-xl-6 col-lg-6 col-12">
@@ -357,104 +401,443 @@ $show_breadcrumb = false;
                                     <th>Booking ID</th>
                                     <th>Customer</th>
                                     <th>Project</th>
-                                    <th>Flat</th>
-                                    <th>Agreement Value</th>
-                                    <th>Paid Amount</th>
+                                    <th>Flat/Unit</th>
+                                    <th>Unit Value</th>
+                                    <th>Booking Amount</th>
                                     <th>Status</th>
                                     <th>Date</th>
                                     <th class="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>#BK-00156</td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-primary bg-opacity-10 p-2 rounded me-2">
-                                                <i class="fa-light fa-user text-primary"></i>
+                                <?php foreach ($bookingData as $item): ?>
+                                    <tr>
+                                        <td>#BK-<?= $item['id'] ?></td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <?php if (!empty($item['lead_image'])): ?>
+                                                    <img
+                                                        src="<?= getImage('leads', $item['lead_image']) ?>"
+                                                        alt="lead_image"
+                                                        class="pe-1 rounded-circle"
+                                                        style="width: 32px; height: 32px; object-fit: cover;">
+
+                                                <?php else: ?>
+                                                    <div class="bg-primary bg-opacity-10 p-2 rounded me-2">
+                                                        <i class="fa-light fa-user text-primary"></i>
+                                                    </div>
+                                                <?php endif; ?>
+
+                                                <div>
+                                                    <span class="fw-semibold"><?= $item['lead_name'] ?? '' ?></span>
+                                                    <small class="text-muted d-block"><?= $item['phone'] ?? '' ?></small>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <span class="fw-semibold">Karim Rahman</span>
-                                                <small class="text-muted d-block">+880 1712-345678</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>Green Valley</td>
-                                    <td><span class="badge bg-light text-dark">A-501</span></td>
-                                    <td class="fw-semibold">৳ 45,00,000</td>
-                                    <td class="text-success fw-semibold">৳ 15,00,000</td>
-                                    <td><span class="badge bg-success">Confirmed</span></td>
-                                    <td>Jan 18, 2026</td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-light" title="View Details">
-                                            <i class="fa-light fa-eye"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>#BK-00155</td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-primary bg-opacity-10 p-2 rounded me-2">
-                                                <i class="fa-light fa-user text-primary"></i>
-                                            </div>
-                                            <div>
-                                                <span class="fw-semibold">Fatima Akter</span>
-                                                <small class="text-muted d-block">+880 1812-345678</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>Skyline Tower</td>
-                                    <td><span class="badge bg-light text-dark">B-302</span></td>
-                                    <td class="fw-semibold">৳ 38,50,000</td>
-                                    <td class="text-warning fw-semibold">৳ 5,00,000</td>
-                                    <td><span class="badge bg-warning">Pending</span></td>
-                                    <td>Jan 18, 2026</td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-light" title="View Details">
-                                            <i class="fa-light fa-eye"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>#BK-00154</td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-primary bg-opacity-10 p-2 rounded me-2">
-                                                <i class="fa-light fa-user text-primary"></i>
-                                            </div>
-                                            <div>
-                                                <span class="fw-semibold">Ali Khan</span>
-                                                <small class="text-muted d-block">+880 1912-345678</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>Pearl Heights</td>
-                                    <td><span class="badge bg-light text-dark">C-101</span></td>
-                                    <td class="fw-semibold">৳ 32,00,000</td>
-                                    <td class="text-success fw-semibold">৳ 12,00,000</td>
-                                    <td><span class="badge bg-success">Confirmed</span></td>
-                                    <td>Jan 17, 2026</td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-light" title="View Details">
-                                            <i class="fa-light fa-eye"></i>
-                                        </button>
-                                    </td>
-                                </tr>
+                                        </td>
+                                        <td><?= $item['project_name'] ?? '' ?></td>
+                                        <td><strong class="bd-badge bg-primary text-dark"><?= $item['flat_name'] ?><span class="ms-3"> <?= $item['sqft'] ?? '' ?> Sqft<span> </strong></td>
+                                        <td class="fw-semibold">৳ <?= format_bdt($item['price_value']) ?></td>
+                                        <td class="text-success fw-semibold">৳ <?= format_bdt($item['agreement_value'] ?? '') ?></td>
+                                        <td>
+
+                                            <span class="badge bg-success"><?= $item['booking_status'] ?></span>
+                                        </td>
+                                        <td><?= formatDate($item['booking_date']) ?></td>
+                                        <td class="text-center">
+                                            <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $item['id'] ?>" class="btn btn-sm btn-success">Show Payment</a>
+
+                                        </td>
+                                    </tr>
+                                <?php endforeach ?>
+
+
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
-
-
 
 </div>
 
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
 <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const viewTypeSelector = document.getElementById('viewTypeSelector');
+
+        viewTypeSelector.addEventListener('change', function() {
+            window.location.href = '<?= $GLOBALS['base_url'] ?>/dashboard?view=' + this.value;
+        });
+
+        const dynamicChartLabels = <?= json_encode($chartLabels ?? []) ?>;
+        const dynamicChartData = <?= json_encode($chartData ?? []) ?>;
+
+        // Currency formatter
+        const formatCurrency = (value) => '৳' + value.toLocaleString();
+
+        // Modern chart color palette with NEW doughnut colors
+        const colors = {
+            primary: '#6366f1',
+            success: '#10b981',
+            danger: '#ef4444',
+            warning: '#f59e0b',
+            info: '#06b6d4',
+            purple: '#a855f7',
+            pink: '#ec4899',
+            // New doughnut chart colors (modern gradient palette)
+            doughnut: [
+                '#8b5cf6', // Vibrant Purple
+                '#f02345ff', // Bright Blue
+                '#10b981', // Emerald Green
+                '#f59e0b', // Amber Orange
+                '#ef4444', // Red
+                '#ec4899' // Pink
+            ]
+        };
+
+        /* ==========================
+            WEEKLY CHART (Animated Area Chart)
+        ========================== */
+        const ctxWeek = document.getElementById('transactionChartWeek').getContext('2d');
+        const transactionChartWeek = new Chart(ctxWeek, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                        label: 'Cash In',
+                        data: [31000, 40000, 28000, 51000, 42000, 82000, 56000],
+                        borderColor: colors.success,
+                        backgroundColor: colors.success + '15',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: colors.success,
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2
+                    },
+                    {
+                        label: 'Cash Out',
+                        data: [11000, 32000, 45000, 32000, 34000, 52000, 41000],
+                        borderColor: colors.danger,
+                        backgroundColor: colors.danger + '15',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: colors.danger,
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                // ADD ANIMATION HERE
+                animation: {
+                    duration: 2000,
+                    easing: 'easeOutQuart',
+                    onComplete: function() {
+                        // Animation complete
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: {
+                                size: 13,
+                                weight: '500'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        border: {
+                            display: false
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            drawTicks: false
+                        },
+                        ticks: {
+                            padding: 10,
+                            callback: function(value) {
+                                return formatCurrency(value);
+                            }
+                        }
+                    },
+                    x: {
+                        border: {
+                            display: false
+                        },
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            padding: 10
+                        }
+                    }
+                }
+            }
+        });
+
+        /* ==========================
+            MONTHLY CHART (Animated Bar Chart)
+        ========================== */
+        const ctxMonth = document.getElementById('transactionChartMonthly').getContext('2d');
+        const monthlyLabels = dynamicChartLabels.length ? dynamicChartLabels : ['Jan', 'Feb', 'Mar', 'Apr'];
+        const monthlyData = dynamicChartData.length ? dynamicChartData : [120000, 155000, 142000, 168000];
+        const monthlyColor = '<?= $viewType === "cashin" ? "#6366f1" : "#ef4444" ?>';
+
+        const transactionChartMonthly = new Chart(ctxMonth, {
+            type: 'bar',
+            data: {
+                labels: monthlyLabels,
+                datasets: [{
+                    label: '<?= ucfirst($viewType) ?>',
+                    data: monthlyData,
+                    backgroundColor: monthlyColor,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                    barThickness: 35,
+                    maxBarThickness: 40
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                // ADD ANIMATION HERE
+                animations: {
+                    y: {
+                        duration: 1500,
+                        from: 0,
+                        easing: 'easeOutBounce'
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                return formatCurrency(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        border: {
+                            display: false
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            drawTicks: false
+                        },
+                        ticks: {
+                            padding: 10,
+                            callback: function(value) {
+                                return formatCurrency(value);
+                            }
+                        }
+                    },
+                    x: {
+                        border: {
+                            display: false
+                        },
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            padding: 10
+                        }
+                    }
+                }
+            }
+        });
+
+        /* ==========================
+            YEARLY CHART (Animated Line Chart)
+        ========================== */
+        const ctxYear = document.getElementById('transactionChartYearly').getContext('2d');
+        const yearlyLabels = dynamicChartLabels.length ? dynamicChartLabels : ['2023', '2024', '2025'];
+        const yearlyData = dynamicChartData.length ? dynamicChartData : [1250000, 1420000, 1380000];
+        const yearlyColor = '<?= $viewType === "cashin" ? "#6366f1" : "#ef4444" ?>';
+
+        const transactionChartYearly = new Chart(ctxYear, {
+            type: 'line',
+            data: {
+                labels: yearlyLabels,
+                datasets: [{
+                    label: '<?= ucfirst($viewType) ?>',
+                    data: yearlyData,
+                    borderColor: yearlyColor,
+                    backgroundColor: yearlyColor + '15',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 6,
+                    pointBackgroundColor: yearlyColor,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 3,
+                    pointHoverRadius: 8,
+                    pointHoverBackgroundColor: yearlyColor,
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                // ADD ANIMATION HERE
+                animation: {
+                    duration: 2000,
+                    easing: 'easeOutQuart',
+                    onComplete: function() {
+                        // Animation complete
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                return formatCurrency(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        border: {
+                            display: false
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            drawTicks: false
+                        },
+                        ticks: {
+                            padding: 10,
+                            callback: function(value) {
+                                return formatCurrency(value);
+                            }
+                        }
+                    },
+                    x: {
+                        border: {
+                            display: false
+                        },
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            padding: 10
+                        }
+                    }
+                }
+            }
+        })
+    });
+</script>
+
+<style>
+    /* ===============================
+   Equal Height Dashboard Cards
+   =============================== */
+
+    /* Row flex setup */
+    .equal-height-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+    }
+
+    /* Column full height */
+    .equal-height-row>[class*="col-"] {
+        display: flex;
+    }
+
+    /* Card wrapper */
+    .card__wrapper.height-equal {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+    }
+
+    /* Card body/content */
+    .card__content {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Chart containers */
+    .card__line-chart,
+    .chart-container {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 260px;
+        /* safe minimum height */
+    }
+
+    /* Chart canvas full size */
+    canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    /* Optional: consistent card minimum height */
+    .card__wrapper.height-equal {
+        min-height: 420px;
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 991px) {
+        .equal-height-row {
+            display: block;
+        }
+
+        .card__wrapper.height-equal {
+            min-height: auto;
+        }
+    }
+</style>

@@ -9,6 +9,7 @@ class HomeController extends Controller
     protected $leadModel;
     protected $payslipModel;
     protected $projectModel;
+    protected $bookingModel;
     protected $dashboardModel;
     public function __construct($db)
     {
@@ -22,6 +23,7 @@ class HomeController extends Controller
         $this->payslipModel = new Payslip($this->db);
         $this->projectModel = new Project($this->db);
         $this->leadModel = new Lead($this->db);
+        $this->bookingModel = new BookingLead($this->db);
     }
 
 
@@ -160,15 +162,7 @@ class HomeController extends Controller
             $flatSalesSeries[] = (int)$row['flat_sold'];
         }
 
-        // Get combined Cash In and Cash Out data
-        $cashInData = $this->dashboardModel->getMonthlyCashInData();   // example: ['Jan'=>50000, 'Feb'=>40000,...]
-        $cashOutData = $this->dashboardModel->getMonthlyCashOutData();
-
-        // Get overview statistics (optional)
-        $overviewStats2 = $this->dashboardModel->getOverviewStatistics();
-
-
-
+        $bookingData = $this->bookingModel->getAllBooking();
 
         $this->view("home", [
             "current_route" => "home",
@@ -193,9 +187,7 @@ class HomeController extends Controller
             "flatSalesLabels" => $flatSalesLabels,
             "flatSalesSeries" => $flatSalesSeries,
             "totalVisitedCount" => $totalVisitedCount,
-            "cashInData" => $cashInData,
-            "cashOutData" => $cashOutData,
-                 "overviewStats2" => $overviewStats2,
+            "bookingData" => $bookingData,
         ]);
     }
 }
