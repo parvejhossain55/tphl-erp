@@ -69,7 +69,7 @@ $routes = [
     "store-role"           => ["controller" => "RoleController", "method" => "store"],
     "get-role"      => ["controller" => "RoleController", "method" => "edit"],
     "update-role"   => ["controller" => "RoleController", "method" => "update"],
-    //hrm
+    //================== hrm ========================
 
     "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
     // Tasks
@@ -107,6 +107,10 @@ $routes = [
     "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
     "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
+    // attendance 
+    "attendance-list" => ["controller" => "EmpAttendanceController", "method" => "index"],
+    "create-attendance" => ["controller" => "EmpAttendanceController", "method" => "create"],
+        //==================END hrm ========================
     // leads
     "lead-lists" => ["controller" => "LeadController", "method" => "index"],
     "create-lead" => ["controller" => "LeadController", "method" => "create"],

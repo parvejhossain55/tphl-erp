@@ -159,6 +159,22 @@
                                    <span class="sidebar__menu-label">Designation Lists</span>
                                </a>
                            </li>
+                             <li class="slide has-sub <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
+                               <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-attendance', 'attendance-list'], $current_route) ?>">
+                                   <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                   <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i>
+                                   </div>
+                                   <span class="sidebar__menu-label">Attendance Manage</span>
+                               </a>
+                               <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-attendance', 'attendance-list'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                                   <li class="slide <?= isActive('create-attendance', $current_route) ?>">
+                                       <a class="sidebar__menu-item <?= isActive('create-attendance', $current_route) ?>" href="<?= $base_url ?>/create-attendance">Add Attendance</a>
+                                   </li>
+                                   <li class="slide <?= isActive('attendance-list', $current_route) ?>">
+                                       <a class="sidebar__menu-item <?= isActive('attendance-list', $current_route) ?>" href="<?= $base_url ?>/attendance-list">Attendance List</a>
+                                   </li>
+                               </ul>
+                           </li>
                        <?php endif; ?>
                        <!--End HRM CATEGORY -->
 
