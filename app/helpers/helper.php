@@ -614,6 +614,16 @@ function formatDate($date)
     return date('d F, Y', strtotime($date));
 }
 
+// formant time
+function formatPunchTime($time)
+{
+    if (!$time || $time == '0000-00-00 00:00:00') {
+        return '-';
+    }
+    return date('H:i', strtotime($time));
+}
+
+
 // for bd taka decimal format
 
 function format_bdt($number)

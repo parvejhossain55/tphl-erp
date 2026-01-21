@@ -381,7 +381,7 @@ $show_breadcrumb = false;
         <!-- Recent Bookings (All Bookings) -->
         <div class="col-xl-12 col-lg-12 col-12">
             <div class="card__wrapper h-100">
-                <div class="card__heading-title  pt-3 d-flex justify-content-between align-items-center">
+                <div class="d-none card__heading-title  pt-3 d-flex justify-content-between align-items-center">
                     <h6 class="mb-0">All Bookings</h6>
                     <div class="d-flex gap-2">
                         <input type="text" class="form-control form-control-sm" placeholder="Search..." style="width: 200px;">

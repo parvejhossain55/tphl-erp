@@ -46,12 +46,41 @@
                 });
             }
             startCountdown();
-            document.addEventListener('DOMContentLoaded', function() {
+            $(document).ready(function() {
+                // Date of Birth picker
                 flatpickr("#dateofBirth", {
                     altInput: true,
                     altFormat: "F j, Y",
                     dateFormat: "Y-m-d",
-                    defaultDate: "<?= !empty($employee['dob']) ? $employee['dob'] : '' ?>" // set value
+                    defaultDate: "<?= !empty($employee['dob']) ? $employee['dob'] : '' ?>"
+                });
+
+                // Month picker for filter
+                $("#attendanceMonth").flatpickr({
+                    plugins: [
+                        new monthSelectPlugin({
+                            shorthand: true, // Jan, Feb
+                            dateFormat: "Y-m", // backend format
+                            altFormat: "F Y" // display format
+                        })
+                    ]
+                });
+
+                // Punch In / Out time
+                $("#clockInTime").flatpickr({
+                    enableTime: true,
+                    noCalendar: true,
+                    dateFormat: "H:i",
+                    defaultDate: "09:00",
+                    time_24hr: true
+                });
+
+                $("#clockOutTime").flatpickr({
+                    enableTime: true,
+                    noCalendar: true,
+                    dateFormat: "H:i",
+                    defaultDate: "18:00",
+                    time_24hr: true
                 });
             });
         </script>
@@ -311,111 +340,121 @@
 
 
         <script>
-        document.addEventListener("DOMContentLoaded", function () {
+            document.addEventListener("DOMContentLoaded", function() {
 
-            const salesData = {
-                week: {
-                    labels: <?= json_encode(array_column($weeklySales, 'date')) ?>,
-                    totals: <?= json_encode(array_column($weeklySales, 'total')) ?>
-                },
-                month: {
-                    labels: <?= json_encode(array_column($monthlySales, 'date')) ?>,
-                    totals: <?= json_encode(array_column($monthlySales, 'total')) ?>
-                },
-                year: {
-                    labels: <?= json_encode(array_column($yearlySales, 'month')) ?>,
-                    totals: <?= json_encode(array_column($yearlySales, 'total')) ?>
+                const salesData = {
+                    week: {
+                        labels: <?= json_encode(array_column($weeklySales, 'date')) ?>,
+                        totals: <?= json_encode(array_column($weeklySales, 'total')) ?>
+                    },
+                    month: {
+                        labels: <?= json_encode(array_column($monthlySales, 'date')) ?>,
+                        totals: <?= json_encode(array_column($monthlySales, 'total')) ?>
+                    },
+                    year: {
+                        labels: <?= json_encode(array_column($yearlySales, 'month')) ?>,
+                        totals: <?= json_encode(array_column($yearlySales, 'total')) ?>
+                    }
+                };
+
+                // 🔥 THIS PART YOU MISSED
+                const activeBtn = document.querySelector('.nav-link.active');
+                const defaultPeriod = activeBtn ? activeBtn.dataset.period : 'week';
+
+                const colors = ['#1a6e40ff', '#23bb95ff'];
+
+                function getAlternatingColors(length) {
+                    return Array.from({
+                        length
+                    }, (_, i) => colors[i % colors.length]);
                 }
-            };
 
-            // 🔥 THIS PART YOU MISSED
-            const activeBtn = document.querySelector('.nav-link.active');
-            const defaultPeriod = activeBtn ? activeBtn.dataset.period : 'week';
-
-            const colors = ['#1a6e40ff', '#23bb95ff'];
-
-            function getAlternatingColors(length) {
-                return Array.from({ length }, (_, i) => colors[i % colors.length]);
-            }
-
-            let options = {
-                chart: {
-                    type: 'bar',
-                    height: 300,
-                    toolbar: { show: false }
-                },
-
-                plotOptions: {
-                    bar: {
-                        distributed: true,
-                        borderRadius: 4,
-                        columnWidth: '40%'
-                    }
-                },
-
-                dataLabels: {
-                    enabled: defaultPeriod !== 'month',
-                    formatter: val => '৳ ' + val.toLocaleString()
-                },
-
-                series: [{
-                    name: 'Sales',
-                    data: salesData[defaultPeriod].totals
-                }],
-
-                xaxis: {
-                    categories: salesData[defaultPeriod].labels,
-                    labels: {
-                        style: {
-                            colors: getAlternatingColors(salesData[defaultPeriod].labels.length),
-                            fontSize: '12px',
-                            fontWeight: 500
+                let options = {
+                    chart: {
+                        type: 'bar',
+                        height: 300,
+                        toolbar: {
+                            show: false
                         }
-                    }
-                },
+                    },
 
-                yaxis: {
-                    labels: {
-                        style: {
-                            colors: '#1a6e40',
-                            fontSize: '12px',
-                            fontWeight: 700
+                    plotOptions: {
+                        bar: {
+                            distributed: true,
+                            borderRadius: 4,
+                            columnWidth: '40%'
                         }
-                    }
-                },
+                    },
 
-                colors: getAlternatingColors(salesData[defaultPeriod].totals.length),
-
-                tooltip: {
-                    y: {
+                    dataLabels: {
+                        enabled: defaultPeriod !== 'month',
                         formatter: val => '৳ ' + val.toLocaleString()
+                    },
+
+                    series: [{
+                        name: 'Sales',
+                        data: salesData[defaultPeriod].totals
+                    }],
+
+                    xaxis: {
+                        categories: salesData[defaultPeriod].labels,
+                        labels: {
+                            style: {
+                                colors: getAlternatingColors(salesData[defaultPeriod].labels.length),
+                                fontSize: '12px',
+                                fontWeight: 500
+                            }
+                        }
+                    },
+
+                    yaxis: {
+                        labels: {
+                            style: {
+                                colors: '#1a6e40',
+                                fontSize: '12px',
+                                fontWeight: 700
+                            }
+                        }
+                    },
+
+                    colors: getAlternatingColors(salesData[defaultPeriod].totals.length),
+
+                    tooltip: {
+                        y: {
+                            formatter: val => '৳ ' + val.toLocaleString()
+                        }
                     }
-                }
-            };
+                };
 
-            const chart = new ApexCharts(document.querySelector("#salesChart"), options);
-            chart.render();
+                const chart = new ApexCharts(document.querySelector("#salesChart"), options);
+                chart.render();
 
-            // Tabs click
-            document.querySelectorAll('.nav-link').forEach(button => {
-                button.addEventListener('click', function () {
+                // Tabs click
+                document.querySelectorAll('.nav-link').forEach(button => {
+                    button.addEventListener('click', function() {
 
-                    document.querySelectorAll('.nav-link')
-                        .forEach(btn => btn.classList.remove('active'));
-                    this.classList.add('active');
+                        document.querySelectorAll('.nav-link')
+                            .forEach(btn => btn.classList.remove('active'));
+                        this.classList.add('active');
 
-                    const period = this.dataset.period;
+                        const period = this.dataset.period;
 
-                    chart.updateOptions({
-                        series: [{ data: salesData[period].totals }],
-                        xaxis: { categories: salesData[period].labels },
-                        colors: getAlternatingColors(salesData[period].totals.length),
-                        dataLabels: { enabled: period !== 'month' }
+                        chart.updateOptions({
+                            series: [{
+                                data: salesData[period].totals
+                            }],
+                            xaxis: {
+                                categories: salesData[period].labels
+                            },
+                            colors: getAlternatingColors(salesData[period].totals.length),
+                            dataLabels: {
+                                enabled: period !== 'month'
+                            }
+                        });
                     });
                 });
-            });
 
-        });
+            });
         </script>
 
 

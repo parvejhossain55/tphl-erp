@@ -274,21 +274,45 @@ CREATE TABLE
     deleted_at TIMESTAMP NULL
   );
 
-CREATE TABLE
-  emp_attendances (
+-- CREATE TABLE
+--   emp_attendances (
+--     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+--     employee_id INT UNSIGNED NOT NULL,
+--     punch_in_time TIMESTAMP NULL,
+--     punch_out_time TIMESTAMP NULL,
+--     attendance_date DATE NULL,
+--     `created_by` int (10) UNSIGNED NOT NULL,
+--     created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+--     updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+--     deleted_at TIMESTAMP NULL
+--   );
+
+-- ALTER TABLE emp_attendances
+-- ADD COLUMN today_status  ENUM ('Holiday', 'Day Off','Present','Absent','On Leave','Half-Day','Late') NULL AFTER attendance_date
+CREATE TABLE emp_attendances (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     employee_id INT UNSIGNED NOT NULL,
+    attendance_date DATE NOT NULL,
+
     punch_in_time TIMESTAMP NULL,
     punch_out_time TIMESTAMP NULL,
-    attendance_date DATE NULL,
-    `created_by` int (10) UNSIGNED NOT NULL,
+
+    today_status VARCHAR(20) NOT NULL,
+
+    created_by BIGINT UNSIGNED NOT NULL,
+
     created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
-  );
+    deleted_at TIMESTAMP NULL,
 
-  ALTER TABLE emp_attendances
-ADD COLUMN today_status  ENUM ('Holiday', 'Day Off','Present','Absent','On Leave','Half-Day','Late') NULL AFTER attendance_date
+    UNIQUE KEY unique_employee_date (employee_id, attendance_date),
+
+    CONSTRAINT fk_attendance_employee
+        FOREIGN KEY (employee_id)
+        REFERENCES employees(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
 
 -- https://youtu.be/qM5_UKR-vzk
 --20-1-2026 END added By Farzana For AI Chatbox

@@ -780,6 +780,9 @@ function bd_settings_append($x) {
 		dateFormat: "H:i",
 		defaultDate: "01:45"
 	});
+	// Month picker for filter
+
+
 
 
 

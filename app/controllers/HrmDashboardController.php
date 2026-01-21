@@ -7,18 +7,28 @@ class HrmDashboardController extends Controller
     protected $departmetModel;
     protected $taskModel;
     protected $payslipModel;
+    protected $EmpAttendanceModel;
     public function __construct($db)
     {
         $this->db = $db;
         $this->employeeModel = new Employee($this->db);
         $this->departmetModel = new Department($this->db);
         $this->departmetModel = new Designation($this->db);
+        $this->EmpAttendanceModel = new EmpAttentendance($this->db);
         $this->taskModel = new Task($this->db);
         $this->payslipModel = new Payslip($this->db);
     }
 
     public function index()
     {
+         $selectedDate = $_GET['date'] ?? date('Y-m-d');
+
+    $attendances  = $this->EmpAttendanceModel->getByDate($selectedDate);
+        $attendanceChart = [
+            'week'  => $this->EmpAttendanceModel->getAttendanceSummaryByPeriod('week'),
+            'month' => $this->EmpAttendanceModel->getAttendanceSummaryByPeriod('month'),
+            'year'  => $this->EmpAttendanceModel->getAttendanceSummaryByPeriod('year'),
+        ];
         $totalEmployees = $this->employeeModel->getTotalCount();
         $todayTasks      = $this->taskModel->getTaskCount("DATE(start_date) = CURDATE()");
         $pendingTasks    = $this->taskModel->getTaskCount("status = 'pending'");
@@ -61,7 +71,9 @@ class HrmDashboardController extends Controller
             "deptLabels"    => $deptLabels,
             "maxEmployee"    => $maxEmployee,
             "deptSeries"    => $deptSeries,
-            "chartHeight" => $chartHeight
+            "chartHeight" => $chartHeight,
+            'attendanceChart' => $attendanceChart,
+            'attendances' => $attendances,
         ]);
 
         if (session_status() === PHP_SESSION_NONE) {

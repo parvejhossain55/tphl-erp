@@ -6,7 +6,7 @@
             <h4 class="fw-bold mb-1">HR Dashboard</h4>
             <strong class="text-muted">Human Resources</strong>
         </div>
-        
+
     </div>
 
     <!--  CARDS -->
@@ -64,7 +64,7 @@
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Unpaid Salary  </h6>
+                        <h6 class="card__sub-title mb-10">Unpaid Salary </h6>
                         <h4 class="card__title text-break text-success mb-10"> &#2547; <?= $totalUnpaidSalary ?></h4>
                     </div>
                 </div>
@@ -137,7 +137,7 @@
 
 
     <!-- TODAY'S ATTENDANCE -->
-    <div class="row g-20 mb-4 d-none">
+    <div class="row g-20 mb-4 ">
         <div class="col-xl-12">
             <div class="card__wrapper">
                 <h6 class="card__sub-title mb-15">Today's Attendance</h6>
@@ -145,45 +145,96 @@
                     <table class="table table-striped align-middle">
                         <thead class="table-light">
                             <tr>
+                                <th>S/L</th>
                                 <th>Employee</th>
                                 <th>Department</th>
                                 <th>Status</th>
-                                <th>Hours</th>
+                                <th>Panch IN</th>
+                                <th>Panch Out</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Ananya Das</td>
-                                <td>Sales</td>
-                                <td><span class="badge bg-success">Present</span></td>
-                                <td>8h 30m</td>
-                            </tr>
-                            <tr>
-                                <td>Rahul Verma</td>
-                                <td>Sales</td>
-                                <td><span class="badge bg-success">Present</span></td>
-                                <td>7h 45m</td>
-                            </tr>
-                            <tr>
-                                <td>Amit Patel</td>
-                                <td>Operations</td>
-                                <td><span class="badge bg-success">Present</span></td>
-                                <td>9h 15m</td>
-                            </tr>
-                            <tr>
-                                <td>Sneha Reddy</td>
-                                <td>HR</td>
-                                <td><span class="badge bg-warning text-dark">On Leave</span></td>
-                                <td>-</td>
-                            </tr>
-                            <tr>
-                                <td>Karan Shah</td>
-                                <td>Sales</td>
-                                <td><span class="badge bg-success">Present</span></td>
-                                <td>8h 00m</td>
-                            </tr>
+                             <?php
+                                $i = 1;
+                                foreach ($attendances as $row):
+
+                                    $punchIn  = ($row['punch_in_time'] && $row['punch_in_time'] != '0000-00-00 00:00:00')
+                                        ? date('H:i', strtotime($row['punch_in_time'])) : '-';
+
+                                    $punchOut = ($row['punch_out_time'] && $row['punch_out_time'] != '0000-00-00 00:00:00')
+                                        ? date('H:i', strtotime($row['punch_out_time'])) : '-';
+
+                                    $statusClass = match ($row['today_status']) {
+                                        'Present'  => 'bg-success',
+                                        'Leave'    => 'bg-warning text-dark',
+                                        'Half Day' => 'bg-info',
+                                        default    => 'bg-secondary',
+                                    };
+                                ?>
+                                    <tr>
+                                        <td><?= $i++ ?></td>
+                                        <td><strong><?= $row['employee_name'] ?></strong></td>
+                                        <td><strong><?= $row['department_name'] ?? 'N/A' ?></strong></td>
+                                        <td><span class="badge <?= $statusClass ?>"><?= $row['today_status'] ?></span></td>
+                                        <td><?= $punchIn ?></td>
+                                        <td><?= $punchOut ?></td>
+                                        <!-- Actions -->
+                                  
+                                    </tr>
+                                <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+
+
+
+        <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
+            <div class="card__wrapper height-equal">
+                <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-25">
+                    <h5 class="card__heading-title">Employee Attendance Overview</h5>
+
+                    <div class="card__tab">
+                        <ul class="nav nav-pills">
+                            <li class="nav-item">
+                                <button class="nav-link active" data-period="month">1M</button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-period="week">1W</button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-period="year">1Y</button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card__content">
+                    <div id="attendanceChart"></div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Department Wise Employees Card -->
+        <div class="col-xxl-6 col-12 mb-3">
+            <div class="card-bg card-border mb-20 h-100">
+                <div class="card__wrapper style_two h-100 d-flex flex-column height-equal">
+
+                    <!-- Card Header -->
+                    <div class="card__title-wrap d-flex align-items-center justify-content-between">
+                        <h5 class="card__heading-title">Department Wise Employees</h5>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="card__content flex-grow-1 d-flex align-items-center justify-content-center">
+                        <div id="deptPieChart" style="width:100%; height:<?= $chartHeight ?>px;"></div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -228,53 +279,184 @@
             </div>
         </div>
     </div>
-<?php
-$maxEmployee = max(array_column($departmentEmpCount, 'total_employee'));
-?>
+    <?php
+    $maxEmployee = max(array_column($departmentEmpCount, 'total_employee'));
+    ?>
 
 
 
-  <!-- Department Wise Employees Card -->
-<div class="col-xxl-12 col-12">
-    <div class="card-bg card-border mb-20 h-100">
-        <div class="card__wrapper style_two h-100 d-flex flex-column">
+    <!-- Department Wise Employees Card -->
+    <div class="d-none col-xxl-12 col-12">
+        <div class="card-bg card-border mb-20 h-100">
+            <div class="card__wrapper style_two h-100 d-flex flex-column">
 
-            <!-- Card Header -->
-            <div class="card__title-wrap d-flex align-items-center justify-content-between">
-                <h5 class="card__heading-title">Department Wise Employees</h5>
+                <!-- Card Header -->
+                <div class="card__title-wrap d-flex align-items-center justify-content-between">
+                    <h5 class="card__heading-title">Department Wise Employees</h5>
+                </div>
+
+                <!-- Card Body -->
+                <div class="card__content flex-grow-1 d-flex align-items-center justify-content-center">
+                    <div id="deptPieChart" style="width:100%; height:<?= $chartHeight ?>px;"></div>
+                </div>
+
             </div>
-
-            <!-- Card Body -->
-            <div class="card__content flex-grow-1 d-flex align-items-center justify-content-center">
-             <div id="deptPieChart" style="width:100%; height:<?= $chartHeight ?>px;"></div>
-            </div>
-
         </div>
     </div>
-</div>
 
 
 </div>
 <!-- ApexCharts Script -->
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const labels = <?= json_encode($deptLabels) ?>;
-    const series = <?= json_encode($deptSeries) ?>;
+    document.addEventListener("DOMContentLoaded", function() {
+        const labels = <?= json_encode($deptLabels) ?>;
+        const series = <?= json_encode($deptSeries) ?>;
 
-    var options = {
-        series: series,
-        chart: { type: 'pie', height: <?= $chartHeight ?> },
-        labels: labels,
-        legend: { position: 'right', labels: { colors: 'rgb(178,185,187)' } },
-        tooltip: {
-            y: { formatter: function(value) { return value + " Employees"; } }
-        },
-        responsive: [{
-            breakpoint: 768,
-            options: { legend: { position: 'bottom' } }
-        }]
-    };
+        var options = {
+            series: series,
+            chart: {
+                type: 'pie',
+                height: <?= $chartHeight ?>
+            },
+            labels: labels,
+            legend: {
+                position: 'right',
+                labels: {
+                    colors: 'rgb(178,185,187)'
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: function(value) {
+                        return value + " Employees";
+                    }
+                }
+            },
+            responsive: [{
+                breakpoint: 768,
+                options: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }]
+        };
 
-    new ApexCharts(document.querySelector("#deptPieChart"), options).render();
-});
+        new ApexCharts(document.querySelector("#deptPieChart"), options).render();
+    });
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+
+        const attendanceData = {
+            week: {
+                labels: <?= json_encode(array_column($attendanceChart['week'], 'employee')) ?>,
+                totals: <?= json_encode(array_column($attendanceChart['week'], 'present')) ?>,
+                max: 5
+            },
+            month: {
+                labels: <?= json_encode(array_column($attendanceChart['month'], 'employee')) ?>,
+                totals: <?= json_encode(array_column($attendanceChart['month'], 'present')) ?>,
+                max: 26
+            },
+            year: {
+                labels: <?= json_encode(array_column($attendanceChart['year'], 'employee')) ?>,
+                totals: <?= json_encode(array_column($attendanceChart['year'], 'present')) ?>,
+                max: 312
+            }
+        };
+
+
+        let currentPeriod = 'month';
+
+        const options = {
+            chart: {
+                type: 'bar',
+                height: 320,
+                toolbar: {
+                    show: false
+                }
+            },
+            plotOptions: {
+                bar: {
+                    borderRadius: 6,
+                    columnWidth: '45%',
+                    distributed: true
+                }
+            },
+            series: [{
+                name: 'Present Days',
+                data: attendanceData[currentPeriod].totals
+            }],
+            xaxis: {
+                categories: attendanceData[currentPeriod].labels,
+                labels: {
+                    style: {
+                        colors: '#1a6e40', // 👈 employee name color
+                        fontSize: '12px',
+                        fontWeight: 600
+                    }
+                }
+            },
+
+            yaxis: {
+                max: attendanceData[currentPeriod].max,
+                title: {
+                    text: 'Total Working Days',
+                    style: {
+                        color: '#6c757d',
+                        fontSize: '13px',
+                        fontWeight: 600
+                    }
+                },
+                labels: {
+                    style: {
+                        colors: '#23bb95', // 👈 left side numbers color
+                        fontSize: '12px'
+                    }
+                }
+            },
+
+            colors: ['#1a6e40', '#23bb95', '#5cc6a7', '#9fe0c8'],
+            dataLabels: {
+                enabled: true
+            },
+            tooltip: {
+                y: {
+                    formatter: val => val + ' days'
+                }
+            }
+        };
+
+        const chart = new ApexCharts(
+            document.querySelector("#attendanceChart"),
+            options
+        );
+        chart.render();
+
+        // Tab Click
+        document.querySelectorAll('.nav-link').forEach(btn => {
+            btn.addEventListener('click', function() {
+
+                document.querySelectorAll('.nav-link')
+                    .forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                currentPeriod = this.dataset.period;
+
+                chart.updateOptions({
+                    series: [{
+                        data: attendanceData[currentPeriod].totals
+                    }],
+                    xaxis: {
+                        categories: attendanceData[currentPeriod].labels
+                    },
+                    yaxis: {
+                        max: attendanceData[currentPeriod].max
+                    }
+                });
+            });
+        });
+
+    });
 </script>

@@ -3,6 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once("../app/helpers/helper.php");
+require_once __DIR__ . '/../vendor/autoload.php';
 // Enable debug
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -110,7 +111,16 @@ $routes = [
     // attendance 
     "attendance-list" => ["controller" => "EmpAttendanceController", "method" => "index"],
     "create-attendance" => ["controller" => "EmpAttendanceController", "method" => "create"],
-        //==================END hrm ========================
+    "store-attendance" => ["controller" => "EmpAttendanceController", "method" => "store"],
+    "show-attendance/(\d+)" => ["controller" => "EmpAttendanceController", "method" => "show"],
+    "edit-attendance/(\d+)" => ["controller" => "EmpAttendanceController", "method" => "edit"],
+    "update-attendance/(\d+)" => ["controller" => "EmpAttendanceController", "method" => "update"],
+    "delete-attendance" => ["controller" => "EmpAttendanceController", "method" => "delete"],
+    "download-excel"       => ["controller" => "EmpAttendanceController", "method" => "downloadExcel"],
+    "download-pdf"         => ["controller" => "EmpAttendanceController", "method" => "downloadPDF"],
+
+
+    //==================END hrm ========================
     // leads
     "lead-lists" => ["controller" => "LeadController", "method" => "index"],
     "create-lead" => ["controller" => "LeadController", "method" => "create"],
@@ -256,7 +266,7 @@ $routes = [
 
 
     //===== AI ChatBox Generate====//
-     "ai-chatbox" => ["controller" => "Ai\\ChatController", "method" => "handleMessage"],
+    "ai-chatbox" => ["controller" => "Ai\\ChatController", "method" => "handleMessage"],
 
 
     //Rafi Start  Accounts
