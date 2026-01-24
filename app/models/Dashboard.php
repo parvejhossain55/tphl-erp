@@ -393,7 +393,7 @@ public function getWeeklyTransactionData($viewType = 'cashin')
         $sql = "
             SELECT 
                 DAYNAME(date) as day,
-                DATE(date) as date,
+                DAYOFWEEK(date) as day_num,
                 COALESCE(SUM(amount), 0) as total
             FROM (
                 SELECT payment_date as date, amount 
@@ -412,7 +412,7 @@ public function getWeeklyTransactionData($viewType = 'cashin')
         $sql = "
             SELECT 
                 DAYNAME(transaction_date) as day,
-                DATE(transaction_date) as date,
+                DAYOFWEEK(transaction_date) as day_num,
                 COALESCE(SUM(amount), 0) as total
             FROM management_cashout
             WHERE payment_status = 'paid'
