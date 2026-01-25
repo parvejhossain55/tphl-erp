@@ -60,6 +60,7 @@ class Payslip extends Model
             (employee_id, designation_id, payslip_month, total_earning, total_deduction, net_salary, status,created_by)
             VALUES (?, ?, ?, ?, ?, ?, ?,?)
         ");
+         $status = 'pending'; 
 
         $stmt->bind_param(
             "iisdddsi",
@@ -69,7 +70,7 @@ class Payslip extends Model
             $data['total_earning'],
             $data['total_deduction'],
             $data['net_salary'],
-            $data['status'],
+            $status,
             $data['created_by']
 
         );
@@ -77,6 +78,8 @@ class Payslip extends Model
         $stmt->execute();
         return $this->db->insert_id;
     }
+
+
 
 
 
@@ -310,5 +313,8 @@ class Payslip extends Model
         $stmt->close();
         return $employees;
     }
+
+
+
 
 }

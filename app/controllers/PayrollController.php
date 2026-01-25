@@ -50,6 +50,7 @@ class PayrollController extends Controller
             "page_title"    => "Create Payslip",
             "employees"     => $employees,
             "items"         => $items,
+            
         ]);
     }
     public function store()

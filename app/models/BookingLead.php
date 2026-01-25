@@ -31,6 +31,38 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
+    //dashboard
+    public function getTotalBookings($period = null)
+{
+    $sqlQuery = "SELECT COUNT(*) AS onboarded 
+                 FROM lead_bookings 
+                 WHERE booking_status = 'booked' 
+                 AND deleted_at IS NULL";
+
+    if ($period) {
+        switch ($period) {
+            case 'daily':
+                $sqlQuery .= " AND DATE(created_at) = CURDATE()";
+                break;
+            case 'weekly':
+                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                break;
+            case 'monthly':
+                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                break;
+            case 'yearly':
+                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                break;
+        }
+    }
+
+    $result = $this->db->query($sqlQuery);
+    $row = $result->fetch_assoc();
+    return (int)($row['onboarded'] ?? 0);
+}
+
+    // end dashboard
+
 
     // Get a single follow-up by ID
     public function create($data)

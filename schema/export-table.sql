@@ -316,3 +316,21 @@ CREATE TABLE emp_attendances (
 
 -- https://youtu.be/qM5_UKR-vzk
 --20-1-2026 END added By Farzana For AI Chatbox
+
+--25/01/2026
+CREATE TABLE approval_requests (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    department VARCHAR(50) NOT NULL,          -- HR, Sales, Accounts
+    role_id INT UNSIGNED NOT NULL,            -- Role who can approve
+    request_type VARCHAR(50) NOT NULL,        -- Salary, Leave, Booking
+    request_detail TEXT,                      -- JSON or text description
+    request_amount DECIMAL(10,2) DEFAULT 0,  -- If applicable (salary, booking)
+    leave_duration INT DEFAULT NULL,          -- If applicable
+    status ENUM('pending','approved','partial','rejected') DEFAULT 'pending',
+    requested_by INT UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+--25/01/2026
+-- farzana

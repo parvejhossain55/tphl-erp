@@ -24,6 +24,7 @@ class HomeController extends Controller
         $this->projectModel = new Project($this->db);
         $this->leadModel = new Lead($this->db);
         $this->bookingModel = new BookingLead($this->db);
+        
     }
 
 
@@ -32,11 +33,63 @@ class HomeController extends Controller
     {
         $totalProjects = $this->projectModel->countProject();
         $completedTasks  = $this->taskModel->getTaskCount("status = 'completed'");
-        $totalEmployee = $this->employeeModel->getTotalCount();
-        $completedTasks  = $this->taskModel->getTaskCount("status = 'completed'");
-        $totalLeads = $this->leadModel->getAll();
+        // Get period from GET (optional)
+        $period = $_GET['period'] ?? null;
+
+        // Employees
+        $totalEmployees = $period
+            ? $this->employeeModel->getTotalCountByPeriod($period)
+            : $this->employeeModel->getTotalCount();
+
+        // Leads
+        $totalLeads = $this->leadModel->getAll($period);
         $totalLeadsCount = count($totalLeads);
-        $totalVisitedCount = $this->leadModel->getVisitedLeadCount();
+
+        // Leads % change calculation
+        if ($period) {
+            switch ($period) {
+                case 'daily':
+                    $prevPeriodLeads = $this->leadModel->getAllByDate('daily', true); // yesterday
+                    break;
+                case 'weekly':
+                    $prevPeriodLeads = $this->leadModel->getAllByDate('weekly', true); // last week
+                    break;
+                case 'monthly':
+                    $prevPeriodLeads = $this->leadModel->getAllByDate('monthly', true); // last month
+                    break;
+                case 'yearly':
+                    $prevPeriodLeads = $this->leadModel->getAllByDate('yearly', previous: true); // last year
+                    break;
+            }
+            $prevCount = count($prevPeriodLeads);
+
+            if ($prevCount == 0) {
+                $leadsPercentChange = $totalLeadsCount > 0 ? 100 : 0;
+            } else {
+                $leadsPercentChange = round((($totalLeadsCount - $prevCount) / $prevCount) * 100, 2);
+            }
+        } else {
+            // lifetime comparison vs previous month
+            $currentMonth = date('m');
+            $currentYear  = date('Y');
+            $currentMonthLeads = $this->leadModel->countLeadsByMonth($currentYear, $currentMonth);
+
+            $lastMonth = date('m', strtotime("-1 month"));
+            $lastMonthYear = date('Y', strtotime("-1 month"));
+            $lastMonthLeads = $this->leadModel->countLeadsByMonth($lastMonthYear, $lastMonth);
+
+            if ($lastMonthLeads == 0) {
+                $leadsPercentChange = $currentMonthLeads > 0 ? 100 : 0;
+            } else {
+                $leadsPercentChange = round((($currentMonthLeads - $lastMonthLeads) / $lastMonthLeads) * 100, 2);
+            }
+        }
+        // Leads % change calculation
+
+
+
+        $completedTasks  = $this->taskModel->getTaskCount("status = 'completed'");
+        $totalVisitedCount = $this->leadModel->getVisitedLeadCount($period);
         // Current month
         $currentYear = date('Y');
         $currentMonth = date('m');
@@ -84,11 +137,11 @@ class HomeController extends Controller
         //end accounts
 
         //  Onboarded Clients
-        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'booked' AND lead_bookings.deleted_at IS NULL";
-        $onboardedResult = $this->db->query($onboardedQuery);
-        $totalFlatsBooking = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
-
-
+        // $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'booked' AND lead_bookings.deleted_at IS NULL";
+        // $onboardedResult = $this->db->query($onboardedQuery);
+        // $totalFlatsBooking = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
+        $period = $_GET['period'] ?? null;
+        $totalFlatsBooking = $this->bookingModel->getTotalBookings($period);
 
         // chart value get 
 
@@ -110,12 +163,12 @@ class HomeController extends Controller
 
         // MONTHLY SALES (Last 30 days)
         $monthlySalesQuery = "
-    SELECT DATE(payment_date) AS date, SUM(amount) AS total
-    FROM lead_payments
-    WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    GROUP BY DATE(payment_date)
-    ORDER BY DATE(payment_date)
-";
+            SELECT DATE(payment_date) AS date, SUM(amount) AS total
+            FROM lead_payments
+            WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY DATE(payment_date)
+            ORDER BY DATE(payment_date)
+        ";
         $monthlySalesResult = $this->db->query($monthlySalesQuery);
         $monthlySales = [];
         while ($row = $monthlySalesResult->fetch_assoc()) {
@@ -168,7 +221,7 @@ class HomeController extends Controller
             "current_route" => "home",
             "page_title"   => "Dashboard",
             "show_breadcrumb" => false,
-            "totalEmployee" => $totalEmployee,
+            "totalEmployees" => $totalEmployees,
             "totalProjects" => $totalProjects,
             "completedTasks" => $completedTasks,
             "totalLeadsCount" => $totalLeadsCount,
@@ -188,6 +241,7 @@ class HomeController extends Controller
             "flatSalesSeries" => $flatSalesSeries,
             "totalVisitedCount" => $totalVisitedCount,
             "bookingData" => $bookingData,
+            "period" => $period,
         ]);
     }
 }

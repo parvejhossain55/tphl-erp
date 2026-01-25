@@ -2,6 +2,15 @@
 $page_title = "Home Dashboard";
 $show_breadcrumb = false;
 ?>
+<div class="row mb-2">
+    <div class="btn__group mb-3">
+        <a href="?period=daily" class="btn btn-sm <?= ($period ?? '') == 'daily' ? 'btn-primary' : 'btn-outline-secondary' ?>">Daily</a>
+        <a href="?period=weekly" class="btn btn-sm <?= ($period ?? '') == 'weekly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Weekly</a>
+        <a href="?period=monthly" class="btn btn-sm <?= ($period ?? '') == 'monthly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Monthly</a>
+        <a href="?period=yearly" class="btn btn-sm <?= ($period ?? '') == 'yearly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Yearly</a>
+    </div>
+
+</div>
 <div class="row  align-items-stretch">
 
     <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
@@ -18,9 +27,11 @@ $show_breadcrumb = false;
                             <span class="<?= $leadsPercentChange >= 0 ? 'price-increase' : 'price-decrease' ?>">
                                 <i class="fa-light <?= $leadsPercentChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down' ?>"></i>
                                 <?= abs($leadsPercentChange) ?>%
-                            </span> Than Last Month
+                            </span>
+                            Than <?= $period ? ucfirst($period) : 'Last Month' ?>
                         </span>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -197,7 +208,7 @@ $show_breadcrumb = false;
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted">Total Employees</h6>
-                    <h4 class="card__title mb-0 text-break"><?= $totalEmployee ?? '' ?></h4>
+                    <h4 class="card__title mb-0 text-break"> <?= $totalEmployees ?> <?= $period ? "({$period})" : "" ?></h4>
                 </div>
             </div>
         </div>
@@ -330,62 +341,22 @@ $show_breadcrumb = false;
 <div class="container-fluid py-4">
     <div class="row mb-4">
         <div class="col-12">
-            <h4 class="mb-0"> Booking Overview</h4>
+            <h4 class="mb-0"> Overview</h4>
             <p class="text-muted small mb-0">Complete booking and payment summary</p>
         </div>
     </div>
 
-
     <!-- Payment Methods & Recent Bookings -->
-    <div class="row g-3 equal-height-row">
-
-        <!-- Project-wise Bookings (Top Projects) -->
-        <div class="d-none col-xl-6 col-lg-6 col-12">
-            <div class="card h-100">
-                <div class="card-header border-bottom-0 pt-3">
-                    <h6 class="mb-0">Top Projects</h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                        <div>
-                            <h6 class="mb-1">Green Valley Residence</h6>
-                            <small class="text-muted">45 bookings</small>
-                        </div>
-                        <span class="badge bg-primary rounded-pill">28.8%</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                        <div>
-                            <h6 class="mb-1">Skyline Tower</h6>
-                            <small class="text-muted">38 bookings</small>
-                        </div>
-                        <span class="badge bg-success rounded-pill">24.4%</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                        <div>
-                            <h6 class="mb-1">Pearl Heights</h6>
-                            <small class="text-muted">32 bookings</small>
-                        </div>
-                        <span class="badge bg-info rounded-pill">20.5%</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Others</h6>
-                            <small class="text-muted">41 bookings</small>
-                        </div>
-                        <span class="badge bg-secondary rounded-pill">26.3%</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="row ">
 
         <!-- Recent Bookings (All Bookings) -->
-        <div class="col-xl-12 col-lg-12 col-12">
+        <div class="col-xl-6 col-lg-6 col-md-12 col-12">
             <div class="card__wrapper h-100">
-                <div class="d-none card__heading-title  pt-3 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">All Bookings</h6>
-                    <div class="d-flex gap-2">
-                        <input type="text" class="form-control form-control-sm" placeholder="Search..." style="width: 200px;">
-                        <select class="form-select form-select-sm" style="width: 150px;">
+                <div class="card-header pt-3 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                    <h6 class="mb-2 mb-md-0">All Bookings</h6>
+                    <div class="d-flex gap-2 flex-wrap d-none">
+                        <input type="text" class="form-control form-control-sm" placeholder="Search..." style="min-width: 150px;">
+                        <select class="form-select form-select-sm" style="min-width: 120px;">
                             <option>All Status</option>
                             <option>Confirmed</option>
                             <option>Pending</option>
@@ -393,7 +364,7 @@ $show_breadcrumb = false;
                         </select>
                     </div>
                 </div>
-                <div class="card__body p-0">
+                <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
@@ -406,7 +377,7 @@ $show_breadcrumb = false;
                                     <th>Booking Amount</th>
                                     <th>Status</th>
                                     <th>Date</th>
-                                    <th class="text-center">Actions</th>
+                                    <th class="text-center d-none">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -416,18 +387,12 @@ $show_breadcrumb = false;
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <?php if (!empty($item['lead_image'])): ?>
-                                                    <img
-                                                        src="<?= getImage('leads', $item['lead_image']) ?>"
-                                                        alt="lead_image"
-                                                        class="pe-1 rounded-circle"
-                                                        style="width: 32px; height: 32px; object-fit: cover;">
-
+                                                    <img src="<?= getImage('leads', $item['lead_image']) ?>" alt="lead_image" class="pe-1 rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
                                                 <?php else: ?>
                                                     <div class="bg-primary bg-opacity-10 p-2 rounded me-2">
                                                         <i class="fa-light fa-user text-primary"></i>
                                                     </div>
                                                 <?php endif; ?>
-
                                                 <div>
                                                     <span class="fw-semibold"><?= $item['lead_name'] ?? '' ?></span>
                                                     <small class="text-muted d-block"><?= $item['phone'] ?? '' ?></small>
@@ -435,31 +400,131 @@ $show_breadcrumb = false;
                                             </div>
                                         </td>
                                         <td><?= $item['project_name'] ?? '' ?></td>
-                                        <td><strong class="bd-badge bg-primary text-dark"><?= $item['flat_name'] ?><span class="ms-3"> <?= $item['sqft'] ?? '' ?> Sqft<span> </strong></td>
-                                        <td class="fw-semibold">৳ <?= format_bdt($item['price_value']) ?></td>
-                                        <td class="text-success fw-semibold">৳ <?= format_bdt($item['agreement_value'] ?? '') ?></td>
                                         <td>
-
-                                            <span class="badge bg-success"><?= $item['booking_status'] ?></span>
+                                            <strong class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded bg-primary text-dark text-nowrap">
+                                                <?= $item['flat_name'] ?>
+                                                <span class="fw-normal"><?= $item['sqft'] ?? '' ?> Sqft</span>
+                                            </strong>
                                         </td>
-                                        <td><?= formatDate($item['booking_date']) ?></td>
-                                        <td class="text-center">
-                                            <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $item['id'] ?>" class="btn btn-sm btn-success">Show Payment</a>
 
+
+                                        <td class="fw-semibold">৳ <?= format_bdt($item['price_value']) ?></td>
+                                        <td class="text-success fw-semibold">৳ <?= format_bdt(number: $item['agreement_value'] ?? '') ?></td>
+                                        <td>
+                                            <?php if ($item['is_booked'] === 1): ?>
+
+                                                <span class="badge bg-success">Paid Booked</span>
                                         </td>
+                                    <?php else: ?>
+                                        <span class="badge bg-danger">Unpaid</span></td>
+                                    <?php endif ?>
+                                    <td><?= formatDate($item['booking_date']) ?></td>
+                                    <td class="text-center d-none">
+                                        <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $item['id'] ?>" class="btn btn-sm btn-success">Show Payment</a>
+                                    </td>
                                     </tr>
                                 <?php endforeach ?>
-
-
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
+        <!-- Department Approval Requests -->
+        <div class="col-xl-6 col-lg-6 col-md-12 col-12">
+            <div class="card__wrapper h-100">
+                <div class="card-header_title pt-3 border-bottom-0">
+                    <h6 class="mb-3">Latest Approval Requests</h6>
+                </div>
+
+                <div class="card-body">
+
+                    <!-- Salary Approval Request -->
+                    <div class="border rounded p-3 mb-3 shadow-sm">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="mb-1">HR Department</h6>
+                                <small class="text-muted d-block">Salary Approval</small>
+                                <small class="text-muted">Requested: 25 Jan 2026</small>
+                            </div>
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        </div>
+
+                        <div class="mb-2">
+                            <strong>Requested Amount:</strong> ৳ 80,000
+                        </div>
+
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-sm btn-success">Full Approve</button>
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#partialApproveModal">
+                                Partial Approve
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Leave Approval Request -->
+                    <div class="border rounded p-3 mb-3 shadow-sm">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="mb-1">Sales Department</h6>
+                                <small class="text-muted d-block">Leave Approval</small>
+                                <small class="text-muted">Requested: 24 Jan 2026</small>
+                            </div>
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        </div>
+
+                        <div class="mb-2">
+                            <strong>Leave Duration:</strong> 5 Days
+                            <br>
+                            <strong>Leave Type:</strong> Casual Leave
+                        </div>
+
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-sm btn-success">Approve Leave</button>
+                            <button class="btn btn-sm btn-danger">Reject</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!-- Partial Approve Modal -->
+        <div class="modal fade" id="partialApproveModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h6 class="modal-title">Partial Payment Approval</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Requested Amount</label>
+                            <input type="text" class="form-control" value="৳ 80,000" disabled>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Approve Amount</label>
+                            <input type="number" class="form-control" placeholder="Enter approved amount">
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button class="btn btn-success">Approve Payment</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+
+
+    </div>
 </div>
+
 
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
