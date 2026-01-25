@@ -218,7 +218,7 @@ public function getVisitedLeadCount()
         if (!$old) {
             return false;
         }
-
+$nomi_dob = !empty($data['nomi_dob']) ? $data['nomi_dob'] : null;
         // ======================
         // Image Upload (fallback old)
         // ======================
@@ -279,7 +279,7 @@ public function getVisitedLeadCount()
             $data['nomi_father_name'],
             $data['nomi_mother_name'],
             $data['nomi_profession'],
-            $data['nomi_dob'],
+            $nomi_dob,
             $data['nomi_phone'],
             $data['nomi_email'],
             $data['nomi_nid_passport'],

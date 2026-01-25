@@ -171,7 +171,7 @@ class FlatController extends Controller
         // Update lead
         try {
             $this->flatModel->update($id, $data);
-            setSuccess("Lead updated successfully!");
+            setSuccess("Flat updated successfully!");
             header("Location: {$GLOBALS['base_url']}/flat-lists");
             exit;
         } catch (Exception $e) {
