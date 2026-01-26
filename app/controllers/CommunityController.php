@@ -51,7 +51,7 @@ class CommunityController extends Controller
         print_r($data); // debug: check values
 
         if ($this->deparmentModel->update($data)) {
-            header("Location: {$GLOBALS['base_url']}/community_lists");
+            header("Location: {$GLOBALS['base_url']}/community-lists");
             exit;
         } else {
             echo "Failed to update communities";
@@ -66,7 +66,7 @@ class CommunityController extends Controller
         $id = $_POST['id'] ?? 0;
 
         if ($id && $this->deparmentModel->delete($id)) {
-            header("Location: {$GLOBALS['base_url']}/community_lists");
+            header("Location: {$GLOBALS['base_url']}/community-lists");
             exit;
         } else {
             echo "<h3 style='color:red'>Failed to delete communities</h3>";

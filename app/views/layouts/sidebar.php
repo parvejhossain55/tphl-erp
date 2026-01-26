@@ -113,7 +113,7 @@
                            <li class="slide ">
                                <a href="<?= $base_url ?>/inventory-lists" class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
                                    <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
-                                   <span class="sidebar__menu-label">Inventory Manage</span>
+                                   <span class="sidebar__menu-label">Proejct Wise Inventory</span>
                                </a>
                            </li>
 
@@ -158,6 +158,22 @@
                                    <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
                                    <span class="sidebar__menu-label">Designation Lists</span>
                                </a>
+                           </li>
+                             <li class="slide has-sub <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
+                               <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-attendance', 'attendance-list'], $current_route) ?>">
+                                   <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                   <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i>
+                                   </div>
+                                   <span class="sidebar__menu-label">Attendance Manage</span>
+                               </a>
+                               <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-attendance', 'attendance-list'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                                   <li class="slide <?= isActive('create-attendance', $current_route) ?>">
+                                       <a class="sidebar__menu-item <?= isActive('create-attendance', $current_route) ?>" href="<?= $base_url ?>/create-attendance">Add Attendance</a>
+                                   </li>
+                                   <li class="slide <?= isActive('attendance-list', $current_route) ?>">
+                                       <a class="sidebar__menu-item <?= isActive('attendance-list', $current_route) ?>" href="<?= $base_url ?>/attendance-list">Attendance List</a>
+                                   </li>
+                               </ul>
                            </li>
                        <?php endif; ?>
                        <!--End HRM CATEGORY -->
@@ -336,6 +352,23 @@
                                    </li>
                                    <li class="slide <?= isActive('task-lists', $current_route) ?>">
                                        <a class="sidebar__menu-item <?= isActive('task-lists', $current_route) ?>" href="<?= $base_url ?>/task-lists">Task List</a>
+                                   </li>
+                               </ul>
+                           </li>
+
+                           <li class="slide has-sub <?= isActive(['create-review', 'review-lists'], $current_route) ?>">
+                               <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-review', 'review-lists'], $current_route) ?>">
+                                   <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                   <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i>
+                                   </div>
+                                   <span class="sidebar__menu-label">Review Manage</span>
+                               </a>
+                               <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-review', 'review-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                                   <li class="slide <?= isActive('create-review', $current_route) ?>">
+                                       <a class="sidebar__menu-item <?= isActive('create-review', $current_route) ?>" href="<?= $base_url ?>/create-review">Add Review</a>
+                                   </li>
+                                   <li class="slide <?= isActive('review-lists', $current_route) ?>">
+                                       <a class="sidebar__menu-item <?= isActive('review-lists', $current_route) ?>" href="<?= $base_url ?>/review-lists">Review List</a>
                                    </li>
                                </ul>
                            </li>

@@ -31,7 +31,42 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
+    //dashboard
+    public function getTotalBookings($period = null)
+{
+    $sqlQuery = "SELECT COUNT(*) AS onboarded 
+                 FROM lead_bookings 
+                 WHERE booking_status = 'booked' 
+                 AND deleted_at IS NULL";
+        
+
+    if ($period) {
+        switch ($period) {
+            case 'daily':
+                $sqlQuery .= " AND DATE(created_at) = CURDATE()";
+                break;
+            case 'weekly':
+                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                break;
+            case 'monthly':
+                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                break;
+            case 'yearly':
+                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                break;
+        }
+    }
+
     
+
+    $result = $this->db->query($sqlQuery);
+    $row = $result->fetch_assoc();
+    return (int)($row['onboarded'] ?? 0);
+}
+
+    // end dashboard
+
+
     // Get a single follow-up by ID
     public function create($data)
     {
@@ -115,9 +150,9 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     }
 
     // Optional: get onboard records by lead
-public function getByLead($lead_id)
-{
-    $stmt = $this->db->prepare("
+    public function getByLead($lead_id)
+    {
+        $stmt = $this->db->prepare("
         SELECT o.*, 
                p.name AS project_name, 
                f.floor_no,
@@ -133,16 +168,16 @@ public function getByLead($lead_id)
           AND o.lead_id = ?
     ");
 
-    if (!$stmt) {
-        setError($this->db->error);
-        return [];
-    }
+        if (!$stmt) {
+            setError($this->db->error);
+            return [];
+        }
 
-    $stmt->bind_param("i", $lead_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
+        $stmt->bind_param("i", $lead_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
 
     public function getBookingCountByLead()
     {
@@ -190,6 +225,25 @@ public function getByLead($lead_id)
         $stmt->execute();
         $result = $stmt->get_result();
         return $result->fetch_assoc(); // single record
+    }
+
+
+    public function getAllBooking()
+    {
+        $stmt = $this->db->prepare("SELECT lb.*, l.lead_name,l.lead_image,l.phone, p.name AS project_name,f.price_value,f.flat_name,f.sqft,f.is_booked
+            FROM lead_bookings lb LEFT JOIN leads l ON lb.lead_id = l.id 
+            LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            Where lb.deleted_at IS NULL");
+
+        if (!$stmt) {
+            setError($this->db->error);
+            return false;
+        }
+          $stmt->execute();
+          $result= $stmt->get_result();
+          return $result->fetch_all(MYSQLI_ASSOC);
+
     }
 
     // Delete follow-up by ID

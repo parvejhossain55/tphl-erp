@@ -614,6 +614,16 @@ function formatDate($date)
     return date('d F, Y', strtotime($date));
 }
 
+// formant time
+function formatPunchTime($time)
+{
+    if (!$time || $time == '0000-00-00 00:00:00') {
+        return '-';
+    }
+    return date('H:i', strtotime($time));
+}
+
+
 // for bd taka decimal format
 
 function format_bdt($number)
@@ -637,6 +647,44 @@ function format_bdt($number)
 
     return $last3 . $decimal;
 }
+
+// video url create 
+function renderReviewVideo($url, $width = '100%', $height = '315') {
+    if (!$url) return '';
+
+    // YouTube
+    if (strpos($url, 'youtube.com') !== false || strpos($url, 'youtu.be') !== false) {
+        $videoId = '';
+
+        if (strpos($url, 'youtu.be') !== false) {
+            $videoId = basename($url);
+        } else {
+            parse_str(parse_url($url, PHP_URL_QUERY), $query);
+            $videoId = $query['v'] ?? '';
+        }
+
+        if ($videoId) {
+            return '<iframe width="'. $width .'" height="'. $height .'" src="https://www.youtube.com/embed/'. $videoId .'" frameborder="0" allowfullscreen></iframe>';
+        }
+    }
+
+    // Vimeo
+    if (strpos($url, 'vimeo.com') !== false) {
+        $videoId = (int) basename($url);
+        if ($videoId) {
+            return '<iframe src="https://player.vimeo.com/video/'. $videoId .'" width="'. $width .'" height="'. $height .'" frameborder="0" allowfullscreen></iframe>';
+        }
+    }
+
+    // Self-hosted video (mp4)
+    $ext = pathinfo($url, PATHINFO_EXTENSION);
+    if (in_array(strtolower($ext), ['mp4','webm','ogg'])) {
+        return '<video width="'. $width .'" height="'. $height .'" controls><source src="'. $url .'" type="video/'. $ext .'"></video>';
+    }
+
+    return '';
+}
+
 
 
 
