@@ -184,6 +184,9 @@
         <script>
             document.addEventListener("DOMContentLoaded", function() {
 
+
+            
+
                 const labels = <?= json_encode($flatSalesLabels) ?>;
                 const series = <?= json_encode($flatSalesSeries) ?>;
 
@@ -456,6 +459,9 @@
 
             });
         </script>
+ 
+
+ 
 
 
 

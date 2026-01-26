@@ -493,19 +493,19 @@
 
 /* Status colors */
 .action-not_called {
-    background-color: #05bb60; /* gray */
+    background-color: #0582bb; /* gray */
 }
 
 .action-calling {
-    background-color: #fd7e14; /* orange */
+    background-color: #105242; /* orange */
 }
 
 .action-called {
-    background-color: #198754; /* green */
+    background-color: #a58f10; /* green */
 }
 
 .action-visited {
-    background-color: #033113; /* blue */
+    background-color: #08a33f; 
 }
 
 /* hover polish */

@@ -44,7 +44,7 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-  
+
 
         <?php
         $months = [
@@ -193,14 +193,23 @@ $show_breadcrumb = true;
                                     </span>
                                 </td>
                                 <td class="table__employee-position"><?= $payslip['desgination_name'] ?></td>
-                                <td class="table__employee-emaill"><a href="<?= $payslip['email'] ?>"><?= $payslip['email'] ?></a></td>
+                                <td class="table__employee-email">
+                                    <a href="mailto:<?= htmlspecialchars($payslip['email']) ?>">
+                                        <?= htmlspecialchars($payslip['email']) ?>
+                                    </a>
+                                </td>
+
                                 <td class="table__joining-date"><?= $payslip['joining_date'] ?></td>
                                 <td class="table__salary"><?= $payslip['net_salary'] ?></td>
                                 <td class="table__delivery ">
                                     <?php if ($payslip['status'] == 'paid'): ?>
                                         <span class="bd-badge bg-success">Paid</span>
+                                    <?php elseif ($payslip['status'] == 'approved'): ?>
+                                        <span class="bd-badge bg-primary">Approved</span>
+                                    <?php elseif ($payslip['status'] == 'reject'): ?>
+                                        <span class="bd-badge bg-danger">Reject</span>
                                     <?php else: ?>
-                                        <span class="bd-badge bg-danger">Pending</span>
+                                        <span class="bd-badge bg-warning">Pending</span>
                                     <?php endif; ?>
                                 </td>
                                 <td class="able__icon-box">

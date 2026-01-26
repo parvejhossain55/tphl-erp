@@ -431,92 +431,91 @@ $show_breadcrumb = false;
             </div>
         </div>
 
-        <!-- Department Approval Requests -->
         <div class="col-xl-6 col-lg-6 col-md-12 col-12">
             <div class="card__wrapper h-100">
                 <div class="card-header_title pt-3 border-bottom-0">
                     <h6 class="mb-3">Latest Approval Requests</h6>
                 </div>
+                <?php
+                // print_r($_SESSION['user']['role_name']);
+
+                // print_r($pendingRequests); 
+                ?>
 
                 <div class="card-body">
+                    <?php if (!empty($pendingRequests)): ?>
+                        <?php foreach ($pendingRequests as $req): ?>
+                            <div class="border rounded p-3 mb-3 shadow-sm">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="mb-1"><?= htmlspecialchars($req['department']) ?> Department</h6>
+                                        <small class="text-muted d-block"><?= htmlspecialchars($req['title']) ?></small>
+                                        <small class="text-muted">Requested: <?= date('d M Y', strtotime($req['created_at'])) ?></small>
+                                    </div>
+                                    <span class="badge bg-warning text-dark"><?= ucfirst($req['status']) ?></span>
+                                </div>
 
-                    <!-- Salary Approval Request -->
-                    <div class="border rounded p-3 mb-3 shadow-sm">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <h6 class="mb-1">HR Department</h6>
-                                <small class="text-muted d-block">Salary Approval</small>
-                                <small class="text-muted">Requested: 25 Jan 2026</small>
+                                <div class="mb-2">
+                                    <?php if ($req['request_amount']): ?>
+                                        <strong>Requested Amount:</strong> ৳ <?= number_format($req['request_amount'], 2) ?>
+                                    <?php endif; ?>
+                                </div>
+
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <!-- Full Approve -->
+                                    <form method="POST" action="<?= $GLOBALS['base_url'] ?>/approve-request/<?= $req['id'] ?>" class="d-inline">
+                                        <button class="btn btn-sm btn-success">Full Approve</button>
+                                    </form>
+
+                                    <!-- Partial Approve (Modal) -->
+                                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#partialApproveModal<?= $req['id'] ?>">Partial Approve</button>
+
+                                    <!-- Reject -->
+                                    <form method="POST" action="<?= $GLOBALS['base_url'] ?>/reject-request/<?= $req['id'] ?>" class="d-inline">
+                                        <button class="btn btn-sm btn-danger">Reject</button>
+                                    </form>
+                                </div>
+
+
                             </div>
-                            <span class="badge bg-warning text-dark">Pending</span>
-                        </div>
 
-                        <div class="mb-2">
-                            <strong>Requested Amount:</strong> ৳ 80,000
-                        </div>
-
-                        <div class="d-flex gap-2 flex-wrap">
-                            <button class="btn btn-sm btn-success">Full Approve</button>
-                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#partialApproveModal">
-                                Partial Approve
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Leave Approval Request -->
-                    <div class="border rounded p-3 mb-3 shadow-sm">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <h6 class="mb-1">Sales Department</h6>
-                                <small class="text-muted d-block">Leave Approval</small>
-                                <small class="text-muted">Requested: 24 Jan 2026</small>
+                            <!-- Partial Modal -->
+                            <div class="modal fade" id="partialApproveModal<?= $req['id'] ?>" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h6 class="modal-title">Partial Approval</h6>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form method="POST" action="<?= $GLOBALS['base_url'] ?>/partial-approve-request/<?= $req['id'] ?>">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Requested Amount</label>
+                                                    <input type="text" class="form-control" value="৳ <?= number_format($req['request_amount'], 2) ?>" disabled>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Approve Amount</label>
+                                                    <input type="number" class="form-control" name="approved_amount" placeholder="Enter approved amount" required>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button class="btn btn-success">Approve Payment</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <span class="badge bg-warning text-dark">Pending</span>
-                        </div>
 
-                        <div class="mb-2">
-                            <strong>Leave Duration:</strong> 5 Days
-                            <br>
-                            <strong>Leave Type:</strong> Casual Leave
-                        </div>
 
-                        <div class="d-flex gap-2 flex-wrap">
-                            <button class="btn btn-sm btn-success">Approve Leave</button>
-                            <button class="btn btn-sm btn-danger">Reject</button>
-                        </div>
-                    </div>
-
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p class="text-muted">No pending requests</p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
-        <!-- Partial Approve Modal -->
-        <div class="modal fade" id="partialApproveModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h6 class="modal-title">Partial Payment Approval</h6>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
 
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Requested Amount</label>
-                            <input type="text" class="form-control" value="৳ 80,000" disabled>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Approve Amount</label>
-                            <input type="number" class="form-control" placeholder="Enter approved amount">
-                        </div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button class="btn btn-success">Approve Payment</button>
-                    </div>
-                </div>
-            </div>
-        </div>
 
 
 

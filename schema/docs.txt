@@ -321,3 +321,24 @@ Delay response 200–500ms to simulate thinking.
 Use quick suggestion buttons dynamically.
 
 This gives the “smart AI feel” without WebSocket headaches.
+
+
+=== 26/01/2026
+
+approval_requests Table – Conceptual Structure
+
+(আমি field explain করছি, SQL না)
+
+Column	কেন দরকার
+id	request id
+department	HR / Accounts / Sales
+request_type	leave / salary / advance / cash_out
+source_table	কোন module থেকে আসছে (leaves, payslips, expenses)
+source_id	ওই table এর id
+title	“Salary Approval”, “Leave Request”
+amount	salary / advance / cash (nullable)
+meta_data	JSON → extra info (leave days, reason etc.)
+status	pending / approved / rejected / partial
+requested_by	কে request করেছে
+approve_role_id	কোন role approve করবে (management)
+created_at	request date

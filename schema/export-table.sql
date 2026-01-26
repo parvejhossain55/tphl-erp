@@ -319,18 +319,29 @@ CREATE TABLE emp_attendances (
 
 --25/01/2026
 CREATE TABLE approval_requests (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    department VARCHAR(50) NOT NULL,          -- HR, Sales, Accounts
-    role_id INT UNSIGNED NOT NULL,            -- Role who can approve
-    request_type VARCHAR(50) NOT NULL,        -- Salary, Leave, Booking
-    request_detail TEXT,                      -- JSON or text description
-    request_amount DECIMAL(10,2) DEFAULT 0,  -- If applicable (salary, booking)
-    leave_duration INT DEFAULT NULL,          -- If applicable
-    status ENUM('pending','approved','partial','rejected') DEFAULT 'pending',
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    department VARCHAR(50) NOT NULL, 
+    request_type VARCHAR(50) NOT NULL, 
+    title VARCHAR(150) NOT NULL,
+
+    source_table VARCHAR(50) NOT NULL,
+    source_id INT UNSIGNED NOT NULL,
+
+    request_amount DECIMAL(12,2) NULL,
+    approved_amount DECIMAL(12,2) NULL,
+
+    status ENUM('pending','approved','rejected','partial') DEFAULT 'pending',
+
     requested_by INT UNSIGNED NOT NULL,
+    approve_role VARCHAR(50) NOT NULL,
+
+    meta_data JSON NULL,
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
 
 --25/01/2026
 -- farzana

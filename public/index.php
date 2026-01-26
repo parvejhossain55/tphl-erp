@@ -45,7 +45,21 @@ $routes = [
     ""                 => ["controller" => "LoginController", "method" => "index"],
     "admin-login"           => ["controller" => "LoginController", "method" => "index"],
     "home"                 => ["controller" => "HomeController", "method" => "index"],
+    "approve-request/(\d+)"                 => ["controller" => "HomeController", "method" => "approveFull"],
+    "partial-approve-request/(\d+)"                 => ["controller" => "HomeController", "method" => "approvePartial"],
+    "reject-request/(\d+)"                 => ["controller" => "HomeController", "method" => "reject"],
+    "show-request/(\d+)"                 => ["controller" => "HomeController", "method" => "show"],
     "logout"             => ["controller" => "LoginController", "method" => "logout"],
+
+    // Approval Request Controller
+    // Approval Requests
+    "approval-requests" => ["controller" => "ApprovalRequestController", "method" => "index"],
+    // "approve-request/(\d+)" => ["controller" => "ApprovalRequestController", "method" => "approveFull"],
+    // "partial-approve-request/(\d+)" => ["controller" => "ApprovalRequestController", "method" => "approvePartial"],
+    // "reject-request/(\d+)" => ["controller" => "ApprovalRequestController", "method" => "reject"],
+    // "show-request/(\d+)" => ["controller" => "ApprovalRequestController", "method" => "show"],
+
+    //End Approval Request Controller
 
 
     // users

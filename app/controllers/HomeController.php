@@ -11,6 +11,7 @@ class HomeController extends Controller
     protected $projectModel;
     protected $bookingModel;
     protected $dashboardModel;
+    protected $approvalModel;
     public function __construct($db)
     {
 
@@ -19,6 +20,7 @@ class HomeController extends Controller
         $this->departmetModel = new Department($this->db);
         $this->departmetModel = new Designation($this->db);
         $this->dashboardModel = new Dashboard($this->db);
+        $this->approvalModel = new ApprovalRequest($this->db);
         $this->taskModel = new Task($this->db);
         $this->payslipModel = new Payslip($this->db);
         $this->projectModel = new Project($this->db);
@@ -31,6 +33,7 @@ class HomeController extends Controller
 
     public function index()
     {
+        //  $role = $_SESSION['user']['role_name'] ?? 'management';
         $totalProjects = $this->projectModel->countProject();
         $completedTasks  = $this->taskModel->getTaskCount("status = 'completed'");
         // Get period from GET (optional)
@@ -217,6 +220,21 @@ class HomeController extends Controller
 
         $bookingData = $this->bookingModel->getAllBooking();
 
+//    $pendingRequests = $this->approvalModel->getPending(10); // latest 10
+  $sessionRole = $_SESSION['user']['role_name'] ?? 'management';
+
+    // Role mapping: DB তে কোন session role কে কোন DB approve_role দিয়ে দেখাবো
+    $roleMap = [
+        'super admin' => ['management'],
+        'admin'       => ['management'],
+        'hr'          => ['hr'],
+        'accounts'    => ['accounts']
+    ];
+
+    $roles = $roleMap[strtolower($sessionRole)] ?? [strtolower($sessionRole)];
+
+    $pendingRequests = $this->approvalModel->getPendingForRole($roles, 10);
+
         $this->view("home", [
             "current_route" => "home",
             "page_title"   => "Dashboard",
@@ -242,6 +260,45 @@ class HomeController extends Controller
             "totalVisitedCount" => $totalVisitedCount,
             "bookingData" => $bookingData,
             "period" => $period,
+           'pendingRequests' => $pendingRequests //
+        ]);
+        //   print_r($pendingRequests);
+             
+    }
+
+      public function approveFull($id)
+    {
+        $this->approvalModel->updateStatus($id, 'approved');
+        header("Location: " . $GLOBALS['base_url'] . "/home");
+        exit;
+    }
+
+    // Partial approve
+    public function approvePartial($id)
+    {
+        $amount = $_POST['approved_amount'] ?? null;
+        if ($amount) {
+            $this->approvalModel->updateStatus($id, 'partially_approved', $amount);
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/home");
+        exit;
+    }
+
+    // Reject
+    public function reject($id)
+    {
+        $this->approvalModel->updateStatus($id, 'rejected');
+        header("Location: " . $GLOBALS['base_url'] . "/home");
+        exit;
+    }
+
+    // View single request (optional)
+    public function show($id)
+    {
+        $request = $this->approvalModel->find($id);
+        $this->view('home', [
+            'page_title' => 'Approval Request Details',
+            'request' => $request
         ]);
     }
 }

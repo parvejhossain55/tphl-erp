@@ -50,9 +50,54 @@ class PayrollController extends Controller
             "page_title"    => "Create Payslip",
             "employees"     => $employees,
             "items"         => $items,
-            
+
         ]);
     }
+    // public function store()
+    // {
+    //     if (empty($_POST['payslip_payload'])) {
+    //         die('Invalid Payslip Data');
+    //     }
+
+    //     $payload = json_decode($_POST['payslip_payload'], true);
+
+    //     $payslipModel = new Payslip($this->db);
+    //     $detailsModel = new PayslipDetail($this->db);
+
+    //     $payslipId = $payslipModel->create([
+    //         'employee_id'     => $payload['employee_id'],
+    //         'designation_id'  => $payload['designation_id'],
+    //         'payslip_month'   => date('Y-m-01'),
+    //         'total_earning'   => $payload['total_earning'],
+    //         'total_deduction' => $payload['total_deduction'],
+    //         'net_salary'      => $payload['net_salary'],
+    //         'status'          => 'pending',
+    //         'created_by'      => $_SESSION['user']['id'] ?? null,
+    //     ]);
+
+    //     // Earnings
+    //     foreach ($payload['earnings'] as $itemId => $amount) {
+    //         if ($amount > 0) {
+    //             $detailsModel->create($payslipId, $itemId, $amount);
+    //         }
+    //     }
+
+    //     // Deductions
+    //     foreach ($payload['deductions'] as $itemId => $amount) {
+    //         if ($amount > 0) {
+    //             $detailsModel->create($payslipId, $itemId, $amount);
+    //         }
+    //     }
+
+    //     // Clear localStorage
+    //     echo "<script>
+    //     localStorage.removeItem('payslip_data');
+    //     window.location.href = '{$GLOBALS['base_url']}/payslip-lists';
+    // </script>";
+    // }
+
+
+
     public function store()
     {
         if (empty($_POST['payslip_payload'])) {
@@ -63,6 +108,7 @@ class PayrollController extends Controller
 
         $payslipModel = new Payslip($this->db);
         $detailsModel = new PayslipDetail($this->db);
+        $approvalModel = new ApprovalRequest($this->db);
 
         $payslipId = $payslipModel->create([
             'employee_id'     => $payload['employee_id'],
@@ -72,29 +118,44 @@ class PayrollController extends Controller
             'total_deduction' => $payload['total_deduction'],
             'net_salary'      => $payload['net_salary'],
             'status'          => 'pending',
-            'created_by'      => $_SESSION['user']['id'] ?? null,
+            'created_by'      => $_SESSION['user']['id'],
         ]);
 
-        // Earnings
         foreach ($payload['earnings'] as $itemId => $amount) {
             if ($amount > 0) {
                 $detailsModel->create($payslipId, $itemId, $amount);
             }
         }
 
-        // Deductions
         foreach ($payload['deductions'] as $itemId => $amount) {
             if ($amount > 0) {
                 $detailsModel->create($payslipId, $itemId, $amount);
             }
         }
 
-        // Clear localStorage
+        //  CREATE APPROVAL REQUEST
+        $approvalModel->create([
+            'department'      => 'HR',
+            'request_type'    => 'salary',
+            'title'           => 'Salary Approval',
+            'source_table'    => 'payslips',
+            'source_id'       => $payslipId,
+            'request_amount'  => $payload['net_salary'],
+            'requested_by'    => $_SESSION['user']['id'],
+            'approve_role'    => 'management',
+            'meta_data'       => json_encode([
+                'employee_id' => $payload['employee_id'],
+                'month' => date('d F Y')
+            ])
+        ]);
+
+
         echo "<script>
         localStorage.removeItem('payslip_data');
         window.location.href = '{$GLOBALS['base_url']}/payslip-lists';
     </script>";
     }
+
 
 
     public function updatePay()
@@ -140,7 +201,8 @@ class PayrollController extends Controller
         ], false);
     }
 
- public function dueEmployeePayslip() {
+    public function dueEmployeePayslip()
+    {
         header('Content-Type: application/json');
 
         $month = $_GET['month'] ?? null;
@@ -153,6 +215,4 @@ class PayrollController extends Controller
         echo json_encode($dueEmployees);
         exit;
     }
-
-
 }

@@ -104,6 +104,10 @@ $show_breadcrumb = true;
                             Search Lead
                         </button>
 
+                        <button type="reset" class="btn btn-success w-100">
+                            Reset
+                        </button>
+
                         <a
                             class="btn btn-primary w-100"
                             href="<?= $GLOBALS['base_url'] ?>/create-lead">
@@ -112,6 +116,7 @@ $show_breadcrumb = true;
                     </div>
                 </div>
             </div>
+
 
         </div>
     </form>
@@ -258,7 +263,7 @@ $show_breadcrumb = true;
                                                 class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
                                                 onchange="this.form.submit()">
 
-                                                <option value="" > Update action   </option>
+                                                <option value=""> Update action </option>
                                                 <option value="not_called" <?= $lead['last_lead_action'] == 'not_called' ? 'selected' : '' ?>>
                                                     Not Called
                                                 </option>
@@ -354,4 +359,17 @@ $show_breadcrumb = true;
     document.addEventListener('dragstart', function(e) {
         e.preventDefault();
     });
+
+
+     const form = document.querySelector('form');
+                const resetBtn = form.querySelector('button[type="reset"]');
+
+                resetBtn.addEventListener('click', function(e) {
+                    e.preventDefault(); // avoid default reset
+                    // Clear all inputs
+                    form.querySelectorAll('input, select').forEach(function(el) {
+                        if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
+                        else el.value = ''; // input clear
+                    });
+                });
 </script>
