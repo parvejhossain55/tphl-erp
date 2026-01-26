@@ -12,6 +12,7 @@ class HomeController extends Controller
     protected $bookingModel;
     protected $dashboardModel;
     protected $approvalModel;
+    protected $attendancesModel;
     public function __construct($db)
     {
 
@@ -26,6 +27,7 @@ class HomeController extends Controller
         $this->projectModel = new Project($this->db);
         $this->leadModel = new Lead($this->db);
         $this->bookingModel = new BookingLead($this->db);
+        $this->attendancesModel = new EmpAttentendance($this->db);
         
     }
 

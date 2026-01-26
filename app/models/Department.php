@@ -48,6 +48,8 @@ public function getAll() {
 }
 
 
+
+
     // Create a new role
 
 public function create($data)
@@ -78,28 +80,32 @@ $stmt->bind_param(
 }
 
 
-public function countAll($search = '')
-{
-    $sql = "SELECT COUNT(*) as total FROM departments WHERE 1";
-    $params = [];
-    $types = "";
+// public function countAll($search = '')
+// {
+//     $sql = "SELECT COUNT(*) as total FROM departments WHERE 1";
+//     $params = [];
+//     $types = "";
 
-    if ($search) {
-        $sql .= " AND (name LIKE ?)";
-        $params[] = "%$search%";
-        $types .= "s";
-    }
+//     if ($search) {
+//         $sql .= " AND (name LIKE ?)";
+//         $params[] = "%$search%";
+//         $types .= "s";
+//     }
 
-    $stmt = $this->db->prepare($sql);
-    if ($params) {
-        $stmt->bind_param($types, ...$params);
-    }
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return $result['total'];
-}
+//     $stmt = $this->db->prepare($sql);
+//     if ($params) {
+//         $stmt->bind_param($types, ...$params);
+//     }
+//     $stmt->execute();
+//     $result = $stmt->get_result()->fetch_assoc();
+//     return $result['total'];
+// }
+
+
  // Update role name + permissions
 public function update($data)
+
+
 {
     // Prepare update statement
     $stmt = $this->db->prepare("UPDATE departments SET name = ?, status = ?,created_by = ?, WHERE id = ?");
@@ -157,10 +163,16 @@ public function delete($id)
 
     return true;
 }
+public function getTotalDept()
+{
+  $sql = $this->db->prepare("SELECT COUNT(*) AS total FROM departments");
+$sql->execute();
+// $sql->bind_result($total);
+$sql->fetch();
+$sql->close();
+// return $total;
 
-
-
-
+}
 
 
 }

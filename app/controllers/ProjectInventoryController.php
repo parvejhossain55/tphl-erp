@@ -29,6 +29,7 @@ class ProjectInventoryController extends Controller
         $projects = $this->projectModel->getAll();
         $totalProjects = count($projects);
         $flatCounts = $this->flatModel->getFlatStatusCount();
+        $totalFlatCount = $this->flatModel->getTotalFlats();
 
         $bookedFlats    = $flatCounts['booked'] ?? 0;
         $availableFlats = $flatCounts['available'] ?? 0;
@@ -39,6 +40,7 @@ class ProjectInventoryController extends Controller
             "bookedFlats"      => $bookedFlats,
             "availableFlats"      => $availableFlats,
             "totalProjects"      => $totalProjects,
+            "totalFlatCount"      => $totalFlatCount,
         ]);
     }
 

@@ -342,3 +342,35 @@ status	pending / approved / rejected / partial
 requested_by	কে request করেছে
 approve_role_id	কোন role approve করবে (management)
 created_at	request date
+
+
+//project e sqft per rakha valo 
+Project edit করলেই problem কোথায়?
+
+ধরি আজকের scenario:
+
+Project A
+
+Per sqft price = ৳3,000
+
+10 জন customer আজ booking করলো
+
+৬ মাস পর:
+
+Price বাড়লো → ৳3,500
+
+তুমি project edit করলে
+
+❌ তখন কী হবে?
+
+1️⃣ আগের 10 জনের booking
+➡️ system এখন দেখাবে ৳3,500
+➡️ অথচ তারা কিনেছে ৳3,000 rate এ
+
+2️⃣ Old invoice / report
+➡️ mismatch
+➡️ customer dispute শুরু
+
+3️⃣ Audit / accounts
+➡️ “এই booking এ price কেন বদলালো?”
+➡️ explain করা যাবে না

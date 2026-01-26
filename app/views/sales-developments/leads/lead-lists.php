@@ -104,9 +104,9 @@ $show_breadcrumb = true;
                             Search Lead
                         </button>
 
-                        <button type="reset" class="btn btn-success w-100">
+                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-success w-100">
                             Reset
-                        </button>
+                            </a>
 
                         <a
                             class="btn btn-primary w-100"

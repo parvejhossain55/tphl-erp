@@ -152,7 +152,7 @@
                                      <label class="form-check-label">Date Of Birth <span>*</span></label>
                                  </div>
                                  <div class="form__input">
-                                     <input name="dob" class="form-control" id="dateofBirth" type="date" readonly="readonly">
+                                     <input name="dob" class="form-control" id="humanFriendlyDates" type="date" readonly >
                                  </div>
                              </div>
                          </div>

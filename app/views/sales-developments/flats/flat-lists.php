@@ -7,7 +7,6 @@ $show_breadcrumb = false;
 </h4>
 <form action="" method="get">
     <div class="row flat-select">
-
         <!-- Search -->
         <!-- Department Filter -->
         <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
@@ -43,9 +42,9 @@ $show_breadcrumb = false;
                         Filter
                     </button>
 
-                    <button type="reset" class="btn btn-success w-100">
+                    <a href="<?= $GLOBALS['base_url'] ?>/flat-lists" class="btn btn-success w-100">
                         Reset
-                    </button>
+                        </a>
 
                     <a class="btn btn-primary w-100" href="<?= $GLOBALS['base_url'] ?>/create-flat">
                         Add Flat
@@ -67,7 +66,7 @@ $show_breadcrumb = false;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Total Flats</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $availableFlats ?></h4>
+                            <h4 class="card__title"><?= $totalFlatCount ?></h4>
                         </div>
                     </div>
                 </div>

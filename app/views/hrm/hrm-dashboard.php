@@ -8,10 +8,78 @@
         </div>
 
     </div>
+<?php
+// year & month from GET or current
+$filterYear  = $_GET['year']  ?? date('Y');
+$filterMonth = $_GET['month'] ?? date('n');
+
+// month name array
+$months = [
+    1 => 'January', 2 => 'February', 3 => 'March',
+    4 => 'April',   5 => 'May',      6 => 'June',
+    7 => 'July',    8 => 'August',   9 => 'September',
+    10 => 'October',11 => 'November',12 => 'December'
+];
+
+// final label text
+$filterLabel = $months[(int)$filterMonth] . ' ' . $filterYear;
+?>
+
+    <form method="get" class="row g-2 mb-3">
+
+        <div class="col-md-3 col-6">
+            <select name="year" class="form-control">
+                <?php
+                $currentYear = date('Y');
+                for ($y = $currentYear; $y >= $currentYear - 5; $y--) {
+                    $selected = ($_GET['year'] ?? $currentYear) == $y ? 'selected' : '';
+                    echo "<option value='$y' $selected>$y</option>";
+                }
+                ?>
+            </select>
+        </div>
+
+        <div class="col-md-3 col-6">
+            <select name="month" class="form-control">
+                <?php
+                $months = [
+                    1 => 'January',
+                    2 => 'February',
+                    3 => 'March',
+                    4 => 'April',
+                    5 => 'May',
+                    6 => 'June',
+                    7 => 'July',
+                    8 => 'August',
+                    9 => 'September',
+                    10 => 'October',
+                    11 => 'November',
+                    12 => 'December'
+                ];
+                $selectedMonth = $_GET['month'] ?? date('n');
+
+                foreach ($months as $num => $name) {
+                    $selected = $selectedMonth == $num ? 'selected' : '';
+                    echo "<option value='$num' $selected>$name</option>";
+                }
+                ?>
+            </select>
+        </div>
+
+        <div class="col-md-6 col-12">
+            <div class="d-flex flex-column flex-sm-row gap-2">
+                <button class="btn btn-secondary w-100">Filter Monthly Salary</button>
+                <button type="reset" class="btn btn-success w-100">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+    </form>
 
     <!--  CARDS -->
-    <div class="row g-20 mb-4">
-        <div class="col-xxl-4 col-xl-4 col-md-6 col-sm-12 col-12">
+    <div class="row align-items-stretch">
+        <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-users"></i></span></div>
@@ -23,48 +91,59 @@
             </div>
         </div>
 
-        <div class="d-none col-xxl-3 col-xl-6 col-md-6 col-sm-12">
+        <div class=" col-xxl-3 col-xl-3 col-md-6 col-sm-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-user-check"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Present Today</h6>
-                        <h4 class="card__title text-break text-success mb-10">142</h4>
-                        <small>91% attendance</small>
+                        <h4 class="card__title text-break text-success mb-10"><?= $presentCount ?? '' ?></h4>
+                        <small><?= $persentPresents ?>% attendance</small>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="d-none col-xxl-3 col-xl-6 col-md-6 col-sm-12">
+        <div class=" col-xxl-3 col-xl-6 col-md-6 col-sm-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-bed"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">On Leave</h6>
-                        <h4 class="card__title text-break text-success mb-10">8</h4>
+                        <h4 class="card__title text-break text-success mb-10"><?= $absentCount ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class=" col-xxl-3 col-xl-6 col-md-6 col-sm-12">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon"><span><i class="fa-regular fa-bed"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Departments</h6>
+                        <h4 class="card__title text-break text-success mb-10"><?= $totalDeparttment ?></h4>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xxl-4 col-xl-4 col-md-6 col-sm-12 col-12">
+        <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Salary Paid </h6>
+                        <h6 class="card__sub-title mb-10">Salary Paid (<?= $filterLabel ?>) </h6>
                         <h4 class="card__title text-break text-success mb-10"> &#2547; <?= $totalPaidSalary ?></h4>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xxl-4 col-xl-4 col-md-6 col-sm-12 col-12">
+        <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Unpaid Salary </h6>
+                        <h6 class="card__sub-title mb-10">Unpaid Salary (<?= $filterLabel ?>) </h6>
                         <h4 class="card__title text-break text-success mb-10"> &#2547; <?= $totalUnpaidSalary ?></h4>
                     </div>
                 </div>
@@ -74,7 +153,7 @@
 
 
         <!-- Today Assigned Tasks -->
-        <div class="col-xxl-4 col-xl-3 col-md-6 col-sm-12 col-12">
+        <div class="d-none col-xxl-4 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -89,7 +168,7 @@
         </div>
 
         <!-- Pending Tasks -->
-        <div class="col-xxl-4 col-xl-3 col-md-6 col-sm-12 col-12">
+        <div class="d-none col-xxl-4 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -104,7 +183,7 @@
         </div>
 
         <!-- Completed Tasks -->
-        <div class="col-xxl-4 col-xl-3 col-md-6 col-sm-12 col-12">
+        <div class="d-none col-xxl-4 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -128,6 +207,7 @@
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Overdue Tasks</h6>
                         <h4 class="card__title text-break text-success mb-10"><?= $overdueTasks ?? 0 ?></h4>
+                        
                     </div>
                 </div>
             </div>
@@ -154,34 +234,34 @@
                             </tr>
                         </thead>
                         <tbody>
-                             <?php
-                                $i = 1;
-                                foreach ($attendances as $row):
+                            <?php
+                            $i = 1;
+                            foreach ($attendances as $row):
 
-                                    $punchIn  = ($row['punch_in_time'] && $row['punch_in_time'] != '0000-00-00 00:00:00')
-                                        ? date('H:i', strtotime($row['punch_in_time'])) : '-';
+                                $punchIn  = ($row['punch_in_time'] && $row['punch_in_time'] != '0000-00-00 00:00:00')
+                                    ? date('H:i', strtotime($row['punch_in_time'])) : '-';
 
-                                    $punchOut = ($row['punch_out_time'] && $row['punch_out_time'] != '0000-00-00 00:00:00')
-                                        ? date('H:i', strtotime($row['punch_out_time'])) : '-';
+                                $punchOut = ($row['punch_out_time'] && $row['punch_out_time'] != '0000-00-00 00:00:00')
+                                    ? date('H:i', strtotime($row['punch_out_time'])) : '-';
 
-                                    $statusClass = match ($row['today_status']) {
-                                        'Present'  => 'bg-success',
-                                        'Leave'    => 'bg-warning text-dark',
-                                        'Half Day' => 'bg-info',
-                                        default    => 'bg-secondary',
-                                    };
-                                ?>
-                                    <tr>
-                                        <td><?= $i++ ?></td>
-                                        <td><strong><?= $row['employee_name'] ?></strong></td>
-                                        <td><strong><?= $row['department_name'] ?? 'N/A' ?></strong></td>
-                                        <td><span class="badge <?= $statusClass ?>"><?= $row['today_status'] ?></span></td>
-                                        <td><?= $punchIn ?></td>
-                                        <td><?= $punchOut ?></td>
-                                        <!-- Actions -->
-                                  
-                                    </tr>
-                                <?php endforeach; ?>
+                                $statusClass = match ($row['today_status']) {
+                                    'Present'  => 'bg-success',
+                                    'Leave'    => 'bg-warning text-dark',
+                                    'Half Day' => 'bg-info',
+                                    default    => 'bg-secondary',
+                                };
+                            ?>
+                                <tr>
+                                    <td><?= $i++ ?></td>
+                                    <td><strong><?= $row['employee_name'] ?></strong></td>
+                                    <td><strong><?= $row['department_name'] ?? 'N/A' ?></strong></td>
+                                    <td><span class="badge <?= $statusClass ?>"><?= $row['today_status'] ?></span></td>
+                                    <td><?= $punchIn ?></td>
+                                    <td><?= $punchOut ?></td>
+                                    <!-- Actions -->
+
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
@@ -458,5 +538,20 @@
             });
         });
 
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        const resetBtn = form.querySelector('button[type="reset"]');
+
+        resetBtn.addEventListener('click', function(e) {
+            e.preventDefault(); // avoid default reset
+            // Clear all inputs
+            form.querySelectorAll('input, select').forEach(function(el) {
+                if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
+                else el.value = ''; // input clear
+            });
+        });
     });
 </script>

@@ -39,6 +39,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                     <!-- Booking Date -->
                     <div class="col-lg-6">
+                        
                         <label class="form-label">Booking Date</label>
                         <input type="date" name="booking_date" class="form-control"
                             value="<?= date('Y-m-d') ?>" required>
@@ -66,7 +67,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                     <!-- Plot / Flat Price -->
                     <div class="col-lg-6">
-                        <label class="form-label">Share Value</label>
+                        <label class="form-label">Total Unit Value</label>
                         <input type="text"
                             class="form-control"
                             id="flatPrice"
@@ -74,9 +75,14 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     </div>
                     <!-- Agreement Value -->
                     <div class="col-lg-6">
-                        <label class="form-label">Agreement Value/Booking Money *</label>
+                        <label class="form-label">Land Share Value/Booking Money *</label>
                         <input type="number" name="agreement_value" class="form-control"
                             placeholder="e.g. 5000000" required>
+                    </div>
+                    <div class="col-lg-6">
+                        <label class="form-label">Discount Amount</label>
+                        <input type="number" name="discount_amount" class="form-control"
+                            placeholder="" required>
                     </div>
 
                     <!-- Status -->

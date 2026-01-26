@@ -204,6 +204,42 @@ class EmpAttentendance extends Model
 
         return $summary;
     }
+    public function getTodayAttendanceSummary($date = null)
+    {
+        // Default: today
+        $date = $date ?? date('Y-m-d');
+
+        $sql = "SELECT 
+                today_status,
+                COUNT(*) AS total
+            FROM emp_attendances
+            WHERE attendance_date = ?
+            GROUP BY today_status";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("s", $date);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $summary = [
+            'Present'   => 0,
+            'Absent'    => 0,
+            'Half-Day'  => 0,
+            'On Leave'  => 0,
+            'Holiday'   => 0,
+            'Day Off'   => 0,
+            'Late'      => 0
+        ];
+
+        while ($row = $result->fetch_assoc()) {
+            $summary[$row['today_status']] = (int)$row['total'];
+        }
+
+        // Total employees today
+        $summary['Total'] = array_sum($summary);
+
+        return $summary;
+    }
 
     //for download pdf
     public function getAllForReport($month = null)

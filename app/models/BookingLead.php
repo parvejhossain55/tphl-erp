@@ -38,6 +38,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                  FROM lead_bookings 
                  WHERE booking_status = 'booked' 
                  AND deleted_at IS NULL";
+        
 
     if ($period) {
         switch ($period) {
@@ -55,6 +56,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 break;
         }
     }
+
+    
 
     $result = $this->db->query($sqlQuery);
     $row = $result->fetch_assoc();

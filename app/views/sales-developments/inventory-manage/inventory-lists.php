@@ -51,7 +51,7 @@ $show_breadcrumb = false;
                 </div>
             </div>
         </div>
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-12">
+        <div class="col-xxl-3 col-xl-3 col-lg-3 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -67,7 +67,23 @@ $show_breadcrumb = false;
                 </div>
             </div>
         </div>
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-12">
+        <div class="col-xxl-3 col-xl-3 col-lg-3 col-12">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon">
+                        <span><i class="fa-solid fa-building"></i>
+                        </span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Flats</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title"><?= $totalFlatCount ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl-3 col-xl-3 col-lg-3 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -84,7 +100,7 @@ $show_breadcrumb = false;
             </div>
         </div>
 
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-12">
+        <div class="col-xxl-3 col-xl-3 col-lg-3 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon">
@@ -142,7 +158,7 @@ $show_breadcrumb = false;
                             <!-- Hidden Flat Rows -->
                             <?php if (!empty($row['flats'])): ?>
                                 <?php foreach ($row['flats'] as $flat): ?>
-                                    <tr class="flat-details-row" id="flats<?= $index ?>" style="display:none; background-color:rgb(253 246 246);">
+                                    <tr class="flat-details-row" id="flats<?= $index ?>" style="display:none; background-color:rgb(251 240 240);">
 
                                         <td class="text-start ps-4 td_1"><strong class="me-1">Flat: </strong><?= htmlspecialchars($flat['flat_name']) ?>; <span><strong class="ms-2">Size:</strong><?= $flat['sqft'] ?> sqft</span></td>
                                         <td><strong class="pe-3">BHK-</strong><span><?= $flat['bhk'] ?></span></td>
