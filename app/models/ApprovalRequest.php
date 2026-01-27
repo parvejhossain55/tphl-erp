@@ -4,6 +4,11 @@ class ApprovalRequest extends Model
 {
     protected $table = 'approval_requests';
 
+    protected $allowedTables = [
+        'lead_bookings',
+        'leave_requests',
+        'salary_requests'
+    ];
     public function create($data)
     {
         $sql = "INSERT INTO {$this->table} 
@@ -40,41 +45,6 @@ class ApprovalRequest extends Model
         return $insertId;
     }
 
-    // public function getPendingForRole($role, $limit = 5)
-    // {
-    //     $sql = "SELECT * FROM {$this->table} 
-    //         WHERE status = ? AND approve_role = ? 
-    //         ORDER BY created_at DESC 
-    //         LIMIT ?";
-
-    //     $stmt = $this->db->prepare($sql);
-    //     if (!$stmt) {
-    //         die("Prepare failed: " . $this->db->error);
-    //     }
-
-    //     $status = 'pending';
-    //     $stmt->bind_param("ssi", $status, $role, $limit);
-    //     $stmt->execute();
-
-    //     $result = $stmt->get_result();
-    //     $data = $result->fetch_all(MYSQLI_ASSOC);
-
-    //     $stmt->close();
-    //     return $data;
-    // }
-    // public function getPending($limit = 5)
-    // {
-    //     $sql = "SELECT * FROM {$this->table}
-    //             WHERE status = 'pending'
-    //             ORDER BY created_at DESC
-    //             LIMIT ?";
-
-    //     $stmt = $this->db->prepare($sql);
-    //     $stmt->bind_param("i", $limit);
-    //     $stmt->execute();
-    //     $result = $stmt->get_result();
-    //     return $result->fetch_all(MYSQLI_ASSOC);
-    // }
 
 
     public function getPendingForRole(array $roles, $limit = 5)
@@ -105,33 +75,97 @@ class ApprovalRequest extends Model
 
     public function updateStatus($id, $status, $approvedAmount = null)
     {
-        // 1. Update approval_requests
         $approvedBy = $_SESSION['user']['id'] ?? null;
 
+        /* ===============================
+       1. Update approval_requests table
+    =============================== */
         $sql = "UPDATE {$this->table}
-            SET status = ?, approved_amount = ?, approved_by = ?, approved_at = NOW()
-            WHERE id = ?";
+        SET status = ?, approved_amount = ?, approved_by = ?, approved_at = NOW()
+        WHERE id = ?";
+
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('siii', $status, $approvedAmount, $approvedBy, $id);
+        $stmt->bind_param('sdii', $status, $approvedAmount, $approvedBy, $id);
         $stmt->execute();
 
-        // 2. Get source info
+        /* ===============================
+       2. Fetch source info
+    =============================== */
         $request = $this->find($id);
-        if ($request && !empty($request['source_table']) && !empty($request['source_id'])) {
-            $sourceTable = $request['source_table'];
-            $sourceId = $request['source_id'];
+        if (!$request || empty($request['source_table']) || empty($request['source_id'])) {
+            return false;
+        }
 
-            $statusMap = [
-                'approved' => 'approved',
-                'partially_approved' => 'pending', // optional
-                'rejected' => 'reject'
-            ];
-            $newStatus = $statusMap[$status] ?? 'pending';
+        $sourceTable = $request['source_table'];
+        $sourceId    = (int) $request['source_id'];
 
-            // 3. Update source table
-            $sql2 = "UPDATE {$sourceTable} SET status = ? WHERE id = ?";
+        /* ===============================
+       3. Validate source table
+    =============================== */
+        if (!in_array($sourceTable, $this->allowedTables, true)) {
+            throw new Exception("Invalid source table: {$sourceTable}");
+        }
+
+        /* ===============================
+       4. Detect columns dynamically
+    =============================== */
+        $columns = [];
+        $result = $this->db->query("SHOW COLUMNS FROM {$sourceTable}");
+        while ($row = $result->fetch_assoc()) {
+            $columns[] = $row['Field'];
+        }
+
+        /* ===============================
+       5. Map approval_requests status → source table approval_status
+    =============================== */
+        // Map approval_requests.status → sourceStatus
+        $sourceStatus = $status;
+
+        if ($status === 'partial' || $status === 'partially_approved') {
+            $sourceStatus = 'partial';
+        } elseif ($status === 'approved') {
+            $sourceStatus = 'approved';
+        } elseif ($status === 'rejected') {
+            $sourceStatus = 'rejected';
+        }
+
+
+        /* ===============================
+       6. Prepare dynamic update for source table
+    =============================== */
+        $updateFields = [];
+        $params = [];
+        $types  = '';
+
+        if (in_array('approval_status', $columns)) {
+            $updateFields[] = "approval_status = ?";
+            $types .= 's';
+            $params[] = $sourceStatus;
+        }
+
+
+        if (in_array('approved_amount', $columns) && $approvedAmount !== null) {
+            $updateFields[] = "approved_amount = ?";
+            $types .= 'd';
+            $params[] = $approvedAmount;
+        }
+
+        if (in_array('approved_leave_days', $columns) && $approvedAmount !== null) {
+            $updateFields[] = "approved_leave_days = ?";
+            $types .= 'd';
+            $params[] = $approvedAmount;
+        }
+
+        /* ===============================
+       7. Execute source table update
+    =============================== */
+        if (!empty($updateFields)) {
+            $sql2 = "UPDATE {$sourceTable} SET " . implode(', ', $updateFields) . " WHERE id = ?";
+            $types .= 'i';
+            $params[] = $sourceId;
+
             $stmt2 = $this->db->prepare($sql2);
-            $stmt2->bind_param('si', $newStatus, $sourceId);
+            $stmt2->bind_param($types, ...$params);
             $stmt2->execute();
         }
 

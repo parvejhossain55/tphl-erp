@@ -33,58 +33,72 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
     //dashboard
     public function getTotalBookings($period = null)
-{
-    $sqlQuery = "SELECT COUNT(*) AS onboarded 
+    {
+        $sqlQuery = "SELECT COUNT(*) AS onboarded 
                  FROM lead_bookings 
                  WHERE booking_status = 'booked' 
                  AND deleted_at IS NULL";
-        
 
-    if ($period) {
-        switch ($period) {
-            case 'daily':
-                $sqlQuery .= " AND DATE(created_at) = CURDATE()";
-                break;
-            case 'weekly':
-                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-                break;
-            case 'monthly':
-                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
-                break;
-            case 'yearly':
-                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
-                break;
+
+        if ($period) {
+            switch ($period) {
+                case 'daily':
+                    $sqlQuery .= " AND DATE(created_at) = CURDATE()";
+                    break;
+                case 'weekly':
+                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    break;
+                case 'monthly':
+                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    break;
+                case 'yearly':
+                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    break;
+            }
         }
+
+
+
+        $result = $this->db->query($sqlQuery);
+        $row = $result->fetch_assoc();
+        return (int)($row['onboarded'] ?? 0);
     }
-
-    
-
-    $result = $this->db->query($sqlQuery);
-    $row = $result->fetch_assoc();
-    return (int)($row['onboarded'] ?? 0);
-}
-
-    // end dashboard
-
 
     // Get a single follow-up by ID
     public function create($data)
     {
-        $stmt = $this->db->prepare("
-    INSERT INTO lead_bookings
-    (lead_id, project_id, flat_id, created_by, agreement_value, booking_date, booking_status)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-");
+        $sql = "
+            INSERT INTO lead_bookings
+            (
+                lead_id,
+                project_id,
+                flat_id,
+                created_by,
+                agreement_value,
+                booking_date,
+                booking_status,
+                discount_amount,
+                approval_status
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            throw new Exception($this->db->error);
+        }
 
         $stmt->bind_param(
-            "iiiidss",
+            "iiiidssss",
             $data['lead_id'],
             $data['project_id'],
             $data['flat_id'],
             $data['created_by'],
             $data['agreement_value'],
             $data['booking_date'],
-            $data['booking_status']
+            $data['booking_status'],
+            $data['discount_amount'],
+            $data['approval_status']
         );
 
         if ($stmt->execute()) {
@@ -240,10 +254,9 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             setError($this->db->error);
             return false;
         }
-          $stmt->execute();
-          $result= $stmt->get_result();
-          return $result->fetch_all(MYSQLI_ASSOC);
-
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
     }
 
     // Delete follow-up by ID

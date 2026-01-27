@@ -7,6 +7,7 @@ class BookingController extends Controller
     protected $bookingModel;
     protected $projectModel;
     protected $flatModel;
+    protected $approvalRequestModel;
 
     public function __construct($db)
     {
@@ -17,6 +18,7 @@ class BookingController extends Controller
         $this->bookingModel = new BookingLead($this->db);
         $this->projectModel = new Project($this->db);
         $this->flatModel = new FlatModel($this->db);
+        $this->approvalRequestModel = new ApprovalRequest($this->db);
     }
 
     // Index page: show leads for follow-up
@@ -72,20 +74,42 @@ class BookingController extends Controller
             exit;
         }
 
+        $discount = $_POST['discount_amount'] ?? 0;
+
         $data = [
             'lead_id' => $_POST['lead_id'],
-            'project_id' => $_POST['project_id'] ?? null,
+            'project_id' => $_POST['project_id'],
             'flat_id' => $flatId,
-            'created_by' => $_SESSION['user']['id'] ?? 1,
-            'agreement_value' => $_POST['agreement_value'] ?? 0,
-            'booking_date' => $_POST['booking_date'] ?? date('Y-m-d'),
-            'booking_status' => $_POST['booking_status'] ?? 'active',
+            'created_by' => $_SESSION['user']['id'],
+            'agreement_value' => $_POST['agreement_value'],
+            'booking_date' => $_POST['booking_date'],
+            'booking_status' => 'booked',
+            'discount_amount' => $discount,
+            'approval_status' => $discount > 0 ? 'pending' : 'not_required',
         ];
 
+        $bookingId = $this->bookingModel->create($data);
 
-        $created = $this->bookingModel->create($data);
 
-        if ($created) {
+        if ($discount > 0) {
+            $this->approvalRequestModel->create([
+                'department'     => 'Sales',
+                'request_type'   => 'discount',
+                'title'          => 'Lead Booking Discount Approval',
+                'source_table'   => 'lead_bookings',
+                'source_id'      => $bookingId,
+                'request_amount' => $discount,
+                'requested_by'  => $_SESSION['user']['id'],
+                'approve_role'  => 'management',
+                'meta_data'     => json_encode([
+                    'lead_id' => $_POST['lead_id'],
+                    'flat_id' => $flatId
+                ])
+            ]);
+        }
+
+
+        if ($bookingId) {
             $leadId = $_POST['lead_id'];
             setSuccess("Lead onboarded successfully!");
             header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");

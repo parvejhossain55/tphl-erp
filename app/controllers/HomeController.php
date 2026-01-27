@@ -276,15 +276,17 @@ class HomeController extends Controller
     }
 
     // Partial approve
-    public function approvePartial($id)
-    {
-        $amount = $_POST['approved_amount'] ?? null;
-        if ($amount) {
-            $this->approvalModel->updateStatus($id, 'partially_approved', $amount);
-        }
-        header("Location: " . $GLOBALS['base_url'] . "/home");
-        exit;
+public function approvePartial($id)
+{
+    $amount = $_POST['approved_amount'] ?? null;
+    if ($amount) {
+        // Change 'partially_approved' → 'partial' to match enum
+        $this->approvalModel->updateStatus($id, 'approved', $amount);
     }
+    header("Location: " . $GLOBALS['base_url'] . "/home");
+    exit;
+}
+
 
     // Reject
     public function reject($id)

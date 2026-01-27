@@ -317,7 +317,7 @@ CREATE TABLE emp_attendances (
 -- https://youtu.be/qM5_UKR-vzk
 --20-1-2026 END added By Farzana For AI Chatbox
 
---25/01/2026
+--26/01/2026
 CREATE TABLE approval_requests (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 
@@ -343,7 +343,15 @@ CREATE TABLE approval_requests (
 );
 
 
---25/01/2026
+--END 26/01/2026
+--START 27/01/2026
+ALTER TABLE lead_bookings
+ADD COLUMN approval_status ENUM('not_required','pending','approved','rejected') 
+DEFAULT 'not_required',
+ADD COLUMN approved_amount DECIMAL(12,2) NULL;
+
+
+
 
 
 -- farzana
