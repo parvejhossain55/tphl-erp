@@ -54,10 +54,6 @@ $routes = [
     // Approval Request Controller
     // Approval Requests
     "approval-requests" => ["controller" => "ApprovalRequestController", "method" => "index"],
-    // "approve-request/(\d+)" => ["controller" => "ApprovalRequestController", "method" => "approveFull"],
-    // "partial-approve-request/(\d+)" => ["controller" => "ApprovalRequestController", "method" => "approvePartial"],
-    // "reject-request/(\d+)" => ["controller" => "ApprovalRequestController", "method" => "reject"],
-    // "show-request/(\d+)" => ["controller" => "ApprovalRequestController", "method" => "show"],
 
     //End Approval Request Controller
 
@@ -132,6 +128,15 @@ $routes = [
     "delete-attendance" => ["controller" => "EmpAttendanceController", "method" => "delete"],
     "download-excel"       => ["controller" => "EmpAttendanceController", "method" => "downloadExcel"],
     "download-pdf"         => ["controller" => "EmpAttendanceController", "method" => "downloadPDF"],
+
+
+    // Employee Leave Controller
+       "leave-lists" => ["controller" => "LeaveController", "method" => "index"],
+       "create-employee-leave" => ["controller" => "LeaveController", "method" => "create"],
+       "store-employee-leave" => ["controller" => "LeaveController", "method" => "store"],
+       "remaining-days" => ["controller" => "LeaveController", "method" => "remainingDays"],
+    // "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
+    // "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
 
     //==================END hrm ========================

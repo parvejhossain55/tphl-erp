@@ -6,14 +6,14 @@ class ApprovalRequest extends Model
 
     protected $allowedTables = [
         'lead_bookings',
-        'leave_requests',
+        'employee_leaves',
         'salary_requests'
     ];
     public function create($data)
     {
         $sql = "INSERT INTO {$this->table} 
-            (department, request_type, title, source_table, source_id, request_amount, requested_by, approve_role, meta_data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            (department, request_type, title, source_table, source_id,requested_days, requested_by, approve_role, meta_data,requested_days)
+            VALUES (?, ?, ?, ?, ?, ?,?, ?, ?, ?)";
 
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
@@ -21,7 +21,7 @@ class ApprovalRequest extends Model
         }
 
         $stmt->bind_param(
-            "ssssiidss",
+            "ssssiidssi",
             $data['department'],
             $data['request_type'],
             $data['title'],
@@ -30,7 +30,8 @@ class ApprovalRequest extends Model
             $data['request_amount'],
             $data['requested_by'],
             $data['approve_role'],
-            $data['meta_data']
+            $data['meta_data'],
+            $data['requested_days'],
         );
 
         $stmt->execute();
@@ -73,7 +74,7 @@ class ApprovalRequest extends Model
 
 
 
-    public function updateStatus($id, $status, $approvedAmount = null)
+    public function updateStatus($id, $status, $approvedAmount = null, $approved_days = null)
     {
         $approvedBy = $_SESSION['user']['id'] ?? null;
 
@@ -81,11 +82,23 @@ class ApprovalRequest extends Model
        1. Update approval_requests table
     =============================== */
         $sql = "UPDATE {$this->table}
-        SET status = ?, approved_amount = ?, approved_by = ?, approved_at = NOW()
-        WHERE id = ?";
+            SET 
+                status = ?, 
+                approved_amount = ?, 
+                approved_days = ?, 
+                approved_by = ?, 
+                approved_at = NOW()
+            WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('sdii', $status, $approvedAmount, $approvedBy, $id);
+        $stmt->bind_param(
+            'sdiii',
+            $status,
+            $approvedAmount,
+            $approved_days,
+            $approvedBy,
+            $id
+        );
         $stmt->execute();
 
         /* ===============================
@@ -116,22 +129,17 @@ class ApprovalRequest extends Model
         }
 
         /* ===============================
-       5. Map approval_requests status → source table approval_status
+       5. Status mapping
     =============================== */
-        // Map approval_requests.status → sourceStatus
-        $sourceStatus = $status;
-
-        if ($status === 'partial' || $status === 'partially_approved') {
-            $sourceStatus = 'partial';
-        } elseif ($status === 'approved') {
-            $sourceStatus = 'approved';
-        } elseif ($status === 'rejected') {
-            $sourceStatus = 'rejected';
-        }
-
+        $sourceStatus = match ($status) {
+            'partial', 'partially_approved' => 'partial',
+            'approved' => 'approved',
+            'rejected' => 'rejected',
+            default => 'pending',
+        };
 
         /* ===============================
-       6. Prepare dynamic update for source table
+       6. Dynamic update
     =============================== */
         $updateFields = [];
         $params = [];
@@ -143,21 +151,20 @@ class ApprovalRequest extends Model
             $params[] = $sourceStatus;
         }
 
-
         if (in_array('approved_amount', $columns) && $approvedAmount !== null) {
             $updateFields[] = "approved_amount = ?";
             $types .= 'd';
             $params[] = $approvedAmount;
         }
 
-        if (in_array('approved_leave_days', $columns) && $approvedAmount !== null) {
-            $updateFields[] = "approved_leave_days = ?";
-            $types .= 'd';
-            $params[] = $approvedAmount;
+        if (in_array('approved_days', $columns) && $approved_days !== null) {
+            $updateFields[] = "approved_days = ?";
+            $types .= 'i';
+            $params[] = $approved_days;
         }
 
         /* ===============================
-       7. Execute source table update
+       7. Execute source update
     =============================== */
         if (!empty($updateFields)) {
             $sql2 = "UPDATE {$sourceTable} SET " . implode(', ', $updateFields) . " WHERE id = ?";
@@ -171,6 +178,9 @@ class ApprovalRequest extends Model
 
         return true;
     }
+
+
+
 
 
 

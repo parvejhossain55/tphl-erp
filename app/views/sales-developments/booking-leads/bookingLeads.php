@@ -153,6 +153,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                         <?php elseif ($or['approval_status'] === 'approved'): ?>
                                             <span class="bd-badge bg-success">Approved</span> 
                                             <span class="bd-badge bg-primary"><?= $or['approved_amount'] ?></span>
+                                        <?php elseif ($or['approval_status'] === 'Partial'): ?>
+                                            <span class="bd-badge bg-success">Partial Approved</span> 
+                                            <span class="bd-badge bg-primary"><?= $or['approved_amount'] ?></span>
                                         <?php elseif ($or['approval_status'] === 'rejected'): ?>
                                             <span class="badge bg-danger">Rejected</span>
                                         <?php else: ?>

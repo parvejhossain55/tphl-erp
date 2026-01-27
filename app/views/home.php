@@ -436,11 +436,7 @@ $show_breadcrumb = false;
                 <div class="card-header_title pt-3 border-bottom-0">
                     <h6 class="mb-3">Latest Approval Requests</h6>
                 </div>
-                <?php
-                // print_r($_SESSION['user']['role_name']);
 
-                // print_r($pendingRequests); 
-                ?>
 
                 <div class="card-body">
                     <?php if (!empty($pendingRequests)): ?>
@@ -456,7 +452,12 @@ $show_breadcrumb = false;
                                 </div>
 
                                 <div class="mb-2">
-                                    <?php if ($req['request_amount']): ?>
+                                    <?php if ($req['source_table'] === 'employee_leaves'):
+                                        $meta = json_decode($req['meta_data'], true);
+                                        $requested_days = $meta['requested_days'] ?? 0;
+                                    ?>
+                                        <strong>Requested Days:</strong> <?= $requested_days ?>
+                                    <?php elseif ($req['request_amount']): ?>
                                         <strong>Requested Amount:</strong> ৳ <?= number_format($req['request_amount'], 2) ?>
                                     <?php endif; ?>
                                 </div>
@@ -475,8 +476,6 @@ $show_breadcrumb = false;
                                         <button class="btn btn-sm btn-danger">Reject</button>
                                     </form>
                                 </div>
-
-
                             </div>
 
                             <!-- Partial Modal -->
@@ -489,17 +488,32 @@ $show_breadcrumb = false;
                                         </div>
                                         <div class="modal-body">
                                             <form method="POST" action="<?= $GLOBALS['base_url'] ?>/partial-approve-request/<?= $req['id'] ?>">
-                                                <div class="mb-3">
-                                                    <label class="form-label">Requested Amount</label>
-                                                    <input type="text" class="form-control" value="৳ <?= number_format($req['request_amount'], 2) ?>" disabled>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Approve Amount</label>
-                                                    <input type="number" class="form-control" name="approved_amount" placeholder="Enter approved amount" required>
-                                                </div>
+                                                <?php if ($req['source_table'] === 'employee_leaves'):
+                                                    $meta = json_decode($req['meta_data'], true);
+                                                    $requested_days = $meta['requested_days'] ?? 0;
+                                                ?>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Requested Days</label>
+                                                        <input type="number" class="form-control" value="<?= $requested_days ?>" disabled>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Approve Days</label>
+                                                        <input type="number" class="form-control" name="approved_days" placeholder="Enter approved days" required max="<?= $requested_days ?>">
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Requested Amount</label>
+                                                        <input type="text" class="form-control" value="৳ <?= number_format($req['request_amount'], 2) ?>" disabled>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Approve Amount</label>
+                                                        <input type="number" class="form-control" name="approved_amount" placeholder="Enter approved amount" required>
+                                                    </div>
+                                                <?php endif; ?>
+
                                                 <div class="modal-footer">
                                                     <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                    <button class="btn btn-success">Approve Payment</button>
+                                                    <button class="btn btn-success">Approve</button>
                                                 </div>
                                             </form>
                                         </div>
@@ -507,12 +521,12 @@ $show_breadcrumb = false;
                                 </div>
                             </div>
 
-
                         <?php endforeach; ?>
                     <?php else: ?>
                         <p class="text-muted">No pending requests</p>
                     <?php endif; ?>
                 </div>
+
             </div>
         </div>
 
