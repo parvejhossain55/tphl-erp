@@ -142,49 +142,6 @@ class LeaveController extends Controller
 
 
 
-    // public function update()
-    // {
-
-    //         $id = $_POST['id'];
-    //         $name = $_POST['name'];
-    //         $department_id = $_POST['department_id'];
-
-    //    $updated = $this->designationModel->update($id, $name, $department_id);
-
-    //         if ($updated) {
-    //             setSuccess("Updated successfully.");
-    //              header("Location: {$GLOBALS['base_url']}/designations");
-    //         } else {
-    //             setError("Update failed!");
-    //         }
-    //         exit;
-
-    // }
-
-
-
-
-    //     public function show()
-    //     {
-    //         $this->view("tasks/view-task", [
-    //             "current_route" => "show-task",
-    //             "active" => "show-task",
-    //             "psge_title" => "Show Task",
-    //             "show_breadcrumb" => true,
-    //         ]);
-    //     }
-
-    //     public function delete()
-    // {
-    //     $id = $_POST['id'] ?? 0;
-
-    //     if ($id && $this->designationModel->delete($id)) {
-    //         header("Location: {$GLOBALS['base_url']}/designations");
-    //         exit;
-    //     } else {
-    //         echo "<h3 style='color:red'>Failed to delete department</h3>";
-    //     }
-    // }
 
 
 

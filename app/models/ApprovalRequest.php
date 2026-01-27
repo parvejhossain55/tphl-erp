@@ -9,42 +9,43 @@ class ApprovalRequest extends Model
         'employee_leaves',
         'salary_requests'
     ];
-    public function create($data)
-    {
-        $sql = "INSERT INTO {$this->table} 
-            (department, request_type, title, source_table, source_id,requested_days, requested_by, approve_role, meta_data,requested_days)
-            VALUES (?, ?, ?, ?, ?, ?,?, ?, ?, ?)";
+public function create($data)
+{
+    $sql = "INSERT INTO {$this->table} 
+        (department, request_type, title, source_table, source_id, requested_days, requested_by, approve_role, meta_data,request_amount)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)";
 
-        $stmt = $this->db->prepare($sql);
-        if (!$stmt) {
-            die("Prepare failed: " . $this->db->error);
-        }
-
-        $stmt->bind_param(
-            "ssssiidssi",
-            $data['department'],
-            $data['request_type'],
-            $data['title'],
-            $data['source_table'],
-            $data['source_id'],
-            $data['request_amount'],
-            $data['requested_by'],
-            $data['approve_role'],
-            $data['meta_data'],
-            $data['requested_days'],
-        );
-
-        $stmt->execute();
-
-        if ($stmt->error) {
-            die("Execute failed: " . $stmt->error);
-        }
-
-        $insertId = $stmt->insert_id;
-        $stmt->close();
-
-        return $insertId;
+    $stmt = $this->db->prepare($sql);
+    if (!$stmt) {
+        die("Prepare failed: " . $this->db->error);
     }
+
+    $stmt->bind_param(
+        "ssssiidssd",
+        $data['department'],
+        $data['request_type'],
+        $data['title'],
+        $data['source_table'],
+        $data['source_id'],
+        $data['requested_days'],
+        $data['requested_by'],
+        $data['approve_role'],
+        $data['meta_data'],
+        $data['request_amount'],
+    );
+
+    $stmt->execute();
+
+    if ($stmt->error) {
+        die("Execute failed: " . $stmt->error);
+    }
+
+    $insertId = $stmt->insert_id;
+    $stmt->close();
+
+    return $insertId;
+}
+
 
 
 

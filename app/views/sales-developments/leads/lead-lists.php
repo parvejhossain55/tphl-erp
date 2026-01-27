@@ -6,7 +6,6 @@ $addPage = true;
 $show_breadcrumb = true;
 ?>
 <div class="d-none flex-wrap justify-content-between align-items-center mb-4">
-
     <h4 class="mb-2 mb-md-0">
         Lead Management
     </h4>
@@ -103,7 +102,6 @@ $show_breadcrumb = true;
                         <button type="submit" class="btn btn-secondary w-100">
                             Search Lead
                         </button>
-
                         <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-success w-100">
                             Reset
                             </a>
