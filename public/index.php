@@ -297,6 +297,8 @@ $routes = [
     // ==================== CLIENT CASH IN ROUTES ====================
 
     "clients-cash-in" => ["controller" => "AccountClientController", "method" => "index"],
+    "get-client-lands" => ["controller" => "AccountClientController","method" => "getClientLands"
+],
     // client's cash in history 
     "clients-cash-in-history" => ["controller" => "AccountClientController", "method" => "indexTwo"],
     "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],
