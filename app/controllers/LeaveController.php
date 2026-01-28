@@ -17,18 +17,16 @@ class LeaveController extends Controller
     }
     public function index()
     {
-        // Get all designations with department names (no pagination)
-        // $designations = $this->designationModel->getAll();
 
 
-        // // Get paginated departments
-        // $departments = $this->deparmentModel->getAll();
         $leaveData = $this->leaveModel->getAll();
+        $leaveCounts = $this->leaveModel->getLeaveCount();
+
         $this->view("hrm/emp-leaves/leave-lists", [
             "current_route"   => "leave-lists",
             "page_title"      => "Leave List",
             "leaveData"    => $leaveData,
-            // "departments"     => $departments,
+            "leaveCounts"     => $leaveCounts,
 
         ]);
     }
@@ -139,12 +137,4 @@ class LeaveController extends Controller
         header("Location: {$GLOBALS['base_url']}/leave-lists");
         exit;
     }
-
-
-
-
-
-
-
-
 }

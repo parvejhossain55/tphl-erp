@@ -20,7 +20,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Leave</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h3 class="card__title">2</h3>
+                        <h3 class="card__title"></h3>
                     </div>
                 </div>
             </div>
@@ -56,6 +56,8 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
+
+
     <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
@@ -85,6 +87,7 @@ $show_breadcrumb = true;
                             <th>Leave Duration</th>
                             <th>Days</th>
                             <th>Approved Days</th>
+                            <th>Remaining Leave</th>
                             <th>Reason</th>
                             <th>Status</th>
                             <th class="d-none">Action</th>
@@ -96,6 +99,8 @@ $show_breadcrumb = true;
                             $start = new DateTime($row['start_date']);
                             $end = new DateTime($row['end_date']);
                             $days = $start->diff($end)->days + 1; 
+                            $remaining_days = $row['total_days'] - $row['approved_days'];
+                         
                         ?>
                             <tr>
                                 <td class="table__leave-name"><?= htmlspecialchars($row['employee_name']) ?></td>
@@ -105,7 +110,7 @@ $show_breadcrumb = true;
                                 <td class="table__leave-approved">
                                     <?= ($row['approved_days'] ?? 0) > 0 ? $row['approved_days'] : 'Not Yet' ?>
                                 </td>
-
+                                <td><?= $remaining_days ?? 0 ?></td>
                                 <td class="table__leave-reason">
                                     <?= htmlspecialchars($row['reason'] ?? 'N/A') ?>
                                 </td>

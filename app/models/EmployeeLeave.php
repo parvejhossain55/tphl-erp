@@ -16,7 +16,7 @@ class EmployeeLeave extends Model
     public function getAll()
     {
         $sql = $this->db->prepare("
-            SELECT el.*, e.full_name AS employee_name, lt.name AS leave_type_name
+            SELECT el.*, e.full_name AS employee_name, lt.name AS leave_type_name,lt.total_days
             FROM employee_leaves el
             JOIN employees e ON el.employee_id = e.id
             JOIN leave_types lt ON el.leave_type_id = lt.id
@@ -151,6 +151,33 @@ public function getRemainingLeave($employee_id, $leave_type_id)
     return $totalDays;
 }
 
+public function getLeaveCount(){
+    $sql = "SELECT approval_status, COUNT(*) as total
+            FROM employee_leaves  GROUP BY approval_status";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $counts = [
+                'pending' => 0,
+                'approved' => 0,
+                'partial' => 0,
+                'rejected' => 0,
+            ];
+while ($row = $result->fetch_assoc()) {
+        $counts[$row['approval_status']] = (int) $row['total'];
+    }
+
+    $stmt->close();
+
+    return $counts;
+
+}
+
+// public function totalLeaveCount(){
+//     $sql = $this->db->prepare("SELECT COUNT(*) FROM ");
+
+// }
 
 
 }

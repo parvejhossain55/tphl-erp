@@ -75,6 +75,7 @@ class HomeController extends Controller
             } else {
                 $leadsPercentChange = round((($totalLeadsCount - $prevCount) / $prevCount) * 100, 2);
             }
+
         } else {
             // lifetime comparison vs previous month
             $currentMonth = date('m');
@@ -143,10 +144,7 @@ class HomeController extends Controller
 
         //end accounts
 
-        //  Onboarded Clients
-        // $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'booked' AND lead_bookings.deleted_at IS NULL";
-        // $onboardedResult = $this->db->query($onboardedQuery);
-        // $totalFlatsBooking = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
+        
         $period = $_GET['period'] ?? null;
         $totalFlatsBooking = $this->bookingModel->getTotalBookings($period);
 
