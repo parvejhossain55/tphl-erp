@@ -39,7 +39,8 @@ public function create($data)
         // 1 Insert payment
         $stmt = $this->db->prepare("
             INSERT INTO lead_payments
-            (booking_id, bank_name, bank_account_no, cheque_no, online_type, payment_type, amount, payment_method, payment_status, payment_date, transaction_ref, total_emi_no, created_by)
+            (booking_id, bank_name, bank_account_no, cheque_no, online_type, payment_type, amount, payment_method, payment_status, payment_date,
+             transaction_ref, total_emi_no, created_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
@@ -72,7 +73,8 @@ public function create($data)
             $sql = "UPDATE flats f
                     JOIN lead_bookings b ON b.flat_id = f.id
                     SET f.is_booked = 1,
-                        f.status = 'booked'
+                        f.status = 'booked',
+                        b.booking_status = 'completed'
                     WHERE b.id = ?";
             $stmt2 = $this->db->prepare($sql);
             $stmt2->bind_param("i", $data['booking_id']);

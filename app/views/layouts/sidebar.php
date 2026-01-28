@@ -125,7 +125,7 @@
                 <?php if (hasPermission("Hr Manage")):  ?>
                     <!--HRM CATEGORY -->
                     <li class="sidebar__menu-category">
-                        <span class="category-name">HR Manage</span>
+                        <span class="category-name">HR & Payroll </span>
                     </li>
 
                     <!-- Sales Dashboard -->
@@ -200,7 +200,7 @@
 
                 <!--Payroll CATEGORY -->
                 <?php if (hasPermission("Payroll Manage")):  ?>
-                    <li class="sidebar__menu-category">
+                    <li class="sidebar__menu-category ">
                         <span class="category-name">Payroll Manage</span>
                     </li>
 

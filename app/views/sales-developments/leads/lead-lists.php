@@ -1,11 +1,11 @@
 <?php
 $page_title = "leads Page";
-$page = 'Leads';
+$page = 'Lead & Booking Management';
 $addPage = 'Add Leads';
 $addPage = true;
 $show_breadcrumb = true;
 ?>
-<div class="d-none flex-wrap justify-content-between align-items-center mb-4">
+<div class="d-none flex-wrap justify-content-between align-items-center mb-3">
     <h4 class="mb-2 mb-md-0">
         Lead Management
     </h4>
@@ -28,7 +28,7 @@ $show_breadcrumb = true;
 
 </div>
 
-<div class="row lead-select">
+<div class="row lead-select align-items-stretch">
 
 
     <form action="" method="get">
@@ -117,7 +117,7 @@ $show_breadcrumb = true;
         </div>
     </form>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-sm-4">
+    <div class="col-xxl-3 col-xl-3 col-lg-3 col-md-3 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -133,7 +133,7 @@ $show_breadcrumb = true;
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-sm-4">
+    <div class="col-xxl-3 col-xl-3 col-lg-3 col-md-3 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -148,7 +148,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-sm-4">
+    <div class="col-xxl-3 col-xl-3 col-lg-3 col-md-3 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -160,6 +160,15 @@ $show_breadcrumb = true;
                         <h4 class="card__title"><?= $totalTodayFollowUps ?></h4>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-3 col-xl-3  col-md-3 col-12">
+        <div class="card__wrapper">
+            <div class="d-flex align-items-center gap-sm">
+                <a href="<?= $GLOBALS['base_url'] ?>/onboarding-clients" class="btn btn-primary w-100 ">
+                           <span class="fw-semibold fs-6">All Onboard Clients</span>
+                            </a>
             </div>
         </div>
     </div>
