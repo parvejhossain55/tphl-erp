@@ -39,7 +39,7 @@ class FlatController extends Controller
 
         //  Filtered flat list
         $flats = $this->flatModel->getAll($search, $selectedProject);
-
+        $totalFlatCount = $this->flatModel->getTotalFlats();
         //  View
         $this->view("sales-developments/flats/flat-lists", [
             "current_route"     => "flat-lists",
@@ -54,6 +54,7 @@ class FlatController extends Controller
             //  IMPORTANT for select & search retain
             "searchTerm"        => $search,
             "selectedProject"   => $selectedProject,
+            "totalFlatCount"   => $totalFlatCount,
         ]);
     }
 
@@ -171,7 +172,7 @@ class FlatController extends Controller
         // Update lead
         try {
             $this->flatModel->update($id, $data);
-            setSuccess("Lead updated successfully!");
+            setSuccess("Flat updated successfully!");
             header("Location: {$GLOBALS['base_url']}/flat-lists");
             exit;
         } catch (Exception $e) {

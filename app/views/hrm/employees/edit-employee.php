@@ -115,7 +115,7 @@
                  <!-- Joining Date -->
                  <div class="col-lg-6">
                      <label> Date Of Birth<span>*</span></label>
-                     <input class="form-control" id="dateofBirth" type="text" readonly name="dob"
+                     <input class="form-control" id="humanFriendlyDates" type="text"  name="dob" readonly
                          value="<?= htmlspecialchars($dobFormatted) ?>">
                  </div>
                  <!-- Joining Date -->

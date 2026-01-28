@@ -13,6 +13,8 @@ CREATE TABLE
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (employee_id) REFERENCES employees (id),
+        ALTER TABLE payment
+
         INDEX idx_employee_id (employee_id)
     ) ENGINE = InnoDB;
 
@@ -494,6 +496,11 @@ CREATE TABLE flat_purchase_rules (
 
 
 
+-- jekono row delete korle o problem nai foraign_key er jonno jamela korbe na
+ALTER TABLE payments
+ADD CONSTRAINT payments_project_id_foreign
+FOREIGN KEY (project_id) REFERENCES projects(id)
+ON DELETE CASCADE;
 
 
 

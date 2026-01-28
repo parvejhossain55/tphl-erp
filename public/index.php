@@ -3,6 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once("../app/helpers/helper.php");
+require_once __DIR__ . '/../vendor/autoload.php';
 // Enable debug
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -11,7 +12,6 @@ $root = dirname(__DIR__);
 $GLOBALS['base_url'] = '/TPHL-ERP';
 
 
-// folder er moddhe o chaile folder kore controller nite parbo abr folder chara o controller
 spl_autoload_register(function ($class) use ($root) {
     $class = str_replace('\\', '/', $class);
 
@@ -19,6 +19,9 @@ spl_autoload_register(function ($class) use ($root) {
         $root . "/app/core/$class.php",
         $root . "/app/models/$class.php",
         $root . "/app/controllers/$class.php",
+        $root . "/app/services/$class.php",
+        $root . "/app/helpers/$class.php",
+        $root . "/app/ai/$class.php"
     ];
 
     foreach ($paths as $file) {
@@ -28,6 +31,7 @@ spl_autoload_register(function ($class) use ($root) {
         }
     }
 });
+
 
 // Load config
 $config = require $root . "/app/config/config.php";
@@ -41,7 +45,17 @@ $routes = [
     ""                 => ["controller" => "LoginController", "method" => "index"],
     "admin-login"           => ["controller" => "LoginController", "method" => "index"],
     "home"                 => ["controller" => "HomeController", "method" => "index"],
+    "approve-request/(\d+)"                 => ["controller" => "HomeController", "method" => "approveFull"],
+    "partial-approve-request/(\d+)"                 => ["controller" => "HomeController", "method" => "approvePartial"],
+    "reject-request/(\d+)"                 => ["controller" => "HomeController", "method" => "reject"],
+    "show-request/(\d+)"                 => ["controller" => "HomeController", "method" => "show"],
     "logout"             => ["controller" => "LoginController", "method" => "logout"],
+
+    // Approval Request Controller
+    // Approval Requests
+    "approval-requests" => ["controller" => "ApprovalRequestController", "method" => "index"],
+
+    //End Approval Request Controller
 
 
     // users
@@ -66,7 +80,7 @@ $routes = [
     "store-role"           => ["controller" => "RoleController", "method" => "store"],
     "get-role"      => ["controller" => "RoleController", "method" => "edit"],
     "update-role"   => ["controller" => "RoleController", "method" => "update"],
-    //hrm
+    //================== hrm ========================
 
     "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
     // Tasks
@@ -104,6 +118,28 @@ $routes = [
     "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
     "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
+    // attendance 
+    "attendance-list" => ["controller" => "EmpAttendanceController", "method" => "index"],
+    "create-attendance" => ["controller" => "EmpAttendanceController", "method" => "create"],
+    "store-attendance" => ["controller" => "EmpAttendanceController", "method" => "store"],
+    "show-attendance/(\d+)" => ["controller" => "EmpAttendanceController", "method" => "show"],
+    "edit-attendance/(\d+)" => ["controller" => "EmpAttendanceController", "method" => "edit"],
+    "update-attendance/(\d+)" => ["controller" => "EmpAttendanceController", "method" => "update"],
+    "delete-attendance" => ["controller" => "EmpAttendanceController", "method" => "delete"],
+    "download-excel"       => ["controller" => "EmpAttendanceController", "method" => "downloadExcel"],
+    "download-pdf"         => ["controller" => "EmpAttendanceController", "method" => "downloadPDF"],
+
+
+    // Employee Leave Controller
+       "leave-lists" => ["controller" => "LeaveController", "method" => "index"],
+       "create-employee-leave" => ["controller" => "LeaveController", "method" => "create"],
+       "store-employee-leave" => ["controller" => "LeaveController", "method" => "store"],
+       "remaining-days" => ["controller" => "LeaveController", "method" => "remainingDays"],
+    // "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
+    // "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
+
+
+    //==================END hrm ========================
     // leads
     "lead-lists" => ["controller" => "LeadController", "method" => "index"],
     "create-lead" => ["controller" => "LeadController", "method" => "create"],
@@ -111,7 +147,9 @@ $routes = [
     "edit-lead/(\d+)" => ["controller" => "LeadController", "method" => "edit"],
     "view-lead/(\d+)" => ["controller" => "LeadController", "method" => "show"],
     "leads-import-csv" => ["controller" => "LeadController", "method" => "importCsv"],
+
     "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
+    "update-last_leadAction/(\d+)" => ["controller" => "LeadController", "method" => "updateLastleadAction"],
     "lead-delete" => ["controller" => "LeadController", "method" => "delete"],
     // leads Source
     "leadSource-lists" => ["controller" => "LeadSourceController", "method" => "index"],
@@ -153,7 +191,7 @@ $routes = [
     "delete-leave-type" => ["controller" => "Leaves\\LeaveTypeController", "method" => "delete"],
 
 
-    // Site controller 
+    //Others Site controller 
     "slider-manage" => ["controller" => "SiteManage\\SliderController", "method" => "index"],
     "store-slider" => ["controller" => "SiteManage\\SliderController", "method" => "store"],
     // "store-leave-type" => ["controller" => "Leaves\\LeaveTypeController","method" => "store" ],
@@ -173,6 +211,13 @@ $routes = [
     "store-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "store"],
     "update-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "update"],
     "delete-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "delete"],
+    //company bank accounts
+    "review-lists" => ["controller" => "ReviewController", "method" => "index"],
+    "create-review" => ["controller" => "ReviewController", "method" => "create"],
+    "store-review" => ["controller" => "ReviewController", "method" => "store"],
+    "edit-review/(\d+)" => ["controller" => "ReviewController", "method" => "edit"],
+    "update-review/(\d+)" => ["controller" => "ReviewController", "method" => "update"],
+    "delete-review" => ["controller" => "ReviewController", "method" => "delete"],
     // ==========SALES & BUISENESS======//
 
     //project
@@ -235,11 +280,12 @@ $routes = [
     "store-payslip-item" => ["controller" => "PayslipItemController", "method" => "store"],
     "update-payslip-item" => ["controller" => "PayslipItemController", "method" => "update"],
     "delete-payslip-item" => ["controller" => "PayslipItemController", "method" => "delete"],
-
-
-
-
     //======payrolls==========//
+
+
+
+    //===== AI ChatBox Generate====//
+    "ai-chatbox" => ["controller" => "Ai\\ChatController", "method" => "handleMessage"],
 
 
     //Rafi Start  Accounts

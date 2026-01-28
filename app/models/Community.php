@@ -37,7 +37,7 @@ public function create($data)
     $stmt = $this->db->prepare(
         "INSERT INTO communities
         (name, status,created_by)
-        VALUES (?, ?)"
+        VALUES (?, ?,?)"
     );
 
 
@@ -62,14 +62,14 @@ $stmt->bind_param(
 public function update($data)
 {
     // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE communities SET name = ?, status = ?,created_by= ?, WHERE id = ?");
+    $stmt = $this->db->prepare("UPDATE communities SET name = ?, status = ?,created_by= ? WHERE id = ?");
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;
     }
 
     $stmt->bind_param(
-        "sii",
+        "siii",
         $data['name'],    
         $data['status'],  
         $data['created_by'],
@@ -101,9 +101,5 @@ public function delete($id)
 
     return true;
 }
-
-
-
-
 
 }

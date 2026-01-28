@@ -116,9 +116,9 @@ class EmployeeController extends Controller
             'make_user'       => $makeUser,
             'password'        => $hashedPassword,
             'created_by'      => $_SESSION['user']['id'] ?? null,
-            'employee_type'      => $_POST['employee_type'] ,
-            'employee_status'    => $_POST['employee_status'] 
-            
+            'employee_type'      => $_POST['employee_type'],
+            'employee_status'    => $_POST['employee_status']
+
         ];
 
         $photoInputName = 'photo';
@@ -126,10 +126,26 @@ class EmployeeController extends Controller
         //  Create Employee (Model returns employee_id)
         $employee_id = $this->employeeModel->create($employeeData, $photoInputName);
 
+
         if (!$employee_id) {
             $_SESSION['error'] = "Employee creation failed!";
             header("Location: {$GLOBALS['base_url']}/create-employee");
             exit;
+        }
+
+        // ============================================
+        // NEW: Insert initial leave balances
+        // ============================================
+        $leaveTypes = $this->db->query("SELECT id, total_days, is_paid FROM leave_types")->fetch_all(MYSQLI_ASSOC);
+
+        $stmtBalance = $this->db->prepare(
+            "INSERT INTO employee_leave_balances (employee_id, leave_type_id, remaining_days) VALUES (?, ?, ?)"
+        );
+
+        foreach ($leaveTypes as $lt) {
+            $remaining = ($lt['is_paid'] == 1) ? $lt['total_days'] : 0; // unpaid leave = 0 or N/A in UI
+            $stmtBalance->bind_param("iii", $employee_id, $lt['id'], $remaining);
+            $stmtBalance->execute();
         }
 
         //  If user account needed
@@ -259,8 +275,8 @@ class EmployeeController extends Controller
             'social_media2'        => trim($_POST['social_media2'] ?? ''),
             'social_media3'        => trim($_POST['social_media3'] ?? ''),
             'created_by'           => $_SESSION['user']['id'] ?? null,
-             'employee_type'      => $_POST['employee_type'] ,
-            'employee_status'    => $_POST['employee_status'] 
+            'employee_type'      => $_POST['employee_type'],
+            'employee_status'    => $_POST['employee_status']
         ];
 
         /* ===============================

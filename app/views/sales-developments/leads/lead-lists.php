@@ -6,7 +6,6 @@ $addPage = true;
 $show_breadcrumb = true;
 ?>
 <div class="d-none flex-wrap justify-content-between align-items-center mb-4">
-
     <h4 class="mb-2 mb-md-0">
         Lead Management
     </h4>
@@ -103,6 +102,9 @@ $show_breadcrumb = true;
                         <button type="submit" class="btn btn-secondary w-100">
                             Search Lead
                         </button>
+                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-success w-100">
+                            Reset
+                            </a>
 
                         <a
                             class="btn btn-primary w-100"
@@ -112,6 +114,7 @@ $show_breadcrumb = true;
                     </div>
                 </div>
             </div>
+
 
         </div>
     </form>
@@ -181,12 +184,12 @@ $show_breadcrumb = true;
                             <!-- <th>Alt Phone</th> -->
                             <th>Email</th>
                             <!-- <th>Source Type</th> -->
-                           
+
                             <th>Follow Up</th>
                             <th>Booking</th>
                             <th>Preferred Project </th>
                             <th class="d-none">Interest On</th>
-                            <th>Action</th>
+                            <th class="text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody class="table__body">
@@ -198,7 +201,7 @@ $show_breadcrumb = true;
                                 <td class="td_1"><?= $lead['lead_name'] ?? '' ?></td>
                                 <td><?= $lead['phone'] ?? '' ?></td>
                                 <td><?= $lead['email'] ?? '' ?></td>
-                               
+
                                 <td>
                                     <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
                                         class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">
@@ -229,20 +232,59 @@ $show_breadcrumb = true;
                                 <td class="d-none"><?= $lead['interest_on'] ?? '' ?></td>
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-10">
-                                        <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>">
+
+                                        <!-- View Button (Existing) -->
+                                        <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>" title="View Lead">
                                             <i class="fa-regular fa-eye"></i>
                                         </a>
-                                        <a class="table__icon edit" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>">
+
+                                        <!-- Edit Button (Existing) -->
+                                        <a class="table__icon edit" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>" title="Edit Lead">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </a>
-                                         <button class="table__icon delete removeBtnCust  "
-                                        data-name="<?= $lead['lead_name'] ?>"
-                                        data-action="lead-delete"
-                                        data-id="<?= $lead['id'] ?>">
+
+                                        <!-- Delete Button (Existing) -->
+                                        <button class="table__icon delete removeBtnCust"
+                                            data-name="<?= $lead['lead_name'] ?>"
+                                            data-action="lead-delete"
+                                            data-id="<?= $lead['id'] ?>"
+                                            title="Delete Lead">
                                             <i class="fa-regular fa-trash"></i>
                                         </button>
+
+                                        <!-- New Last Action Update Button -->
+                                        <form method="POST"
+                                            action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>"
+                                            class="m-0 p-0">
+
+                                            <select name="last_lead_action"
+                                                class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
+                                                onchange="this.form.submit()">
+
+                                                <option value=""> Update action </option>
+                                                <option value="not_called" <?= $lead['last_lead_action'] == 'not_called' ? 'selected' : '' ?>>
+                                                    Not Called
+                                                </option>
+
+                                                <option value="calling" <?= $lead['last_lead_action'] == 'calling' ? 'selected' : '' ?>>
+                                                    Calling
+                                                </option>
+
+                                                <option value="called" <?= $lead['last_lead_action'] == 'called' ? 'selected' : '' ?>>
+                                                    Called
+                                                </option>
+
+                                                <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>
+                                                    Visited
+                                                </option>
+                                            </select>
+
+                                        </form>
+
+
                                     </div>
                                 </td>
+
                             </tr>
                         <?php endforeach ?>
                     </tbody>
@@ -315,4 +357,17 @@ $show_breadcrumb = true;
     document.addEventListener('dragstart', function(e) {
         e.preventDefault();
     });
+
+
+     const form = document.querySelector('form');
+                const resetBtn = form.querySelector('button[type="reset"]');
+
+                resetBtn.addEventListener('click', function(e) {
+                    e.preventDefault(); // avoid default reset
+                    // Clear all inputs
+                    form.querySelectorAll('input, select').forEach(function(el) {
+                        if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
+                        else el.value = ''; // input clear
+                    });
+                });
 </script>

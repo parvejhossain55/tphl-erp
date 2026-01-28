@@ -86,6 +86,32 @@ class Employee extends Model
         return (int)$result['total'];
     }
 
+public function getTotalCountByPeriod($period)
+{
+    switch ($period) {
+        case 'daily':
+            $where = "DATE(created_at) = CURDATE()";
+            break;
+        case 'weekly':
+            $where = "created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+            break;
+        case 'monthly':
+            $where = "created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+            break;
+        case 'yearly':
+            $where = "created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+            break;
+        default:
+            return $this->getTotalCount();
+    }
+
+    $sql = "SELECT COUNT(*) AS total FROM employees WHERE $where";
+    $result = $this->db->query($sql);
+    return (int)$result->fetch_assoc()['total'];
+}
+
+
+
     public function countAll($search = '', $department_id = 'employeePhoto')
     {
         $sql = "SELECT COUNT(*) as total FROM employees WHERE 1";

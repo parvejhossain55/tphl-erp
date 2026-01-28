@@ -19,6 +19,7 @@ $show_breadcrumb = true;
                                 <tr class="table__title">
                                     <th>S/L</th>
                                     <th>Leave Name</th>
+                                    <th>Number Of Days</th>
                                     <th>Status</th>
                                     <th>Action</th>
                                 </tr>
@@ -29,6 +30,7 @@ $show_breadcrumb = true;
                                 <tr>
                                     <td>#<?= $key + 1 ?></td>
                                     <td><?= $type['name'] ?? '' ?></td>
+                                    <td><?= $type['total_days'] ?? 0 ?></td>
                                     <td><?php if ($type['is_active'] == 1): ?>
                                         <span class="bd-badge bg-success">Active</span>
                                     <?php else: ?>
@@ -45,7 +47,8 @@ $show_breadcrumb = true;
                                             data-bs-target="#editLeaveType"
                                             data-id="<?= $type['id'] ?>"
                                             data-name="<?= htmlspecialchars($type['name']) ?>"
-                                            data-status="<?= $type['is_active'] ?>">
+                                            data-status="<?= $type['is_active'] ?>"
+                                            data-total-days="<?= $type['total_days']?>">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </button>
 
@@ -100,6 +103,17 @@ $show_breadcrumb = true;
                                 <div class="col-lg-12">
                                     <div class="from__input-box">
                                         <div class="form__input-title">
+                                            <label for="Leave">Days<span>*</span></label>
+                                        </div>
+                                        <div class="form__input">
+                                            <input class="form-control" name="total_days" id="leave_days" type="number">
+                                        </div>
+                                    </div>
+                                </div>
+                              
+                                <div class="col-lg-12">
+                                    <div class="from__input-box">
+                                        <div class="form__input-title">
                                             <label> Status <span>*</span></label>
                                         </div>
                                         <div class="form__input">
@@ -148,10 +162,20 @@ $show_breadcrumb = true;
                                     <div class="col-lg-12">
                                         <div class="from__input-box">
                                             <div class="form__input-title">
-                                                <label for="edit_leave_type">Department Name <span>*</span></label>
+                                                <label for="edit_leave_type">Leave Type Name <span>*</span></label>
                                             </div>
                                             <div class="form__input">
                                                 <input class="form-control" name="name" id="edit_leave_type" type="text" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label for="edit_total_days">Leave Total Days <span>*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input class="form-control" name="total_days" id="edit_total_days" type="text" required>
                                             </div>
                                         </div>
                                     </div>
@@ -203,10 +227,12 @@ $show_breadcrumb = true;
             const id = button.getAttribute('data-id');
             const name = button.getAttribute('data-name');
             const status = button.getAttribute('data-status');
+            const total_days = button.getAttribute('data-total-days');
 
             // Fill form fields
             document.getElementById('edit_leaveType_id').value = id;
             document.getElementById('edit_leave_type').value = name;
+            document.getElementById('edit_total_days').value = total_days;
            
             if (status === "1") {
                 document.getElementById('editStatusActive').checked = true;

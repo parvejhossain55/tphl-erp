@@ -60,6 +60,7 @@ class Payslip extends Model
             (employee_id, designation_id, payslip_month, total_earning, total_deduction, net_salary, status,created_by)
             VALUES (?, ?, ?, ?, ?, ?, ?,?)
         ");
+        $status = 'pending';
 
         $stmt->bind_param(
             "iisdddsi",
@@ -69,7 +70,7 @@ class Payslip extends Model
             $data['total_earning'],
             $data['total_deduction'],
             $data['net_salary'],
-            $data['status'],
+            $status,
             $data['created_by']
 
         );
@@ -77,6 +78,8 @@ class Payslip extends Model
         $stmt->execute();
         return $this->db->insert_id;
     }
+
+
 
 
 
@@ -180,115 +183,107 @@ class Payslip extends Model
     }
 
 
-    public function getPaidSalarySum()
+    public function getPaidSalarySum($year, $month)
     {
-        // SQL query
-        $query = "SELECT SUM(net_salary) AS total_paid FROM payslips WHERE status = ?";
+        $query = "
+        SELECT SUM(net_salary) AS total_paid
+        FROM payslips
+        WHERE status = ?
+          AND YEAR(payslip_month) = ?
+          AND MONTH(payslip_month) = ?
+    ";
 
-        // Prepare statement
         $stmt = $this->db->prepare($query);
-        if (!$stmt) {
-            echo "Prepare failed: " . $this->db->error;
-            return 0;
-        }
-
-        // Bind parameters (status = 'paid')
         $status = 'paid';
-        $stmt->bind_param("s", $status);
+        $stmt->bind_param("sii", $status, $year, $month);
+        $stmt->execute();
 
-        // Execute
-        if (!$stmt->execute()) {
-            echo "Execute failed: " . $stmt->error;
-            return 0;
-        }
-
-        // Get result
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-
-        // Close statement
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        // Return total paid salary
         return (float) ($row['total_paid'] ?? 0);
     }
 
-    public function getUnpaidSalarySum()
+
+    public function getUnpaidSalarySum($year, $month)
     {
-        $query = "SELECT SUM(net_salary) AS total_unpaid FROM payslips WHERE status = ?";
+        $query = "
+        SELECT SUM(net_salary) AS total_unpaid
+        FROM payslips
+        WHERE status IN ('pending', 'approved')
+          AND YEAR(payslip_month) = ?
+          AND MONTH(payslip_month) = ?
+    ";
+
         $stmt = $this->db->prepare($query);
+        $stmt->bind_param("ii", $year, $month);
+        $stmt->execute();
 
-        if (!$stmt) {
-            echo "prepare Failed:" . $this->db->error;
-        }
-
-        $status = 'pending';
-        $stmt->bind_param('s', $status);
-
-        if (!$stmt->execute()) {
-            echo "Execute failed: " . $stmt->error;
-            return 0;
-        }
-
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        // Return total paid salary
         return (float) ($row['total_unpaid'] ?? 0);
     }
 
 
 
-    public function getAllWithEmployeeFiltered($year = null, $month = null)
-    {
-        $sql = "
+
+public function getAllWithEmployeeFiltered($year = null, $month = null)
+{
+    $sql = "
         SELECT p.*, 
                e.id AS employee_id,
                e.full_name AS employee_name,
                e.photo,
                e.email,
                e.joining_date,
-               d.name AS desgination_name
+               d.name AS desgination_name,
+               ar.approved_at AS approval_time,  -- Add approval time
+               ar.status AS approval_status     -- Optional: approval status
         FROM payslips AS p
         LEFT JOIN employees AS e ON p.employee_id = e.id
         LEFT JOIN designations AS d ON p.designation_id = d.id
+        LEFT JOIN approval_requests AS ar 
+               ON ar.source_table = 'payslips' AND ar.source_id = p.id
+               AND ar.status IN ('approved','partially_approved')  -- Only approved/partial
         WHERE 1
     ";
 
-        $params = [];
-        $types  = "";
+    $params = [];
+    $types  = "";
 
-        if (!empty($year)) {
-            $sql .= " AND YEAR(p.payslip_month) = ?";
-            $params[] = $year;
-            $types .= "i";
-        }
-
-        if (!empty($month)) {
-            $sql .= " AND MONTH(p.payslip_month) = ?";
-            $params[] = $month;
-            $types .= "i";
-        }
-
-        $sql .= " ORDER BY p.id DESC";
-
-        $stmt = $this->db->prepare($sql);
-
-        if (!empty($params)) {
-            $stmt->bind_param($types, ...$params);
-        }
-
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $data = $result->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $data;
+    if (!empty($year)) {
+        $sql .= " AND YEAR(p.payslip_month) = ?";
+        $params[] = $year;
+        $types .= "i";
     }
 
+    if (!empty($month)) {
+        $sql .= " AND MONTH(p.payslip_month) = ?";
+        $params[] = $month;
+        $types .= "i";
+    }
 
- public function getDueEmployeePayslip($month) {
+    $sql .= " ORDER BY p.id DESC";
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    return $data;
+}
+
+
+
+    public function getDueEmployeePayslip($month)
+    {
         $sql = "SELECT e.id, e.full_name, e.employee_id, e.email, e.designation, e.designation_id, e.basic_salary
                 FROM employees e
                 LEFT JOIN payslips p 
@@ -303,12 +298,11 @@ class Payslip extends Model
         $result = $stmt->get_result();
 
         $employees = [];
-        while($row = $result->fetch_assoc()) {
+        while ($row = $result->fetch_assoc()) {
             $employees[] = $row;
         }
 
         $stmt->close();
         return $employees;
     }
-
 }

@@ -73,6 +73,14 @@ class FlatModel extends Model
             'available' => 0
         ];
     }
+
+    public function getTotalFlats(){
+        $sql = $this->db->prepare("SELECT COUNT(*) AS total FROM flats WHERE deleted_at IS NULL");
+        $sql->execute();
+        $result = $sql->get_result()->fetch_assoc();
+        return $result['total'];
+
+    }
     /* =========================
        Create Project
     ========================== */

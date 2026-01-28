@@ -9,28 +9,91 @@ class Lead extends Model
         return parent::__construct($db);
     }
 
-    public function getAll()
+    public function getAll($period = null)
     {
-        $sql = $this->db->prepare("
-       SELECT 
+        // Base query
+        $sqlQuery = "
+        SELECT 
             l.*,
             u.id AS assigned_id,
             u.full_name AS agent_name
         FROM leads AS l
         LEFT JOIN users AS u ON l.assigned_id = u.id
         WHERE l.status = 'active'
-        AND l.deleted_at IS NULL;
+        AND l.deleted_at IS NULL
+    ";
 
-
-    ");
-        $sql->execute();
-        if (!$sql->execute()) {
-            return [];
+        // Add period filter
+        if ($period) {
+            switch ($period) {
+                case 'daily':
+                    $sqlQuery .= " AND DATE(l.created_at) = CURDATE()";
+                    break;
+                case 'weekly':
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    break;
+                case 'monthly':
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    break;
+                case 'yearly':
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    break;
+            }
         }
 
-        $result = $sql->get_result();
+        $stmt = $this->db->prepare($sqlQuery);
+        $stmt->execute();
+        $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+    public function getAllByDate($period, $previous = false)
+{
+    $sqlQuery = "
+        SELECT l.* FROM leads AS l
+        WHERE l.status = 'active' AND l.deleted_at IS NULL
+    ";
+
+    $today = date('Y-m-d');
+
+    if ($period) {
+        switch ($period) {
+            case 'daily':
+                $date = $previous ? date('Y-m-d', strtotime('-1 day')) : $today;
+                $sqlQuery .= " AND DATE(l.created_at) = '$date'";
+                break;
+            case 'weekly':
+                if ($previous) {
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                } else {
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                }
+                break;
+            case 'monthly':
+                if ($previous) {
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                } else {
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                }
+                break;
+            case 'yearly':
+                if ($previous) {
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 2 YEAR) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                } else {
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                }
+                break;
+        }
+    }
+
+    $stmt = $this->db->prepare($sqlQuery);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
+
+
+
     public function getAllWithFilter($year = null, $month = null)
     {
         $sql = "
@@ -75,6 +138,43 @@ class Lead extends Model
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+
+
+public function getVisitedLeadCount($period = null)
+{
+    $sqlQuery = "
+        SELECT COUNT(*) AS total_visited
+        FROM leads
+        WHERE status = 'active'
+        AND deleted_at IS NULL
+        AND last_lead_action = 'visited'
+    ";
+
+    // Add period filter
+    if ($period) {
+        switch ($period) {
+            case 'daily':
+                $sqlQuery .= " AND DATE(created_at) = CURDATE()";
+                break;
+            case 'weekly':
+                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                break;
+            case 'monthly':
+                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                break;
+            case 'yearly':
+                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                break;
+        }
+    }
+
+    $stmt = $this->db->prepare($sqlQuery);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+
+    return (int)($result['total_visited'] ?? 0);
+}
+
 
 
 
@@ -201,7 +301,7 @@ class Lead extends Model
         if (!$old) {
             return false;
         }
-
+        $nomi_dob = !empty($data['nomi_dob']) ? $data['nomi_dob'] : null;
         // ======================
         // Image Upload (fallback old)
         // ======================
@@ -262,7 +362,7 @@ class Lead extends Model
             $data['nomi_father_name'],
             $data['nomi_mother_name'],
             $data['nomi_profession'],
-            $data['nomi_dob'],
+            $nomi_dob,
             $data['nomi_phone'],
             $data['nomi_email'],
             $data['nomi_nid_passport'],
@@ -303,6 +403,26 @@ class Lead extends Model
     //     $stmt->bind_param("i", $id);
     //     return $stmt->execute();
     // }
+
+    public function updateLastLeadAction($leadId, $lastAction)
+    {
+        $allowedActions = ['not_called', 'calling', 'called', 'visited'];
+
+        if (!in_array($lastAction, $allowedActions)) {
+            return false;
+        }
+
+        $sql = "UPDATE leads 
+            SET last_lead_action = ?, 
+                updated_at = NOW()
+            WHERE id = ?";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("si", $lastAction, $leadId);
+
+        return $stmt->execute();
+    }
+
 
 
     public function softDelete($leadId)
