@@ -8,24 +8,6 @@ $show_breadcrumb = true;
 $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
 ?>
 
-<style>
-    @media(max-width: 575px) {
-        .card__title {
-            font-size: 24px;
-            line-height: 1.4;
-        }
-
-        .mt-30 {
-            margin-top: 10px;
-        }
-
-        .btn {
-
-            padding: 6px 12px;
-        }
-    }
-</style>
-
 <div class="row">
     <div class="col-xxl-12">
         <div class="card__wrapper">
@@ -200,77 +182,9 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
     document.addEventListener('DOMContentLoaded', function() {
         const paymentType = document.getElementById('paymentType');
         const paymentMethod = document.getElementById('paymentMethod');
-        const emiFields = document.querySelectorAll('.emi-fields');
-        const bankFields = document.querySelectorAll('.bank-fields');
-        const chequeFields = document.querySelectorAll('.cheque-fields');
-        const onlineFields = document.querySelectorAll('.online-fields');
-
-        // Show/hide EMI fields
-        if (isEMI) {
-            emiFields.forEach(field => field.style.display = 'block');
-        } else {
-            emiFields.forEach(field => field.style.display = 'none');
-            dueEmiAmountField.value = ''; // optional: clear value when EMI not selected
-        }
-
-
-        // Show/hide payment method specific fields
-        paymentMethod.addEventListener('change', function() {
-            const method = this.value;
-
-            // Hide all fields first
-            bankFields.forEach(field => field.style.display = 'none');
-            chequeFields.forEach(field => field.style.display = 'none');
-            onlineFields.forEach(field => field.style.display = 'none');
-
-            // Remove required attributes
-            bankFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
-            chequeFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
-            onlineFields.forEach(field => field.querySelector('select')?.removeAttribute('required'));
-
-            // Show relevant fields
-            if (method === 'bank') {
-                bankFields.forEach(field => {
-                    field.style.display = 'block';
-                    field.querySelector('input')?.setAttribute('required', 'required');
-                });
-            } else if (method === 'cheque') {
-                bankFields.forEach(field => {
-                    field.style.display = 'block';
-                    field.querySelector('input')?.setAttribute('required', 'required');
-                });
-                chequeFields.forEach(field => {
-                    field.style.display = 'block';
-                    field.querySelector('input')?.setAttribute('required', 'required');
-                });
-            } else if (method === 'online') {
-                onlineFields.forEach(field => {
-                    field.style.display = 'block';
-                    field.querySelector('select')?.setAttribute('required', 'required');
-                });
-            }
-        });
-
-        // Form validation
-        document.getElementById('transactionForm').addEventListener('submit', function(e) {
-            const paymentType = document.getElementById('paymentType').value;
-            const amount = parseFloat(document.getElementById('amount').value) || 0;
-            const dueAmount = parseFloat(document.getElementById('dueEmiAmount').value) || '';
-
-
-        });
-    });
-
-
-    // Add this script to both add-transaction.php and edit-transaction.php
-    // Place it inside the existing <script> tag or merge with existing DOMContentLoaded
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const paymentType = document.getElementById('paymentType');
-        const paymentMethod = document.getElementById('paymentMethod');
         const dueEmiAmountField = document.getElementById('dueEmiAmount');
         const paymentStatusSelect = document.querySelector('select[name="payment_status"]');
-        const amountField = document.getElementById('amount') || document.getElementById('amountField');
+        const amountField = document.getElementById('amount');
 
         const emiFields = document.querySelectorAll('.emi-fields');
         const bankFields = document.querySelectorAll('.bank-fields');
@@ -279,7 +193,7 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
 
         // Function to control Partially Paid status
         function controlPartiallyPaidStatus() {
-            const paymentTypeValue = paymentType ? paymentType.value : document.querySelector('input[name="payment_type"]')?.value;
+            const paymentTypeValue = paymentType ? paymentType.value : '';
             const dueAmount = parseFloat(dueEmiAmountField?.value) || 0;
             const partiallyPaidOption = paymentStatusSelect.querySelector('option[value="partially_paid"]');
 
@@ -315,15 +229,14 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
             paymentType.addEventListener('change', function() {
                 const isEMI = this.value === 'emi';
 
-                emiFields.forEach(field => field.style.display = isEMI ? 'block' : 'none');
-
                 if (isEMI) {
                     emiFields.forEach(field => field.style.display = 'block');
                 } else {
                     emiFields.forEach(field => field.style.display = 'none');
-                    dueEmiAmountField.value = ''; // optional: clear value when EMI not selected
+                    if (dueEmiAmountField) {
+                        dueEmiAmountField.value = '';
+                    }
                 }
-
 
                 // Control partially paid status when payment type changes
                 controlPartiallyPaidStatus();
@@ -384,7 +297,7 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
         const transactionForm = document.getElementById('transactionForm');
         if (transactionForm) {
             transactionForm.addEventListener('submit', function(e) {
-                const paymentTypeValue = paymentType ? paymentType.value : document.querySelector('input[name="payment_type"]')?.value;
+                const paymentTypeValue = paymentType ? paymentType.value : '';
                 const amount = parseFloat(amountField?.value) || 0;
                 const dueAmount = parseFloat(dueEmiAmountField?.value) || 0;
                 const paymentStatus = paymentStatusSelect.value;
@@ -395,7 +308,9 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
                     if (paymentStatus === 'partially_paid' && (!dueAmount || dueAmount <= 0)) {
                         e.preventDefault();
                         alert('Partially Paid status requires a due amount greater than 0.');
-                        dueEmiAmountField?.focus();
+                        if (dueEmiAmountField) {
+                            dueEmiAmountField.focus();
+                        }
                         return false;
                     }
 
@@ -411,3 +326,21 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
         controlPartiallyPaidStatus();
     });
 </script>
+
+<style>
+    @media(max-width: 575px) {
+        .card__title {
+            font-size: 24px;
+            line-height: 1.4;
+        }
+
+        .mt-30 {
+            margin-top: 10px;
+        }
+
+        .btn {
+
+            padding: 6px 12px;
+        }
+    }
+</style>

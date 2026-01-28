@@ -12,10 +12,10 @@ class AccountClientController extends Controller
 
     public function index()
     {
-        // Get all clients (booked leads with their details)
+        // Get all clients (unique leads)
         $clients = $this->clientModel->getAllClients();
 
-        // Get payment statistics for each client
+        // Get payment statistics
         $paymentStats = $this->clientModel->getPaymentStatistics();
 
         if (session_status() === PHP_SESSION_NONE) {
@@ -30,60 +30,82 @@ class AccountClientController extends Controller
         ]);
     }
 
-public function indexTwo($bookingId = null)
-{
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-
-    // Get booking_id from URL parameter or query string
-    if (!$bookingId) {
-        $bookingId = $_GET['booking_id'] ?? null;
-    }
-
-    if (!$bookingId) {
-        setError("No booking ID provided");
-        header("Location: {$GLOBALS['base_url']}/clients-cash-in");
-        exit;
-    }
-
-    // Get client details
-    $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
-
-    if (!$clientDetails) {
-        setError("Client not found");
-        header("Location: {$GLOBALS['base_url']}/clients-cash-in");
-        exit;
-    }
-
-    // Get transaction history for this booking (WITHOUT automatic booking money)
-    $transactions = $this->clientModel->getTransactionsByBookingId($bookingId);
-    
-    // Filter out any automatically generated booking money transactions
-    // Only keep actual payment records from lead_payments table
-    $filteredTransactions = array_filter($transactions, function($transaction) {
-        // Remove the auto-generated booking transaction (the one with 'booking-' prefix in ID)
-        if (isset($transaction['id']) && is_string($transaction['id']) && strpos($transaction['id'], 'booking-') === 0) {
-            return false;
+ public function indexTwo($bookingId = null)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
         }
-        return true;
-    });
-    
-    // Re-index the array to have sequential keys
-    $transactions = array_values($filteredTransactions);
 
-    // Get payment summary statistics
-    $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+        // Get booking_id from URL parameter or query string
+        if (!$bookingId) {
+            $bookingId = $_GET['booking_id'] ?? null;
+        }
 
-    $this->view("accounts/cashIn/clients-cash-in-history", [
-        "current_route" => "clients-cash-in-history",
-        "page_title" => "Transaction History - " . $clientDetails['client_name'],
-        "clientDetails" => $clientDetails,
-        "transactions" => $transactions,
-        "paymentSummary" => $paymentSummary
-    ]);
-}
+        if (!$bookingId) {
+            setError("No land share ID provided");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
 
+        // Get client details
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+
+        if (!$clientDetails) {
+            setError("Land share not found");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
+
+        // Get transaction history for this booking
+        $transactions = $this->clientModel->getTransactionsByBookingId($bookingId);
+        
+        // Filter out any automatically generated booking money transactions
+        $filteredTransactions = array_filter($transactions, function($transaction) {
+            if (isset($transaction['id']) && is_string($transaction['id']) && strpos($transaction['id'], 'booking-') === 0) {
+                return false;
+            }
+            return true;
+        });
+        
+        // Re-index the array
+        $transactions = array_values($filteredTransactions);
+
+        // Get payment summary statistics (now includes service fee)
+        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+
+        $this->view("accounts/cashIn/clients-cash-in-history", [
+            "current_route" => "clients-cash-in-history",
+            "page_title" => "Transaction History - " . $clientDetails['client_name'],
+            "clientDetails" => $clientDetails,
+            "transactions" => $transactions,
+            "paymentSummary" => $paymentSummary
+        ]);
+    }
+
+ public function getClientLands($leadId = null)
+    {
+        if (!$leadId) {
+            $leadId = $_GET['lead_id'] ?? null;
+        }
+
+        if (!$leadId) {
+            echo json_encode(['success' => false, 'message' => 'No lead ID provided']);
+            exit;
+        }
+
+        // Get client details
+        $clientDetails = $this->clientModel->getClientByLeadId($leadId);
+        
+        // Get client's lands/projects
+        $lands = $this->clientModel->getLandsByLeadId($leadId);
+
+        echo json_encode([
+            'success' => true,
+            'client' => $clientDetails,
+            'lands' => $lands
+        ]);
+        exit;
+    }
 
     public function indexView()
     {
