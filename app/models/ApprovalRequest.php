@@ -7,7 +7,8 @@ class ApprovalRequest extends Model
     protected $allowedTables = [
         'lead_bookings',
         'employee_leaves',
-        'salary_requests'
+        'salary_requests',
+        'cashout_requests'
     ];
 public function create($data)
 {

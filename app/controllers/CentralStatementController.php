@@ -16,96 +16,134 @@ class CentralStatementController extends Controller
     /**
      * Main index - Show central statement page
      */
-/**
- * Main index - Show central statement page
- */
-public function index()
-{
-    // Check if this is a print request
-    $isPrint = isset($_GET['print']) && $_GET['print'] == 'true';
+    public function index()
+    {
+        // Check if this is a print request
+        $isPrint = isset($_GET['print']) && $_GET['print'] == 'true';
 
-    // If it's a print request, use the print method
-    if ($isPrint) {
-        $this->printStatement();
-        return;
-    }
+        // If it's a print request, use the print method
+        if ($isPrint) {
+            $this->printStatement();
+            return;
+        }
 
-    // Get period type from query params with proper defaults
-    $periodType = $_GET['period_type'] ?? 'monthly';
-    $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
-    $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
-    $startDate = $_GET['start_date'] ?? null;
-    $endDate = $_GET['end_date'] ?? null;
+        // Get filters from query params with proper defaults
+        $periodType = $_GET['period_type'] ?? 'monthly';
+        $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+        $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+        $startDate = $_GET['start_date'] ?? null;
+        $endDate = $_GET['end_date'] ?? null;
+        $projectId = $_GET['project_id'] ?? null;
+        $category = $_GET['category'] ?? 'all';
 
-    // Debug log
-    error_log("Central Statement Index - Period Type: $periodType, Year: $year, Month: $month");
+        // Card period filter
+        $cardPeriod = $_GET['card_period'] ?? 'all_time';
+        $cardYear = isset($_GET['card_year']) ? (int)$_GET['card_year'] : (int)date('Y');
+        $cardMonth = isset($_GET['card_month']) ? (int)$_GET['card_month'] : (int)date('m');
+        $cardStartDate = $_GET['card_start_date'] ?? null;
+        $cardEndDate = $_GET['card_end_date'] ?? null;
 
-    // Get statement data based on period type
-    $statementData = null;
-    $periodText = '';
+        // Debug log
+        error_log("Central Statement Index - Period Type: $periodType, Year: $year, Month: $month");
 
-    switch ($periodType) {
-        case 'monthly':
-            $statementData = $this->statementModel->getMonthlyStatement($year, $month);
-            $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $month) . "-01"));
-            break;
+        // Get statement data based on period type
+        $statementData = null;
+        $periodText = '';
 
-        case '6months':
-            $statementData = $this->statementModel->getSixMonthStatement($year, $month);
-            $periodText = 'Last 6 Months';
-            break;
+        switch ($periodType) {
+            case 'monthly':
+                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
+                $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $month) . "-01"));
+                break;
 
-        case 'yearly':
-            $statementData = $this->statementModel->getYearlyStatement($year);
-            $periodText = "Year $year";
-            break;
+            case '6months':
+                $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
+                $periodText = 'Last 6 Months';
+                break;
 
-        case 'custom':
-            if ($startDate && $endDate) {
-                $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate);
-                $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
-            } else {
-                // Default to current month if dates not provided
+            case 'yearly':
+                $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
+                $periodText = "Year $year";
+                break;
+
+            case 'custom':
+                if ($startDate && $endDate) {
+                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
+                    $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
+                } else {
+                    // Default to current month if dates not provided
+                    $year = (int)date('Y');
+                    $month = (int)date('m');
+                    $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
+                    $periodText = date('F Y');
+                    $periodType = 'monthly';
+                }
+                break;
+
+            default:
                 $year = (int)date('Y');
                 $month = (int)date('m');
-                $statementData = $this->statementModel->getMonthlyStatement($year, $month);
+                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
                 $periodText = date('F Y');
                 $periodType = 'monthly';
-            }
-            break;
+        }
 
-        default:
-            $year = (int)date('Y');
-            $month = (int)date('m');
-            $statementData = $this->statementModel->getMonthlyStatement($year, $month);
-            $periodText = date('F Y');
-            $periodType = 'monthly';
+        // Get projects for dropdown
+        $projects = $this->getProjects();
+
+        // Get overall statistics with card period filter
+        $overallStats = $this->statementModel->getOverallStatistics(
+            $cardPeriod,
+            $cardYear,
+            $cardMonth,
+            $cardStartDate,
+            $cardEndDate
+        );
+
+        // Prepare view data
+        $viewData = [
+            'current_route' => 'central-statement',
+            'page_title' => 'Central Financial Statement',
+            'period_type' => $periodType,
+            'period_text' => $periodText,
+            'year' => $year,
+            'month' => sprintf('%02d', $month),
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'project_id' => $projectId,
+            'category' => $category,
+            'projects' => $projects,
+            'statement_data' => $statementData,
+            'overall_stats' => $overallStats,
+            'card_period' => $cardPeriod,
+            'card_year' => $cardYear,
+            'card_month' => sprintf('%02d', $cardMonth),
+            'card_start_date' => $cardStartDate,
+            'card_end_date' => $cardEndDate
+        ];
+
+        $this->view('accounts/central-statement', $viewData);
     }
 
-    // Get overall statistics
-    $overallStats = $this->statementModel->getOverallStatistics();
+    /**
+     * Get projects list
+     */
+    private function getProjects()
+    {
+        $query = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
+        $result = $this->db->query($query);
+        $projects = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $projects[] = $row;
+            }
+        }
+        return $projects;
+    }
 
-    // Prepare view data
-    $viewData = [
-        'current_route' => 'central-statement',
-        'page_title' => 'Central Financial Statement',
-        'period_type' => $periodType,
-        'period_text' => $periodText,
-        'year' => $year,
-        'month' => sprintf('%02d', $month), // Ensure 2-digit format
-        'start_date' => $startDate,
-        'end_date' => $endDate,
-        'statement_data' => $statementData,
-        'overall_stats' => $overallStats
-    ];
-
-    // Debug log
-    error_log("View Data - Year: " . $viewData['year'] . ", Month: " . $viewData['month']);
-    error_log("Statement Data Keys: " . json_encode(array_keys($statementData ?? [])));
-
-    $this->view('accounts/central-statement', $viewData);
-}
-
+    /**
+     * Print statement - separate method for print view
+     */
     /**
      * Print statement - separate method for print view
      */
@@ -117,6 +155,8 @@ public function index()
         $month = $_GET['month'] ?? date('m');
         $startDate = $_GET['start_date'] ?? null;
         $endDate = $_GET['end_date'] ?? null;
+        $projectId = $_GET['project_id'] ?? null;
+        $category = $_GET['category'] ?? 'all';
 
         // Get statement data based on period type
         $statementData = null;
@@ -124,46 +164,65 @@ public function index()
 
         switch ($periodType) {
             case 'monthly':
-                $statementData = $this->statementModel->getMonthlyStatement($year, $month);
+                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
                 $periodText = date('F Y', strtotime("$year-$month-01"));
                 break;
 
             case '6months':
-                $statementData = $this->statementModel->getSixMonthStatement($year, $month);
+                $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
                 $periodText = 'Last 6 Months';
                 break;
 
             case 'yearly':
-                $statementData = $this->statementModel->getYearlyStatement($year);
+                $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
                 $periodText = "Year $year";
                 break;
 
             case 'custom':
                 if ($startDate && $endDate) {
-                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate);
+                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
                     $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
                 } else {
                     // Default to current month if dates not provided
-                    $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'));
+                    $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
                     $periodText = date('F Y');
                     $periodType = 'monthly';
                 }
                 break;
 
             default:
-                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'));
+                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
                 $periodText = date('F Y');
                 $periodType = 'monthly';
         }
 
-        // Get overall statistics
-        $overallStats = $this->statementModel->getOverallStatistics();
+        // Get overall statistics for print (all time) WITH PROJECT AND CATEGORY FILTERS
+        $overallStats = $this->statementModel->getOverallStatistics('all_time', null, null, null, null, $projectId, $category);
 
         // Company information
         $company_name = "THE PREMIUM HOMES LTD.";
         $company_address = "Land View Commercial Center, 9th Floor 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
         $company_phone = "+8801958253300";
         $company_email = "info@thepremiumhomes.com";
+
+        // Get project name if filtered
+        $projectName = '';
+        if ($projectId) {
+            $query = "SELECT name FROM projects WHERE id = ?";
+            $stmt = $this->db->prepare($query);
+            $stmt->bind_param("i", $projectId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($row = $result->fetch_assoc()) {
+                $projectName = $row['name'];
+            }
+        }
+
+        // Get category name
+        $categoryName = '';
+        if ($category !== 'all') {
+            $categoryName = ucfirst($category);
+        }
 
         // Render the print view directly
 ?>
@@ -174,9 +233,9 @@ public function index()
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Central Financial Statement</title>
-           
-           
-           <style>
+
+
+            <style>
                 @page {
                     size: A4;
                     margin: 15mm;
@@ -227,7 +286,7 @@ public function index()
                     text-align: center;
                     margin-bottom: 12mm;
                     border-bottom: 1mm solid #000;
-                    
+
                 }
 
                 .company-name {
@@ -397,7 +456,7 @@ public function index()
                 }
 
                 /* Colors for cash in/out */
-                .cash-in {
+                .revenue {
                     color: #28a745;
                 }
 
@@ -408,9 +467,16 @@ public function index()
                 .net-balance {
                     color: #007bff;
                 }
+
+                .filter-info {
+                    font-size: 9pt;
+                    margin-bottom: 4mm;
+                    text-align: center;
+                    font-style: italic;
+                }
             </style>
 
-            
+
         </head>
 
         <body>
@@ -440,18 +506,32 @@ public function index()
                 </div>
             </div>
 
+            <!-- Filter Information -->
+            <?php if ($projectName || $categoryName): ?>
+                <div class="filter-info">
+                    <?php if ($projectName): ?>
+                        <strong>Project:</strong> <?= htmlspecialchars($projectName) ?>
+                    <?php endif; ?>
+                    <?php if ($categoryName): ?>
+                        <?php if ($projectName): ?> | <?php endif; ?>
+                        <strong>Category:</strong> <?= htmlspecialchars($categoryName) ?>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
             <!-- Statistics -->
             <div class="stats-container">
                 <div class="stat-box">
-                    <div class="stat-label">Total Cash In (All Time)</div>
-                    <div class="stat-value cash-in">৳<?= number_format($overallStats['total_cash_in'] ?? 0, 2) ?></div>
+                    <div class="stat-label">Total Revenue</div>
+                    <div class="stat-value revenue">৳<?= number_format($overallStats['total_revenue'] ?? 0, 2) ?></div>
+
                 </div>
                 <div class="stat-box">
-                    <div class="stat-label">Total Cash Out (All Time)</div>
+                    <div class="stat-label">Total Cash Out</div>
                     <div class="stat-value cash-out">৳<?= number_format($overallStats['total_cash_out'] ?? 0, 2) ?></div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-label">Overall Net Balance</div>
+                    <div class="stat-label">Net Balance</div>
                     <div class="stat-value net-balance">৳<?= number_format($overallStats['net_balance'] ?? 0, 2) ?></div>
                 </div>
             </div>
@@ -468,7 +548,9 @@ public function index()
                         <tr>
                             <th>Date</th>
                             <th>Day</th>
-                            <th class="text-right">Cash In (৳)</th>
+                            <th class="text-right">Landshare (৳)</th>
+                            <th class="text-right">Service Fee (৳)</th>
+                            <th class="text-right">Total Revenue (৳)</th>
                             <th class="text-right">Cash Out (৳)</th>
                             <th class="text-right">Net Amount (৳)</th>
                             <th class="text-right">Running Balance (৳)</th>
@@ -490,7 +572,9 @@ public function index()
                         <tr>
                             <th>Date</th>
                             <th>Day</th>
-                            <th class="text-right">Cash In (৳)</th>
+                            <th class="text-right">Landshare (৳)</th>
+                            <th class="text-right">Service Fee (৳)</th>
+                            <th class="text-right">Total Revenue (৳)</th>
                             <th class="text-right">Cash Out (৳)</th>
                             <th class="text-right">Net Amount (৳)</th>
                             <th class="text-right">Running Balance (৳)</th>
@@ -502,7 +586,9 @@ public function index()
                     <tr class="avoid-break">
                         <td><?= htmlspecialchars($row['formatted_date']) ?></td>
                         <td><?= htmlspecialchars($row['day_name']) ?></td>
-                        <td class="text-right cash-in"><?= number_format($row['cash_in'], 2) ?></td>
+                        <td class="text-right revenue"><?= number_format($row['landshare'], 2) ?></td>
+                        <td class="text-right revenue"><?= number_format($row['service_fee'], 2) ?></td>
+                        <td class="text-right revenue"><?= number_format($row['total_revenue'], 2) ?></td>
                         <td class="text-right cash-out"><?= number_format($row['cash_out'], 2) ?></td>
                         <td class="text-right"><?= number_format($row['net_amount'], 2) ?></td>
                         <td class="text-right"><?= number_format($row['running_balance'], 2) ?></td>
@@ -515,7 +601,9 @@ public function index()
                     <thead>
                         <tr>
                             <th>Month</th>
-                            <th class="text-right">Cash In (৳)</th>
+                            <th class="text-right">Landshare (৳)</th>
+                            <th class="text-right">Service Fee (৳)</th>
+                            <th class="text-right">Total Revenue (৳)</th>
                             <th class="text-right">Cash Out (৳)</th>
                             <th class="text-right">Net Amount (৳)</th>
                             <th class="text-right">Running Balance (৳)</th>
@@ -525,7 +613,9 @@ public function index()
                         <?php foreach ($statementData['monthly_data'] as $row): ?>
                             <tr>
                                 <td><?= htmlspecialchars($row['month']) ?></td>
-                                <td class="text-right cash-in"><?= number_format($row['cash_in'], 2) ?></td>
+                                <td class="text-right revenue"><?= number_format($row['landshare'], 2) ?></td>
+                                <td class="text-right revenue"><?= number_format($row['service_fee'], 2) ?></td>
+                                <td class="text-right revenue"><?= number_format($row['total_revenue'], 2) ?></td>
                                 <td class="text-right cash-out"><?= number_format($row['cash_out'], 2) ?></td>
                                 <td class="text-right"><?= number_format($row['net_amount'], 2) ?></td>
                                 <td class="text-right"><?= number_format($row['running_balance'], 2) ?></td>
@@ -546,15 +636,23 @@ public function index()
                     <div class="summary-grid">
                         <div class="summary-box">
                             <div class="summary-row">
-                                <span class="summary-label">Total Cash In:</span>
-                                <span class="summary-value cash-in">৳<?= number_format($statementData['summary']['total_cash_in'], 2) ?></span>
+                                <span class="summary-label">Total Landshare:</span>
+                                <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_landshare'], 2) ?></span>
                             </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Total Service Fee:</span>
+                                <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_service_fee'], 2) ?></span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Total Revenue:</span>
+                                <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_revenue'], 2) ?></span>
+                            </div>
+                        </div>
+                        <div class="summary-box">
                             <div class="summary-row">
                                 <span class="summary-label">Total Cash Out:</span>
                                 <span class="summary-value cash-out">৳<?= number_format($statementData['summary']['total_cash_out'], 2) ?></span>
                             </div>
-                        </div>
-                        <div class="summary-box">
                             <div class="summary-row">
                                 <span class="summary-label">Net Balance:</span>
                                 <span class="summary-value">৳<?= number_format($statementData['summary']['net_balance'], 2) ?></span>
@@ -589,7 +687,7 @@ public function index()
         </body>
 
         </html>
-<?php
+      <?php
         exit;
     }
 
@@ -603,6 +701,8 @@ public function index()
         $month = $_GET['month'] ?? date('m');
         $startDate = $_GET['start_date'] ?? null;
         $endDate = $_GET['end_date'] ?? null;
+        $projectId = $_GET['project_id'] ?? null;
+        $category = $_GET['category'] ?? 'all';
 
         // Get statement data
         $statementData = null;
@@ -610,32 +710,32 @@ public function index()
 
         switch ($periodType) {
             case 'monthly':
-                $statementData = $this->statementModel->getMonthlyStatement($year, $month);
+                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
                 $filename = "monthly_statement_{$year}_{$month}.csv";
                 break;
             case '6months':
-                $statementData = $this->statementModel->getSixMonthStatement($year, $month);
+                $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
                 $filename = "6months_statement_{$year}_{$month}.csv";
                 break;
             case 'yearly':
-                $statementData = $this->statementModel->getYearlyStatement($year);
+                $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
                 $filename = "yearly_statement_{$year}.csv";
                 break;
             case 'custom':
                 if ($startDate && $endDate) {
-                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate);
+                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
                     $cleanStartDate = str_replace('-', '', $startDate);
                     $cleanEndDate = str_replace('-', '', $endDate);
                     $filename = "custom_statement_{$cleanStartDate}_to_{$cleanEndDate}.csv";
                 } else {
                     // Default to current month if dates not provided
-                    $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'));
+                    $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
                     $filename = "monthly_statement_" . date('Y') . "_" . date('m') . ".csv";
                     $periodType = 'monthly';
                 }
                 break;
             default:
-                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'));
+                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
                 $filename = "monthly_statement_" . date('Y') . "_" . date('m') . ".csv";
         }
 
@@ -664,12 +764,14 @@ public function index()
         // Write data based on type
         if (isset($statementData['daily_data'])) {
             // Daily breakdown
-            fputcsv($output, ['Date', 'Day', 'Cash In (৳)', 'Cash Out (৳)', 'Net Amount (৳)', 'Running Balance (৳)']);
+            fputcsv($output, ['Date', 'Day', 'Landshare (৳)', 'Service Fee (৳)', 'Total Revenue (৳)', 'Cash Out (৳)', 'Net Amount (৳)', 'Running Balance (৳)']);
             foreach ($statementData['daily_data'] as $row) {
                 fputcsv($output, [
                     $row['formatted_date'],
                     $row['day_name'],
-                    number_format($row['cash_in'], 2),
+                    number_format($row['landshare'], 2),
+                    number_format($row['service_fee'], 2),
+                    number_format($row['total_revenue'], 2),
                     number_format($row['cash_out'], 2),
                     number_format($row['net_amount'], 2),
                     number_format($row['running_balance'], 2)
@@ -677,11 +779,13 @@ public function index()
             }
         } elseif (isset($statementData['monthly_data'])) {
             // Monthly breakdown
-            fputcsv($output, ['Month', 'Cash In (৳)', 'Cash Out (৳)', 'Net Amount (৳)', 'Running Balance (৳)']);
+            fputcsv($output, ['Month', 'Landshare (৳)', 'Service Fee (৳)', 'Total Revenue (৳)', 'Cash Out (৳)', 'Net Amount (৳)', 'Running Balance (৳)']);
             foreach ($statementData['monthly_data'] as $row) {
                 fputcsv($output, [
                     $row['month'],
-                    number_format($row['cash_in'], 2),
+                    number_format($row['landshare'], 2),
+                    number_format($row['service_fee'], 2),
+                    number_format($row['total_revenue'], 2),
                     number_format($row['cash_out'], 2),
                     number_format($row['net_amount'], 2),
                     number_format($row['running_balance'], 2)
@@ -692,7 +796,9 @@ public function index()
         // Write summary
         fputcsv($output, []); // Empty row
         fputcsv($output, ['SUMMARY']);
-        fputcsv($output, ['Total Cash In', number_format($statementData['summary']['total_cash_in'], 2)]);
+        fputcsv($output, ['Total Landshare', number_format($statementData['summary']['total_landshare'], 2)]);
+        fputcsv($output, ['Total Service Fee', number_format($statementData['summary']['total_service_fee'], 2)]);
+        fputcsv($output, ['Total Revenue', number_format($statementData['summary']['total_revenue'], 2)]);
         fputcsv($output, ['Total Cash Out', number_format($statementData['summary']['total_cash_out'], 2)]);
         fputcsv($output, ['Net Balance', number_format($statementData['summary']['net_balance'], 2)]);
         fputcsv($output, ['Final Balance', number_format($statementData['summary']['final_balance'], 2)]);

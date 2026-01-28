@@ -298,11 +298,14 @@
                             <li class="slide <?= isActive('management-cash-out', $current_route) ?>">
                                 <a href="<?= $base_url ?>/management-cash-out" class="sidebar__menu-item <?= isActive('management-cash-out', $current_route) ?>">
                                     <div class="side-menu__icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
-                                    <span class="sidebar__menu-label">Cash Out Management</span>
+                                    <span class="sidebar__menu-label">Cash Out </span>
                                 </a>
                             </li>
-                            <li class="slide <?= isActive('management-cash-in', $current_route) ?>">
-                                <a href="<?= $base_url ?>/management-cash-in" class="sidebar__menu-item <?= isActive('management-cash-in', $current_route) ?>">Management</a>
+                            <li class="slide <?= isActive('create-cashout-request', $current_route) ?>">
+                                <a href="<?= $base_url ?>/create-cashout-request" class="sidebar__menu-item <?= isActive('create-cashout-request', $current_route) ?>">Create Request</a>
+                            </li>
+                            <li class="slide <?= isActive('admin-cashout-requests', $current_route) ?>">
+                                <a href="<?= $base_url ?>/admin-cashout-requests" class="sidebar__menu-item <?= isActive('admin-cashout-requests', $current_route) ?>">Cashout Request List</a>
                             </li>
                         </ul>
                     </li>

@@ -43,7 +43,7 @@ $show_breadcrumb = true;
         margin-bottom: 20px;
     }
 
-    .stat-card.cash-in {
+    .stat-card.revenue {
         border-left-color: #28a745;
     }
 
@@ -71,7 +71,7 @@ $show_breadcrumb = true;
         font-family: 'Courier New', monospace;
     }
 
-    .stat-card.cash-in .value {
+    .stat-card.revenue .value {
         color: #28a745;
     }
 
@@ -129,6 +129,7 @@ $show_breadcrumb = true;
     }
 
     .period-info {
+        background: linear-gradient(135deg, var(--clr-theme-primary), #6c757d);
         color: #fff;
         padding: 20px;
         border-radius: 12px;
@@ -143,7 +144,6 @@ $show_breadcrumb = true;
     .action-buttons {
         display: flex;
         gap: 10px;
-
     }
 
     .btn {
@@ -178,6 +178,34 @@ $show_breadcrumb = true;
         background: linear-gradient(135deg, #dc3545, #c82333);
         color: white;
     }
+
+    .card-filter-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .card-filter-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .card-filter-btn.active {
+        background: var(--clr-theme-primary);
+        color: white;
+        border-color: var(--clr-theme-primary);
+    }
+
+    .card-period-filters {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
 </style>
 
 
@@ -205,7 +233,6 @@ $show_breadcrumb = true;
                                 <option value="custom" <?= ($period_type ?? '') === 'custom' ? 'selected' : '' ?>>Custom Range</option>
                             </select>
                         </div>
-
 
                         <div class="filter-item" id="yearFilter">
                             <label>Year</label>
@@ -246,40 +273,73 @@ $show_breadcrumb = true;
                         </div>
 
                         <div class="filter-item">
+                            <label>Project</label>
+                            <select name="project_id" id="projectId" class="form-select">
+                                <option value="">All Projects</option>
+                                <?php foreach ($projects ?? [] as $project): ?>
+                                    <option value="<?= $project['id'] ?>" <?= ($project_id ?? '') == $project['id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($project['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="filter-item">
+                            <label>Category</label>
+                            <select name="category" id="category" class="form-select">
+                                <option value="all" <?= ($category ?? '') === 'all' ? 'selected' : '' ?>>All Categories</option>
+                                <option value="construction" <?= ($category ?? '') === 'construction' ? 'selected' : '' ?>>Construction</option>
+                                <option value="landshare" <?= ($category ?? '') === 'landshare' ? 'selected' : '' ?>>Landshare</option>
+                                <option value="utilities" <?= ($category ?? '') === 'utilities' ? 'selected' : '' ?>>Utilities</option>
+                                <option value="other" <?= ($category ?? '') === 'other' ? 'selected' : '' ?>>Other</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-item">
                             <label>&nbsp;</label>
                             <button type="submit" class="btn btn-primary">
                                 <i class="fa-light fa-search me-2"></i> Search
                             </button>
                         </div>
                         <!-- Action Buttons -->
-
-                        <button type="button" class="btn btn-success" onclick="downloadPDF()">
-                            <i class="fa-light fa-download me-2"></i> Download PDF
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="printStatement()">
-                            <i class="fa-light fa-print me-2"></i> Print Statement
-                        </button>
-                        <button type="button" class="btn btn-danger" onclick="exportCSV()">
-                            <i class="fa-light fa-file-csv me-2"></i> Export CSV
-                        </button>
-
+                        <div class="filter-item">
+                            <label>&nbsp;</label>
+                            <div class="action-buttons">
+                                <button type="button" class="btn btn-success" onclick="downloadPDF()">
+                                    <i class="fa-light fa-download me-2"></i> Download PDF
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="printStatement()">
+                                    <i class="fa-light fa-print me-2"></i> Print Statement
+                                </button>
+                                <button type="button" class="btn btn-danger" onclick="exportCSV()">
+                                    <i class="fa-light fa-file-csv me-2"></i> Export CSV
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Statistics Cards -->
+    <!-- Statistics Cards with Period Filters -->
     <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper stat-card cash-in">
+        <div class="card__wrapper stat-card revenue">
             <div class="d-flex align-items-center gap-1">
                 <div class="card__icon">
-                    <span><i class="fa-light fa-arrow-down-to-line"></i></span>
+                    <span><i class="fa-light fa-money-bill-trend-up"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Cash In (All Time)</h6>
+                    <h6 class="card__sub-title mb-10">Total Revenue 
+                        <span id="revenuePeriodText">(All Time)</span>
+                    </h6>
+
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title fs-6">৳<?= number_format($overall_stats['total_cash_in'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title fs-6">৳<?= number_format($overall_stats['total_revenue'] ?? 0, 2) ?></h4>
+                    </div>
+                    <div class="mt-2 text-muted" style="font-size: 12px;">
+                        <div>Landshare: ৳<?= number_format($overall_stats['total_landshare'] ?? 0, 2) ?></div>
+                        <div>Service Fee: ৳<?= number_format($overall_stats['total_service_fee'] ?? 0, 2) ?></div>
                     </div>
                 </div>
             </div>
@@ -293,7 +353,10 @@ $show_breadcrumb = true;
                     <span><i class="fa-light fa-arrow-up-from-line"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Cash Out (All Time)</h6>
+                    <h6 class="card__sub-title mb-10">Total Cash Out 
+                        <span id="cashoutPeriodText">(All Time)</span>
+                    </h6>
+
                     <div class="d-flex flex-wrap align-items-end gap-10">
                         <h4 class="card__title fs-6">৳<?= number_format($overall_stats['total_cash_out'] ?? 0, 2) ?></h4>
                     </div>
@@ -309,7 +372,10 @@ $show_breadcrumb = true;
                     <span><i class="fa-light fa-scale-balanced"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Overall Net Balance</h6>
+                    <h6 class="card__sub-title mb-10">Net Balance 
+                        <span id="balancePeriodText">(All Time)</span>
+                    </h6>
+
                     <div class="d-flex flex-wrap align-items-end gap-10">
                         <h4 class="card__title fs-6">৳<?= number_format($overall_stats['net_balance'] ?? 0, 2) ?></h4>
                     </div>
@@ -324,6 +390,22 @@ $show_breadcrumb = true;
             <div>
                 <h3><?= htmlspecialchars($period_text ?? 'Financial Statement') ?></h3>
                 <p>Generated on <?= date('d M, Y h:i A') ?></p>
+                <?php if (isset($project_id) && $project_id): ?>
+                    <?php 
+                    $projectName = '';
+                    foreach ($projects ?? [] as $project) {
+                        if ($project['id'] == $project_id) {
+                            $projectName = $project['name'];
+                            break;
+                        }
+                    }
+                    if ($projectName): ?>
+                        <p>Project: <?= htmlspecialchars($projectName) ?></p>
+                    <?php endif; ?>
+                <?php endif; ?>
+                <?php if (isset($category) && $category !== 'all'): ?>
+                    <p>Category: <?= ucfirst($category) ?></p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -339,7 +421,9 @@ $show_breadcrumb = true;
                                 <tr class="table__title table__sort">
                                     <th>Date</th>
                                     <th>Day</th>
-                                    <th>Cash In (৳)</th>
+                                    <th>Landshare (৳)</th>
+                                    <th>Service Fee (৳)</th>
+                                    <th>Total Revenue (৳)</th>
                                     <th>Cash Out (৳)</th>
                                     <th>Net Amount (৳)</th>
                                     <th>Running Balance (৳)</th>
@@ -350,7 +434,9 @@ $show_breadcrumb = true;
                                     <tr>
                                         <td><?= htmlspecialchars($row['formatted_date']) ?></td>
                                         <td><?= htmlspecialchars($row['day_name']) ?></td>
-                                        <td class="positive"><strong>৳<?= number_format($row['cash_in'], 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['landshare'], 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['service_fee'], 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['total_revenue'], 2) ?></strong></td>
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'], 2) ?></strong></td>
                                         <td class="<?= $row['net_amount'] >= 0 ? 'positive' : 'negative' ?>">
                                             <strong>৳<?= number_format($row['net_amount'], 2) ?></strong>
@@ -369,7 +455,9 @@ $show_breadcrumb = true;
                             <thead>
                                 <tr class="table__title table__sort">
                                     <th>Month</th>
-                                    <th>Cash In (৳)</th>
+                                    <th>Landshare (৳)</th>
+                                    <th>Service Fee (৳)</th>
+                                    <th>Total Revenue (৳)</th>
                                     <th>Cash Out (৳)</th>
                                     <th>Net Amount (৳)</th>
                                     <th>Running Balance (৳)</th>
@@ -379,7 +467,9 @@ $show_breadcrumb = true;
                                 <?php foreach ($statement_data['monthly_data'] as $row): ?>
                                     <tr>
                                         <td><?= htmlspecialchars($row['month']) ?></td>
-                                        <td class="positive"><strong>৳<?= number_format($row['cash_in'], 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['landshare'], 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['service_fee'], 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['total_revenue'], 2) ?></strong></td>
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'], 2) ?></strong></td>
                                         <td class="<?= $row['net_amount'] >= 0 ? 'positive' : 'negative' ?>">
                                             <strong>৳<?= number_format($row['net_amount'], 2) ?></strong>
@@ -404,48 +494,7 @@ $show_breadcrumb = true;
         </div>
     </div>
 
-    <!-- Summary -->
-    <?php if (isset($statement_data['summary'])): ?>
-        <div class="col-xxl-12">
-            <div class="card__wrapper">
-                <div class="card__header d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card__title" style="margin-top: -13px;">Summary</h5>
-                </div>
-                <div class="card__body">
-                    <div class="row">
-                        <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
-                                <span class="label">Total Cash In:</span>
-                                <span class="value positive"><strong>৳<?= number_format($statement_data['summary']['total_cash_in'], 2) ?></strong></span>
-                            </div>
-                        </div>
-                        <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
-                                <span class="label">Total Cash Out:</span>
-                                <span class="value negative"><strong>৳<?= number_format($statement_data['summary']['total_cash_out'], 2) ?></strong></span>
-                            </div>
-                        </div>
-                        <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
-                                <span class="label">Net Balance:</span>
-                                <span class="value <?= $statement_data['summary']['net_balance'] >= 0 ? 'positive' : 'negative' ?>">
-                                    <strong>৳<?= number_format($statement_data['summary']['net_balance'], 2) ?></strong>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                            <div class="d-flex justify-content-between align-items-center p-3 border rounded">
-                                <span class="label">Final Balance:</span>
-                                <span class="value <?= $statement_data['summary']['final_balance'] >= 0 ? 'positive' : 'negative' ?>">
-                                    <strong>৳<?= number_format($statement_data['summary']['final_balance'], 2) ?></strong>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
+
 </div>
 
 <script>
@@ -462,7 +511,11 @@ $show_breadcrumb = true;
             yearSelect.appendChild(opt);
         }
     }
+    
+    // Initialize period display
+    updateCardPeriodText();
 });
+    
     function handlePeriodChange() {
         const periodType = document.getElementById('periodType').value;
 
@@ -519,7 +572,49 @@ $show_breadcrumb = true;
 
     document.addEventListener('DOMContentLoaded', handlePeriodChange);
 
-
+    function setCardPeriod(period) {
+        const form = document.getElementById('filterForm');
+        const cardPeriodInput = document.createElement('input');
+        cardPeriodInput.type = 'hidden';
+        cardPeriodInput.name = 'card_period';
+        cardPeriodInput.value = period;
+        form.appendChild(cardPeriodInput);
+        
+        // Remove any existing period inputs
+        const existingPeriodInputs = form.querySelectorAll('input[name="card_period"]');
+        existingPeriodInputs.forEach(input => {
+            if (input !== cardPeriodInput) input.remove();
+        });
+        
+        // Update card period text
+        updateCardPeriodText();
+        
+        // Submit form
+        form.submit();
+    }
+    
+    function updateCardPeriodText() {
+        const period = '<?= $card_period ?? "all_time" ?>';
+        let periodText = '';
+        
+        switch(period) {
+            case 'weekly':
+                periodText = '(This Week)';
+                break;
+            case 'monthly':
+                periodText = '(This Month)';
+                break;
+            case 'yearly':
+                periodText = '(This Year)';
+                break;
+            default:
+                periodText = '(All Time)';
+        }
+        
+        document.getElementById('revenuePeriodText').textContent = periodText;
+        document.getElementById('cashoutPeriodText').textContent = periodText;
+        document.getElementById('balancePeriodText').textContent = periodText;
+    }
 
     function exportCSV() {
         const form = document.getElementById('filterForm');
@@ -560,5 +655,6 @@ $show_breadcrumb = true;
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         handlePeriodChange();
+        updateCardPeriodText();
     });
 </script>
