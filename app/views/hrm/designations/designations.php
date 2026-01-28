@@ -9,59 +9,110 @@ $show_breadcrumb = true;
 
 
 <div class="breadcrumb__btn my-3">
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDesignation">Add Designation</button>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDesignation">
+        Add Designation
+    </button>
 </div>
 <div class="row">
+    
+</div>
+
+
+
+
+<div class="row mt-4">
     <div class="col-xxl-12">
         <div class="card__wrapper">
-            <div class="row">
-                <div class="col-xxl-12">
-                    <div class="table__wrapper table-responsive">
-                        <table class="table mb-20 hover multiple_tables">
-                            <thead>
-                                <tr class="table__title">
-                                    <th>Designation</th>
-                                    <th>Department</th>
-                                    <th>Action</th>
+            <div class="table__wrapper table-responsive">
+                <table class="table mb-20 hover multiple_tables">
+                    <thead>
+                        <tr class="table__title">
+                            <th>Designation</th>
+                            <th>Department</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="table__body">
+                        <?php if(!empty($designations)): ?>
+                            <?php foreach ($designations as $desg): ?>
+                                <tr>
+                                    <td class="table__designation"><?= htmlspecialchars($desg['designation_name']) ?></td>
+                                    <td class="table__department"><?= htmlspecialchars($desg['department_name']) ?></td>
+                                    <td class="table__icon-box">
+                                        <div class="d-flex align-items-center justify-content-start gap-10">
+                                            <button type="button"
+                                                class="table__icon edit"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#editDesignation"
+                                                data-id="<?= $desg['id'] ?>"
+                                                data-name="<?= htmlspecialchars($desg['designation_name']) ?>"
+                                                data-department="<?= $desg['department_id'] ?>">
+                                                <i class="fa-sharp fa-light fa-pen"></i>
+                                            </button>
+
+                                            <button class="removeBtnCust table__icon delete"
+                                                data-id="<?= $desg['id'] ?>"
+                                                data-name="<?= htmlspecialchars($desg['designation_name']) ?>"
+                                                data-action="delete-designation">
+                                                <i class="fa-regular fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody class="table__body">
-                                <?php foreach ($designations as $desg): ?>
-                                    <tr>
-                                        <td class="table__designation"><?= $desg['designation_name'] ?></td>
-                                        <td class="table__department"><?= $desg['department_name'] ?></td>
-                                        <td class="table__icon-box">
-                                            <div class="d-flex align-items-center justify-content-start gap-10">
-
-
-                                                <button type="button"
-                                                    class="table__icon edit"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#editDesignation"
-                                                    data-id="<?= $desg['id'] ?>"
-                                                    data-name="<?= $desg['designation_name'] ?>"
-                                                    data-department="<?= $desg['department_id'] ?>">
-                                                    <i class="fa-sharp fa-light fa-pen"></i>
-                                                </button>
-                                                <button class="removeBtnCust table__icon delete"
-                                                    data-id="<?= $desg['id'] ?>"
-                                                    data-name="<?= $desg['designation_name'] ?>"
-                                                    data-action="delete-designation">
-                                                    <i class="fa-regular fa-trash"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endforeach ?>
-
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                            <?php endforeach ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="3" class="text-center">No designations found.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
+<div class="row my-3">
+    <h5>Department Wise All Designations</h5>
+</div>
+<div class="row g-4">
+
+
+    <?php if (!empty($groupedDesignations) && is_array($groupedDesignations)): ?>
+        <?php foreach ($groupedDesignations as $department => $designations2): ?>
+            <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-12">
+                <div class="card h-100 shadow-sm border-0" style="border-radius: 12px; overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease;">
+                    <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #085431 0%, #378c8d 100%)">
+                        <h5 class="mb-0  fw-bold" style="font-size: 1.1rem; letter-spacing: 0.5px; color: #fff;">
+                            <i class="bi bi-building me-2"></i><?= htmlspecialchars($department) ?>
+                        </h5>
+                    </div>
+                    <div class="card-body p-4" style="background-color: #f8f9fa;">
+                        <div class="d-flex flex-wrap gap-2">
+                            <?php foreach ($designations2 as $desig): ?>
+                                <span class="badge rounded-pill px-3 py-2" style="background-color: #fff; color: #0d8f5d; border: 2px solid #0f777a; font-size: 0.85rem; font-weight: 500; transition: all 0.3s ease; cursor: default;">
+                                    <?= htmlspecialchars($desig) ?>
+                                </span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <div class="col-12">
+            <div class="alert alert-info border-0 shadow-sm" style="border-radius: 10px; background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-info-circle-fill me-3" style="font-size: 2rem; color: #0b5242;"></i>
+                    <div>
+                        <h6 class="mb-1 fw-bold" style="color: #044c52;">No Designations Found</h6>
+                        <p class="mb-0 text-muted">There are currently no designations available to display.</p>
+                    </div>
+                </div>
+           </div>
+        </div>
+    <?php endif; ?>
+</div>
+
 
 
 
