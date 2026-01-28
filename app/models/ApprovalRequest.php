@@ -181,12 +181,6 @@ public function create($data)
     }
 
 
-
-
-
-
-
-
     public function find($id)
     {
         $sql = "SELECT * FROM {$this->table} WHERE id = ?";
