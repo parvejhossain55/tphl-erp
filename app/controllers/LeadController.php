@@ -45,6 +45,34 @@ class LeadController extends Controller
         ]);
     }
 
+    public function showOnboardClient(){
+        $year  = $_GET['year']  ?? null;
+        $month = $_GET['month'] ?? null;
+        $leads = $this->leadBookedModel->getAllOnboardClient($year, $month);
+        $leadCounts = count($leads);
+        $bookingCount = $this->leadBookedModel->getBookingCountByLead();
+        $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
+        $totalTodayFollowUps = array_sum($todayFollowUp);
+        $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
+        $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+
+        $this->view("sales-developments\leads\onboard-clients",[
+            "current_route" => "onboarding-clients",
+            "page_title" => "All Onboard Clients",
+            "followUpCounts" => $followUpCounts,
+            "bookingCount" => $bookingCount,
+            "paymentCount" => $paymentCount,
+            "leadCounts" => $leadCounts,
+            "totalTodayFollowUps" => $totalTodayFollowUps,
+               "leads" => $leads,
+            
+        ]);
+    }
+
     public function create()
     {
         $assignedUsers = $this->userModel->getAll();

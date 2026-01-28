@@ -1,11 +1,11 @@
 <?php
 $page_title = "leads Page";
-$page = 'Leads';
+$page = 'Lead & Booking Management';
 $addPage = 'Add Leads';
 $addPage = true;
 $show_breadcrumb = true;
 ?>
-<div class="d-none flex-wrap justify-content-between align-items-center mb-4">
+<div class="d-none flex-wrap justify-content-between align-items-center mb-3">
     <h4 class="mb-2 mb-md-0">
         Lead Management
     </h4>
@@ -28,7 +28,7 @@ $show_breadcrumb = true;
 
 </div>
 
-<div class="row lead-select">
+<div class="row lead-select align-items-stretch">
 
 
     <form action="" method="get">
@@ -99,18 +99,16 @@ $show_breadcrumb = true;
             <div class="col-xxl-4 col-xl-12 col-lg-12 col-md-12 col-12">
                 <div class="card__wrapper h-100">
                     <div class="d-flex flex-column flex-sm-row gap-2">
-                        <button type="submit" class="btn btn-secondary w-100">
+                        <button type="submit" class="btn btn-secondary w-100 ">
                             Search Lead
                         </button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-success w-100">
+                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-success  w-100">
                             Reset
-                            </a>
-
-                        <a
-                            class="btn btn-primary w-100"
-                            href="<?= $GLOBALS['base_url'] ?>/create-lead">
-                            Add Lead
                         </a>
+
+                        <a class="btn btn-primary w-100 "
+                            href="<?= $GLOBALS['base_url'] ?>/create-lead">
+                            Add Lead </a>
                     </div>
                 </div>
             </div>
@@ -119,7 +117,7 @@ $show_breadcrumb = true;
         </div>
     </form>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-sm-4">
+    <div class="col-xxl-3 col-xl-3 col-lg-3 col-md-3 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -135,7 +133,7 @@ $show_breadcrumb = true;
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-sm-4">
+    <div class="col-xxl-3 col-xl-3 col-lg-3 col-md-3 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -150,7 +148,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-sm-4">
+    <div class="col-xxl-3 col-xl-3 col-lg-3 col-md-3 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -165,13 +163,22 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
+    <div class="col-xxl-3 col-xl-3  col-md-3 col-12">
+        <div class="card__wrapper">
+            <div class="d-flex align-items-center gap-sm">
+                <a href="<?= $GLOBALS['base_url'] ?>/onboarding-clients" class="btn btn-primary w-100 ">
+                           <span class="fw-semibold fs-6">All Onboard Clients</span>
+                            </a>
+            </div>
+        </div>
+    </div>
 
 
 
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20 ">
+                <table class="table mb-20 multiple_tables">
                     <thead>
                         <tr class="table__title table__sort">
 
@@ -292,7 +299,6 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-
 </div>
 
 
@@ -359,15 +365,15 @@ $show_breadcrumb = true;
     });
 
 
-     const form = document.querySelector('form');
-                const resetBtn = form.querySelector('button[type="reset"]');
+    const form = document.querySelector('form');
+    const resetBtn = form.querySelector('button[type="reset"]');
 
-                resetBtn.addEventListener('click', function(e) {
-                    e.preventDefault(); // avoid default reset
-                    // Clear all inputs
-                    form.querySelectorAll('input, select').forEach(function(el) {
-                        if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
-                        else el.value = ''; // input clear
-                    });
-                });
+    resetBtn.addEventListener('click', function(e) {
+        e.preventDefault(); // avoid default reset
+        // Clear all inputs
+        form.querySelectorAll('input, select').forEach(function(el) {
+            if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
+            else el.value = ''; // input clear
+        });
+    });
 </script>

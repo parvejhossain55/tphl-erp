@@ -140,43 +140,40 @@ class Lead extends Model
     }
 
 
-public function getVisitedLeadCount($period = null)
-{
-    $sqlQuery = "
-        SELECT COUNT(*) AS total_visited
-        FROM leads
-        WHERE status = 'active'
-        AND deleted_at IS NULL
-        AND last_lead_action = 'visited'
-    ";
+    public function getVisitedLeadCount($period = null)
+    {
+        $sqlQuery = "
+            SELECT COUNT(*) AS total_visited
+            FROM leads
+            WHERE status = 'active'
+            AND deleted_at IS NULL
+            AND last_lead_action = 'visited'
+        ";
 
-    // Add period filter
-    if ($period) {
-        switch ($period) {
-            case 'daily':
-                $sqlQuery .= " AND DATE(created_at) = CURDATE()";
-                break;
-            case 'weekly':
-                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-                break;
-            case 'monthly':
-                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
-                break;
-            case 'yearly':
-                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
-                break;
+        // Add period filter
+        if ($period) {
+            switch ($period) {
+                case 'daily':
+                    $sqlQuery .= " AND DATE(created_at) = CURDATE()";
+                    break;
+                case 'weekly':
+                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    break;
+                case 'monthly':
+                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    break;
+                case 'yearly':
+                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    break;
+            }
         }
+
+        $stmt = $this->db->prepare($sqlQuery);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+
+        return (int)($result['total_visited'] ?? 0);
     }
-
-    $stmt = $this->db->prepare($sqlQuery);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-
-    return (int)($result['total_visited'] ?? 0);
-}
-
-
-
 
     public function create($data)
     {
@@ -259,10 +256,6 @@ public function getVisitedLeadCount($period = null)
             return false;
         }
     }
-
-
-
-
 
     //employee id find for edit
     public function find($id)

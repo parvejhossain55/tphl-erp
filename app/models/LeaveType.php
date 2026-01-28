@@ -27,6 +27,9 @@ public function getAll() {
 }
 
 
+
+
+
     // Create a new role
 
 public function create($data)
@@ -96,6 +99,8 @@ public function delete($id)
     $stmt1->close();
     return true;
 }
+
+
 
 
 
