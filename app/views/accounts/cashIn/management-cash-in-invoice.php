@@ -542,10 +542,10 @@ $disable_layout = true;
                     <span class="detail-label">Source:</span>
                     <span class="detail-value"><?= htmlspecialchars($transaction['source'] ?? 'N/A') ?></span>
                 </div>
-                <div class="detail-row">
+                <!-- <div class="detail-row">
                     <span class="detail-label">Created By:</span>
                     <span class="detail-value"><?= htmlspecialchars($transaction['created_by_name'] ?? 'N/A') ?></span>
-                </div>
+                </div> -->
             </div>
         </div>
 
