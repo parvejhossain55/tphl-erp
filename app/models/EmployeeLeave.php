@@ -42,7 +42,7 @@ public function create($data)
 
     $stmt = $this->db->prepare($sql);
     $stmt->bind_param(
-        "iiiiiiss",
+        "iissiiss",
         $data['employee_id'],
         $data['leave_type_id'],
         $data['start_date'],
@@ -151,33 +151,50 @@ public function getRemainingLeave($employee_id, $leave_type_id)
     return $totalDays;
 }
 
-public function getLeaveCount(){
+public function getLeaveCount()
+{
     $sql = "SELECT approval_status, COUNT(*) as total
-            FROM employee_leaves  GROUP BY approval_status";
+            FROM employee_leaves
+            GROUP BY approval_status";
 
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $counts = [
-                'pending' => 0,
-                'approved' => 0,
-                'partial' => 0,
-                'rejected' => 0,
-            ];
-while ($row = $result->fetch_assoc()) {
-        $counts[$row['approval_status']] = (int) $row['total'];
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $counts = [
+        'pending'  => 0,
+        'approved' => 0, // approved + partial
+        'rejected' => 0,
+    ];
+
+    while ($row = $result->fetch_assoc()) {
+        if ($row['approval_status'] === 'approved' || $row['approval_status'] === 'partial') {
+            $counts['approved'] += (int) $row['total'];
+        } elseif ($row['approval_status'] === 'pending') {
+            $counts['pending'] = (int) $row['total'];
+        } elseif ($row['approval_status'] === 'rejected') {
+            $counts['rejected'] = (int) $row['total'];
+        }
     }
 
     $stmt->close();
 
     return $counts;
-
 }
 
-// public function totalLeaveCount(){
-//     $sql = $this->db->prepare("SELECT COUNT(*) FROM ");
+public function totalLeaveCount()
+{
+    $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM employee_leaves");
+    $stmt->execute();
 
-// }
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+
+    $stmt->close();
+
+    return (int) $row['total'];
+}
+
 
 
 }

@@ -18,29 +18,35 @@ class PayrollController extends Controller
 
     public function index()
     {
+        // Current month/year
+        $currentYear  = date('Y');
+        $currentMonth = date('m');
 
-        $year  = $_GET['year']  ?? null;
-        $month = $_GET['month'] ?? null;
+        // GET param use, fallback to current month/year
+        $selectedYear  = isset($_GET['year']) ? $_GET['year'] : $currentYear;
+        $selectedMonth = isset($_GET['month']) ? $_GET['month'] : $currentMonth;
 
-        $payslips = $this->paymentModel->getAllWithEmployeeFiltered($year, $month);
+        // Fetch payslips
+        $payslips = $this->paymentModel->getAllWithEmployeeFiltered($selectedYear, $selectedMonth);
 
         $totalEmployees = $this->employeeModel->getTotalCount();
-        // $payslips = $this->paymentModel->getAllWithEmployee();
-        $paidCount = $this->paymentModel->getPaidCount();
-        $pendingCount = $this->paymentModel->getPendingCount();
-        // Get all company banks
-        $companyBanks = $this->bankModel->getAll();
-        //  Pass all data to view
+        $paidCount      = $this->paymentModel->getPaidCount($selectedYear, $selectedMonth);
+        $pendingCount   = $this->paymentModel->getPendingCount($selectedYear, $selectedMonth);
+        $companyBanks   = $this->bankModel->getAll();
+
         $this->view("payrolls/payslips/payslip-lists", [
-            "current_route" => "payslip-lists",
-            "page_title"    => "Payroll Lists",
-            "payslips" => $payslips,
+            "current_route"  => "payslip-lists",
+            "page_title"     => "Payroll Lists",
+            "payslips"       => $payslips,
             "totalEmployees" => $totalEmployees,
-            "paidCount" => $paidCount,
-            "pendingCount" => $pendingCount,
-            "companyBanks" => $companyBanks,
+            "paidCount"      => $paidCount,
+            "pendingCount"   => $pendingCount,
+            "companyBanks"   => $companyBanks,
+            "selectedYear"   => $selectedYear,  // Pass to view
+            "selectedMonth"  => $selectedMonth, // Pass to view
         ]);
     }
+
     public function create()
     {
         $employees = $this->employeeModel->getAllWithDesignation();

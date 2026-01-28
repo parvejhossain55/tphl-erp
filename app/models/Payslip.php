@@ -14,10 +14,10 @@ class Payslip extends Model
     public function getAllWithEmployee()
     {
         $stmt = $this->db->prepare("SELECT p.*,e.id AS employee_id,e.full_name AS employee_name , e.photo,e.email,e.joining_date,d.name AS desgination_name 
-    FROM payslips AS p 
-    LEFT JOIN employees AS e ON p.employee_id = e.id 
-    LEFT JOIN designations AS d ON p.designation_id = d.id
-    ORDER BY p.id DESC");
+            FROM payslips AS p 
+            LEFT JOIN employees AS e ON p.employee_id = e.id 
+            LEFT JOIN designations AS d ON p.designation_id = d.id
+            ORDER BY p.id DESC");
 
         if (!$stmt) {
             die("Prepare failed: " . $this->db->error);
@@ -31,26 +31,72 @@ class Payslip extends Model
         return $data;
     }
 
-    public function getPaidCount()
-    {
-        $stmt = $this->db->prepare("SELECT count(*) as paid_count FROM payslips WHERE status ='paid'");
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $data = $result->fetch_assoc();
-        $stmt->close();
+// Get Paid Count for specific month/year
+public function getPaidCount($year = null, $month = null)
+{
+    $sql = "SELECT COUNT(*) AS paid_count FROM payslips WHERE status = 'paid'";
+    $params = [];
+    $types = "";
 
-        return $data['paid_count'];
+    if (!empty($year)) {
+        $sql .= " AND YEAR(payslip_month) = ?";
+        $params[] = $year;
+        $types .= "i";
     }
-    public function getPendingCount()
-    {
-        $stmt = $this->db->prepare("SELECT count(*) as pending_count FROM payslips WHERE status ='pending'");
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $data = $result->fetch_assoc();
-        $stmt->close();
 
-        return $data['pending_count'];
+    if (!empty($month)) {
+        $sql .= " AND MONTH(payslip_month) = ?";
+        $params[] = $month;
+        $types .= "i";
     }
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+    $stmt->close();
+
+    return $data['paid_count'] ?? 0;
+}
+
+// Get Pending Count for specific month/year
+public function getPendingCount($year = null, $month = null)
+{
+    $sql = "SELECT COUNT(*) AS pending_count FROM payslips WHERE status = 'pending'";
+    $params = [];
+    $types = "";
+
+    if (!empty($year)) {
+        $sql .= " AND YEAR(payslip_month) = ?";
+        $params[] = $year;
+        $types .= "i";
+    }
+
+    if (!empty($month)) {
+        $sql .= " AND MONTH(payslip_month) = ?";
+        $params[] = $month;
+        $types .= "i";
+    }
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+    $stmt->close();
+
+    return $data['pending_count'] ?? 0;
+}
+
     // Create a new role
 
     public function create($data)
@@ -78,9 +124,6 @@ class Payslip extends Model
         $stmt->execute();
         return $this->db->insert_id;
     }
-
-
-
 
 
     // Update role name + permissions
@@ -228,57 +271,70 @@ class Payslip extends Model
 
 
 
-public function getAllWithEmployeeFiltered($year = null, $month = null)
-{
-    $sql = "
-        SELECT p.*, 
-               e.id AS employee_id,
-               e.full_name AS employee_name,
-               e.photo,
-               e.email,
-               e.joining_date,
-               d.name AS desgination_name,
-               ar.approved_at AS approval_time,  -- Add approval time
-               ar.status AS approval_status     -- Optional: approval status
-        FROM payslips AS p
-        LEFT JOIN employees AS e ON p.employee_id = e.id
-        LEFT JOIN designations AS d ON p.designation_id = d.id
-        LEFT JOIN approval_requests AS ar 
-               ON ar.source_table = 'payslips' AND ar.source_id = p.id
-               AND ar.status IN ('approved','partially_approved')  -- Only approved/partial
-        WHERE 1
-    ";
+    public function getAllWithEmployeeFiltered($year = null, $month = null)
+    {
 
-    $params = [];
-    $types  = "";
 
-    if (!empty($year)) {
-        $sql .= " AND YEAR(p.payslip_month) = ?";
-        $params[] = $year;
-        $types .= "i";
+
+        $sql = "
+    SELECT p.*, 
+           e.id AS employee_id,
+           e.full_name AS employee_name,
+           e.photo,
+           e.email,
+           e.joining_date,
+           d.name AS desgination_name,
+           ar.approved_at AS approval_time,
+           ar.status AS approval_status
+    FROM payslips AS p
+    LEFT JOIN employees AS e ON p.employee_id = e.id
+    LEFT JOIN designations AS d ON p.designation_id = d.id
+   LEFT JOIN (
+    SELECT *
+    FROM (
+        SELECT *,
+               ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY approved_at DESC) AS rn
+        FROM approval_requests
+        WHERE source_table = 'payslips' AND status IN ('approved','partially_approved')
+    ) AS t
+    WHERE rn = 1
+) AS ar ON ar.source_id = p.id
+
+    WHERE 1
+";
+
+
+        $params = [];
+        $types  = "";
+
+        if (!empty($year)) {
+            $sql .= " AND YEAR(p.payslip_month) = ?";
+            $params[] = $year;
+            $types .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(p.payslip_month) = ?";
+            $params[] = $month;
+            $types .= "i";
+        }
+
+        $sql .= " ORDER BY p.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $data;
     }
-
-    if (!empty($month)) {
-        $sql .= " AND MONTH(p.payslip_month) = ?";
-        $params[] = $month;
-        $types .= "i";
-    }
-
-    $sql .= " ORDER BY p.id DESC";
-
-    $stmt = $this->db->prepare($sql);
-
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $data = $result->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
-
-    return $data;
-}
 
 
 

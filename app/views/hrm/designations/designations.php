@@ -43,8 +43,6 @@ $show_breadcrumb = true;
                                                     data-department="<?= $desg['department_id'] ?>">
                                                     <i class="fa-sharp fa-light fa-pen"></i>
                                                 </button>
-
-
                                                 <button class="removeBtnCust table__icon delete"
                                                     data-id="<?= $desg['id'] ?>"
                                                     data-name="<?= $desg['designation_name'] ?>"

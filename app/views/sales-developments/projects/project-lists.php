@@ -18,12 +18,14 @@ $show_breadcrumb = true;
 
 </div>
 <div class="row">
+
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20">
+                <table class="table mb-20 multiple_tables">
                     <thead>
-                        <tr class="table__title">
+                        <tr class="table__title table__sort">
+                      <tr class="table__title table__sort">
 
                             <th class="th_1">Name</th>
                             <th>Location</th>

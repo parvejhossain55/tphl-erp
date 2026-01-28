@@ -132,7 +132,7 @@ $show_breadcrumb = false;
                             <th>Stock/Available</th>
                             <th>Booked</th>
                             <th class="d-none">Sold</th>
-                            <th>Total Value (৳)</th>
+                            <th>Net Value (৳)</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
