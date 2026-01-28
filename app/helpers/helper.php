@@ -666,6 +666,7 @@ function renderReviewVideo($url, $width = '100%', $height = '315') {
         if ($videoId) {
             return '<iframe width="'. $width .'" height="'. $height .'" src="https://www.youtube.com/embed/'. $videoId .'" frameborder="0" allowfullscreen></iframe>';
         }
+
     }
 
     // Vimeo

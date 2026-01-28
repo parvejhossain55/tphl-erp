@@ -30,6 +30,7 @@ class LeaveTypeController extends Controller
         $data = [
             'name'      => $_POST['name'] ?? '',
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
+            'total_days' => $_POST['total_days'] ?? '',
             'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
@@ -50,6 +51,7 @@ class LeaveTypeController extends Controller
         $data = [
             'id'     => $_POST['id'] ?? 0,
             'name'   => $_POST['name'] ?? '',
+            'total_days' => $_POST['total_days'] ?? '',
             'is_active' => isset($_POST['is_active']) ? intval($_POST['is_active']) : 0,
             'created_by'      => $_SESSION['user']['id'] ?? null,
         ];

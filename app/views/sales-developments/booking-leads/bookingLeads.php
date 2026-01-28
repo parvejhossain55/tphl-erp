@@ -6,20 +6,20 @@ $show_breadcrumb = true;
 if (session_status() === PHP_SESSION_NONE) session_start();
 ?>
 <div class="row">
-       <div clas="card__wrapper">
+    <div clas="card__wrapper">
         <a href="<?= $base_url ?>/edit-lead/<?= $lead['id'] ?>"
-   class="btn btn-sm btn-primary">
-   Complete Client Profile
-</a>
-</div>
+            class="btn btn-sm btn-primary">
+            Complete Client Profile
+        </a>
+    </div>
 
-<div class="row mb-4">
- 
+    <div class="row mb-4">
+
     </div>
     <div class="col-xxl-12">
         <div class="card__wrapper p-3">
             <h5>Booking Lead</h5>
-            
+
 
             <form action="<?= $GLOBALS['base_url'] ?>/booking-store" method="POST">
                 <div class="row gy-3">
@@ -39,7 +39,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                     <!-- Booking Date -->
                     <div class="col-lg-6">
-                        
+
                         <label class="form-label">Booking Date</label>
                         <input type="date" name="booking_date" class="form-control"
                             value="<?= date('Y-m-d') ?>" required>
@@ -106,6 +106,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
     </div>
 </div>
 
+
 <!-- Onboard Records Table -->
 <div class="row">
     <div class="col-xxl-12">
@@ -119,20 +120,54 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <th>Project</th>
                             <th>Flat</th>
                             <th>Created By</th>
+                            <th>Discount Approved Status /Amount </th>
                             <th>Actions</th>
                         </tr>
                     </thead>
+
                     <tbody>
                         <?php if (!empty($bookingRecords)): ?>
                             <?php foreach ($bookingRecords as $index => $or): ?>
                                 <tr>
                                     <td><?= $index + 1 ?></td>
-                                    <td><?= $lead['lead_name'] ?? '' ?></td>
-                                    <td><?= $or['project_name'] ?? '' ?></td>
-                                    <td><?= $or['flat_name'] ?? '' ?> ( Floor No: <?= $or['floor_no'] ?? '' ?>, <?= $or['sqft'] ?? '' ?> sqft)</td>
-                                    <td><?= $_SESSION['user']['name'] ?? '' ?></td>
+
+                                    <td><?= htmlspecialchars($lead['lead_name'] ?? '-') ?></td>
+
+                                    <td><?= htmlspecialchars($or['project_name'] ?? '-') ?></td>
+
+                                    <td>
+                                        <?= htmlspecialchars($or['flat_name'] ?? '-') ?>
+                                        <br>
+                                        <small class="text-muted">
+                                            Floor: <?= $or['floor_no'] ?? '-' ?>,
+                                            <?= $or['sqft'] ?? '-' ?> sqft
+                                        </small>
+                                    </td>
+
+                                    <td><?= htmlspecialchars($_SESSION['user']['name'] ?? '-') ?></td>
+
+                                    <!-- Discount Status -->
+                                    <td>
+                                        <?php if ($or['approval_status'] === 'pending'): ?>
+                                            <span class="badge bg-warning">Pending Approval</span>
+                                        <?php elseif ($or['approval_status'] === 'approved'): ?>
+                                            <span class="bd-badge bg-success">Approved</span> 
+                                            <span class="bd-badge bg-primary"><?= $or['approved_amount'] ?></span>
+                                        <?php elseif ($or['approval_status'] === 'Partial'): ?>
+                                            <span class="bd-badge bg-success">Partial Approved</span> 
+                                            <span class="bd-badge bg-primary"><?= $or['approved_amount'] ?></span>
+                                        <?php elseif ($or['approval_status'] === 'rejected'): ?>
+                                            <span class="badge bg-danger">Rejected</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-info">No Discount</span>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <!-- Actions -->
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
+
+                                            <!-- Edit -->
                                             <button type="button"
                                                 class="table__icon edit editBookingBtn"
                                                 data-bs-toggle="modal"
@@ -142,29 +177,50 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                 data-flat="<?= $or['flat_id'] ?>"
                                                 data-date="<?= $or['booking_date'] ?>"
                                                 data-agreement="<?= $or['agreement_value'] ?>"
-                                           
                                                 data-status="<?= $or['booking_status'] ?>">
                                                 Edit
                                             </button>
 
-                                            <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>" class="btn btn-sm btn-success">Payments</a>
+                                            <!-- Payments -->
+                                            <?php if (
+                                                $or['approval_status'] === 'approved' ||
+                                                $or['approval_status'] === 'not_required'
+                                            ): ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>"
+                                                    class="btn btn-sm btn-success">
+                                                    Payments
+                                                </a>
+
+                                            <?php elseif ($or['approval_status'] === 'pending'): ?>
+                                                <button class="btn btn-sm btn-secondary" disabled
+                                                    title="Waiting for management approval">
+                                                    Payments Locked
+                                                </button>
+
+                                            <?php elseif ($or['approval_status'] === 'rejected'): ?>
+                                                <button class="btn btn-sm btn-danger" disabled
+                                                    title="Discount rejected by management">
+                                                    Rejected
+                                                </button>
+                                            <?php endif; ?>
+
                                         </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
+
                         <?php else: ?>
-                            <!-- Safe empty row with 6 td -->
-                            <tr>
-                                <td></td>
-                                <td></td>
-                                <td class="text-center text-muted">No Bookings records found</td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                            </tr>
+                            No Data Available
+                            <!-- Empty State -->
+                            <!-- <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    No booking records found
+                                </td>
+                            </tr> -->
                         <?php endif; ?>
                     </tbody>
                 </table>
+
             </div>
         </div>
     </div>
@@ -281,7 +337,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             flatPriceInput.value = flat ? Number(flat.price_value).toLocaleString() : '';
         });
     });
-</script>>
+</script>
 
 
 

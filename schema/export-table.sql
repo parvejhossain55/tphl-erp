@@ -286,64 +286,84 @@ CREATE TABLE
 --     updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 --     deleted_at TIMESTAMP NULL
 --   );
-
 -- ALTER TABLE emp_attendances
 -- ADD COLUMN today_status  ENUM ('Holiday', 'Day Off','Present','Absent','On Leave','Half-Day','Late') NULL AFTER attendance_date
-CREATE TABLE emp_attendances (
+CREATE TABLE
+  emp_attendances (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     employee_id INT UNSIGNED NOT NULL,
     attendance_date DATE NOT NULL,
-
     punch_in_time TIMESTAMP NULL,
     punch_out_time TIMESTAMP NULL,
-
     today_status VARCHAR(20) NOT NULL,
-
     created_by BIGINT UNSIGNED NOT NULL,
-
     created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
-
     UNIQUE KEY unique_employee_date (employee_id, attendance_date),
-
-    CONSTRAINT fk_attendance_employee
-        FOREIGN KEY (employee_id)
-        REFERENCES employees(id)
-        ON DELETE RESTRICT
-        ON UPDATE CASCADE
-);
+    CONSTRAINT fk_attendance_employee FOREIGN KEY (employee_id) REFERENCES employees (id) ON DELETE RESTRICT ON UPDATE CASCADE
+  );
 
 -- https://youtu.be/qM5_UKR-vzk
 --20-1-2026 END added By Farzana For AI Chatbox
-
---25/01/2026
-CREATE TABLE approval_requests (
+--26/01/2026
+CREATE TABLE
+  approval_requests (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-
-    department VARCHAR(50) NOT NULL, 
-    request_type VARCHAR(50) NOT NULL, 
+    department VARCHAR(50) NOT NULL,
+    request_type VARCHAR(50) NOT NULL,
     title VARCHAR(150) NOT NULL,
-
     source_table VARCHAR(50) NOT NULL,
     source_id INT UNSIGNED NOT NULL,
-
-    request_amount DECIMAL(12,2) NULL,
-    approved_amount DECIMAL(12,2) NULL,
-
-    status ENUM('pending','approved','rejected','partial') DEFAULT 'pending',
-
+    request_amount DECIMAL(12, 2) NULL,
+    approved_amount DECIMAL(12, 2) NULL,
+    status ENUM ('pending', 'approved', 'rejected', 'partial') DEFAULT 'pending',
     requested_by INT UNSIGNED NOT NULL,
     approve_role VARCHAR(50) NOT NULL,
-
     meta_data JSON NULL,
-
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  );
+
+--END 26/01/2026
+--START 27/01/2026
+ALTER TABLE lead_bookings
+ADD COLUMN approval_status ENUM ('not_required', 'pending', 'approved', 'rejected') DEFAULT 'not_required',
+ADD COLUMN approved_amount DECIMAL(12, 2) NULL;
+
+-- leave_types e add
+total_days INT DEFAULT 0, -- Yearly entitlement
+is_paid BOOLEAN DEFAULT 1, -- Paid or unpaid leave
+--leave er table
+CREATE TABLE
+  employee_leaves (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT UNSIGNED NOT NULL,
+    leave_type_id INT UNSIGNED NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    requested_days INT NOT NULL, -- Total requested days
+    approved_days INT DEFAULT 0, -- Initially 0, updated when approved
+    approval_status ENUM ('pending', 'approved', 'partial', 'rejected') DEFAULT 'pending',
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (leave_type_id) REFERENCES leave_types (id) ON DELETE CASCADE,
+    FOREIGN KEY (employee_id) REFERENCES employees (id) ON DELETE CASCADE
+  );
+
+-- employee_leave_balance
+-- Leave balance per employee for quick access (denormalized for performance).
+CREATE TABLE IF NOT EXISTS employee_leave_balances (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT UNSIGNED NOT NULL,
+    leave_type_id INT UNSIGNED NOT NULL,
+    remaining_days INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY (employee_id, leave_type_id),
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+    FOREIGN KEY (leave_type_id) REFERENCES leave_types(id) ON DELETE CASCADE
 );
-
-
---25/01/2026
-
 
 -- farzana
