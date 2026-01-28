@@ -149,6 +149,7 @@ public function getRemainingLeave($employee_id, $leave_type_id)
     $totalDays = $stmt2->get_result()->fetch_assoc()['total_days'] ?? 0;
 
     return $totalDays;
+    
 }
 
 
