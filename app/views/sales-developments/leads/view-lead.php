@@ -250,7 +250,7 @@ $page = "View Lead";
 
                         <div class="lead-name-section me-2">
                             <h2 class="mb-0">
-                                <?= htmlspecialchars($leadData['lead_name'] ?? 'N/A') ?>
+                                <?= htmlspecialchars($leadData['full_name'] ?? 'N/A') ?>
                             </h2>
                             <p class="text-muted mb-0">
                                 <i class="fa-light fa-phone me-1"></i><?= $leadData['phone'] ?>
@@ -303,7 +303,7 @@ $page = "View Lead";
                     <div class="col-md-6">
                         <div class="info-row">
                             <div class="info-label"><i class="fa-light fa-user me-2"></i>Name</div>
-                            <div class="info-value"><?= htmlspecialchars($leadData['lead_name'] ?? 'N/A') ?></div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['full_name'] ?? 'N/A') ?></div>
                         </div>
                         <div class="info-row">
                             <div class="info-label"><i class="fa-light fa-calendar me-2"></i>Date Of Birth</div>

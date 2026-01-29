@@ -250,7 +250,7 @@
         <div class="section">
             <h3>Client Information</h3>
             <div class="info-grid">
-                <span><strong>Client Name:</strong> <?= $invoice['lead_name'] ?></span>
+                <span><strong>Client Name:</strong> <?= $invoice['full_name'] ?></span>
                 <span><strong>Project:</strong> <?= $invoice['project_name'] ?></span>
                 <?php if (!empty($invoice['bank_name'])): ?>
                     <span><strong>Bank Info:</strong> <?= $invoice['bank_name'] ?></span>

@@ -300,7 +300,7 @@ INSERT INTO `flat_purchase_rules` (`id`, `rules_description`, `status`, `created
 
 CREATE TABLE `leads` (
   `id` int(10) UNSIGNED NOT NULL,
-  `lead_name` varchar(255) NOT NULL,
+  `full_name` varchar(255) NOT NULL,
   `lead_type` enum('Hot','Warm','Cold') NOT NULL DEFAULT 'Hot',
   `present_add_bn` varchar(255) DEFAULT NULL,
   `phone` varchar(30) NOT NULL,
@@ -357,7 +357,7 @@ CREATE TABLE `leads` (
 -- Dumping data for table `leads`
 --
 
-INSERT INTO `leads` (`id`, `lead_name`, `lead_type`, `present_add_bn`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `identity_type`, `permanent_address`, `pref_location`, `designation`, `project_type`, `permanent_add_bn`, `pref_flat_size`, `communication_type`, `tags`, `description`, `visibility`, `status`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_at`, `updated_at`, `residency_type`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+INSERT INTO `leads` (`id`, `full_name`, `lead_type`, `present_add_bn`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `identity_type`, `permanent_address`, `pref_location`, `designation`, `project_type`, `permanent_add_bn`, `pref_flat_size`, `communication_type`, `tags`, `description`, `visibility`, `status`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_at`, `updated_at`, `residency_type`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
 (2, 'Hasin', 'Hot', 'Company X', '01700000000', '0180000000', 'hasan@gmail.com', 1, 13, 'Dhaka', NULL, NULL, NULL, NULL, 'NID', NULL, 'Dhaka', 'Project Manager', 'ATI Society', 'Project Wise', '345 sqf', 'WA Messaging', 'No nedd', 'fghyt uiy6we', 'public', 'active', 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-11 07:07:51', '2025-12-23 03:26:45', 'local', NULL, NULL, 0),
 (4, 'Hasin2', 'Hot', 'Company X', '01700000000', '0180000000', 'hasan@gmail.com', 1, 13, '0', NULL, NULL, NULL, NULL, 'NID', NULL, 'Dhaka', 'Project Manager', 'ATI Society', 'Project Wise', '345 sqf', 'WA Messaging', 'No nedd', '', 'public', 'active', 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-11 09:56:45', '2025-12-22 07:41:30', 'local', NULL, NULL, 0),
 (6, 'MH. Jony', 'Hot', 'Company X', '01700000000', '0180000000', 'hasan@gmail.com', 1, 12, 'Dhaka', NULL, NULL, NULL, NULL, 'NID', NULL, 'Dhaka', 'Project Manager', 'ATI Society', 'Project Wise', '345 sqf', 'WA Messaging', 'No nedd', '', 'public', 'active', 'Not Interested', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-20 08:11:43', '2025-12-20 08:11:43', 'local', NULL, NULL, 0),

@@ -50,30 +50,78 @@ public function create($data)
 
 
 
-    public function getPendingForRole(array $roles, $limit = 5)
-    {
-        // convert all roles to lowercase
-        $roles = array_map('strtolower', $roles);
+private function parseMetaData(?string $meta)
+{
+    return $meta ? json_decode($meta, true) : [];
+}
+private function getLeadById(int $id)
+{
+    return $this->db
+        ->query("SELECT id, full_name, phone FROM leads WHERE id = {$id}")
+        ->fetch_assoc();
+}
 
-        // Prepare placeholders for IN clause
-        $placeholders = implode(',', array_fill(0, count($roles), '?'));
+private function getFlatById(int $id)
+{
+    return $this->db
+        ->query("SELECT id,flat_name, sqft FROM flats WHERE id = {$id}")
+        ->fetch_assoc();
+}
 
-        $sql = "SELECT * FROM {$this->table}
+private function resolveApprovalDetails(array $approval)
+{
+    $meta = $this->parseMetaData($approval['meta_data']);
+
+    $details = [];
+
+    // Lead info
+    if (!empty($meta['lead_id'])) {
+        $details['lead'] = $this->getLeadById((int)$meta['lead_id']);
+    }
+
+    // Flat info
+    if (!empty($meta['flat_id'])) {
+        $details['flat'] = $this->getFlatById((int)$meta['flat_id']);
+    }
+
+    // Employee info
+    // if (!empty($meta['employee_id'])) {
+    //     $details['employee'] = $this->getEmployeeById((int)$meta['employee_id']);
+    // }
+
+    return $details;
+}
+
+public function getPendingForRole(array $roles, $limit = 5)
+{
+    $roles = array_map('strtolower', $roles);
+
+    if (empty($roles)) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($roles), '?'));
+    $limit = (int)$limit;
+
+    $sql = "SELECT * FROM {$this->table}
             WHERE status = 'pending'
             AND LOWER(approve_role) IN ($placeholders)
             ORDER BY created_at DESC
             LIMIT $limit";
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param(str_repeat('s', count($roles)), ...$roles);
-        $stmt->execute();
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param(str_repeat('s', count($roles)), ...$roles);
+    $stmt->execute();
 
-        $result = $stmt->get_result();
-        return $result->fetch_all(MYSQLI_ASSOC);
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    // 🔥 THIS PART WAS MISSING
+    foreach ($rows as &$row) {
+        $row['context'] = $this->resolveApprovalDetails($row);
     }
 
-
-
+    return $rows;
+}
 
 
     public function updateStatus($id, $status, $approvedAmount = null, $approved_days = null)

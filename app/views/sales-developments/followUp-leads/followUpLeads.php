@@ -36,7 +36,7 @@ $show_breadcrumb = true;
                         <select name="lead_id" class="form-select" required>
                             <option value="">Select Lead</option>
                             <php foreach ($leads as $lead): ?>
-                                <option value="<= $lead['id'] ?>"><= $lead['lead_name'] ?> - <= $lead['lead_quality'] ?></option>
+                                <option value="<= $lead['id'] ?>"><= $lead['full_name'] ?> - <= $lead['lead_quality'] ?></option>
                             <php endforeach; ?>
                         </select>
                     </div> -->
@@ -155,7 +155,7 @@ $show_breadcrumb = true;
 
                             <tr>
                                 <td><?= $fu['id'] ?></td>
-                                <td><?= $fu['lead_name'] ?? '' ?></td>
+                                <td><?= $fu['full_name'] ?? '' ?></td>
                                 <td><?= $fu['project_name'] ?? '' ?></td>
                                 <td><?= $fu['flat_name'] ?? '' ?></td>
                                 <td><?= $fu['follow_up_date'] ? date('d F, Y', strtotime($fu['follow_up_date'])) : '' ?></td>

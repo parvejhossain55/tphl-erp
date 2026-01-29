@@ -25,7 +25,7 @@ $selectedSourceId = $_SESSION['old']['source_type_id']
                 <div class="col-lg-6">
                     <div class="from__input-box">
                         <label class="form__input-title" for="leadName">Lead Name(BLOCK LETTER) *</label>
-                        <input class="form-control" name="lead_name" id="leadName" type="text" value="<?= $leadData['lead_name'] ?? '' ?>">
+                        <input class="form-control" name="full_name" id="leadName" type="text" value="<?= $leadData['full_name'] ?? '' ?>">
                     </div>
                 </div>
 

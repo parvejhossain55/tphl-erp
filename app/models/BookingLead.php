@@ -14,7 +14,7 @@ class BookingLead extends Model
     public function getAllOnBoard()
     {
         $sql = "SELECT lb.*, 
-       l.lead_name, 
+       l.full_name, 
        p.name AS project_name, 
        u2.name AS flat_name, 
        u1.full_name AS created_by_name
@@ -35,7 +35,7 @@ public function getAllOnboardClient($year = null, $month = null)
 {
     $sql = "SELECT 
                 lb.*, 
-                l.lead_name, 
+                l.full_name, 
                 l.id as lead_id,
                 l.phone,
                 l.email,
@@ -278,7 +278,7 @@ public function getAllOnboardClient($year = null, $month = null)
     {
         $stmt = $this->db->prepare("
         SELECT lb.*, 
-               l.lead_name, 
+               l.full_name, 
                p.name AS project_name,
                p.total_share,
                f.floor_no, 
@@ -302,7 +302,7 @@ public function getAllOnboardClient($year = null, $month = null)
 
     public function getAllBooking()
     {
-        $stmt = $this->db->prepare("SELECT lb.*, l.lead_name,l.lead_image,l.phone, p.name AS project_name,f.price_value,f.flat_name,f.sqft,f.is_booked
+        $stmt = $this->db->prepare("SELECT lb.*, l.full_name,l.lead_image,l.phone, p.name AS project_name,f.price_value,f.flat_name,f.sqft,f.is_booked
             FROM lead_bookings lb LEFT JOIN leads l ON lb.lead_id = l.id 
             LEFT JOIN projects p ON lb.project_id = p.id
             LEFT JOIN flats f ON lb.flat_id = f.id

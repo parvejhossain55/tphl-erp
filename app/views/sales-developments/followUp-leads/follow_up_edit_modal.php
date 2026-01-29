@@ -17,7 +17,7 @@
                             <select name="lead_id" class="form-select" required>
                                 <option value="">Select Lead</option>
                                 <?php foreach ($leads as $lead): ?>
-                                    <option value="<?= $lead['id'] ?>"><?= $lead['lead_name'] ?> - <?= $lead['lead_quality'] ?></option>
+                                    <option value="<?= $lead['id'] ?>"><?= $lead['full_name'] ?> - <?= $lead['lead_quality'] ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

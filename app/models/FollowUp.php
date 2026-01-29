@@ -14,7 +14,7 @@ class FollowUp extends Model
     public function getAllFollowUp()
     {
         $sql = "SELECT fu.*, 
-               l.lead_name, 
+               l.full_name, 
                p.name AS project_name, 
                u2.name AS flat_name, 
                u1.full_name AS created_by_name
@@ -68,7 +68,7 @@ class FollowUp extends Model
         $stmt = $this->db->prepare("
             SELECT 
                 fu.*, 
-                l.lead_name,
+                l.full_name,
                 p.name AS project_name,
                 u1.name AS unit_name,
                 u.full_name AS created_by_name
@@ -135,7 +135,7 @@ class FollowUp extends Model
     {
         $stmt = $this->db->prepare("
         SELECT f.*, 
-               l.lead_name, 
+               l.full_name, 
                p.name AS project_name,
                CONCAT(u.name, ' - ', u.id) AS flat_name,
                usr.full_name AS created_by_name,
@@ -224,7 +224,7 @@ class FollowUp extends Model
 
         $sql = "
     SELECT f.*, 
-           l.lead_name, 
+           l.full_name, 
            p.name AS project_name,
            CONCAT(fl.flat_name, ' - ', fl.id) AS flat_name,
            usr.full_name AS created_by_name,

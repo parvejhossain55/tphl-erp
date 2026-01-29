@@ -366,4 +366,40 @@ CREATE TABLE IF NOT EXISTS employee_leave_balances (
     FOREIGN KEY (leave_type_id) REFERENCES leave_types(id) ON DELETE CASCADE
 );
 
+
+
+-- ==== 29/01/15
+ALTER TABLE `leads`
+    ADD COLUMN `campaign_name` VARCHAR(255) FIRST,
+    ADD COLUMN `platform` VARCHAR(100) AFTER `campaign_name`,
+    ADD COLUMN `which_apartment_size_are_you_interested_in` VARCHAR(100) AFTER `platform`,
+    ADD COLUMN `which_floor_are_you_for_shop` VARCHAR(50) AFTER `which_apartment_size_are_you_interested_in`,
+    ADD COLUMN `when_are_planning_to_buy` DATE AFTER `which_floor_are_you_for_shop`,
+    ADD COLUMN `would_you_like_to_schedule_a_site_visit` TINYINT(1) DEFAULT 0 AFTER `when_are_planning_to_buy`,
+    ADD COLUMN `when_is_the_best_time_to_contact_you` VARCHAR(50) AFTER `would_you_like_to_schedule_a_site_visit`,
+    ADD COLUMN `full_name` VARCHAR(150) AFTER `when_is_the_best_time_to_contact_you`,
+    ADD COLUMN `jobtitle` VARCHAR(100) AFTER `full_name`,
+    ADD COLUMN `company_name` VARCHAR(150) AFTER `jobtitle`,
+    ADD COLUMN `phone_number` VARCHAR(20) AFTER `company_name`,
+    ADD COLUMN `city` VARCHAR(100) AFTER `phone_number`;
+
+ALTER TABLE leads
+ADD COLUMN call_status ENUM('not_called','called','received','not_received') 
+    DEFAULT 'not_called' AFTER phone_number,
+ADD COLUMN call_note TEXT NULL AFTER call_status;
+
+
+-- ai sql ta chalale r kothay foraign key thakle o delete korle problem hobe na 
+ALTER TABLE lead_bookings
+DROP FOREIGN KEY lead_bookings_ibfk_1;
+
+ALTER TABLE lead_bookings
+ADD CONSTRAINT lead_bookings_ibfk_1
+FOREIGN KEY (lead_id) REFERENCES leads(id)
+ON DELETE CASCADE;
+
+DELETE FROM leads
+WHERE deleted_at IS NOT NULL;
+
+
 -- farzana
