@@ -63,19 +63,28 @@ class User extends Model
     public function getAll()
     {
 
-        // SELECT 
-        //     u.*,
-        //     e.id AS employee_id,
-        //     e.photo AS employee_photo,
-        //     e.make_user
-        // FROM users u
-        // LEFT JOIN employees e ON e.user_id = u.id
+
+        $sql = $this->db->prepare("
+        SELECT
+            u.id, 
+           u.full_name  From users AS u
+    ");
+        if (!$sql->execute()) {
+            return []; // Error handle koro
+        }
+
+        $result = $sql->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+    public function getAllRoleUser()
+    {
 
 
         $sql = $this->db->prepare("
         SELECT
             u.id, 
            u.full_name  From users AS u
+           Where u.role_id = 8
     ");
         if (!$sql->execute()) {
             return []; // Error handle koro

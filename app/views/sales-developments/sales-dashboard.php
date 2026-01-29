@@ -219,7 +219,7 @@
                                 <tr>
                                     <td><?= $key + 1 ?></td>
                                     <td><?= date('d M, Y', strtotime($followUp['follow_up_date'])) ?></td>
-                                    <td><?= htmlspecialchars($followUp['lead_name']) ?></td>
+                                    <td><?= htmlspecialchars($followUp['full_name']) ?></td>
                                     <td><?= htmlspecialchars($followUp['project_name']) ?></td>
                                     <td><?= htmlspecialchars($followUp['flat_name']) ?></td>
                                     <td><?= htmlspecialchars($followUp['assigned_with_name']) ?></td>

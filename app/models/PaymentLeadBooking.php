@@ -39,7 +39,8 @@ public function create($data)
         // 1 Insert payment
         $stmt = $this->db->prepare("
             INSERT INTO lead_payments
-            (booking_id, bank_name, bank_account_no, cheque_no, online_type, payment_type, amount, payment_method, payment_status, payment_date, transaction_ref, total_emi_no, created_by)
+            (booking_id, bank_name, bank_account_no, cheque_no, online_type, payment_type, amount, payment_method, payment_status, payment_date,
+             transaction_ref, total_emi_no, created_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
@@ -72,7 +73,8 @@ public function create($data)
             $sql = "UPDATE flats f
                     JOIN lead_bookings b ON b.flat_id = f.id
                     SET f.is_booked = 1,
-                        f.status = 'booked'
+                        f.status = 'booked',
+                        b.booking_status = 'completed'
                     WHERE b.id = ?";
             $stmt2 = $this->db->prepare($sql);
             $stmt2->bind_param("i", $data['booking_id']);
@@ -195,7 +197,7 @@ public function getPaymentCount()
             lb.discount_amount,
             lb.booking_date,
             l.id AS lead_id,
-            l.lead_name AS lead_name,
+            l.full_name AS full_name,
             l.father_name,l.mother_name,l.email,l.address,l.nid_or_passport,l.permanent_address,l.dob,l.phone,l.designation AS profession,
             l.lead_name_bn,
             l.father_name_bn,l.mother_name_bn,l.profession_bn,l.permanent_add_bn,l.present_add_bn,l.identity_type,l.nationality,l.religion,l.lead_image,

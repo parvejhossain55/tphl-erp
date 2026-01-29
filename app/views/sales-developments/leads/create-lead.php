@@ -6,12 +6,78 @@ $page = "create Lead"
     <div class="card__wrapper">
         <form action="<?= $GLOBALS['base_url'] ?>/store-lead" method="POST">
             <div class="row gy-10">
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title">Campaign Name</label>
+                        <input type="text" class="form-control" name="campaign_name">
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title">Platform</label>
+                        <input type="text" class="form-control" name="platform">
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title">Which Apartment Size Interested</label>
+                        <input type="text" class="form-control" name="which_apartment_size_are_you_interested_in">
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title">Which Floor for Shop</label>
+                        <input type="text" class="form-control" name="which_floor_are_you_for_shop">
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title">When Are Planning to Buy</label>
+                        <input type="date" class="form-control" name="when_are_you_planning_to_buy">
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title">Would You Like to Schedule a Site Visit?</label>
+                        <select class="form-select" name="would_you_like_to_schedule_a_site_visit">
+                            <option value="">Select</option>
+                            <option value="1">Yes</option>
+                            <option value="0">No</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title">Best Time to Contact</label>
+                        <input type="text" class="form-control" name="when_is_the_best_time_to_contact_you">
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title">Job Title</label>
+                        <input type="text" class="form-control" name="job_title">
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title">City</label>
+                        <input type="text" class="form-control" name="city">
+                    </div>
+                </div>
 
                 <!-- Lead Name -->
                 <div class="col-lg-6">
                     <div class="from__input-box">
                         <label class="form__input-title" for="leadName">Lead Name*</label>
-                        <input class="form-control" name="lead_name" id="leadName" type="text">
+                        <input class="form-control" name="full_name" id="leadName" type="text">
                     </div>
                 </div>
                 <div class="col-lg-6">
@@ -62,7 +128,7 @@ $page = "create Lead"
                 <div class="col-lg-6">
                     <div class="from__input-box">
                         <label class="form__input-title" for="companyName">Company Name (optional)</label>
-                        <input class="form-control" name="company" id="companyName" type="text">
+                        <input class="form-control" name="company_name" id="companyName" type="text">
                     </div>
                 </div>
 
@@ -70,7 +136,7 @@ $page = "create Lead"
                 <div class="col-md-6">
                     <div class="from__input-box">
                         <label class="form__input-title" for="phoneNumber">Mobile Number*</label>
-                        <input class="form-control" name="phone" id="phoneNumber" type="text">
+                        <input class="form-control" name="phone_number" id="phoneNumber" type="text">
                     </div>
                 </div>
 

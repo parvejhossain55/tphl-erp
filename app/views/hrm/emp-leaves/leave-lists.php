@@ -20,7 +20,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Leave</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h3 class="card__title">2</h3>
+                        <h3 class="card__title"><?= $totalLeave ?></h3>
                     </div>
                 </div>
             </div>
@@ -35,7 +35,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Approve</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h3 class="card__title">2</h3>
+                        <h3 class="card__title"><?= $leaveSatatusCounts['approved'] ?></h3>
                     </div>
                 </div>
             </div>
@@ -50,12 +50,14 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Rejected </h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h3 class="card__title">2</h3>
+                        <h3 class="card__title"><?= $leaveSatatusCounts['rejected'] ?></h3>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+
     <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
@@ -65,7 +67,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Pending</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h3 class="card__title">1</h3>
+                        <h3 class="card__title"><?= $leaveSatatusCounts['pending'] ?></h3>
                     </div>
                 </div>
             </div>
@@ -85,6 +87,7 @@ $show_breadcrumb = true;
                             <th>Leave Duration</th>
                             <th>Days</th>
                             <th>Approved Days</th>
+                            <th>Remaining Leave</th>
                             <th>Reason</th>
                             <th>Status</th>
                             <th class="d-none">Action</th>
@@ -95,7 +98,9 @@ $show_breadcrumb = true;
                             // Days calculation
                             $start = new DateTime($row['start_date']);
                             $end = new DateTime($row['end_date']);
-                            $days = $start->diff($end)->days + 1; 
+                            $days = $start->diff($end)->days + 1;
+                            $remaining_days = $row['total_days'] - $row['approved_days'];
+
                         ?>
                             <tr>
                                 <td class="table__leave-name"><?= htmlspecialchars($row['employee_name']) ?></td>
@@ -103,39 +108,40 @@ $show_breadcrumb = true;
                                 <td class="table__leave-duration"><?= formatDate($row['start_date']) ?> - <?= formatDate($row['end_date']) ?></td>
                                 <td class="table__leave-days"><?= $days ?></td>
                                 <td class="table__leave-approved">
-                                    <?= ($row['approved_days'] ?? 0) > 0 ? $row['approved_days'] : 'Not Yet' ?>
+                                    <?= ($row['approved_days'] ?? 0) > 0 ? $row['approved_days'] : 'Not Approved' ?>
                                 </td>
-
+                                <td><?= $remaining_days ?? 0 ?></td>
                                 <td class="table__leave-reason">
                                     <?= htmlspecialchars($row['reason'] ?? 'N/A') ?>
                                 </td>
 
-                                <td >
-                                    <?php
-                                    //  STATUS OVERRIDE LOGIC
-                                    if (($row['approved_days'] ?? 0) > 0) {
-                                        $finalStatus = 'approved';
-                                    } else {
-                                        $finalStatus = $row['status'] ?? 'pending';
-                                    }
+                                <?php
+                                // Final status determination
+                                if (($row['approved_days'] ?? 0) > 0) {
+                                    $finalStatus = 'approved';
+                                } elseif (($row['approval_status'] ?? '') === 'rejected') {
+                                    $finalStatus = 'rejected';
+                                } else {
+                                    $finalStatus = 'pending';
+                                }
 
-                                    $statusClass = match ($finalStatus) {
-                                        'approved' => 'bg-success',
-                                        'rejected' => 'bg-danger',
-                                        default => 'bg-warning',
-                                    };
+                                // CSS class mapping
+                                $statusClass = match ($finalStatus) {
+                                    'approved' => 'bg-success',
+                                    'rejected' => 'bg-danger',
+                                    default    => 'bg-warning',
+                                };
 
-                                    $statusText = ucfirst($finalStatus);
-
-                                    ?>
+                                $statusText = ucfirst($finalStatus);
+                                ?>
+                                <td>
                                     <span class="bd-badge <?= $statusClass ?>">
                                         <?= $statusText ?>
                                     </span>
                                 </td>
-
                                 <td class="table__icon-box d-none">
                                     <div class="d-flex align-items-center justify-content-start gap-10">
-                                        <a href="#" class="table__icon edit">
+                                        <a href="#" class="d-none table__icon edit">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </a>
                                         <button class="removeBtn table__icon delete">

@@ -18,7 +18,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
     </div>
     <div class="col-xxl-12">
         <div class="card__wrapper p-3">
-            <h5>Booking Lead</h5>
+            <h5 class="mb-3">Booking Flat/Unit</h5>
 
 
             <form action="<?= $GLOBALS['base_url'] ?>/booking-store" method="POST">
@@ -31,23 +31,31 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <input type="hidden" name="user_id" value="<?= $_SESSION['user']['id'] ?? 1 ?>">
 
                     <!-- Lead Name -->
-                    <div class="col-lg-6">
-                        <label class="form-label">Lead Name</label>
+                    <div class="col-lg-6 ">
+                        <div class="form__input-title">
+
+                            <label class="form-label">Client Name</label>
+                        </div>
                         <input type="text" class="form-control"
-                            value="<?= $lead['lead_name'] ?? '' ?>" readonly>
+                            value="<?= $lead['full_name'] ?? '' ?>" readonly>
                     </div>
 
                     <!-- Booking Date -->
                     <div class="col-lg-6">
+                        <div class="form__input-title">
 
-                        <label class="form-label">Booking Date</label>
+                            <label class="form-label">Booking Date</label>
+                        </div>
                         <input type="date" name="booking_date" class="form-control"
                             value="<?= date('Y-m-d') ?>" required>
                     </div>
 
                     <!-- Project -->
                     <div class="col-lg-6">
-                        <label class="form-label">Project *</label>
+                        <div class="form__input-title">
+
+                            <label class="form-label">Project *</label>
+                        </div>
                         <select name="project_id" id="projectSelect" class="form-select" required>
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>
@@ -58,7 +66,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                     <!-- Flat -->
                     <div class="col-lg-6">
-                        <label class="form-label">Flat / Unit *</label>
+                        <div class="form__input-title">
+
+                            <label class="form-label">Flat / Unit *</label>
+                        </div>
                         <select id="flatSelect" name="flat_id" class="form-select" data-live-search="true">
 
                             <option value="">Select Flat</option>
@@ -67,7 +78,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                     <!-- Plot / Flat Price -->
                     <div class="col-lg-6">
-                        <label class="form-label">Total Unit Value</label>
+                        <div class="form__input-title">
+
+                            <label class="form-label">Total Unit Value</label>
+                        </div>
                         <input type="text"
                             class="form-control"
                             id="flatPrice"
@@ -75,19 +89,28 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     </div>
                     <!-- Agreement Value -->
                     <div class="col-lg-6">
-                        <label class="form-label">Land Share Value/Booking Money *</label>
+                        <div class="form__input-title">
+
+                            <label class="form-label">Land Share Value/Booking Money *</label>
+                        </div>
                         <input type="number" name="agreement_value" class="form-control"
                             placeholder="e.g. 5000000" required>
                     </div>
                     <div class="col-lg-6">
-                        <label class="form-label">Discount Amount</label>
+                        <div class="form__input-title">
+
+                            <label class="form-label">Discount Amount</label>
+                        </div>
                         <input type="number" name="discount_amount" class="form-control"
                             placeholder="" required>
                     </div>
 
                     <!-- Status -->
                     <div class="col-lg-6">
-                        <label class="form-label">Status</label>
+                        <div class="form__input-title">
+
+                            <label class="form-label">Status</label>
+                        </div>
                         <select name="booking_status" class="form-select">
                             <option value="booked">Booked</option>
                             <option value="completed">Completed</option>
@@ -130,8 +153,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <?php foreach ($bookingRecords as $index => $or): ?>
                                 <tr>
                                     <td><?= $index + 1 ?></td>
+                                    <pre>
 
-                                    <td><?= htmlspecialchars($lead['lead_name'] ?? '-') ?></td>
+
+                                    <td><?= htmlspecialchars($lead['full_name'] ?? '-') ?></td>
 
                                     <td><?= htmlspecialchars($or['project_name'] ?? '-') ?></td>
 
@@ -151,10 +176,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                         <?php if ($or['approval_status'] === 'pending'): ?>
                                             <span class="badge bg-warning">Pending Approval</span>
                                         <?php elseif ($or['approval_status'] === 'approved'): ?>
-                                            <span class="bd-badge bg-success">Approved</span> 
+                                            <span class="bd-badge bg-success">Approved</span>
                                             <span class="bd-badge bg-primary"><?= $or['approved_amount'] ?></span>
-                                        <?php elseif ($or['approval_status'] === 'Partial'): ?>
-                                            <span class="bd-badge bg-success">Partial Approved</span> 
+                                        <?php elseif ($or['approval_status'] === 'partial'): ?>
+                                            <span class="bd-badge bg-success">Partial Approved</span>
                                             <span class="bd-badge bg-primary"><?= $or['approved_amount'] ?></span>
                                         <?php elseif ($or['approval_status'] === 'rejected'): ?>
                                             <span class="badge bg-danger">Rejected</span>
@@ -184,7 +209,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                             <!-- Payments -->
                                             <?php if (
                                                 $or['approval_status'] === 'approved' ||
-                                                $or['approval_status'] === 'not_required'
+                                                $or['approval_status'] === 'not_required'||
+                                                $or['approval_status'] === 'partial'
                                             ): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>"
                                                     class="btn btn-sm btn-success">

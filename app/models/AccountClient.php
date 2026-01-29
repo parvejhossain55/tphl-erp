@@ -17,11 +17,10 @@ class AccountClient extends Model
         $sql = $this->db->prepare("
             SELECT DISTINCT
                 l.id as lead_id,
-                l.lead_name as client_name,
+                l.full_name as client_name,
                 l.phone,
                 l.email,
                 l.designation,
-                l.company,
                 u.full_name as agent_name,
                 COUNT(DISTINCT lb.id) as total_lands,
                 SUM(lb.agreement_value) as total_agreement_value,
@@ -45,8 +44,8 @@ class AccountClient extends Model
             LEFT JOIN lead_bookings lb ON l.id = lb.lead_id AND lb.booking_status != 'cancelled'
             LEFT JOIN users u ON l.assigned_id = u.id
             WHERE EXISTS (SELECT 1 FROM lead_bookings WHERE lead_id = l.id AND booking_status != 'cancelled')
-            GROUP BY l.id, l.lead_name, l.phone, l.email, l.designation, l.company, u.full_name
-            ORDER BY l.lead_name
+            GROUP BY l.id, l.full_name, l.phone, l.email, l.designation, u.full_name
+            ORDER BY l.full_name
         ");
         
         $sql->execute();
@@ -144,7 +143,7 @@ class AccountClient extends Model
         $stmt = $this->db->prepare("
             SELECT 
                 lp.*,
-                l.lead_name as client_name,
+                l.full_name as client_name,
                 p.name as project_name,
                 f.id as flat_id,
                 f.floor_no,
@@ -192,7 +191,7 @@ class AccountClient extends Model
                 lb.landshare_status,
                 lb.service_fee_balance,
                 l.id as lead_id,
-                l.lead_name as client_name,
+                l.full_name as client_name,
                 l.phone,
                 l.email,
                 l.designation,
@@ -256,11 +255,10 @@ public function getClientByLeadId($leadId)
         $stmt = $this->db->prepare("
             SELECT 
                 l.id as lead_id,
-                l.lead_name as client_name,
+                l.full_name as client_name,
                 l.phone,
                 l.email,
                 l.designation,
-                l.company,
                 u.full_name as agent_name
             FROM leads l
             LEFT JOIN users u ON l.assigned_id = u.id
@@ -288,7 +286,7 @@ public function getTransactionsByBookingId($bookingId)
     $paymentsStmt = $this->db->prepare("
         SELECT 
             lp.*,
-            l.lead_name as client_name,
+            l.full_name as client_name,
             p.name as project_name,
             f.floor_no,
             un.name as unit_name,
@@ -903,7 +901,7 @@ public function getPaymentSummaryByBookingId($bookingId)
     {
         $stmt = $this->db->prepare("
             SELECT lp.*,
-                   l.lead_name as client_name,
+                   l.full_name as client_name,
                    p.name as project_name,
                    f.floor_no as flat_no
             FROM lead_payments lp
@@ -1209,7 +1207,7 @@ public function getFilteredTransactionsByBookingId($bookingId, $dateFilter = [])
     $sql = "
         SELECT 
             lp.*,
-            l.lead_name as client_name,
+            l.full_name as client_name,
             p.name as project_name,
             f.floor_no,
             un.name as unit_name,

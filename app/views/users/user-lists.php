@@ -58,7 +58,7 @@ $show_breadcrumb = false;
                         <div class="employee__thumb mb-10">
 
                             <!-- <img src=  "<=getImage('users',filename: $user['photo'])?>" alt="img not found"> -->
-                            <img src="<?= getUserProfileImage($user) ?>" alt="img not found">
+                            <img src="<?= getUserProfileImage($user)  ?>" alt="img not found">
 
                         </div>
                         <div class="employee__content">

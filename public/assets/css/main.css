@@ -817,9 +817,9 @@ input[type=file] {
 /*  BUTTON CSS START
 /*----------------------------------------*/
 .btn {
-  font-size: 16px;
+  font-size: 14px;
   border-radius: 6px;
-  padding: 6px 24px;
+  padding: 6px 15px;
   box-shadow: none;
   font-weight: 400;
   transition: all 0.3s linear;
@@ -11731,11 +11731,12 @@ div.DTS div.dataTables_scrollBody table {
   }
 }
 .dataTables_wrapper .dataTables_filter input[type=search] {
+  width: 315px;
   border: 1px solid var(--clr-border-1);
   color: var(--clr-text-body);
   padding: 0 10px;
   margin-inline-start: 10px;
-  height: 36px;
+  height: 40px;
   border-radius: 6px;
 }
 .dataTables_wrapper .dataTables_info {

@@ -193,7 +193,7 @@ CREATE TABLE
 CREATE TABLE
     `leads` (
         `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        `lead_name` VARCHAR(255) NOT NULL,
+        `full_name` VARCHAR(255) NOT NULL,
         `lead_type` ENUM ('Hot', 'Warm', 'Cold') NOT NULL,
         `company` VARCHAR(255) NULL,
         `phone` VARCHAR(30) NOT NULL,

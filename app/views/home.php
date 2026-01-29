@@ -349,9 +349,10 @@ $show_breadcrumb = false;
     <!-- Payment Methods & Recent Bookings -->
     <div class="row ">
 
+
         <!-- Recent Bookings (All Bookings) -->
-        <div class="col-xl-6 col-lg-6 col-md-12 col-12">
-            <div class="card__wrapper h-100">
+        <div class="col-xl-6 col-lg-6 col-md-12 col-12 mt-2">
+            <div class="card__wrapper h-100 ">
                 <div class="card-header pt-3 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
                     <h6 class="mb-2 mb-md-0">All Bookings</h6>
                     <div class="d-flex gap-2 flex-wrap d-none">
@@ -364,7 +365,7 @@ $show_breadcrumb = false;
                         </select>
                     </div>
                 </div>
-                <div class="card__body p-0">
+                <div class="card__body p-0 ">
                     <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
@@ -394,7 +395,7 @@ $show_breadcrumb = false;
                                                     </div>
                                                 <?php endif; ?>
                                                 <div>
-                                                    <span class="fw-semibold"><?= $item['lead_name'] ?? '' ?></span>
+                                                    <span class="fw-semibold"><?= $item['full_name'] ?? '' ?></span>
                                                     <small class="text-muted d-block"><?= $item['phone'] ?? '' ?></small>
                                                 </div>
                                             </div>
@@ -428,8 +429,13 @@ $show_breadcrumb = false;
 
             </div>
         </div>
+        <?php
+        // echo '<pre style="background:#111;color:#0f0;padding:15px;">';
+        // print_r($pendingRequests);
+        // echo '</pre>';
+        ?>
 
-        <div class="col-xl-6 col-lg-6 col-md-12 col-12">
+        <div class="col-xl-6 col-lg-6 col-md-12 col-12 mt-2">
             <div class="card__wrapper h-100">
                 <div class="card-header_title pt-3 border-bottom-0">
                     <h6 class="mb-3">Latest Approval Requests</h6>
@@ -530,7 +536,6 @@ $show_breadcrumb = false;
                 </div>
             </div>
         </div>
-
 
 
 

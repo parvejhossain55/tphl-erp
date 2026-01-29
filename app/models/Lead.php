@@ -103,8 +103,7 @@ class Lead extends Model
             u.full_name AS agent_name
         FROM leads AS l
         LEFT JOIN users AS u ON l.assigned_id = u.id
-        WHERE l.status = 'active'
-        AND l.deleted_at IS NULL
+        Where l.deleted_at IS NULL
         ";
 
 
@@ -140,133 +139,195 @@ class Lead extends Model
     }
 
 
-public function getVisitedLeadCount($period = null)
-{
-    $sqlQuery = "
-        SELECT COUNT(*) AS total_visited
-        FROM leads
-        WHERE status = 'active'
-        AND deleted_at IS NULL
-        AND last_lead_action = 'visited'
-    ";
+    public function getVisitedLeadCount($period = null)
+    {
+        $sqlQuery = "
+            SELECT COUNT(*) AS total_visited
+            FROM leads
+            WHERE status = 'active'
+            AND deleted_at IS NULL
+            AND last_lead_action = 'visited'
+        ";
 
-    // Add period filter
-    if ($period) {
-        switch ($period) {
-            case 'daily':
-                $sqlQuery .= " AND DATE(created_at) = CURDATE()";
-                break;
-            case 'weekly':
-                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-                break;
-            case 'monthly':
-                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
-                break;
-            case 'yearly':
-                $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
-                break;
+        // Add period filter
+        if ($period) {
+            switch ($period) {
+                case 'daily':
+                    $sqlQuery .= " AND DATE(created_at) = CURDATE()";
+                    break;
+                case 'weekly':
+                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    break;
+                case 'monthly':
+                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    break;
+                case 'yearly':
+                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    break;
+            }
         }
+
+        $stmt = $this->db->prepare($sqlQuery);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+
+        return (int)($result['total_visited'] ?? 0);
     }
 
-    $stmt = $this->db->prepare($sqlQuery);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
+public function getTodayLeads()
+{
+    $sql = "
+        SELECT *
+        FROM leads
+        WHERE created_at >= CURDATE()
+          AND created_at < CURDATE() + INTERVAL 1 DAY
+          AND deleted_at IS NULL
+        ORDER BY id DESC
+    ";
 
-    return (int)($result['total_visited'] ?? 0);
+    return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
 }
 
 
 
 
-    public function create($data)
-    {
-        $stmt = $this->db->prepare("INSERT INTO leads (
-            lead_name, father_name, mother_name, dob, permanent_address, nid_or_passport,
-            phone, alt_phone_number, email,
-            source_type_id, assigned_id,
-            address, pref_location, designation,
-            project_type, pref_flat_size,
-            communication_type, tags, description,
-            visibility, status, lead_quality, lead_type, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
+public function create($data)
+{
+    $stmt = $this->db->prepare("INSERT INTO leads (
+        campaign_name,
+        platform,
+        which_apartment_size_are_you_interested_in,
+        which_floor_are_you_for_shop,
+        when_are_you_planning_to_buy,
+        would_you_like_to_schedule_a_site_visit,
+        when_is_the_best_time_to_contact_you,
+        job_title,
+        city,
+        full_name,
+        father_name,
+        mother_name,
+        dob,
+        permanent_address,
+        nid_or_passport,
+        phone_number,
+        alt_phone_number,
+        email,
+        source_type_id,
+        assigned_id,
+        address,
+        pref_location,
+        designation,
+        project_type,
+        pref_flat_size,
+        communication_type,
+        tags,
+        description,
+        visibility,
+        status,
+        lead_quality,
+        lead_type,
+        company_name,
+        created_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?)
+");
 
-        if (!$stmt) {
-            setError("Prepare failed: " . $this->db->error);
-            return false;
-        }
-
-        // Assign variables first (pass by reference)
-        $lead_name = $data['lead_name'] ?? null;
-        $father_name = $data['father_name'] ?? null;
-        $mother_name = $data['mother_name'] ?? null;
-        $dob = $data['dob'] ?? null;
-        $permanent_address = $data['permanent_address'] ?? null;
-        $nid_or_passport = $data['nid_or_passport'] ?? null;
-        $phone = $data['phone'] ?? null;
-        $alt_phone_number = $data['alt_phone_number'] ?? null;
-        $email = $data['email'] ?? null;
-        $source_type_id = $data['source_type_id'] ?? null;
-        $assigned_id = $data['assigned_id'] ?? null;
-        $address = $data['address'] ?? null;
-        $pref_location = $data['pref_location'] ?? null;
-        $designation = $data['designation'] ?? null;
-        $project_type = $data['project_type'] ?? null;
-        $pref_flat_size = $data['pref_flat_size'] ?? null;
-        $communication_type = $data['communication_type'] ?? null;
-        $tags = $data['tags'] ?? null;
-        $description = $data['description'] ?? null;
-        $visibility = $data['visibility'] ?? 'public';
-        $status = $data['status'] ?? 'active';
-        $lead_quality = $data['lead_quality'] ?? 'Pending';
-        $lead_type = $data['lead_type'] ?? null;
-        $created_by = $data['created_by'] ?? null;
-
-        // Bind parameters
-        $stmt->bind_param(
-            "sssssssssssisssssssssssi",
-            $lead_name,
-            $father_name,
-            $mother_name,
-            $dob,
-            $permanent_address,
-            $nid_or_passport,
-            $phone,
-            $alt_phone_number,
-            $email,
-            $source_type_id,
-            $assigned_id,
-            $address,
-            $pref_location,
-            $designation,
-            $project_type,
-            $pref_flat_size,
-            $communication_type,
-            $tags,
-            $description,
-            $visibility,
-            $status,
-            $lead_quality,
-            $lead_type,
-            $created_by
-        );
-
-        if ($stmt->execute()) {
-            setSuccess("Lead created successfully!");
-            return true;
-        } else {
-            setError("Lead creation failed: " . $stmt->error);
-            return false;
-        }
+    if (!$stmt) {
+        setError("Prepare failed: " . $this->db->error);
+        return false;
     }
 
+    // Assign variables (CSV columns first)
+    $campaign_name = $data['campaign_name'] ?? null;
+    $platform = $data['platform'] ?? null;
+    $which_apartment_size_are_you_interested_in = $data['which_apartment_size_are_you_interested_in'] ?? null;
+    $which_floor_are_you_for_shop = $data['which_floor_are_you_for_shop'] ?? null;
+    $when_are_you_planning_to_buy = $data['when_are_you_planning_to_buy'] ?? null;
+    $would_you_like_to_schedule_a_site_visit = $data['would_you_like_to_schedule_a_site_visit'] ?? null;
+    $when_is_the_best_time_to_contact_you = $data['when_is_the_best_time_to_contact_you'] ?? null;
+    $job_title = $data['job_title'] ?? null;
+    $city = $data['city'] ?? null;
+
+    // Existing fields
+    $full_name = $data['full_name'] ?? null;
+    $father_name = $data['father_name'] ?? null;
+    $mother_name = $data['mother_name'] ?? null;
+    $dob = $data['dob'] ?? null;
+    $permanent_address = $data['permanent_address'] ?? null;
+    $nid_or_passport = $data['nid_or_passport'] ?? null;
+    $phone_number = $data['phone_number'] ?? null;
+    $alt_phone_number = $data['alt_phone_number'] ?? null;
+    $email = $data['email'] ?? null;
+    $source_type_id = $data['source_type_id'] ?? null;
+    $assigned_id = $data['assigned_id'] ?? null;
+    $address = $data['address'] ?? null;
+    $pref_location = $data['pref_location'] ?? null;
+    $designation = $data['designation'] ?? null;
+    $project_type = $data['project_type'] ?? null;
+    $pref_flat_size = $data['pref_flat_size'] ?? null;
+    $communication_type = $data['communication_type'] ?? null;
+    $tags = $data['tags'] ?? null;
+    $description = $data['description'] ?? null;
+    $visibility = $data['visibility'] ?? 'public';
+    $status = $data['status'] ?? 'active';
+    $lead_quality = $data['lead_quality'] ?? 'Pending';
+    $lead_type = $data['lead_type'] ?? null;
+    $company_name = $data['company_name'] ?? null;
+    $created_by = $data['created_by'] ?? null;
+
+    // Bind parameters (CSV first, then existing)
+    $stmt->bind_param(
+        "ssssssssssssssssssiisssssssssssssi",
+        $campaign_name,
+        $platform,
+        $which_apartment_size_are_you_interested_in,
+        $which_floor_are_you_for_shop,
+        $when_are_you_planning_to_buy,
+        $would_you_like_to_schedule_a_site_visit,
+        $when_is_the_best_time_to_contact_you,
+        $job_title,
+        $city,
+        $full_name,
+        $father_name,
+        $mother_name,
+        $dob,
+        $permanent_address,
+        $nid_or_passport,
+        $phone_number,
+        $alt_phone_number,
+        $email,
+        $source_type_id,
+        $assigned_id,
+        $address,
+        $pref_location,
+        $designation,
+        $project_type,
+        $pref_flat_size,
+        $communication_type,
+        $tags,
+        $description,
+        $visibility,
+        $status,
+        $lead_quality,
+        $lead_type,
+        $company_name,
+        $created_by
+    );
+
+    if ($stmt->execute()) {
+        setSuccess("Lead created successfully!");
+        return true;
+    } else {
+        setError("Lead creation failed: " . $stmt->error);
+        return false;
+    }
+}
 
 
 
-
-    //employee id find for edit
     public function find($id)
     {
+
+
         $stmt = $this->db->prepare(
             "SELECT 
             leads.*,
@@ -317,7 +378,7 @@ public function getVisitedLeadCount($period = null)
         // Prepare SQL
         // ======================
         $sql = "UPDATE leads SET
-        lead_name = ?, father_name = ?, mother_name = ?, dob = ?, permanent_address = ?, nid_or_passport = ?,
+        full_name = ?, father_name = ?, mother_name = ?, dob = ?, permanent_address = ?, nid_or_passport = ?,
         phone = ?, alt_phone_number = ?, email = ?, address = ?, designation = ?,
         lead_name_bn = ?, father_name_bn = ?, mother_name_bn = ?, identity_type = ?, permanent_add_bn = ?,
         present_add_bn = ?, profession_bn = ?, nationality = ?, religion = ?, lead_image = ?,
@@ -336,7 +397,7 @@ public function getVisitedLeadCount($period = null)
         // ======================
         $stmt->bind_param(
             str_repeat("s", 34) . "ii", // 34 strings + 1 integer for id
-            $data['lead_name'],
+            $data['full_name'],
             $data['father_name'],
             $data['mother_name'],
             $data['dob'],
@@ -469,4 +530,11 @@ public function getVisitedLeadCount($period = null)
             return false;
         }
     }
+
+
+
+
+
+    // user for dashboard 
+
 }
