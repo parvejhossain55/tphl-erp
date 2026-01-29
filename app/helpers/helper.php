@@ -114,7 +114,7 @@ function uploadImage($input, $module = 'general', $mode = 'original',  $width = 
 function getImage($module, $filename)
 {
     if (!$filename) {
-        return $GLOBALS['base_url'] . "/uploads/no-image.png";
+        return $GLOBALS['base_url'] . '/public/assets/images/avatar/avatar.png';
     }
 
     return $GLOBALS['base_url'] . "/uploads/{$module}/{$filename}";
@@ -389,21 +389,38 @@ function prepareUserData($postData, $isFromEmployee = false)
     return $data;
 }
 
+// function getUserProfileImage($user)
+// {
+//     // User created from employee
+//     if (!empty($user['employee_id']) && !empty($user['employee_photo'])) {
+//         return getImage('employees', $user['employee_photo']);
+//     }
+
+//     // Normal user
+//     if (!empty($user['photo'])) {
+//         return getImage('users', $user['photo']);
+//     }
+
+//     // Default avatar
+//     return getImage('users', 'default.png');
+// }
 function getUserProfileImage($user)
 {
-    // User created from employee
+    $default = $GLOBALS['base_url'] . '/public/assets/images/avatar/avatar.png';
+
     if (!empty($user['employee_id']) && !empty($user['employee_photo'])) {
-        return getImage('employees', $user['employee_photo']);
+        $img = getImage('employees', $user['employee_photo']);
+        return $img ?: $default;
     }
 
-    // Normal user
     if (!empty($user['photo'])) {
-        return getImage('users', $user['photo']);
+        $img = getImage('users', $user['photo']);
+        return $img ?: $default;
     }
 
-    // Default avatar
-    return getImage('users', 'default.png');
+    return $default;
 }
+
 
 
 function getLoggedInUserImage()
