@@ -297,6 +297,8 @@ $routes = [
     // ==================== CLIENT CASH IN ROUTES ====================
 
     "clients-cash-in" => ["controller" => "AccountClientController", "method" => "index"],
+    "get-client-lands" => ["controller" => "AccountClientController","method" => "getClientLands"
+],
     // client's cash in history 
     "clients-cash-in-history" => ["controller" => "AccountClientController", "method" => "indexTwo"],
     "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],
@@ -368,9 +370,43 @@ $routes = [
 
 
     // ==================== CENTRAL STATEMENT ROUTES ====================
-    'central-statement' => ["controller" => "CentralStatementController", "method" => "index"],
-    'central-statement-export' => ["controller" => "CentralStatementController", "method" => "exportCSV"],
-    'central-statement-stats' => ["controller" => "CentralStatementController", "method" => "getQuickStats"],
+'central-statement' => ["controller" => "CentralStatementController", "method" => "index"],
+'central-statement-store' => ["controller" => "CentralStatementController", "method" => "store"],
+'central-statement-update' => ["controller" => "CentralStatementController", "method" => "update"],
+'central-statement-delete' => ["controller" => "CentralStatementController", "method" => "delete"],
+'central-statement-print' => ["controller" => "CentralStatementController", "method" => "print"],
+'central-statement-export' => ["controller" => "CentralStatementController", "method" => "exportCSV"],
+'central-statement-card-totals' => ["controller" => "CentralStatementController", "method" => "getCardTotals"],
+'central-statement-stats' => ["controller" => "CentralStatementController", "method" => "getQuickStats"],
+'central-statement-get' => ["controller" => "CentralStatementController", "method" => "getStatement"],
+
+    
+    
+    // Add these to your routes.php or wherever you define routes
+// Cashout Request Routes
+"cashout-requests" => ["controller" => "CashoutRequestController", "method" => "index"],
+"create-cashout-request" => ["controller" => "CashoutRequestController", "method" => "create"],
+"store-cashout-request" => ["controller" => "CashoutRequestController", "method" => "store"],
+"view-cashout-request" => ["controller" => "CashoutRequestController", "method" => "show"],
+"delete-cashout-request" => ["controller" => "CashoutRequestController", "method" => "delete"],
+
+// Admin routes
+"admin-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "adminIndex"],
+"admin-view-cashout-request" => ["controller" => "CashoutRequestController", "method" => "adminShow"],
+
+// Simplified approval route
+"approve-cashout-request" => ["controller" => "CashoutRequestController", "method" => "approve"],
+
+// Rejection route
+"reject-cashout-request" => ["controller" => "CashoutRequestController", "method" => "reject"],
+
+// Payment routes
+"add-cashout-payment" => ["controller" => "CashoutRequestController", "method" => "addPayment"],
+"delete-cashout-payment" => ["controller" => "CashoutRequestController", "method" => "deletePayment"],
+
+// Utility routes
+"download-cashout-attachment" => ["controller" => "CashoutRequestController", "method" => "downloadAttachment"],
+"export-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "export"],
     //rafi End
 
 

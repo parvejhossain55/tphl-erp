@@ -1668,3 +1668,265 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+
+
+
+-- ========================================
+-- CASHOUT REQUEST SYSTEM DATABASE SCHEMA
+-- ========================================
+
+-- Table: cashout_requests
+-- Main table for storing cashout/payment requests
+CREATE TABLE IF NOT EXISTS `cashout_requests` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `request_number` VARCHAR(50) DEFAULT NULL COMMENT 'Auto-generated request number (e.g., CR-000001)',
+  `requested_by` INT(11) UNSIGNED NOT NULL COMMENT 'User ID from users table',
+  `purpose` VARCHAR(255) NOT NULL COMMENT 'Purpose or description of payment',
+  `paid_to` VARCHAR(255) NOT NULL COMMENT 'Recipient name/entity',
+  `amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Total requested amount',
+  `paid_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Amount already paid',
+  `due_amount` DECIMAL(15,2) GENERATED ALWAYS AS (`amount` - `paid_amount`) STORED COMMENT 'Calculated due amount',
+  `description` TEXT DEFAULT NULL COMMENT 'Detailed description',
+  `category_id` INT(11) UNSIGNED DEFAULT NULL COMMENT 'Category from management_categories',
+  `payment_method` ENUM('cash', 'bank', 'cheque', 'online') DEFAULT 'cash',
+  `transaction_ref` VARCHAR(255) DEFAULT NULL COMMENT 'Transaction reference number',
+  `bank_name` VARCHAR(255) DEFAULT NULL,
+  `bank_account_no` VARCHAR(100) DEFAULT NULL,
+  `cheque_no` VARCHAR(100) DEFAULT NULL,
+  `online_type` VARCHAR(50) DEFAULT NULL COMMENT 'bKash, Nagad, Rocket, etc.',
+  `attachment_path` VARCHAR(255) DEFAULT NULL COMMENT 'Path to uploaded file',
+  `attachment_name` VARCHAR(255) DEFAULT NULL COMMENT 'Original filename',
+  `attachment_size` INT(11) DEFAULT NULL COMMENT 'File size in bytes',
+  `status` ENUM(
+    'pending',
+    'approved_by_hr',
+    'approved_by_admin', 
+    'approved_by_super_admin',
+    'partially_paid',
+    'fully_paid',
+    'rejected'
+  ) NOT NULL DEFAULT 'pending',
+  `approved_by_hr` INT(11) UNSIGNED DEFAULT NULL COMMENT 'HR user who approved',
+  `approved_by_hr_at` DATETIME DEFAULT NULL,
+  `approved_by_admin` INT(11) UNSIGNED DEFAULT NULL COMMENT 'Admin user who approved',
+  `approved_by_admin_at` DATETIME DEFAULT NULL,
+  `approved_by_super_admin` INT(11) UNSIGNED DEFAULT NULL COMMENT 'Super Admin who approved',
+  `approved_by_super_admin_at` DATETIME DEFAULT NULL,
+  `rejected_by` INT(11) UNSIGNED DEFAULT NULL COMMENT 'User who rejected',
+  `rejected_at` DATETIME DEFAULT NULL,
+  `rejection_reason` TEXT DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT 'Soft delete timestamp',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `request_number` (`request_number`),
+  KEY `requested_by` (`requested_by`),
+  KEY `category_id` (`category_id`),
+  KEY `status` (`status`),
+  KEY `deleted_at` (`deleted_at`),
+  CONSTRAINT `fk_cashout_requests_user` FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cashout_requests_category` FOREIGN KEY (`category_id`) REFERENCES `management_categories` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Cashout/Payment requests with approval workflow';
+
+-- Table: cashout_request_payments
+-- Track partial payments made against cashout requests
+CREATE TABLE IF NOT EXISTS `cashout_request_payments` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `cashout_request_id` INT(11) UNSIGNED NOT NULL,
+  `payment_date` DATE NOT NULL,
+  `amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  `payment_method` ENUM('cash', 'bank', 'cheque', 'online') DEFAULT 'cash',
+  `transaction_ref` VARCHAR(255) DEFAULT NULL,
+  `bank_name` VARCHAR(255) DEFAULT NULL,
+  `bank_account_no` VARCHAR(100) DEFAULT NULL,
+  `cheque_no` VARCHAR(100) DEFAULT NULL,
+  `online_type` VARCHAR(50) DEFAULT NULL,
+  `notes` TEXT DEFAULT NULL,
+  `paid_by` INT(11) UNSIGNED DEFAULT NULL COMMENT 'User who processed payment',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `cashout_request_id` (`cashout_request_id`),
+  KEY `payment_date` (`payment_date`),
+  KEY `paid_by` (`paid_by`),
+  CONSTRAINT `fk_cashout_payments_request` FOREIGN KEY (`cashout_request_id`) REFERENCES `cashout_requests` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cashout_payments_user` FOREIGN KEY (`paid_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Partial payment tracking for cashout requests';
+
+-- Table: cashout_request_history
+-- Audit trail for status changes and approvals
+CREATE TABLE IF NOT EXISTS `cashout_request_history` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `cashout_request_id` INT(11) UNSIGNED NOT NULL,
+  `action` VARCHAR(100) NOT NULL COMMENT 'created, approved_hr, approved_admin, rejected, payment_added, etc.',
+  `old_status` VARCHAR(50) DEFAULT NULL,
+  `new_status` VARCHAR(50) DEFAULT NULL,
+  `amount` DECIMAL(15,2) DEFAULT NULL COMMENT 'For payment actions',
+  `notes` TEXT DEFAULT NULL,
+  `performed_by` INT(11) UNSIGNED NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `cashout_request_id` (`cashout_request_id`),
+  KEY `performed_by` (`performed_by`),
+  KEY `created_at` (`created_at`),
+  CONSTRAINT `fk_cashout_history_request` FOREIGN KEY (`cashout_request_id`) REFERENCES `cashout_requests` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cashout_history_user` FOREIGN KEY (`performed_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Audit trail for cashout requests';
+
+-- ========================================
+-- INDEXES FOR PERFORMANCE
+-- ========================================
+
+-- Additional indexes for common queries
+CREATE INDEX idx_status_created ON cashout_requests(status, created_at DESC);
+CREATE INDEX idx_user_status ON cashout_requests(requested_by, status);
+CREATE INDEX idx_due_amount ON cashout_requests(due_amount);
+
+-- ========================================
+-- TRIGGER: Auto-generate request number
+-- ========================================
+
+DELIMITER $$
+
+CREATE TRIGGER `before_insert_cashout_request`
+BEFORE INSERT ON `cashout_requests`
+FOR EACH ROW
+BEGIN
+  IF NEW.request_number IS NULL THEN
+    SET NEW.request_number = CONCAT('CR-', LPAD((SELECT IFNULL(MAX(id), 0) + 1 FROM cashout_requests), 6, '0'));
+  END IF;
+END$$
+
+DELIMITER ;
+
+-- ========================================
+-- SAMPLE DATA (Optional - for testing)
+-- ========================================
+
+-- Insert sample categories if they don't exist
+INSERT IGNORE INTO management_categories (id, category_name, description, status, created_by) VALUES
+(1, 'Office Expenses', 'General office and administrative expenses', 1, 1),
+(2, 'Salary & Wages', 'Employee salaries and wages', 1, 1),
+(3, 'Utilities', 'Electricity, water, internet bills', 1, 1),
+(4, 'Marketing', 'Marketing and advertising expenses', 1, 1),
+(5, 'Travel', 'Travel and transportation expenses', 1, 1),
+(6, 'Supplies', 'Office supplies and materials', 1, 1);
+
+-- ========================================
+-- VIEWS FOR REPORTING
+-- ========================================
+
+-- View: Pending requests with user details
+CREATE OR REPLACE VIEW `v_pending_cashout_requests` AS
+SELECT 
+    cr.id,
+    cr.request_number,
+    cr.requested_by,
+    u.full_name AS requested_by_name,
+    u.email AS requested_by_email,
+    cr.purpose,
+    cr.paid_to,
+    cr.amount,
+    cr.paid_amount,
+    cr.due_amount,
+    cr.status,
+    mc.category_name,
+    cr.created_at,
+    DATEDIFF(NOW(), cr.created_at) AS days_pending
+FROM 
+    cashout_requests cr
+    INNER JOIN users u ON cr.requested_by = u.id
+    LEFT JOIN management_categories mc ON cr.category_id = mc.id
+WHERE 
+    cr.deleted_at IS NULL
+    AND cr.status IN ('pending', 'approved_by_hr', 'approved_by_admin', 'partially_paid')
+ORDER BY 
+    cr.created_at DESC;
+
+-- View: Fully paid requests
+CREATE OR REPLACE VIEW `v_completed_cashout_requests` AS
+SELECT 
+    cr.id,
+    cr.request_number,
+    cr.requested_by,
+    u.full_name AS requested_by_name,
+    cr.purpose,
+    cr.paid_to,
+    cr.amount,
+    cr.paid_amount,
+    cr.status,
+    mc.category_name,
+    cr.created_at,
+    cr.updated_at
+FROM 
+    cashout_requests cr
+    INNER JOIN users u ON cr.requested_by = u.id
+    LEFT JOIN management_categories mc ON cr.category_id = mc.id
+WHERE 
+    cr.deleted_at IS NULL
+    AND cr.status = 'fully_paid'
+ORDER BY 
+    cr.updated_at DESC;
+
+-- ========================================
+-- STORED PROCEDURES (Optional)
+-- ========================================
+
+-- Procedure: Get cashout request statistics
+DELIMITER $$
+
+CREATE PROCEDURE `sp_get_cashout_statistics`()
+BEGIN
+    SELECT 
+        COUNT(*) AS total_requests,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_requests,
+        SUM(CASE WHEN status = 'fully_paid' THEN 1 ELSE 0 END) AS completed_requests,
+        SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected_requests,
+        SUM(amount) AS total_requested_amount,
+        SUM(paid_amount) AS total_paid_amount,
+        SUM(due_amount) AS total_due_amount
+    FROM 
+        cashout_requests
+    WHERE 
+        deleted_at IS NULL;
+END$$
+
+DELIMITER ;
+
+-- ========================================
+-- PERMISSIONS AND GRANTS (Adjust as needed)
+-- ========================================
+
+-- Grant permissions for the application user
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON cashout_requests TO 'your_app_user'@'localhost';
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON cashout_request_payments TO 'your_app_user'@'localhost';
+-- GRANT SELECT, INSERT ON cashout_request_history TO 'your_app_user'@'localhost';
+
+-- ========================================
+-- NOTES FOR IMPLEMENTATION
+-- ========================================
+
+/*
+1. File Upload Configuration:
+   - Max file size: 5MB recommended
+   - Allowed extensions: .docx, .pdf, .jpg, .png
+   - Storage path: /uploads/cashout_requests/
+   
+2. Approval Workflow:
+   - Pending → Approved by HR → Approved by Admin → Approved by Super Admin
+   - Any approver can reject
+   - Once approved by all required levels, payment can be processed
+   
+3. Payment Processing:
+   - Partial payments update paid_amount
+   - When paid_amount = amount, status becomes fully_paid
+   - All payments recorded in cashout_request_payments table
+   
+4. Integration with approval_requests table:
+   - Create entry in approval_requests when cashout_request is created
+   - Link via source_table='cashout_requests' and source_id=cashout_request.id
+   
+5. Status Transitions:
+   pending → approved_by_hr → approved_by_admin → approved_by_super_admin → partially_paid → fully_paid
+   Any status can → rejected
+*/

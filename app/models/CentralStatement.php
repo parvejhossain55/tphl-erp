@@ -10,114 +10,148 @@ class CentralStatement extends Model
 
     /**
      * Get monthly statement (daily breakdown)
-     * Shows each day's cash-in, cash-out, and running balance
      */
-    public function getMonthlyStatement($year, $month)
+    public function getMonthlyStatement($year, $month, $projectId = null, $category = 'all')
     {
         // Ensure proper formatting
         $year = (int)$year;
         $month = (int)$month;
-        
+
         // Get all dates in the month
         $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
         $monthPadded = sprintf("%02d", $month);
         $daysPadded = sprintf("%02d", $daysInMonth);
-        
+
         $startDate = "$year-$monthPadded-01";
         $endDate = "$year-$monthPadded-$daysPadded";
 
         // Get opening balance (all transactions before this month)
-        $openingBalance = $this->getOpeningBalance($startDate);
+        $openingBalance = $this->getOpeningBalance($startDate, $projectId, $category);
 
-        // Get daily cash-in totals (from lead_payments - clients)
-        $cashInQuery = "
+        // Get daily landshare totals (from lead_payments - booking_money)
+        $landshareQuery = "
             SELECT 
                 DATE(payment_date) as transaction_date,
                 SUM(amount) as total_amount
-            FROM lead_payments
+            FROM lead_payments lp
+            LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE DATE(payment_date) BETWEEN ? AND ?
             AND payment_status = 'paid'
-            GROUP BY DATE(payment_date)
+            AND payment_type = 'booking_money'
         ";
 
-        // Get daily cash-in totals (from management_cashin)
-        $managementCashInQuery = "
+        // Get daily EMI totals for service fee calculation FROM EMI SCHEDULES
+        $emiQuery = "
             SELECT 
-                DATE(transaction_date) as transaction_date,
-                SUM(amount) as total_amount
-            FROM management_cashin
-            WHERE DATE(transaction_date) BETWEEN ? AND ?
-            AND payment_status = 'paid'
-            GROUP BY DATE(transaction_date)
+                DATE(es.due_date) as transaction_date,
+                SUM(es.emi_amount) as total_amount
+            FROM emi_schedules es
+            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE DATE(es.due_date) BETWEEN ? AND ?
+            AND es.status = 'paid'
         ";
 
-        // Get daily cash-out totals
+        // Get daily cash-out totals (BOTH management_cashout + cashout_request payments)
         $cashOutQuery = "
             SELECT 
-                DATE(transaction_date) as transaction_date,
-                SUM(amount) as total_amount
-            FROM management_cashout
-            WHERE DATE(transaction_date) BETWEEN ? AND ?
-            AND payment_status = 'paid'
-            GROUP BY DATE(transaction_date)
+                transaction_date,
+                SUM(total_amount) as total_amount
+            FROM (
+                -- Management cashout
+                SELECT 
+                    DATE(transaction_date) as transaction_date,
+                    SUM(amount) as total_amount
+                FROM management_cashout
+                WHERE DATE(transaction_date) BETWEEN ? AND ?
+                AND payment_status = 'paid'
+                
+                UNION ALL
+                
+                -- Cashout request payments
+                SELECT 
+                    DATE(cp.payment_date) as transaction_date,
+                    SUM(cp.amount) as total_amount
+                FROM cashout_payments cp
+                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                WHERE DATE(cp.payment_date) BETWEEN ? AND ?
+                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+            ) combined
+            GROUP BY transaction_date
         ";
 
-        // Execute queries and build data arrays
-        $cashInStmt = $this->db->prepare($cashInQuery);
-        $cashInStmt->bind_param("ss", $startDate, $endDate);
-        $cashInStmt->execute();
-        $cashInResult = $cashInStmt->get_result();
-        $cashInData = [];
-        while ($row = $cashInResult->fetch_assoc()) {
-            $cashInData[$row['transaction_date']] = (float)$row['total_amount'];
+        // Add project filter if specified
+        if ($projectId) {
+            $landshareQuery .= " AND lb.project_id = ?";
+            $emiQuery .= " AND lb.project_id = ?";
         }
 
-        $mgmtCashInStmt = $this->db->prepare($managementCashInQuery);
-        $mgmtCashInStmt->bind_param("ss", $startDate, $endDate);
-        $mgmtCashInStmt->execute();
-        $mgmtCashInResult = $mgmtCashInStmt->get_result();
-        while ($row = $mgmtCashInResult->fetch_assoc()) {
-            $date = $row['transaction_date'];
-            $cashInData[$date] = ($cashInData[$date] ?? 0) + (float)$row['total_amount'];
+        // Execute queries
+        $landshareStmt = $this->db->prepare($landshareQuery);
+        if ($projectId) {
+            $landshareStmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $landshareStmt->bind_param("ss", $startDate, $endDate);
+        }
+        $landshareStmt->execute();
+        $landshareResult = $landshareStmt->get_result();
+        $landshareData = [];
+        while ($row = $landshareResult->fetch_assoc()) {
+            $landshareData[$row['transaction_date']] = (float)$row['total_amount'];
         }
 
-        $cashOutStmt = $this->db->prepare($cashOutQuery);
-        $cashOutStmt->bind_param("ss", $startDate, $endDate);
-        $cashOutStmt->execute();
-        $cashOutResult = $cashOutStmt->get_result();
-        $cashOutData = [];
-        while ($row = $cashOutResult->fetch_assoc()) {
-            $cashOutData[$row['transaction_date']] = (float)$row['total_amount'];
+        $emiStmt = $this->db->prepare($emiQuery);
+        if ($projectId) {
+            $emiStmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $emiStmt->bind_param("ss", $startDate, $endDate);
         }
+        $emiStmt->execute();
+        $emiResult = $emiStmt->get_result();
+        $emiData = [];
+        while ($row = $emiResult->fetch_assoc()) {
+            // Service fee is 10% of PAID EMI amounts
+            $emiData[$row['transaction_date']] = (float)$row['total_amount'] * 0.10;
+        }
+
+        // Get cashout data with category filter
+        $cashOutData = $this->getCashOutData($startDate, $endDate, $category, $projectId);
 
         // Build daily statement
         $dailyStatement = [];
-        $runningBalance = $openingBalance; // Start with opening balance
-        $totalCashIn = 0;
+        $runningBalance = $openingBalance;
+        $totalLandshare = 0;
+        $totalServiceFee = 0;
         $totalCashOut = 0;
 
         for ($day = 1; $day <= $daysInMonth; $day++) {
             $dayPadded = sprintf("%02d", $day);
             $date = "$year-$monthPadded-$dayPadded";
-            $cashIn = $cashInData[$date] ?? 0;
+            $landshare = $landshareData[$date] ?? 0;
+            $serviceFee = $emiData[$date] ?? 0;
+            $totalRevenue = $landshare + $serviceFee;
             $cashOut = $cashOutData[$date] ?? 0;
-            $netAmount = $cashIn - $cashOut;
+            $netAmount = $totalRevenue - $cashOut;
             $runningBalance += $netAmount;
-            
+
             // Accumulate totals
-            $totalCashIn += $cashIn;
+            $totalLandshare += $landshare;
+            $totalServiceFee += $serviceFee;
             $totalCashOut += $cashOut;
 
             $dailyStatement[] = [
                 'date' => $date,
                 'formatted_date' => date('d M, Y', strtotime($date)),
                 'day_name' => date('l', strtotime($date)),
-                'cash_in' => $cashIn,
+                'landshare' => $landshare,
+                'service_fee' => $serviceFee,
+                'total_revenue' => $totalRevenue,
                 'cash_out' => $cashOut,
                 'net_amount' => $netAmount,
                 'running_balance' => $runningBalance
             ];
         }
+
+        $totalRevenue = $totalLandshare + $totalServiceFee;
 
         return [
             'period' => date('F Y', strtotime($startDate)),
@@ -126,28 +160,100 @@ class CentralStatement extends Model
             'opening_balance' => $openingBalance,
             'daily_data' => $dailyStatement,
             'summary' => [
-                'total_cash_in' => $totalCashIn,
+                'total_landshare' => $totalLandshare,
+                'total_service_fee' => $totalServiceFee,
+                'total_revenue' => $totalRevenue,
                 'total_cash_out' => $totalCashOut,
-                'net_balance' => $totalCashIn - $totalCashOut,
+                'net_balance' => $totalRevenue - $totalCashOut,
                 'final_balance' => $runningBalance
             ]
         ];
     }
 
     /**
+     * Helper: Get cashout data (management_cashout + cashout_request payments)
+     */
+    private function getCashOutData($startDate, $endDate, $category = 'all', $projectId = null)
+    {
+        // Get management cashout
+        $managementQuery = "
+            SELECT 
+                DATE(transaction_date) as transaction_date,
+                SUM(amount) as total_amount
+            FROM management_cashout
+            WHERE DATE(transaction_date) BETWEEN ? AND ?
+            AND payment_status = 'paid'
+        ";
+
+        $managementParams = [$startDate, $endDate];
+        $managementTypes = "ss";
+        
+        if ($category !== 'all') {
+            $categoryId = $this->getCategoryIdByName($category);
+            if ($categoryId) {
+                $managementQuery .= " AND category_id = ?";
+                $managementParams[] = $categoryId;
+                $managementTypes .= "i";
+            }
+        }
+
+        $stmt = $this->db->prepare($managementQuery);
+        if (!empty($managementParams)) {
+            $stmt->bind_param($managementTypes, ...$managementParams);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $managementData = [];
+        while ($row = $result->fetch_assoc()) {
+            $managementData[$row['transaction_date']] = (float)$row['total_amount'];
+        }
+
+        // Get cashout request payments
+        $cashoutRequestQuery = "
+            SELECT 
+                DATE(cp.payment_date) as transaction_date,
+                SUM(cp.amount) as total_amount
+            FROM cashout_payments cp
+            LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+            WHERE DATE(cp.payment_date) BETWEEN ? AND ?
+            AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+        ";
+
+        $stmt = $this->db->prepare($cashoutRequestQuery);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $cashoutRequestData = [];
+        while ($row = $result->fetch_assoc()) {
+            $cashoutRequestData[$row['transaction_date']] = (float)$row['total_amount'];
+        }
+
+        // Combine both
+        $allDates = array_unique(array_merge(array_keys($managementData), array_keys($cashoutRequestData)));
+        $combinedData = [];
+        
+        foreach ($allDates as $date) {
+            $combinedData[$date] = ($managementData[$date] ?? 0) + ($cashoutRequestData[$date] ?? 0);
+        }
+        
+        return $combinedData;
+    }
+
+    /**
      * Get 6-month statement (monthly breakdown)
      */
-    public function getSixMonthStatement($endYear, $endMonth)
+    public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $category = 'all')
     {
         $monthlyData = [];
-        
+
         // Calculate 6 months back
         $startDate = date('Y-m-01', strtotime("-5 months", strtotime("$endYear-$endMonth-01")));
         $endDate = date('Y-m-t', strtotime("$endYear-$endMonth-01"));
-        
+
         // Get opening balance before the 6-month period
-        $runningBalance = $this->getOpeningBalance($startDate);
-        $totalCashIn = 0;
+        $runningBalance = $this->getOpeningBalance($startDate, $projectId, $category);
+        $totalLandshare = 0;
+        $totalServiceFee = 0;
         $totalCashOut = 0;
 
         for ($i = 5; $i >= 0; $i--) {
@@ -158,36 +264,45 @@ class CentralStatement extends Model
             $monthEnd = date('Y-m-t', strtotime($monthStart));
 
             // Get monthly totals
-            $cashIn = $this->getMonthlyCashIn($monthStart, $monthEnd);
-            $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd);
-            $netAmount = $cashIn - $cashOut;
+            $landshare = $this->getMonthlyLandshare($monthStart, $monthEnd, $projectId);
+            $serviceFee = $this->getMonthlyServiceFee($monthStart, $monthEnd, $projectId);
+            $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category);
+            $totalRevenue = $landshare + $serviceFee;
+            $netAmount = $totalRevenue - $cashOut;
             $runningBalance += $netAmount;
-            
+
             // Accumulate totals
-            $totalCashIn += $cashIn;
+            $totalLandshare += $landshare;
+            $totalServiceFee += $serviceFee;
             $totalCashOut += $cashOut;
 
             $monthlyData[] = [
                 'month' => date('F Y', strtotime($date)),
                 'year' => $year,
                 'month_num' => $month,
-                'cash_in' => $cashIn,
+                'landshare' => $landshare,
+                'service_fee' => $serviceFee,
+                'total_revenue' => $totalRevenue,
                 'cash_out' => $cashOut,
                 'net_amount' => $netAmount,
                 'running_balance' => $runningBalance
             ];
         }
 
+        $totalRevenue = $totalLandshare + $totalServiceFee;
+
         return [
             'period' => 'Last 6 Months',
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'opening_balance' => $this->getOpeningBalance($startDate),
+            'opening_balance' => $this->getOpeningBalance($startDate, $projectId, $category),
             'monthly_data' => $monthlyData,
             'summary' => [
-                'total_cash_in' => $totalCashIn,
+                'total_landshare' => $totalLandshare,
+                'total_service_fee' => $totalServiceFee,
+                'total_revenue' => $totalRevenue,
                 'total_cash_out' => $totalCashOut,
-                'net_balance' => $totalCashIn - $totalCashOut,
+                'net_balance' => $totalRevenue - $totalCashOut,
                 'final_balance' => $runningBalance
             ]
         ];
@@ -196,50 +311,60 @@ class CentralStatement extends Model
     /**
      * Get yearly statement (monthly breakdown for a year)
      */
-    public function getYearlyStatement($year)
+    public function getYearlyStatement($year, $projectId = null, $category = 'all')
     {
         $monthlyData = [];
         $startDate = "$year-01-01";
-        
+
         // Get opening balance before the year
-        $runningBalance = $this->getOpeningBalance($startDate);
-        $totalCashIn = 0;
+        $runningBalance = $this->getOpeningBalance($startDate, $projectId, $category);
+        $totalLandshare = 0;
+        $totalServiceFee = 0;
         $totalCashOut = 0;
 
         for ($month = 1; $month <= 12; $month++) {
             $monthStart = sprintf("%s-%02d-01", $year, $month);
             $monthEnd = date('Y-m-t', strtotime($monthStart));
 
-            $cashIn = $this->getMonthlyCashIn($monthStart, $monthEnd);
-            $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd);
-            $netAmount = $cashIn - $cashOut;
+            $landshare = $this->getMonthlyLandshare($monthStart, $monthEnd, $projectId);
+            $serviceFee = $this->getMonthlyServiceFee($monthStart, $monthEnd, $projectId);
+            $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category);
+            $totalRevenue = $landshare + $serviceFee;
+            $netAmount = $totalRevenue - $cashOut;
             $runningBalance += $netAmount;
-            
+
             // Accumulate totals
-            $totalCashIn += $cashIn;
+            $totalLandshare += $landshare;
+            $totalServiceFee += $serviceFee;
             $totalCashOut += $cashOut;
 
             $monthlyData[] = [
                 'month' => date('F Y', strtotime($monthStart)),
                 'year' => $year,
                 'month_num' => $month,
-                'cash_in' => $cashIn,
+                'landshare' => $landshare,
+                'service_fee' => $serviceFee,
+                'total_revenue' => $totalRevenue,
                 'cash_out' => $cashOut,
                 'net_amount' => $netAmount,
                 'running_balance' => $runningBalance
             ];
         }
 
+        $totalRevenue = $totalLandshare + $totalServiceFee;
+
         return [
             'period' => "Year $year",
             'start_date' => "$year-01-01",
             'end_date' => "$year-12-31",
-            'opening_balance' => $this->getOpeningBalance($startDate),
+            'opening_balance' => $this->getOpeningBalance($startDate, $projectId, $category),
             'monthly_data' => $monthlyData,
             'summary' => [
-                'total_cash_in' => $totalCashIn,
+                'total_landshare' => $totalLandshare,
+                'total_service_fee' => $totalServiceFee,
+                'total_revenue' => $totalRevenue,
                 'total_cash_out' => $totalCashOut,
-                'net_balance' => $totalCashIn - $totalCashOut,
+                'net_balance' => $totalRevenue - $totalCashOut,
                 'final_balance' => $runningBalance
             ]
         ];
@@ -248,66 +373,76 @@ class CentralStatement extends Model
     /**
      * Get custom range statement (daily if <= 31 days, monthly if > 31 days)
      */
-    public function getCustomRangeStatement($startDate, $endDate)
+    public function getCustomRangeStatement($startDate, $endDate, $projectId = null, $category = 'all')
     {
         $start = strtotime($startDate);
         $end = strtotime($endDate);
         $daysDiff = ($end - $start) / (60 * 60 * 24);
 
         if ($daysDiff <= 31) {
-            return $this->getCustomDailyStatement($startDate, $endDate);
+            return $this->getCustomDailyStatement($startDate, $endDate, $projectId, $category);
         } else {
-            return $this->getCustomMonthlyStatement($startDate, $endDate);
+            return $this->getCustomMonthlyStatement($startDate, $endDate, $projectId, $category);
         }
     }
 
     /**
      * Get custom daily statement
      */
-    private function getCustomDailyStatement($startDate, $endDate)
+    private function getCustomDailyStatement($startDate, $endDate, $projectId = null, $category = 'all')
     {
         $start = strtotime($startDate);
         $end = strtotime($endDate);
         $dailyData = [];
-        
+
         // Get opening balance before the period
-        $runningBalance = $this->getOpeningBalance($startDate);
-        $totalCashIn = 0;
+        $runningBalance = $this->getOpeningBalance($startDate, $projectId, $category);
+        $totalLandshare = 0;
+        $totalServiceFee = 0;
         $totalCashOut = 0;
 
         // Get data for each day
         for ($current = $start; $current <= $end; $current += 86400) {
             $date = date('Y-m-d', $current);
-            $cashIn = $this->getDailyCashIn($date);
-            $cashOut = $this->getDailyCashOut($date);
-            $netAmount = $cashIn - $cashOut;
+            $landshare = $this->getDailyLandshare($date, $projectId);
+            $serviceFee = $this->getDailyServiceFee($date, $projectId);
+            $cashOut = $this->getDailyCashOut($date, $category);
+            $totalRevenue = $landshare + $serviceFee;
+            $netAmount = $totalRevenue - $cashOut;
             $runningBalance += $netAmount;
-            
+
             // Accumulate totals
-            $totalCashIn += $cashIn;
+            $totalLandshare += $landshare;
+            $totalServiceFee += $serviceFee;
             $totalCashOut += $cashOut;
 
             $dailyData[] = [
                 'date' => $date,
                 'formatted_date' => date('d M, Y', strtotime($date)),
                 'day_name' => date('l', strtotime($date)),
-                'cash_in' => $cashIn,
+                'landshare' => $landshare,
+                'service_fee' => $serviceFee,
+                'total_revenue' => $totalRevenue,
                 'cash_out' => $cashOut,
                 'net_amount' => $netAmount,
                 'running_balance' => $runningBalance
             ];
         }
 
+        $totalRevenue = $totalLandshare + $totalServiceFee;
+
         return [
             'period' => 'Custom Range (Daily)',
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'opening_balance' => $this->getOpeningBalance($startDate),
+            'opening_balance' => $this->getOpeningBalance($startDate, $projectId, $category),
             'daily_data' => $dailyData,
             'summary' => [
-                'total_cash_in' => $totalCashIn,
+                'total_landshare' => $totalLandshare,
+                'total_service_fee' => $totalServiceFee,
+                'total_revenue' => $totalRevenue,
                 'total_cash_out' => $totalCashOut,
-                'net_balance' => $totalCashIn - $totalCashOut,
+                'net_balance' => $totalRevenue - $totalCashOut,
                 'final_balance' => $runningBalance
             ]
         ];
@@ -316,16 +451,17 @@ class CentralStatement extends Model
     /**
      * Get custom monthly statement
      */
-    private function getCustomMonthlyStatement($startDate, $endDate)
+    private function getCustomMonthlyStatement($startDate, $endDate, $projectId = null, $category = 'all')
     {
         $monthlyData = [];
-        
+
         $start = strtotime(date('Y-m-01', strtotime($startDate)));
         $end = strtotime(date('Y-m-t', strtotime($endDate)));
-        
+
         // Get opening balance before the period
-        $runningBalance = $this->getOpeningBalance(date('Y-m-01', strtotime($startDate)));
-        $totalCashIn = 0;
+        $runningBalance = $this->getOpeningBalance(date('Y-m-01', strtotime($startDate)), $projectId, $category);
+        $totalLandshare = 0;
+        $totalServiceFee = 0;
         $totalCashOut = 0;
 
         $current = $start;
@@ -333,20 +469,25 @@ class CentralStatement extends Model
             $monthStart = date('Y-m-01', $current);
             $monthEnd = date('Y-m-t', $current);
 
-            $cashIn = $this->getMonthlyCashIn($monthStart, $monthEnd);
-            $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd);
-            $netAmount = $cashIn - $cashOut;
+            $landshare = $this->getMonthlyLandshare($monthStart, $monthEnd, $projectId);
+            $serviceFee = $this->getMonthlyServiceFee($monthStart, $monthEnd, $projectId);
+            $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category);
+            $totalRevenue = $landshare + $serviceFee;
+            $netAmount = $totalRevenue - $cashOut;
             $runningBalance += $netAmount;
-            
+
             // Accumulate totals
-            $totalCashIn += $cashIn;
+            $totalLandshare += $landshare;
+            $totalServiceFee += $serviceFee;
             $totalCashOut += $cashOut;
 
             $monthlyData[] = [
                 'month' => date('F Y', $current),
                 'year' => date('Y', $current),
                 'month_num' => date('m', $current),
-                'cash_in' => $cashIn,
+                'landshare' => $landshare,
+                'service_fee' => $serviceFee,
+                'total_revenue' => $totalRevenue,
                 'cash_out' => $cashOut,
                 'net_amount' => $netAmount,
                 'running_balance' => $runningBalance
@@ -355,16 +496,20 @@ class CentralStatement extends Model
             $current = strtotime('+1 month', $current);
         }
 
+        $totalRevenue = $totalLandshare + $totalServiceFee;
+
         return [
             'period' => 'Custom Range (Monthly)',
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'opening_balance' => $this->getOpeningBalance(date('Y-m-01', strtotime($startDate))),
+            'opening_balance' => $this->getOpeningBalance(date('Y-m-01', strtotime($startDate)), $projectId, $category),
             'monthly_data' => $monthlyData,
             'summary' => [
-                'total_cash_in' => $totalCashIn,
+                'total_landshare' => $totalLandshare,
+                'total_service_fee' => $totalServiceFee,
+                'total_revenue' => $totalRevenue,
                 'total_cash_out' => $totalCashOut,
-                'net_balance' => $totalCashIn - $totalCashOut,
+                'net_balance' => $totalRevenue - $totalCashOut,
                 'final_balance' => $runningBalance
             ]
         ];
@@ -373,94 +518,151 @@ class CentralStatement extends Model
     /**
      * Helper: Get opening balance before a specific date
      */
-    private function getOpeningBalance($startDate)
+    private function getOpeningBalance($startDate, $projectId = null, $category = 'all')
     {
-        // Get all cash-in before start date
-        $cashInQuery = "
+        // Get all landshare before start date
+        $landshareQuery = "
             SELECT COALESCE(SUM(amount), 0) as total
-            FROM (
-                SELECT amount FROM lead_payments 
-                WHERE DATE(payment_date) < ? AND payment_status = 'paid'
-                UNION ALL
-                SELECT amount FROM management_cashin 
-                WHERE DATE(transaction_date) < ? AND payment_status = 'paid'
-            ) as combined
+            FROM lead_payments lp
+            LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE DATE(payment_date) < ? 
+            AND payment_status = 'paid'
+            AND payment_type = 'booking_money'
         ";
-        
-        // Get all cash-out before start date
+
+        // Get all EMI before start date for service fee calculation FROM EMI SCHEDULES
+        $emiQuery = "
+            SELECT COALESCE(SUM(es.emi_amount), 0) as total
+            FROM emi_schedules es
+            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE DATE(es.due_date) < ? 
+            AND es.status = 'paid'
+        ";
+
+        // Get all cash-out before start date (BOTH management_cashout + cashout_request payments)
         $cashOutQuery = "
-            SELECT COALESCE(SUM(amount), 0) as total
-            FROM management_cashout
-            WHERE DATE(transaction_date) < ? AND payment_status = 'paid'
+            SELECT COALESCE(SUM(total_amount), 0) as total
+            FROM (
+                -- Management cashout
+                SELECT amount as total_amount
+                FROM management_cashout
+                WHERE DATE(transaction_date) < ? 
+                AND payment_status = 'paid'
+                
+                UNION ALL
+                
+                -- Cashout request payments
+                SELECT cp.amount as total_amount
+                FROM cashout_payments cp
+                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                WHERE DATE(cp.payment_date) < ?
+                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+            ) combined
         ";
-        
-        $totalCashIn = 0;
-        $stmt = $this->db->prepare($cashInQuery);
-        $stmt->bind_param("ss", $startDate, $startDate);
+
+        // Add project filter if specified
+        if ($projectId) {
+            $landshareQuery .= " AND lb.project_id = ?";
+            $emiQuery .= " AND lb.project_id = ?";
+        }
+
+        // Add category filter if specified (applies only to management_cashout)
+        if ($category !== 'all') {
+            $categoryId = $this->getCategoryIdByName($category);
+            if ($categoryId) {
+                $cashOutQuery = "
+                    SELECT COALESCE(SUM(total_amount), 0) as total
+                    FROM (
+                        -- Management cashout with category filter
+                        SELECT amount as total_amount
+                        FROM management_cashout
+                        WHERE DATE(transaction_date) < ? 
+                        AND payment_status = 'paid'
+                        AND category_id = ?
+                        
+                        UNION ALL
+                        
+                        -- Cashout request payments (no category filter)
+                        SELECT cp.amount as total_amount
+                        FROM cashout_payments cp
+                        LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                        WHERE DATE(cp.payment_date) < ?
+                        AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                    ) combined
+                ";
+            }
+        }
+
+        $totalLandshare = 0;
+        $stmt = $this->db->prepare($landshareQuery);
+        if ($projectId) {
+            $stmt->bind_param("si", $startDate, $projectId);
+        } else {
+            $stmt->bind_param("s", $startDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($row = $result->fetch_assoc()) {
-            $totalCashIn = (float)$row['total'];
+            $totalLandshare = (float)$row['total'];
         }
-        
+
+        $totalEmi = 0;
+        $stmt = $this->db->prepare($emiQuery);
+        if ($projectId) {
+            $stmt->bind_param("si", $startDate, $projectId);
+        } else {
+            $stmt->bind_param("s", $startDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $totalEmi = (float)$row['total'];
+        }
+
         $totalCashOut = 0;
         $stmt = $this->db->prepare($cashOutQuery);
-        $stmt->bind_param("s", $startDate);
+        if ($category !== 'all' && $categoryId) {
+            $stmt->bind_param("sis", $startDate, $categoryId, $startDate);
+        } else {
+            $stmt->bind_param("ss", $startDate, $startDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($row = $result->fetch_assoc()) {
             $totalCashOut = (float)$row['total'];
         }
-        
-        $openingBalance = $totalCashIn - $totalCashOut;
-        
-        // Debug log
-        error_log("Opening Balance Calculation for $startDate:");
-        error_log("Total Cash In before start: " . $totalCashIn);
-        error_log("Total Cash Out before start: " . $totalCashOut);
-        error_log("Opening Balance: " . $openingBalance);
-        
+
+        // Calculate service fee as 10% of total EMI
+        $totalServiceFee = $totalEmi * 0.10;
+        $openingBalance = ($totalLandshare + $totalServiceFee) - $totalCashOut;
+
         return $openingBalance;
     }
 
     /**
-     * Helper: Get daily cash-in total
+     * Helper: Get daily landshare total
      */
-    private function getDailyCashIn($date)
-    {
-        $query = "
-            SELECT 
-                COALESCE(SUM(amount), 0) as total
-            FROM (
-                SELECT amount FROM lead_payments 
-                WHERE DATE(payment_date) = ? AND payment_status = 'paid'
-                UNION ALL
-                SELECT amount FROM management_cashin 
-                WHERE DATE(transaction_date) = ? AND payment_status = 'paid'
-            ) as combined
-        ";
-
-        $stmt = $this->db->prepare($query);
-        $stmt->bind_param("ss", $date, $date);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        return (float)($row['total'] ?? 0);
-    }
-
-    /**
-     * Helper: Get daily cash-out total
-     */
-    private function getDailyCashOut($date)
+    private function getDailyLandshare($date, $projectId = null)
     {
         $query = "
             SELECT COALESCE(SUM(amount), 0) as total
-            FROM management_cashout
-            WHERE DATE(transaction_date) = ? AND payment_status = 'paid'
+            FROM lead_payments lp
+            LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE DATE(payment_date) = ? 
+            AND payment_status = 'paid'
+            AND payment_type = 'booking_money'
         ";
 
+        if ($projectId) {
+            $query .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($query);
-        $stmt->bind_param("s", $date);
+        if ($projectId) {
+            $stmt->bind_param("si", $date, $projectId);
+        } else {
+            $stmt->bind_param("s", $date);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
@@ -468,24 +670,93 @@ class CentralStatement extends Model
     }
 
     /**
-     * Helper: Get monthly cash-in total
+     * Helper: Get daily service fee total (10% of EMI payments)
      */
-    private function getMonthlyCashIn($startDate, $endDate)
+    private function getDailyServiceFee($date, $projectId = null)
     {
         $query = "
-            SELECT 
-                COALESCE(SUM(amount), 0) as total
-            FROM (
-                SELECT amount FROM lead_payments 
-                WHERE DATE(payment_date) BETWEEN ? AND ? AND payment_status = 'paid'
-                UNION ALL
-                SELECT amount FROM management_cashin 
-                WHERE DATE(transaction_date) BETWEEN ? AND ? AND payment_status = 'paid'
-            ) as combined
+            SELECT COALESCE(SUM(es.emi_amount), 0) as total
+            FROM emi_schedules es
+            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE DATE(es.due_date) = ?
+            AND es.status = 'paid'
         ";
 
+        if ($projectId) {
+            $query .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($query);
-        $stmt->bind_param("ssss", $startDate, $endDate, $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("si", $date, $projectId);
+        } else {
+            $stmt->bind_param("s", $date);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $totalEmi = (float)($row['total'] ?? 0);
+        return $totalEmi * 0.10; // 10% service fee
+    }
+
+    /**
+     * Helper: Get daily cash-out total (BOTH management_cashout + cashout_request payments)
+     */
+    private function getDailyCashOut($date, $category = 'all')
+    {
+        $query = "
+            SELECT COALESCE(SUM(total_amount), 0) as total
+            FROM (
+                -- Management cashout
+                SELECT amount as total_amount
+                FROM management_cashout
+                WHERE DATE(transaction_date) = ? 
+                AND payment_status = 'paid'
+                
+                UNION ALL
+                
+                -- Cashout request payments
+                SELECT cp.amount as total_amount
+                FROM cashout_payments cp
+                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                WHERE DATE(cp.payment_date) = ?
+                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+            ) combined
+        ";
+
+        // Add category filter if specified (applies only to management_cashout)
+        if ($category !== 'all') {
+            $categoryId = $this->getCategoryIdByName($category);
+            if ($categoryId) {
+                $query = "
+                    SELECT COALESCE(SUM(total_amount), 0) as total
+                    FROM (
+                        -- Management cashout with category filter
+                        SELECT amount as total_amount
+                        FROM management_cashout
+                        WHERE DATE(transaction_date) = ? 
+                        AND payment_status = 'paid'
+                        AND category_id = ?
+                        
+                        UNION ALL
+                        
+                        -- Cashout request payments (no category filter)
+                        SELECT cp.amount as total_amount
+                        FROM cashout_payments cp
+                        LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                        WHERE DATE(cp.payment_date) = ?
+                        AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                    ) combined
+                ";
+            }
+        }
+
+        $stmt = $this->db->prepare($query);
+        if ($category !== 'all' && $categoryId) {
+            $stmt->bind_param("sis", $date, $categoryId, $date);
+        } else {
+            $stmt->bind_param("ss", $date, $date);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
@@ -493,18 +764,29 @@ class CentralStatement extends Model
     }
 
     /**
-     * Helper: Get monthly cash-out total
+     * Helper: Get monthly landshare total
      */
-    private function getMonthlyCashOut($startDate, $endDate)
+    private function getMonthlyLandshare($startDate, $endDate, $projectId = null)
     {
         $query = "
             SELECT COALESCE(SUM(amount), 0) as total
-            FROM management_cashout
-            WHERE DATE(transaction_date) BETWEEN ? AND ? AND payment_status = 'paid'
+            FROM lead_payments lp
+            LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE DATE(payment_date) BETWEEN ? AND ? 
+            AND payment_status = 'paid'
+            AND payment_type = 'booking_money'
         ";
 
+        if ($projectId) {
+            $query .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($query);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
@@ -512,43 +794,367 @@ class CentralStatement extends Model
     }
 
     /**
-     * Get overall statistics
+     * Helper: Get monthly service fee total (10% of EMI payments)
      */
-    public function getOverallStatistics()
+    private function getMonthlyServiceFee($startDate, $endDate, $projectId = null)
     {
-        // Total cash-in (all time)
-        $cashInQuery = "
-            SELECT COALESCE(SUM(amount), 0) as total
-            FROM (
-                SELECT amount FROM lead_payments WHERE payment_status = 'paid'
-                UNION ALL
-                SELECT amount FROM management_cashin WHERE payment_status = 'paid'
-            ) as combined
+        $query = "
+            SELECT COALESCE(SUM(es.emi_amount), 0) as total
+            FROM emi_schedules es
+            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE DATE(es.due_date) BETWEEN ? AND ?
+            AND es.status = 'paid'
         ";
 
-        // Total cash-out (all time)
-        $cashOutQuery = "
+        if ($projectId) {
+            $query .= " AND lb.project_id = ?";
+        }
+
+        $stmt = $this->db->prepare($query);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $totalEmi = (float)($row['total'] ?? 0);
+        return $totalEmi * 0.10; // 10% service fee
+    }
+
+    /**
+     * Helper: Get monthly cash-out total (BOTH management_cashout + cashout_request payments)
+     */
+    private function getMonthlyCashOut($startDate, $endDate, $category = 'all')
+    {
+        $query = "
+            SELECT COALESCE(SUM(total_amount), 0) as total
+            FROM (
+                -- Management cashout
+                SELECT amount as total_amount
+                FROM management_cashout
+                WHERE DATE(transaction_date) BETWEEN ? AND ? 
+                AND payment_status = 'paid'
+                
+                UNION ALL
+                
+                -- Cashout request payments
+                SELECT cp.amount as total_amount
+                FROM cashout_payments cp
+                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                WHERE DATE(cp.payment_date) BETWEEN ? AND ?
+                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+            ) combined
+        ";
+
+        // Add category filter if specified (applies only to management_cashout)
+        if ($category !== 'all') {
+            $categoryId = $this->getCategoryIdByName($category);
+            if ($categoryId) {
+                $query = "
+                    SELECT COALESCE(SUM(total_amount), 0) as total
+                    FROM (
+                        -- Management cashout with category filter
+                        SELECT amount as total_amount
+                        FROM management_cashout
+                        WHERE DATE(transaction_date) BETWEEN ? AND ? 
+                        AND payment_status = 'paid'
+                        AND category_id = ?
+                        
+                        UNION ALL
+                        
+                        -- Cashout request payments (no category filter)
+                        SELECT cp.amount as total_amount
+                        FROM cashout_payments cp
+                        LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                        WHERE DATE(cp.payment_date) BETWEEN ? AND ?
+                        AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                    ) combined
+                ";
+            }
+        }
+
+        $stmt = $this->db->prepare($query);
+        if ($category !== 'all' && $categoryId) {
+            $stmt->bind_param("ssiss", $startDate, $endDate, $categoryId, $startDate, $endDate);
+        } else {
+            $stmt->bind_param("ssss", $startDate, $endDate, $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return (float)($row['total'] ?? 0);
+    }
+
+    /**
+     * Get overall statistics with period filter - FIXED VERSION
+     */
+    public function getOverallStatistics($periodType = 'all_time', $year = null, $month = null, $startDate = null, $endDate = null, $projectId = null, $category = 'all')
+    {
+        // Build date conditions based on period type
+        $dateConditions = $this->buildDateConditions($periodType, $year, $month, $startDate, $endDate);
+        
+        // 1. Get landshare data
+        $landshareQuery = "
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM lead_payments lp
+            LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE payment_status = 'paid'
+            AND payment_type = 'booking_money'
+            {$dateConditions['landshare']}
+        ";
+
+        $landshareParams = $dateConditions['params'];
+        $landshareTypes = $dateConditions['types'];
+
+        if ($projectId) {
+            $landshareQuery .= " AND lb.project_id = ?";
+            $landshareParams[] = $projectId;
+            $landshareTypes .= "i";
+        }
+
+        $stmt = $this->db->prepare($landshareQuery);
+        if (!empty($landshareParams)) {
+            $stmt->bind_param($landshareTypes, ...$landshareParams);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $totalLandshare = 0;
+        if ($row = $result->fetch_assoc()) {
+            $totalLandshare = (float)$row['total'];
+        }
+
+        // 2. Get EMI data for service fee FROM EMI SCHEDULES
+        $emiQuery = "
+            SELECT COALESCE(SUM(es.emi_amount), 0) as total
+            FROM emi_schedules es
+            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE es.status = 'paid'
+            {$dateConditions['emi']}
+        ";
+
+        $emiParams = $dateConditions['params'];
+        $emiTypes = $dateConditions['types'];
+
+        if ($projectId) {
+            $emiQuery .= " AND lb.project_id = ?";
+            $emiParams[] = $projectId;
+            $emiTypes .= "i";
+        }
+
+        $stmt = $this->db->prepare($emiQuery);
+        if (!empty($emiParams)) {
+            $stmt->bind_param($emiTypes, ...$emiParams);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $totalEmi = 0;
+        if ($row = $result->fetch_assoc()) {
+            $totalEmi = (float)$row['total'];
+        }
+
+        // Calculate service fee as 10% of total EMI
+        $totalServiceFee = $totalEmi * 0.10;
+
+        // 3. Get cash-out data
+        $cashOutData = $this->getCashOutForStatistics($periodType, $year, $month, $startDate, $endDate, $category, $projectId);
+        $totalCashOut = $cashOutData['total'] ?? 0;
+
+        $totalRevenue = $totalLandshare + $totalServiceFee;
+
+        return [
+            'total_landshare' => $totalLandshare,
+            'total_emi' => $totalEmi, // Keep raw EMI for reference
+            'total_service_fee' => $totalServiceFee,
+            'total_revenue' => $totalRevenue,
+            'total_cash_out' => $totalCashOut,
+            'net_balance' => $totalRevenue - $totalCashOut
+        ];
+    }
+
+    /**
+     * Helper: Build date conditions for queries
+     */
+    private function buildDateConditions($periodType, $year, $month, $startDate, $endDate)
+    {
+        $conditions = [
+            'landshare' => '',
+            'emi' => '',
+            'params' => [],
+            'types' => ''
+        ];
+
+        if ($periodType === 'all_time') {
+            return $conditions;
+        }
+
+        if ($periodType === 'monthly' && $year && $month) {
+            $startDate = "$year-$month-01";
+            $endDate = date('Y-m-t', strtotime($startDate));
+            
+            $conditions['landshare'] = " AND DATE(lp.payment_date) BETWEEN ? AND ?";
+            $conditions['emi'] = " AND DATE(es.due_date) BETWEEN ? AND ?";
+            $conditions['params'] = [$startDate, $endDate, $startDate, $endDate];
+            $conditions['types'] = "ssss";
+        }
+        elseif ($periodType === 'yearly' && $year) {
+            $startDate = "$year-01-01";
+            $endDate = "$year-12-31";
+            
+            $conditions['landshare'] = " AND DATE(lp.payment_date) BETWEEN ? AND ?";
+            $conditions['emi'] = " AND DATE(es.due_date) BETWEEN ? AND ?";
+            $conditions['params'] = [$startDate, $endDate, $startDate, $endDate];
+            $conditions['types'] = "ssss";
+        }
+        elseif ($periodType === 'custom' && $startDate && $endDate) {
+            $conditions['landshare'] = " AND DATE(lp.payment_date) BETWEEN ? AND ?";
+            $conditions['emi'] = " AND DATE(es.due_date) BETWEEN ? AND ?";
+            $conditions['params'] = [$startDate, $endDate, $startDate, $endDate];
+            $conditions['types'] = "ssss";
+        }
+
+        return $conditions;
+    }
+
+    /**
+     * Helper: Get cash-out data for statistics
+     */
+    private function getCashOutForStatistics($periodType, $year, $month, $startDate, $endDate, $category = 'all', $projectId = null)
+    {
+        // Build date condition
+        $dateCondition = "";
+        $params = [];
+        $types = "";
+        
+        if ($periodType === 'monthly' && $year && $month) {
+            $startDate = "$year-$month-01";
+            $endDate = date('Y-m-t', strtotime($startDate));
+            $dateCondition = " AND DATE(transaction_date) BETWEEN ? AND ?";
+            $params = [$startDate, $endDate];
+            $types = "ss";
+        }
+        elseif ($periodType === 'yearly' && $year) {
+            $startDate = "$year-01-01";
+            $endDate = "$year-12-31";
+            $dateCondition = " AND DATE(transaction_date) BETWEEN ? AND ?";
+            $params = [$startDate, $endDate];
+            $types = "ss";
+        }
+        elseif ($periodType === 'custom' && $startDate && $endDate) {
+            $dateCondition = " AND DATE(transaction_date) BETWEEN ? AND ?";
+            $params = [$startDate, $endDate];
+            $types = "ss";
+        }
+
+        // Get management cashout
+        $managementQuery = "
             SELECT COALESCE(SUM(amount), 0) as total
             FROM management_cashout
             WHERE payment_status = 'paid'
+            {$dateCondition}
         ";
 
-        $totalCashIn = 0;
-        $result = $this->db->query($cashInQuery);
-        if ($result && $row = $result->fetch_assoc()) {
-            $totalCashIn = (float)$row['total'];
+        if ($category !== 'all') {
+            $categoryId = $this->getCategoryIdByName($category);
+            if ($categoryId) {
+                $managementQuery .= " AND category_id = ?";
+                $params[] = $categoryId;
+                $types .= "i";
+            }
         }
 
-        $totalCashOut = 0;
-        $result = $this->db->query($cashOutQuery);
-        if ($result && $row = $result->fetch_assoc()) {
-            $totalCashOut = (float)$row['total'];
+        $stmt = $this->db->prepare($managementQuery);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $managementTotal = 0;
+        if ($row = $result->fetch_assoc()) {
+            $managementTotal = (float)$row['total'];
+        }
+
+        // Get cashout request payments
+        $cashoutRequestQuery = "
+            SELECT COALESCE(SUM(cp.amount), 0) as total
+            FROM cashout_payments cp
+            LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+            WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
+            {$dateCondition}
+        ";
+
+        $stmt = $this->db->prepare($cashoutRequestQuery);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $cashoutRequestTotal = 0;
+        if ($row = $result->fetch_assoc()) {
+            $cashoutRequestTotal = (float)$row['total'];
         }
 
         return [
-            'total_cash_in' => $totalCashIn,
-            'total_cash_out' => $totalCashOut,
-            'net_balance' => $totalCashIn - $totalCashOut
+            'management' => $managementTotal,
+            'cashout_request' => $cashoutRequestTotal,
+            'total' => $managementTotal + $cashoutRequestTotal
         ];
     }
+
+    /**
+     * Helper: Get category ID by name
+     */
+    private function getCategoryIdByName($categoryName)
+    {
+        // Map category names to IDs based on your management_categories table
+        $categoryMap = [
+            'construction' => 2,
+            'landshare' => null,
+            'utilities' => 1,
+            'other' => null
+        ];
+
+        return $categoryMap[$categoryName] ?? null;
+    }
+
+    /**
+     * NEW: Get service fee from EMI for any period
+     */
+    public function getServiceFeeFromEmi($fromDate = null, $toDate = null, $projectId = null, $category = null)
+    {
+        $query = "
+            SELECT COALESCE(SUM(es.emi_amount * 0.10), 0) as service_fee
+            FROM emi_schedules es
+            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE es.status = 'paid'
+        ";
+
+        $params = [];
+        $types = "";
+
+        if ($fromDate && $toDate) {
+            $query .= " AND DATE(es.due_date) BETWEEN ? AND ?";
+            $params[] = $fromDate;
+            $params[] = $toDate;
+            $types .= "ss";
+        }
+
+        if ($projectId) {
+            $query .= " AND lb.project_id = ?";
+            $params[] = $projectId;
+            $types .= "i";
+        }
+
+        $stmt = $this->db->prepare($query);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+
+        return (float)($row['service_fee'] ?? 0);
+    }
 }
+?>
