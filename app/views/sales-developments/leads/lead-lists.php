@@ -101,12 +101,13 @@ $show_breadcrumb = true;
                         </a>
                         <button
                             type="button"
-                            class="btn btn-success btn-sm py-1"
+                            class="btn btn-success btn-sm py-1 flex-grow-1"
                             data-bs-toggle="modal"
                             data-bs-target="#importCsvModal">
                             <i class="fa-light fa-file-arrow-up me-1"></i>
                             Import CSV
                         </button>
+
 
 
                         <a class="btn btn-primary btn-sm flex-grow-1 py-1"
@@ -189,30 +190,30 @@ $show_breadcrumb = true;
                 <!-- <small class="text-muted">Follow Ups Today: <= $totalTodayFollowUps ?></small> -->
             </div>
 
-<!-- Assign Leads Card -->
-<div id="assignCard" class="card shadow-sm p-3 mb-3" style="display:none; border-radius:12px; background:#f9f9f9;">
-    <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Assign Leads Card -->
+            <div id="assignCard" class="card shadow-sm p-3 mb-3" style="display:none; border-radius:12px; background:#f9f9f9;">
+                <div class="d-flex flex-wrap align-items-center gap-2">
 
-        <label for="assignUserSelect" class="me-2 fw-bold mb-0" style="white-space: nowrap;">
-            Assign Selected Leads to:
-        </label>
+                    <label for="assignUserSelect" class="me-2 fw-bold mb-0" style="white-space: nowrap;">
+                        Assign Selected Leads to:
+                    </label>
 
-        <div style="flex:0 0 auto;"> <!-- prevents select from stretching -->
-            <select id="assignUserSelect" class="form-select form-select-sm" style="min-width:200px; width:auto;">
-                <option value="">Select User</option>
-                <?php foreach ($assignedUsers as $user): ?>
-                    <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['full_name']) ?></option>
-                <?php endforeach ?>
-            </select>
-        </div>
+                    <div style="flex:0 0 auto;"> <!-- prevents select from stretching -->
+                        <select id="assignUserSelect" class="form-select form-select-sm" style="min-width:200px; width:auto;">
+                            <option value="">Assigned User</option>
+                            <?php foreach ($assignedUsers as $user): ?>
+                                <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['full_name']) ?></option>
+                            <?php endforeach ?>
+                        </select>
+                    </div>
 
-        <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
-            <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
-        </button>
+                    <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
+                        <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
+                    </button>
 
-        <span id="assignFeedback" class="text-success fw-bold ms-2" style="display:none;">Leads assigned successfully!</span>
-    </div>
-</div>
+                    <span id="assignFeedback" class="text-success fw-bold ms-2" style="display:none;">Leads assigned successfully!</span>
+                </div>
+            </div>
 
 
 
@@ -505,33 +506,33 @@ document.querySelectorAll('.selectedId').forEach(cb => {
 });
 </script> -->
 <script>
-const selectAll = document.getElementById('selectAllLeads');
-const assignCard = document.getElementById('assignCard');
+    const selectAll = document.getElementById('selectAllLeads');
+    const assignCard = document.getElementById('assignCard');
 
-selectAll.addEventListener('change', function() {
-    const checkboxes = document.querySelectorAll('.selectedId');
-    checkboxes.forEach(cb => cb.checked = this.checked);
+    selectAll.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.selectedId');
+        checkboxes.forEach(cb => cb.checked = this.checked);
 
-    // Show the card if any checkbox is checked
-    if(this.checked) {
-        assignCard.style.display = 'flex';
-    } else {
-        // Optional: hide if none checked
-        const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
-        assignCard.style.display = anyChecked ? 'flex' : 'none';
-    }
-});
-
-// Individual checkbox toggle
-document.querySelectorAll('.selectedId').forEach(cb => {
-    cb.addEventListener('change', function() {
-        // If any checkbox checked → show assign card
-        const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
-        assignCard.style.display = anyChecked ? 'flex' : 'none';
-
-        // Header checkbox logic
-        const allChecked = Array.from(document.querySelectorAll('.selectedId')).every(c => c.checked);
-        selectAll.checked = allChecked;
+        // Show the card if any checkbox is checked
+        if (this.checked) {
+            assignCard.style.display = 'flex';
+        } else {
+            // Optional: hide if none checked
+            const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
+            assignCard.style.display = anyChecked ? 'flex' : 'none';
+        }
     });
-});
+
+    // Individual checkbox toggle
+    document.querySelectorAll('.selectedId').forEach(cb => {
+        cb.addEventListener('change', function() {
+            // If any checkbox checked → show assign card
+            const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
+            assignCard.style.display = anyChecked ? 'flex' : 'none';
+
+            // Header checkbox logic
+            const allChecked = Array.from(document.querySelectorAll('.selectedId')).every(c => c.checked);
+            selectAll.checked = allChecked;
+        });
+    });
 </script>

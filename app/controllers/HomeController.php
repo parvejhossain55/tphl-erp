@@ -75,7 +75,6 @@ class HomeController extends Controller
             } else {
                 $leadsPercentChange = round((($totalLeadsCount - $prevCount) / $prevCount) * 100, 2);
             }
-
         } else {
             // lifetime comparison vs previous month
             $currentMonth = date('m');
@@ -144,7 +143,7 @@ class HomeController extends Controller
 
         //end accounts
 
-        
+
         $period = $_GET['period'] ?? null;
         $totalFlatsBooking = $this->bookingModel->getTotalBookings($period);
 
@@ -268,143 +267,152 @@ class HomeController extends Controller
 
     }
 
-   
 
-public function approveFull($id)
-{
-    $this->db->begin_transaction();
 
-    try {
-        $request = $this->approvalModel->find($id);
-        $approved_days = null;
+    public function approveFull($id)
+    {
+        $this->db->begin_transaction();
 
-        if ($request['source_table'] === 'employee_leaves') {
-            $leave = $this->leaveModel->find($request['source_id']);
+        try {
+            $request = $this->approvalModel->find($id);
+            $approved_days = null;
 
-            if ($leave && $leave['leave_type_id']) {
-                $start = new DateTime($leave['start_date']);
-                $end   = new DateTime($leave['end_date']);
-                $approved_days = $start->diff($end)->days + 1;
+            if ($request['source_table'] === 'employee_leaves') {
+                $leave = $this->leaveModel->find($request['source_id']);
 
-                $this->deductLeaveBalance($leave, $approved_days);
+                if ($leave && $leave['leave_type_id']) {
+                    $start = new DateTime($leave['start_date']);
+                    $end   = new DateTime($leave['end_date']);
+                    $approved_days = $start->diff($end)->days + 1;
+
+                    $this->deductLeaveBalance($leave, $approved_days);
+                }
             }
+
+            $this->approvalModel->updateStatus($id, 'approved', null, $approved_days);
+
+            $this->db->commit();
+            header("Location: " . $GLOBALS['base_url'] . "/home");
+            exit;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            die($e->getMessage());
         }
-
-        $this->approvalModel->updateStatus($id, 'approved', null, $approved_days);
-
-        $this->db->commit();
-        header("Location: " . $GLOBALS['base_url'] . "/home");
-        exit;
-
-    } catch (Exception $e) {
-        $this->db->rollback();
-        die($e->getMessage());
     }
-}
 
 
     // Partial approve
-public function approvePartial($id)
-{
-    $this->db->begin_transaction();
+    public function approvePartial($id)
+    {
+        $this->db->begin_transaction();
 
-    try {
-        $request = $this->approvalModel->find($id);
-        $approved_amount = $_POST['approved_amount'] ?? null;
-        $approved_days   = (int)($_POST['approved_days'] ?? 0);
+        try {
+            $request = $this->approvalModel->find($id);
 
-        if ($approved_days <= 0) {
-            throw new Exception('Approved days required');
-        }
+            $approved_amount = $_POST['approved_amount'] ?? null;
+            $approved_days   = $_POST['approved_days'] ?? null;
 
-        if ($request['source_table'] === 'employee_leaves') {
-            $leave = $this->leaveModel->find($request['source_id']);
+            // ✅ Only require approved_days for leave requests
+            if ($request['source_table'] === 'employee_leaves') {
+                $approved_days = (int)$approved_days;
 
-            if ($leave && $leave['leave_type_id']) {
-                $start = new DateTime($leave['start_date']);
-                $end   = new DateTime($leave['end_date']);
-                $total_days = $start->diff($end)->days + 1;
-
-                if ($approved_days > $total_days) {
-                    throw new Exception('Approved days exceed requested days');
+                if ($approved_days <= 0) {
+                    throw new Exception('Approved days required');
                 }
 
-                $this->deductLeaveBalance($leave, $approved_days);
+                $leave = $this->leaveModel->find($request['source_id']);
+
+                if ($leave && $leave['leave_type_id']) {
+                    $start = new DateTime($leave['start_date']);
+                    $end   = new DateTime($leave['end_date']);
+                    $total_days = $start->diff($end)->days + 1;
+
+                    if ($approved_days > $total_days) {
+                        throw new Exception('Approved days exceed requested days');
+                    }
+
+                    $this->deductLeaveBalance($leave, $approved_days);
+                }
+            } else {
+                // 💰 amount based partial approval
+                if ($approved_amount === null || $approved_amount <= 0) {
+                    throw new Exception('Approved amount required');
+                }
+
+                $approved_days = null; // important
             }
+
+            $this->approvalModel->updateStatus(
+                $id,
+                'partial',
+                $approved_amount,
+                $approved_days
+            );
+
+            $this->db->commit();
+            header("Location: " . $GLOBALS['base_url'] . "/home");
+            exit;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            die($e->getMessage());
         }
-
-        $this->approvalModel->updateStatus(
-            $id,
-            'partial',
-            $approved_amount,
-            $approved_days
-        );
-
-        $this->db->commit();
-        header("Location: " . $GLOBALS['base_url'] . "/home");
-        exit;
-
-    } catch (Exception $e) {
-        $this->db->rollback();
-        die($e->getMessage());
     }
-}
 
 
     private function deductLeaveBalance(array $leave, int $approved_days)
-{
-    // 1️⃣ Lock row
-    $stmt = $this->db->prepare("
+    {
+        // 1️⃣ Lock row
+        $stmt = $this->db->prepare("
         SELECT id, remaining_days
         FROM employee_leave_balances
         WHERE employee_id = ? AND leave_type_id = ?
         FOR UPDATE
     ");
-    $stmt->bind_param("ii", $leave['employee_id'], $leave['leave_type_id']);
-    $stmt->execute();
-    $balance = $stmt->get_result()->fetch_assoc();
+        $stmt->bind_param("ii", $leave['employee_id'], $leave['leave_type_id']);
+        $stmt->execute();
+        $balance = $stmt->get_result()->fetch_assoc();
 
-    // 2️⃣ Insert if missing
-    if (!$balance) {
-        $initial_days = 20;
+        // 2️⃣ Insert if missing
+        if (!$balance) {
+            $initial_days = 20;
 
-        $stmt = $this->db->prepare("
+            $stmt = $this->db->prepare("
             INSERT INTO employee_leave_balances
             (employee_id, leave_type_id, remaining_days)
             VALUES (?, ?, ?)
         ");
-        $stmt->bind_param(
-            "iii",
-            $leave['employee_id'],
-            $leave['leave_type_id'],
-            $initial_days
-        );
-        $stmt->execute();
+            $stmt->bind_param(
+                "iii",
+                $leave['employee_id'],
+                $leave['leave_type_id'],
+                $initial_days
+            );
+            $stmt->execute();
 
-        $remaining_days = $initial_days;
-    } else {
-        $remaining_days = (int)$balance['remaining_days'];
-    }
+            $remaining_days = $initial_days;
+        } else {
+            $remaining_days = (int)$balance['remaining_days'];
+        }
 
-    // 3️⃣ Validate balance
-    if ($remaining_days < $approved_days) {
-        throw new Exception('Insufficient leave balance');
-    }
+        // 3️⃣ Validate balance
+        if ($remaining_days < $approved_days) {
+            throw new Exception('Insufficient leave balance');
+        }
 
-    // 4️⃣ Deduct
-    $stmt = $this->db->prepare("
+        // 4️⃣ Deduct
+        $stmt = $this->db->prepare("
         UPDATE employee_leave_balances
         SET remaining_days = remaining_days - ?
         WHERE employee_id = ? AND leave_type_id = ?
     ");
-    $stmt->bind_param(
-        "iii",
-        $approved_days,
-        $leave['employee_id'],
-        $leave['leave_type_id']
-    );
-    $stmt->execute();
-}
+        $stmt->bind_param(
+            "iii",
+            $approved_days,
+            $leave['employee_id'],
+            $leave['leave_type_id']
+        );
+        $stmt->execute();
+    }
 
 
     // Reject

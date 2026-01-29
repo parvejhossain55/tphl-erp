@@ -153,6 +153,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <?php foreach ($bookingRecords as $index => $or): ?>
                                 <tr>
                                     <td><?= $index + 1 ?></td>
+                                    <pre>
+
 
                                     <td><?= htmlspecialchars($lead['full_name'] ?? '-') ?></td>
 
@@ -176,7 +178,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                         <?php elseif ($or['approval_status'] === 'approved'): ?>
                                             <span class="bd-badge bg-success">Approved</span>
                                             <span class="bd-badge bg-primary"><?= $or['approved_amount'] ?></span>
-                                        <?php elseif ($or['approval_status'] === 'Partial'): ?>
+                                        <?php elseif ($or['approval_status'] === 'partial'): ?>
                                             <span class="bd-badge bg-success">Partial Approved</span>
                                             <span class="bd-badge bg-primary"><?= $or['approved_amount'] ?></span>
                                         <?php elseif ($or['approval_status'] === 'rejected'): ?>
@@ -207,7 +209,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                             <!-- Payments -->
                                             <?php if (
                                                 $or['approval_status'] === 'approved' ||
-                                                $or['approval_status'] === 'not_required'
+                                                $or['approval_status'] === 'not_required'||
+                                                $or['approval_status'] === 'partial'
                                             ): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>"
                                                     class="btn btn-sm btn-success">

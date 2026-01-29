@@ -7,130 +7,125 @@ class ApprovalRequest extends Model
     protected $allowedTables = [
         'lead_bookings',
         'employee_leaves',
-        'salary_requests',
-        
+        'payslips',
+
     ];
-public function create($data)
-{
-    $sql = "INSERT INTO {$this->table} 
+    public function create($data)
+    {
+        $sql = "INSERT INTO {$this->table} 
         (department, request_type, title, source_table, source_id, requested_days, requested_by, approve_role, meta_data,request_amount)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)";
 
-    $stmt = $this->db->prepare($sql);
-    if (!$stmt) {
-        die("Prepare failed: " . $this->db->error);
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->bind_param(
+            "ssssiidssd",
+            $data['department'],
+            $data['request_type'],
+            $data['title'],
+            $data['source_table'],
+            $data['source_id'],
+            $data['requested_days'],
+            $data['requested_by'],
+            $data['approve_role'],
+            $data['meta_data'],
+            $data['request_amount'],
+        );
+
+        $stmt->execute();
+
+        if ($stmt->error) {
+            die("Execute failed: " . $stmt->error);
+        }
+
+        $insertId = $stmt->insert_id;
+        $stmt->close();
+
+        return $insertId;
     }
 
-    $stmt->bind_param(
-        "ssssiidssd",
-        $data['department'],
-        $data['request_type'],
-        $data['title'],
-        $data['source_table'],
-        $data['source_id'],
-        $data['requested_days'],
-        $data['requested_by'],
-        $data['approve_role'],
-        $data['meta_data'],
-        $data['request_amount'],
-    );
 
-    $stmt->execute();
-
-    if ($stmt->error) {
-        die("Execute failed: " . $stmt->error);
+    private function parseMetaData(?string $meta)
+    {
+        return $meta ? json_decode($meta, true) : [];
+    }
+    private function getLeadById(int $id)
+    {
+        return $this->db
+            ->query("SELECT id, full_name, phone FROM leads WHERE id = {$id}")
+            ->fetch_assoc();
     }
 
-    $insertId = $stmt->insert_id;
-    $stmt->close();
-
-    return $insertId;
-}
-
-
-
-
-private function parseMetaData(?string $meta)
-{
-    return $meta ? json_decode($meta, true) : [];
-}
-private function getLeadById(int $id)
-{
-    return $this->db
-        ->query("SELECT id, full_name, phone FROM leads WHERE id = {$id}")
-        ->fetch_assoc();
-}
-
-private function getFlatById(int $id)
-{
-    return $this->db
-        ->query("SELECT id,flat_name, sqft FROM flats WHERE id = {$id}")
-        ->fetch_assoc();
-}
-
-private function resolveApprovalDetails(array $approval)
-{
-    $meta = $this->parseMetaData($approval['meta_data']);
-
-    $details = [];
-
-    // Lead info
-    if (!empty($meta['lead_id'])) {
-        $details['lead'] = $this->getLeadById((int)$meta['lead_id']);
+    private function getFlatById(int $id)
+    {
+        return $this->db
+            ->query("SELECT id,flat_name, sqft FROM flats WHERE id = {$id}")
+            ->fetch_assoc();
     }
 
-    // Flat info
-    if (!empty($meta['flat_id'])) {
-        $details['flat'] = $this->getFlatById((int)$meta['flat_id']);
+    private function resolveApprovalDetails(array $approval)
+    {
+        $meta = $this->parseMetaData($approval['meta_data']);
+
+        $details = [];
+
+        // Lead info
+        if (!empty($meta['lead_id'])) {
+            $details['lead'] = $this->getLeadById((int)$meta['lead_id']);
+        }
+
+        // Flat info
+        if (!empty($meta['flat_id'])) {
+            $details['flat'] = $this->getFlatById((int)$meta['flat_id']);
+        }
+
+        // Employee info
+        // if (!empty($meta['employee_id'])) {
+        //     $details['employee'] = $this->getEmployeeById((int)$meta['employee_id']);
+        // }
+
+        return $details;
     }
 
-    // Employee info
-    // if (!empty($meta['employee_id'])) {
-    //     $details['employee'] = $this->getEmployeeById((int)$meta['employee_id']);
-    // }
+    public function getPendingForRole(array $roles, $limit = 5)
+    {
+        $roles = array_map('strtolower', $roles);
 
-    return $details;
-}
+        if (empty($roles)) {
+            return [];
+        }
 
-public function getPendingForRole(array $roles, $limit = 5)
-{
-    $roles = array_map('strtolower', $roles);
+        $placeholders = implode(',', array_fill(0, count($roles), '?'));
+        $limit = (int)$limit;
 
-    if (empty($roles)) {
-        return [];
-    }
-
-    $placeholders = implode(',', array_fill(0, count($roles), '?'));
-    $limit = (int)$limit;
-
-    $sql = "SELECT * FROM {$this->table}
+        $sql = "SELECT * FROM {$this->table}
             WHERE status = 'pending'
             AND LOWER(approve_role) IN ($placeholders)
             ORDER BY created_at DESC
             LIMIT $limit";
 
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param(str_repeat('s', count($roles)), ...$roles);
-    $stmt->execute();
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param(str_repeat('s', count($roles)), ...$roles);
+        $stmt->execute();
 
-    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-    // 🔥 THIS PART WAS MISSING
-    foreach ($rows as &$row) {
-        $row['context'] = $this->resolveApprovalDetails($row);
+        // 🔥 THIS PART WAS MISSING
+        foreach ($rows as &$row) {
+            $row['context'] = $this->resolveApprovalDetails($row);
+        }
+
+        return $rows;
     }
 
-    return $rows;
-}
 
-
-    public function updateStatus($id, $status, $approvedAmount = null, $approved_days = null)
-    {
+    public function updateStatus($id, $status, $approvedAmount = null, $approved_days = null){
         $approvedBy = $_SESSION['user']['id'] ?? null;
 
-        /* ===============================
-       1. Update approval_requests table
-    =============================== */
+
         $sql = "UPDATE {$this->table}
             SET 
                 status = ?, 
@@ -151,9 +146,7 @@ public function getPendingForRole(array $roles, $limit = 5)
         );
         $stmt->execute();
 
-        /* ===============================
-       2. Fetch source info
-    =============================== */
+ 
         $request = $this->find($id);
         if (!$request || empty($request['source_table']) || empty($request['source_id'])) {
             return false;
@@ -162,25 +155,17 @@ public function getPendingForRole(array $roles, $limit = 5)
         $sourceTable = $request['source_table'];
         $sourceId    = (int) $request['source_id'];
 
-        /* ===============================
-       3. Validate source table
-    =============================== */
         if (!in_array($sourceTable, $this->allowedTables, true)) {
             throw new Exception("Invalid source table: {$sourceTable}");
         }
 
-        /* ===============================
-       4. Detect columns dynamically
-    =============================== */
         $columns = [];
         $result = $this->db->query("SHOW COLUMNS FROM {$sourceTable}");
         while ($row = $result->fetch_assoc()) {
             $columns[] = $row['Field'];
         }
 
-        /* ===============================
-       5. Status mapping
-    =============================== */
+  
         $sourceStatus = match ($status) {
             'partial', 'partially_approved' => 'partial',
             'approved' => 'approved',
@@ -188,9 +173,6 @@ public function getPendingForRole(array $roles, $limit = 5)
             default => 'pending',
         };
 
-        /* ===============================
-       6. Dynamic update
-    =============================== */
         $updateFields = [];
         $params = [];
         $types  = '';
@@ -213,9 +195,7 @@ public function getPendingForRole(array $roles, $limit = 5)
             $params[] = $approved_days;
         }
 
-        /* ===============================
-       7. Execute source update
-    =============================== */
+    //    7. Execute source update 
         if (!empty($updateFields)) {
             $sql2 = "UPDATE {$sourceTable} SET " . implode(', ', $updateFields) . " WHERE id = ?";
             $types .= 'i';
