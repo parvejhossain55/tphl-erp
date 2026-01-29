@@ -11,13 +11,7 @@ $show_breadcrumb = true;
     </h4>
 
     <div class="d-flex gap-2">
-        <button
-            class="d-none btn btn-outline-success"
-            data-bs-toggle="modal"
-            data-bs-target="#importCsvModal">
-            <i class="fa-light fa-file-arrow-up me-1"></i>
-            Import CSV
-        </button>
+
 
         <a href="<?= $GLOBALS['base_url'] ?>/create-lead"
             class="btn btn-primary">
@@ -98,20 +92,33 @@ $show_breadcrumb = true;
             <!-- Buttons -->
             <div class="col-xxl-4 col-xl-12 col-lg-12 col-md-12 col-12">
                 <div class="card__wrapper h-100">
-                    <div class="d-flex flex-column flex-sm-row gap-2">
-                        <button type="submit" class="btn btn-secondary w-100 ">
+                    <div class="d-flex flex-row gap-2 align-items-center p-0">
+                        <button type="submit" class="btn btn-secondary btn-sm flex-grow-1 py-1">
                             Search Lead
                         </button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-success  w-100">
+                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class=" d-none btn btn-success  w-100">
                             Reset
                         </a>
+                        <button
+                            type="button"
+                            class="btn btn-outline-success btn-sm py-1"
+                            data-bs-toggle="modal"
+                            data-bs-target="#importCsvModal">
+                            <i class="fa-light fa-file-arrow-up me-1"></i>
+                            Import CSV
+                        </button>
 
-                        <a class="btn btn-primary w-100 "
+
+                        <a class="btn btn-primary btn-sm flex-grow-1 py-1"
                             href="<?= $GLOBALS['base_url'] ?>/create-lead">
-                            Add Lead </a>
+                            Add Lead
+                        </a>
                     </div>
                 </div>
             </div>
+
+
+
 
 
         </div>
@@ -167,8 +174,8 @@ $show_breadcrumb = true;
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <a href="<?= $GLOBALS['base_url'] ?>/onboarding-clients" class="btn btn-primary w-100 ">
-                           <span class="fw-semibold fs-6">All Onboard Clients</span>
-                            </a>
+                    <span class="fw-semibold fs-6">All Onboard Clients</span>
+                </a>
             </div>
         </div>
     </div>

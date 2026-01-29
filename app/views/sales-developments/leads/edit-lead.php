@@ -32,8 +32,8 @@ $selectedSourceId = $_SESSION['old']['source_type_id']
 
                 <div class="col-md-6">
                     <label>নাম (বাংলা)</label>
-                    <input type="text" class="form-control" name="full_name_bn"
-                        value="<?= $leadData['full_name_bn'] ?? '' ?>">
+                    <input type="text" class="form-control" name="lead_name_bn"
+                        value="<?= $leadData['lead_name_bn'] ?? '' ?>">
                 </div>
                 <!--Father  Name -->
                 <div class="col-lg-6">

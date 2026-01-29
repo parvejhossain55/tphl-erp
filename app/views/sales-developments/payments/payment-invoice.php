@@ -544,7 +544,7 @@
                     <!-- Full Name Bangla -->
                     <div class="field-group">
                         <label class="field-label">পূর্ণ নাম (বাংলা)</label>
-                        <input type="text" class="field-input" value="<?= $invoice['full_name_bn'] ?>">
+                        <input type="text" class="field-input" value="<?= $invoice['lead_name_bn'] ?>">
                     </div>
 
                     <!-- Father's Name -->

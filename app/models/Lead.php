@@ -103,8 +103,7 @@ class Lead extends Model
             u.full_name AS agent_name
         FROM leads AS l
         LEFT JOIN users AS u ON l.assigned_id = u.id
-        WHERE l.status = 'active'
-        AND l.deleted_at IS NULL
+        Where l.deleted_at IS NULL
         ";
 
 
@@ -175,91 +174,230 @@ class Lead extends Model
         return (int)($result['total_visited'] ?? 0);
     }
 
-    public function create($data)
-    {
-        $stmt = $this->db->prepare("INSERT INTO leads (
-            full_name, father_name, mother_name, dob, permanent_address, nid_or_passport,
-            phone, alt_phone_number, email,
-            source_type_id, assigned_id,
-            address, pref_location, designation,
-            project_type, pref_flat_size,
-            communication_type, tags, description,
-            visibility, status, lead_quality, lead_type, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
+    // public function create($data)
+    // {
+    //     $stmt = $this->db->prepare("INSERT INTO leads (
+    //         full_name, father_name, mother_name, dob, permanent_address, nid_or_passport,
+    //         phone_number, alt_phone_number, email,
+    //         source_type_id, assigned_id,
+    //         address, pref_location, designation,
+    //         project_type, pref_flat_size,
+    //         communication_type, tags, description,
+    //         visibility, status, lead_quality, lead_type, created_by
+    //     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    // ");
 
-        if (!$stmt) {
-            setError("Prepare failed: " . $this->db->error);
-            return false;
-        }
+    //     if (!$stmt) {
+    //         setError("Prepare failed: " . $this->db->error);
+    //         return false;
+    //     }
 
-        // Assign variables first (pass by reference)
-        $full_name = $data['full_name'] ?? null;
-        $father_name = $data['father_name'] ?? null;
-        $mother_name = $data['mother_name'] ?? null;
-        $dob = $data['dob'] ?? null;
-        $permanent_address = $data['permanent_address'] ?? null;
-        $nid_or_passport = $data['nid_or_passport'] ?? null;
-        $phone = $data['phone'] ?? null;
-        $alt_phone_number = $data['alt_phone_number'] ?? null;
-        $email = $data['email'] ?? null;
-        $source_type_id = $data['source_type_id'] ?? null;
-        $assigned_id = $data['assigned_id'] ?? null;
-        $address = $data['address'] ?? null;
-        $pref_location = $data['pref_location'] ?? null;
-        $designation = $data['designation'] ?? null;
-        $project_type = $data['project_type'] ?? null;
-        $pref_flat_size = $data['pref_flat_size'] ?? null;
-        $communication_type = $data['communication_type'] ?? null;
-        $tags = $data['tags'] ?? null;
-        $description = $data['description'] ?? null;
-        $visibility = $data['visibility'] ?? 'public';
-        $status = $data['status'] ?? 'active';
-        $lead_quality = $data['lead_quality'] ?? 'Pending';
-        $lead_type = $data['lead_type'] ?? null;
-        $created_by = $data['created_by'] ?? null;
+    //     // Assign variables first (pass by reference)
+    //     $full_name = $data['full_name'] ?? null;
+    //     $father_name = $data['father_name'] ?? null;
+    //     $mother_name = $data['mother_name'] ?? null;
+    //     $dob = $data['dob'] ?? null;
+    //     $permanent_address = $data['permanent_address'] ?? null;
+    //     $nid_or_passport = $data['nid_or_passport'] ?? null;
+    //     $phone = $data['phone'] ?? null;
+    //     $alt_phone_number = $data['alt_phone_number'] ?? null;
+    //     $email = $data['email'] ?? null;
+    //     $source_type_id = $data['source_type_id'] ?? null;
+    //     $assigned_id = $data['assigned_id'] ?? null;
+    //     $address = $data['address'] ?? null;
+    //     $pref_location = $data['pref_location'] ?? null;
+    //     $designation = $data['designation'] ?? null;
+    //     $project_type = $data['project_type'] ?? null;
+    //     $pref_flat_size = $data['pref_flat_size'] ?? null;
+    //     $communication_type = $data['communication_type'] ?? null;
+    //     $tags = $data['tags'] ?? null;
+    //     $description = $data['description'] ?? null;
+    //     $visibility = $data['visibility'] ?? 'public';
+    //     $status = $data['status'] ?? 'active';
+    //     $lead_quality = $data['lead_quality'] ?? 'Pending';
+    //     $lead_type = $data['lead_type'] ?? null;
+    //     $created_by = $data['created_by'] ?? null;
 
-        // Bind parameters
-        $stmt->bind_param(
-            "sssssssssssisssssssssssi",
-            $full_name,
-            $father_name,
-            $mother_name,
-            $dob,
-            $permanent_address,
-            $nid_or_passport,
-            $phone,
-            $alt_phone_number,
-            $email,
-            $source_type_id,
-            $assigned_id,
-            $address,
-            $pref_location,
-            $designation,
-            $project_type,
-            $pref_flat_size,
-            $communication_type,
-            $tags,
-            $description,
-            $visibility,
-            $status,
-            $lead_quality,
-            $lead_type,
-            $created_by
-        );
+    //     // Bind parameters
+    //     $stmt->bind_param(
+    //         "sssssssssssisssssssssssi",
+    //         $full_name,
+    //         $father_name,
+    //         $mother_name,
+    //         $dob,
+    //         $permanent_address,
+    //         $nid_or_passport,
+    //         $phone,
+    //         $alt_phone_number,
+    //         $email,
+    //         $source_type_id,
+    //         $assigned_id,
+    //         $address,
+    //         $pref_location,
+    //         $designation,
+    //         $project_type,
+    //         $pref_flat_size,
+    //         $communication_type,
+    //         $tags,
+    //         $description,
+    //         $visibility,
+    //         $status,
+    //         $lead_quality,
+    //         $lead_type,
+    //         $created_by
+    //     );
 
-        if ($stmt->execute()) {
-            setSuccess("Lead created successfully!");
-            return true;
-        } else {
-            setError("Lead creation failed: " . $stmt->error);
-            return false;
-        }
+    //     if ($stmt->execute()) {
+    //         setSuccess("Lead created successfully!");
+    //         return true;
+    //     } else {
+    //         setError("Lead creation failed: " . $stmt->error);
+    //         return false;
+    //     }
+    // }
+    
+
+
+
+
+
+public function create($data)
+{
+    $stmt = $this->db->prepare("INSERT INTO leads (
+        campaign_name,
+        platform,
+        which_apartment_size_are_you_interested_in,
+        which_floor_are_you_for_shop,
+        when_are_you_planning_to_buy,
+        would_you_like_to_schedule_a_site_visit,
+        when_is_the_best_time_to_contact_you,
+        job_title,
+        city,
+        full_name,
+        father_name,
+        mother_name,
+        dob,
+        permanent_address,
+        nid_or_passport,
+        phone_number,
+        alt_phone_number,
+        email,
+        source_type_id,
+        assigned_id,
+        address,
+        pref_location,
+        designation,
+        project_type,
+        pref_flat_size,
+        communication_type,
+        tags,
+        description,
+        visibility,
+        status,
+        lead_quality,
+        lead_type,
+        company_name,
+        created_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?)
+");
+
+    if (!$stmt) {
+        setError("Prepare failed: " . $this->db->error);
+        return false;
     }
 
-    //employee id find for edit
+    // Assign variables (CSV columns first)
+    $campaign_name = $data['campaign_name'] ?? null;
+    $platform = $data['platform'] ?? null;
+    $which_apartment_size_are_you_interested_in = $data['which_apartment_size_are_you_interested_in'] ?? null;
+    $which_floor_are_you_for_shop = $data['which_floor_are_you_for_shop'] ?? null;
+    $when_are_you_planning_to_buy = $data['when_are_you_planning_to_buy'] ?? null;
+    $would_you_like_to_schedule_a_site_visit = $data['would_you_like_to_schedule_a_site_visit'] ?? null;
+    $when_is_the_best_time_to_contact_you = $data['when_is_the_best_time_to_contact_you'] ?? null;
+    $job_title = $data['job_title'] ?? null;
+    $city = $data['city'] ?? null;
+
+    // Existing fields
+    $full_name = $data['full_name'] ?? null;
+    $father_name = $data['father_name'] ?? null;
+    $mother_name = $data['mother_name'] ?? null;
+    $dob = $data['dob'] ?? null;
+    $permanent_address = $data['permanent_address'] ?? null;
+    $nid_or_passport = $data['nid_or_passport'] ?? null;
+    $phone_number = $data['phone_number'] ?? null;
+    $alt_phone_number = $data['alt_phone_number'] ?? null;
+    $email = $data['email'] ?? null;
+    $source_type_id = $data['source_type_id'] ?? null;
+    $assigned_id = $data['assigned_id'] ?? null;
+    $address = $data['address'] ?? null;
+    $pref_location = $data['pref_location'] ?? null;
+    $designation = $data['designation'] ?? null;
+    $project_type = $data['project_type'] ?? null;
+    $pref_flat_size = $data['pref_flat_size'] ?? null;
+    $communication_type = $data['communication_type'] ?? null;
+    $tags = $data['tags'] ?? null;
+    $description = $data['description'] ?? null;
+    $visibility = $data['visibility'] ?? 'public';
+    $status = $data['status'] ?? 'active';
+    $lead_quality = $data['lead_quality'] ?? 'Pending';
+    $lead_type = $data['lead_type'] ?? null;
+    $company_name = $data['company_name'] ?? null;
+    $created_by = $data['created_by'] ?? null;
+
+    // Bind parameters (CSV first, then existing)
+    $stmt->bind_param(
+        "ssssssssssssssssssiisssssssssssssi",
+        $campaign_name,
+        $platform,
+        $which_apartment_size_are_you_interested_in,
+        $which_floor_are_you_for_shop,
+        $when_are_you_planning_to_buy,
+        $would_you_like_to_schedule_a_site_visit,
+        $when_is_the_best_time_to_contact_you,
+        $job_title,
+        $city,
+        $full_name,
+        $father_name,
+        $mother_name,
+        $dob,
+        $permanent_address,
+        $nid_or_passport,
+        $phone_number,
+        $alt_phone_number,
+        $email,
+        $source_type_id,
+        $assigned_id,
+        $address,
+        $pref_location,
+        $designation,
+        $project_type,
+        $pref_flat_size,
+        $communication_type,
+        $tags,
+        $description,
+        $visibility,
+        $status,
+        $lead_quality,
+        $lead_type,
+        $company_name,
+        $created_by
+    );
+
+    if ($stmt->execute()) {
+        setSuccess("Lead created successfully!");
+        return true;
+    } else {
+        setError("Lead creation failed: " . $stmt->error);
+        return false;
+    }
+}
+
+
+
     public function find($id)
     {
+
+
         $stmt = $this->db->prepare(
             "SELECT 
             leads.*,
@@ -312,7 +450,7 @@ class Lead extends Model
         $sql = "UPDATE leads SET
         full_name = ?, father_name = ?, mother_name = ?, dob = ?, permanent_address = ?, nid_or_passport = ?,
         phone = ?, alt_phone_number = ?, email = ?, address = ?, designation = ?,
-        full_name_bn = ?, father_name_bn = ?, mother_name_bn = ?, identity_type = ?, permanent_add_bn = ?,
+        lead_name_bn = ?, father_name_bn = ?, mother_name_bn = ?, identity_type = ?, permanent_add_bn = ?,
         present_add_bn = ?, profession_bn = ?, nationality = ?, religion = ?, lead_image = ?,
         nominee_name = ?, relation_with_lead = ?, nomi_father_name = ?, nomi_mother_name = ?, nomi_profession = ?,
         nomi_dob = ?, nomi_phone = ?, nomi_email = ?, nomi_nid_passport = ?, nomi_present_add = ?, 
@@ -340,7 +478,7 @@ class Lead extends Model
             $data['email'],
             $data['address'],
             $data['designation'],
-            $data['full_name_bn'],
+            $data['lead_name_bn'],
             $data['father_name_bn'],
             $data['mother_name_bn'],
             $data['identity_type'],

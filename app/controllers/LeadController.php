@@ -91,50 +91,62 @@ class LeadController extends Controller
 
     // Handle form submission
     // controllers/EmployeeController.php
-    public function store()
-    {
-        $leadData = [
-            'full_name' => $_POST['full_name'] ?? null,
-            'lead_type' => $_POST['lead_type'] ?? null,
-            'father_name' => $_POST['father_name'] ?? null,
-            'mother_name' => $_POST['mother_name'] ?? null,
-            'dob' => $_POST['dob'] ?? null,
-            'permanent_address' => $_POST['permanent_address'] ?? null,
-            'nid_or_passport' => $_POST['nid_or_passport'] ?? null,
-            'company' => $_POST['company'] ?? null,
-            // 'value_amount' => $_POST['value_amount'] ?? 0,
-            'phone' => $_POST['phone'] ?? null,
-            'alt_phone_number' => $_POST['alt_phone_number'] ?? null,
-            'email' => $_POST['email'] ?? null,
-            'source_type_id' => $_POST['source_type_id'] ?? null,
-            'assigned_id' => $_POST['assigned_id'] ?? null,
-            'address' => $_POST['address'] ?? null,
-            'pref_location' => $_POST['pref_location'] ?? null,
-            'designation' => $_POST['designation'] ?? null,
-            'project_type' => $_POST['project_type'] ?? null,
-            'interest_on' => $_POST['interest_on'] ?? null,
-            'pref_flat_size' => $_POST['pref_flat_size'] ?? null,
-            'communication_type' => $_POST['communication_type'] ?? null,
-            'tags' => $_POST['tags'] ?? null,
-            'description' => $_POST['description'] ?? null,
-            'visibility' => $_POST['visibility'] ?? 'public',
-            'status' => $_POST['status'] ?? 'active',
-            'lead_quality' => $_POST['lead_quality'] ?? 'Pending',
-            'created_by'      => $_SESSION['user']['id'] ?? null,
+public function store()
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
 
-        ];
+    $leadData = [
+        // CSV / new fields
+        'campaign_name' => $_POST['campaign_name'] ?? null,
+        'platform' => $_POST['platform'] ?? null,
+        'which_apartment_size_are_you_interested_in' => $_POST['which_apartment_size_are_you_interested_in'] ?? null,
+        'which_floor_are_you_for_shop' => $_POST['which_floor_are_you_for_shop'] ?? null,
+        'when_are_you_planning_to_buy' => $_POST['when_are_you_planning_to_buy'] ?? null,
+        'would_you_like_to_schedule_a_site_visit' => $_POST['would_you_like_to_schedule_a_site_visit'] ?? null,
+        'when_is_the_best_time_to_contact_you' => $_POST['when_is_the_best_time_to_contact_you'] ?? null,
+        'job_title' => $_POST['job_title'] ?? null,
+        'city' => $_POST['city'] ?? null,
 
-        if (session_status() === PHP_SESSION_NONE) session_start();
+        // Existing fields
+        'full_name' => $_POST['full_name'] ?? null,
+        'lead_type' => $_POST['lead_type'] ?? null,
+        'father_name' => $_POST['father_name'] ?? null,
+        'mother_name' => $_POST['mother_name'] ?? null,
+        'dob' => $_POST['dob'] ?? null,
+        'permanent_address' => $_POST['permanent_address'] ?? null,
+        'nid_or_passport' => $_POST['nid_or_passport'] ?? null,
+        'company_name' => $_POST['company_name'] ?? null,
+        'phone_number' => $_POST['phone_number'] ?? null,
+        'phone' => $_POST['phone_number'] ?? null,
+        'alt_phone_number' => $_POST['alt_phone_number'] ?? null,
+        'email' => $_POST['email'] ?? null,
+        'source_type_id' => $_POST['source_type_id'] ?? null,
+        'assigned_id' => $_POST['assigned_id'] ?? null,
+        'address' => $_POST['address'] ?? null,
+        'pref_location' => $_POST['pref_location'] ?? null,
+        'designation' => $_POST['designation'] ?? null,
+        'project_type' => $_POST['project_type'] ?? null,
+        'interest_on' => $_POST['interest_on'] ?? null,
+        'pref_flat_size' => $_POST['pref_flat_size'] ?? null,
+        'communication_type' => $_POST['communication_type'] ?? null,
+        'tags' => $_POST['tags'] ?? null,
+        'description' => $_POST['description'] ?? null,
+        'visibility' => $_POST['visibility'] ?? 'public',
+        'status' => 'active',
+        'lead_quality' => $_POST['lead_quality'] ?? 'Pending',
+        'created_by' => $_SESSION['user']['id'] ?? null,
+    ];
 
-        if ($this->leadModel->create($leadData)) {
-            setSuccess("Lead created successfully!");
-            header("Location: {$GLOBALS['base_url']}/lead-lists");
-            exit;
-        } else {
-            header("Location: {$GLOBALS['base_url']}/create-lead");
-            exit;
-        }
+    if ($this->leadModel->create($leadData)) {
+        setSuccess("Lead created successfully!");
+        header("Location: {$GLOBALS['base_url']}/lead-lists");
+        exit;
+    } else {
+        header("Location: {$GLOBALS['base_url']}/create-lead");
+        exit;
     }
+}
+
 
     public function show($id)
     {
@@ -176,7 +188,7 @@ class LeadController extends Controller
         $leadData = [
             // Personal Info
             'full_name' => $_POST['full_name'] ?? null,
-            'full_name_bn' => $_POST['full_name_bn'] ?? null,
+            'lead_name_bn' => $_POST['lead_name_bn'] ?? null,
             'father_name' => $_POST['father_name'] ?? null,
             'father_name_bn' => $_POST['father_name_bn'] ?? null,
             'mother_name' => $_POST['mother_name'] ?? null,
@@ -306,6 +318,8 @@ class LeadController extends Controller
 
             fclose($handle);
             setSuccess("CSV imported successfully");
+             header("Location: {$GLOBALS['base_url']}/lead-lists");
+
         }
     }
 
