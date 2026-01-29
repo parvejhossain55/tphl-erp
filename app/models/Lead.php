@@ -178,7 +178,7 @@ class Lead extends Model
     public function create($data)
     {
         $stmt = $this->db->prepare("INSERT INTO leads (
-            lead_name, father_name, mother_name, dob, permanent_address, nid_or_passport,
+            full_name, father_name, mother_name, dob, permanent_address, nid_or_passport,
             phone, alt_phone_number, email,
             source_type_id, assigned_id,
             address, pref_location, designation,
@@ -194,7 +194,7 @@ class Lead extends Model
         }
 
         // Assign variables first (pass by reference)
-        $lead_name = $data['lead_name'] ?? null;
+        $full_name = $data['full_name'] ?? null;
         $father_name = $data['father_name'] ?? null;
         $mother_name = $data['mother_name'] ?? null;
         $dob = $data['dob'] ?? null;
@@ -222,7 +222,7 @@ class Lead extends Model
         // Bind parameters
         $stmt->bind_param(
             "sssssssssssisssssssssssi",
-            $lead_name,
+            $full_name,
             $father_name,
             $mother_name,
             $dob,
@@ -310,9 +310,9 @@ class Lead extends Model
         // Prepare SQL
         // ======================
         $sql = "UPDATE leads SET
-        lead_name = ?, father_name = ?, mother_name = ?, dob = ?, permanent_address = ?, nid_or_passport = ?,
+        full_name = ?, father_name = ?, mother_name = ?, dob = ?, permanent_address = ?, nid_or_passport = ?,
         phone = ?, alt_phone_number = ?, email = ?, address = ?, designation = ?,
-        lead_name_bn = ?, father_name_bn = ?, mother_name_bn = ?, identity_type = ?, permanent_add_bn = ?,
+        full_name_bn = ?, father_name_bn = ?, mother_name_bn = ?, identity_type = ?, permanent_add_bn = ?,
         present_add_bn = ?, profession_bn = ?, nationality = ?, religion = ?, lead_image = ?,
         nominee_name = ?, relation_with_lead = ?, nomi_father_name = ?, nomi_mother_name = ?, nomi_profession = ?,
         nomi_dob = ?, nomi_phone = ?, nomi_email = ?, nomi_nid_passport = ?, nomi_present_add = ?, 
@@ -329,7 +329,7 @@ class Lead extends Model
         // ======================
         $stmt->bind_param(
             str_repeat("s", 34) . "ii", // 34 strings + 1 integer for id
-            $data['lead_name'],
+            $data['full_name'],
             $data['father_name'],
             $data['mother_name'],
             $data['dob'],
@@ -340,7 +340,7 @@ class Lead extends Model
             $data['email'],
             $data['address'],
             $data['designation'],
-            $data['lead_name_bn'],
+            $data['full_name_bn'],
             $data['father_name_bn'],
             $data['mother_name_bn'],
             $data['identity_type'],

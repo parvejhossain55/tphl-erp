@@ -25,15 +25,15 @@ $selectedSourceId = $_SESSION['old']['source_type_id']
                 <div class="col-lg-6">
                     <div class="from__input-box">
                         <label class="form__input-title" for="leadName">Lead Name(BLOCK LETTER) *</label>
-                        <input class="form-control" name="lead_name" id="leadName" type="text" value="<?= $leadData['lead_name'] ?? '' ?>">
+                        <input class="form-control" name="full_name" id="leadName" type="text" value="<?= $leadData['full_name'] ?? '' ?>">
                     </div>
                 </div>
 
 
                 <div class="col-md-6">
                     <label>নাম (বাংলা)</label>
-                    <input type="text" class="form-control" name="lead_name_bn"
-                        value="<?= $leadData['lead_name_bn'] ?? '' ?>">
+                    <input type="text" class="form-control" name="full_name_bn"
+                        value="<?= $leadData['full_name_bn'] ?? '' ?>">
                 </div>
                 <!--Father  Name -->
                 <div class="col-lg-6">

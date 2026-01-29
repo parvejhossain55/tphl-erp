@@ -122,7 +122,7 @@ $show_breadcrumb = true;
                             <tr>
                                 <td><?= $key + 1 ?></td>
                                 <td class=""><?= $lead['booking_pay_date'] ? formatDate($lead['booking_pay_date']): ''?></td>
-                                <td class="td_1"><?= $lead['lead_name'] ?? '' ?></td>
+                                <td class="td_1"><?= $lead['full_name'] ?? '' ?></td>
                                 <td><?= $lead['phone'] ?? '' ?></td>
                                 <td><?= $lead['email'] ?? '' ?></td>
 

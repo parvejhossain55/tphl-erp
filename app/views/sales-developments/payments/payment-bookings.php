@@ -11,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
     <div class="row mb-4" id="bookingPayment">
         <div class="col-xxl-12">
             <div class="card__wrapper p-3">
-                <h5>Add Payment for <?= $booking['lead_name'] ?? 'Lead' ?></h5>
+                <h5>Add Payment for <?= $booking['full_name'] ?? 'Lead' ?></h5>
 
                 <form action="<?= $GLOBALS['base_url'] ?>/payment-booking-store" method="POST">
                     <div class="row gy-3">
@@ -22,47 +22,77 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                         <!-- Lead Info (Readonly) -->
                         <div class="col-lg-6">
-                            <label class="form__input-title">Lead Name</label>
-                            <input type="text" class="form-control" value="<?= $booking['lead_name'] ?>" readonly>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Lead Name</label>
+                            </div>
+                            <input type="text" class="form-control" value="<?= $booking['full_name'] ?>" readonly>
                         </div>
 
                         <div class="col-lg-6">
-                            <label class="form__input-title">Project</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Project</label>
+                            </div>
                             <input type="text" class="form-control" value="<?= $booking['project_name'] ?>" readonly>
                         </div>
                         <div class="col-lg-6">
-                            <label class="form__input-title">Number Of Share</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Number Of Share</label>
+                            </div>
                             <input type="text" class="form-control" value="<?= $booking['total_share'] ?>" readonly>
                         </div>
 
                         <div class="col-lg-6">
-                            <label class="form__input-title">Flat / Unit</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Flat / Unit</label>
+                            </div>
                             <input type="text" class="form-control" value="<?= $booking['unit_name'] ?> (Floor: <?= $booking['floor_no'] ?>)" readonly>
                         </div>
                         <div class="col-lg-6">
-                            <label class="form__input-title">Flat Size</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Flat Size</label>
+                            </div>
                             <input type="text" class="form-control" value="<?= $booking['sqft'] ?>" readonly>
                         </div>
                         <div class="col-lg-6">
-                            <label class="form__input-title">Land Share Value</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Land Share Value</label>
+                            </div>
                             <input type="text" class="form-control" value="<?= number_format($booking['price_value'], 2) ?>" readonly>
                         </div>
                         <div class="col-lg-6">
-                            <label class="form__input-title">Agreement Value</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Agreement Value</label>
+                            </div>
                             <input type="text" class="form-control" value="<?= number_format($booking['agreement_value'], 2) ?>" readonly>
                         </div>
                         <div class="d-none col-lg-6">
-                            <label class="form__input-title">Discount Value</label>
-                            <input type="text" class="form-control"  value="<?= number_format($booking['discount_amount'] ?? 0, 2) ?>"  readonly>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Discount Value</label>
+                            </div>
+                            <input type="text" class="form-control" value="<?= number_format($booking['discount_amount'] ?? 0, 2) ?>" readonly>
                         </div>
-                         <div class="col-lg-6">
-                            <label class="form__input-title">Total EMI Number</label>
+                        <div class="col-lg-6">
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Total EMI Number</label>
+                            </div>
                             <input type="number" name="total_emi_no" class="form-control" value="">
                         </div>
 
                         <!-- Payment Type -->
                         <div class="col-lg-6">
-                            <label class="form__input-title">Payment Type *</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Payment Type *</label>
+                            </div>
                             <select name="payment_type" class="form-select" required>
                                 <option value="">Select Type</option>
                                 <option value="booking_money">Booking</option>
@@ -74,7 +104,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                         <!-- Payment Method -->
                         <div class="col-lg-6">
-                            <label class="form__input-title">Payment Method *</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Payment Method *</label>
+                            </div>
                             <select name="payment_method" class="form-select payment-method" required>
                                 <option value="">Select Method</option>
                                 <option value="cash">Cash</option>
@@ -86,18 +119,27 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                         <!-- Bank Details -->
                         <div class="col-lg-6 extra-input" id="bankFields" style="display:none;">
-                            <label class="form__input-title">Bank Name - Branch*</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Bank Name - Branch*</label>
+                            </div>
                             <input type="text" name="bank_name" class="form-control" placeholder="Enter Bank Name">
                         </div>
 
                         <div class="col-lg-6 extra-input" id="bankAccountFields" style="display:none;">
-                            <label class="form__input-title">Bank Account No *</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Bank Account No *</label>
+                            </div>
                             <input type="text" name="bank_account_no" class="form-control" placeholder="Enter Account Number">
                         </div>
 
                         <!-- Cheque Details -->
                         <div class="col-lg-6 extra-input" id="chequeFields" style="display:none;">
-                            <label class="form__input-title">Cheque No *</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Cheque No *</label>
+                            </div>
                             <input type="text" name="cheque_no" class="form-control" placeholder="Enter Cheque Number">
                         </div>
 
@@ -110,25 +152,37 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                         <!-- Amount -->
                         <div class="col-lg-6">
-                            <label class="form__input-title">Pay Amount *</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Pay Amount *</label>
+                            </div>
                             <input type="number" step="0.01" name="amount" class="form-control" placeholder="e.g. 5000000" required>
                         </div>
 
                         <!-- Payment Date -->
                         <div class="col-lg-6">
-                            <label class="form__input-title">Payment Date *</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Payment Date *</label>
+                            </div>
                             <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
                         </div>
 
                         <!-- Transaction Reference -->
                         <div class="col-lg-6">
-                            <label class="form__input-title">Transaction Reference</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Transaction Reference</label>
+                            </div>
                             <input type="text" name="transaction_ref" class="form-control" placeholder="Optional reference number">
                         </div>
 
                         <!-- Status -->
                         <div class="col-lg-6">
-                            <label class="form__input-title">Payment Status</label>
+                            <div class="form__input-title">
+
+                                <label class="form__input-title">Payment Status</label>
+                            </div>
                             <select name="payment_status" class="form-select">
                                 <option value="paid">Paid</option>
                                 <option value="pending">Pending</option>
@@ -225,7 +279,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 document.querySelector('#bankAccountFields').style.display = 'block';
                 document.querySelector('#bankAccountFields input').setAttribute('required', 'required');
             } else if (method === 'cheque') {
-                 document.querySelector('#bankFields').style.display = 'block';
+                document.querySelector('#bankFields').style.display = 'block';
                 document.querySelector('#bankFields input').setAttribute('required', 'required');
                 document.querySelector('#chequeFields').style.display = 'block';
                 document.querySelector('#chequeFields input').setAttribute('required', 'required');
@@ -236,21 +290,3 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         });
     });
 </script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

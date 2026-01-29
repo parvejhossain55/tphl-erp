@@ -197,9 +197,9 @@ public function getPaymentCount()
             lb.discount_amount,
             lb.booking_date,
             l.id AS lead_id,
-            l.lead_name AS lead_name,
+            l.full_name AS full_name,
             l.father_name,l.mother_name,l.email,l.address,l.nid_or_passport,l.permanent_address,l.dob,l.phone,l.designation AS profession,
-            l.lead_name_bn,
+            l.full_name_bn,
             l.father_name_bn,l.mother_name_bn,l.profession_bn,l.permanent_add_bn,l.present_add_bn,l.identity_type,l.nationality,l.religion,l.lead_image,
             
             l.nomi_image,l.relation_with_lead,l.nominee_name,l.nomi_father_name,l.nomi_mother_name,l.nomi_profession,l.nomi_dob,l.nomi_phone,l.nomi_email,

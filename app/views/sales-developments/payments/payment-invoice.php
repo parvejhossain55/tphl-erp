@@ -538,13 +538,13 @@
                     <!-- Full Name -->
                     <div class="field-group">
                         <label class="field-label">Full Name (Block Letters)</label>
-                        <input type="text" class="field-input uppercase" value="<?= $invoice['lead_name'] ?>">
+                        <input type="text" class="field-input uppercase" value="<?= $invoice['full_name'] ?>">
                     </div>
 
                     <!-- Full Name Bangla -->
                     <div class="field-group">
                         <label class="field-label">পূর্ণ নাম (বাংলা)</label>
-                        <input type="text" class="field-input" value="<?= $invoice['lead_name_bn'] ?>">
+                        <input type="text" class="field-input" value="<?= $invoice['full_name_bn'] ?>">
                     </div>
 
                     <!-- Father's Name -->

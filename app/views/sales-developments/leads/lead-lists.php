@@ -205,7 +205,7 @@ $show_breadcrumb = true;
                             <tr>
                                 <td><?= $key + 1 ?></td>
                                 <td class=""><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
-                                <td class="td_1"><?= $lead['lead_name'] ?? '' ?></td>
+                                <td class="td_1"><?= $lead['full_name'] ?? '' ?></td>
                                 <td><?= $lead['phone'] ?? '' ?></td>
                                 <td><?= $lead['email'] ?? '' ?></td>
 
@@ -252,7 +252,7 @@ $show_breadcrumb = true;
 
                                         <!-- Delete Button (Existing) -->
                                         <button class="table__icon delete removeBtnCust"
-                                            data-name="<?= $lead['lead_name'] ?>"
+                                            data-name="<?= $lead['full_name'] ?>"
                                             data-action="lead-delete"
                                             data-id="<?= $lead['id'] ?>"
                                             title="Delete Lead">

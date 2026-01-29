@@ -248,7 +248,7 @@ public function getCashInByPaymentMethod()
                 lp.amount,
                 lp.payment_method,
                 lp.payment_status,
-                CONCAT(l.lead_name, ' - ', p.name) as description
+                CONCAT(l.full_name, ' - ', p.name) as description
             FROM lead_payments lp
             LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
             LEFT JOIN leads l ON lb.lead_id = l.id

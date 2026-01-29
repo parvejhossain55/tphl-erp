@@ -94,7 +94,7 @@ class LeadController extends Controller
     public function store()
     {
         $leadData = [
-            'lead_name' => $_POST['lead_name'] ?? null,
+            'full_name' => $_POST['full_name'] ?? null,
             'lead_type' => $_POST['lead_type'] ?? null,
             'father_name' => $_POST['father_name'] ?? null,
             'mother_name' => $_POST['mother_name'] ?? null,
@@ -175,8 +175,8 @@ class LeadController extends Controller
         // Collect form data from update form
         $leadData = [
             // Personal Info
-            'lead_name' => $_POST['lead_name'] ?? null,
-            'lead_name_bn' => $_POST['lead_name_bn'] ?? null,
+            'full_name' => $_POST['full_name'] ?? null,
+            'full_name_bn' => $_POST['full_name_bn'] ?? null,
             'father_name' => $_POST['father_name'] ?? null,
             'father_name_bn' => $_POST['father_name_bn'] ?? null,
             'mother_name' => $_POST['mother_name'] ?? null,
