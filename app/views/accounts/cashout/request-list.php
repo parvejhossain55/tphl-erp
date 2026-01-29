@@ -22,31 +22,14 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
         font-size: 12px;
         font-weight: 600;
     }
-
-    .status-pending {
-        background: #fff3cd;
-        color: #856404;
-    }
-
+    .status-pending { background: #fff3cd; color: #856404; }
     .status-approved {
-        background: #7bf498;
-        color: #155724;
-    }
-
-    .status-rejected {
-        background: #f8d7da;
-        color: #721c24;
-    }
-
-    .status-partial {
-        background: #cce5ff;
-        color: #004085;
-    }
-
-    .status-paid {
-        background: #d1ecf1;
-        color: #0c5460;
-    }
+    background: #7bf498;
+    color: #155724;
+}
+    .status-rejected { background: #f8d7da; color: #721c24; }
+    .status-partial { background: #cce5ff; color: #004085; }
+    .status-paid { background: #d1ecf1; color: #0c5460; }
 </style>
 
 <div class="row">
@@ -145,7 +128,7 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                         <?php unset($_SESSION['success']); ?>
                     </div>
                 <?php endif; ?>
-
+                
                 <?php if (!empty($_SESSION['error'])): ?>
                     <div class="alert alert-danger alert-dismissible fade show">
                         <?= $_SESSION['error']; ?>
@@ -174,11 +157,11 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                                     <?php
                                     // Use the display_status from synced data
                                     $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
-
+                                    
                                     // Get approver name from approval system
                                     $approvedBy = $request['approved_by_name'] ?? '';
                                     ?>
-
+                                    
                                     <tr>
                                         <td>#<?= $request['id'] ?></td>
                                         <td><?= htmlspecialchars($request['purpose_paid_to']) ?></td>
@@ -193,7 +176,7 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                                         <td>
                                             <?php
                                             $statusClass = 'status-pending';
-                                            switch ($displayStatus) {
+                                            switch($displayStatus) {
                                                 case 'approved':
                                                     $statusClass = 'status-approved';
                                                     break;
@@ -226,14 +209,14 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                                         <td><?= date('d M, Y', strtotime($request['created_at'])) ?></td>
                                         <td>
                                             <div class="d-flex gap-2">
-                                                <a href="<?= $GLOBALS['base_url'] ?>/view-cashout-request?id=<?= $request['id'] ?>"
-                                                    class="btn btn-sm btn-info" title="View Details">
+                                                <a href="<?= $GLOBALS['base_url'] ?>/view-cashout-request?id=<?= $request['id'] ?>" 
+                                                   class="btn btn-sm btn-info" title="View Details">
                                                     <i class="fa-light fa-eye"></i>
                                                 </a>
                                                 <?php if ($displayStatus == 'pending'): ?>
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/delete-cashout-request?id=<?= $request['id'] ?>"
-                                                        class="btn btn-sm btn-danger" title="Delete"
-                                                        onclick="return confirm('Are you sure you want to delete this request?')">
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/delete-cashout-request?id=<?= $request['id'] ?>" 
+                                                       class="btn btn-sm btn-danger" title="Delete"
+                                                       onclick="return confirm('Are you sure you want to delete this request?')">
                                                         <i class="fa-light fa-trash"></i>
                                                     </a>
                                                 <?php endif; ?>
