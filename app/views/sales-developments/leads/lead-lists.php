@@ -101,7 +101,7 @@ $show_breadcrumb = true;
                         </a>
                         <button
                             type="button"
-                            class="btn btn-outline-success btn-sm py-1"
+                            class="btn btn-success btn-sm py-1"
                             data-bs-toggle="modal"
                             data-bs-target="#importCsvModal">
                             <i class="fa-light fa-file-arrow-up me-1"></i>
@@ -181,6 +181,43 @@ $show_breadcrumb = true;
     </div>
 
 
+    <div class="col-xxl-12">
+        <div class="card__wrapper shadow-sm p-3 d-flex flex-wrap justify-content-between gap-2">
+
+            <div>
+                <!-- <h5 class="mb-0">Today Leads: <= $leadCounts ?></h5> -->
+                <!-- <small class="text-muted">Follow Ups Today: <= $totalTodayFollowUps ?></small> -->
+            </div>
+
+<!-- Assign Leads Card -->
+<div id="assignCard" class="card shadow-sm p-3 mb-3" style="display:none; border-radius:12px; background:#f9f9f9;">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+
+        <label for="assignUserSelect" class="me-2 fw-bold mb-0" style="white-space: nowrap;">
+            Assign Selected Leads to:
+        </label>
+
+        <div style="flex:0 0 auto;"> <!-- prevents select from stretching -->
+            <select id="assignUserSelect" class="form-select form-select-sm" style="min-width:200px; width:auto;">
+                <option value="">Select User</option>
+                <?php foreach ($assignedUsers as $user): ?>
+                    <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['full_name']) ?></option>
+                <?php endforeach ?>
+            </select>
+        </div>
+
+        <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
+            <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
+        </button>
+
+        <span id="assignFeedback" class="text-success fw-bold ms-2" style="display:none;">Leads assigned successfully!</span>
+    </div>
+</div>
+
+
+
+        </div>
+    </div>
 
     <div class="col-xxl-12">
         <div class="card__wrapper">
@@ -190,18 +227,22 @@ $show_breadcrumb = true;
                         <tr class="table__title table__sort">
 
 
-                            <th style="min-width:60px;">S/L</th> <!-- non-sticky first column -->
+                            <th style="min-width:60px;">
+                                <input type="checkbox" id="selectAllLeads" title="Select All">
+                                S/L
+                            </th><!-- non-sticky first column -->
                             <th class="">Create Lead</th>
                             <th class="th_1">Lead Name</th>
 
                             <th>Phone</th>
                             <!-- <th>Alt Phone</th> -->
-                            <th>Email</th>
+                            <th>Project Campaign</th>
                             <!-- <th>Source Type</th> -->
 
                             <th>Follow Up</th>
                             <th>Booking</th>
-                            <th>Preferred Project </th>
+                            <th>Contact Status</th>
+                            <th>Contact Note</th>
                             <th class="d-none">Interest On</th>
                             <th class="text-center">Action</th>
                         </tr>
@@ -209,12 +250,16 @@ $show_breadcrumb = true;
                     <tbody class="table__body">
 
                         <?php foreach ($leads as $key => $lead): ?>
-                            <tr>
-                                <td><?= $key + 1 ?></td>
+                            <tr data-id="<?= $lead['id'] ?>">
+                                <td>
+                                    <input type="checkbox" class="me-2 selectedId" data-id="<?= $lead['id'] ?>">
+                                    <?= $key + 1 ?>
+                                </td>
+
                                 <td class=""><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
                                 <td class="td_1"><?= $lead['full_name'] ?? '' ?></td>
-                                <td><?= $lead['phone'] ?? '' ?></td>
-                                <td><?= $lead['email'] ?? '' ?></td>
+                                <td><?= $lead['phone_number'] ?? '' ?></td>
+                                <td><?= $lead['campaign_name'] ?? '' ?></td>
 
                                 <td>
                                     <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
@@ -242,7 +287,8 @@ $show_breadcrumb = true;
                                         <?php endif ?>
                                     </a>
                                 </td>
-                                <td><span class="bd-badge bg-success"><?= $lead['project_type'] ?? '' ?></span></td>
+                                <td><span class="bd-badge bg-success"><?= $lead['call_status'] ?? '' ?></span></td>
+                                <td><span class="bd-badge bg-success"><?= $lead['call_note'] ?? 'N/A' ?></span></td>
                                 <td class="d-none"><?= $lead['interest_on'] ?? '' ?></td>
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-10">
@@ -383,4 +429,109 @@ $show_breadcrumb = true;
             else el.value = ''; // input clear
         });
     });
+</script>
+
+
+<!-- assigned user select  -->
+<script>
+    document.getElementById('assignUserBtn').addEventListener('click', function() {
+
+        const userId = document.getElementById('assignUserSelect').value;
+
+        if (!userId) {
+            alert("Please select a user to assign leads!");
+            return;
+        }
+
+        // Get all selected leads
+        const selectedLeads = [];
+        document.querySelectorAll('.selectedId:checked').forEach(cb => {
+            const tr = cb.closest('tr');
+            if (tr) selectedLeads.push(tr.dataset.id || tr.querySelector('.selectedId').dataset.id);
+        });
+
+        if (selectedLeads.length === 0) {
+            alert("Please select at least one lead!");
+            return;
+        }
+
+        // Send AJAX request
+        fetch('<?= $base_url ?>/assign-multiple-leads', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'user_id=' + encodeURIComponent(userId) +
+                    '&lead_ids=' + encodeURIComponent(selectedLeads.join(','))
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Leads assigned successfully!");
+
+                    // Update table instantly
+                    document.querySelectorAll('.selectedId:checked').forEach(cb => {
+                        const tr = cb.closest('tr');
+                        if (tr) {
+                            tr.querySelector('td:nth-child(3)').textContent = data.user_name; // assigned user name column (customize as needed)
+                            cb.checked = false; // uncheck
+                        }
+                    });
+                } else {
+                    alert("Failed to assign leads!");
+                }
+            });
+    });
+</script>
+
+<!-- <script>
+const selectAll = document.getElementById('selectAllLeads');
+
+selectAll.addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.selectedId');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+});
+
+// Optional: if any checkbox is manually unchecked, uncheck selectAll
+document.querySelectorAll('.selectedId').forEach(cb => {
+    cb.addEventListener('change', function() {
+        if (!this.checked) selectAll.checked = false;
+
+        // If all checked, then check selectAll
+        const allChecked = Array.from(document.querySelectorAll('.selectedId'))
+                                .every(c => c.checked);
+        if (allChecked) selectAll.checked = true;
+    });
+});
+</script> -->
+<script>
+const selectAll = document.getElementById('selectAllLeads');
+const assignCard = document.getElementById('assignCard');
+
+selectAll.addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.selectedId');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+
+    // Show the card if any checkbox is checked
+    if(this.checked) {
+        assignCard.style.display = 'flex';
+    } else {
+        // Optional: hide if none checked
+        const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
+        assignCard.style.display = anyChecked ? 'flex' : 'none';
+    }
+});
+
+// Individual checkbox toggle
+document.querySelectorAll('.selectedId').forEach(cb => {
+    cb.addEventListener('change', function() {
+        // If any checkbox checked → show assign card
+        const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
+        assignCard.style.display = anyChecked ? 'flex' : 'none';
+
+        // Header checkbox logic
+        const allChecked = Array.from(document.querySelectorAll('.selectedId')).every(c => c.checked);
+        selectAll.checked = allChecked;
+    });
+});
 </script>

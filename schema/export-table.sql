@@ -383,6 +383,10 @@ ALTER TABLE `leads`
     ADD COLUMN `phone_number` VARCHAR(20) AFTER `company_name`,
     ADD COLUMN `city` VARCHAR(100) AFTER `phone_number`;
 
+ALTER TABLE leads
+ADD COLUMN call_status ENUM('not_called','called','received','not_received') 
+    DEFAULT 'not_called' AFTER phone_number,
+ADD COLUMN call_note TEXT NULL AFTER call_status;
 
 
 -- ai sql ta chalale r kothay foraign key thakle o delete korle problem hobe na 

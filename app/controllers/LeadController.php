@@ -17,6 +17,7 @@ class LeadController extends Controller
     }
     public function index()
     {
+          $assignedUsers = $this->userModel->getAllRoleUser();
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
         $owners = $this->userModel->getAll();
@@ -42,8 +43,36 @@ class LeadController extends Controller
             "paymentCount" => $paymentCount,
             "leadCounts" => $leadCounts,
             "totalTodayFollowUps" => $totalTodayFollowUps,
+            "assignedUsers" => $assignedUsers,
+
         ]);
     }
+
+public function assignMultipleLeads()
+{
+    $userId = (int)($_POST['user_id'] ?? 0);
+    $leadIds = $_POST['lead_ids'] ?? '';
+
+    if (!$userId || !$leadIds) {
+        echo json_encode(['success' => false]);
+        return;
+    }
+
+    $ids = array_map('intval', explode(',', $leadIds));
+
+    $idsStr = implode(',', $ids);
+
+    $this->db->query("UPDATE leads SET assigned_id=$userId WHERE id IN ($idsStr)");
+
+    // Get user name for instant table update
+    $userName = $this->db->query("SELECT full_name FROM users WHERE id=$userId")->fetch_assoc()['full_name'] ?? '';
+
+    echo json_encode([
+        'success' => true,
+        'user_name' => $userName
+    ]);
+}
+
 
     public function showOnboardClient(){
         $year  = $_GET['year']  ?? null;
@@ -75,7 +104,7 @@ class LeadController extends Controller
 
     public function create()
     {
-        $assignedUsers = $this->userModel->getAll();
+        $assignedUsers = $this->userModel->getAllRoleUser();
         $sources = $this->leadSource->getAll();
 
         $this->view("sales-developments/leads/create-lead", [

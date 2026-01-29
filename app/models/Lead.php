@@ -174,89 +174,19 @@ class Lead extends Model
         return (int)($result['total_visited'] ?? 0);
     }
 
-    // public function create($data)
-    // {
-    //     $stmt = $this->db->prepare("INSERT INTO leads (
-    //         full_name, father_name, mother_name, dob, permanent_address, nid_or_passport,
-    //         phone_number, alt_phone_number, email,
-    //         source_type_id, assigned_id,
-    //         address, pref_location, designation,
-    //         project_type, pref_flat_size,
-    //         communication_type, tags, description,
-    //         visibility, status, lead_quality, lead_type, created_by
-    //     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    // ");
+public function getTodayLeads()
+{
+    $sql = "
+        SELECT *
+        FROM leads
+        WHERE created_at >= CURDATE()
+          AND created_at < CURDATE() + INTERVAL 1 DAY
+          AND deleted_at IS NULL
+        ORDER BY id DESC
+    ";
 
-    //     if (!$stmt) {
-    //         setError("Prepare failed: " . $this->db->error);
-    //         return false;
-    //     }
-
-    //     // Assign variables first (pass by reference)
-    //     $full_name = $data['full_name'] ?? null;
-    //     $father_name = $data['father_name'] ?? null;
-    //     $mother_name = $data['mother_name'] ?? null;
-    //     $dob = $data['dob'] ?? null;
-    //     $permanent_address = $data['permanent_address'] ?? null;
-    //     $nid_or_passport = $data['nid_or_passport'] ?? null;
-    //     $phone = $data['phone'] ?? null;
-    //     $alt_phone_number = $data['alt_phone_number'] ?? null;
-    //     $email = $data['email'] ?? null;
-    //     $source_type_id = $data['source_type_id'] ?? null;
-    //     $assigned_id = $data['assigned_id'] ?? null;
-    //     $address = $data['address'] ?? null;
-    //     $pref_location = $data['pref_location'] ?? null;
-    //     $designation = $data['designation'] ?? null;
-    //     $project_type = $data['project_type'] ?? null;
-    //     $pref_flat_size = $data['pref_flat_size'] ?? null;
-    //     $communication_type = $data['communication_type'] ?? null;
-    //     $tags = $data['tags'] ?? null;
-    //     $description = $data['description'] ?? null;
-    //     $visibility = $data['visibility'] ?? 'public';
-    //     $status = $data['status'] ?? 'active';
-    //     $lead_quality = $data['lead_quality'] ?? 'Pending';
-    //     $lead_type = $data['lead_type'] ?? null;
-    //     $created_by = $data['created_by'] ?? null;
-
-    //     // Bind parameters
-    //     $stmt->bind_param(
-    //         "sssssssssssisssssssssssi",
-    //         $full_name,
-    //         $father_name,
-    //         $mother_name,
-    //         $dob,
-    //         $permanent_address,
-    //         $nid_or_passport,
-    //         $phone,
-    //         $alt_phone_number,
-    //         $email,
-    //         $source_type_id,
-    //         $assigned_id,
-    //         $address,
-    //         $pref_location,
-    //         $designation,
-    //         $project_type,
-    //         $pref_flat_size,
-    //         $communication_type,
-    //         $tags,
-    //         $description,
-    //         $visibility,
-    //         $status,
-    //         $lead_quality,
-    //         $lead_type,
-    //         $created_by
-    //     );
-
-    //     if ($stmt->execute()) {
-    //         setSuccess("Lead created successfully!");
-    //         return true;
-    //     } else {
-    //         setError("Lead creation failed: " . $stmt->error);
-    //         return false;
-    //     }
-    // }
-    
-
+    return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+}
 
 
 
@@ -600,4 +530,11 @@ public function create($data)
             return false;
         }
     }
+
+
+
+
+
+    // user for dashboard 
+
 }
