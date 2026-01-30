@@ -465,8 +465,10 @@ $show_breadcrumb = false;
                                         <?php elseif (!empty($req['request_amount'])): ?>
                                             <strong>Requested Amount:</strong> ৳ <?= format_bdt($req['request_amount']) ?>
                                         <?php endif; ?>
-
                                     </div>
+
+                                    <?php renderApprovalContext($req); ?>
+
 
                                     <div class="d-flex gap-2 flex-wrap">
                                         <!-- Full Approve -->

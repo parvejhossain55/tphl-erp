@@ -705,5 +705,107 @@ function renderReviewVideo($url, $width = '100%', $height = '315') {
 
 
 
+/* =========================
+   SAFE ESCAPE HELPER
+   ========================= */
+function esc($value, $default = '')
+{
+    return htmlspecialchars((string)($value ?? $default), ENT_QUOTES, 'UTF-8');
+}
+
+/* =========================
+   APPROVAL CONTEXT RENDERER
+   ========================= */
+function renderApprovalContext(array $req)
+{
+    if (empty($req['context'])) {
+        return;
+    }
+
+    $ctx = $req['context'];
+    ?>
+
+    <div class="rounded p-2 my-2">
+        <small class="text-muted d-block mb-1">Request Details</small>
+
+        <ul class="list-unstyled mb-0 small">
+
+            <!-- Lead -->
+            <?php if (!empty($ctx['lead'])): ?>
+                <li>
+                    <strong class="fs-6">Client:</strong>
+                    <?= esc($ctx['lead']['full_name']) ?>
+                    (<?= esc($ctx['lead']['phone'], 'N/A') ?>)
+                </li>
+            <?php endif; ?>
+
+            <!-- Flat -->
+            <?php if (!empty($ctx['flat'])): ?>
+                <li>
+                    <strong class="fs-6">Project:</strong>
+                    <?= esc($ctx['flat']['project_name'], 'Unknown Project') ?>
+                    —
+                    <?= esc($ctx['flat']['flat_name']) ?>
+                    <span class="text-muted">
+                        (<?= esc($ctx['flat']['sqft'], 0) ?> sqft)
+                    </span>
+                </li>
+            <?php endif; ?>
+
+            <!-- Employee -->
+            <?php if (!empty($ctx['employee'])): ?>
+                <li>
+                    <strong class="fs-6">Employee:</strong>
+                    <?= esc($ctx['employee']['full_name']) ?>
+                    <span class="text-muted">
+                        (<?= esc($ctx['employee']['designation'], 'N/A') ?>)
+                    </span>
+                </li>
+            <?php endif; ?>
+
+            <!-- Salary -->
+            <?php if (!empty($ctx['salary'])): ?>
+                <li>
+                    <strong class="fs-6">Salary Month:</strong>
+                    <?= esc($ctx['salary']['salary_month'], '-') ?>
+                </li>
+                <li>
+                    <strong class="fs-6">Gross:</strong>
+                    ৳ <?= number_format($ctx['salary']['gross_salary'] ?? 0, 2) ?>
+                </li>
+            <?php endif; ?>
+
+            <!-- Leave -->
+            <?php if (!empty($ctx['leave'])): ?>
+                <li>
+                    <strong class="fs-6">Leave Type:</strong>
+                    <?= esc($ctx['leave']['leave_type'], 'N/A') ?>
+                </li>
+                <li>
+                    <strong class="fs-6">Requested Days:</strong>
+                    <?= esc($ctx['leave']['requested_days'], 0) ?>
+                </li>
+            <?php endif; ?>
+
+            <!-- Accounts Meta -->
+            <?php if (!empty($ctx['meta'])): ?>
+                <?php foreach ($ctx['meta'] as $key => $value): ?>
+                    <li>
+                        <strong class="fs-6">
+                            <?= esc(ucfirst(str_replace('_', ' ', $key))) ?>:
+                        </strong>
+                        <?= esc($value, 'N/A') ?>
+                    </li>
+                <?php endforeach; ?>
+            <?php endif; ?>
+
+        </ul>
+    </div>
+
+    <?php
+}
+
+
+
 
 // $readTime = calculateReadTime($_POST['content']);

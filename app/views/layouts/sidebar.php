@@ -304,7 +304,7 @@
                                     <span class="sidebar__menu-label">Cash Out Management</span>
                                 </a>
                             </li>
-                            <li class="slide <?= isActive('management-cash-out', $current_route) ?>">
+                            <li class="slide d-none <?= isActive('management-cash-out', $current_route) ?>">
                                 <a href="<?= $base_url ?>/management-cash-out" class="sidebar__menu-item <?= isActive('management-cash-out', $current_route) ?>">Management</a>
                                     <span class="sidebar__menu-label">Cash Out </span>
                                 </a>
@@ -376,14 +376,8 @@
                     </li>
                 <?php endif ?>
 
-
-
-                <!-- Others-->
-                <?php if (hasPermission("others")):  ?>
-                    <li class="sidebar__menu-category">
-                        <span class="category-name">Others</span>
-                    </li>
-                    <li class="slide has-sub <?= isActive(['create-task', 'task-lists'], $current_route) ?>">
+  <?php if (hasPermission("task manage")):  ?>
+                  <li class="slide has-sub <?= isActive(['create-task', 'task-lists'], $current_route) ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-task', 'task-lists'], $current_route) ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i>
@@ -399,6 +393,13 @@
                             </li>
                         </ul>
                     </li>
+                <?php endif; ?>
+                <!-- Others-->
+                <?php if (hasPermission("others")):  ?>
+                    <li class="sidebar__menu-category">
+                        <span class="category-name">Others</span>
+                    </li>
+  
 
                     <li class="slide has-sub <?= isActive(['create-review', 'review-lists'], $current_route) ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-review', 'review-lists'], $current_route) ?>">

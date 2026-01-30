@@ -61,35 +61,136 @@ class ApprovalRequest extends Model
             ->fetch_assoc();
     }
 
-    private function getFlatById(int $id)
-    {
-        return $this->db
-            ->query("SELECT id,flat_name, sqft FROM flats WHERE id = {$id}")
-            ->fetch_assoc();
+private function getFlatById(int $id)
+{
+    $sql = "
+        SELECT 
+            f.id,
+            f.flat_name,
+            f.sqft,
+            p.name AS project_name
+        FROM flats f
+        LEFT JOIN projects p ON p.id = f.project_id
+        WHERE f.id = {$id}
+        LIMIT 1
+    ";
+
+    return $this->db->query($sql)->fetch_assoc();
+}
+
+
+
+
+private function getEmployeeById(int $id)
+{
+    $sql = "
+        SELECT 
+            e.id,
+            e.full_name,
+            e.phone,
+            d.name AS designation
+        FROM employees e
+        LEFT JOIN designations d ON d.id = e.designation_id
+        WHERE e.id = {$id}
+        LIMIT 1
+    ";
+
+    return $this->db->query($sql)->fetch_assoc();
+}
+
+
+private function getSalaryDetails(int $employeeId, ?string $month = null)
+{
+    $sql = "SELECT * FROM payslips WHERE employee_id = {$employeeId}";
+    if ($month) {
+        $sql .= " AND payslip_month = '{$month}'";
     }
 
-    private function resolveApprovalDetails(array $approval)
-    {
-        $meta = $this->parseMetaData($approval['meta_data']);
+    return $this->db->query($sql)->fetch_assoc();
+}
 
-        $details = [];
+private function getLeaveDetails(int $leaveId)
+{
+    return $this->db
+        ->query("
+            SELECT el.*, lt.name AS leave_type
+            FROM employee_leaves el
+            LEFT JOIN leave_types lt ON lt.id = el.leave_type_id
+            WHERE el.id = {$leaveId}
+        ")
+        ->fetch_assoc();
+}
 
-        // Lead info
+private function getAccountDetails(string $sourceTable, int $sourceId)
+{
+    return $this->db
+        ->query("SELECT * FROM {$sourceTable} WHERE id = {$sourceId}")
+        ->fetch_assoc();
+}
+
+
+private function resolveApprovalDetails(array $approval)
+{
+    $meta = $this->parseMetaData($approval['meta_data']);
+    $details = [];
+
+    /* =====================
+       SALES → LEAD DISCOUNT
+       ===================== */
+    if ($approval['request_type'] === 'discount') {
+
         if (!empty($meta['lead_id'])) {
             $details['lead'] = $this->getLeadById((int)$meta['lead_id']);
         }
 
-        // Flat info
         if (!empty($meta['flat_id'])) {
             $details['flat'] = $this->getFlatById((int)$meta['flat_id']);
         }
-
-        // Employee info
-        // if (!empty($meta['employee_id'])) {
-        //     $details['employee'] = $this->getEmployeeById((int)$meta['employee_id']);
-        // }
-
     }
+
+    /* =====================
+       HR → SALARY
+       ===================== */
+    if ($approval['request_type'] === 'salary') {
+
+        if (!empty($meta['employee_id'])) {
+            $details['employee'] = $this->getEmployeeById((int)$meta['employee_id']);
+            $details['salary'] = $this->getSalaryDetails(
+                (int)$meta['employee_id'],
+                $meta['month'] ?? null
+            );
+        }
+    }
+
+    /* =====================
+       HR → LEAVE
+       ===================== */
+    if ($approval['request_type'] === 'leave') {
+
+        if (!empty($meta['employee_id'])) {
+            $details['employee'] = $this->getEmployeeById((int)$meta['employee_id']);
+        }
+
+        if (!empty($approval['source_id'])) {
+            $details['leave'] = $this->getLeaveDetails((int)$approval['source_id']);
+        }
+    }
+
+    /* =====================
+       ACCOUNTS → CASH IN / OUT
+       ===================== */
+    if ($approval['department'] === 'Accounts') {
+
+        $details['account'] = $this->getAccountDetails(
+            $approval['source_table'],
+            (int)$approval['source_id']
+        );
+
+        $details['meta'] = $meta; // purpose, payment_method etc
+    }
+
+    return $details;
+}
 
 
 
