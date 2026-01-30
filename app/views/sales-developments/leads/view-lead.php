@@ -250,7 +250,7 @@ $page = "View Lead";
 
                         <div class="lead-name-section me-2">
                             <h2 class="mb-0">
-                                <?= htmlspecialchars($leadData['full_name'] ?? 'N/A') ?>
+                                <?= htmlspecialchars($leadData['full_name'] ?? $leadData['lead_name'] ) ?>
                             </h2>
                             <p class="text-muted mb-0">
                                 <i class="fa-light fa-phone me-1"></i><?= $leadData['phone'] ?>

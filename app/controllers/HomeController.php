@@ -361,7 +361,7 @@ class HomeController extends Controller
 
     private function deductLeaveBalance(array $leave, int $approved_days)
     {
-        // 1️⃣ Lock row
+        // 1 Lock row
         $stmt = $this->db->prepare("
         SELECT id, remaining_days
         FROM employee_leave_balances
