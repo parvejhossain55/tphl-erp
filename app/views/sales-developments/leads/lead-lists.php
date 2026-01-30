@@ -171,7 +171,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-    <div class="col-xxl-3 col-xl-3  col-md-3 col-12">
+    <div class="d-none col-xxl-3 col-xl-3  col-md-3 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <a href="<?= $GLOBALS['base_url'] ?>/onboarding-clients" class="btn btn-primary w-100 ">

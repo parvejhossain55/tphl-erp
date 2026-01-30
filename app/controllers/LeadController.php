@@ -89,7 +89,7 @@ public function assignMultipleLeads()
         }
 
 
-        $this->view("sales-developments\leads\onboard-clients",[
+        $this->view("sales-developments/leads/onboard-clients",[
             "current_route" => "onboarding-clients",
             "page_title" => "All Onboard Clients",
             "followUpCounts" => $followUpCounts,

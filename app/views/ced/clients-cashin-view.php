@@ -102,7 +102,7 @@ $show_breadcrumb = true;
                             <th>Designation</th>
                             <th>Project Name</th>
                             <th>Project Type</th>
-                            <th>Flat No.</th>
+                            <!-- <th>Flat No.</th> -->
                             <th>Flat Size</th>
                             <th>Action</th>
                         </tr>
@@ -114,7 +114,7 @@ $show_breadcrumb = true;
                                     <!-- <td>
                                         <button 
                                             class="bd-badge bg-primary p-2 " style="font-size: 16px;"
-                                            onclick="openTransactionModal(<?= $client['booking_id'] ?>, '<?= htmlspecialchars($client['client_name']) ?>', <?= $client['agreement_value'] ?>, <?= $client['booking_money_paid'] ?>)">
+                                            onclick="openTransactionModal(<?= $client['booking_id'] ?>, '<?= htmlspecialchars($client['client_name']) ?>', <?= $client['total_agreement_value'] ?>, <?= $client['booking_money_paid'] ?>)">
                                             <i class="fa-solid fa-plus px-1"></i> Add
                                         </button>
                                     </td> -->
@@ -123,7 +123,7 @@ $show_breadcrumb = true;
                                         <div>
                                         </div>
                                         <div class="text-muted small">
-                                         ৳<?= number_format($client['agreement_value'], 2) ?>
+                                         ৳<?= format_bdt($client['total_agreement_value']) ?>
                                         </div>
                                     </td>
                                     <td>
@@ -135,13 +135,13 @@ $show_breadcrumb = true;
                                     <td><?= htmlspecialchars($client['email']) ?></td>
                                     <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['designation'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['project_name']) ?></td>
+                                    <td><?= $client['project_name'] ?? 'N/A' ?></td>
                                     <td>
                                         <span class="bd-badge bg-primary">
-                                            <?= htmlspecialchars($client['project_type']) ?>
+                                            <?= $client['project_type'] ?? 'N/A' ?>
                                         </span>
                                     </td>
-                                    <td><?= htmlspecialchars($client['unit_name']) ?> - Floor <?= $client['flat_no'] ?></td>
+                                    <!-- <td><= htmlspecialchars($client['unit_name']) ?> - Floor <= $client['flat_no'] ?></td> -->
                                     <td><?= number_format($client['flat_size']) ?> sqft</td>
                                     <td>
                                         <div class="d-flex align-items-center justify-content-start gap-10">
@@ -186,7 +186,7 @@ $show_breadcrumb = true;
                         <div class="col-md-12 mb-20">
                             <div class="alert alert-info">
                                 <strong>Client:</strong> <span id="modal_client_name"></span><br>
-                                <strong>Agreement Value:</strong> ৳<span id="modal_agreement_value"></span><br>
+                                <strong>Agreement Value:</strong> ৳<span id="modal_total_agreement_value"></span><br>
                                 <strong>Already Paid:</strong> ৳<span id="modal_paid_amount"></span><br>
                                 <strong>Remaining:</strong> ৳<span id="modal_remaining_amount"></span>
                             </div>
@@ -275,7 +275,7 @@ $show_breadcrumb = true;
     function openTransactionModal(bookingId, clientName, agreementValue, paidAmount) {
         document.getElementById('modal_booking_id').value = bookingId;
         document.getElementById('modal_client_name').textContent = clientName;
-        document.getElementById('modal_agreement_value').textContent = agreementValue.toLocaleString('en-BD');
+        document.getElementById('modal_total_agreement_value').textContent = agreementValue.toLocaleString('en-BD');
         document.getElementById('modal_paid_amount').textContent = paidAmount.toLocaleString('en-BD');
 
         const remaining = agreementValue - paidAmount;

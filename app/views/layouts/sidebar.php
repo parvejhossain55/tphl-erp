@@ -71,6 +71,9 @@
                             <li class="slide">
                                 <a href="<?= $base_url ?>/lead-lists" class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">Lead List</a>
                             </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/onboarding-clients" class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">Onboarding Clients</a>
+                            </li>
                         </ul>
                     </li>
 
@@ -289,20 +292,20 @@
                     </li>
                     <!-- Cash In Manage -->
                     <li class="slide has-sub <?= isActive(['clients-cash-in', 'management-cash-in'], $current_route) ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['clients-cash-in', 'management-cash-in'], $current_route) ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['clients-cash-in', 'management-cash-out'], $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
                             <span class="sidebar__menu-label">Manage Cash Out</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
-                        <ul class="sidebar-menu child2" style="<?= isMenuOpen(['clients-cash-in', 'management-cash-in'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                        <ul class="sidebar-menu child2" style="<?= isMenuOpen(['clients-cash-in', 'management-cash-out'], $current_route) ? 'display:block;' : 'display:none;' ?>">
                             <li class="slide <?= isActive('management-cash-out', $current_route) ?>">
                                 <a href="<?= $base_url ?>/management-cash-out" class="sidebar__menu-item <?= isActive('management-cash-out', $current_route) ?>">
                                     <div class="side-menu__icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
                                     <span class="sidebar__menu-label">Cash Out Management</span>
                                 </a>
                             </li>
-                            <li class="slide <?= isActive('management-cash-in', $current_route) ?>">
-                                <a href="<?= $base_url ?>/management-cash-in" class="sidebar__menu-item <?= isActive('management-cash-in', $current_route) ?>">Management</a>
+                            <li class="slide <?= isActive('management-cash-out', $current_route) ?>">
+                                <a href="<?= $base_url ?>/management-cash-out" class="sidebar__menu-item <?= isActive('management-cash-out', $current_route) ?>">Management</a>
                                     <span class="sidebar__menu-label">Cash Out </span>
                                 </a>
                             </li>
