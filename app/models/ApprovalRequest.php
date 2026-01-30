@@ -7,7 +7,10 @@ class ApprovalRequest extends Model
     protected $allowedTables = [
         'lead_bookings',
         'employee_leaves',
-        'salary_requests'
+        'payslips',
+
+        'salary_requests',
+        'cashout_requests'
     ];
     public function create($data)
     {
@@ -44,6 +47,48 @@ class ApprovalRequest extends Model
         $stmt->close();
 
         return $insertId;
+    }
+
+
+    private function parseMetaData(?string $meta)
+    {
+        return $meta ? json_decode($meta, true) : [];
+    }
+    private function getLeadById(int $id)
+    {
+        return $this->db
+            ->query("SELECT id, full_name, phone FROM leads WHERE id = {$id}")
+            ->fetch_assoc();
+    }
+
+    private function getFlatById(int $id)
+    {
+        return $this->db
+            ->query("SELECT id,flat_name, sqft FROM flats WHERE id = {$id}")
+            ->fetch_assoc();
+    }
+
+    private function resolveApprovalDetails(array $approval)
+    {
+        $meta = $this->parseMetaData($approval['meta_data']);
+
+        $details = [];
+
+        // Lead info
+        if (!empty($meta['lead_id'])) {
+            $details['lead'] = $this->getLeadById((int)$meta['lead_id']);
+        }
+
+        // Flat info
+        if (!empty($meta['flat_id'])) {
+            $details['flat'] = $this->getFlatById((int)$meta['flat_id']);
+        }
+
+        // Employee info
+        // if (!empty($meta['employee_id'])) {
+        //     $details['employee'] = $this->getEmployeeById((int)$meta['employee_id']);
+        // }
+
     }
 
 

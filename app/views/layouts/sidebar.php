@@ -298,6 +298,11 @@
                             <li class="slide <?= isActive('management-cash-out', $current_route) ?>">
                                 <a href="<?= $base_url ?>/management-cash-out" class="sidebar__menu-item <?= isActive('management-cash-out', $current_route) ?>">
                                     <div class="side-menu__icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                                    <span class="sidebar__menu-label">Cash Out Management</span>
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('management-cash-in', $current_route) ?>">
+                                <a href="<?= $base_url ?>/management-cash-in" class="sidebar__menu-item <?= isActive('management-cash-in', $current_route) ?>">Management</a>
                                     <span class="sidebar__menu-label">Cash Out </span>
                                 </a>
                             </li>
