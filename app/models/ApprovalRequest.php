@@ -9,6 +9,8 @@ class ApprovalRequest extends Model
         'employee_leaves',
         'payslips',
 
+        'salary_requests',
+        'cashout_requests'
     ];
     public function create($data)
     {

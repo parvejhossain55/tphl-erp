@@ -303,6 +303,14 @@
                             </li>
                             <li class="slide <?= isActive('management-cash-in', $current_route) ?>">
                                 <a href="<?= $base_url ?>/management-cash-in" class="sidebar__menu-item <?= isActive('management-cash-in', $current_route) ?>">Management</a>
+                                    <span class="sidebar__menu-label">Cash Out </span>
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('create-cashout-request', $current_route) ?>">
+                                <a href="<?= $base_url ?>/create-cashout-request" class="sidebar__menu-item <?= isActive('create-cashout-request', $current_route) ?>">Create Cashout Request</a>
+                            </li>
+                            <li class="slide <?= isActive('admin-cashout-requests', $current_route) ?>">
+                                <a href="<?= $base_url ?>/admin-cashout-requests" class="sidebar__menu-item <?= isActive('admin-cashout-requests', $current_route) ?>">Cashout Requests</a>
                             </li>
                         </ul>
                     </li>

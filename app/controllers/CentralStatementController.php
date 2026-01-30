@@ -16,107 +16,35 @@ class CentralStatementController extends Controller
     /**
      * Main index - Show central statement page
      */
-/**
- * Main index - Show central statement page
- */
-public function index()
-{
-    // Check if this is a print request
-    $isPrint = isset($_GET['print']) && $_GET['print'] == 'true';
-
-    // If it's a print request, use the print method
-    if ($isPrint) {
-        $this->printStatement();
-        return;
-    }
-
-    // Get period type from query params with proper defaults
-    $periodType = $_GET['period_type'] ?? 'monthly';
-    $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
-    $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
-    $startDate = $_GET['start_date'] ?? null;
-    $endDate = $_GET['end_date'] ?? null;
-
-    // Debug log
-    error_log("Central Statement Index - Period Type: $periodType, Year: $year, Month: $month");
-
-    // Get statement data based on period type
-    $statementData = null;
-    $periodText = '';
-
-    switch ($periodType) {
-        case 'monthly':
-            $statementData = $this->statementModel->getMonthlyStatement($year, $month);
-            $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $month) . "-01"));
-            break;
-
-        case '6months':
-            $statementData = $this->statementModel->getSixMonthStatement($year, $month);
-            $periodText = 'Last 6 Months';
-            break;
-
-        case 'yearly':
-            $statementData = $this->statementModel->getYearlyStatement($year);
-            $periodText = "Year $year";
-            break;
-
-        case 'custom':
-            if ($startDate && $endDate) {
-                $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate);
-                $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
-            } else {
-                // Default to current month if dates not provided
-                $year = (int)date('Y');
-                $month = (int)date('m');
-                $statementData = $this->statementModel->getMonthlyStatement($year, $month);
-                $periodText = date('F Y');
-                $periodType = 'monthly';
-            }
-            break;
-
-        default:
-            $year = (int)date('Y');
-            $month = (int)date('m');
-            $statementData = $this->statementModel->getMonthlyStatement($year, $month);
-            $periodText = date('F Y');
-            $periodType = 'monthly';
-    }
-
-    // Get overall statistics
-    $overallStats = $this->statementModel->getOverallStatistics();
-
-    // Prepare view data
-    $viewData = [
-        'current_route' => 'central-statement',
-        'page_title' => 'Central Financial Statement',
-        'period_type' => $periodType,
-        'period_text' => $periodText,
-        'year' => $year,
-        'month' => sprintf('%02d', $month), // Ensure 2-digit format
-        'start_date' => $startDate,
-        'end_date' => $endDate,
-        'statement_data' => $statementData,
-        'overall_stats' => $overallStats
-    ];
-
-    // Debug log
-    error_log("View Data - Year: " . $viewData['year'] . ", Month: " . $viewData['month']);
-    error_log("Statement Data Keys: " . json_encode(array_keys($statementData ?? [])));
-
-    $this->view('accounts/central-statement', $viewData);
-}
-
-    /**
-     * Print statement - separate method for print view
-     */
-    public function printStatement()
+    public function index()
     {
-        // Get period type from query params
+        // Check if this is a print request
+        $isPrint = isset($_GET['print']) && $_GET['print'] == 'true';
+
+        // If it's a print request, use the print method
+        if ($isPrint) {
+            $this->printStatement();
+            return;
+        }
+
+        // Get filters from query params with proper defaults
         $periodType = $_GET['period_type'] ?? 'monthly';
-        $year = $_GET['year'] ?? date('Y');
-        $month = $_GET['month'] ?? date('m');
+        $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+        $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
         $startDate = $_GET['start_date'] ?? null;
         $endDate = $_GET['end_date'] ?? null;
+        $projectId = $_GET['project_id'] ?? null;
+        $category = $_GET['category'] ?? 'all';
+
+        // Card period filter
+        $cardPeriod = $_GET['card_period'] ?? 'all_time';
+        $cardYear = isset($_GET['card_year']) ? (int)$_GET['card_year'] : (int)date('Y');
+        $cardMonth = isset($_GET['card_month']) ? (int)$_GET['card_month'] : (int)date('m');
+        $cardStartDate = $_GET['card_start_date'] ?? null;
+        $cardEndDate = $_GET['card_end_date'] ?? null;
+
+        // Debug log
+        error_log("Central Statement Index - Period Type: $periodType, Year: $year, Month: $month");
 
         // Get statement data based on period type
         $statementData = null;
@@ -124,474 +52,628 @@ public function index()
 
         switch ($periodType) {
             case 'monthly':
-                $statementData = $this->statementModel->getMonthlyStatement($year, $month);
-                $periodText = date('F Y', strtotime("$year-$month-01"));
+                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
+                $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $month) . "-01"));
                 break;
 
             case '6months':
-                $statementData = $this->statementModel->getSixMonthStatement($year, $month);
+                $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
                 $periodText = 'Last 6 Months';
                 break;
 
             case 'yearly':
-                $statementData = $this->statementModel->getYearlyStatement($year);
+                $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
                 $periodText = "Year $year";
                 break;
 
             case 'custom':
                 if ($startDate && $endDate) {
-                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate);
+                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
                     $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
                 } else {
                     // Default to current month if dates not provided
-                    $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'));
+                    $year = (int)date('Y');
+                    $month = (int)date('m');
+                    $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
                     $periodText = date('F Y');
                     $periodType = 'monthly';
                 }
                 break;
 
             default:
-                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'));
+                $year = (int)date('Y');
+                $month = (int)date('m');
+                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
                 $periodText = date('F Y');
                 $periodType = 'monthly';
         }
 
-        // Get overall statistics
-        $overallStats = $this->statementModel->getOverallStatistics();
+        // Get projects for dropdown
+        $projects = $this->getProjects();
 
-        // Company information
-        $company_name = "THE PREMIUM HOMES LTD.";
-        $company_address = "Land View Commercial Center, 9th Floor 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
-        $company_phone = "+8801958253300";
-        $company_email = "info@thepremiumhomes.com";
+        // Get overall statistics with card period filter
+        $overallStats = $this->statementModel->getOverallStatistics(
+            $cardPeriod,
+            $cardYear,
+            $cardMonth,
+            $cardStartDate,
+            $cardEndDate
+        );
 
-        // Render the print view directly
+        // Prepare view data
+        $viewData = [
+            'current_route' => 'central-statement',
+            'page_title' => 'Central Financial Statement',
+            'period_type' => $periodType,
+            'period_text' => $periodText,
+            'year' => $year,
+            'month' => sprintf('%02d', $month),
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'project_id' => $projectId,
+            'category' => $category,
+            'projects' => $projects,
+            'statement_data' => $statementData,
+            'overall_stats' => $overallStats,
+            'card_period' => $cardPeriod,
+            'card_year' => $cardYear,
+            'card_month' => sprintf('%02d', $cardMonth),
+            'card_start_date' => $cardStartDate,
+            'card_end_date' => $cardEndDate
+        ];
+
+        $this->view('accounts/central-statement', $viewData);
+    }
+
+    /**
+     * Get projects list
+     */
+    private function getProjects()
+    {
+        $query = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
+        $result = $this->db->query($query);
+        $projects = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $projects[] = $row;
+            }
+        }
+        return $projects;
+    }
+
+    /**
+     * Print statement - separate method for print view
+     */
+    /**
+     * Print statement - separate method for print view
+     */
+public function printStatement()
+{
+    // Get period type from query params
+    $periodType = $_GET['period_type'] ?? 'monthly';
+    $year = $_GET['year'] ?? date('Y');
+    $month = $_GET['month'] ?? date('m');
+    $startDate = $_GET['start_date'] ?? null;
+    $endDate = $_GET['end_date'] ?? null;
+    $projectId = $_GET['project_id'] ?? null;
+    $category = $_GET['category'] ?? 'all';
+
+    // Get statement data based on period type
+    $statementData = null;
+    $periodText = '';
+
+    switch ($periodType) {
+        case 'monthly':
+            $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
+            $periodText = date('F Y', strtotime("$year-$month-01"));
+            break;
+
+        case '6months':
+            $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
+            $periodText = 'Last 6 Months';
+            break;
+
+        case 'yearly':
+            $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
+            $periodText = "Year $year";
+            break;
+
+        case 'custom':
+            if ($startDate && $endDate) {
+                $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
+                $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
+            } else {
+                // Default to current month if dates not provided
+                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
+                $periodText = date('F Y');
+                $periodType = 'monthly';
+            }
+            break;
+
+        default:
+            $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
+            $periodText = date('F Y');
+            $periodType = 'monthly';
+    }
+
+    // Get overall statistics for print (all time) WITH PROJECT AND CATEGORY FILTERS
+    $overallStats = $this->statementModel->getOverallStatistics('all_time', null, null, null, null, $projectId, $category);
+
+    // Company information
+    $company_name = "THE PREMIUM HOMES LTD.";
+    $company_address = "Land View Commercial Center, 9th Floor 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+    $company_phone = "+8801958253300";
+    $company_email = "info@thepremiumhomes.com";
+
+    // Get project name if filtered
+    $projectName = '';
+    if ($projectId) {
+        $query = "SELECT name FROM projects WHERE id = ?";
+        $stmt = $this->db->prepare($query);
+        $stmt->bind_param("i", $projectId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $projectName = $row['name'];
+        }
+    }
+
+    // Get category name
+    $categoryName = '';
+    if ($category !== 'all') {
+        $categoryName = ucfirst($category);
+    }
+
+    // Render the print view directly
 ?>
-        <!DOCTYPE html>
-        <html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Central Financial Statement</title>
-           
-           
-           <style>
-                @page {
-                    size: A4;
-                    margin: 15mm;
-                }
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central Financial Statement</title>
 
-                @media print {
-                    body {
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        font-size: 10pt;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
 
-                    .no-print {
-                        display: none !important;
-                    }
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
 
-                    .page-break {
-                        page-break-before: always;
-                        margin-top: 20mm;
-                    }
+        @media print {
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+                font-size: 10pt;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
 
-                    .avoid-break {
-                        page-break-inside: avoid;
-                    }
-                }
+            .no-print {
+                display: none !important;
+            }
 
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                }
+            .page-break {
+                page-break-before: always;
+                margin-top: 20mm;
+            }
 
-                body {
-                    font-family: 'Arial', sans-serif;
-                    background: #fff;
-                    color: #000;
-                    line-height: 1.3;
-                    font-size: 10pt;
-                    width: 210mm;
-                    min-height: 297mm;
-                    margin: 0 auto;
-                    padding: 15mm;
-                }
+            .avoid-break {
+                page-break-inside: avoid;
+            }
+        }
 
-                .statement-header {
-                    text-align: center;
-                    margin-bottom: 12mm;
-                    border-bottom: 1mm solid #000;
-                    
-                }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-                .company-name {
-                    font-size: 18pt;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    margin-bottom: 2mm;
-                    letter-spacing: 1pt;
-                }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #fff;
+            color: #000;
+            line-height: 1.3;
+            font-size: 10pt;
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 15mm;
+        }
 
-                .company-address {
-                    font-size: 9pt;
-                    line-height: 1.2;
-                    margin-bottom: 3mm;
-                }
+        .statement-header {
+            text-align: center;
+            margin-bottom: 12mm;
+            border-bottom: 1mm solid #000;
 
-                .statement-title {
-                    font-size: 16pt;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    margin: 6mm 0;
-                    letter-spacing: 1pt;
-                }
+        }
 
-                .statement-meta {
-                    font-size: 9pt;
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 8mm;
-                }
+        .company-name {
+            font-size: 18pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 2mm;
+            letter-spacing: 1pt;
+        }
 
-                .meta-item {
-                    text-align: center;
-                }
+        .company-address {
+            font-size: 9pt;
+            line-height: 1.2;
+            margin-bottom: 3mm;
+        }
 
-                .meta-label {
-                    font-weight: bold;
-                    display: block;
-                    margin-bottom: 1mm;
-                }
+        .statement-title {
+            font-size: 16pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin: 6mm 0;
+            letter-spacing: 1pt;
+        }
 
-                .stats-container {
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 12mm;
-                    gap: 10mm;
-                }
+        .statement-meta {
+            font-size: 9pt;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8mm;
+        }
 
-                .stat-box {
-                    flex: 1;
-                    padding: 4mm;
-                    border: 0.5mm solid #000;
-                    border-radius: 2mm;
-                    text-align: center;
-                }
+        .meta-item {
+            text-align: center;
+        }
 
-                .stat-label {
-                    font-size: 8pt;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    margin-bottom: 2mm;
-                    color: #666;
-                }
+        .meta-label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 1mm;
+        }
 
-                .stat-value {
-                    font-size: 14pt;
-                    font-weight: bold;
-                    font-family: 'Courier New', monospace;
-                }
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12mm;
+            gap: 10mm;
+        }
 
-                .period-title {
-                    font-size: 12pt;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    text-align: center;
-                    margin: 8mm 0 4mm 0;
-                    padding-bottom: 2mm;
-                    border-bottom: 0.3mm solid #000;
-                }
+        .stat-box {
+            flex: 1;
+            padding: 4mm;
+            border: 0.5mm solid #000;
+            border-radius: 2mm;
+            text-align: center;
+        }
 
-                .statement-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    font-size: 8pt;
-                    margin-bottom: 8mm;
-                }
+        .stat-label {
+            font-size: 8pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 2mm;
+            color: #666;
+        }
 
-                .statement-table th {
-                    border: 0.3mm solid #000;
-                    padding: 2mm 3mm;
-                    text-align: left;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    background: #f0f0f0;
-                    vertical-align: middle;
-                }
+        .stat-value {
+            font-size: 14pt;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
 
-                .statement-table td {
-                    border: 0.3mm solid #000;
-                    padding: 2mm 3mm;
-                    vertical-align: middle;
-                }
+        .stat-breakdown {
+            font-size: 7pt;
+            margin-top: 2mm;
+            color: #666;
+        }
 
-                .text-right {
-                    text-align: right;
-                }
+        .period-title {
+            font-size: 12pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-align: center;
+            margin: 8mm 0 4mm 0;
+            padding-bottom: 2mm;
+            border-bottom: 0.3mm solid #000;
+        }
 
-                .text-center {
-                    text-align: center;
-                }
+        .statement-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8pt;
+            margin-bottom: 8mm;
+        }
 
-                .summary-section {
-                    margin-top: 10mm;
-                    padding-top: 4mm;
-                    border-top: 0.5mm solid #000;
-                }
+        .statement-table th {
+            border: 0.3mm solid #000;
+            padding: 2mm 3mm;
+            text-align: left;
+            font-weight: bold;
+            text-transform: uppercase;
+            background: #f0f0f0;
+            vertical-align: middle;
+        }
 
-                .summary-title {
-                    font-size: 11pt;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    margin-bottom: 4mm;
-                }
+        .statement-table td {
+            border: 0.3mm solid #000;
+            padding: 2mm 3mm;
+            vertical-align: middle;
+        }
 
-                .summary-grid {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 6mm;
-                }
+        .text-right {
+            text-align: right;
+        }
 
-                .summary-box {
-                    border: 0.3mm solid #000;
-                    padding: 3mm;
-                }
+        .text-center {
+            text-align: center;
+        }
 
-                .summary-row {
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 2mm;
-                }
+        .summary-section {
+            margin-top: 10mm;
+            padding-top: 4mm;
+            border-top: 0.5mm solid #000;
+        }
 
-                .summary-label {
-                    font-weight: bold;
-                }
+        .summary-title {
+            font-size: 11pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 4mm;
+        }
 
-                .summary-value {
-                    font-weight: bold;
-                    font-family: 'Courier New', monospace;
-                }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6mm;
+        }
 
-                .footer {
-                    margin-top: 15mm;
-                    padding-top: 3mm;
-                    border-top: 0.3mm solid #000;
-                    font-size: 7pt;
-                    text-align: center;
-                    color: #666;
-                }
+        .summary-box {
+            border: 0.3mm solid #000;
+            padding: 3mm;
+        }
 
-                .footer-note {
-                    font-style: italic;
-                    margin-bottom: 2mm;
-                }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2mm;
+        }
 
-                .print-date {
-                    font-weight: bold;
-                }
+        .summary-label {
+            font-weight: bold;
+        }
 
-                /* Colors for cash in/out */
-                .cash-in {
-                    color: #28a745;
-                }
+        .summary-value {
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
 
-                .cash-out {
-                    color: #dc3545;
-                }
+        .footer {
+            margin-top: 15mm;
+            padding-top: 3mm;
+            border-top: 0.3mm solid #000;
+            font-size: 7pt;
+            text-align: center;
+            color: #666;
+        }
 
-                .net-balance {
-                    color: #007bff;
-                }
-            </style>
+        .footer-note {
+            font-style: italic;
+            margin-bottom: 2mm;
+        }
 
-            
-        </head>
+        .print-date {
+            font-weight: bold;
+        }
 
-        <body>
-            <!-- Header -->
-            <div class="statement-header">
-                <div class="company-name"><?= $company_name ?></div>
-                <div class="company-address">
-                    <?= $company_address ?><br>
-                    Phone: <?= $company_phone ?> | Email: <?= $company_email ?>
-                </div>
-                <div class="statement-title">CENTRAL FINANCIAL STATEMENT</div>
+        /* Colors for cash in/out */
+        .revenue {
+            color: #28a745;
+        }
+
+        .cash-out {
+            color: #dc3545;
+        }
+
+        .net-balance {
+            color: #007bff;
+        }
+
+        .filter-info {
+            font-size: 9pt;
+            margin-bottom: 4mm;
+            text-align: center;
+            font-style: italic;
+        }
+    </style>
+
+
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="statement-header">
+        <div class="company-name"><?= $company_name ?></div>
+        <div class="company-address">
+            <?= $company_address ?><br>
+            Phone: <?= $company_phone ?> | Email: <?= $company_email ?>
+        </div>
+        <div class="statement-title">CENTRAL FINANCIAL STATEMENT</div>
+    </div>
+
+    <!-- Meta Information -->
+    <div class="statement-meta">
+        <div class="meta-item">
+            <span class="meta-label">Date of Issue:</span>
+            <span><?= date('d-M-Y') ?></span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Period:</span>
+            <span><?= htmlspecialchars($periodText) ?></span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Generated:</span>
+            <span><?= date('d M, Y h:i A') ?></span>
+        </div>
+    </div>
+
+    <!-- Filter Information -->
+    <?php if ($projectName || $categoryName): ?>
+        <div class="filter-info">
+            <?php if ($projectName): ?>
+                <strong>Project:</strong> <?= htmlspecialchars($projectName) ?>
+            <?php endif; ?>
+            <?php if ($categoryName): ?>
+                <?php if ($projectName): ?> | <?php endif; ?>
+                <strong>Category:</strong> <?= htmlspecialchars($categoryName) ?>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- Statistics -->
+    <div class="stats-container">
+        <div class="stat-box">
+            <div class="stat-label">Total Revenue</div>
+            <div class="stat-value revenue">৳<?= number_format($overallStats['total_revenue'] ?? 0, 2) ?></div>
+            <div class="stat-breakdown">
+                Landshare: ৳<?= number_format($overallStats['total_landshare'] ?? 0, 2) ?><br>
+                Service Fee: ৳<?= number_format($overallStats['total_service_fee'] ?? 0, 2) ?>
             </div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Total Cash Out</div>
+            <div class="stat-value cash-out">৳<?= number_format($overallStats['total_cash_out'] ?? 0, 2) ?></div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Net Balance</div>
+            <div class="stat-value net-balance">৳<?= number_format($overallStats['net_balance'] ?? 0, 2) ?></div>
+        </div>
+    </div>
 
-            <!-- Meta Information -->
-            <div class="statement-meta">
-                <div class="meta-item">
-                    <span class="meta-label">Date of Issue:</span>
-                    <span><?= date('d-M-Y') ?></span>
-                </div>
-                <div class="meta-item">
-                    <span class="meta-label">Period:</span>
-                    <span><?= htmlspecialchars($periodText) ?></span>
-                </div>
-                <div class="meta-item">
-                    <span class="meta-label">Generated:</span>
-                    <span><?= date('d M, Y h:i A') ?></span>
-                </div>
-            </div>
+    <!-- Statement Data -->
+    <div class="period-title">
+        <?= isset($statementData['daily_data']) ? 'DAILY STATEMENT - ' : 'MONTHLY STATEMENT - ' ?>
+        <?= htmlspecialchars($periodText) ?>
+    </div>
 
-            <!-- Statistics -->
-            <div class="stats-container">
-                <div class="stat-box">
-                    <div class="stat-label">Total Cash In (All Time)</div>
-                    <div class="stat-value cash-in">৳<?= number_format($overallStats['total_cash_in'] ?? 0, 2) ?></div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Total Cash Out (All Time)</div>
-                    <div class="stat-value cash-out">৳<?= number_format($overallStats['total_cash_out'] ?? 0, 2) ?></div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Overall Net Balance</div>
-                    <div class="stat-value net-balance">৳<?= number_format($overallStats['net_balance'] ?? 0, 2) ?></div>
-                </div>
-            </div>
-
-            <!-- Statement Data -->
-            <div class="period-title">
-                <?= isset($statementData['daily_data']) ? 'DAILY STATEMENT - ' : 'MONTHLY STATEMENT - ' ?>
-                <?= htmlspecialchars($periodText) ?>
-            </div>
-
-            <?php if (isset($statementData['daily_data'])): ?>
-                <table class="statement-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Day</th>
-                            <th class="text-right">Cash In (৳)</th>
-                            <th class="text-right">Cash Out (৳)</th>
-                            <th class="text-right">Net Amount (৳)</th>
-                            <th class="text-right">Running Balance (৳)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php $counter = 0; ?>
-                        <?php foreach ($statementData['daily_data'] as $row): ?>
-                            <?php $counter++; ?>
-                            <?php if ($counter > 20): ?>
-                    </tbody>
-                </table>
-                <div class="page-break"></div>
-                <div class="period-title">
-                    DAILY STATEMENT - <?= htmlspecialchars($periodText) ?> (Continued)
-                </div>
-                <table class="statement-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Day</th>
-                            <th class="text-right">Cash In (৳)</th>
-                            <th class="text-right">Cash Out (৳)</th>
-                            <th class="text-right">Net Amount (৳)</th>
-                            <th class="text-right">Running Balance (৳)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php $counter = 1; ?>
-                    <?php endif; ?>
+    <?php if (isset($statementData['daily_data'])): ?>
+        <table class="statement-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th class="text-right">Landshare (৳)</th>
+                    <th class="text-right">Service Fee (৳)</th>
+                    <th class="text-right">Total Revenue (৳)</th>
+                    <th class="text-right">Cash Out (৳)</th>
+                    <th class="text-right">Net Amount (৳)</th>
+                    <th class="text-right">Running Balance (৳)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($statementData['daily_data'] as $row): ?>
                     <tr class="avoid-break">
                         <td><?= htmlspecialchars($row['formatted_date']) ?></td>
                         <td><?= htmlspecialchars($row['day_name']) ?></td>
-                        <td class="text-right cash-in"><?= number_format($row['cash_in'], 2) ?></td>
+                        <td class="text-right revenue"><?= number_format($row['landshare'], 2) ?></td>
+                        <td class="text-right revenue"><?= number_format($row['service_fee'], 2) ?></td>
+                        <td class="text-right revenue"><?= number_format($row['total_revenue'], 2) ?></td>
                         <td class="text-right cash-out"><?= number_format($row['cash_out'], 2) ?></td>
                         <td class="text-right"><?= number_format($row['net_amount'], 2) ?></td>
                         <td class="text-right"><?= number_format($row['running_balance'], 2) ?></td>
                     </tr>
                 <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php elseif (isset($statementData['monthly_data'])): ?>
-                <table class="statement-table">
-                    <thead>
-                        <tr>
-                            <th>Month</th>
-                            <th class="text-right">Cash In (৳)</th>
-                            <th class="text-right">Cash Out (৳)</th>
-                            <th class="text-right">Net Amount (৳)</th>
-                            <th class="text-right">Running Balance (৳)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($statementData['monthly_data'] as $row): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($row['month']) ?></td>
-                                <td class="text-right cash-in"><?= number_format($row['cash_in'], 2) ?></td>
-                                <td class="text-right cash-out"><?= number_format($row['cash_out'], 2) ?></td>
-                                <td class="text-right"><?= number_format($row['net_amount'], 2) ?></td>
-                                <td class="text-right"><?= number_format($row['running_balance'], 2) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php else: ?>
-                <div class="text-center" style="padding: 20mm; font-style: italic; color: #666;">
-                    No statement data available for the selected period.
-                </div>
-            <?php endif; ?>
+            </tbody>
+        </table>
+    <?php elseif (isset($statementData['monthly_data'])): ?>
+        <table class="statement-table">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th class="text-right">Landshare (৳)</th>
+                    <th class="text-right">Service Fee (৳)</th>
+                    <th class="text-right">Total Revenue (৳)</th>
+                    <th class="text-right">Cash Out (৳)</th>
+                    <th class="text-right">Net Amount (৳)</th>
+                    <th class="text-right">Running Balance (৳)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($statementData['monthly_data'] as $row): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($row['month']) ?></td>
+                        <td class="text-right revenue"><?= number_format($row['landshare'], 2) ?></td>
+                        <td class="text-right revenue"><?= number_format($row['service_fee'], 2) ?></td>
+                        <td class="text-right revenue"><?= number_format($row['total_revenue'], 2) ?></td>
+                        <td class="text-right cash-out"><?= number_format($row['cash_out'], 2) ?></td>
+                        <td class="text-right"><?= number_format($row['net_amount'], 2) ?></td>
+                        <td class="text-right"><?= number_format($row['running_balance'], 2) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php else: ?>
+        <div class="text-center" style="padding: 20mm; font-style: italic; color: #666;">
+            No statement data available for the selected period.
+        </div>
+    <?php endif; ?>
 
-            <!-- Summary -->
-            <?php if (isset($statementData['summary'])): ?>
-                <div class="summary-section">
-                    <div class="summary-title">PERIOD SUMMARY</div>
-                    <div class="summary-grid">
-                        <div class="summary-box">
-                            <div class="summary-row">
-                                <span class="summary-label">Total Cash In:</span>
-                                <span class="summary-value cash-in">৳<?= number_format($statementData['summary']['total_cash_in'], 2) ?></span>
-                            </div>
-                            <div class="summary-row">
-                                <span class="summary-label">Total Cash Out:</span>
-                                <span class="summary-value cash-out">৳<?= number_format($statementData['summary']['total_cash_out'], 2) ?></span>
-                            </div>
-                        </div>
-                        <div class="summary-box">
-                            <div class="summary-row">
-                                <span class="summary-label">Net Balance:</span>
-                                <span class="summary-value">৳<?= number_format($statementData['summary']['net_balance'], 2) ?></span>
-                            </div>
-                            <div class="summary-row">
-                                <span class="summary-label">Available Balance:</span>
-                                <span class="summary-value">৳<?= number_format($statementData['summary']['final_balance'], 2) ?></span>
-                            </div>
-                        </div>
+    <!-- Summary -->
+    <?php if (isset($statementData['summary'])): ?>
+        <div class="summary-section">
+            <div class="summary-title">PERIOD SUMMARY</div>
+            <div class="summary-grid">
+                <div class="summary-box">
+                    <div class="summary-row">
+                        <span class="summary-label">Total Landshare:</span>
+                        <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_landshare'], 2) ?></span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Total Service Fee:</span>
+                        <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_service_fee'], 2) ?></span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Total Revenue:</span>
+                        <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_revenue'], 2) ?></span>
                     </div>
                 </div>
-            <?php endif; ?>
-
-            <!-- Footer -->
-            <div class="footer">
-                <div class="footer-note">
-                    This is a computer-generated central financial statement and does not require a signature.
-                </div>
-                <div class="print-date">
-                    Printed on: <?= date('d M, Y h:i A') ?>
+                <div class="summary-box">
+                    <div class="summary-row">
+                        <span class="summary-label">Total Cash Out:</span>
+                        <span class="summary-value cash-out">৳<?= number_format($statementData['summary']['total_cash_out'], 2) ?></span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Net Balance:</span>
+                        <span class="summary-value">৳<?= number_format($statementData['summary']['net_balance'], 2) ?></span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Available Balance:</span>
+                        <span class="summary-value">৳<?= number_format($statementData['summary']['final_balance'], 2) ?></span>
+                    </div>
                 </div>
             </div>
+        </div>
+    <?php endif; ?>
 
-            <script>
-                // Auto print when loaded
-                window.onload = function() {
-                    setTimeout(function() {
-                        window.print();
-                    }, 500);
-                };
-            </script>
-        </body>
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-note">
+            This is a computer-generated central financial statement and does not require a signature.
+        </div>
+        <div class="print-date">
+            Printed on: <?= date('d M, Y h:i A') ?>
+        </div>
+    </div>
 
-        </html>
+    <script>
+        // Auto print when loaded
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        };
+    </script>
+</body>
+</html>
 <?php
-        exit;
-    }
+    exit;
+}
+
 
     /**
      * Export statement to CSV
@@ -603,6 +685,8 @@ public function index()
         $month = $_GET['month'] ?? date('m');
         $startDate = $_GET['start_date'] ?? null;
         $endDate = $_GET['end_date'] ?? null;
+        $projectId = $_GET['project_id'] ?? null;
+        $category = $_GET['category'] ?? 'all';
 
         // Get statement data
         $statementData = null;
@@ -610,32 +694,32 @@ public function index()
 
         switch ($periodType) {
             case 'monthly':
-                $statementData = $this->statementModel->getMonthlyStatement($year, $month);
+                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
                 $filename = "monthly_statement_{$year}_{$month}.csv";
                 break;
             case '6months':
-                $statementData = $this->statementModel->getSixMonthStatement($year, $month);
+                $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
                 $filename = "6months_statement_{$year}_{$month}.csv";
                 break;
             case 'yearly':
-                $statementData = $this->statementModel->getYearlyStatement($year);
+                $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
                 $filename = "yearly_statement_{$year}.csv";
                 break;
             case 'custom':
                 if ($startDate && $endDate) {
-                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate);
+                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
                     $cleanStartDate = str_replace('-', '', $startDate);
                     $cleanEndDate = str_replace('-', '', $endDate);
                     $filename = "custom_statement_{$cleanStartDate}_to_{$cleanEndDate}.csv";
                 } else {
                     // Default to current month if dates not provided
-                    $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'));
+                    $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
                     $filename = "monthly_statement_" . date('Y') . "_" . date('m') . ".csv";
                     $periodType = 'monthly';
                 }
                 break;
             default:
-                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'));
+                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
                 $filename = "monthly_statement_" . date('Y') . "_" . date('m') . ".csv";
         }
 
@@ -664,12 +748,14 @@ public function index()
         // Write data based on type
         if (isset($statementData['daily_data'])) {
             // Daily breakdown
-            fputcsv($output, ['Date', 'Day', 'Cash In (৳)', 'Cash Out (৳)', 'Net Amount (৳)', 'Running Balance (৳)']);
+            fputcsv($output, ['Date', 'Day', 'Landshare (৳)', 'Service Fee (৳)', 'Total Revenue (৳)', 'Cash Out (৳)', 'Net Amount (৳)', 'Running Balance (৳)']);
             foreach ($statementData['daily_data'] as $row) {
                 fputcsv($output, [
                     $row['formatted_date'],
                     $row['day_name'],
-                    number_format($row['cash_in'], 2),
+                    number_format($row['landshare'], 2),
+                    number_format($row['service_fee'], 2),
+                    number_format($row['total_revenue'], 2),
                     number_format($row['cash_out'], 2),
                     number_format($row['net_amount'], 2),
                     number_format($row['running_balance'], 2)
@@ -677,11 +763,13 @@ public function index()
             }
         } elseif (isset($statementData['monthly_data'])) {
             // Monthly breakdown
-            fputcsv($output, ['Month', 'Cash In (৳)', 'Cash Out (৳)', 'Net Amount (৳)', 'Running Balance (৳)']);
+            fputcsv($output, ['Month', 'Landshare (৳)', 'Service Fee (৳)', 'Total Revenue (৳)', 'Cash Out (৳)', 'Net Amount (৳)', 'Running Balance (৳)']);
             foreach ($statementData['monthly_data'] as $row) {
                 fputcsv($output, [
                     $row['month'],
-                    number_format($row['cash_in'], 2),
+                    number_format($row['landshare'], 2),
+                    number_format($row['service_fee'], 2),
+                    number_format($row['total_revenue'], 2),
                     number_format($row['cash_out'], 2),
                     number_format($row['net_amount'], 2),
                     number_format($row['running_balance'], 2)
@@ -692,7 +780,9 @@ public function index()
         // Write summary
         fputcsv($output, []); // Empty row
         fputcsv($output, ['SUMMARY']);
-        fputcsv($output, ['Total Cash In', number_format($statementData['summary']['total_cash_in'], 2)]);
+        fputcsv($output, ['Total Landshare', number_format($statementData['summary']['total_landshare'], 2)]);
+        fputcsv($output, ['Total Service Fee', number_format($statementData['summary']['total_service_fee'], 2)]);
+        fputcsv($output, ['Total Revenue', number_format($statementData['summary']['total_revenue'], 2)]);
         fputcsv($output, ['Total Cash Out', number_format($statementData['summary']['total_cash_out'], 2)]);
         fputcsv($output, ['Net Balance', number_format($statementData['summary']['net_balance'], 2)]);
         fputcsv($output, ['Final Balance', number_format($statementData['summary']['final_balance'], 2)]);

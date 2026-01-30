@@ -46,6 +46,8 @@ class AccountClient extends Model
             WHERE EXISTS (SELECT 1 FROM lead_bookings WHERE lead_id = l.id AND booking_status != 'cancelled')
             GROUP BY l.id, l.full_name, l.phone, l.email, l.designation, u.full_name
             ORDER BY l.full_name
+            GROUP BY l.id, l.lead_name, l.phone, l.email, l.designation, l.company, u.full_name
+            ORDER BY l.lead_name
         ");
         
         $sql->execute();
