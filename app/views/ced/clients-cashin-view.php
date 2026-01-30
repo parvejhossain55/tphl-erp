@@ -142,7 +142,7 @@ $show_breadcrumb = true;
                                         </span>
                                     </td>
                                     <!-- <td><= htmlspecialchars($client['unit_name']) ?> - Floor <= $client['flat_no'] ?></td> -->
-                                    <td><?= number_format($client['flat_size']) ?> sqft</td>
+                                    <td><?= $client['flat_size'] ?? 'N/A' ?> sqft</td>
                                     <td>
                                         <div class="d-flex align-items-center justify-content-start gap-10">
                                             <a class="table__icon download"
