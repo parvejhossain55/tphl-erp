@@ -12,48 +12,70 @@ class AccountClient extends Model
     /**
      * Get all clients (booked leads) with full details including flat price
      */
-     public function getAllClients()
-    {
-        $sql = $this->db->prepare("
-            SELECT DISTINCT
-                l.id as lead_id,
-                l.full_name as client_name,
-                l.phone,
-                l.email,
-                l.designation,
-                u.full_name as agent_name,
-                COUNT(DISTINCT lb.id) as total_lands,
-                SUM(lb.agreement_value) as total_agreement_value,
-                COALESCE(
-                    (SELECT SUM(lp.amount) 
-                     FROM lead_payments lp 
-                     WHERE lp.booking_id IN (
-                         SELECT id FROM lead_bookings WHERE lead_id = l.id
-                     ) AND lp.payment_status = 'paid'), 
-                    0
-                ) as total_paid,
-                COALESCE(
-                    (SELECT MAX(lp.payment_date) 
-                     FROM lead_payments lp 
-                     WHERE lp.booking_id IN (
-                         SELECT id FROM lead_bookings WHERE lead_id = l.id
-                     ) AND lp.payment_status = 'paid'), 
-                    NULL
-                ) as last_payment_date
-            FROM leads l
-            LEFT JOIN lead_bookings lb ON l.id = lb.lead_id AND lb.booking_status != 'cancelled'
-            LEFT JOIN users u ON l.assigned_id = u.id
-            WHERE EXISTS (SELECT 1 FROM lead_bookings WHERE lead_id = l.id AND booking_status != 'cancelled')
-            GROUP BY l.id, l.full_name, l.phone, l.email, l.designation, u.full_name
-            ORDER BY l.full_name
-            GROUP BY l.id, l.lead_name, l.phone, l.email, l.designation, l.company, u.full_name
-            ORDER BY l.lead_name
-        ");
-        
-        $sql->execute();
-        $result = $sql->get_result();
-        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-    }
+public function getAllClients()
+{
+    $sql = $this->db->prepare("
+        SELECT
+            l.id AS lead_id,
+            l.full_name AS client_name,
+            l.phone,
+            l.email,
+            l.designation,
+            u.full_name AS agent_name,
+            COUNT(DISTINCT lb.id) AS total_lands,
+            SUM(lb.agreement_value) AS total_agreement_value,
+
+            COALESCE(
+                (
+                    SELECT SUM(lp.amount)
+                    FROM lead_payments lp
+                    WHERE lp.booking_id IN (
+                        SELECT id FROM lead_bookings WHERE lead_id = l.id
+                    )
+                    AND lp.payment_status = 'paid'
+                ),
+                0
+            ) AS total_paid,
+
+            (
+                SELECT MAX(lp.payment_date)
+                FROM lead_payments lp
+                WHERE lp.booking_id IN (
+                    SELECT id FROM lead_bookings WHERE lead_id = l.id
+                )
+                AND lp.payment_status = 'paid'
+            ) AS last_payment_date
+
+        FROM leads l
+        LEFT JOIN lead_bookings lb 
+            ON l.id = lb.lead_id 
+            AND lb.booking_status != 'cancelled'
+        LEFT JOIN users u 
+            ON l.assigned_id = u.id
+
+        WHERE EXISTS (
+            SELECT 1 
+            FROM lead_bookings 
+            WHERE lead_id = l.id 
+            AND booking_status != 'cancelled'
+        )
+
+        GROUP BY 
+            l.id,
+            l.full_name,
+            l.phone,
+            l.email,
+            l.designation,
+            u.full_name
+
+        ORDER BY l.full_name
+    ");
+
+    $sql->execute();
+    $result = $sql->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
     public function getLandsByLeadId($leadId)
     {
         $sql = $this->db->prepare("
