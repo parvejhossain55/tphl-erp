@@ -740,7 +740,7 @@ function renderApprovalContext(array $req)
                             <div class="row align-items-center">
                                 <div class="col-4 col-md-3">
                                     <span class="badge bg-primary ms-2" style="font-size: 0.85rem;">
-                                        <i class="bi bi-person-circle "></i>Requested By
+                                      Requested By
                                     </span>
                                 </div>
                                 <div class="col-8 col-md-9">
@@ -748,7 +748,7 @@ function renderApprovalContext(array $req)
 
                                         <div>
                                             <strong class="d-block"><?= esc($ctx['requester']['user_name']) ?>
-                                                <small class="ms-2 text-muted">
+                                                <small class="ms-2 fw-semibold text-muted">
                                                     <i class="bi bi-envelope"></i>
                                                     <?= esc($ctx['requester']['email']) ?>
                                                 </small>
@@ -772,7 +772,7 @@ function renderApprovalContext(array $req)
                                 <div class="col-8 col-md-9">
                                     <strong><?= esc($ctx['lead']['full_name']) ?></strong>
                                     <br>
-                                    <small class="text-muted">
+                                    <small class="fw-semibold  text-muted">
                                         <i class="bi bi-telephone"></i>
                                         <?= esc($ctx['lead']['phone'], 'N/A') ?>
                                     </small>
@@ -795,7 +795,7 @@ function renderApprovalContext(array $req)
 
                                     <br>
                                     <strong><?= esc($ctx['flat']['flat_name']) ?></strong> <span>,</span>
-                                    <small class="text-muted">
+                                    <small class="fw-semibold text-muted">
 
                                         <strong class=" " style="font-size: 0.85rem;">Size</strong>
                                         <?= esc($ctx['flat']['sqft'], 0) ?> sqft
@@ -815,7 +815,7 @@ function renderApprovalContext(array $req)
                                 <div class="col-8 col-md-9">
                                     <strong><?= esc($ctx['employee']['full_name']) ?></strong>
                                     <br>
-                                    <small class="text-muted">
+                                    <small class="fw-semibold text-muted">
                                         <i class="bi bi-briefcase"></i>
                                         <?= esc($ctx['employee']['designation'], 'N/A') ?>
                                     </small>

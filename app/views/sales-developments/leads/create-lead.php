@@ -203,8 +203,8 @@ $page = "create Lead"
                 <!-- Interest On -->
                 <div class="col-md-6 d-none">
                     <div class="from__input-box">
-                        <label>Interest On*</label>
-                        <input type="text" class="form-control" name="interest_on">
+                        <label>Prject Campaign Name*</label>
+                        <input type="text" class="form-control" name="campaign_name">
                     </div>
                 </div>
 

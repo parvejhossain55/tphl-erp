@@ -62,36 +62,42 @@ class UserController extends Controller
     }
 
     // Handle form submission
-    public function store()
-    {
-        $data = [
-            'full_name'    => $_POST['full_name'] ?? '',
-            'user_name'    => $_POST['user_name'] ?? '',
-            'phone'       => $_POST['phone'] ?? '',
-            'email'       => $_POST['email'] ?? '',
-            'designation_id' => $_POST['designation_id'] ?? '',
-            'address'     => $_POST['address'] ?? '',
-            'nid'         => $_POST['nid'] ?? '',
-            'role_id'     => $_POST['role_id'] ?? 0,
-            'password'    => $_POST['password'] ?? '',
-            'media_link1'    => $_POST['media_link1'] ?? '',
-            'media_link2'    => $_POST['media_link2'] ?? '',
-            'created_by'      => $_SESSION['user']['id'] ?? null,
-        ];
+ public function store()
+{
+    $data = [
+        'full_name'        => $_POST['full_name'] ?? '',
+        'user_name'        => $_POST['user_name'] ?? '',
+        'phone'            => $_POST['phone'] ?? '',
+        'email'            => $_POST['email'] ?? '',
+        'designation_id'   => $_POST['designation_id'] ?? '',
+        'address'          => $_POST['address'] ?? '',
+        'nid'              => $_POST['nid'] ?? '',
+        'role_id'          => $_POST['role_id'] ?? 0,
+        'password'         => $_POST['password'] ?? '',
+        'media_link1'      => $_POST['media_link1'] ?? '',
+        'media_link2'      => $_POST['media_link2'] ?? '',
+        'created_by'       => $_SESSION['user']['id'] ?? null,
+    ];
 
-        // Call model create function
-        if ($this->userModel->create($data)) {
-            //    echo "<pre>";
-            // print_r($_POST);
-            // echo "</pre>";
-            header("Location: {$GLOBALS['base_url']}/user-lists");
+    if ($this->userModel->create($data)) {
 
+        // Logged-in user role
+        $loggedInRoleId = $_SESSION['user']['role_id'] ?? 0;
 
-            exit;
+        if ((int)$loggedInRoleId === 5) {
+            setSuccess("User Created successfully");
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
         } else {
-            echo "<h3 style='color:red'>Failed to create user</h3>";
+             setSuccess("User Created successfully");
+            header("Location: {$GLOBALS['base_url']}/user-lists");
         }
+
+        exit;
+    } else {
+         setError("Failed to create user");
     }
+}
+
 
 
     public function edit($id)

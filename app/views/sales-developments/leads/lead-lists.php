@@ -186,34 +186,46 @@ $show_breadcrumb = true;
         <div class="card__wrapper shadow-sm p-3 d-flex flex-wrap justify-content-between gap-2">
 
             <div>
-                <!-- <h5 class="mb-0">Today Leads: <= $leadCounts ?></h5> -->
-                <!-- <small class="text-muted">Follow Ups Today: <= $totalTodayFollowUps ?></small> -->
+                <a class="btn btn-outline-primary" href="<?= $GLOBALS['base_url'] ?>/create-user">+ Add Sales Executive</a>
             </div>
 
             <!-- Assign Leads Card -->
-            <div id="assignCard" class="card shadow-sm p-3 mb-3" style="display:none; border-radius:12px; background:#f9f9f9;">
-                <div class="d-flex flex-wrap align-items-center gap-2">
+ 
+                <div class="col-md-6">
+                    <div id="assignCard"
+                        class="card shadow-sm p-3 "
+                        style="display:none; border-radius:12px; background:#f9f9f9;">
 
-                    <label for="assignUserSelect" class="me-2 fw-bold mb-0" style="white-space: nowrap;">
-                        Assign Selected Leads to:
-                    </label>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <label for="assignUserSelect" class="fw-bold mb-0" style="white-space: nowrap;">
+                                Assign Selected Leads to:
+                            </label>
 
-                    <div style="flex:0 0 auto;"> <!-- prevents select from stretching -->
-                        <select id="assignUserSelect" class="form-select form-select-sm" style="min-width:200px; width:auto;">
-                            <option value="">Assigned User</option>
-                            <?php foreach ($assignedUsers as $user): ?>
-                                <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['full_name']) ?></option>
-                            <?php endforeach ?>
-                        </select>
+                            <select id="assignUserSelect"
+                                class="form-select form-select-sm"
+                                style="min-width:200px; width:auto;">
+                                <option value="">Assigned User</option>
+                                <?php foreach ($assignedUsers as $user): ?>
+                                    <option value="<?= $user['id'] ?>">
+                                        <?= htmlspecialchars($user['full_name']) ?>
+                                    </option>
+                                <?php endforeach ?>
+                            </select>
+
+                            <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
+                                <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
+                            </button>
+
+                            <span id="assignFeedback"
+                                class="text-success fw-bold"
+                                style="display:none;">
+                                Leads assigned successfully!
+                            </span>
+                        </div>
+
                     </div>
-
-                    <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
-                        <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
-                    </button>
-
-                    <span id="assignFeedback" class="text-success fw-bold ms-2" style="display:none;">Leads assigned successfully!</span>
                 </div>
-            </div>
+
 
 
 

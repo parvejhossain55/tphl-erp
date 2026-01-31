@@ -69,6 +69,7 @@ $routes = [
     "user-dashboard"          => ["controller" => "UserDashboardController", "method" => "index"],
     "update-call-status"          => ["controller" => "UserDashboardController", "method" => "updateCallStatus"],
     "update-call-notes"          => ["controller" => "UserDashboardController", "method" => "updateCallNote"],
+    "today-follow-up"          => ["controller" => "UserDashboardController", "method" => "todayFollowUp"],
 
 
     "customer-lists"       => ["controller" => "CustomerController", "method" => "index"],
