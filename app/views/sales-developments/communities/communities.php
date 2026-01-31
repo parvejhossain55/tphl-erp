@@ -1,8 +1,8 @@
 <?php
 $page_title = "community Page";
-$page = 'community';
+// $page = 'Commun';
 $addPage = true;
-$show_breadcrumb = true;
+$show_breadcrumb = False;
 
 ?>
 

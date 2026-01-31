@@ -1,22 +1,27 @@
 <?php
 $page = 'Locations';
 $addPage = true;
-$show_breadcrumb = true;
+$show_breadcrumb = false;
 
 ?>
-<div class="breadcrumb__btn my-4">
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewLocation">Add location</button>
+<div class="row mb-4 ">
+<div class="d-flex justify-content-evenly align-items-center mb-4">
+    <h4 class="mb-0">Location Management</h4>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewLocation">
+        Add Location
+    </button>
 </div>
 
-<div class="row">
-    <div class="col-xxl-12">
-        <div class="card__wrapper">
+
+
+</div>
+<div class="row justify-content-center mt-2">
+    <div class="col-xxl-6 col-xl-8 col-lg-10">
+        <div class="card__wrapper ">
             <div class="table__wrapper table-responsive">
                 <table class="table mb-20 multiple_tables">
                     <thead>
                         <tr class="table__title table__sort">
-
-                            </th>
                             <th>Location Name</th>
                             <th>Action</th>
                         </tr>
@@ -24,9 +29,9 @@ $show_breadcrumb = true;
                     <tbody class="table__body">
                         <?php foreach ($locations as $location): ?>
                             <tr>
-                                <td><?= $location['name'] ?? '' ?></td>
+                                <td><?= htmlspecialchars($location['name'] ?? '') ?></td>
                                 <td>
-                                    <div class="d-flex align-items-center justify-content-start gap-10">
+                                    <div class="d-flex align-items-center justify-content-start gap-2">
                                         <button type="button" class="table__icon edit"
                                             data-bs-toggle="modal"
                                             data-bs-target="#locationEdit"
@@ -37,22 +42,21 @@ $show_breadcrumb = true;
 
                                         <button class="removeBtnCust table__icon delete"
                                             data-id="<?= $location['id'] ?>"
-                                            data-name="<?= $location['name'] ?>"
+                                            data-name="<?= htmlspecialchars($location['name']) ?>"
                                             data-action="delete-location">
                                             <i class="fa-regular fa-trash"></i>
                                         </button>
-
                                     </div>
+                                </td>
                             </tr>
                         <?php endforeach ?>
-
-
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
+
 
 
 <!-- new lead modal start -->

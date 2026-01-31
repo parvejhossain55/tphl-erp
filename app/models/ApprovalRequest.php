@@ -68,9 +68,11 @@ private function getFlatById(int $id)
             f.id,
             f.flat_name,
             f.sqft,
-            p.name AS project_name
+            p.name AS project_name,
+            l.name as location_name
         FROM flats f
         LEFT JOIN projects p ON p.id = f.project_id
+        Left JOIN locations l ON l.id = p.location_id
         WHERE f.id = {$id}
         LIMIT 1
     ";
@@ -126,6 +128,21 @@ private function getAccountDetails(string $sourceTable, int $sourceId)
     return $this->db
         ->query("SELECT * FROM {$sourceTable} WHERE id = {$sourceId}")
         ->fetch_assoc();
+}
+private function getUserById(int $id) {
+    $stmt = $this->db->prepare("
+        SELECT 
+            users.id, 
+            users.full_name AS user_name, 
+            users.email, 
+            d.name AS designation
+        FROM users
+        LEFT JOIN designations AS d ON users.designation_id = d.id
+        WHERE users.id = ?
+    ");
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc();
 }
 
 
@@ -188,6 +205,11 @@ private function resolveApprovalDetails(array $approval)
 
         $details['meta'] = $meta; // purpose, payment_method etc
     }
+    // Fetch requester info
+if (!empty($approval['requested_by'])) {
+    $details['requester'] = $this->getUserById((int)$approval['requested_by']);
+}
+
 
     return $details;
 }
@@ -228,7 +250,7 @@ private function resolveApprovalDetails(array $approval)
     }
 
 
-    public function updateStatus($id, $status, $approvedAmount = null, $approved_days = null){
+    public function updateStatus($id, $status, $approvedAmount = null, $approved_days = null,$approvalNote= null){
         $approvedBy = $_SESSION['user']['id'] ?? null;
 
 
@@ -238,16 +260,18 @@ private function resolveApprovalDetails(array $approval)
                 approved_amount = ?, 
                 approved_days = ?, 
                 approved_by = ?, 
+                approval_note = ?, 
                 approved_at = NOW()
             WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'sdiii',
+            'sdiisi',
             $status,
             $approvedAmount,
             $approved_days,
             $approvedBy,
+            $approvalNote,
             $id
         );
         $stmt->execute();

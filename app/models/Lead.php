@@ -174,12 +174,15 @@ class Lead extends Model
         return (int)($result['total_visited'] ?? 0);
     }
 
-public function getTodayLeads()
+public function getTodayLeadsByUser(int $userId)
 {
+    $userId = (int) $userId;
+
     $sql = "
         SELECT *
         FROM leads
-        WHERE created_at >= CURDATE()
+        WHERE assigned_id = {$userId}
+          AND created_at >= CURDATE()
           AND created_at < CURDATE() + INTERVAL 1 DAY
           AND deleted_at IS NULL
         ORDER BY id DESC
@@ -187,6 +190,7 @@ public function getTodayLeads()
 
     return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
 }
+
 
 
 

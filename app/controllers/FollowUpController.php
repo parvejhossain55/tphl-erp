@@ -30,7 +30,7 @@ class FollowUpController extends Controller
         if ($lead_id) {
             $followUpLeads = $this->followUpModel->getByLead($lead_id);
         }
-
+ $assignedUsers = $this->userModel->getAllRoleUser();
         $projects = $this->projectModel->getAll(); // optional
         $flats = $this->flatModel->getAll();       // optional
 
@@ -42,6 +42,7 @@ class FollowUpController extends Controller
             "flats" => $flats,
             "leads" => $leads,
             "selected_lead_id" => $lead_id,
+            "assignedUsers" => $assignedUsers,
         ]);
 
         // print_r($followUpLeads);
@@ -75,6 +76,7 @@ class FollowUpController extends Controller
             'discussion_note' => $_POST['discussion_note'] ?? null,
             'next_follow_up_date' => $_POST['next_follow_up_date'] ?? null,
             'next_action' => $_POST['next_action'] ?? null,
+            'assigned_with' => $_POST['assigned_with'] ?? null,
             'created_by'      => $_SESSION['user']['id'] ?? null,
 
         ];

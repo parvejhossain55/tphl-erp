@@ -75,10 +75,16 @@ $show_breadcrumb = true;
                                     <option value="<?= $role['id']; ?>"><?= $role['name']; ?></option>
                                 <?php endforeach; ?>
                             </select>
+                            
                             <a href="<?= $GLOBALS['base_url'] ?>/permissions"
                                 class="btn btn-secondary"
                                 style="height: 38px; display:flex; align-items:center; padding:0 12px;">
-                                + role
+                                + Permission
+                            </a>
+                            <a href="<?= $GLOBALS['base_url'] ?>/role-permissions"
+                                class="d-none btn btn-secondary"
+                                style="height: 38px; display:flex; align-items:center; padding:0 12px;">
+                                + Role
                             </a>
                         </div>
                     </div>

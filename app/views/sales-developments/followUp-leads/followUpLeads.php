@@ -92,6 +92,18 @@ $show_breadcrumb = true;
                             <option value="email">Email</option>
                         </select>
                     </div>
+                    <div class="col-lg-6">
+                        <label class="form-label">Assign user For follow up*</label>
+                        <select name="assigned_with" class="form-select">
+                            <option value="">Select User</option>
+                            <?php foreach ($assignedUsers as $user): ?>
+                                <option value="<?= $user['id'] ?>">
+                                    <?= htmlspecialchars($user['full_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+
+                        </select>
+                    </div>
 
                     <!-- Discussion Note -->
                     <div class="col-lg-12">
@@ -213,29 +225,29 @@ $show_breadcrumb = true;
 
         fetch(`<?= $GLOBALS['base_url'] ?>/get-flats/${projectId}`)
             .then(res => res.json())
-             .then(data => {
-                        flatData = data;
-                        flatSelect.innerHTML = '<option value="">Select Flat</option>';
+            .then(data => {
+                flatData = data;
+                flatSelect.innerHTML = '<option value="">Select Flat</option>';
 
-                       data.forEach(flat => {
-    const option = document.createElement('option');
-    const flatId = flat.flat_id ?? flat.id; // fallback: try flat.id
-    if (!flatId) return; // skip invalid entries
+                data.forEach(flat => {
+                    const option = document.createElement('option');
+                    const flatId = flat.flat_id ?? flat.id; // fallback: try flat.id
+                    if (!flatId) return; // skip invalid entries
 
-    option.value = flatId;
+                    option.value = flatId;
 
-    if (flat.is_booked == 1) {
-        option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
-        option.classList.add('booked-option');
-        option.disabled = true;
-    } else {
-        option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
-    }
+                    if (flat.is_booked == 1) {
+                        option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
+                        option.classList.add('booked-option');
+                        option.disabled = true;
+                    } else {
+                        option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
+                    }
 
-    flatSelect.appendChild(option);
-});
+                    flatSelect.appendChild(option);
+                });
 
-                    });
+            });
     }
 
     projectSel.addEventListener('change', function() {

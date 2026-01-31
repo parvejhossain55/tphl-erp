@@ -84,7 +84,7 @@ class User extends Model
         SELECT
             u.id, 
            u.full_name  From users AS u
-           Where u.role_id = 8
+           Where u.role_id = 9
     ");
         if (!$sql->execute()) {
             return []; // Error handle koro

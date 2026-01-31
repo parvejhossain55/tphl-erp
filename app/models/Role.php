@@ -19,25 +19,46 @@ class Role extends Model
     }
 
     // Create a new role
-    public function create($data)
-    {
-        $stmt = $this->db->prepare("INSERT INTO roles (name,created_by) VALUES (?,?)");
-        $stmt->bind_param("si", $data['name'],$data['created_by'] );
-        if ($stmt->execute()) {
-            $role_id = $this->db->insert_id;
+// Create a new role
+public function create($data)
+{
+    $this->db->begin_transaction();
 
-            // Insert role permissions
-            if (isset($data['permissions']) && is_array($data['permissions'])) {
-                foreach ($data['permissions'] as $permission_id) {
-                    $stmt_perm = $this->db->prepare("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)");
-                    $stmt_perm->bind_param("ii", $role_id, $permission_id);
-                    $stmt_perm->execute();
-                }
+    try {
+        // Insert role (without created_by)
+        $stmt = $this->db->prepare("INSERT INTO roles (name) VALUES (?)");
+        if (!$stmt) throw new Exception($this->db->error);
+        $stmt->bind_param("s", $data['name']);
+        if (!$stmt->execute()) throw new Exception($stmt->error);
+
+        $role_id = $this->db->insert_id;
+
+        // Insert role permissions
+        if (!empty($data['permissions']) && is_array($data['permissions'])) {
+            $stmt_perm = $this->db->prepare(
+                "INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)"
+            );
+            if (!$stmt_perm) throw new Exception($this->db->error);
+
+            foreach ($data['permissions'] as $perm_id) {
+                $stmt_perm->bind_param("ii", $role_id, $perm_id);
+                if (!$stmt_perm->execute()) throw new Exception($stmt_perm->error);
             }
-            return true;
         }
+
+        $this->db->commit();
+        return true;
+
+    } catch (Exception $e) {
+        $this->db->rollback();
+        echo "CREATE ERROR: " . $e->getMessage();
         return false;
     }
+}
+
+// Update role name + permissions
+
+
 
 
 
@@ -73,32 +94,44 @@ public function getRolesWithPermissions()
 
 
  // Update role name + permissions
-    public function update($data)
-    
-    
-    {
-        // Update role name
-        $stmt = $this->db->prepare("UPDATE roles SET name = ?,created_by =? WHERE id = ?");
-        $stmt->bind_param("sii", $data['name'],$data['created_by'], $data['id']);
-        if (!$stmt->execute()) return false;
+public function update($data)
+{
+    $this->db->begin_transaction();
 
-        // Remove old permissions
+    try {
+        // Update role name
+        $stmt = $this->db->prepare("UPDATE roles SET name = ?, created_by = ? WHERE id = ?");
+        if (!$stmt) throw new Exception($this->db->error);
+        $stmt->bind_param("sii", $data['name'], $data['created_by'], $data['id']);
+        if (!$stmt->execute()) throw new Exception($stmt->error);
+
+        // Delete old permissions
         $del = $this->db->prepare("DELETE FROM role_permissions WHERE role_id = ?");
+        if (!$del) throw new Exception($this->db->error);
         $del->bind_param("i", $data['id']);
-        $del->execute();
+        if (!$del->execute()) throw new Exception($del->error);
 
         // Insert new permissions
         if (!empty($data['permissions']) && is_array($data['permissions'])) {
+            $stmt_perm = $this->db->prepare("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)");
+            if (!$stmt_perm) throw new Exception($this->db->error);
+
             foreach ($data['permissions'] as $perm_id) {
-                $stmt_perm = $this->db->prepare("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)");
                 $stmt_perm->bind_param("ii", $data['id'], $perm_id);
-                $stmt_perm->execute();
+                if (!$stmt_perm->execute()) throw new Exception($stmt_perm->error);
             }
         }
 
-        $stmt->close();
+        $this->db->commit();
         return true;
+
+    } catch (Exception $e) {
+        $this->db->rollback();
+        echo "ERROR: " . $e->getMessage();
+        return false;
     }
+}
+
 
     // Get single role with its permissions
     public function getRoleById($id)

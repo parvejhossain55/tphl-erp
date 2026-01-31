@@ -311,8 +311,10 @@ class HomeController extends Controller
 
             $approved_amount = $_POST['approved_amount'] ?? null;
             $approved_days   = $_POST['approved_days'] ?? null;
+            $approved_days   = $_POST['approved_days'] ?? null;
+            $approvalNote   = $_POST['approval_note'] ?? null;
 
-            // ✅ Only require approved_days for leave requests
+            //  Only require approved_days for leave requests
             if ($request['source_table'] === 'employee_leaves') {
                 $approved_days = (int)$approved_days;
 
@@ -346,7 +348,8 @@ class HomeController extends Controller
                 $id,
                 'partial',
                 $approved_amount,
-                $approved_days
+                $approved_days,
+                $approvalNote
             );
 
             $this->db->commit();
