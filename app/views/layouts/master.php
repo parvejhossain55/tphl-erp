@@ -19,7 +19,10 @@ function isMenuOpen($pages, $current_route)
     }
     return ($current_route === $pages);
 }
-
+function isMenuOpenAlways($pages, $current_route) {
+    // submenu always display block
+    return true;
+}
 
 
 if (!isset($page_title)) $page_title = "Blank";

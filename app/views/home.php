@@ -333,10 +333,6 @@ $show_breadcrumb = false;
 
 <!-- project wise flat sale  -->
 
-
-
-
-
 <!-- Booking Overview Section -->
 <div class="container-fluid py-4">
     <div class="row mb-4">
@@ -402,11 +398,14 @@ $show_breadcrumb = false;
                                         </td>
                                         <td><?= $item['project_name'] ?? '' ?></td>
                                         <td>
-                                            <strong class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded bg-primary text-dark text-nowrap">
+                                            <strong class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded bg-primary text-light text-nowrap">
                                                 <?= $item['flat_name'] ?>
                                                 <span class="fw-normal"><?= $item['sqft'] ?? '' ?> Sqft</span>
                                             </strong>
                                         </td>
+
+
+
                                         <td class="fw-semibold">৳ <?= format_bdt($item['price_value']) ?></td>
                                         <td class="text-success fw-semibold">৳ <?= format_bdt(number: $item['agreement_value'] ?? '') ?></td>
                                         <td>
@@ -483,7 +482,11 @@ $show_breadcrumb = false;
                                         <form method="POST" action="<?= $GLOBALS['base_url'] ?>/reject-request/<?= $req['id'] ?>" class="d-inline">
                                             <button class="btn btn-sm btn-danger">Reject</button>
                                         </form>
+
+                                        <!-- View Button -->
+                                        <button class="btn btn-sm btn-secondary d-none" data-bs-toggle="modal" data-bs-target="#viewContextModal<?= $req['id'] ?>">View</button>
                                     </div>
+
                                 </div>
 
                                 <!-- Partial Modal -->
@@ -517,6 +520,11 @@ $show_breadcrumb = false;
                                                             <label class="form-label">Approve Amount</label>
                                                             <input type="number" class="form-control" name="approved_amount" placeholder="Enter approved amount" required>
                                                         </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Note</label>
+                                                            <textarea class="form-control" name="approval_note" placeholder="Enter note here" rows="4" required></textarea>
+                                                        </div>
+
                                                     <?php endif; ?>
 
                                                     <div class="modal-footer">
@@ -524,6 +532,25 @@ $show_breadcrumb = false;
                                                         <button class="btn btn-success">Approve</button>
                                                     </div>
                                                 </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- view modal  -->
+                                <!-- View Context Modal -->
+                                <div class="modal fade" id="viewContextModal<?= $req['id'] ?>" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h6 class="modal-title">Request Details</h6>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <?php renderApprovalContext($req); ?>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                                             </div>
                                         </div>
                                     </div>

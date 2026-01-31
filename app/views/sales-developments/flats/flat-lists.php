@@ -6,6 +6,7 @@ $show_breadcrumb = false;
     Flat Management
 </h4>
 <form action="" method="get">
+
     <div class="row flat-select">
         <!-- Search -->
         <!-- Department Filter -->
@@ -56,55 +57,6 @@ $show_breadcrumb = false;
 
 
 
-        <div class="col-xxl-4 col-xl-4  col-md-4 col-12">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
-                    <div class="card__icon">
-                        <span><i class="fa-solid fa-building"></i>
-                        </span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Flats</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $totalFlatCount ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xxl-4 col-xl-4  col-md-4 col-12">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
-                    <div class="card__icon">
-                        <span><i class="fa-solid fa-building"></i>
-                        </span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Flat Available</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $availableFlats ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-4 col-xl-4  col-md-4 col-12">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
-                    <div class="card__icon">
-                        <span><i class="fa-solid fa-building"></i>
-                        </span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Flat Booked</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $bookedFlats ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
     </div>
 </form>
@@ -177,6 +129,8 @@ $show_breadcrumb = false;
         </div>
     </div>
 </div>
+
+
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>"
 </script>

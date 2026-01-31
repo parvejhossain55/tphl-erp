@@ -48,9 +48,9 @@ $show_breadcrumb = true;
                         <?php endif; ?>
 
                         <!-- Edit button always visible -->
-                        <button class="btn btn-primary ms-2" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#editRoleModal<?= $role['role_id'] ?>">
+                        <button class="btn btn-primary ms-2"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editRoleModal<?= $role['role_id'] ?>">
                             Edit
                         </button>
                     </td>
@@ -60,44 +60,45 @@ $show_breadcrumb = true;
     </table>
 </div>
 
-<!-- Modals -->
+<!--Edit Modals -->
 <?php foreach ($roles as $role): ?>
-<div class="modal fade" id="editRoleModal<?= $role['role_id'] ?>" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5>Edit Role: <?= htmlspecialchars($role['role_name']) ?></h5>
-                <button type="button" class="btn-close text-light" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form action="<?= $GLOBALS['base_url'] ?>/update-role" method="POST">
-                    <input type="hidden" name="id" value="<?= $role['role_id'] ?>">
+    <div class="modal fade" id="editRoleModal<?= $role['role_id'] ?>" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>Edit Role: <?= htmlspecialchars($role['role_name']) ?></h5>
+                    <button type="button" class="btn-close text-light" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="<?= $GLOBALS['base_url'] ?>/update-role" method="POST">
+                        <input type="hidden" name="id" value="<?= $role['role_id'] ?>">
 
-                    <div class="mb-3">
-                        <label>Role Name</label>
-                        <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($role['role_name']) ?>" required>
-                    </div>
+                        <div class="mb-3">
+                            <label>Role Name</label>
+                            <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($role['role_name']) ?>" required>
+                        </div>
 
-                    <div class="mb-3">
-                        <label for="permission" class="col-12 col-form-label">Permissions</label>
-                        <select multiple name="permissions[]" class="selectpicker w-100" data-live-search="true">
-                            <?php foreach ($permissions as $perm): ?>
-                                <option value="<?= $perm['id'] ?>" 
-                                    <?= in_array($perm['id'], $role['permissions']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($perm['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+                        <div class="mb-3">
+                            <label>Permissions</label>
+                            <select multiple name="permissions[]" class="selectpicker w-100" data-live-search="true">
+                                <?php foreach ($permissions as $perm): ?>
+                                    <option value="<?= $perm['id'] ?>"
+                                        <?= in_array($perm['id'], $role['permissions']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($perm['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
 
-                    <div class="text-center mt-2">
-                        <button type="submit" class="btn btn-success">Update Role</button>
-                    </div>
-                </form>
+                        <div class="text-center mt-2">
+                            <button type="submit" class="btn btn-success">Update Role</button>
+                        </div>
+                    </form>
+
+                </div>
             </div>
         </div>
     </div>
-</div>
 <?php endforeach; ?>
 
 
@@ -140,36 +141,6 @@ $show_breadcrumb = true;
 </div>
 
 
-<!-- edit  -->
-<!-- <div class="modal fade" id="editRole" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5>Edit Role</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-
-            <div class="modal-body">
-                <form id="editRoleForm">
-                    <input type="hidden" name="id" id="edit_role_id">
-                    <input type="text" name="name" id="edit_role_name" class="form-control mb-3" required>
-
-                    <label>Permissions</label>
-                    <select multiple name="permissions[]" id="edit_role_permissions" class="selectpicker w-100" data-live-search="true">
-                        <?php foreach ($permissions as $perm): ?>
-                            <option value="<?= $perm['id'] ?>"><?= $perm['name'] ?></option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <div class="text-center mt-3">
-                        <button type="submit" class="btn btn-primary">Update Role</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div> -->
-
 
 
 
@@ -205,3 +176,5 @@ $show_breadcrumb = true;
         color: #0d6efd !important;
     }
 </style>
+
+

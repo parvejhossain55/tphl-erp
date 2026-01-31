@@ -20,6 +20,8 @@ class LoginController extends Controller
 
         $message = "";
 
+
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = trim($_POST['email'] ?? '');
             $password = trim($_POST['password'] ?? '');
@@ -59,7 +61,7 @@ class LoginController extends Controller
                         $redirect_url = "{$GLOBALS['base_url']}/account-dashboard";
                     } elseif ($role === 7) {
                         $redirect_url = "{$GLOBALS['base_url']}/clients-cashin-view";
-                    } elseif ($role === 8) {
+                    } elseif ($role === 9) {
                         $redirect_url = "{$GLOBALS['base_url']}/user-dashboard";
                     } else {
                         // fallback

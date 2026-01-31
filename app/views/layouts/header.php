@@ -396,7 +396,7 @@
                                         </div>
                                     </div>
                                 </li>
-                                <li>
+                                <li class="d-none">
                                     <div class="nav-item p-relative">
                                         <a id="notifydropdown" href="#">
                                             <div class="notification__icon">

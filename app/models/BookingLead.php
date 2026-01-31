@@ -54,12 +54,13 @@ public function getAllOnboardClient($year = null, $month = null)
             LEFT JOIN projects p ON f.project_id = p.id
             LEFT JOIN users u1 ON lb.created_by = u1.id
             LEFT JOIN  lead_payments AS lp ON lp.booking_id = lb.id
-            WHERE lb.deleted_at IS NULL
+            WHERE lb.deleted_at IS NULL,
+             AND lb.booking_status = 'completed'
              ";
 
     $params = [];
     $types  = "";
-//  AND lb.booking_status = 'completed'
+// 
     if (!empty($year)) {
         $sql .= " AND YEAR(l.created_at) = ?";
         $params[] = (int)$year;

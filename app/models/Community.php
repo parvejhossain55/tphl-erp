@@ -11,8 +11,6 @@ class Community extends Model
 
     // Get all communities with paginate
 
-
-
 public function getAll() {
     $stmt = $this->db->prepare("SELECT * FROM communities");
     
