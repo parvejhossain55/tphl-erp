@@ -124,7 +124,7 @@
                 <?php if (hasPermission("add Lead")): ?>
                     <ul class="sidebar-menu child2" style="display:block;">
                         <li class="slide">
-                            <a href="<?= $base_url ?>/user-dashboard" class="sidebar__menu-item <?= isActive('user-dashboard', $current_route) ?>">Dashboard</a>
+                            <a href="<?= $base_url ?>/user-dashboard" class="sidebar__menu-item <?= isActive('user-dashboard', $current_route) ?>">My Dashboard</a>
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/create-lead" class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">Add Lead</a>

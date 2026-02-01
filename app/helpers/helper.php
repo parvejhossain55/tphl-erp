@@ -734,9 +734,9 @@ function renderApprovalContext(array $req)
         </div>
         <div class="info-card-body">
             <div class="row ">
-                <ul class="list-group list-group-flush">
+                <ul class=" list-group-flush">
                     <?php if (!empty($ctx['requester'])): ?>
-                        <li class="list-group-item px-0 border-0 border-top">
+                        <li class="px-0 border-0 border-top py-2">
                             <div class="row align-items-center">
                                 <div class="col-4 col-md-3">
                                     <span class="badge bg-primary ms-2" style="font-size: 0.85rem;">
@@ -783,7 +783,7 @@ function renderApprovalContext(array $req)
 
                     <!-- Flat -->
                     <?php if (!empty($ctx['flat'])): ?>
-                        <li class="list-group-item px-0 border-0 border-top">
+                        <li class="px-0 border-0 border-top py-2">
                             <div class="row align-items-center">
                                 <div class="col-4 col-md-3 ">
                                     <span class="badge bg-success ms-2" style="font-size: 0.85rem;">Project</span>
@@ -807,7 +807,7 @@ function renderApprovalContext(array $req)
 
                     <!-- Employee -->
                     <?php if (!empty($ctx['employee'])): ?>
-                        <li class="list-group-item px-0 border-0 border-top">
+                        <li class="px-0 border-0 border-top py-2">
                             <div class="row align-items-center">
                                 <div class="col-4 col-md-3">
                                     <span class="badge bg-warning text-dark ms-2" style="font-size: 0.85rem;">Employee</span>
@@ -826,7 +826,7 @@ function renderApprovalContext(array $req)
 
                     <!-- Salary -->
                     <?php if (!empty($ctx['salary'])): ?>
-                        <li class="list-group-item px-0 border-0 border-top">
+                        <li class="px-0 border-0 border-top py-2">
                             <div class="row align-items-center mb-2">
                                 <div class="col-4 col-md-3">
                                     <span class="badge bg-secondary" style="font-size: 0.85rem;">Salary Month</span>
@@ -850,7 +850,7 @@ function renderApprovalContext(array $req)
 
                     <!-- Leave -->
                     <?php if (!empty($ctx['leave'])): ?>
-                        <li class="list-group-item px-0 border-0 border-top">
+                        <li class="px-0 border-0 border-top py-2">
                             <div class="row align-items-center mb-2">
                                 <div class="col-4 col-md-3">
                                     <span class="badge bg-danger" style="font-size: 0.85rem;">Leave Type</span>
@@ -873,7 +873,7 @@ function renderApprovalContext(array $req)
                     <!-- Accounts Meta -->
                     <?php if (!empty($ctx['meta'])): ?>
                         <?php foreach ($ctx['meta'] as $key => $value): ?>
-                            <li class="list-group-item px-0 border-0 border-top">
+                            <li class="px-0 border-0 border-top py-2">
                                 <div class="row align-items-center">
                                     <div class="col-4 col-md-3">
                                         <span class="badge bg-dark" style="font-size: 0.85rem;">

@@ -174,7 +174,7 @@ class LeadController extends Controller
 
             setSuccess("Lead created successfully!");
 
-            if ($loggedInRoleId === 9) {
+            if ($loggedInRoleId === 8) {
                 header("Location: {$GLOBALS['base_url']}/user-dashboard");
             } else {
                 header("Location: {$GLOBALS['base_url']}/lead-lists");
