@@ -162,87 +162,108 @@ public function getUserRequests($userId)
 }
 
     // Get all requests (for admin/approvers)
-    public function getAllRequests($filters = [])
-    {
-        $sql = "SELECT cr.*, 
-                u.full_name as requester_name,
-                ar.status as approval_status,
-                ar.approved_amount as approval_approved_amount,
-                ar.approval_note,
-                ar.approved_at as approval_approved_at,
-                ar.approved_by as approval_user_id,
-                ar.id as approval_id,
-                approver.full_name as approved_by_name,
-                rejector.full_name as rejected_by_name
-                FROM {$this->table} cr
-                LEFT JOIN users u ON cr.requested_by = u.id
-                LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
-                LEFT JOIN users approver ON ar.approved_by = approver.id
-                LEFT JOIN users rejector ON cr.rejected_by = rejector.id
-                WHERE 1=1";
+// Get all requests (for admin/approvers)
+public function getAllRequests($filters = [])
+{
+    $sql = "
+        SELECT 
+            cr.*,
+            u.full_name AS requester_name,
 
-        $params = [];
-        $types = "";
+            ar.status AS approval_status,
+            ar.approved_amount AS approval_approved_amount,
+            ar.approved_at AS approval_approved_at,
+            ar.approved_by AS approval_user_id,
+            ar.id AS approval_id,
 
-        if (!empty($filters['status'])) {
-            $status = $filters['status'];
+            cr.approval_note,   
 
-            if (in_array($status, ['pending', 'approved', 'rejected', 'partial'])) {
-                // For approval statuses
-                $sql .= " AND (ar.status = ? OR (ar.status IS NULL AND cr.status = ?))";
-                $params[] = $status;
-                $params[] = $status;
-                $types .= "ss";
-            } else {
-                // For cashout-specific statuses
-                $sql .= " AND cr.status = ?";
-                $params[] = $status;
-                $types .= "s";
-            }
-        }
+            approver.full_name AS approved_by_name,
+            rejector.full_name AS rejected_by_name
 
-        if (!empty($filters['user_id'])) {
-            $sql .= " AND cr.requested_by = ?";
-            $params[] = $filters['user_id'];
-            $types .= "i";
-        }
+        FROM {$this->table} cr
+        LEFT JOIN users u 
+            ON cr.requested_by = u.id
+        LEFT JOIN approval_requests ar 
+            ON ar.source_table = 'cashout_requests' 
+           AND ar.source_id = cr.id
+        LEFT JOIN users approver 
+            ON ar.approved_by = approver.id
+        LEFT JOIN users rejector 
+            ON cr.rejected_by = rejector.id
+        WHERE 1 = 1
+    ";
 
-        if (!empty($filters['start_date'])) {
-            $sql .= " AND DATE(cr.created_at) >= ?";
-            $params[] = $filters['start_date'];
-            $types .= "s";
-        }
+    $params = [];
+    $types  = "";
 
-        if (!empty($filters['end_date'])) {
-            $sql .= " AND DATE(cr.created_at) <= ?";
-            $params[] = $filters['end_date'];
-            $types .= "s";
-        }
+    // Status filter
+    if (!empty($filters['status'])) {
+        $status = $filters['status'];
 
-        $sql .= " ORDER BY cr.created_at DESC";
-
-        if (!empty($params)) {
-            $stmt = $this->db->prepare($sql);
-            $stmt->bind_param($types, ...$params);
-            $stmt->execute();
-            $result = $stmt->get_result();
+        if (in_array($status, ['pending', 'approved', 'rejected', 'partially_paid', 'fully_paid'])) {
+            $sql .= " AND cr.status = ?";
+            $params[] = $status;
+            $types   .= "s";
         } else {
-            $result = $this->db->query($sql);
+            // approval_requests status
+            $sql .= " AND ar.status = ?";
+            $params[] = $status;
+            $types   .= "s";
         }
-
-        $requests = [];
-        while ($row = $result->fetch_assoc()) {
-            $row['display_status'] = $this->syncStatusWithApproval($row);
-            // Ensure approved amount from approval system is used
-            if (!empty($row['approval_approved_amount'])) {
-                $row['approved_amount'] = $row['approval_approved_amount'];
-            }
-            $requests[] = $row;
-        }
-
-        if (isset($stmt)) $stmt->close();
-        return $requests;
     }
+
+    // User filter
+    if (!empty($filters['user_id'])) {
+        $sql .= " AND cr.requested_by = ?";
+        $params[] = $filters['user_id'];
+        $types   .= "i";
+    }
+
+    // Date range
+    if (!empty($filters['start_date'])) {
+        $sql .= " AND DATE(cr.created_at) >= ?";
+        $params[] = $filters['start_date'];
+        $types   .= "s";
+    }
+
+    if (!empty($filters['end_date'])) {
+        $sql .= " AND DATE(cr.created_at) <= ?";
+        $params[] = $filters['end_date'];
+        $types   .= "s";
+    }
+
+    // ✅ ORDER BY only once
+    $sql .= " ORDER BY cr.created_at DESC";
+
+    $stmt = $this->db->prepare($sql);
+    if (!$stmt) {
+        throw new Exception($this->db->error);
+    }
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $requests = [];
+    while ($row = $result->fetch_assoc()) {
+
+        // approval system amount override
+        if (!empty($row['approval_approved_amount'])) {
+            $row['approved_amount'] = $row['approval_approved_amount'];
+        }
+
+        $row['display_status'] = $this->syncStatusWithApproval($row);
+        $requests[] = $row;
+    }
+
+    $stmt->close();
+    return $requests;
+}
+
 
     // Get request by ID
     public function getRequestById($id)
