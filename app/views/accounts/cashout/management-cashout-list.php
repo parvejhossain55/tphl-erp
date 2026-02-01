@@ -174,7 +174,7 @@ $show_breadcrumb = true;
                 <h5 class="card__title" style="margin-top: -13px;">Cash Out Transactions</h5>
                 <div class="action-transaction-buttons gap-2">
                     <!-- In the action buttons section, add this after "Manage Categories" button -->
-                    <a href="<?= $GLOBALS['base_url'] ?>/management-cash-out-statement" class="btn btn-primary">
+                    <a href="<?= $GLOBALS['base_url'] ?>/management-cash-out-statement" target="_blank" class="btn btn-primary">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/management-categories" class="btn btn-info">

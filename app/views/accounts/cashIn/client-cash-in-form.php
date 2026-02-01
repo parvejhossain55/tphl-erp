@@ -67,7 +67,7 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
                         <!-- Amount -->
                         <div class="col-md-6">
                             <div class="from__input-box">
-                                <label class="form__input-title">Amount <span>*</span></label>
+                                <label class="form__input-title">Paid Amount <span>*</span></label>
                                 <input type="number" name="amount" id="amount" class="form-control" step="0.01" min="0" required>
                             </div>
                         </div>

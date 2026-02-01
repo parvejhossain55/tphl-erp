@@ -654,11 +654,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
 </head>
 
 <body>
-<<<<<<< HEAD
-    <div class="action-buttons no-print no-pdf" style="">
-=======
     <div class="action-buttons no-print no-pdf" >
->>>>>>> 9b40eb0e7f0041f395710758d282a33f09f8fc83
         <div class="period-filter no-print no-pdf">
             <div class="filter-row">
                 <select id="periodSelect" onchange="filterByPeriod()">

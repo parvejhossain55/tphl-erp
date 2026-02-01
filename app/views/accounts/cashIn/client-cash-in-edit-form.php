@@ -78,7 +78,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                         <!-- Amount -->
                         <div class="col-md-6">
                             <div class="from__input-box">
-                                <label class="form__input-title">Amount <span>*</span></label>
+                                <label class="form__input-title">Paid Amount <span>*</span></label>
                                 <input type="number" name="amount" id="amountField" class="form-control" step="0.01" min="0" value="<?= $transaction['amount'] ?? '' ?>" required>
                             </div>
                         </div>

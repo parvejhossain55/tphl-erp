@@ -129,11 +129,11 @@ $show_breadcrumb = true;
     }
 
     .period-info {
-        background: linear-gradient(135deg, var(--clr-theme-primary), #6c757d);
         color: #fff;
         padding: 20px;
         border-radius: 12px;
         margin-bottom: 30px;
+        border: 1px solid;
     }
 
     .period-info h3 {
@@ -288,10 +288,15 @@ $show_breadcrumb = true;
                             <label>Category</label>
                             <select name="category" id="category" class="form-select">
                                 <option value="all" <?= ($category ?? '') === 'all' ? 'selected' : '' ?>>All Categories</option>
-                                <option value="construction" <?= ($category ?? '') === 'construction' ? 'selected' : '' ?>>Construction</option>
-                                <option value="landshare" <?= ($category ?? '') === 'landshare' ? 'selected' : '' ?>>Landshare</option>
-                                <option value="utilities" <?= ($category ?? '') === 'utilities' ? 'selected' : '' ?>>Utilities</option>
-                                <option value="other" <?= ($category ?? '') === 'other' ? 'selected' : '' ?>>Other</option>
+                                <optgroup label="Revenue Categories">
+                                    <option value="landshare" <?= ($category ?? '') === 'landshare' ? 'selected' : '' ?>>Landshare Only</option>
+                                    <option value="service_fee" <?= ($category ?? '') === 'service_fee' ? 'selected' : '' ?>>Service Fee Only</option>
+                                </optgroup>
+                                <optgroup label="Expense Categories">
+                                    <option value="cashout" <?= ($category ?? '') === 'cashout' ? 'selected' : '' ?>>Cash Out</option>
+                                    <option value="utilities" <?= ($category ?? '') === 'utilities' ? 'selected' : '' ?>>Utilities</option>
+                                    <option value="other" <?= ($category ?? '') === 'other' ? 'selected' : '' ?>>Other</option>
+                                </optgroup>
                             </select>
                         </div>
 
@@ -330,17 +335,14 @@ $show_breadcrumb = true;
                     <span><i class="fa-light fa-money-bill-trend-up"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Revenue 
+                    <h6 class="card__sub-title mb-10">Total Revenue
                         <span id="revenuePeriodText">(All Time)</span>
                     </h6>
 
                     <div class="d-flex flex-wrap align-items-end gap-10">
                         <h4 class="card__title fs-6">৳<?= number_format($overall_stats['total_revenue'] ?? 0, 2) ?></h4>
                     </div>
-                    <div class="mt-2 text-muted" style="font-size: 12px;">
-                        <div>Landshare: ৳<?= number_format($overall_stats['total_landshare'] ?? 0, 2) ?></div>
-                        <div>Service Fee: ৳<?= number_format($overall_stats['total_service_fee'] ?? 0, 2) ?></div>
-                    </div>
+
                 </div>
             </div>
         </div>
@@ -353,7 +355,7 @@ $show_breadcrumb = true;
                     <span><i class="fa-light fa-arrow-up-from-line"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Cash Out 
+                    <h6 class="card__sub-title mb-10">Total Cash Out
                         <span id="cashoutPeriodText">(All Time)</span>
                     </h6>
 
@@ -372,7 +374,7 @@ $show_breadcrumb = true;
                     <span><i class="fa-light fa-scale-balanced"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Net Balance 
+                    <h6 class="card__sub-title mb-10">Net Balance
                         <span id="balancePeriodText">(All Time)</span>
                     </h6>
 
@@ -391,7 +393,7 @@ $show_breadcrumb = true;
                 <h3><?= htmlspecialchars($period_text ?? 'Financial Statement') ?></h3>
                 <p>Generated on <?= date('d M, Y h:i A') ?></p>
                 <?php if (isset($project_id) && $project_id): ?>
-                    <?php 
+                    <?php
                     $projectName = '';
                     foreach ($projects ?? [] as $project) {
                         if ($project['id'] == $project_id) {
@@ -404,7 +406,7 @@ $show_breadcrumb = true;
                     <?php endif; ?>
                 <?php endif; ?>
                 <?php if (isset($category) && $category !== 'all'): ?>
-                    <p>Category: <?= ucfirst($category) ?></p>
+                    <p>Category: <?= ucfirst(str_replace('_', ' ', $category)) ?></p>
                 <?php endif; ?>
             </div>
         </div>
@@ -421,12 +423,29 @@ $show_breadcrumb = true;
                                 <tr class="table__title table__sort">
                                     <th>Date</th>
                                     <th>Day</th>
-                                    <th>Landshare (৳)</th>
-                                    <th>Service Fee (৳)</th>
-                                    <th>Total Revenue (৳)</th>
-                                    <th>Cash Out (৳)</th>
-                                    <th>Net Amount (৳)</th>
-                                    <th>Running Balance (৳)</th>
+
+                                    <?php if ($category === 'all' || $category === 'landshare'): ?>
+                                        <th>Landshare (৳)</th>
+                                    <?php endif; ?>
+
+                                    <?php if ($category === 'all' || $category === 'service_fee'): ?>
+                                        <th>Service Fee (৳)</th>
+                                    <?php endif; ?>
+
+                                    <?php if ($category === 'all'): ?>
+                                        <th>Total Revenue (৳)</th>
+                                    <?php endif; ?>
+
+                                    <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
+                                        <th>Cash Out (৳)</th>
+                                    <?php endif; ?>
+
+                                    <?php if ($category === 'all'): ?>
+                                        <th>Net Amount (৳)</th>
+                                        <th>Running Balance (৳)</th>
+                                    <?php else: ?>
+                                        <th>Amount (৳)</th>
+                                    <?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody class="table__body">
@@ -434,16 +453,47 @@ $show_breadcrumb = true;
                                     <tr>
                                         <td><?= htmlspecialchars($row['formatted_date']) ?></td>
                                         <td><?= htmlspecialchars($row['day_name']) ?></td>
-                                        <td class="positive"><strong>৳<?= number_format($row['landshare'], 2) ?></strong></td>
-                                        <td class="positive"><strong>৳<?= number_format($row['service_fee'], 2) ?></strong></td>
-                                        <td class="positive"><strong>৳<?= number_format($row['total_revenue'], 2) ?></strong></td>
-                                        <td class="negative"><strong>৳<?= number_format($row['cash_out'], 2) ?></strong></td>
-                                        <td class="<?= $row['net_amount'] >= 0 ? 'positive' : 'negative' ?>">
-                                            <strong>৳<?= number_format($row['net_amount'], 2) ?></strong>
-                                        </td>
-                                        <td class="<?= $row['running_balance'] >= 0 ? 'positive' : 'negative' ?>">
-                                            <strong>৳<?= number_format($row['running_balance'], 2) ?></strong>
-                                        </td>
+
+                                        <?php if ($category === 'all' || $category === 'landshare'): ?>
+                                            <td class="positive"><strong>৳<?= number_format($row['landshare'], 2) ?></strong></td>
+                                        <?php endif; ?>
+
+                                        <?php if ($category === 'all' || $category === 'service_fee'): ?>
+                                            <td class="positive"><strong>৳<?= number_format($row['service_fee'], 2) ?></strong></td>
+                                        <?php endif; ?>
+
+                                        <?php if ($category === 'all'): ?>
+                                            <td class="positive"><strong>৳<?= number_format($row['total_revenue'], 2) ?></strong></td>
+                                        <?php endif; ?>
+
+                                        <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
+                                            <td class="negative"><strong>৳<?= number_format($row['cash_out'], 2) ?></strong></td>
+                                        <?php endif; ?>
+
+                                        <?php if ($category === 'all'): ?>
+                                            <td class="<?= $row['net_amount'] >= 0 ? 'positive' : 'negative' ?>">
+                                                <strong>৳<?= number_format($row['net_amount'], 2) ?></strong>
+                                            </td>
+                                            <td class="<?= $row['running_balance'] >= 0 ? 'positive' : 'negative' ?>">
+                                                <strong>৳<?= number_format($row['running_balance'], 2) ?></strong>
+                                            </td>
+                                        <?php else: ?>
+                                            <?php
+                                            // Show specific category amount
+                                            $amount = 0;
+                                            if ($category === 'landshare') {
+                                                $amount = $row['landshare'];
+                                            } elseif ($category === 'service_fee') {
+                                                $amount = $row['service_fee'];
+                                            } else {
+                                                $amount = $row['cash_out'];
+                                            }
+                                            $colorClass = in_array($category, ['landshare', 'service_fee']) ? 'positive' : 'negative';
+                                            ?>
+                                            <td class="<?= $colorClass ?>">
+                                                <strong>৳<?= number_format($amount, 2) ?></strong>
+                                            </td>
+                                        <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -455,28 +505,76 @@ $show_breadcrumb = true;
                             <thead>
                                 <tr class="table__title table__sort">
                                     <th>Month</th>
-                                    <th>Landshare (৳)</th>
-                                    <th>Service Fee (৳)</th>
-                                    <th>Total Revenue (৳)</th>
-                                    <th>Cash Out (৳)</th>
-                                    <th>Net Amount (৳)</th>
-                                    <th>Running Balance (৳)</th>
+
+                                    <?php if ($category === 'all' || $category === 'landshare'): ?>
+                                        <th>Landshare (৳)</th>
+                                    <?php endif; ?>
+
+                                    <?php if ($category === 'all' || $category === 'service_fee'): ?>
+                                        <th>Service Fee (৳)</th>
+                                    <?php endif; ?>
+
+                                    <?php if ($category === 'all'): ?>
+                                        <th>Total Revenue (৳)</th>
+                                    <?php endif; ?>
+
+                                    <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
+                                        <th>Cash Out (৳)</th>
+                                    <?php endif; ?>
+
+                                    <?php if ($category === 'all'): ?>
+                                        <th>Net Amount (৳)</th>
+                                        <th>Running Balance (৳)</th>
+                                    <?php else: ?>
+                                        <th>Amount (৳)</th>
+                                    <?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody class="table__body">
                                 <?php foreach ($statement_data['monthly_data'] as $row): ?>
                                     <tr>
                                         <td><?= htmlspecialchars($row['month']) ?></td>
-                                        <td class="positive"><strong>৳<?= number_format($row['landshare'], 2) ?></strong></td>
-                                        <td class="positive"><strong>৳<?= number_format($row['service_fee'], 2) ?></strong></td>
-                                        <td class="positive"><strong>৳<?= number_format($row['total_revenue'], 2) ?></strong></td>
-                                        <td class="negative"><strong>৳<?= number_format($row['cash_out'], 2) ?></strong></td>
-                                        <td class="<?= $row['net_amount'] >= 0 ? 'positive' : 'negative' ?>">
-                                            <strong>৳<?= number_format($row['net_amount'], 2) ?></strong>
-                                        </td>
-                                        <td class="<?= $row['running_balance'] >= 0 ? 'positive' : 'negative' ?>">
-                                            <strong>৳<?= number_format($row['running_balance'], 2) ?></strong>
-                                        </td>
+
+                                        <?php if ($category === 'all' || $category === 'landshare'): ?>
+                                            <td class="positive"><strong>৳<?= number_format($row['landshare'], 2) ?></strong></td>
+                                        <?php endif; ?>
+
+                                        <?php if ($category === 'all' || $category === 'service_fee'): ?>
+                                            <td class="positive"><strong>৳<?= number_format($row['service_fee'], 2) ?></strong></td>
+                                        <?php endif; ?>
+
+                                        <?php if ($category === 'all'): ?>
+                                            <td class="positive"><strong>৳<?= number_format($row['total_revenue'], 2) ?></strong></td>
+                                        <?php endif; ?>
+
+                                        <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
+                                            <td class="negative"><strong>৳<?= number_format($row['cash_out'], 2) ?></strong></td>
+                                        <?php endif; ?>
+
+                                        <?php if ($category === 'all'): ?>
+                                            <td class="<?= $row['net_amount'] >= 0 ? 'positive' : 'negative' ?>">
+                                                <strong>৳<?= number_format($row['net_amount'], 2) ?></strong>
+                                            </td>
+                                            <td class="<?= $row['running_balance'] >= 0 ? 'positive' : 'negative' ?>">
+                                                <strong>৳<?= number_format($row['running_balance'], 2) ?></strong>
+                                            </td>
+                                        <?php else: ?>
+                                            <?php
+                                            // Show specific category amount
+                                            $amount = 0;
+                                            if ($category === 'landshare') {
+                                                $amount = $row['landshare'];
+                                            } elseif ($category === 'service_fee') {
+                                                $amount = $row['service_fee'];
+                                            } else {
+                                                $amount = $row['cash_out'];
+                                            }
+                                            $colorClass = in_array($category, ['landshare', 'service_fee']) ? 'positive' : 'negative';
+                                            ?>
+                                            <td class="<?= $colorClass ?>">
+                                                <strong>৳<?= number_format($amount, 2) ?></strong>
+                                            </td>
+                                        <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -498,24 +596,24 @@ $show_breadcrumb = true;
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-    const yearSelect = document.getElementById('year');
+    document.addEventListener('DOMContentLoaded', function() {
+        const yearSelect = document.getElementById('year');
 
-    // If JS destroyed options, rebuild them
-    if (yearSelect && yearSelect.options.length === 0) {
-        const currentYear = new Date().getFullYear();
-        for (let y = currentYear; y >= currentYear - 5; y--) {
-            const opt = document.createElement('option');
-            opt.value = y;
-            opt.textContent = y;
-            yearSelect.appendChild(opt);
+        // If JS destroyed options, rebuild them
+        if (yearSelect && yearSelect.options.length === 0) {
+            const currentYear = new Date().getFullYear();
+            for (let y = currentYear; y >= currentYear - 5; y--) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                yearSelect.appendChild(opt);
+            }
         }
-    }
-    
-    // Initialize period display
-    updateCardPeriodText();
-});
-    
+
+        // Initialize period display
+        updateCardPeriodText();
+    });
+
     function handlePeriodChange() {
         const periodType = document.getElementById('periodType').value;
 
@@ -579,25 +677,25 @@ $show_breadcrumb = true;
         cardPeriodInput.name = 'card_period';
         cardPeriodInput.value = period;
         form.appendChild(cardPeriodInput);
-        
+
         // Remove any existing period inputs
         const existingPeriodInputs = form.querySelectorAll('input[name="card_period"]');
         existingPeriodInputs.forEach(input => {
             if (input !== cardPeriodInput) input.remove();
         });
-        
+
         // Update card period text
         updateCardPeriodText();
-        
+
         // Submit form
         form.submit();
     }
-    
+
     function updateCardPeriodText() {
         const period = '<?= $card_period ?? "all_time" ?>';
         let periodText = '';
-        
-        switch(period) {
+
+        switch (period) {
             case 'weekly':
                 periodText = '(This Week)';
                 break;
@@ -610,7 +708,7 @@ $show_breadcrumb = true;
             default:
                 periodText = '(All Time)';
         }
-        
+
         document.getElementById('revenuePeriodText').textContent = periodText;
         document.getElementById('cashoutPeriodText').textContent = periodText;
         document.getElementById('balancePeriodText').textContent = periodText;

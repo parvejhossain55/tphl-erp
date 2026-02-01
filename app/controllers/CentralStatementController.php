@@ -147,6 +147,9 @@ class CentralStatementController extends Controller
     /**
      * Print statement - separate method for print view
      */
+/**
+ * Print statement - separate method for print view
+ */
 public function printStatement()
 {
     // Get period type from query params
@@ -220,9 +223,14 @@ public function printStatement()
 
     // Get category name
     $categoryName = '';
-    if ($category !== 'all') {
-        $categoryName = ucfirst($category);
+$categoryName = '';
+if ($category !== 'all') {
+    $categoryName = ucfirst(str_replace('_', ' ', $category));
+    // Special handling for cashout
+    if ($category === 'cashout') {
+        $categoryName = 'Cash Out';
     }
+}
 
     // Render the print view directly
 ?>
@@ -233,7 +241,6 @@ public function printStatement()
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Central Financial Statement</title>
-
 
     <style>
         @page {
@@ -286,7 +293,6 @@ public function printStatement()
             text-align: center;
             margin-bottom: 12mm;
             border-bottom: 1mm solid #000;
-
         }
 
         .company-name {
@@ -421,10 +427,11 @@ public function printStatement()
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 6mm;
+             border: 1px solid #000;
         }
 
         .summary-box {
-            border: 0.3mm solid #000;
+           
             padding: 3mm;
         }
 
@@ -481,8 +488,6 @@ public function printStatement()
             font-style: italic;
         }
     </style>
-
-
 </head>
 
 <body>
@@ -528,19 +533,16 @@ public function printStatement()
     <!-- Statistics -->
     <div class="stats-container">
         <div class="stat-box">
-            <div class="stat-label">Total Revenue</div>
+            <div class="stat-label">Total Cash IN</div>
             <div class="stat-value revenue">৳<?= number_format($overallStats['total_revenue'] ?? 0, 2) ?></div>
-            <div class="stat-breakdown">
-                Landshare: ৳<?= number_format($overallStats['total_landshare'] ?? 0, 2) ?><br>
-                Service Fee: ৳<?= number_format($overallStats['total_service_fee'] ?? 0, 2) ?>
-            </div>
+
         </div>
         <div class="stat-box">
             <div class="stat-label">Total Cash Out</div>
             <div class="stat-value cash-out">৳<?= number_format($overallStats['total_cash_out'] ?? 0, 2) ?></div>
         </div>
         <div class="stat-box">
-            <div class="stat-label">Net Balance</div>
+            <div class="stat-label">Remmaining Balance</div>
             <div class="stat-value net-balance">৳<?= number_format($overallStats['net_balance'] ?? 0, 2) ?></div>
         </div>
     </div>
@@ -557,12 +559,29 @@ public function printStatement()
                 <tr>
                     <th>Date</th>
                     <th>Day</th>
-                    <th class="text-right">Landshare (৳)</th>
-                    <th class="text-right">Service Fee (৳)</th>
-                    <th class="text-right">Total Revenue (৳)</th>
-                    <th class="text-right">Cash Out (৳)</th>
-                    <th class="text-right">Net Amount (৳)</th>
-                    <th class="text-right">Running Balance (৳)</th>
+                    
+                    <?php if ($category === 'all' || $category === 'landshare'): ?>
+                        <th class="text-right">Landshare (৳)</th>
+                    <?php endif; ?>
+                    
+                    <?php if ($category === 'all' || $category === 'service_fee'): ?>
+                        <th class="text-right">Service Fee (৳)</th>
+                    <?php endif; ?>
+                    
+                    <?php if ($category === 'all'): ?>
+                        <th class="text-right">Total Revenue (৳)</th>
+                    <?php endif; ?>
+                    
+                    <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
+                        <th class="text-right">Cash Out (৳)</th>
+                    <?php endif; ?>
+                    
+                    <?php if ($category === 'all'): ?>
+                        <th class="text-right">Net Amount (৳)</th>
+                        <th class="text-right">Running Balance (৳)</th>
+                    <?php else: ?>
+                        <th class="text-right">Amount (৳)</th>
+                    <?php endif; ?>
                 </tr>
             </thead>
             <tbody>
@@ -570,12 +589,40 @@ public function printStatement()
                     <tr class="avoid-break">
                         <td><?= htmlspecialchars($row['formatted_date']) ?></td>
                         <td><?= htmlspecialchars($row['day_name']) ?></td>
-                        <td class="text-right revenue"><?= number_format($row['landshare'], 2) ?></td>
-                        <td class="text-right revenue"><?= number_format($row['service_fee'], 2) ?></td>
-                        <td class="text-right revenue"><?= number_format($row['total_revenue'], 2) ?></td>
-                        <td class="text-right cash-out"><?= number_format($row['cash_out'], 2) ?></td>
-                        <td class="text-right"><?= number_format($row['net_amount'], 2) ?></td>
-                        <td class="text-right"><?= number_format($row['running_balance'], 2) ?></td>
+                        
+                        <?php if ($category === 'all' || $category === 'landshare'): ?>
+                            <td class="text-right revenue"><?= number_format($row['landshare'], 2) ?></td>
+                        <?php endif; ?>
+                        
+                        <?php if ($category === 'all' || $category === 'service_fee'): ?>
+                            <td class="text-right revenue"><?= number_format($row['service_fee'], 2) ?></td>
+                        <?php endif; ?>
+                        
+                        <?php if ($category === 'all'): ?>
+                            <td class="text-right revenue"><?= number_format($row['total_revenue'], 2) ?></td>
+                        <?php endif; ?>
+                        
+                        <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
+                            <td class="text-right cash-out"><?= number_format($row['cash_out'], 2) ?></td>
+                        <?php endif; ?>
+                        
+                        <?php if ($category === 'all'): ?>
+                            <td class="text-right"><?= number_format($row['net_amount'], 2) ?></td>
+                            <td class="text-right"><?= number_format($row['running_balance'], 2) ?></td>
+                        <?php else: ?>
+                            <?php 
+                            $amount = 0;
+                            if ($category === 'landshare') {
+                                $amount = $row['landshare'];
+                            } elseif ($category === 'service_fee') {
+                                $amount = $row['service_fee'];
+                            } else {
+                                $amount = $row['cash_out'];
+                            }
+                            $colorClass = in_array($category, ['landshare', 'service_fee']) ? 'revenue' : 'cash-out';
+                            ?>
+                            <td class="text-right <?= $colorClass ?>"><?= number_format($amount, 2) ?></td>
+                        <?php endif; ?>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -585,24 +632,69 @@ public function printStatement()
             <thead>
                 <tr>
                     <th>Month</th>
-                    <th class="text-right">Landshare (৳)</th>
-                    <th class="text-right">Service Fee (৳)</th>
-                    <th class="text-right">Total Revenue (৳)</th>
-                    <th class="text-right">Cash Out (৳)</th>
-                    <th class="text-right">Net Amount (৳)</th>
-                    <th class="text-right">Running Balance (৳)</th>
+                    
+                    <?php if ($category === 'all' || $category === 'landshare'): ?>
+                        <th class="text-right">Landshare (৳)</th>
+                    <?php endif; ?>
+                    
+                    <?php if ($category === 'all' || $category === 'service_fee'): ?>
+                        <th class="text-right">Service Fee (৳)</th>
+                    <?php endif; ?>
+                    
+                    <?php if ($category === 'all'): ?>
+                        <th class="text-right">Total Revenue (৳)</th>
+                    <?php endif; ?>
+                    
+                    <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
+                        <th class="text-right">Cash Out (৳)</th>
+                    <?php endif; ?>
+                    
+                    <?php if ($category === 'all'): ?>
+                        <th class="text-right">Net Amount (৳)</th>
+                        <th class="text-right">Running Balance (৳)</th>
+                    <?php else: ?>
+                        <th class="text-right">Amount (৳)</th>
+                    <?php endif; ?>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($statementData['monthly_data'] as $row): ?>
                     <tr>
                         <td><?= htmlspecialchars($row['month']) ?></td>
-                        <td class="text-right revenue"><?= number_format($row['landshare'], 2) ?></td>
-                        <td class="text-right revenue"><?= number_format($row['service_fee'], 2) ?></td>
-                        <td class="text-right revenue"><?= number_format($row['total_revenue'], 2) ?></td>
-                        <td class="text-right cash-out"><?= number_format($row['cash_out'], 2) ?></td>
-                        <td class="text-right"><?= number_format($row['net_amount'], 2) ?></td>
-                        <td class="text-right"><?= number_format($row['running_balance'], 2) ?></td>
+                        
+                        <?php if ($category === 'all' || $category === 'landshare'): ?>
+                            <td class="text-right revenue"><?= number_format($row['landshare'], 2) ?></td>
+                        <?php endif; ?>
+                        
+                        <?php if ($category === 'all' || $category === 'service_fee'): ?>
+                            <td class="text-right revenue"><?= number_format($row['service_fee'], 2) ?></td>
+                        <?php endif; ?>
+                        
+                        <?php if ($category === 'all'): ?>
+                            <td class="text-right revenue"><?= number_format($row['total_revenue'], 2) ?></td>
+                        <?php endif; ?>
+                        
+                        <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
+                            <td class="text-right cash-out"><?= number_format($row['cash_out'], 2) ?></td>
+                        <?php endif; ?>
+                        
+                        <?php if ($category === 'all'): ?>
+                            <td class="text-right"><?= number_format($row['net_amount'], 2) ?></td>
+                            <td class="text-right"><?= number_format($row['running_balance'], 2) ?></td>
+                        <?php else: ?>
+                            <?php 
+                            $amount = 0;
+                            if ($category === 'landshare') {
+                                $amount = $row['landshare'];
+                            } elseif ($category === 'service_fee') {
+                                $amount = $row['service_fee'];
+                            } else {
+                                $amount = $row['cash_out'];
+                            }
+                            $colorClass = in_array($category, ['landshare', 'service_fee']) ? 'revenue' : 'cash-out';
+                            ?>
+                            <td class="text-right <?= $colorClass ?>"><?= number_format($amount, 2) ?></td>
+                        <?php endif; ?>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -619,32 +711,42 @@ public function printStatement()
             <div class="summary-title">PERIOD SUMMARY</div>
             <div class="summary-grid">
                 <div class="summary-box">
-                    <div class="summary-row">
-                        <span class="summary-label">Total Landshare:</span>
-                        <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_landshare'], 2) ?></span>
-                    </div>
-                    <div class="summary-row">
-                        <span class="summary-label">Total Service Fee:</span>
-                        <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_service_fee'], 2) ?></span>
-                    </div>
-                    <div class="summary-row">
-                        <span class="summary-label">Total Revenue:</span>
-                        <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_revenue'], 2) ?></span>
-                    </div>
+                    <?php if ($category === 'all' || $category === 'landshare'): ?>
+                        <div class="summary-row">
+                            <span class="summary-label">Total Landshare:</span>
+                            <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_landshare'], 2) ?></span>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($category === 'all' || $category === 'service_fee'): ?>
+                        <div class="summary-row">
+                            <span class="summary-label">Total Service Fee:</span>
+                            <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_service_fee'], 2) ?></span>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($category === 'all'): ?>
+                        <div class="summary-row">
+                            <span class="summary-label">Total Revenue:</span>
+                            <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_revenue'], 2) ?></span>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <div class="summary-box">
-                    <div class="summary-row">
-                        <span class="summary-label">Total Cash Out:</span>
-                        <span class="summary-value cash-out">৳<?= number_format($statementData['summary']['total_cash_out'], 2) ?></span>
-                    </div>
-                    <div class="summary-row">
-                        <span class="summary-label">Net Balance:</span>
-                        <span class="summary-value">৳<?= number_format($statementData['summary']['net_balance'], 2) ?></span>
-                    </div>
-                    <div class="summary-row">
-                        <span class="summary-label">Available Balance:</span>
-                        <span class="summary-value">৳<?= number_format($statementData['summary']['final_balance'], 2) ?></span>
-                    </div>
+                    <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
+                        <div class="summary-row">
+                            <span class="summary-label">Total Cash Out:</span>
+                            <span class="summary-value cash-out">৳<?= number_format($statementData['summary']['total_cash_out'], 2) ?></span>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($category === 'all'): ?>
+
+                        <div class="summary-row">
+                            <span class="summary-label">Available Balance:</span>
+                            <span class="summary-value">৳<?= number_format($statementData['summary']['final_balance'], 2) ?></span>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

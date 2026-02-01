@@ -55,18 +55,18 @@ body.pdf-mode .invoice-container {
 }
 
 .invoice-middle-header {
-  padding: 40px 0;
-  position: relative;
-  overflow: hidden;
-  border-radius: 5px;
-  margin-bottom: 15px;
+    padding: 28px 0;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 24px;
+    border-bottom: 2px solid black;
 }
 body.pdf-mode .invoice-middle-header {
-  padding: 40px 0;
-  position: relative;
-  overflow: hidden;
-  border-radius: 5px;
-  margin-bottom: 15px;
+    padding: 28px 0;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 24px;
+    border-bottom: 2px solid black;
 }
 
 .company-info {
@@ -162,8 +162,7 @@ body.pdf-mode .detail-section h3 {
 }
 
 .detail-row {
-  display: flex;
-  justify-content: space-between;
+
   padding: 8px 0;
   border-bottom: 1px solid #ecf0f1;
 }
@@ -183,14 +182,13 @@ body.pdf-mode .detail-row {
 }
 
 .payment-details {
-  background: #f8f9fa;
-  padding: 25px;
+
   border-radius: 8px;
   margin-bottom: 30px;
 }
 body.pdf-mode .payment-details {
   background: #f8f9fa;
-  padding: 25px;
+  /* padding: 25px; */
   border-radius: 8px;
   margin-bottom: 30px;
 }
@@ -223,7 +221,7 @@ body.pdf-mode .payment-row {
 
 .payment-method-details {
     background-color: transparent;
-  padding: 20px;
+
   border-radius: 8px;
   margin-bottom: 30px;
 }

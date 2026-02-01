@@ -332,12 +332,12 @@
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2" style="<?= isMenuOpen(['clients-cash-in', 'management-cash-out'], $current_route) ? 'display:block;' : 'display:none;' ?>">
-                            <li class="slide <?= isActive('management-cash-out', $current_route) ?>">
+                            <!-- <li class="slide <?= isActive('management-cash-out', $current_route) ?>">
                                 <a href="<?= $base_url ?>/management-cash-out" class="sidebar__menu-item <?= isActive('management-cash-out', $current_route) ?>">
-                                    <div class="side-menu__icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
-                                    <span class="sidebar__menu-label">Cash Out Management</span>
+
+                                    <span class="sidebar__menu-label"> Management</span>
                                 </a>
-                            </li>
+                            </li> -->
                             <li class="slide d-none <?= isActive('management-cash-out', $current_route) ?>">
                                 <a href="<?= $base_url ?>/management-cash-out" class="sidebar__menu-item <?= isActive('management-cash-out', $current_route) ?>">Management</a>
                                 <span class="sidebar__menu-label">Cash Out </span>
