@@ -339,7 +339,7 @@ class CentralStatementController extends Controller
                 .stats-container {
                     display: flex;
                     margin-bottom: 12mm;
-                    gap: 5mm;
+                    gap: 8mm;
                 }
 
                 .stat-box {
