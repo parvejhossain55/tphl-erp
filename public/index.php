@@ -92,6 +92,9 @@ $routes = [
     'task-lists' => ["controller" => "TaskController", "method" => "index"],
     'create-task' => ["controller" => "TaskController", "method" => "create"],
     'store-task' => ["controller" => "TaskController", "method" => "store"],
+    'task-dashboard' => ["controller" => "TaskController", "method" => "taskDashboard"],
+    "update-task-status" => ["controller" => "TaskController", "method" => "updateTaskStatus"],
+    "update-task-progress" => ["controller" => "TaskController", "method" => "updateTaskProgress"],
     'show-task/(\d+)' => ["controller" => "TaskController", "method" => "show"],
     'edit-task/(\d+)' => ["controller" => "TaskController", "method" => "edit"],
     'update-task/(\d+)' => ["controller" => "TaskController", "method" => "update"],
@@ -119,8 +122,8 @@ $routes = [
 
     //employee dashboard
     "employee-dashboard" => ["controller" => "EmployeeDashboardController", "method" => "index"],
-    "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
-    "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
+    "update-task-status-employee" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
+    "update-task-progress-employee" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
     // attendance 
     "attendance-list" => ["controller" => "EmpAttendanceController", "method" => "index"],
@@ -135,10 +138,10 @@ $routes = [
 
 
     // Employee Leave Controller
-       "leave-lists" => ["controller" => "LeaveController", "method" => "index"],
-       "create-employee-leave" => ["controller" => "LeaveController", "method" => "create"],
-       "store-employee-leave" => ["controller" => "LeaveController", "method" => "store"],
-       "remaining-days" => ["controller" => "LeaveController", "method" => "remainingDays"],
+    "leave-lists" => ["controller" => "LeaveController", "method" => "index"],
+    "create-employee-leave" => ["controller" => "LeaveController", "method" => "create"],
+    "store-employee-leave" => ["controller" => "LeaveController", "method" => "store"],
+    "remaining-days" => ["controller" => "LeaveController", "method" => "remainingDays"],
     // "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
     // "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
@@ -151,7 +154,7 @@ $routes = [
     "edit-lead/(\d+)" => ["controller" => "LeadController", "method" => "edit"],
     "view-lead/(\d+)" => ["controller" => "LeadController", "method" => "show"],
     "leads-import-csv" => ["controller" => "LeadController", "method" => "importCsv"],
-     "onboarding-clients" => ["controller" => "LeadController", "method" => "showOnboardClient"],
+    "onboarding-clients" => ["controller" => "LeadController", "method" => "showOnboardClient"],
     "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
     "update-last_leadAction/(\d+)" => ["controller" => "LeadController", "method" => "updateLastleadAction"],
     "lead-delete" => ["controller" => "LeadController", "method" => "delete"],
@@ -265,10 +268,16 @@ $routes = [
     "payment-booking-store" => ["controller" => "PaymentBookingController", "method" => "store"],
     "payment-booking-invoice/(\d+)" => ["controller" => "PaymentBookingController", "method" => "invoice"],
 
-    //SalesDashboard
+    //Sales Head Dashboard
 
     "sales-dashboard" => ["controller" => "SalesDashboardController", "method" => "index"],
     "inventory-lists" => ["controller" => "ProjectInventoryController", "method" => "index"],
+    //Sales Team Head Dashboard
+
+    "sales-team-head-dashboard" => ["controller" => "SalesHeadDashboardController", "method" => "index"],
+    "sales-team-view" => ["controller" => "SalesHeadDashboardController", "method" => "salesTeamView"],
+    "sales-report" => ["controller" => "SalesHeadDashboardController", "method" => "salesReport"],
+    // "inventory-lists" => ["controller" => "ProjectInventoryController", "method" => "index"],
 
     // ==========END SALES & BUISENESS======//
 
@@ -307,8 +316,10 @@ $routes = [
     // ==================== CLIENT CASH IN ROUTES ====================
 
     "clients-cash-in" => ["controller" => "AccountClientController", "method" => "index"],
-    "get-client-lands" => ["controller" => "AccountClientController","method" => "getClientLands"
-],
+    "get-client-lands" => [
+        "controller" => "AccountClientController",
+        "method" => "getClientLands"
+    ],
     // client's cash in history 
     "clients-cash-in-history" => ["controller" => "AccountClientController", "method" => "indexTwo"],
     "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],
@@ -380,43 +391,43 @@ $routes = [
 
 
     // ==================== CENTRAL STATEMENT ROUTES ====================
-'central-statement' => ["controller" => "CentralStatementController", "method" => "index"],
-'central-statement-store' => ["controller" => "CentralStatementController", "method" => "store"],
-'central-statement-update' => ["controller" => "CentralStatementController", "method" => "update"],
-'central-statement-delete' => ["controller" => "CentralStatementController", "method" => "delete"],
-'central-statement-print' => ["controller" => "CentralStatementController", "method" => "print"],
-'central-statement-export' => ["controller" => "CentralStatementController", "method" => "exportCSV"],
-'central-statement-card-totals' => ["controller" => "CentralStatementController", "method" => "getCardTotals"],
-'central-statement-stats' => ["controller" => "CentralStatementController", "method" => "getQuickStats"],
-'central-statement-get' => ["controller" => "CentralStatementController", "method" => "getStatement"],
+    'central-statement' => ["controller" => "CentralStatementController", "method" => "index"],
+    'central-statement-store' => ["controller" => "CentralStatementController", "method" => "store"],
+    'central-statement-update' => ["controller" => "CentralStatementController", "method" => "update"],
+    'central-statement-delete' => ["controller" => "CentralStatementController", "method" => "delete"],
+    'central-statement-print' => ["controller" => "CentralStatementController", "method" => "print"],
+    'central-statement-export' => ["controller" => "CentralStatementController", "method" => "exportCSV"],
+    'central-statement-card-totals' => ["controller" => "CentralStatementController", "method" => "getCardTotals"],
+    'central-statement-stats' => ["controller" => "CentralStatementController", "method" => "getQuickStats"],
+    'central-statement-get' => ["controller" => "CentralStatementController", "method" => "getStatement"],
 
-    
-    
+
+
     // Add these to your routes.php or wherever you define routes
-// Cashout Request Routes
-"cashout-requests" => ["controller" => "CashoutRequestController", "method" => "index"],
-"create-cashout-request" => ["controller" => "CashoutRequestController", "method" => "create"],
-"store-cashout-request" => ["controller" => "CashoutRequestController", "method" => "store"],
-"view-cashout-request" => ["controller" => "CashoutRequestController", "method" => "show"],
-"delete-cashout-request" => ["controller" => "CashoutRequestController", "method" => "delete"],
+    // Cashout Request Routes
+    "cashout-requests" => ["controller" => "CashoutRequestController", "method" => "index"],
+    "create-cashout-request" => ["controller" => "CashoutRequestController", "method" => "create"],
+    "store-cashout-request" => ["controller" => "CashoutRequestController", "method" => "store"],
+    "view-cashout-request" => ["controller" => "CashoutRequestController", "method" => "show"],
+    "delete-cashout-request" => ["controller" => "CashoutRequestController", "method" => "delete"],
 
-// Admin routes
-"admin-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "adminIndex"],
-"admin-view-cashout-request" => ["controller" => "CashoutRequestController", "method" => "adminShow"],
+    // Admin routes
+    "admin-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "adminIndex"],
+    "admin-view-cashout-request" => ["controller" => "CashoutRequestController", "method" => "adminShow"],
 
-// Simplified approval route
-"approve-cashout-request" => ["controller" => "CashoutRequestController", "method" => "approve"],
+    // Simplified approval route
+    "approve-cashout-request" => ["controller" => "CashoutRequestController", "method" => "approve"],
 
-// Rejection route
-"reject-cashout-request" => ["controller" => "CashoutRequestController", "method" => "reject"],
+    // Rejection route
+    "reject-cashout-request" => ["controller" => "CashoutRequestController", "method" => "reject"],
 
-// Payment routes
-"add-cashout-payment" => ["controller" => "CashoutRequestController", "method" => "addPayment"],
-"delete-cashout-payment" => ["controller" => "CashoutRequestController", "method" => "deletePayment"],
+    // Payment routes
+    "add-cashout-payment" => ["controller" => "CashoutRequestController", "method" => "addPayment"],
+    "delete-cashout-payment" => ["controller" => "CashoutRequestController", "method" => "deletePayment"],
 
-// Utility routes
-"download-cashout-attachment" => ["controller" => "CashoutRequestController", "method" => "downloadAttachment"],
-"export-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "export"],
+    // Utility routes
+    "download-cashout-attachment" => ["controller" => "CashoutRequestController", "method" => "downloadAttachment"],
+    "export-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "export"],
     //rafi End
 
 

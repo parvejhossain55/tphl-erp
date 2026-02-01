@@ -11,10 +11,15 @@ $show_breadcrumb = true;
     <h4 class="mb-2 mb-md-0">
         Project Management
     </h4>
-
+             <?php if (hasPermission("view lead")): ?>
+    <div class="d-none gap-2">
+        <a href="<?= $GLOBALS['base_url'] ?>/create-project" class="btn btn-primary"> <i class="fa-light fa-plus me-1"></i> Add Project</a>
+    </div>
+    <?php else: ?>
     <div class="d-flex gap-2">
         <a href="<?= $GLOBALS['base_url'] ?>/create-project" class="btn btn-primary"> <i class="fa-light fa-plus me-1"></i> Add Project</a>
     </div>
+    <?php endif; ?>
 
 </div>
 <div class="row">

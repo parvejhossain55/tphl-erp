@@ -1,0 +1,118 @@
+<?php
+$page_title = "User List";
+$page = 'Sales User Lists';
+$show_breadcrumb = false;
+?>
+<div class="row mb-4 ">
+<div class="d-flex justify-content-evenly align-items-center mb-4">
+    <h4 class="mb-0">All Sales Teams</h4>
+   
+</div>
+<form method="GET" action="">
+    <div class="row g-20 mb-20 justify-content-between align-items-end">
+
+        <!-- Search by Name / Phone / Email -->
+        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4">
+            <div class="card__wrapper">
+                <div class="search-box">
+                    <input type="text" class="form-control" name="q" placeholder="User Name / Phone / Email"
+                        value="<?= htmlspecialchars($searchTerm ?? '') ?>">
+                </div>
+            </div>
+        </div>
+
+        <!-- Role Filter -->
+        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4">
+            <div class="card__wrapper">
+                <div class="from__input-box">
+                    <select class="form-control" name="role">
+                        <option value="">All Roles</option>
+                        <?php foreach ($roles as $role): ?>
+                            <option value="<?= $role['id'] ?>" <?= (isset($selectedRole) && $selectedRole == $role['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($role['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center justify-content-between gap-15">
+                    <button type="submit" class="btn btn-secondary">Filters</button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/sales-team-view" class="btn btn-primary w-100">Reset</a>
+                    <a href="<?= $GLOBALS['base_url'] ?>/create-user" class="d-none btn btn-primary w-100">
+                        Add Sales Users
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</form>
+
+<div class="row">
+    <?php if (!empty($salesUsers)): ?>
+        <?php foreach ($salesUsers as $user): ?>
+
+            <div class="col-xxl-3 col-xl-4 col-lg-6 col-md-6">
+                <div class="card__wrapper">
+                    <div class="employee__wrapper text-center">
+                        <div class="employee__thumb mb-10">
+
+                            <!-- <img src=  "<=getImage('users',filename: $user['photo'])?>" alt="img not found"> -->
+                            <img src="<?= getUserProfileImage($user)  ?>" alt="img not found">
+
+                        </div>
+                        <div class="employee__content">
+                            <div class="employee__meta ">
+                                <h4 class="mb-8"><?= htmlspecialchars($user['full_name'] ?: "No Name") ?></h4>
+                                <p class="mb-0"><?= htmlspecialchars($user['designation_name'] ?: "No Designation") ?></p>
+                                <p class="mb-0"><?= htmlspecialchars($user['email'] ?: "No email") ?></p>
+                                <p class="mb-2"> <span class="fw-semibold fs-6 pe-1">Role:</span><?= htmlspecialchars($user['role_name'] ?: "No role ") ?></p>
+                            </div>
+                            <div class="common-social mb-20">
+                                <a href="<?= $user['media_link1'] ?>"><i class="fa-brands fa-facebook-f"></i></a>
+                                <a href="<?= $user['media_link1'] ?>"><i class="fa-brands fa-linkedin-in"></i></a>
+                                <a href="tel:<?= htmlspecialchars($user['phone']) ?>" title="Call">
+                                    <i class="fa-solid fa-phone"></i>
+                                </a>
+                            </div>
+                            <div class="employee__btn">
+                                <div class="d-flex align-items-center justify-content-center gap-10">
+
+                                    <a class="btn btn-outline-theme-border"
+                                        href="<?= $base_url ?>/user-profile/<?= $user['id'] ?>">View</a>
+                                    <a class="d-none btn btn-outline-theme-border"
+                                        href="<?= $base_url ?>/edit-user/<?= $user['id'] ?>">Edit</a>
+                                    <button class="d-none removeBtnCust btn btn-outline-theme-border delete"
+                                        data-id="<?= $user['id'] ?>"
+                                        data-name="<?= $user['full_name'] ?>"
+                                        data-action="delete-user">
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <p class="text-center text-danger">No Users Found</p>
+    <?php endif; ?>
+
+</div>
+<!-- Pagination -->
+<div class="row my-4">
+    <div class="col-12 d-flex justify-content-center">
+        <?= paginateLinksSecondary($base_url . "/user-lists", $currentPage, $totalPages); ?>
+
+
+    </div>
+</div>
+<script>
+    const base_url = "<?=  $GLOBALS['base_url']?>";
+</script>

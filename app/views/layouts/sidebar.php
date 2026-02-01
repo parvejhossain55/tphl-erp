@@ -25,6 +25,7 @@
                     </li>
                 <?php endif; ?>
 
+                <!-- Sales Head CATEGORY -->
 
                 <?php if (hasPermission("sales & business")):  ?>
 
@@ -40,7 +41,12 @@
                             <span class="sidebar__menu-label">Sales Dashboard</span>
                         </a>
                     </li>
-
+                    <li class="slide">
+                        <a href="<?= $base_url ?>/task-dashboard" class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
+                            <span class="sidebar__menu-label">Task Dashbaord</span>
+                        </a>
+                    </li>
                     <!-- Location -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/location-lists" class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
@@ -110,21 +116,41 @@
                             </li>
                         </ul>
                     </li>
-
-
                     <!-- Inventroy -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/inventory-lists" class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
-                            <span class="sidebar__menu-label">Proejct Wise Inventory</span>
+                            <span class="sidebar__menu-label">Project Wise Inventory</span>
                         </a>
                     </li>
 
                 <?php endif; ?>
+
+                <!--End Sales CATEGORY -->
+
+
+                <!-- For Sales head -->
+                <?php if (hasPermission("Add User")):  ?>
+                    <ul class="d-none sidebar-menu child1" style="display:block;">
+                        <li class="slide <?= isActive('create-user', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('create-user', $current_route) ?>" href="<?= $base_url ?>/create-user">
+                                Add User
+                            </a>
+                        </li>
+                    </ul>
+                <?php endif; ?>
+                <!--END For Sales Head -->
+                <!-- for sales executive  -->
                 <?php if (hasPermission("add Lead")): ?>
                     <ul class="sidebar-menu child2" style="display:block;">
                         <li class="slide">
                             <a href="<?= $base_url ?>/user-dashboard" class="sidebar__menu-item <?= isActive('user-dashboard', $current_route) ?>">My Dashboard</a>
+                        </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/task-dashboard" class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+
+                                <span class="sidebar__menu-label">Task Dashbaord</span>
+                            </a>
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/create-lead" class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">Add Lead</a>
@@ -134,13 +160,83 @@
                         </li>
                     </ul>
                 <?php endif; ?>
+                <!-- for sales executive  -->
 
 
-                <!--End Sales CATEGORY -->
+                <!-- For Sales Team Head  -->
+                <?php if (hasPermission("view lead")): ?>
+                    <!-- Sales Team Dashboard  -->
+
+                    <!-- sales Dashboard -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/sales-team-head-dashboard" class="sidebar__menu-item <?= isActive('sales-team-head-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label"> Overall Sales Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="slide">
+                        <a href="<?= $base_url ?>/task-dashboard" class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
+                            <span class="sidebar__menu-label">Task Dashbaord</span>
+                        </a>
+                    </li>
+
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/sales-team-view" class="sidebar__menu-item <?= isActive('sales-team-view', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">Sales Team View</span>
+                        </a>
+
+                    </li>
+
+                    <li class="slide child2">
+                        <a href="<?= $base_url ?>/project-lists" class="sidebar__menu-item <?= isActive('project-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">Project List</span>
+                        </a>
+
+                    </li>
+                    <li class="slide child2">
+                        <a href="<?= $base_url ?>/flat-lists" class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">Flat List</span>
+                        </a>
+
+                    </li>
+                    <li class="slide child2">
+                        <a href="<?= $base_url ?>/sales-report" class="sidebar__menu-item <?= isActive('sales-report', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">Sales Report</span>
+                        </a>
+
+                    </li>
+
+                    <!-- Lead & Booking -->
+                    <li class="slide has-sub <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                            <span class="sidebar__menu-label">Lead & Booking</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/lead-lists" class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">Lead List</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/onboarding-clients" class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">Onboarding Clients</a>
+                            </li>
+                        </ul>
+                    </li>
 
 
+                <?php endif; ?>
+                <!--End For Sales Team Head  -->
+
+
+
+
+                <!--HRM CATEGORY -->
                 <?php if (hasPermission("Hr Manage")):  ?>
-                    <!--HRM CATEGORY -->
                     <li class="sidebar__menu-category">
                         <span class="category-name">HR & Payroll </span>
                     </li>
@@ -150,6 +246,12 @@
                         <a href="<?= $base_url ?>/hrm-dashboard" class="sidebar__menu-item <?= isActive('hrm-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">HR Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="slide">
+                        <a href="<?= $base_url ?>/task-dashboard" class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
+                            <span class="sidebar__menu-label">Task Dashbaord</span>
                         </a>
                     </li>
 
@@ -210,17 +312,11 @@
 
 
                 <?php endif; ?>
-                <!--End HRM CATEGORY -->
-
-
                 <!--Payroll CATEGORY -->
                 <?php if (hasPermission("Payroll Manage")):  ?>
                     <li class="sidebar__menu-category ">
                         <span class="category-name">Payroll Manage</span>
                     </li>
-
-
-
                     <!-- payslip items -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/payslip-items" class="sidebar__menu-item <?= isActive('payslip-items', $current_route) ?>">
@@ -260,9 +356,11 @@
 
                 <?php endif; ?>
 
+                <!--End HRM CATEGORY -->
 
 
 
+                <!--Start CED  -->
                 <?php if (hasPermission("CED Manage")):  ?>
                     <!--CED CATEGORY -->
                     <li class="sidebar__menu-category">
@@ -287,9 +385,11 @@
                     </li>
 
                 <?php endif; ?>
-                <!--End HRM CATEGORY -->
+                <!--End CED CATEGORY -->
+
+
+                <!--Accounts CATEGORY -->
                 <?php if (hasPermission("accounts manage")):  ?>
-                    <!--Accounts CATEGORY -->
                     <li class="sidebar__menu-category">
                         <span class="category-name">Accounts</span>
                     </li>
@@ -355,16 +455,11 @@
                     <!-- Cash Out -->
 
                 <?php endif ?>
-                <?php if (hasPermission("Add User")):  ?>
-                    <ul class="sidebar-menu child1" style="display:block;">
-                        <li class="slide <?= isActive('create-user', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('create-user', $current_route) ?>" href="<?= $base_url ?>/create-user">
-                                Add User
-                            </a>
-                        </li>
-                    </ul>
-                <?php endif; ?>
                 <!--END Accounts CATEGORY -->
+
+
+
+                <!--ROle & Permission -->
                 <?php if (hasPermission("role & permission")):  ?>
                     <li class="sidebar__menu-category">
                         <span class="category-name">Role & Permission</span>
@@ -409,16 +504,20 @@
                     </li>
 
                 <?php endif ?>
+                <!--ROle & Permission -->
+
+
+
+                <!-- FOR Task Manage  -->
 
                 <?php if (hasPermission("task manage")):  ?>
-                    <li class="slide has-sub <?= isActive(['create-task', 'task-lists'], $current_route) ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-task', 'task-lists'], $current_route) ?>">
+                    <li class="slide has-sub <?= isActive(['create-task', 'task-lists'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['create-task', 'task-lists'], $current_route) ? 'menu-open active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i>
-                            </div>
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                             <span class="sidebar__menu-label">Task Manage</span>
                         </a>
-                        <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-task', 'task-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                        <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide <?= isActive('create-task', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('create-task', $current_route) ?>" href="<?= $base_url ?>/create-task">Add Task</a>
                             </li>
@@ -427,7 +526,11 @@
                             </li>
                         </ul>
                     </li>
+
                 <?php endif; ?>
+                <!-- FOR Task Manage  -->
+
+
                 <!-- Others-->
                 <?php if (hasPermission("others")):  ?>
                     <li class="sidebar__menu-category">
@@ -502,6 +605,10 @@
 
 
                 <?php endif; ?>
+                <!-- End other permission -->
+
+
+
 
                 <li class="slide ">
                     <a class="sidebar__menu-item " href="<?= $GLOBALS['base_url']  ?>/logout"><svg width="18" height="18" viewBox="0 0 18 18"

@@ -15,12 +15,12 @@ class Task extends Model
                 t.*, 
                 e.full_name AS employee_name, 
                 e.photo AS employee_photo, 
-                e.employee_id AS employee_code,
+                e.id AS employee_code,
                 u.full_name AS assigned_by_name,
                 u.photo AS user_photo,
                 u.email AS assigned_by_email
             FROM tasks AS t
-            JOIN employees AS e ON t.employee_id = e.id
+            JOIN users AS e ON t.user_id = e.id
             JOIN users AS u ON t.assigned_by = u.id
             WHERE 1";
 
@@ -60,8 +60,8 @@ class Task extends Model
 
     public function getAll()
     {
-        $sql = $this->db->prepare("SELECT e.full_name,e.photo,e.employee_id,  desg.name AS designation_name, 
-                   dept.name AS department_name  FROM employees AS e
+        $sql = $this->db->prepare("SELECT e.full_name,e.photo,e.user_id,  desg.name AS designation_name, 
+                   dept.name AS department_name  FROM users AS e
             JOIN designations AS desg ON e.designation_id = desg.id
             JOIN departments AS dept ON e.department_id = dept.id");
 
@@ -72,7 +72,7 @@ class Task extends Model
 
     public function countAll($search = '')
     {
-        $sql = "SELECT COUNT(*) as total FROM employees WHERE 1";
+        $sql = "SELECT COUNT(*) as total FROM users WHERE 1";
         $params = [];
         $types = "";
 
@@ -96,13 +96,13 @@ class Task extends Model
     {
         $stmt = $this->db->prepare(
             "INSERT INTO tasks
-        (title, employee_id, description, start_date, deadline, employee_accept, status, progress, priority,assigned_by)
+        (title, user_id, description, start_date, deadline, employee_accept, status, progress, priority,assigned_by)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)"
         );
         $stmt->bind_param(
             "sisssisssi",
             $data['title'],
-            $data['employee_id'],
+            $data['user_id'],
             $data['description'],
             $data['start_date'],
             $data['deadline'],
@@ -127,27 +127,41 @@ class Task extends Model
         $stmt = $this->db->prepare("
         SELECT 
             t.*, 
-            e.full_name AS employee_name, 
-            e.email AS employee_email, 
-            e.designation_id,
-            e.photo as emp_photo,
+
+            -- Employee
+            e.full_name AS employee_name,
+            e.email AS employee_email,
+            e.photo AS emp_photo,
+            des_emp.name AS employee_designation,
+
+            -- Assigned By
             u.full_name AS assigned_by_name,
             u.email AS assigned_by_email,
-            u.photo as assigned_photo,
-            des.name AS assigned_by_designation,
-            desg.name AS employee_designation
-        FROM tasks AS t
-        JOIN employees AS e ON t.employee_id = e.id
-        JOIN users AS u ON t.assigned_by = u.id
-        JOIN designations AS des ON u.designation_id = des.id
-        JOIN designations AS desg ON e.designation_id = desg.id
+            u.photo AS assigned_photo,
+            des_assign.name AS assigned_by_designation
+
+        FROM tasks t
+
+        JOIN users e 
+            ON t.user_id = e.id
+
+        JOIN users u 
+            ON t.assigned_by = u.id
+
+        LEFT JOIN designations des_emp 
+            ON e.designation_id = des_emp.id
+
+        LEFT JOIN designations des_assign 
+            ON u.designation_id = des_assign.id
+
         WHERE t.id = ?
-");
+    ");
 
         $stmt->bind_param("i", $id);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
     }
+
 
     /**
      * Update employee
@@ -161,8 +175,8 @@ class Task extends Model
         $oldTask = $this->find($id);
         if (!$oldTask) return false;
 
-        $oldEmployeeId = (int)$oldTask['employee_id'];
-        $newEmployeeId = (int)$data['employee_id'];
+        $oldEmployeeId = (int)$oldTask['user_id'];
+        $newEmployeeId = (int)$data['user_id'];
 
         //  Start transaction
         $this->db->begin_transaction();
@@ -177,7 +191,7 @@ class Task extends Model
                     priority = ?, 
                     progress = ?, 
                     status = ?,
-                    employee_id = ?
+                    user_id = ?
                 WHERE id = ?";
 
             $stmt = $this->db->prepare($sql);
@@ -205,7 +219,7 @@ class Task extends Model
 
                 $stmt = $this->db->prepare("
                 UPDATE notifications
-                SET employee_id = ?, message = ?, is_read = 0
+                SET user_id = ?, message = ?, is_read = 0
                 WHERE task_id = ?
             ");
 
@@ -235,7 +249,7 @@ class Task extends Model
 
     public function delete($id)
     {
-        $stmt = $this->db->prepare("DELETE FROM employees WHERE id = ?");
+        $stmt = $this->db->prepare("DELETE FROM users WHERE id = ?");
         $stmt->bind_param("i", $id);
         return $stmt->execute();
     }
@@ -307,5 +321,41 @@ class Task extends Model
             $this->db->rollback();
             return false;
         }
+    }
+
+    public function taskNotification()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $loggedUserId = $_SESSION['user']['id'] ?? null;
+        if (!$loggedUserId) return [];
+
+        //  Get employee ID
+        $stmt = $this->db->prepare("SELECT id FROM employees WHERE user_id = ? LIMIT 1");
+        $stmt->bind_param("i", $loggedUserId);
+        $stmt->execute();
+        $emp = $stmt->get_result()->fetch_assoc();
+        if (!$emp) return [];
+
+        $employeeId = (int) $emp['id'];
+
+        //  Fetch notifications ONLY for incomplete tasks
+        $stmt = $this->db->prepare("
+        SELECT n.*, u.full_name AS assigned_by_name, t.progress, t.status
+        FROM notifications n
+        LEFT JOIN tasks t ON n.task_id = t.id
+        LEFT JOIN users u ON n.assigned_by = u.id
+        WHERE n.user_id = ?
+          AND n.is_read = 0
+          AND (t.status IS NULL OR t.status != 'completed')
+        ORDER BY n.created_at DESC
+    ");
+        $stmt->bind_param("i", $employeeId);
+        $stmt->execute();
+        $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        return $notifications;
     }
 }
