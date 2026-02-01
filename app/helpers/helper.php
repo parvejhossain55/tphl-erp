@@ -876,7 +876,7 @@ function renderApprovalContext(array $req)
                             <li class="px-0 border-0 border-top py-2">
                                 <div class="row align-items-center">
                                     <div class="col-4 col-md-3">
-                                        <span class="bd-badge bg-dark" style="font-size: 0.85rem;">
+                                        <span class="badge bg-secondary" style="font-size: 0.85rem;">
                                             <?= esc(ucfirst(str_replace('_', ' ', $key))) ?>
                                         </span>
                                     </div>

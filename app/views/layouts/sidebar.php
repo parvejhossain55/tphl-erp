@@ -396,7 +396,7 @@
 
                     <!-- Accounts Dashboard -->
                     <li class="slide <?= isActive('accounts-dashboard', $current_route) ?>">
-                        <a href="<?= $base_url ?>/account-dashboard" class="sidebar__menu-item <?= isActive('account-dashboard', $current_route) ?>">
+                        <a href="<?= $base_url ?>/account-dashboard" class="sidebar__menu-item <?= isActive('accounts-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">Accounts Dashboard</span>
                         </a>
@@ -408,14 +408,18 @@
                         </a>
                     </li>
 
-                    <!-- Cash In Manage -->
-                    <li class="slide has-sub <?= isActive(['clients-cash-in', 'management-cash-in'], $current_route) ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['clients-cash-in', 'management-cash-in'], $current_route) ?>">
+                    <!-- ===================== -->
+                    <!-- Manage Cash In -->
+                    <!-- ===================== -->
+                    <li class="slide has-sub <?= isActive(['clients-cash-in', 'management-cash-in'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['clients-cash-in', 'management-cash-in'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
-                            <span class="sidebar__menu-label">Cash In Manage</span>
+                            <span class="sidebar__menu-label">Manage Cash In</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
-                        <ul class="sidebar-menu child2" style="<?= isMenuOpen(['clients-cash-in', 'management-cash-in'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+
+                        <!-- ALWAYS visible like Flats -->
+                        <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide <?= isActive('clients-cash-in', $current_route) ?>">
                                 <a href="<?= $base_url ?>/clients-cash-in" class="sidebar__menu-item <?= isActive('clients-cash-in', $current_route) ?>">Clients</a>
                             </li>
@@ -424,35 +428,32 @@
                             </li>
                         </ul>
                     </li>
-                    <!-- Cash In Manage -->
-                    <li class="slide has-sub <?= isActive(['clients-cash-in', 'management-cash-in'], $current_route) ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['clients-cash-in', 'management-cash-out'], $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+
+                    <li class="slide has-sub <?= isActive(['management-cash-out',  'create-cashout-request', 'admin-cashout-requests'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['management-cash-out', 'create-cashout-request', 'admin-cashout-requests'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"> <i class="fa-solid fa-money-bill-trend-down"></i></div>
                             <span class="sidebar__menu-label">Manage Cash Out</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
-                        <ul class="sidebar-menu child2" style="<?= isMenuOpen(['clients-cash-in', 'management-cash-out'], $current_route) ? 'display:block;' : 'display:none;' ?>">
-                            <!-- <li class="slide <?= isActive('management-cash-out', $current_route) ?>">
-                                <a href="<?= $base_url ?>/management-cash-out" class="sidebar__menu-item <?= isActive('management-cash-out', $current_route) ?>">
 
-                                    <span class="sidebar__menu-label"> Management</span>
-                                </a>
-                            </li> -->
-                            <li class="slide d-none <?= isActive('management-cash-out', $current_route) ?>">
-                                <a href="<?= $base_url ?>/management-cash-out" class="sidebar__menu-item <?= isActive('management-cash-out', $current_route) ?>">Management</a>
-                                <span class="sidebar__menu-label">Cash Out </span>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide <?= isActive('management-cash-out', $current_route) ?>">
+                                <a href="<?= $base_url ?>/management-cash-out"
+                                    class="sidebar__menu-item <?= isActive('management-cash-out', $current_route) ?>">
+                                    Management
                                 </a>
                             </li>
+
                             <li class="slide <?= isActive('create-cashout-request', $current_route) ?>">
-                                <a href="<?= $base_url ?>/create-cashout-request" class="sidebar__menu-item <?= isActive('create-cashout-request', $current_route) ?>">Create Cashout Request</a>
+                                <a href="<?= $base_url ?>/create-cashout-request" class="sidebar__menu-item <?= isActive('create-cashout-request', $current_route) ?>">Create Cashout Request </a>
                             </li>
+
                             <li class="slide <?= isActive('admin-cashout-requests', $current_route) ?>">
                                 <a href="<?= $base_url ?>/admin-cashout-requests" class="sidebar__menu-item <?= isActive('admin-cashout-requests', $current_route) ?>">Cashout Requests</a>
                             </li>
                         </ul>
                     </li>
 
-                    <!-- Cash Out -->
 
                 <?php endif ?>
                 <!--END Accounts CATEGORY -->

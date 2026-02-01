@@ -52,7 +52,6 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
     }
 
     .filter-card {
-        background: #f8f9fa;
         border-left: 4px solid #6c5ffc;
     }
 </style>
@@ -64,7 +63,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <h5 class="card__title mb-1">Cashout Requests Management</h5>
-                    <p class="text-muted mb-0">Role: <strong><?= $userRoleName ?></strong> | Viewing All Requests</p>
+                    </strong> | Viewing All Requests</p>
                 </div>
                 <div class="text-end">
                     <a href="<?= $GLOBALS['base_url'] ?>/export-cashout-requests" class="btn btn-primary me-2">
@@ -212,19 +211,18 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
 
                 <div class="table-responsive">
                     <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Requester</th>
-                                <th>Purpose/Paid To</th>
-                                <th>Amount</th>
-                                <th>Due Amount</th>
-                                <th>Status</th>
-                                <th>Approved By</th>
-                                <th>Created</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Requester</th>
+                            <th>Purpose/Paid To</th>
+                            <th>Amount</th>
+                            <th>Approved Amount</th>
+                            <th>Due Amount</th>
+                            <th>Status</th>
+                            <th>Approved By</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
                         <tbody>
                             <?php if (!empty($requests)): ?>
                                 <?php foreach ($requests as $request): ?>
@@ -239,7 +237,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                       </small>
                                   </div>';
                                     }
-                                    
+
                                     // Determine status for display
                                     $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
                                     ?>
@@ -250,9 +248,6 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                             <div class="d-flex align-items-center">
                                                 <div>
                                                     <strong><?= htmlspecialchars($request['requester_name']) ?></strong>
-                                                    <?php if ($currentUserId && $request['requested_by'] == $currentUserId): ?>
-                                                        <span class="badge bg-info ms-1">You</span>
-                                                    <?php endif; ?>
                                                     <br>
                                                     <small class="text-muted">ID: <?= $request['requested_by'] ?></small>
                                                 </div>
@@ -265,6 +260,31 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                             </div>
                                         </td>
                                         <td><strong class="text-primary">৳<?= number_format($request['amount'], 2) ?></strong></td>
+                                        <td>
+                                            <?php
+                                            // Get approved amount (check both fields)
+                                            $approvedAmount = $request['approved_amount'] ?? $request['approval_approved_amount'] ?? 0;
+                                            $hasApprovedAmount = $approvedAmount > 0;
+                                            ?>
+
+                                            <?php if ($hasApprovedAmount): ?>
+                                                <div class="d-flex flex-column">
+                                                    <strong class="text-success">৳<?= number_format($approvedAmount, 2) ?></strong>
+                                                    <?php if (!empty($request['approval_note'])): ?>
+                                                        <small class="text-muted" title="<?= htmlspecialchars($request['approval_note']) ?>">
+                                                        <small class="text-muted"> <?= htmlspecialchars($request['approval_note']) ?></small>
+                                                        </small>
+                                                    <?php endif; ?>
+
+                                                </div>
+                                            <?php else: ?>
+                                                <?php if (($request['approval_status'] ?? '') === 'pending'): ?>
+                                                    <span class="text-warning">Pending Approval</span>
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                        </td>
                                         <td>
                                             <?php if ($request['due_amount'] > 0): ?>
                                                 <strong class="text-danger">৳<?= number_format($request['due_amount'], 2) ?></strong>
@@ -324,10 +344,10 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                                 -->
 
                                                 <!-- DELETE BUTTON FIXED -->
-                                                <?php 
+                                                <?php
                                                 // Determine if delete button should be shown
                                                 $canDelete = false;
-                                                
+
                                                 // Super Admin can delete any request
                                                 if ($userRole == 3) {
                                                     $canDelete = true;
@@ -341,7 +361,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                                     $canDelete = true;
                                                 }
                                                 ?>
-                                                
+
                                                 <?php if ($canDelete): ?>
                                                     <a href="<?= $GLOBALS['base_url'] ?>/delete-cashout-request?id=<?= $request['id'] ?>"
                                                         class="btn btn-sm btn-danger" title="Delete"
@@ -376,10 +396,10 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
 
 <!-- Debug info (remove in production) -->
 <?php if (isset($debug) && $debug): ?>
-<div style="position: fixed; bottom: 10px; right: 10px; background: #f8f9fa; padding: 10px; border: 1px solid #ccc; font-size: 12px;">
-    <strong>Debug Info:</strong><br>
-    User Role: <?= $userRole ?><br>
-    Current User ID: <?= $currentUserId ?><br>
-    Session: <?= print_r($_SESSION['user'] ?? [], true) ?>
-</div>
+    <div style="position: fixed; bottom: 10px; right: 10px; background: #f8f9fa; padding: 10px; border: 1px solid #ccc; font-size: 12px;">
+        <strong>Debug Info:</strong><br>
+        User Role: <?= $userRole ?><br>
+        Current User ID: <?= $currentUserId ?><br>
+        Session: <?= print_r($_SESSION['user'] ?? [], true) ?>
+    </div>
 <?php endif; ?>

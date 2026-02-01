@@ -4,6 +4,17 @@ $page_title = "Central Financial Statement";
 $page = 'Accounts';
 $addPage = false;
 $show_breadcrumb = true;
+
+// Get utilities transactions if utilities category is selected
+$utilitiesTransactions = [];
+if (isset($category) && $category === 'utilities' && isset($statement_data['start_date']) && isset($statement_data['end_date'])) {
+    require_once __DIR__ . '/../../models/CentralStatement.php';
+    $statementModel = new CentralStatement($GLOBALS['db']);
+    $utilitiesTransactions = $statementModel->getUtilitiesTransactions(
+        $statement_data['start_date'],
+        $statement_data['end_date']
+    );
+}
 ?>
 
 <style>
@@ -208,7 +219,6 @@ $show_breadcrumb = true;
     }
 </style>
 
-
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         console.log(document.getElementById('year').innerHTML);
@@ -406,11 +416,21 @@ $show_breadcrumb = true;
                     <?php endif; ?>
                 <?php endif; ?>
                 <?php if (isset($category) && $category !== 'all'): ?>
-                    <p>Category: <?= ucfirst(str_replace('_', ' ', $category)) ?></p>
+                    <?php
+                    $categoryName = ucfirst(str_replace('_', ' ', $category));
+                    if ($category === 'cashout') {
+                        $categoryName = 'Cash Out';
+                    } elseif ($category === 'utilities') {
+                        $categoryName = 'Utilities (Bill/Electricity/Wifi/etc)';
+                    }
+                    ?>
+                    <p>Category: <?= htmlspecialchars($categoryName) ?></p>
                 <?php endif; ?>
             </div>
         </div>
     </div>
+
+
 
     <!-- Statement Data -->
     <div class="col-xxl-12 mb-4">
