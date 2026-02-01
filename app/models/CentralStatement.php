@@ -51,33 +51,8 @@ class CentralStatement extends Model
             AND es.status = 'paid'
         ";
 
-        // Get daily cash-out totals (BOTH management_cashout + cashout_request payments)
-        $cashOutQuery = "
-            SELECT 
-                transaction_date,
-                SUM(total_amount) as total_amount
-            FROM (
-                -- Management cashout
-                SELECT 
-                    DATE(transaction_date) as transaction_date,
-                    SUM(amount) as total_amount
-                FROM management_cashout
-                WHERE DATE(transaction_date) BETWEEN ? AND ?
-                AND payment_status = 'paid'
-                
-                UNION ALL
-                
-                -- Cashout request payments
-                SELECT 
-                    DATE(cp.payment_date) as transaction_date,
-                    SUM(cp.amount) as total_amount
-                FROM cashout_payments cp
-                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
-                WHERE DATE(cp.payment_date) BETWEEN ? AND ?
-                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
-            ) combined
-            GROUP BY transaction_date
-        ";
+        // Get daily cash-out totals based on category
+        $cashOutQuery = $this->getCashOutQueryByCategory($category, $startDate, $endDate);
 
         // Add project filter if specified
         if ($projectId) {
@@ -171,103 +146,208 @@ class CentralStatement extends Model
     }
 
     /**
-     * Helper: Get cashout data (management_cashout + cashout_request payments)
+     * Helper: Get cashout data (management_cashout + cashout_request payments) with category filtering
      */
-private function getCashOutData($startDate, $endDate, $category = 'all', $projectId = null)
-{
-    // Get management cashout
-    $managementQuery = "
-        SELECT 
-            DATE(transaction_date) as transaction_date,
-            SUM(amount) as total_amount
-        FROM management_cashout
-        WHERE DATE(transaction_date) BETWEEN ? AND ?
-        AND payment_status = 'paid'
-    ";
-
-    $managementParams = [$startDate, $endDate];
-    $managementTypes = "ss";
-    
-    if ($category !== 'all') {
-        $categoryId = $this->getCategoryIdByName($category);
-        if ($categoryId) {
-            $managementQuery .= " AND category_id = ?";
-            $managementParams[] = $categoryId;
-            $managementTypes .= "i";
+    private function getCashOutData($startDate, $endDate, $category = 'all', $projectId = null)
+    {
+        if ($category === 'utilities') {
+            return $this->getUtilitiesCashOutData($startDate, $endDate);
         }
-    }
-    
-    $managementQuery .= " GROUP BY DATE(transaction_date)";
+        
+        // Get management cashout
+        $managementQuery = "
+            SELECT 
+                DATE(transaction_date) as transaction_date,
+                SUM(amount) as total_amount
+            FROM management_cashout
+            WHERE DATE(transaction_date) BETWEEN ? AND ?
+            AND payment_status = 'paid'
+        ";
 
-    $stmt = $this->db->prepare($managementQuery);
-    if (!empty($managementParams)) {
-        $stmt->bind_param($managementTypes, ...$managementParams);
-    }
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $managementData = [];
-    while ($row = $result->fetch_assoc()) {
-        $managementData[$row['transaction_date']] = (float)$row['total_amount'];
+        $managementParams = [$startDate, $endDate];
+        $managementTypes = "ss";
+        
+        if ($category !== 'all') {
+            $categoryId = $this->getCategoryIdByName($category);
+            if ($categoryId) {
+                $managementQuery .= " AND category_id = ?";
+                $managementParams[] = $categoryId;
+                $managementTypes .= "i";
+            }
+        }
+        
+        $managementQuery .= " GROUP BY DATE(transaction_date)";
+
+        $stmt = $this->db->prepare($managementQuery);
+        if (!empty($managementParams)) {
+            $stmt->bind_param($managementTypes, ...$managementParams);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $managementData = [];
+        while ($row = $result->fetch_assoc()) {
+            $managementData[$row['transaction_date']] = (float)$row['total_amount'];
+        }
+
+        // Get cashout request payments (only for 'cashout' category or 'all')
+        $cashoutRequestData = [];
+        if ($category === 'all' || $category === 'cashout') {
+            $cashoutRequestQuery = "
+                SELECT 
+                    DATE(cp.payment_date) as transaction_date,
+                    SUM(cp.amount) as total_amount
+                FROM cashout_payments cp
+                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                WHERE DATE(cp.payment_date) BETWEEN ? AND ?
+                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                GROUP BY DATE(cp.payment_date)
+            ";
+
+            $stmt = $this->db->prepare($cashoutRequestQuery);
+            $stmt->bind_param("ss", $startDate, $endDate);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $cashoutRequestData[$row['transaction_date']] = (float)$row['total_amount'];
+            }
+        }
+        
+        // Get salary payments (payslips) - only for 'all' category
+        $payslipsData = [];
+        if ($category === 'all') {
+            $payslipsQuery = "
+                SELECT 
+                    DATE(updated_at) as transaction_date,
+                    SUM(net_salary) as total_amount
+                FROM payslips
+                WHERE DATE(updated_at) BETWEEN ? AND ?
+                AND status = 'paid'
+                GROUP BY DATE(updated_at)
+            ";
+
+            $stmt = $this->db->prepare($payslipsQuery);
+            $stmt->bind_param("ss", $startDate, $endDate);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $payslipsData[$row['transaction_date']] = (float)$row['total_amount'];
+            }
+        }
+
+        // Combine all sources based on category
+        $allDates = array_unique(array_merge(
+            array_keys($managementData), 
+            array_keys($cashoutRequestData),
+            array_keys($payslipsData)
+        ));
+        
+        $combinedData = [];
+        foreach ($allDates as $date) {
+            $combinedData[$date] = 
+                ($managementData[$date] ?? 0) + 
+                ($cashoutRequestData[$date] ?? 0) + 
+                ($payslipsData[$date] ?? 0);
+        }
+        
+        return $combinedData;
     }
 
-    // Get cashout request payments
-    $cashoutRequestQuery = "
-        SELECT 
-            DATE(cp.payment_date) as transaction_date,
-            SUM(cp.amount) as total_amount
-        FROM cashout_payments cp
-        LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
-        WHERE DATE(cp.payment_date) BETWEEN ? AND ?
-        AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
-        GROUP BY DATE(cp.payment_date)
-    ";
+    /**
+     * Helper: Get Utilities cashout data from cashout_requests table based on keywords
+     */
+    private function getUtilitiesCashOutData($startDate, $endDate)
+    {
+        // Keywords to identify utility bills
+        $utilityKeywords = ['bill', 'bills', 'electricity', 'wifi', 'internet', 'water', 'gas', 'utility', 'utilities', 'power', 'light', 'electric'];
+        
+        // Build keyword condition
+        $keywordConditions = [];
+        foreach ($utilityKeywords as $keyword) {
+            $keywordConditions[] = "LOWER(cr.purpose_paid_to) LIKE '%" . $this->db->real_escape_string(strtolower($keyword)) . "%'";
+        }
+        $keywordCondition = implode(' OR ', $keywordConditions);
+        
+        $query = "
+            SELECT 
+                DATE(cp.payment_date) as transaction_date,
+                SUM(cp.amount) as total_amount
+            FROM cashout_payments cp
+            LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+            WHERE DATE(cp.payment_date) BETWEEN ? AND ?
+            AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+            AND ($keywordCondition)
+            GROUP BY DATE(cp.payment_date)
+        ";
 
-    $stmt = $this->db->prepare($cashoutRequestQuery);
-    $stmt->bind_param("ss", $startDate, $endDate);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $cashoutRequestData = [];
-    while ($row = $result->fetch_assoc()) {
-        $cashoutRequestData[$row['transaction_date']] = (float)$row['total_amount'];
-    }
-    
-    // Get salary payments (payslips)
-    $payslipsQuery = "
-        SELECT 
-            DATE(updated_at) as transaction_date,
-            SUM(net_salary) as total_amount
-        FROM payslips
-        WHERE DATE(updated_at) BETWEEN ? AND ?
-        AND status = 'paid'
-        GROUP BY DATE(updated_at)
-    ";
-
-    $stmt = $this->db->prepare($payslipsQuery);
-    $stmt->bind_param("ss", $startDate, $endDate);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $payslipsData = [];
-    while ($row = $result->fetch_assoc()) {
-        $payslipsData[$row['transaction_date']] = (float)$row['total_amount'];
+        $stmt = $this->db->prepare($query);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $utilitiesData = [];
+        while ($row = $result->fetch_assoc()) {
+            $utilitiesData[$row['transaction_date']] = (float)$row['total_amount'];
+        }
+        
+        return $utilitiesData;
     }
 
-    // Combine all three sources
-    $allDates = array_unique(array_merge(
-        array_keys($managementData), 
-        array_keys($cashoutRequestData),
-        array_keys($payslipsData)
-    ));
-    
-    $combinedData = [];
-    foreach ($allDates as $date) {
-        $combinedData[$date] = 
-            ($managementData[$date] ?? 0) + 
-            ($cashoutRequestData[$date] ?? 0) + 
-            ($payslipsData[$date] ?? 0);
+    /**
+     * Helper: Get cashout query based on category
+     */
+    private function getCashOutQueryByCategory($category, $startDate, $endDate)
+    {
+        if ($category === 'utilities') {
+            $utilityKeywords = ['bill', 'bills', 'electricity', 'wifi', 'internet', 'water', 'gas', 'utility', 'utilities', 'power', 'light', 'electric'];
+            
+            $keywordConditions = [];
+            foreach ($utilityKeywords as $keyword) {
+                $keywordConditions[] = "LOWER(cr.purpose_paid_to) LIKE '%" . $this->db->real_escape_string(strtolower($keyword)) . "%'";
+            }
+            $keywordCondition = implode(' OR ', $keywordConditions);
+            
+            return "
+                SELECT COALESCE(SUM(total_amount), 0) as total
+                FROM (
+                    SELECT cp.amount as total_amount
+                    FROM cashout_payments cp
+                    LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                    WHERE DATE(cp.payment_date) BETWEEN ? AND ?
+                    AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                    AND ($keywordCondition)
+                ) combined
+            ";
+        }
+        
+        // For other categories, use the existing logic
+        return "
+            SELECT COALESCE(SUM(total_amount), 0) as total
+            FROM (
+                -- Management cashout
+                SELECT amount as total_amount
+                FROM management_cashout
+                WHERE DATE(transaction_date) BETWEEN ? AND ? 
+                AND payment_status = 'paid'
+                
+                UNION ALL
+                
+                -- Cashout request payments
+                SELECT cp.amount as total_amount
+                FROM cashout_payments cp
+                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                WHERE DATE(cp.payment_date) BETWEEN ? AND ?
+                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                
+                UNION ALL
+                
+                -- Salary payments (payslips)
+                SELECT net_salary as total_amount
+                FROM payslips
+                WHERE DATE(updated_at) BETWEEN ? AND ?
+                AND status = 'paid'
+            ) combined
+        ";
     }
-    
-    return $combinedData;
-}
 
     /**
      * Get 6-month statement (monthly breakdown)
@@ -569,58 +649,13 @@ private function getCashOutData($startDate, $endDate, $category = 'all', $projec
             AND es.status = 'paid'
         ";
 
-        // Get all cash-out before start date (BOTH management_cashout + cashout_request payments)
-        $cashOutQuery = "
-            SELECT COALESCE(SUM(total_amount), 0) as total
-            FROM (
-                -- Management cashout
-                SELECT amount as total_amount
-                FROM management_cashout
-                WHERE DATE(transaction_date) < ? 
-                AND payment_status = 'paid'
-                
-                UNION ALL
-                
-                -- Cashout request payments
-                SELECT cp.amount as total_amount
-                FROM cashout_payments cp
-                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
-                WHERE DATE(cp.payment_date) < ?
-                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
-            ) combined
-        ";
+        // Get all cash-out before start date
+        $cashOutQuery = $this->getOpeningCashOutQuery($category, $startDate);
 
         // Add project filter if specified
         if ($projectId) {
             $landshareQuery .= " AND lb.project_id = ?";
             $emiQuery .= " AND lb.project_id = ?";
-        }
-
-        // Add category filter if specified (applies only to management_cashout)
-        if ($category !== 'all') {
-            $categoryId = $this->getCategoryIdByName($category);
-            if ($categoryId) {
-                $cashOutQuery = "
-                    SELECT COALESCE(SUM(total_amount), 0) as total
-                    FROM (
-                        -- Management cashout with category filter
-                        SELECT amount as total_amount
-                        FROM management_cashout
-                        WHERE DATE(transaction_date) < ? 
-                        AND payment_status = 'paid'
-                        AND category_id = ?
-                        
-                        UNION ALL
-                        
-                        -- Cashout request payments (no category filter)
-                        SELECT cp.amount as total_amount
-                        FROM cashout_payments cp
-                        LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
-                        WHERE DATE(cp.payment_date) < ?
-                        AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
-                    ) combined
-                ";
-            }
         }
 
         $totalLandshare = 0;
@@ -651,11 +686,15 @@ private function getCashOutData($startDate, $endDate, $category = 'all', $projec
 
         $totalCashOut = 0;
         $stmt = $this->db->prepare($cashOutQuery);
-        if ($category !== 'all' && $categoryId) {
-            $stmt->bind_param("sis", $startDate, $categoryId, $startDate);
+        
+        if ($category === 'utilities') {
+            // For utilities, we need to bind date only
+            $stmt->bind_param("s", $startDate);
         } else {
+            // For other categories, bind date twice (or more based on query)
             $stmt->bind_param("ss", $startDate, $startDate);
         }
+        
         $stmt->execute();
         $result = $stmt->get_result();
         if ($row = $result->fetch_assoc()) {
@@ -667,6 +706,54 @@ private function getCashOutData($startDate, $endDate, $category = 'all', $projec
         $openingBalance = ($totalLandshare + $totalServiceFee) - $totalCashOut;
 
         return $openingBalance;
+    }
+
+    /**
+     * Helper: Get opening cashout query based on category
+     */
+    private function getOpeningCashOutQuery($category, $startDate)
+    {
+        if ($category === 'utilities') {
+            $utilityKeywords = ['bill', 'bills', 'electricity', 'wifi', 'internet', 'water', 'gas', 'utility', 'utilities', 'power', 'light', 'electric'];
+            
+            $keywordConditions = [];
+            foreach ($utilityKeywords as $keyword) {
+                $keywordConditions[] = "LOWER(cr.purpose_paid_to) LIKE '%" . $this->db->real_escape_string(strtolower($keyword)) . "%'";
+            }
+            $keywordCondition = implode(' OR ', $keywordConditions);
+            
+            return "
+                SELECT COALESCE(SUM(total_amount), 0) as total
+                FROM (
+                    SELECT cp.amount as total_amount
+                    FROM cashout_payments cp
+                    LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                    WHERE DATE(cp.payment_date) < ?
+                    AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                    AND ($keywordCondition)
+                ) combined
+            ";
+        }
+        
+        return "
+            SELECT COALESCE(SUM(total_amount), 0) as total
+            FROM (
+                -- Management cashout
+                SELECT amount as total_amount
+                FROM management_cashout
+                WHERE DATE(transaction_date) < ? 
+                AND payment_status = 'paid'
+                
+                UNION ALL
+                
+                -- Cashout request payments
+                SELECT cp.amount as total_amount
+                FROM cashout_payments cp
+                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                WHERE DATE(cp.payment_date) < ?
+                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+            ) combined
+        ";
     }
 
     /**
@@ -730,66 +817,111 @@ private function getCashOutData($startDate, $endDate, $category = 'all', $projec
     }
 
     /**
-     * Helper: Get daily cash-out total (BOTH management_cashout + cashout_request payments)
+     * Helper: Get daily cash-out total
      */
-private function getDailyCashOut($date, $category = 'all')
-{
-    // Get category ID if a specific category is selected
-    $categoryId = null;
-    if ($category !== 'all') {
-        $categoryId = $this->getCategoryIdByName($category);
+    private function getDailyCashOut($date, $category = 'all')
+    {
+        if ($category === 'utilities') {
+            return $this->getDailyUtilitiesCashOut($date);
+        }
+        
+        // Get category ID if a specific category is selected (for management_cashout)
+        $categoryId = null;
+        if ($category !== 'all' && $category !== 'cashout') {
+            $categoryId = $this->getCategoryIdByName($category);
+        }
+        
+        // Query for other categories
+        $query = "
+            SELECT COALESCE(SUM(total_amount), 0) as total
+            FROM (
+                -- Management cashout
+                SELECT amount as total_amount
+                FROM management_cashout
+                WHERE DATE(transaction_date) = ? 
+                AND payment_status = 'paid'
+                " . ($categoryId ? "AND category_id = ?" : "") . "
+                
+                UNION ALL
+                
+                -- Cashout request payments (only for 'cashout' or 'all' categories)
+                " . (($category === 'all' || $category === 'cashout') ? "
+                SELECT cp.amount as total_amount
+                FROM cashout_payments cp
+                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                WHERE DATE(cp.payment_date) = ?
+                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                " : "SELECT 0 as total_amount") . "
+                
+                UNION ALL
+                
+                -- Salary payments (payslips) - only for 'all' category
+                " . ($category === 'all' ? "
+                SELECT net_salary as total_amount
+                FROM payslips
+                WHERE DATE(updated_at) = ?
+                AND status = 'paid'
+                " : "SELECT 0 as total_amount") . "
+            ) combined
+        ";
+
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            throw new RuntimeException("SQL Prepare Error: " . $this->db->error);
+        }
+
+        // Bind parameters based on category
+        if ($categoryId) {
+            // With category: date, categoryId, date, date
+            $stmt->bind_param("siss", $date, $categoryId, $date, $date);
+        } else if ($category === 'all') {
+            // Without category: date, date, date
+            $stmt->bind_param("sss", $date, $date, $date);
+        } else if ($category === 'cashout') {
+            // Cashout only: date, date
+            $stmt->bind_param("ss", $date, $date);
+        } else {
+            // Other management categories: date, categoryId
+            $stmt->bind_param("si", $date, $categoryId);
+        }
+        
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        
+        return (float)($row['total'] ?? 0);
     }
-    
-    // Query combining ALL THREE sources
-    $query = "
-        SELECT COALESCE(SUM(total_amount), 0) as total
-        FROM (
-            -- Management cashout
-            SELECT amount as total_amount
-            FROM management_cashout
-            WHERE DATE(transaction_date) = ? 
-            AND payment_status = 'paid'
-            " . ($categoryId ? "AND category_id = ?" : "") . "
-            
-            UNION ALL
-            
-            -- Cashout request payments
-            SELECT cp.amount as total_amount
+
+    /**
+     * Helper: Get daily utilities cashout from cashout_requests
+     */
+    private function getDailyUtilitiesCashOut($date)
+    {
+        $utilityKeywords = ['bill', 'bills', 'electricity', 'wifi', 'internet', 'water', 'gas', 'utility', 'utilities', 'power', 'light', 'electric'];
+        
+        $keywordConditions = [];
+        foreach ($utilityKeywords as $keyword) {
+            $keywordConditions[] = "LOWER(cr.purpose_paid_to) LIKE '%" . $this->db->real_escape_string(strtolower($keyword)) . "%'";
+        }
+        $keywordCondition = implode(' OR ', $keywordConditions);
+        
+        $query = "
+            SELECT COALESCE(SUM(cp.amount), 0) as total
             FROM cashout_payments cp
             LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
             WHERE DATE(cp.payment_date) = ?
             AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
-            
-            UNION ALL
-            
-            -- Salary payments (payslips)
-            SELECT net_salary as total_amount
-            FROM payslips
-            WHERE DATE(updated_at) = ?
-            AND status = 'paid'
-        ) combined
-    ";
+            AND ($keywordCondition)
+        ";
 
-    $stmt = $this->db->prepare($query);
-    if (!$stmt) {
-        throw new RuntimeException("SQL Prepare Error: " . $this->db->error);
+        $stmt = $this->db->prepare($query);
+        $stmt->bind_param("s", $date);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        
+        return (float)($row['total'] ?? 0);
     }
-
-    // Bind parameters: 3 dates total
-    if ($categoryId) {
-        // With category: date, categoryId, date, date
-        $stmt->bind_param("siss", $date, $categoryId, $date, $date);
-    } else {
-        // Without category: date, date, date
-        $stmt->bind_param("sss", $date, $date, $date);
-    }
-    
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    
-    return (float)($row['total'] ?? 0);
-}
 
     /**
      * Helper: Get monthly landshare total
@@ -852,70 +984,114 @@ private function getDailyCashOut($date, $category = 'all')
     }
 
     /**
-     * Helper: Get monthly cash-out total (BOTH management_cashout + cashout_request payments)
+     * Helper: Get monthly cash-out total
      */
-private function getMonthlyCashOut($startDate, $endDate, $category = 'all')
-{
-    // Get category ID if a specific category is selected
-    $categoryId = null;
-    if ($category !== 'all') {
-        $categoryId = $this->getCategoryIdByName($category);
+    private function getMonthlyCashOut($startDate, $endDate, $category = 'all')
+    {
+        if ($category === 'utilities') {
+            return $this->getMonthlyUtilitiesCashOut($startDate, $endDate);
+        }
+        
+        // Get category ID if a specific category is selected (for management_cashout)
+        $categoryId = null;
+        if ($category !== 'all' && $category !== 'cashout') {
+            $categoryId = $this->getCategoryIdByName($category);
+        }
+        
+        // Query for other categories
+        $query = "
+            SELECT COALESCE(SUM(total_amount), 0) as total
+            FROM (
+                -- Management cashout
+                SELECT amount as total_amount
+                FROM management_cashout
+                WHERE DATE(transaction_date) BETWEEN ? AND ? 
+                AND payment_status = 'paid'
+                " . ($categoryId ? "AND category_id = ?" : "") . "
+                
+                UNION ALL
+                
+                -- Cashout request payments (only for 'cashout' or 'all' categories)
+                " . (($category === 'all' || $category === 'cashout') ? "
+                SELECT cp.amount as total_amount
+                FROM cashout_payments cp
+                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                WHERE DATE(cp.payment_date) BETWEEN ? AND ?
+                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                " : "SELECT 0 as total_amount") . "
+                
+                UNION ALL
+                
+                -- Salary payments (payslips) - only for 'all' category
+                " . ($category === 'all' ? "
+                SELECT net_salary as total_amount
+                FROM payslips
+                WHERE DATE(updated_at) BETWEEN ? AND ?
+                AND status = 'paid'
+                " : "SELECT 0 as total_amount") . "
+            ) combined
+        ";
+
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            throw new RuntimeException("SQL Prepare Error: " . $this->db->error);
+        }
+
+        // Bind parameters based on category
+        if ($categoryId) {
+            // With category: start, end, categoryId, start, end, start, end
+            $stmt->bind_param("ssissss", $startDate, $endDate, $categoryId, $startDate, $endDate, $startDate, $endDate);
+        } else if ($category === 'all') {
+            // Without category: start, end, start, end, start, end
+            $stmt->bind_param("ssssss", $startDate, $endDate, $startDate, $endDate, $startDate, $endDate);
+        } else if ($category === 'cashout') {
+            // Cashout only: start, end, start, end
+            $stmt->bind_param("ssss", $startDate, $endDate, $startDate, $endDate);
+        } else {
+            // Other management categories: start, end, categoryId
+            $stmt->bind_param("ssi", $startDate, $endDate, $categoryId);
+        }
+        
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        
+        return (float)($row['total'] ?? 0);
     }
-    
-    // Query combining ALL THREE sources
-    $query = "
-        SELECT COALESCE(SUM(total_amount), 0) as total
-        FROM (
-            -- Management cashout
-            SELECT amount as total_amount
-            FROM management_cashout
-            WHERE DATE(transaction_date) BETWEEN ? AND ? 
-            AND payment_status = 'paid'
-            " . ($categoryId ? "AND category_id = ?" : "") . "
-            
-            UNION ALL
-            
-            -- Cashout request payments
-            SELECT cp.amount as total_amount
+
+    /**
+     * Helper: Get monthly utilities cashout from cashout_requests
+     */
+    private function getMonthlyUtilitiesCashOut($startDate, $endDate)
+    {
+        $utilityKeywords = ['bill', 'bills', 'electricity', 'wifi', 'internet', 'water', 'gas', 'utility', 'utilities', 'power', 'light', 'electric'];
+        
+        $keywordConditions = [];
+        foreach ($utilityKeywords as $keyword) {
+            $keywordConditions[] = "LOWER(cr.purpose_paid_to) LIKE '%" . $this->db->real_escape_string(strtolower($keyword)) . "%'";
+        }
+        $keywordCondition = implode(' OR ', $keywordConditions);
+        
+        $query = "
+            SELECT COALESCE(SUM(cp.amount), 0) as total
             FROM cashout_payments cp
             LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
             WHERE DATE(cp.payment_date) BETWEEN ? AND ?
             AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
-            
-            UNION ALL
-            
-            -- Salary payments (payslips)
-            SELECT net_salary as total_amount
-            FROM payslips
-            WHERE DATE(updated_at) BETWEEN ? AND ?
-            AND status = 'paid'
-        ) combined
-    ";
+            AND ($keywordCondition)
+        ";
 
-    $stmt = $this->db->prepare($query);
-    if (!$stmt) {
-        throw new RuntimeException("SQL Prepare Error: " . $this->db->error);
+        $stmt = $this->db->prepare($query);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        
+        return (float)($row['total'] ?? 0);
     }
-
-    // Bind parameters: 6 dates total (2 for management, 2 for cashout, 2 for payslips)
-    if ($categoryId) {
-        // With category: start, end, categoryId, start, end, start, end
-        $stmt->bind_param("ssissss", $startDate, $endDate, $categoryId, $startDate, $endDate, $startDate, $endDate);
-    } else {
-        // Without category: start, end, start, end, start, end
-        $stmt->bind_param("ssssss", $startDate, $endDate, $startDate, $endDate, $startDate, $endDate);
-    }
-    
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    
-    return (float)($row['total'] ?? 0);
-}
-
 
     /**
-     * Get overall statistics with period filter - FIXED VERSION
+     * Get overall statistics with period filter
      */
     public function getOverallStatistics($periodType = 'all_time', $year = null, $month = null, $startDate = null, $endDate = null, $projectId = null, $category = 'all')
     {
@@ -1003,191 +1179,222 @@ private function getMonthlyCashOut($startDate, $endDate, $category = 'all')
     /**
      * Helper: Build date conditions for queries
      */
-/**
- * Helper: Build date conditions for queries - FIXED to include payslips
- */
-/**
- * Helper: Build date conditions for queries - FIXED with correct payslips column
- */
-private function buildDateConditions($periodType, $year, $month, $startDate, $endDate)
-{
-    $conditions = [
-        'landshare' => '',
-        'emi' => '',
-        'management_cashout' => '',
-        'cashout_request' => '',
-        'payslips' => '', // For salary payments
-        'management_cashout_params' => [],
-        'management_cashout_types' => '',
-        'cashout_request_params' => [],
-        'cashout_request_types' => '',
-        'payslips_params' => [],
-        'payslips_types' => '',
-        'params' => [],
-        'types' => ''
-    ];
+    private function buildDateConditions($periodType, $year, $month, $startDate, $endDate)
+    {
+        $conditions = [
+            'landshare' => '',
+            'emi' => '',
+            'management_cashout' => '',
+            'cashout_request' => '',
+            'payslips' => '',
+            'management_cashout_params' => [],
+            'management_cashout_types' => '',
+            'cashout_request_params' => [],
+            'cashout_request_types' => '',
+            'payslips_params' => [],
+            'payslips_types' => '',
+            'params' => [],
+            'types' => ''
+        ];
 
-    if ($periodType === 'all_time') {
+        if ($periodType === 'all_time') {
+            return $conditions;
+        }
+
+        if ($periodType === 'monthly' && $year && $month) {
+            $startDate = "$year-$month-01";
+            $endDate = date('Y-m-t', strtotime($startDate));
+            
+            $conditions['landshare'] = " AND DATE(lp.payment_date) BETWEEN ? AND ?";
+            $conditions['emi'] = " AND DATE(es.due_date) BETWEEN ? AND ?";
+            $conditions['management_cashout'] = " AND DATE(transaction_date) BETWEEN ? AND ?";
+            $conditions['cashout_request'] = " AND DATE(cp.payment_date) BETWEEN ? AND ?";
+            $conditions['payslips'] = " AND payslip_month BETWEEN ? AND ?";
+            
+            $conditions['management_cashout_params'] = [$startDate, $endDate];
+            $conditions['management_cashout_types'] = "ss";
+            $conditions['cashout_request_params'] = [$startDate, $endDate];
+            $conditions['cashout_request_types'] = "ss";
+            $conditions['payslips_params'] = [$startDate, $endDate];
+            $conditions['payslips_types'] = "ss";
+            
+            $conditions['params'] = [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate];
+            $conditions['types'] = "ssssss";
+        }
+        elseif ($periodType === 'yearly' && $year) {
+            $startDate = "$year-01-01";
+            $endDate = "$year-12-31";
+            
+            $conditions['landshare'] = " AND DATE(lp.payment_date) BETWEEN ? AND ?";
+            $conditions['emi'] = " AND DATE(es.due_date) BETWEEN ? AND ?";
+            $conditions['management_cashout'] = " AND DATE(transaction_date) BETWEEN ? AND ?";
+            $conditions['cashout_request'] = " AND DATE(cp.payment_date) BETWEEN ? AND ?";
+            $conditions['payslips'] = " AND payslip_month BETWEEN ? AND ?";
+            
+            $conditions['management_cashout_params'] = [$startDate, $endDate];
+            $conditions['management_cashout_types'] = "ss";
+            $conditions['cashout_request_params'] = [$startDate, $endDate];
+            $conditions['cashout_request_types'] = "ss";
+            $conditions['payslips_params'] = [$startDate, $endDate];
+            $conditions['payslips_types'] = "ss";
+            
+            $conditions['params'] = [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate];
+            $conditions['types'] = "ssssss";
+        }
+        elseif ($periodType === 'custom' && $startDate && $endDate) {
+            $conditions['landshare'] = " AND DATE(lp.payment_date) BETWEEN ? AND ?";
+            $conditions['emi'] = " AND DATE(es.due_date) BETWEEN ? AND ?";
+            $conditions['management_cashout'] = " AND DATE(transaction_date) BETWEEN ? AND ?";
+            $conditions['cashout_request'] = " AND DATE(cp.payment_date) BETWEEN ? AND ?";
+            $conditions['payslips'] = " AND payslip_month BETWEEN ? AND ?";
+            
+            $conditions['management_cashout_params'] = [$startDate, $endDate];
+            $conditions['management_cashout_types'] = "ss";
+            $conditions['cashout_request_params'] = [$startDate, $endDate];
+            $conditions['cashout_request_types'] = "ss";
+            $conditions['payslips_params'] = [$startDate, $endDate];
+            $conditions['payslips_types'] = "ss";
+            
+            $conditions['params'] = [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate];
+            $conditions['types'] = "ssssss";
+        }
+
         return $conditions;
     }
 
-    if ($periodType === 'monthly' && $year && $month) {
-        $startDate = "$year-$month-01";
-        $endDate = date('Y-m-t', strtotime($startDate));
-        
-        $conditions['landshare'] = " AND DATE(lp.payment_date) BETWEEN ? AND ?";
-        $conditions['emi'] = " AND DATE(es.due_date) BETWEEN ? AND ?";
-        $conditions['management_cashout'] = " AND DATE(transaction_date) BETWEEN ? AND ?";
-        $conditions['cashout_request'] = " AND DATE(cp.payment_date) BETWEEN ? AND ?";
-        $conditions['payslips'] = " AND payslip_month BETWEEN ? AND ?"; // CHANGED to payslip_month
-        
-        $conditions['management_cashout_params'] = [$startDate, $endDate];
-        $conditions['management_cashout_types'] = "ss";
-        $conditions['cashout_request_params'] = [$startDate, $endDate];
-        $conditions['cashout_request_types'] = "ss";
-        $conditions['payslips_params'] = [$startDate, $endDate];
-        $conditions['payslips_types'] = "ss";
-        
-        $conditions['params'] = [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate];
-        $conditions['types'] = "ssssss";
-    }
-    elseif ($periodType === 'yearly' && $year) {
-        $startDate = "$year-01-01";
-        $endDate = "$year-12-31";
-        
-        $conditions['landshare'] = " AND DATE(lp.payment_date) BETWEEN ? AND ?";
-        $conditions['emi'] = " AND DATE(es.due_date) BETWEEN ? AND ?";
-        $conditions['management_cashout'] = " AND DATE(transaction_date) BETWEEN ? AND ?";
-        $conditions['cashout_request'] = " AND DATE(cp.payment_date) BETWEEN ? AND ?";
-        $conditions['payslips'] = " AND payslip_month BETWEEN ? AND ?"; // CHANGED to payslip_month
-        
-        $conditions['management_cashout_params'] = [$startDate, $endDate];
-        $conditions['management_cashout_types'] = "ss";
-        $conditions['cashout_request_params'] = [$startDate, $endDate];
-        $conditions['cashout_request_types'] = "ss";
-        $conditions['payslips_params'] = [$startDate, $endDate];
-        $conditions['payslips_types'] = "ss";
-        
-        $conditions['params'] = [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate];
-        $conditions['types'] = "ssssss";
-    }
-    elseif ($periodType === 'custom' && $startDate && $endDate) {
-        $conditions['landshare'] = " AND DATE(lp.payment_date) BETWEEN ? AND ?";
-        $conditions['emi'] = " AND DATE(es.due_date) BETWEEN ? AND ?";
-        $conditions['management_cashout'] = " AND DATE(transaction_date) BETWEEN ? AND ?";
-        $conditions['cashout_request'] = " AND DATE(cp.payment_date) BETWEEN ? AND ?";
-        $conditions['payslips'] = " AND payslip_month BETWEEN ? AND ?"; // CHANGED to payslip_month
-        
-        $conditions['management_cashout_params'] = [$startDate, $endDate];
-        $conditions['management_cashout_types'] = "ss";
-        $conditions['cashout_request_params'] = [$startDate, $endDate];
-        $conditions['cashout_request_types'] = "ss";
-        $conditions['payslips_params'] = [$startDate, $endDate];
-        $conditions['payslips_types'] = "ss";
-        
-        $conditions['params'] = [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate];
-        $conditions['types'] = "ssssss";
-    }
-
-    return $conditions;
-}
     /**
-     * Helper: Get cash-out data for statistics
+     * Helper: Get cash-out total for statistics with period & category filters
      */
-/**
- * Helper: Get cash-out total for statistics with period & category filters
- */
-/**
- * Helper: Get cash-out total for statistics with period & category filters - FIXED to include payslips
- */
-private function getCashOutForStatistics($periodType = 'all_time', $year = null, $month = null, $startDate = null, $endDate = null, $category = 'all', $projectId = null)
-{
-    // Build date conditions based on period type
-    $dateConditions = $this->buildDateConditions($periodType, $year, $month, $startDate, $endDate);
+    private function getCashOutForStatistics($periodType = 'all_time', $year = null, $month = null, $startDate = null, $endDate = null, $category = 'all', $projectId = null)
+    {
+        // Build date conditions based on period type
+        $dateConditions = $this->buildDateConditions($periodType, $year, $month, $startDate, $endDate);
 
-    // Get category ID if a specific category is selected
-    $categoryId = null;
-    if ($category !== 'all') {
-        $categoryId = $this->getCategoryIdByName($category);
-    }
+        // Get category ID if a specific category is selected (for management_cashout)
+        $categoryId = null;
+        if ($category !== 'all' && $category !== 'cashout' && $category !== 'utilities') {
+            $categoryId = $this->getCategoryIdByName($category);
+        }
 
-    // FIXED QUERY: Properly combines ALL THREE sources
-    $query = "
-        SELECT COALESCE(SUM(total_amount), 0) as total
-        FROM (
-            -- Management cashout
-            SELECT amount as total_amount
-            FROM management_cashout
-            WHERE payment_status = 'paid'
-            {$dateConditions['management_cashout']}
-            " . ($categoryId ? " AND category_id = ?" : "") . "
+        // For utilities category, we need a special query
+        if ($category === 'utilities') {
+            $utilityKeywords = ['bill', 'bills', 'electricity', 'wifi', 'internet', 'water', 'gas', 'utility', 'utilities', 'power', 'light', 'electric'];
             
-            UNION ALL
+            $keywordConditions = [];
+            foreach ($utilityKeywords as $keyword) {
+                $keywordConditions[] = "LOWER(cr.purpose_paid_to) LIKE '%" . $this->db->real_escape_string(strtolower($keyword)) . "%'";
+            }
+            $keywordCondition = implode(' OR ', $keywordConditions);
             
-            -- Cashout request payments (no category filter)
-            SELECT cp.amount as total_amount
-            FROM cashout_payments cp
-            LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
-            WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
-            {$dateConditions['cashout_request']}
+            $query = "
+                SELECT COALESCE(SUM(cp.amount), 0) as total
+                FROM cashout_payments cp
+                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                AND ($keywordCondition)
+                {$dateConditions['cashout_request']}
+            ";
             
-            UNION ALL
+            $stmt = $this->db->prepare($query);
+            if (!$stmt) {
+                throw new RuntimeException("SQL Prepare Error: " . $this->db->error);
+            }
+
+            $params = [];
+            $types = "";
             
-            -- Salary payments (payslips) - ONLY include paid salaries
-            SELECT net_salary as total_amount
-            FROM payslips
-            WHERE status = 'paid'
-            {$dateConditions['payslips']}
-        ) combined
-    ";
+            // Cashout request dates
+            if (!empty($dateConditions['cashout_request_params'])) {
+                $params = array_merge($params, $dateConditions['cashout_request_params']);
+                $types .= $dateConditions['cashout_request_types'];
+            }
+            
+            // Bind parameters if any
+            if (!empty($params)) {
+                $stmt->bind_param($types, ...$params);
+            }
+        } else {
+            // For other categories
+            $query = "
+                SELECT COALESCE(SUM(total_amount), 0) as total
+                FROM (
+                    -- Management cashout
+                    SELECT amount as total_amount
+                    FROM management_cashout
+                    WHERE payment_status = 'paid'
+                    {$dateConditions['management_cashout']}
+                    " . ($categoryId ? " AND category_id = ?" : "") . "
+                    
+                    UNION ALL
+                    
+                    -- Cashout request payments (only for 'cashout' or 'all' categories)
+                    " . (($category === 'all' || $category === 'cashout') ? "
+                    SELECT cp.amount as total_amount
+                    FROM cashout_payments cp
+                    LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                    WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                    {$dateConditions['cashout_request']}
+                    " : "SELECT 0 as total_amount") . "
+                    
+                    UNION ALL
+                    
+                    -- Salary payments (payslips) - ONLY for 'all' category
+                    " . ($category === 'all' ? "
+                    SELECT net_salary as total_amount
+                    FROM payslips
+                    WHERE status = 'paid'
+                    {$dateConditions['payslips']}
+                    " : "SELECT 0 as total_amount") . "
+                ) combined
+            ";
 
-    $stmt = $this->db->prepare($query);
-    if (!$stmt) {
-        throw new RuntimeException("SQL Prepare Error: " . $this->db->error);
+            $stmt = $this->db->prepare($query);
+            if (!$stmt) {
+                throw new RuntimeException("SQL Prepare Error: " . $this->db->error);
+            }
+
+            // Build the parameters dynamically
+            $params = [];
+            $types = "";
+
+            // Management cashout dates
+            if (!empty($dateConditions['management_cashout_params'])) {
+                $params = array_merge($params, $dateConditions['management_cashout_params']);
+                $types .= $dateConditions['management_cashout_types'];
+            }
+
+            // Category (only for management_cashout)
+            if ($categoryId) {
+                $params[] = $categoryId;
+                $types .= "i";
+            }
+
+            // Cashout request dates (only for 'all' or 'cashout' categories)
+            if (($category === 'all' || $category === 'cashout') && !empty($dateConditions['cashout_request_params'])) {
+                $params = array_merge($params, $dateConditions['cashout_request_params']);
+                $types .= $dateConditions['cashout_request_types'];
+            }
+
+            // Payslips dates (only for 'all' category)
+            if ($category === 'all' && !empty($dateConditions['payslips_params'])) {
+                $params = array_merge($params, $dateConditions['payslips_params']);
+                $types .= $dateConditions['payslips_types'];
+            }
+            
+            // Bind parameters if any
+            if (!empty($params)) {
+                $stmt->bind_param($types, ...$params);
+            }
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+
+        return [
+            'total' => (float)($row['total'] ?? 0)
+        ];
     }
-
-    // Build the parameters dynamically
-    $params = [];
-    $types = "";
-
-    // Management cashout dates
-    if (!empty($dateConditions['management_cashout_params'])) {
-        $params = array_merge($params, $dateConditions['management_cashout_params']);
-        $types .= $dateConditions['management_cashout_types'];
-    }
-
-    // Category (only for management_cashout)
-    if ($categoryId) {
-        $params[] = $categoryId;
-        $types .= "i";
-    }
-
-    // Cashout request dates
-    if (!empty($dateConditions['cashout_request_params'])) {
-        $params = array_merge($params, $dateConditions['cashout_request_params']);
-        $types .= $dateConditions['cashout_request_types'];
-    }
-
-    // Payslips dates
-    if (!empty($dateConditions['payslips_params'])) {
-        $params = array_merge($params, $dateConditions['payslips_params']);
-        $types .= $dateConditions['payslips_types'];
-    }
-
-    // Bind parameters if any
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-
-    return [
-        'total' => (float)($row['total'] ?? 0)
-    ];
-}
-
 
     /**
      * Helper: Get category ID by name
@@ -1198,6 +1405,7 @@ private function getCashOutForStatistics($periodType = 'all_time', $year = null,
         $categoryMap = [
             'cashout' => 2,
             'landshare' => null,
+            'service_fee' => null,
             'utilities' => 1,
             'other' => null
         ];
@@ -1206,42 +1414,49 @@ private function getCashOutForStatistics($periodType = 'all_time', $year = null,
     }
 
     /**
-     * NEW: Get service fee from EMI for any period
+     * Get detailed utilities transactions for view
      */
-    public function getServiceFeeFromEmi($fromDate = null, $toDate = null, $projectId = null, $category = null)
+    public function getUtilitiesTransactions($startDate, $endDate)
     {
+        $utilityKeywords = ['bill', 'bills', 'electricity', 'wifi', 'internet', 'water', 'gas', 'utility', 'utilities', 'power', 'light', 'electric'];
+        
+        $keywordConditions = [];
+        foreach ($utilityKeywords as $keyword) {
+            $keywordConditions[] = "LOWER(cr.purpose_paid_to) LIKE '%" . $this->db->real_escape_string(strtolower($keyword)) . "%'";
+        }
+        $keywordCondition = implode(' OR ', $keywordConditions);
+        
         $query = "
-            SELECT COALESCE(SUM(es.emi_amount * 0.10), 0) as service_fee
-            FROM emi_schedules es
-            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
-            WHERE es.status = 'paid'
+            SELECT 
+                cp.id,
+                cp.cashout_request_id,
+                cp.amount,
+                cp.payment_date,
+                cp.payment_method,
+                cp.transaction_ref,
+                cr.purpose_paid_to,
+                cr.description,
+                u.full_name as requester_name
+            FROM cashout_payments cp
+            LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+            LEFT JOIN users u ON cr.requested_by = u.id
+            WHERE DATE(cp.payment_date) BETWEEN ? AND ?
+            AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+            AND ($keywordCondition)
+            ORDER BY cp.payment_date DESC
         ";
 
-        $params = [];
-        $types = "";
-
-        if ($fromDate && $toDate) {
-            $query .= " AND DATE(es.due_date) BETWEEN ? AND ?";
-            $params[] = $fromDate;
-            $params[] = $toDate;
-            $types .= "ss";
-        }
-
-        if ($projectId) {
-            $query .= " AND lb.project_id = ?";
-            $params[] = $projectId;
-            $types .= "i";
-        }
-
         $stmt = $this->db->prepare($query);
-        if (!empty($params)) {
-            $stmt->bind_param($types, ...$params);
-        }
+        $stmt->bind_param("ss", $startDate, $endDate);
         $stmt->execute();
         $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-
-        return (float)($row['service_fee'] ?? 0);
+        
+        $transactions = [];
+        while ($row = $result->fetch_assoc()) {
+            $transactions[] = $row;
+        }
+        
+        return $transactions;
     }
 }
 ?>

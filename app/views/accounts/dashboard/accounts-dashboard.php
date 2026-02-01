@@ -15,15 +15,15 @@ if (empty($chartLabels) && !empty($monthlyData)) {
     }
 }
 
-// Period display text
+// Period display text - CHANGED: Default to 'all_time'
 $periodText = '';
-switch ($period ?? 'monthly') {
+switch ($period ?? 'all_time') {
     case 'daily': $periodText = 'Today'; break;
     case 'weekly': $periodText = 'This Week'; break;
     case 'monthly': $periodText = 'This Month'; break;
     case 'yearly': $periodText = 'This Year'; break;
     case 'all_time': $periodText = 'All Time'; break;
-    default: $periodText = 'This Month'; break;
+    default: $periodText = 'All Time'; break;
 }
 
 // Weekly data for charts
@@ -46,6 +46,24 @@ if (isset($statistics['by_payment_method'])) {
 
 // Check if we have any data to show
 $hasTransactions = !empty($recentTransactions);
+
+// Helper function to get status badge
+function getStatusBadge($status) {
+    switch ($status) {
+        case 'pending':
+            return '<span class="bd-badge bg-warning">Pending</span>';
+        case 'approved':
+            return '<span class="bd-badge bg-success">Approved</span>';
+        case 'rejected':
+            return '<span class="bd-badge bg-danger">Rejected</span>';
+        case 'partially_paid':
+            return '<span class="bd-badge bg-info">Partially Paid</span>';
+        case 'fully_paid':
+            return '<span class="bd-badge bg-success">Fully Paid</span>';
+        default:
+            return '<span class="bd-badge bg-secondary">' . ucfirst($status) . '</span>';
+    }
+}
 ?>
 
 <style>
@@ -134,11 +152,11 @@ $hasTransactions = !empty($recentTransactions);
                 <div class="row mt-3">
                     <div class="col-12">
                         <div class="btn__group mb-3">
-                            <a href="?view=<?= $viewType ?>&period=daily" class="btn btn-sm <?= ($period ?? 'monthly') == 'daily' ? 'btn-primary' : 'btn-outline-secondary' ?>">Daily</a>
-                            <a href="?view=<?= $viewType ?>&period=weekly" class="btn btn-sm <?= ($period ?? 'monthly') == 'weekly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Weekly</a>
-                            <a href="?view=<?= $viewType ?>&period=monthly" class="btn btn-sm <?= ($period ?? 'monthly') == 'monthly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Monthly</a>
-                            <a href="?view=<?= $viewType ?>&period=yearly" class="btn btn-sm <?= ($period ?? 'monthly') == 'yearly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Yearly</a>
-                            <a href="?view=<?= $viewType ?>&period=all_time" class="btn btn-sm <?= ($period ?? 'monthly') == 'all_time' ? 'btn-primary' : 'btn-outline-secondary' ?>">All Time</a>
+                            <a href="?view=<?= $viewType ?>&period=daily" class="btn btn-sm <?= ($period ?? 'all_time') == 'daily' ? 'btn-primary' : 'btn-outline-secondary' ?>">Daily</a>
+                            <a href="?view=<?= $viewType ?>&period=weekly" class="btn btn-sm <?= ($period ?? 'all_time') == 'weekly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Weekly</a>
+                            <a href="?view=<?= $viewType ?>&period=monthly" class="btn btn-sm <?= ($period ?? 'all_time') == 'monthly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Monthly</a>
+                            <a href="?view=<?= $viewType ?>&period=yearly" class="btn btn-sm <?= ($period ?? 'all_time') == 'yearly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Yearly</a>
+                            <a href="?view=<?= $viewType ?>&period=all_time" class="btn btn-sm <?= ($period ?? 'all_time') == 'all_time' ? 'btn-primary' : 'btn-outline-secondary' ?>">All Time</a>
                         </div>
                     </div>
                 </div>
@@ -164,7 +182,7 @@ $hasTransactions = !empty($recentTransactions);
                     <span><i class="fa-light fa-arrow-down"></i></span>
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">Total Cash In</h6>
+                    <h6 class="card__sub-title mb-2 text-muted">Total Revenue</h6>
                     <h4 class="card__title mb-0 text-success text-break">৳<?= number_format($overviewStats['total_cashin'], 2) ?></h4>
                 </div>
             </div>
@@ -178,7 +196,7 @@ $hasTransactions = !empty($recentTransactions);
                     <span><i class="fa-light fa-arrow-up"></i></span>
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">Total Cash Out</h6>
+                    <h6 class="card__sub-title mb-2 text-muted">Total Expenses</h6>
                     <h4 class="card__title mb-0 text-danger text-break">৳<?= number_format($overviewStats['total_cashout'], 2) ?></h4>
                 </div>
             </div>
@@ -200,20 +218,6 @@ $hasTransactions = !empty($recentTransactions);
             </div>
         </div>
     </div>
-
-    <!-- <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-        <div class="card__wrapper h-100 dashboard-card card-secondary">
-            <div class="d-flex align-items-center gap-2 h-100">
-                <div class="card__icon icon-secondary">
-                    <span><i class="fa-light fa-users"></i></span>
-                </div>
-                <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">Total Clients</h6>
-                    <h4 class="card__title mb-0 text-break"><?= number_format($overviewStats['total_clients']) ?></h4>
-                </div>
-            </div>
-        </div>
-    </div> -->
 
     <!-- Charts Section -->
     <div class="col-xxl-8 col-xl-12 col-lg-12 mb-3">
@@ -479,7 +483,7 @@ $hasTransactions = !empty($recentTransactions);
                         <span><i class="fa-light fa-receipt"></i></span>
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Total Transactions</h6>
+                        <h6 class="card__sub-title mb-2 text-muted">Total Requests</h6>
                         <h4 class="card__title mb-0 text-break"><?= number_format($statistics['total_transactions'] ?? 0) ?></h4>
                     </div>
                 </div>
@@ -543,13 +547,17 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     <?php endif; ?>
 
-    <!-- Recent Transactions -->
+    <!-- Recent Transactions / Cashout Requests -->
     <div class="col-12 mt-3">
         <div class="card__wrapper">
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <h5 class="card__title mb-0" id="transactionsTitle">
-                        Recent <?= $viewType === 'cashin' ? 'Cash In' : 'Cash Out' ?> Transactions
+                        <?php if ($viewType === 'cashin'): ?>
+                            Recent Cash In Transactions
+                        <?php else: ?>
+                            Recent Cashout Requests
+                        <?php endif; ?>
                     </h5>
                     <small class="text-muted"><?= $periodText ?></small>
                 </div>
@@ -560,60 +568,112 @@ $hasTransactions = !empty($recentTransactions);
             </div>
 
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20">
-                    <thead>
-                        <tr class="table__title">
-                            <th>Date</th>
-                            <th>Description</th>
-                            <th>Amount</th>
-                            <th>Method</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="transactionsTableBody">
-                        <?php if ($hasTransactions): ?>
-                            <?php foreach ($recentTransactions as $transaction): ?>
-                                <tr>
-                                    <td><?= date('d M, Y', strtotime($transaction['date'])) ?></td>
-                                    <td>
-                                        <?php if ($viewType === 'cashin'): ?>
-                                            <?= htmlspecialchars($transaction['description'] ?? 'N/A') ?>
-                                        <?php else: ?>
-                                            <strong><?= htmlspecialchars($transaction['paid_to'] ?? $transaction['person_name'] ?? 'N/A') ?></strong>
-                                            <?php if (!empty($transaction['description'])): ?>
-                                                <br><small class="text-muted"><?= htmlspecialchars($transaction['description']) ?></small>
+                <?php if ($viewType === 'cashin'): ?>
+                    <!-- Cash In Transactions Table -->
+                    <table class="table mb-20">
+                        <thead>
+                            <tr class="table__title">
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTableBody">
+                            <?php if ($hasTransactions): ?>
+                                <?php foreach ($recentTransactions as $transaction): ?>
+                                    <tr>
+                                        <td><?= date('d M, Y', strtotime($transaction['date'])) ?></td>
+                                        <td><?= htmlspecialchars($transaction['description'] ?? 'N/A') ?></td>
+                                        <td><strong>৳<?= number_format($transaction['amount'], 2) ?></strong></td>
+                                        <td>
+                                            <span class="bd-badge bg-light text-dark">
+                                                <?= ucfirst($transaction['payment_method'] ?? 'N/A') ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?php if (($transaction['payment_status'] ?? '') === 'paid'): ?>
+                                                <span class="bd-badge bg-success">Paid</span>
+                                            <?php elseif (($transaction['payment_status'] ?? '') === 'pending'): ?>
+                                                <span class="bd-badge bg-warning">Pending</span>
+                                            <?php else: ?>
+                                                <span class="bd-badge bg-danger">Failed</span>
                                             <?php endif; ?>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><strong>৳<?= number_format($transaction['amount'], 2) ?></strong></td>
-                                    <td>
-                                        <span class="bd-badge bg-light text-dark">
-                                            <?= ucfirst($transaction['payment_method'] ?? 'N/A') ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <?php if (($transaction['payment_status'] ?? '') === 'paid'): ?>
-                                            <span class="bd-badge bg-success">Paid</span>
-                                        <?php elseif (($transaction['payment_status'] ?? '') === 'pending'): ?>
-                                            <span class="bd-badge bg-warning">Pending</span>
-                                        <?php else: ?>
-                                            <span class="bd-badge bg-danger">Failed</span>
-                                        <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="fa-light fa-inbox fa-2x mb-3"></i><br>
+                                            No transactions found for <?= $periodText ?>
+                                        </div>
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="6" class="text-center py-4">
-                                    <div class="text-muted">
-                                        <i class="fa-light fa-inbox fa-2x mb-3"></i><br>
-                                        No transactions found for <?= $periodText ?>
-                                    </div>
-                                </td>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <!-- Cashout Requests Table -->
+                    <table class="table mb-20">
+                        <thead>
+                            <tr class="table__title">
+                                <th>Request Date</th>
+                                <th>Requested By</th>
+                                <th>Purpose / Paid To</th>
+                                <th>Requested Amount</th>
+                                <th>Approved Amount</th>
+                                <th>Payment Method</th>
+                                <th>Status</th>
                             </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody id="transactionsTableBody">
+                            <?php if ($hasTransactions): ?>
+                                <?php foreach ($recentTransactions as $request): ?>
+                                    <tr>
+                                        <td><?= date('d M, Y', strtotime($request['created_at'])) ?></td>
+                                        <td>
+                                            <strong><?= htmlspecialchars($request['requester_name'] ?? 'N/A') ?></strong>
+                                        </td>
+                                        <td>
+                                            <strong><?= htmlspecialchars($request['purpose_paid_to'] ?? 'N/A') ?></strong>
+                                            <?php if (!empty($request['description'])): ?>
+                                                <br><small class="text-muted"><?= htmlspecialchars(substr($request['description'], 0, 50)) ?><?= strlen($request['description']) > 50 ? '...' : '' ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><strong>৳<?= number_format($request['amount'], 2) ?></strong></td>
+                                        <td>
+                                            <?php if (!empty($request['approved_amount'])): ?>
+                                                <strong class="text-success">৳<?= number_format($request['approved_amount'], 2) ?></strong>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="bd-badge bg-light text-dark">
+                                                <?= ucfirst($request['payment_method'] ?? 'N/A') ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?= getStatusBadge($request['display_status'] ?? 'pending') ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="fa-light fa-inbox fa-2x mb-3"></i><br>
+                                            No cashout requests found for <?= $periodText ?>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
             </div>
         </div>
     </div>

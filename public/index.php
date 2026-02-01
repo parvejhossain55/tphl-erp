@@ -425,10 +425,12 @@ $routes = [
     "add-cashout-payment" => ["controller" => "CashoutRequestController", "method" => "addPayment"],
     "delete-cashout-payment" => ["controller" => "CashoutRequestController", "method" => "deletePayment"],
 
-    // Utility routes
-    "download-cashout-attachment" => ["controller" => "CashoutRequestController", "method" => "downloadAttachment"],
-    "export-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "export"],
-    //rafi End
+// Utility routes
+"download-cashout-attachment" => ["controller" => "CashoutRequestController", "method" => "downloadAttachment"],
+"export-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "export"],
+"sync-cashout-approvals" => ["controller" => "CashoutRequestController", "method" => "syncAllApprovals"],
+
+//rafi End
 
 
 ];

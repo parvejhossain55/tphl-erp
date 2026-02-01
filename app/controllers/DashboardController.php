@@ -25,11 +25,11 @@ class DashboardController extends Controller
         }
 
         // Get period from query parameter (default: monthly)
-        $period = $_GET['period'] ?? 'monthly';
+        $period = $_GET['period'] ?? 'all_time';
 
         // Validate period
         if (!in_array($period, ['daily', 'weekly', 'monthly', 'yearly', 'all_time'])) {
-            $period = 'monthly';
+            $period = 'all_time';
         }
 
         // Get dashboard statistics based on view type and period
@@ -45,7 +45,8 @@ class DashboardController extends Controller
             $yearlyData = $this->dashboardModel->getYearlyTransactionData('cashin', 3, $period);
         } else {
             $statistics = $this->dashboardModel->getCashOutStatistics($period);
-            $recentTransactions = $this->dashboardModel->getRecentCashOutTransactions(10, $period);
+            // Get cashout requests instead of transactions (only 5 rows)
+            $recentTransactions = $this->dashboardModel->getRecentCashOutRequests(5, $period);
             $monthlyData = $this->dashboardModel->getMonthlyCashOutData(6, $period);
             $weeklyData = $this->dashboardModel->getWeeklyTransactionData('cashout', $period);
             $yearlyData = $this->dashboardModel->getYearlyTransactionData('cashout', 3, $period);
@@ -112,7 +113,8 @@ class DashboardController extends Controller
             $yearlyData = $this->dashboardModel->getYearlyTransactionData('cashin', 3, $period);
         } else {
             $statistics = $this->dashboardModel->getCashOutStatistics($period);
-            $recentTransactions = $this->dashboardModel->getRecentCashOutTransactions(10, $period);
+            // Get cashout requests instead of transactions (only 5 rows)
+            $recentTransactions = $this->dashboardModel->getRecentCashOutRequests(5, $period);
             $monthlyData = $this->dashboardModel->getMonthlyCashOutData(6, $period);
             $weeklyData = $this->dashboardModel->getWeeklyTransactionData('cashout', $period);
             $yearlyData = $this->dashboardModel->getYearlyTransactionData('cashout', 3, $period);
