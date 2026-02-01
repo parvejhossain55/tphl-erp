@@ -216,7 +216,8 @@ $show_breadcrumb = true;
                                     <?php elseif ($payslip['status'] == 'reject'): ?>
                                         <span class="bd-badge bg-danger">Reject</span>
                                     <?php else: ?>
-                                        <span class="bd-badge bg-warning">Pending</span>
+                                        
+                                        <span class="status-badge status-pending">Pending</span>
                                     <?php endif; ?>
                                 </td>
 
@@ -447,6 +448,21 @@ $show_breadcrumb = true;
 
     });
 </script>
+
+<style>
+    .status-pending {
+    background: #b4f4b5;
+    color: #085f06;
+}
+
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+    </style>
 
 
 

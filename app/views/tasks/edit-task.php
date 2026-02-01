@@ -32,13 +32,13 @@
                                       <div class="col-lg-6">
                                           <div class="from__input-box">
                                               <div class="form__input-title">
-                                                  <label for="employee_id">Assigned Employee <span>*</span></label>
+                                                  <label for="user_id">Assigned Employee <span>*</span></label>
                                               </div>
                                               <div class="form__input">
-                                                  <select id="employee_id" name="employee_id" class="form-select">
-                                                      <?php foreach ($employees as $employee): ?>
+                                                  <select id="user_id" name="user_id" class="form-select">
+                                                      <?php foreach ($users as $employee): ?>
                                                           <option value="<?= $employee['id'] ?>"
-                                                              <?= $employee['id'] == $task['employee_id'] ? 'selected' : '' ?>>
+                                                              <?= $employee['id'] == $task['user_id'] ? 'selected' : '' ?>>
                                                               <?= $employee['full_name'] ?>
                                                           </option>
                                                       <?php endforeach; ?>
@@ -117,7 +117,7 @@
                                       <!-- Amenities -->
                                       <div class="col-12">
                                           <label>Task Description</label>
-                                            <textarea name="amenities_details" id="tinymce_simple_textarea">
+                                            <textarea name="description" id="tinymce_simple_textarea">
                                                 <?= htmlspecialchars($task['description'] ?? '') ?>
                                             </textarea>
                                       </div>

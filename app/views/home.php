@@ -518,7 +518,7 @@ $show_breadcrumb = false;
                                                         </div>
                                                         <div class="mb-3">
                                                             <label class="form-label">Approve Amount</label>
-                                                            <input type="number" class="form-control" name="approved_amount" placeholder="Enter approved amount" required>
+                                                            <input type="number" class="form-control" name="approved_amount"  placeholder="Enter approved amount" required>
                                                         </div>
                                                         <div class="mb-3">
                                                             <label class="form-label">Note</label>

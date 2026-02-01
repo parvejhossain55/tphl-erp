@@ -57,6 +57,91 @@ class User extends Model
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    // for sales team Head
+public function getPaginatedWithSales($limit, $offset, $search = '', $role = '')
+{
+    $sql = "SELECT
+                u.*,
+                e.id AS employee_id,
+                e.photo AS employee_photo,
+                e.make_user,
+                d.name AS designation_name,
+                r.name AS role_name
+            FROM users u
+            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN designations AS d ON d.id = u.designation_id
+            LEFT JOIN roles AS r ON r.id = u.role_id
+            WHERE r.name IN ('Sales Manager', 'Sales Executive')
+            ";
+
+    $params = [];
+    $types = "";
+
+    if ($search) {
+        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $types .= "sss";
+    }
+
+    if ($role) {
+        $sql .= " AND u.role_id = ?";
+        $params[] = $role;
+        $types .= "i";
+    }
+
+    $sql .= " ORDER BY u.id DESC LIMIT ? OFFSET ?";
+    $params[] = $limit;
+    $params[] = $offset;
+    $types .= "ii";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+public function countAllForSales($search = '', $role = '')
+{
+    $sql = "SELECT COUNT(*) as total
+            FROM users u
+            LEFT JOIN roles r ON r.id = u.role_id
+            WHERE 1";
+
+    $params = [];
+    $types = "";
+
+    // Default: count only Sales Head + Sales Executive
+    if (!$role) {
+        $sql .= " AND r.name IN ('Sales Manager', 'Sales Executive')";
+    }
+
+    if ($search) {
+        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $types .= "sss";
+    }
+
+    if ($role) {
+        $sql .= " AND u.role_id = ?";
+        $params[] = $role;
+        $types .= "i";
+    }
+
+    $stmt = $this->db->prepare($sql);
+    if ($params) {
+        $stmt->bind_param($types, ...$params);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    return $result['total'];
+}
+    // for sales team Head
+
+
 
 
 

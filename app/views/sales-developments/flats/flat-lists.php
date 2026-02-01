@@ -45,18 +45,20 @@ $show_breadcrumb = false;
 
                     <a href="<?= $GLOBALS['base_url'] ?>/flat-lists" class="btn btn-success w-100">
                         Reset
-                        </a>
-
-                    <a class="btn btn-primary w-100" href="<?= $GLOBALS['base_url'] ?>/create-flat">
-                        Add Flat
                     </a>
+
+                    <?php if (hasPermission("view lead")): ?>
+                        <a class="d-none btn btn-primary w-100" href="<?= $GLOBALS['base_url'] ?>/create-flat">
+                            Add Flat
+                        </a>
+                    <?php else: ?>
+                        <a class="btn btn-primary w-100" href="<?= $GLOBALS['base_url'] ?>/create-flat">
+                            Add Flat
+                        </a>
+                    <?php endif ?>
                 </div>
             </div>
         </div>
-
-
-
-
 
     </div>
 </form>
@@ -113,12 +115,21 @@ $show_breadcrumb = false;
                                         <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/flat-details/<?= $flat['id'] ?>"
                                             title="View Transaction History"> <i class="fa-regular fa-eye"></i>
                                         </a>
-                                        <button class="table__icon delete removeBtnCust  "
+                                        <?php if (hasPermission("view lead")): ?>
+                                        <button class="d-none table__icon delete removeBtnCust  "
                                             data-name="<?= $flat['flat_name'] ?>"
                                             data-action="delete-flat"
                                             data-id="<?= $flat['id'] ?>">
                                             <i class="fa-regular fa-trash"></i>
                                         </button>
+                                        <?php else: ?>
+                                             <button class="table__icon delete removeBtnCust  "
+                                            data-name="<?= $flat['flat_name'] ?>"
+                                            data-action="delete-flat"
+                                            data-id="<?= $flat['id'] ?>">
+                                            <i class="fa-regular fa-trash"></i>
+                                        </button>
+                                        <?php endif ?>
                                     </div>
                                 </td>
                             </tr>
@@ -134,18 +145,18 @@ $show_breadcrumb = false;
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>"
 </script>
-       <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const form = document.querySelector('form');
-                const resetBtn = form.querySelector('button[type="reset"]');
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        const resetBtn = form.querySelector('button[type="reset"]');
 
-                resetBtn.addEventListener('click', function(e) {
-                    e.preventDefault(); // avoid default reset
-                    // Clear all inputs
-                    form.querySelectorAll('input, select').forEach(function(el) {
-                        if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
-                        else el.value = ''; // input clear
-                    });
-                });
+        resetBtn.addEventListener('click', function(e) {
+            e.preventDefault(); // avoid default reset
+            // Clear all inputs
+            form.querySelectorAll('input, select').forEach(function(el) {
+                if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
+                else el.value = ''; // input clear
             });
-        </script>
+        });
+    });
+</script>

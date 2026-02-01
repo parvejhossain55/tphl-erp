@@ -31,12 +31,12 @@
                                       <div class="col-lg-6">
                                           <div class="from__input-box">
                                               <div class="form__input-title">
-                                                  <label for="employee_id" class="form-label">Assigned Employee <span>*</span></label>
+                                                  <label for="user_id" class="form-label">Assigned Employee <span>*</span></label>
                                               </div>
                                               <div class="form__input">
-                                                  <select id="employee_id" name="employee_id" class="form-select">
-                                                      <?php foreach ($employees as $employee): ?>
-                                                          <option value="<?= $employee['id'] ?>"><?= $employee['full_name'] ?></option>
+                                                  <select id="user_id" name="user_id" class="form-select">
+                                                      <?php foreach ($users as $user): ?>
+                                                          <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?></option>
                                                       <?php endforeach; ?>
                                                   </select>
 

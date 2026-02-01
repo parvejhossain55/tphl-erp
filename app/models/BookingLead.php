@@ -31,9 +31,9 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-public function getAllOnboardClient($year = null, $month = null)
-{
-    $sql = "SELECT 
+    public function getAllOnboardClient($year = null, $month = null)
+    {
+        $sql = "SELECT 
                 lb.*, 
                 l.full_name, 
                 l.id as lead_id,
@@ -58,36 +58,36 @@ public function getAllOnboardClient($year = null, $month = null)
              AND lb.booking_status = 'completed'
              ";
 
-    $params = [];
-    $types  = "";
-// 
-    if (!empty($year)) {
-        $sql .= " AND YEAR(l.created_at) = ?";
-        $params[] = (int)$year;
-        $types   .= "i";
+        $params = [];
+        $types  = "";
+        // 
+        if (!empty($year)) {
+            $sql .= " AND YEAR(l.created_at) = ?";
+            $params[] = (int)$year;
+            $types   .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(l.created_at) = ?";
+            $params[] = (int)$month;
+            $types   .= "i";
+        }
+
+        //  single ORDER BY at the end
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        if (!$stmt->execute()) {
+            return [];
+        }
+
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-
-    if (!empty($month)) {
-        $sql .= " AND MONTH(l.created_at) = ?";
-        $params[] = (int)$month;
-        $types   .= "i";
-    }
-
-    //  single ORDER BY at the end
-
-    $stmt = $this->db->prepare($sql);
-
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-
-    if (!$stmt->execute()) {
-        return [];
-    }
-
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
 
 
     //dashboard
@@ -324,5 +324,56 @@ public function getAllOnboardClient($year = null, $month = null)
         $stmt = $this->db->prepare("DELETE FROM lead_follow_ups WHERE id = ?");
         $stmt->bind_param("i", $id);
         return $stmt->execute();
+    }
+
+
+    public function getSalesReport($type = 'daily')
+    {
+        $query = "SELECT lb.*, l.full_name AS client_name, l.phone, p.name AS project_name,
+                     f.flat_name, f.price_value,
+                     u.full_name AS user_name,u.id AS user_id
+              FROM lead_bookings lb
+              LEFT JOIN leads l ON lb.lead_id = l.id
+              LEFT JOIN projects p ON lb.project_id = p.id
+              LEFT JOIN flats f ON lb.flat_id = f.id
+              LEFT JOIN users u ON l.assigned_id = u.id
+              WHERE lb.deleted_at IS NULL";
+
+        // Filter by type
+        if ($type === 'daily') {
+            $query .= " ORDER BY lb.booking_date ASC";
+        } elseif ($type === 'monthly') {
+            $query = "   SELECT 
+            DATE_FORMAT(lb.booking_date, '%Y-%m') AS month_key,
+            DATE_FORMAT(lb.booking_date, '%M %Y') AS month_name,
+            COUNT(lb.id) AS total_flats,
+            COUNT(DISTINCT lb.lead_id) AS total_clients,
+            SUM(lb.agreement_value - IFNULL(lb.discount_amount,0)) AS total_booking_value,
+            SUM(CASE WHEN lb.booking_status = 'completed' THEN 1 ELSE 0 END) AS completed
+        FROM lead_bookings lb
+        WHERE lb.deleted_at IS NULL
+        GROUP BY month_key
+        ORDER BY month_key DESC";
+        } elseif ($type === 'yearly') {
+            $query = " SELECT 
+            YEAR(lb.booking_date) AS year,
+            COUNT(lb.id) AS total_flats,
+            COUNT(DISTINCT lb.lead_id) AS total_clients,
+            SUM(lb.agreement_value - IFNULL(lb.discount_amount,0)) AS total_amount,
+            SUM(CASE WHEN lb.booking_status = 'completed' THEN 1 ELSE 0 END) AS completed
+        FROM lead_bookings lb
+        WHERE lb.deleted_at IS NULL
+        GROUP BY year
+        ORDER BY year DESC";
+        }
+
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            setError($this->db->error);
+            return false;
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
     }
 }
