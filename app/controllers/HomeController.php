@@ -269,37 +269,40 @@ class HomeController extends Controller
 
 
 
-    public function approveFull($id)
-    {
-        $this->db->begin_transaction();
+public function approveFull($id)
+{
+    $this->db->begin_transaction();
 
-        try {
-            $request = $this->approvalModel->find($id);
-            $approved_days = null;
+    try {
+        $request = $this->approvalModel->find($id);
+        $approved_days = null;
+        $approved_amount = $_POST['approved_amount'] ?? null;
 
-            if ($request['source_table'] === 'employee_leaves') {
-                $leave = $this->leaveModel->find($request['source_id']);
-
-                if ($leave && $leave['leave_type_id']) {
-                    $start = new DateTime($leave['start_date']);
-                    $end   = new DateTime($leave['end_date']);
-                    $approved_days = $start->diff($end)->days + 1;
-
-                    $this->deductLeaveBalance($leave, $approved_days);
-                }
+        if ($request['source_table'] === 'employee_leaves') {
+            $leave = $this->leaveModel->find($request['source_id']);
+            if ($leave && $leave['leave_type_id']) {
+                $start = new DateTime($leave['start_date']);
+                $end   = new DateTime($leave['end_date']);
+                $approved_days = $start->diff($end)->days + 1;
+                $this->deductLeaveBalance($leave, $approved_days);
             }
-
-            $this->approvalModel->updateStatus($id, 'approved', null, $approved_days);
-
-            $this->db->commit();
-            header("Location: " . $GLOBALS['base_url'] . "/home");
-            exit;
-        } catch (Exception $e) {
-            $this->db->rollback();
-            die($e->getMessage());
+        } else {
+            // Full approval fallback
+            if ($approved_amount === null || $approved_amount <= 0) {
+                $approved_amount = $request['request_amount']; // use requested amount
+            }
         }
-    }
 
+        $this->approvalModel->updateStatus($id, 'approved', $approved_amount, $approved_days);
+
+        $this->db->commit();
+        header("Location: " . $GLOBALS['base_url'] . "/home");
+        exit;
+    } catch (Exception $e) {
+        $this->db->rollback();
+        die($e->getMessage());
+    }
+}
 
     // Partial approve
     public function approvePartial($id)

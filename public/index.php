@@ -417,7 +417,9 @@ $routes = [
 // Utility routes
 "download-cashout-attachment" => ["controller" => "CashoutRequestController", "method" => "downloadAttachment"],
 "export-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "export"],
-    //rafi End
+"sync-cashout-approvals" => ["controller" => "CashoutRequestController", "method" => "syncAllApprovals"],
+
+//rafi End
 
 
 ];

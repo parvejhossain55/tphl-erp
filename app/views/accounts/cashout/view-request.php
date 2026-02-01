@@ -5,6 +5,10 @@ $show_breadcrumb = true;
 
 // Use the display_status from synced data
 $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
+
+// Check if already approved from homepage approval system
+$isAlreadyApproved = !empty($request['approval_status']) && in_array($request['approval_status'], ['approved', 'partial']);
+$isApprovalPending = !empty($request['approval_status']) && $request['approval_status'] === 'pending';
 ?>
 <style>
     .status-badge {
@@ -67,8 +71,21 @@ $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
                                         <p class="form-control-static"><strong><?= htmlspecialchars($request['purpose_paid_to']) ?></strong></p>
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Amount:</label>
+                                        <label class="form-label">Requested Amount:</label>
                                         <p class="form-control-static"><strong class="text-primary">৳<?= number_format($request['amount'], 2) ?></strong></p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Approved Amount:</label>
+                                        <p class="form-control-static">
+                                            <?php if (!empty($request['approved_amount'])): ?>
+                                                <strong class="text-success">৳<?= number_format($request['approved_amount'], 2) ?></strong>
+                                                <?php if (!empty($request['approval_note'])): ?>
+                                                    <br><small class="text-muted">Note: <?= htmlspecialchars($request['approval_note']) ?></small>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </p>
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Due Amount:</label>
@@ -98,11 +115,17 @@ $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
                                                 case 'fully_paid':
                                                     $statusClass = 'status-paid';
                                                     break;
+                                                case 'partial':
+                                                    $statusClass = 'status-partial';
+                                                    break;
                                             }
                                             ?>
                                             <span class="status-badge <?= $statusClass ?>">
                                                 <?= ucfirst(str_replace('_', ' ', $displayStatus)) ?>
                                             </span>
+                                            <?php if ($isAlreadyApproved && $request['approval_status'] === 'partial'): ?>
+                                                <br><small class="text-muted">(Partially Approved)</small>
+                                            <?php endif; ?>
                                         </p>
                                     </div>
                                     <div class="col-md-6 mb-3">
@@ -187,7 +210,15 @@ $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
                                     <h6 class="mb-0">Quick Actions</h6>
                                 </div>
                                 <div class="card-body">
-                                    <?php if ($displayStatus == 'pending'): ?>
+                                    <?php 
+                                    // Determine what actions to show
+                                    $showApproveReject = $displayStatus == 'pending' && !$isAlreadyApproved;
+                                    $showAddPayment = ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0;
+                                    $showFullyPaid = $request['due_amount'] <= 0;
+                                    ?>
+                                    
+                                    <?php if ($showApproveReject): ?>
+                                        <!-- Show approve/reject buttons only if pending and not already approved from homepage -->
                                         <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
                                             <input type="hidden" name="id" value="<?= $request['id'] ?>">
                                             <button type="submit" class="btn btn-success w-100 mb-2">
@@ -197,16 +228,29 @@ $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
                                         <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#rejectModal">
                                             <i class="fa-light fa-times me-2"></i> Reject Request
                                         </button>
-                                    <?php elseif ($displayStatus == 'approved' || $displayStatus == 'partially_paid'): ?>
-                                        <?php if ($request['due_amount'] > 0): ?>
-                                            <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
-                                                <i class="fa-light fa-plus me-2"></i> Add Payment
-                                            </button>
-                                        <?php else: ?>
-                                            <p class="text-success text-center mb-0">Fully Paid</p>
+                                    <?php elseif ($showAddPayment): ?>
+                                        <!-- Show add payment button if approved and has due amount -->
+                                        <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                                            <i class="fa-light fa-plus me-2"></i> Add Payment
+                                        </button>
+                                        <?php if (!empty($request['approved_amount'])): ?>
+                                            <p class="text-info text-center mt-2 mb-0 small">
+                                                <i class="fa-light fa-info-circle me-1"></i>
+                                                Approved: ৳<?= number_format($request['approved_amount'], 2) ?>
+                                            </p>
                                         <?php endif; ?>
+                                    <?php elseif ($showFullyPaid): ?>
+                                        <p class="text-success text-center mb-0">
+                                            <i class="fa-light fa-check-circle me-1"></i> Fully Paid
+                                        </p>
                                     <?php else: ?>
-                                        <p class="text-muted text-center mb-0">No actions available</p>
+                                        <p class="text-muted text-center mb-0">
+                                            <?php if ($isAlreadyApproved): ?>
+                                                <i class="fa-light fa-check-circle me-1"></i> Already approved from approval system
+                                            <?php else: ?>
+                                                No actions available
+                                            <?php endif; ?>
+                                        </p>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -228,6 +272,9 @@ $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
                                             case 'approved':
                                                 $approvalStatusClass = 'status-approved';
                                                 break;
+                                            case 'partial':
+                                                $approvalStatusClass = 'status-partial';
+                                                break;
                                             case 'rejected':
                                                 $approvalStatusClass = 'status-rejected';
                                                 break;
@@ -239,7 +286,23 @@ $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
                                     </p>
                                 </div>
                                 
-                                <?php if ($approval_request['status'] == 'approved' && !empty($request['approved_by_name'])): ?>
+                                <?php if (!empty($approval_request['approved_amount'])): ?>
+                                    <div class="mb-3">
+                                        <label class="form-label">Approved Amount:</label>
+                                        <p class="form-control-static">
+                                            <strong class="text-success">৳<?= number_format($approval_request['approved_amount'], 2) ?></strong>
+                                        </p>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($approval_request['approval_note'])): ?>
+                                    <div class="mb-3">
+                                        <label class="form-label">Approval Note:</label>
+                                        <p class="form-control-static"><?= nl2br(htmlspecialchars($approval_request['approval_note'])) ?></p>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if (in_array($approval_request['status'], ['approved', 'partial', 'rejected']) && !empty($request['approved_by_name'])): ?>
                                     <div class="mb-3">
                                         <label class="form-label">Approved By:</label>
                                         <p class="form-control-static"><?= htmlspecialchars($request['approved_by_name']) ?></p>
@@ -277,7 +340,7 @@ $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
 </div>
 
 <!-- Reject Modal -->
-<?php if ($isAdmin && $displayStatus == 'pending'): ?>
+<?php if ($isAdmin && $displayStatus == 'pending' && !$isAlreadyApproved): ?>
 <div class="modal fade" id="rejectModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -305,7 +368,7 @@ $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
 <?php endif; ?>
 
 <!-- Add Payment Modal -->
-<?php if ($isAdmin && ($displayStatus == 'approved' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0): ?>
+<?php if ($isAdmin && ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0): ?>
 <div class="modal fade" id="addPaymentModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -319,10 +382,21 @@ $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
                     
                     <div class="mb-3">
                         <label class="form-label">Amount (৳): <span class="text-danger">*</span></label>
+                        <?php 
+                        // Determine max amount - use approved amount if available, otherwise use due amount
+                        $maxAmount = !empty($request['approved_amount']) ? 
+                            min($request['approved_amount'], $request['due_amount']) : 
+                            $request['due_amount'];
+                        ?>
                         <input type="number" name="amount" class="form-control" 
-                               placeholder="0.00" step="0.01" min="0.01" max="<?= $request['due_amount'] ?>"
-                               value="<?= $request['due_amount'] ?>" required>
-                        <small class="text-muted">Max: ৳<?= number_format($request['due_amount'], 2) ?></small>
+                               placeholder="0.00" step="0.01" min="0.01" max="<?= $maxAmount ?>"
+                               value="<?= $maxAmount ?>" required>
+                        <small class="text-muted">
+                            Max: ৳<?= number_format($maxAmount, 2) ?>
+                            <?php if (!empty($request['approved_amount'])): ?>
+                                <br>Approved Amount: ৳<?= number_format($request['approved_amount'], 2) ?>
+                            <?php endif; ?>
+                        </small>
                     </div>
                     
                     <div class="mb-3">

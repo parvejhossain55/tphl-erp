@@ -49,6 +49,22 @@ class Dashboard
     }
 
     /**
+     * Get SQL WHERE condition based on period for a specific date column
+     */
+    private function getPeriodCondition($period, $dateColumn)
+    {
+        if ($period === 'all_time') {
+            return '';
+        }
+
+        $dateRange = $this->getDateRangeByPeriod($period);
+        $startDate = $dateRange['start'];
+        $endDate = $dateRange['end'];
+
+        return "WHERE {$dateColumn} BETWEEN '{$startDate}' AND '{$endDate}'";
+    }
+
+    /**
      * Get Cash In breakdown by payment method with period filter
      */
     public function getCashInByPaymentMethod($period = 'all_time')
@@ -745,4 +761,90 @@ class Dashboard
         $stmt->close();
         return $data;
     }
+
+
+// ADD THIS METHOD TO YOUR Dashboard MODEL CLASS
+
+/**
+ * Get recent cashout requests with period filter
+ */
+public function getRecentCashOutRequests($limit = 5, $period = 'all_time')
+{
+    $dateCondition = $this->getPeriodCondition($period, 'cr.created_at');
+    
+    $sql = "SELECT cr.*, 
+            u.full_name as requester_name,
+            ar.status as approval_status,
+            ar.approved_amount as approval_approved_amount,
+            ar.approved_at as approval_approved_at,
+            ar.approved_by as approval_user_id,
+            ar.id as approval_id,
+            ar.approval_note,
+            approver.full_name as approved_by_name,
+            rejector.full_name as rejected_by_name
+            FROM cashout_requests cr
+            LEFT JOIN users u ON cr.requested_by = u.id
+            LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
+            LEFT JOIN users approver ON ar.approved_by = approver.id
+            LEFT JOIN users rejector ON cr.rejected_by = rejector.id
+            {$dateCondition}
+            ORDER BY cr.created_at DESC
+            LIMIT ?";
+    
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("i", $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $requests = [];
+    while ($row = $result->fetch_assoc()) {
+        // Determine display status
+        $row['display_status'] = $this->syncStatusWithApproval($row);
+        
+        // Sync approved amount from approval system
+        if (!empty($row['approval_approved_amount'])) {
+            $row['approved_amount'] = $row['approval_approved_amount'];
+        }
+        
+        $requests[] = $row;
+    }
+    
+    $stmt->close();
+    return $requests;
+}
+
+/**
+ * Sync status with approval system
+ */
+private function syncStatusWithApproval($request)
+{
+    $approvalStatus = $request['approval_status'] ?? null;
+    $cashoutStatus = $request['status'] ?? 'pending';
+    
+    // Priority: approval_requests status determines the real status
+    if (!empty($approvalStatus)) {
+        switch ($approvalStatus) {
+            case 'approved':
+            case 'partial':
+                // If approved or partial, check payment status
+                if (isset($request['due_amount']) && $request['due_amount'] <= 0) {
+                    return 'fully_paid';
+                } elseif (isset($request['due_amount']) && $request['due_amount'] < $request['amount']) {
+                    return 'partially_paid';
+                }
+                return 'approved';
+                
+            case 'rejected':
+                return 'rejected';
+                
+            case 'pending':
+            default:
+                return 'pending';
+        }
+    }
+    
+    // If no approval record, use cashout status
+    return $cashoutStatus;
+}
+
 }

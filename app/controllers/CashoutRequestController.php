@@ -157,6 +157,9 @@ class CashoutRequestController extends Controller
             exit;
         }
 
+        // Sync with approval system before displaying
+        $this->syncWithApprovalSystem($id);
+
         $request = $this->cashoutModel->getRequestById($id);
         if (!$request) {
             setError("Request not found.");
@@ -214,7 +217,11 @@ class CashoutRequestController extends Controller
             exit;
         }
 
+        // Sync with approval system before displaying
+        $this->syncWithApprovalSystem($id);
+
         $request = $this->cashoutModel->getRequestById($id);
+
         if (!$request) {
             setError("Request not found.");
             header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
@@ -237,7 +244,32 @@ class CashoutRequestController extends Controller
             "userId" => $this->userId
         ]);
     }
+public function syncAllApprovals()
+{
+    if (!$this->isAdminUser()) {
+        setError("Unauthorized access.");
+        header("Location: {$GLOBALS['base_url']}/cashout-requests");
+        exit;
+    }
 
+    // Get all cashout requests with pending approval status
+    $sql = "SELECT cr.id FROM cashout_requests cr
+            LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
+            WHERE cr.status = 'pending' AND ar.status IN ('approved', 'partial', 'rejected')";
+    
+    $result = $this->db->query($sql);
+    $synced = 0;
+    
+    while ($row = $result->fetch_assoc()) {
+        if ($this->syncWithApprovalSystem($row['id'])) {
+            $synced++;
+        }
+    }
+    
+    setSuccess("Successfully synced {$synced} requests with approval system.");
+    header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
+    exit;
+}
     // Add payment
     public function addPayment()
     {
@@ -343,7 +375,48 @@ class CashoutRequestController extends Controller
         header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
         exit;
     }
+    // Add this method to handle sync with approval system
+    private function syncWithApprovalSystem($cashoutId)
+    {
+        // Get approval request details
+        $approvalRequest = $this->cashoutModel->getApprovalRequest($cashoutId);
 
+        if ($approvalRequest && in_array($approvalRequest['status'], ['approved', 'partial', 'rejected'])) {
+            // Update cashout request with approval details
+            $cashoutData = [
+                'status' => $approvalRequest['status'] == 'partial' ? 'approved' : $approvalRequest['status'],
+                'approved_amount' => $approvalRequest['approved_amount'] ?? null,
+                'approval_note' => $approvalRequest['approval_note'] ?? null,
+                'approved_by' => $approvalRequest['approved_by'] ?? null,
+                'approved_at' => $approvalRequest['approved_at'] ?? null
+            ];
+
+            // Update cashout request
+            $sql = "UPDATE cashout_requests SET 
+                status = ?,
+                approved_amount = ?,
+                approval_note = ?,
+                approved_by = ?,
+                approved_at = ?
+                WHERE id = ?";
+
+            $stmt = $this->db->prepare($sql);
+            $status = $cashoutData['status'] == 'partial' ? 'approved' : $cashoutData['status'];
+            $stmt->bind_param(
+                "sssisi",
+                $status,
+                $cashoutData['approved_amount'],
+                $cashoutData['approval_note'],
+                $cashoutData['approved_by'],
+                $cashoutData['approved_at'],
+                $cashoutId
+            );
+
+            return $stmt->execute();
+        }
+
+        return false;
+    }
     // Reject request
     public function reject()
     {
@@ -584,15 +657,14 @@ class CashoutRequestController extends Controller
         }
 
         $result = $this->cashoutModel->syncPendingRequests();
-        
+
         if ($result) {
             setSuccess("All pending requests have been synced with the approval system.");
         } else {
             setError("Failed to sync requests.");
         }
-        
+
         header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
         exit;
     }
 }
-?>
