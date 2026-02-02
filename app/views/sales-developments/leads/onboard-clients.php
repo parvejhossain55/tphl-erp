@@ -91,9 +91,6 @@ $show_breadcrumb = true;
     </form>
 
 
-
-
-
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
