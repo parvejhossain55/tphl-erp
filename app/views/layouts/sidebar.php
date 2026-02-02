@@ -407,17 +407,19 @@
 
                     <!-- Accounts Dashboard -->
                     <li class="slide <?= isActive('accounts-dashboard', $current_route) ?>">
-                        <a href="<?= $base_url ?>/account-dashboard" class="sidebar__menu-item <?= isActive('accounts-dashboard', $current_route) ?>">
+                        <a href="<?= $base_url ?>/accounts-dashboard" class="sidebar__menu-item <?= isActive('accounts-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">Accounts Dashboard</span>
+                            
                         </a>
                     </li>
                     <li class="slide <?= isActive('central-statement', $current_route) ?>">
                         <a href="<?= $base_url ?>/central-statement" class="sidebar__menu-item <?= isActive('central-statement', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <div class="side-menu__icon"><i class="fa-solid fa-book"></i></div>
                             <span class="sidebar__menu-label">Central Statement</span>
                         </a>
                     </li>
+
 
                     <!-- ===================== -->
                     <!-- Manage Cash In -->

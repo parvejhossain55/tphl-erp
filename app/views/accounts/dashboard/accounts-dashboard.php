@@ -174,7 +174,9 @@ function getStatusBadge($status) {
         </div>
     </div>
 
-    <!-- Overview Cards Row -->
+    <!-- Overview Cards Row - FIXED: Changed from 3 cards to 4 cards -->
+
+
     <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card card-success">
             <div class="d-flex align-items-center gap-2 h-100">
@@ -182,13 +184,26 @@ function getStatusBadge($status) {
                     <span><i class="fa-light fa-arrow-down"></i></span>
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">Total Revenue</h6>
-                    <h4 class="card__title mb-0 text-success text-break">৳<?= number_format($overviewStats['total_cashin'], 2) ?></h4>
+                    <h6 class="card__sub-title mb-2 text-muted">Total Cash In</h6>
+                    <h4 class="card__title mb-0 text-success text-break">৳<?= number_format($overviewStats['total_cashin'] ?? 0, 2) ?></h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Payments Received</small>
                 </div>
             </div>
         </div>
     </div>
-
+    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <div class="card__wrapper h-100 dashboard-card card-primary">
+            <div class="d-flex align-items-center gap-2 h-100">
+                <div class="card__icon icon-primary">
+                    <span><i class="fa-light fa-file-contract"></i></span>
+                </div>
+                <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                    <h6 class="card__sub-title mb-2 text-muted ">Total Revenue</h6>
+                    <h4 class="card__title mb-0 text-success text-break">৳<?= number_format($overviewStats['total_revenue'] ?? 0, 2) ?></h4>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card card-danger">
             <div class="d-flex align-items-center gap-2 h-100">
@@ -197,27 +212,14 @@ function getStatusBadge($status) {
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted">Total Expenses</h6>
-                    <h4 class="card__title mb-0 text-danger text-break">৳<?= number_format($overviewStats['total_cashout'], 2) ?></h4>
+                    <h4 class="card__title mb-0 text-danger text-break">৳<?= number_format($overviewStats['total_cashout'] ?? 0, 2) ?></h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">All Outflows</small>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
-        <div class="card__wrapper h-100 dashboard-card card-info">
-            <div class="d-flex align-items-center gap-2 h-100">
-                <div class="card__icon icon-info">
-                    <span><i class="fa-light fa-wallet"></i></span>
-                </div>
-                <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">Net Balance</h6>
-                    <h4 class="card__title mb-0 text-break <?= $overviewStats['net_balance'] >= 0 ? 'text-success' : 'text-danger' ?>">
-                        ৳<?= number_format($overviewStats['net_balance'], 2) ?>
-                    </h4>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Charts Section -->
     <div class="col-xxl-8 col-xl-12 col-lg-12 mb-3">
@@ -341,7 +343,7 @@ function getStatusBadge($status) {
                         <span><i class="fa-light fa-building"></i></span>
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Management Cash In</h6>
+                        <h6 class="card__sub-title mb-2 text-muted">Total Cash In</h6>
                         <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['management_cashin'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
