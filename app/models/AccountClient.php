@@ -675,12 +675,12 @@ public function getPaymentSummaryByBookingId($bookingId)
     $summary = [
         'total_price' => 0,
         'booking_money' => 0,
+        'discount_amount' => 0,  // ADDED
         'registration_money' => 0,
         'construction_fee' => 0,
         'construction_fee_paid' => 0,
         'total_paid' => 0,
         'due_amount' => 0,
-        'avg_emi_amount' => 0,
         'total_emi' => 0,
         'completed_emi' => 0,
         'pending_emi' => 0,
@@ -695,10 +695,11 @@ public function getPaymentSummaryByBookingId($bookingId)
         'construction_fee_paid_after_service' => 0
     ];
 
-    // Get booking details
+    // Get booking details - ADD discount_amount
     $stmt = $this->db->prepare("
         SELECT 
             lb.agreement_value,
+            lb.discount_amount,  // ADDED
             lb.booking_date,
             lb.service_fee_balance,
             f.price_value as flat_price
@@ -714,6 +715,7 @@ public function getPaymentSummaryByBookingId($bookingId)
 
     if ($booking) {
         $summary['booking_money'] = $booking['agreement_value'] ?? 0;
+        $summary['discount_amount'] = $booking['discount_amount'] ?? 0;  // ADDED
         $summary['total_price'] = $booking['flat_price'] ?? 0;
         $summary['service_fee_balance'] = $booking['service_fee_balance'] ?? 0;
     }
@@ -758,7 +760,6 @@ public function getPaymentSummaryByBookingId($bookingId)
     $totalPaidEmi = 0;
     $totalServiceFeeFromEmi = 0;
     $paidEmiCount = 0;
-    $paidEmiAmounts = [];
     $lastEmiDate = null;
 
     foreach ($emiDetails as $emi) {
@@ -772,7 +773,6 @@ public function getPaymentSummaryByBookingId($bookingId)
             $totalServiceFeeFromEmi += ($emi['service_fee'] ?? 0);
             
             $paidEmiCount++;
-            $paidEmiAmounts[] = $emi['emi_amount'];
 
             if (!$lastEmiDate || strtotime($emi['due_date']) > strtotime($lastEmiDate)) {
                 $lastEmiDate = $emi['due_date'];
@@ -795,11 +795,6 @@ public function getPaymentSummaryByBookingId($bookingId)
         for ($i = 1; $i <= $summary['total_emi']; $i++) {
             $summary['all_emi_numbers'][] = $i;
         }
-    }
-
-    // Calculate average EMI amount
-    if ($paidEmiCount > 0) {
-        $summary['avg_emi_amount'] = $totalPaidEmi / $paidEmiCount;
     }
 
     if ($lastEmiDate) {
@@ -845,9 +840,9 @@ public function getPaymentSummaryByBookingId($bookingId)
         $summary['last_payment_date'] = $otherData['last_payment'];
     }
 
-    // **CALCULATIONS:**
-    // 1. Construction Fee = Total Price - Booking Money - Registration Money
-    $summary['construction_fee'] = $summary['total_price'] - $summary['booking_money'] - $summary['registration_money'];
+    // **UPDATED CALCULATIONS:**
+    // 1. Construction Fee = Total Price - Booking Money - Registration Money + Discount
+    $summary['construction_fee'] = $summary['total_price'] - $summary['booking_money'] - $summary['registration_money'] + $summary['discount_amount'];
 
     // 2. Construction Fee Paid After Service = Construction Fee Paid - Service Fee
     $summary['construction_fee_paid_after_service'] = $summary['construction_fee_paid'] - $summary['total_service_fee'];

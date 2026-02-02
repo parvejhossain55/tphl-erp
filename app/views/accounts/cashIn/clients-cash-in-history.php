@@ -57,7 +57,7 @@ $show_breadcrumb = true;
                     <span><i class="fa-light fa-hand-holding-usd"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Land Share</h6>
+                    <h6 class="card__sub-title mb-10">Booking Money</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
                         <h4 class="card__title">৳<?= number_format($paymentSummary['booking_money'] ?? 0, 2) ?></h4>
                     </div>

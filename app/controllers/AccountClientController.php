@@ -71,7 +71,9 @@ class AccountClientController extends Controller
         $transactions = array_values($filteredTransactions);
 
         // Get payment summary statistics (now includes service fee)
-        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+           $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+    
+
 
         $this->view("accounts/cashIn/clients-cash-in-history", [
             "current_route" => "clients-cash-in-history",
