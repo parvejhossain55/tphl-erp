@@ -123,8 +123,19 @@
                             <span class="sidebar__menu-label">Project Wise Inventory</span>
                         </a>
                     </li>
+                    <!-- Executive Team  -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/sales-executive-teams" class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="sidebar__menu-label">Sales Executive Team</span>
+                        </a>
+                    </li>
+
 
                 <?php endif; ?>
+
+
+
 
                 <!--End Sales CATEGORY -->
 
@@ -183,7 +194,7 @@
 
                     <li class="slide ">
                         <a href="<?= $base_url ?>/sales-team-view" class="sidebar__menu-item <?= isActive('sales-team-view', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                             <span class="sidebar__menu-label">Sales Team View</span>
                         </a>
 

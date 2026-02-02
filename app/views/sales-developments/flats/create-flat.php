@@ -84,6 +84,11 @@ $show_breadcrumb = true;
 
                 <!-- Price Value -->
                 <div class="col-xl-6">
+                    <label>Land Sahre Value (BDT)</label>
+                    <input type="number" step="0.01" name="land_share_value" class="form-control">
+                </div>
+                <!--land share -->
+                <div class="col-xl-6">
                     <label>Price (BDT)</label>
                     <input type="number" step="0.01" name="price_value" class="form-control">
                 </div>

@@ -7,6 +7,8 @@ class LeadController extends Controller
     protected $leadModel;
     protected $leadSource;
     protected $leadBookedModel;
+    protected $locationModel;
+    protected $leadSourceModel;
     public function __construct($db)
     {
         $this->db = $db;
@@ -14,6 +16,8 @@ class LeadController extends Controller
         $this->leadModel = new Lead($this->db);
         $this->leadSource = new LeadSource($this->db);
         $this->leadBookedModel = new BookingLead($this->db);
+        $this->locationModel = new Location($this->db);
+        $this->leadSourceModel = new LeadSource($this->db);
     }
     public function index()
     {
@@ -32,6 +36,7 @@ class LeadController extends Controller
             session_start();
         }
         $message = "";
+
         $this->view("sales-developments/leads/lead-lists", [
             "current_route" => "lead-lists",
             "page_title" => "Lead List",
@@ -107,6 +112,7 @@ class LeadController extends Controller
     {
         $assignedUsers = $this->userModel->getAllRoleUser();
         $sources = $this->leadSource->getAll();
+        $locations = $this->locationModel->getAll();
 
         $this->view("sales-developments/leads/create-lead", [
             "current_route"   => "create-lead",
@@ -115,6 +121,7 @@ class LeadController extends Controller
             "show_breadcrumb" => true,
             "assignedUsers" => $assignedUsers,
             "sources" => $sources,
+            "locations" => $locations,
 
         ]);
     }
@@ -153,7 +160,7 @@ class LeadController extends Controller
             'source_type_id' => $_POST['source_type_id'] ?? null,
             'assigned_id' => $_POST['assigned_id'] ?? null,
             'address' => $_POST['address'] ?? null,
-            'pref_location' => $_POST['pref_location'] ?? null,
+            'pref_location_id' => $_POST['pref_location_id'] ?? null,
             'designation' => $_POST['designation'] ?? null,
             'project_type' => $_POST['project_type'] ?? null,
             'interest_on' => $_POST['interest_on'] ?? null,
@@ -254,7 +261,7 @@ class LeadController extends Controller
             // 'currency' => $_POST['currency'] ?? 'BDT',
             // 'source_type_id' => $_POST['source_type_id'] ?? null,
             // 'assigned_id' => $_POST['assigned_id'] ?? null,
-            // 'pref_location' => $_POST['pref_location'] ?? null,
+            // 'pref_location_id' => $_POST['pref_location_id'] ?? null,
             // 'project_type' => $_POST['project_type'] ?? null,
             // 'pref_flat_size' => $_POST['pref_flat_size'] ?? null,
             // 'communication_type' => $_POST['communication_type'] ?? null,
@@ -374,8 +381,57 @@ class LeadController extends Controller
     }
 
 
+    public function storeLocation()
+    {
+        $data = [
+            'name'   => $_POST['name'] ?? '',
+            'created_by'      => $_SESSION['user']['id'] ?? null,
+        ];
 
 
+        if ($this->locationModel->create($data)) {
+            setSuccess('Location Create successfully');
+            header("Location: {$GLOBALS['base_url']}/create-lead");
+            exit;
+        } else {
+            echo "<h3 style='color:red'>Failed to create Locations </h3>";
+        }
+    }
+
+
+    public function storeSource()
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    // Form data 
+    $name = $_POST['name'] ?? null;
+    $is_active = isset($_POST['is_active']) ? 1 : 0;
+
+    if (!$name) {
+        setError("Source name is required!");
+        header("Location: {$GLOBALS['base_url']}/create-lead");
+        exit;
+    }
+
+    // Helper unique slug generate 
+    $slug = generateUniqueSlug($this->db, $name);
+
+    $data = [
+        'name' => $name,
+        'slug' => $slug,
+        'is_active' => $is_active
+    ];
+
+    // Model call
+    if ($this->leadSourceModel->create($data)) {
+        setSuccess("Lead source created successfully!");
+    } else {
+        setError( "Failed to create lead source.");
+    }
+
+    header("Location: {$GLOBALS['base_url']}/create-lead");
+    exit;
+}
     // Delete Employee
     public function delete()
     {

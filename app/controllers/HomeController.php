@@ -340,7 +340,7 @@ public function approveFull($id)
                     $this->deductLeaveBalance($leave, $approved_days);
                 }
             } else {
-                // 💰 amount based partial approval
+                //  amount based partial approval
                 if ($approved_amount === null || $approved_amount <= 0) {
                     throw new Exception('Approved amount required');
                 }
@@ -379,7 +379,7 @@ public function approveFull($id)
         $stmt->execute();
         $balance = $stmt->get_result()->fetch_assoc();
 
-        // 2️⃣ Insert if missing
+        // 2 Insert if missing
         if (!$balance) {
             $initial_days = 20;
 
@@ -401,12 +401,12 @@ public function approveFull($id)
             $remaining_days = (int)$balance['remaining_days'];
         }
 
-        // 3️⃣ Validate balance
+        // 3 Validate balance
         if ($remaining_days < $approved_days) {
             throw new Exception('Insufficient leave balance');
         }
 
-        // 4️⃣ Deduct
+        // 4 Deduct
         $stmt = $this->db->prepare("
         UPDATE employee_leave_balances
         SET remaining_days = remaining_days - ?

@@ -251,7 +251,7 @@ $show_breadcrumb = true;
                             <!-- <th>Alt Phone</th> -->
                             <th>Project Campaign</th>
                             <!-- <th>Source Type</th> -->
-
+                            
                             <th>Follow Up</th>
                             <th>Booking</th>
                             <th>Contact Status</th>
@@ -271,8 +271,8 @@ $show_breadcrumb = true;
 
                                 <td class=""><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
                                 <td class="td_1"><?= $lead['full_name'] ?? '' ?></td>
-                                <td><?= $lead['phone_number'] ?? '' ?></td>
-                                <td><?= $lead['campaign_name'] ?? '' ?></td>
+                                <td><?= $lead['phone_number'] ?? $lead['phone'] ?></td>
+                                <td><?= $lead['campaign_name'] ?? $lead['project_type'] ?></td>
 
                                 <td>
                                     <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"

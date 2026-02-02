@@ -767,7 +767,7 @@ function renderApprovalContext(array $req)
                         <li class="list-group-item px-0 border-0">
                             <div class="row align-items-center">
                                 <div class="col-4 col-md-3">
-                                    <span class="badge bg-info text-dark ms-2" style="font-size: 0.85rem;">Client</span>
+                                    <span class="badge bg-info text-light ms-2" style="font-size: 0.85rem;">Client</span>
                                 </div>
                                 <div class="col-8 col-md-9">
                                     <strong><?= esc($ctx['lead']['full_name']) ?></strong>

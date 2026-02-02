@@ -127,20 +127,21 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     public function create($data)
     {
         $sql = "
-            INSERT INTO lead_bookings
-            (
-                lead_id,
-                project_id,
-                flat_id,
-                created_by,
-                agreement_value,
-                booking_date,
-                booking_status,
-                discount_amount,
-                approval_status
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ";
+        INSERT INTO lead_bookings
+        (
+            lead_id,
+            project_id,
+            flat_id,
+            created_by,
+            agreement_value,
+            booking_date,
+            booking_status,
+            discount_amount,
+            approval_status,
+            sales_by_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ";
 
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
@@ -148,7 +149,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         }
 
         $stmt->bind_param(
-            "iiiidssss",
+            "iiiidssssi",
             $data['lead_id'],
             $data['project_id'],
             $data['flat_id'],
@@ -157,7 +158,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $data['booking_date'],
             $data['booking_status'],
             $data['discount_amount'],
-            $data['approval_status']
+            $data['approval_status'],
+            $data['sales_by_id']
         );
 
         if ($stmt->execute()) {
@@ -166,6 +168,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
         return false;
     }
+
 
     // Update follow-up by ID
     public function update($data, $id)

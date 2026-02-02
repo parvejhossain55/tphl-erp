@@ -8,6 +8,8 @@ class SalesDashboardController extends Controller
     protected $projectModel;
     protected $bookingModel;
     protected $paymentModel;
+    protected $userModel;
+    protected $roleModel;
 
     public function __construct($db)
     {
@@ -17,6 +19,8 @@ class SalesDashboardController extends Controller
         $this->bookingModel = new BookingLead($this->db);
         $this->paymentModel = new PaymentLeadBooking($this->db);
         $this->projectModel = new Project($this->db);
+        $this->userModel = new User($this->db);
+        $this->roleModel = new Role($this->db);
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -158,6 +162,35 @@ class SalesDashboardController extends Controller
             "totalTodayFollowUps" => $totalTodayFollowUps,
             "flatSalesLabels" => $flatSalesLabels,
             "flatSalesSeries" => $flatSalesSeries
+
+        ]);
+    }
+
+    public function salesTeam(){
+       $searchTerm = $_GET['q'] ?? '';
+        $roleFilter = $_GET['role'] ?? '';
+
+        $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        $perPage = 10;
+        $offset = ($currentPage - 1) * $perPage;
+
+        // Total user count with filters
+        $totalUsers = $this->userModel->countAllForSalesExecutive($searchTerm);
+        $totalPages = ceil($totalUsers / $perPage);
+
+        // Get paginated users with search & role filter
+        $salesUsers = $this->userModel->getPaginatedWithSalesExecutive($perPage, $offset, $searchTerm, $roleFilter);
+
+        // Roles for filter dropdown
+        $roles = $this->roleModel->getAll();
+        $this->view('sales-developments/sales-executive-teams', [
+              "current_route" => "sales-executive-teams",
+              "page_title" => "Sales Executive Team",
+            'salesUsers' => $salesUsers,
+            'roles' => $roles,
+            'currentPage' => $currentPage,
+            'totalPages' => $totalPages,
+            
 
         ]);
     }
