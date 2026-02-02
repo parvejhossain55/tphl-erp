@@ -77,6 +77,7 @@ $show_breadcrumb = false;
                             <th>Floor No</th>
                             <th>Facing Site</th>
                             <th>Sqft</th>
+                            <th>Land Share Value</th>
                             <th>Price</th>
                             <th>Facilities</th>
                             <th>Available/Booked </th>
@@ -93,7 +94,8 @@ $show_breadcrumb = false;
                                 <td><?= htmlspecialchars($flat['floor_no']) ?></td>
                                 <td><?= htmlspecialchars($flat['facing_site']) ?></td>
                                 <td><?= htmlspecialchars($flat['sqft']) ?></td>
-                                <td><?= htmlspecialchars($flat['price_value']) ?></td>
+                                <td><?= format_bdt($flat['land_share_value']) ?? 'N/A' ?></td>
+                                <td><?= format_bdt($flat['price_value']) ?></td>
                                 <td><?= htmlspecialchars($flat['facilities']) ?></td>
                                 <td>
                                     <?php if ($flat['is_booked'] == 1) : ?>

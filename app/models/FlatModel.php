@@ -101,8 +101,9 @@ class FlatModel extends Model
                 facing_site,
                 price_value,
                 facilities,
+                land_share_value,
                 created_by
-            ) VALUES (?,?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
+            ) VALUES (?,?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)
         ");
 
         if (!$stmt) {
@@ -111,7 +112,7 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "isiiiiiiiiidsi",
+            "isiiiiiiiisdsdi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -125,6 +126,7 @@ class FlatModel extends Model
             $data['facing_site'],
             $data['price_value'],
             $data['facilities'],
+            $data['land_share_value'],
             $data['created_by']
         );
 
@@ -134,17 +136,23 @@ class FlatModel extends Model
     /* =========================
        Find Project (Edit)
     ========================== */
-    public function find($id)
-    {
-        $stmt = $this->db->prepare("SELECT 
-        f.*, p.name AS project_name, u.name AS unit_name  FROM flats AS f 
-        JOIN projects AS p ON f.project_id = p.id
-        JOIN units AS u ON f.unit_id = u.id
-        WHERE f.id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
-    }
+public function find($id)
+{
+    $stmt = $this->db->prepare("
+        SELECT 
+            f.*, 
+            p.name AS project_name, 
+            u.name AS unit_name  
+        FROM flats AS f 
+        LEFT JOIN projects AS p ON f.project_id = p.id
+        LEFT JOIN units AS u ON f.unit_id = u.id
+        WHERE f.id = ?
+    ");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc();
+}
+
     /**
      * Update lead
      */
@@ -152,7 +160,7 @@ class FlatModel extends Model
     {
         $sql = "UPDATE flats SET
         project_id = ?,flat_name=?,  sqft = ?, bhk = ?, bedroom = ?, bathroom = ?, balcony = ?,
-        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?,created_by=?
+        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?,created_by=?,land_share_value=?
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -161,7 +169,7 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "isiiiiiiiisdsii",
+            "isiiiiiiiisdsidi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -176,6 +184,7 @@ class FlatModel extends Model
             $data['price_value'],
             $data['facilities'],
             $data['created_by'],
+            $data['land_share_value'],
             $id
         );
 

@@ -405,7 +405,7 @@ $page = "View Lead";
                         </div>
                         <div class="info-row">
                             <div class="info-label"><i class="fa-light fa-map-marker-alt me-2"></i>Preferred Location</div>
-                            <div class="info-value"><?= htmlspecialchars($leadData['pref_location'] ?: '-') ?></div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['pref_location_id'] ?: '-') ?></div>
                         </div>
                         <div class="info-row">
                             <div class="info-label"><i class="fa-light fa-ruler-combined me-2"></i>Preferred Size</div>

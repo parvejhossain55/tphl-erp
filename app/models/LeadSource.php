@@ -15,7 +15,6 @@ class LeadSource extends Model
         SELECT 
             *
         FROM  lead_sources 
-       Where id = 1
     ");
         $sql->execute();
         if (!$sql->execute()) {
@@ -46,33 +45,31 @@ class LeadSource extends Model
     /**
      * Create new source
      */
-    public function create($data)
-    {
-        $slug = generateUniqueSlug($this->db, $data['name']);
-        $stmt = $this->db->prepare("INSERT INTO lead_sources (name, slug, is_active) VALUES (?, ?, ?)");
-        $stmt->bind_param("ssi", $data['name'], $slug, $data['is_active']);
+public function create($data)
+{
+    $stmt = $this->db->prepare(
+        "INSERT INTO lead_sources (name, slug, is_active) VALUES (?, ?, ?)"
+    );
 
-
-        if (!$stmt) {
-            setError("Prepare failed: " . $this->db->error);
-            return false;
-        }
-
-        $stmt->bind_param(
-            "ssi",
-            $data['name'],
-            $data['slug'],
-            $data['is_active']
-        );
-
-        if ($stmt->execute()) {
-            setSuccess("Lead source created successfully!");
-            return true;
-        }
-
-        setError("Insert failed: " . $stmt->error);
+    if (!$stmt) {
+        setError("Prepare failed: " . $this->db->error);
         return false;
     }
+
+    $stmt->bind_param(
+        "ssi",
+        $data['name'],
+        $data['slug'],
+        $data['is_active']
+    );
+
+    if ($stmt->execute()) {
+        return true;
+    }
+
+    setError("Insert failed: " . $stmt->error);
+    return false;
+}
 
     /**
      * Update source

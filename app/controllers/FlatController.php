@@ -105,6 +105,7 @@ class FlatController extends Controller
             'floor_no'               => $_POST['floor_no'] ?? null,
             'facing_site'            => $_POST['facing_site'] ?? null,
             'price_value'            => $_POST['price_value'] ?? null,
+            'land_share_value'            => $_POST['land_share_value'] ?? null,
             'facilities'             => $_POST['facilities'] ?? null,
             'created_by'              => $_SESSION['user']['id'] ?? null,
         ];
@@ -165,6 +166,7 @@ class FlatController extends Controller
             'floor_no'               => $_POST['floor_no'] ?? null,
             'facing_site'            => $_POST['facing_site'] ?? null,
             'price_value'            => $_POST['price_value'] ?? null,
+            'land_share_value'            => $_POST['land_share_value'] ?? null,
             'facilities'             => $_POST['facilities'] ?? null,
             'created_by'             => $_SESSION['user']['id'] ?? null,
         ];

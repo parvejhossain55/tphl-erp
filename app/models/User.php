@@ -58,9 +58,9 @@ class User extends Model
     }
 
     // for sales team Head
-public function getPaginatedWithSales($limit, $offset, $search = '', $role = '')
-{
-    $sql = "SELECT
+    public function getPaginatedWithSales($limit, $offset, $search = '', $role = '')
+    {
+        $sql = "SELECT
                 u.*,
                 e.id AS employee_id,
                 e.photo AS employee_photo,
@@ -74,75 +74,146 @@ public function getPaginatedWithSales($limit, $offset, $search = '', $role = '')
             WHERE r.name IN ('Sales Manager', 'Sales Executive')
             ";
 
-    $params = [];
-    $types = "";
+        $params = [];
+        $types = "";
 
-    if ($search) {
-        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $types .= "sss";
+        if ($search) {
+            $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $types .= "sss";
+        }
+
+        if ($role) {
+            $sql .= " AND u.role_id = ?";
+            $params[] = $role;
+            $types .= "i";
+        }
+
+        $sql .= " ORDER BY u.id DESC LIMIT ? OFFSET ?";
+        $params[] = $limit;
+        $params[] = $offset;
+        $types .= "ii";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
+    public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $role = '')
+    {
+        $sql = "SELECT
+                u.*,
+                e.id AS employee_id,
+                e.photo AS employee_photo,
+                e.make_user,
+                d.name AS designation_name,
+                r.name AS role_name
+            FROM users u
+            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN designations AS d ON d.id = u.designation_id
+            LEFT JOIN roles AS r ON r.id = u.role_id
+            WHERE r.name  = 'Sales Executive'
+            ";
 
-    if ($role) {
-        $sql .= " AND u.role_id = ?";
-        $params[] = $role;
-        $types .= "i";
+        $params = [];
+        $types = "";
+
+        if ($search) {
+            $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $types .= "sss";
+        }
+
+        if ($role) {
+            $sql .= " AND u.role_id = ?";
+            $params[] = $role;
+            $types .= "i";
+        }
+
+        $sql .= " ORDER BY u.id DESC LIMIT ? OFFSET ?";
+        $params[] = $limit;
+        $params[] = $offset;
+        $types .= "ii";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
-
-    $sql .= " ORDER BY u.id DESC LIMIT ? OFFSET ?";
-    $params[] = $limit;
-    $params[] = $offset;
-    $types .= "ii";
-
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-}
-public function countAllForSales($search = '', $role = '')
-{
-    $sql = "SELECT COUNT(*) as total
+    public function countAllForSales($search = '', $role = '')
+    {
+        $sql = "SELECT COUNT(*) as total
             FROM users u
             LEFT JOIN roles r ON r.id = u.role_id
             WHERE 1";
 
-    $params = [];
-    $types = "";
+        $params = [];
+        $types = "";
 
-    // Default: count only Sales Head + Sales Executive
-    if (!$role) {
-        $sql .= " AND r.name IN ('Sales Manager', 'Sales Executive')";
+        // Default: count only Sales Head + Sales Executive
+        if (!$role) {
+            $sql .= " AND r.name IN ('Sales Manager', 'Sales Executive')";
+        }
+
+        if ($search) {
+            $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $types .= "sss";
+        }
+
+        if ($role) {
+            $sql .= " AND u.role_id = ?";
+            $params[] = $role;
+            $types .= "i";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        if ($params) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return $result['total'];
+    }
+    public function countAllForSalesExecutive($search = '')
+    {
+        $sql = "SELECT COUNT(*) as total
+            FROM users u
+            LEFT JOIN roles r ON r.id = u.role_id
+            WHERE r.name = 'Sales Executive'";
+
+        $params = [];
+        $types = "";
+
+        if ($search) {
+            $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $types .= "sss";
+        }
+
+        $stmt = $this->db->prepare($sql);
+
+        if ($params) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+
+        return $result['total'];
     }
 
-    if ($search) {
-        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $types .= "sss";
-    }
-
-    if ($role) {
-        $sql .= " AND u.role_id = ?";
-        $params[] = $role;
-        $types .= "i";
-    }
-
-    $stmt = $this->db->prepare($sql);
-    if ($params) {
-        $stmt->bind_param($types, ...$params);
-    }
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return $result['total'];
-}
     // for sales team Head
-
-
-
 
 
     public function getAll()
@@ -167,9 +238,17 @@ public function countAllForSales($search = '', $role = '')
 
         $sql = $this->db->prepare("
         SELECT
-            u.id, 
-           u.full_name  From users AS u
-           Where u.role_id = 9
+                u.*,
+                e.id AS employee_id,
+                e.photo AS employee_photo,
+                e.make_user,
+                d.name AS designation_name,
+                r.name AS role_name
+            FROM users u
+            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN designations AS d ON d.id = u.designation_id
+            LEFT JOIN roles AS r ON r.id = u.role_id
+            WHERE r.name  = 'Sales Executive'
     ");
         if (!$sql->execute()) {
             return []; // Error handle koro
@@ -180,8 +259,6 @@ public function countAllForSales($search = '', $role = '')
     }
 
 
-
-    // models/User.php
     public function create($data)
     {
         // Require the helper
@@ -352,9 +429,6 @@ public function countAllForSales($search = '', $role = '')
         return true;
     }
 
-
-
-
     public function getPermissionsByRole($role_id)
     {
         $stmt = $this->db->prepare(
@@ -373,8 +447,6 @@ public function countAllForSales($search = '', $role = '')
         }
         return $permissions;
     }
-
-
     public function updateLogoutTime($userId)
     {
         $stmt = $this->db->prepare("UPDATE users SET last_logout = NOW() WHERE id = ?");
@@ -388,7 +460,7 @@ public function countAllForSales($search = '', $role = '')
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
     }
-    // UserModel.php-এ এই method যোগ করুন
+
     public function getByEmailCaseInsensitive($email)
     {
         $email = trim($email);
@@ -428,7 +500,7 @@ public function countAllForSales($search = '', $role = '')
         return null;
     }
 
-    // Existing getByEmail method (keep it as is)
+    // Existing getByEmail method 
     public function getByEmail($email)
     {
         $stmt = $this->db->prepare(
@@ -448,7 +520,6 @@ public function countAllForSales($search = '', $role = '')
 
         return $result->fetch_assoc();
     }
-
 
     public function delete($id)
     {

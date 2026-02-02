@@ -76,6 +76,10 @@ class BookingController extends Controller
 
         $discount = $_POST['discount_amount'] ?? 0;
 
+        //  Get assigned_by from leads table
+        $lead = $this->leadModel->find($_POST['lead_id']);
+        $salesById = $lead['assigned_id'] ?? ''; // fallback to current user if null
+
         $data = [
             'lead_id' => $_POST['lead_id'],
             'project_id' => $_POST['project_id'],
@@ -86,11 +90,12 @@ class BookingController extends Controller
             'booking_status' => 'booked',
             'discount_amount' => $discount,
             'approval_status' => $discount > 0 ? 'pending' : 'not_required',
+            'sales_by_id' => $salesById, //  auto set
         ];
 
         $bookingId = $this->bookingModel->create($data);
 
-
+        // Discount approval logic (same as before)
         if ($discount > 0) {
             $this->approvalRequestModel->create([
                 'department'     => 'Sales',
@@ -108,7 +113,6 @@ class BookingController extends Controller
             ]);
         }
 
-
         if ($bookingId) {
             $leadId = $_POST['lead_id'];
             setSuccess("Lead onboarded successfully!");
@@ -121,7 +125,6 @@ class BookingController extends Controller
             exit;
         }
     }
-
 
     public function update()
     {
@@ -153,10 +156,6 @@ class BookingController extends Controller
         header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
         exit;
     }
-
-
-
-
 
     // Delete Employee
     public function delete($id) {}

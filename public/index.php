@@ -151,6 +151,8 @@ $routes = [
     "lead-lists" => ["controller" => "LeadController", "method" => "index"],
     "create-lead" => ["controller" => "LeadController", "method" => "create"],
     "store-lead" => ["controller" => "LeadController", "method" => "store"],
+    "store-location-lead" => ["controller" => "LeadController", "method" => "storeLocation"],
+    "store-source-lead" => ["controller" => "LeadController", "method" => "storeSource"],
     "edit-lead/(\d+)" => ["controller" => "LeadController", "method" => "edit"],
     "view-lead/(\d+)" => ["controller" => "LeadController", "method" => "show"],
     "leads-import-csv" => ["controller" => "LeadController", "method" => "importCsv"],
@@ -272,6 +274,7 @@ $routes = [
 
     "sales-dashboard" => ["controller" => "SalesDashboardController", "method" => "index"],
     "inventory-lists" => ["controller" => "ProjectInventoryController", "method" => "index"],
+    "sales-executive-teams" => ["controller" => "SalesDashboardController", "method" => "salesTeam"],
     //Sales Team Head Dashboard
 
     "sales-team-head-dashboard" => ["controller" => "SalesHeadDashboardController", "method" => "index"],

@@ -6,6 +6,44 @@ $page = "create Lead"
     <div class="card__wrapper">
         <form action="<?= $GLOBALS['base_url'] ?>/store-lead" method="POST">
             <div class="row gy-10">
+
+
+                <!-- Lead Name -->
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title" for="leadName">Lead Name*</label>
+                        <input class="form-control" name="full_name" id="leadName" type="text">
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title" for="leadName">Father Name</label>
+                        <input class="form-control" name="father_name" id="father_name" type="text">
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title" for="leadName">Mother Name</label>
+                        <input class="form-control" name="mother_name" id="mother_name" type="text">
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <div class="form__input-title">
+                            <label class="form-check-label">Date Of Birth <span>*</span></label>
+                        </div>
+                        <div class="form__input">
+                            <input name="dob" class="form-control" id="humanFriendlyDates" type="text" readonly="readonly">
+                        </div>
+                    </div>
+                </div>
+                <!-- designation  -->
+                <div class="d-none col-md-6">
+                    <div class="from__input-box">
+                        <label>Profession</label>
+                        <input type="text" class="form-control" name="designation">
+                    </div>
+                </div>
                 <div class="col-lg-6">
                     <div class="from__input-box">
                         <label class="form__input-title">Campaign Name</label>
@@ -73,44 +111,6 @@ $page = "create Lead"
                     </div>
                 </div>
 
-                <!-- Lead Name -->
-                <div class="col-lg-6">
-                    <div class="from__input-box">
-                        <label class="form__input-title" for="leadName">Lead Name*</label>
-                        <input class="form-control" name="full_name" id="leadName" type="text">
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <div class="from__input-box">
-                        <label class="form__input-title" for="leadName">Father Name</label>
-                        <input class="form-control" name="father_name" id="father_name" type="text">
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <div class="from__input-box">
-                        <label class="form__input-title" for="leadName">Mother Name</label>
-                        <input class="form-control" name="mother_name" id="mother_name" type="text">
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <div class="from__input-box">
-                        <div class="form__input-title">
-                            <label class="form-check-label">Date Of Birth <span>*</span></label>
-                        </div>
-                        <div class="form__input">
-                            <input name="dob" class="form-control" id="humanFriendlyDates" type="text" readonly="readonly">
-                        </div>
-                    </div>
-                </div>
-                <!-- designation  -->
-                <div class="col-md-6">
-                    <div class="from__input-box">
-                        <label>Profession</label>
-                        <input type="text" class="form-control" name="designation">
-                    </div>
-                </div>
-
-
                 <!-- Lead Type -->
                 <div class="col-lg-6">
                     <div class="from__input-box">
@@ -158,19 +158,20 @@ $page = "create Lead"
 
                 <!-- Source -->
                 <div class="col-xl-6">
-                    <label>Lead Source *</label>
+                    <label>Lead Source </label>
                     <div class="d-flex gap-2">
-                        <select name="source_type_id" class="form-control" required style="flex:1;">
+                        <select name="source_type_id" class="form-control" style="flex:1;">
                             <option value="">Select Source</option>
                             <?php foreach ($sources as $source): ?>
                                 <option value="<?= $source['id']; ?>"><?= $source['name']; ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <a href="<?= $GLOBALS['base_url'] ?>/leadSource-lists"
-                            class="btn btn-secondary"
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewLeadSource"
                             style="height: 38px; display:flex; align-items:center; padding:0 12px;">
-                            + source
-                        </a>
+                            + Source
+                        </button>
+
+
                     </div>
                 </div>
 
@@ -178,7 +179,18 @@ $page = "create Lead"
                 <div class="col-md-6">
                     <div class="from__input-box">
                         <label>Preferred Location</label>
-                        <input type="text" class="form-control" name="pref_location">
+                        <div class="d-flex gap-2">
+                            <select name="sourcepref_location_id_type_id" class="form-control" required style="flex:1;">
+                                <option value="">Select Location</option>
+                                <?php foreach ($locations as $location): ?>
+                                    <option value="<?= $location['id']; ?>"><?= $location['name']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewLocation"
+                                style="height: 38px; display:flex; align-items:center; padding:0 12px;">
+                                + Location
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <!-- Tags -->
@@ -303,4 +315,100 @@ $page = "create Lead"
     </div>
 </div>
 
+<!-- new Location lead modal start -->
+<div id="addNewLocation" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New location</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close"><i
+                        class="fa-solid fa-xmark-large"></i></button>
+            </div>
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/store-location-lead" method="POST">
+                    <div class="row gy-10">
+                        <div class="col-xl-12">
+                            <div class="card__wrapper">
+                                <div class="row gy-20">
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label for="name">Location Name<span>*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input class="form-control" name="name" id="name" type="text" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="submit__btn text-center">
+                        <button class="btn btn-primary">Submit</button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+<!-- new lead modal end -->
+
+
+<!-- new lead Source modal start -->
+<div id="addNewLeadSource" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Lead Source</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close"><i
+                        class="fa-solid fa-xmark-large"></i></button>
+            </div>
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/store-source-lead" method="POST">
+                    <div class="row gy-10">
+                        <div class="col-xl-12">
+                            <div class="card__wrapper">
+                                <div class="row gy-20">
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label for="name">Lead Source Name<span>*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input class="form-control" name="name" id="name" type="text" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="form__input-title">
+                                            <label>Status</label>
+                                        </div>
+                                        <div class="radio d-flex align-items-center gap-20">
+                                            <div class="form-check">
+                                                <input name="is_active" class="form-check-input" type="radio" value="1" id="statusActive" checked>
+                                                <label class="form-check-label" for="statusActive">Active</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input name="is_active" class="form-check-input" type="radio" value="0" id="statusInactive">
+                                                <label class="form-check-label" for="statusInactive">Inactive</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="submit__btn text-center">
+                        <button class="btn btn-primary">Submit</button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
 <!-- new lead modal end -->

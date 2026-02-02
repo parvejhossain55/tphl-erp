@@ -47,51 +47,49 @@ class Lead extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
     public function getAllByDate($period, $previous = false)
-{
-    $sqlQuery = "
+    {
+        $sqlQuery = "
         SELECT l.* FROM leads AS l
         WHERE l.status = 'active' AND l.deleted_at IS NULL
     ";
 
-    $today = date('Y-m-d');
+        $today = date('Y-m-d');
 
-    if ($period) {
-        switch ($period) {
-            case 'daily':
-                $date = $previous ? date('Y-m-d', strtotime('-1 day')) : $today;
-                $sqlQuery .= " AND DATE(l.created_at) = '$date'";
-                break;
-            case 'weekly':
-                if ($previous) {
-                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-                } else {
-                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-                }
-                break;
-            case 'monthly':
-                if ($previous) {
-                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
-                } else {
-                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
-                }
-                break;
-            case 'yearly':
-                if ($previous) {
-                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 2 YEAR) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
-                } else {
-                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
-                }
-                break;
+        if ($period) {
+            switch ($period) {
+                case 'daily':
+                    $date = $previous ? date('Y-m-d', strtotime('-1 day')) : $today;
+                    $sqlQuery .= " AND DATE(l.created_at) = '$date'";
+                    break;
+                case 'weekly':
+                    if ($previous) {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    } else {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    }
+                    break;
+                case 'monthly':
+                    if ($previous) {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    } else {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    }
+                    break;
+                case 'yearly':
+                    if ($previous) {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 2 YEAR) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    } else {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    }
+                    break;
+            }
         }
+
+        $stmt = $this->db->prepare($sqlQuery);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-
-    $stmt = $this->db->prepare($sqlQuery);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
-
-
 
 
     public function getAllWithFilter($year = null, $month = null)
@@ -174,11 +172,11 @@ class Lead extends Model
         return (int)($result['total_visited'] ?? 0);
     }
 
-public function getTodayLeadsByUser(int $userId)
-{
-    $userId = (int) $userId;
+    public function getTodayLeadsByUser(int $userId)
+    {
+        $userId = (int) $userId;
 
-    $sql = "
+        $sql = "
         SELECT *
         FROM leads
         WHERE assigned_id = {$userId}
@@ -188,16 +186,13 @@ public function getTodayLeadsByUser(int $userId)
         ORDER BY id DESC
     ";
 
-    return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
-}
+        return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+    }
 
 
-
-
-
-public function create($data)
-{
-    $stmt = $this->db->prepare("INSERT INTO leads (
+    public function create($data)
+    {
+        $stmt = $this->db->prepare("INSERT INTO leads (
         campaign_name,
         platform,
         which_apartment_size_are_you_interested_in,
@@ -219,7 +214,7 @@ public function create($data)
         source_type_id,
         assigned_id,
         address,
-        pref_location,
+        pref_location_id,
         designation,
         project_type,
         pref_flat_size,
@@ -235,96 +230,96 @@ public function create($data)
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?)
 ");
 
-    if (!$stmt) {
-        setError("Prepare failed: " . $this->db->error);
-        return false;
+        if (!$stmt) {
+            setError("Prepare failed: " . $this->db->error);
+            return false;
+        }
+
+        // Assign variables (CSV columns first)
+        $campaign_name = $data['campaign_name'] ?? null;
+        $platform = $data['platform'] ?? null;
+        $which_apartment_size_are_you_interested_in = $data['which_apartment_size_are_you_interested_in'] ?? null;
+        $which_floor_are_you_for_shop = $data['which_floor_are_you_for_shop'] ?? null;
+        $when_are_you_planning_to_buy = $data['when_are_you_planning_to_buy'] ?? null;
+        $would_you_like_to_schedule_a_site_visit = $data['would_you_like_to_schedule_a_site_visit'] ?? null;
+        $when_is_the_best_time_to_contact_you = $data['when_is_the_best_time_to_contact_you'] ?? null;
+        $job_title = $data['job_title'] ?? null;
+        $city = $data['city'] ?? null;
+
+        // Existing fields
+        $full_name = $data['full_name'] ?? null;
+        $father_name = $data['father_name'] ?? null;
+        $mother_name = $data['mother_name'] ?? null;
+        $dob = $data['dob'] ?? null;
+        $permanent_address = $data['permanent_address'] ?? null;
+        $nid_or_passport = $data['nid_or_passport'] ?? null;
+        $phone_number = $data['phone_number'] ?? null;
+        $alt_phone_number = $data['alt_phone_number'] ?? null;
+        $email = $data['email'] ?? null;
+        $source_type_id = $data['source_type_id'] ?? null;
+        $assigned_id = $data['assigned_id'] ?? null;
+        $address = $data['address'] ?? null;
+        $pref_location_id = $data['pref_location_id'] ?? null;
+        $designation = $data['designation'] ?? null;
+        $project_type = $data['project_type'] ?? null;
+        $pref_flat_size = $data['pref_flat_size'] ?? null;
+        $communication_type = $data['communication_type'] ?? null;
+        $tags = $data['tags'] ?? null;
+        $description = $data['description'] ?? null;
+        $visibility = $data['visibility'] ?? 'public';
+        $status = $data['status'] ?? 'active';
+        $lead_quality = $data['lead_quality'] ?? 'Pending';
+        $lead_type = $data['lead_type'] ?? null;
+        $company_name = $data['company_name'] ?? null;
+        $created_by = $data['created_by'] ?? null;
+
+        // Bind parameters (CSV first, then existing)
+        $stmt->bind_param(
+            "ssssssssssssssssssiisisssssssssssi",
+            $campaign_name,
+            $platform,
+            $which_apartment_size_are_you_interested_in,
+            $which_floor_are_you_for_shop,
+            $when_are_you_planning_to_buy,
+            $would_you_like_to_schedule_a_site_visit,
+            $when_is_the_best_time_to_contact_you,
+            $job_title,
+            $city,
+            $full_name,
+            $father_name,
+            $mother_name,
+            $dob,
+            $permanent_address,
+            $nid_or_passport,
+            $phone_number,
+            $alt_phone_number,
+            $email,
+            $source_type_id,
+            $assigned_id,
+            $address,
+            $pref_location_id,
+            $designation,
+            $project_type,
+            $pref_flat_size,
+            $communication_type,
+            $tags,
+            $description,
+            $visibility,
+            $status,
+            $lead_quality,
+            $lead_type,
+            $company_name,
+            $created_by
+        );
+
+        if ($stmt->execute()) {
+            setSuccess("Lead created successfully!");
+            return true;
+        } else {
+            setError("Lead creation failed: " . $stmt->error);
+            return false;
+        }
     }
-
-    // Assign variables (CSV columns first)
-    $campaign_name = $data['campaign_name'] ?? null;
-    $platform = $data['platform'] ?? null;
-    $which_apartment_size_are_you_interested_in = $data['which_apartment_size_are_you_interested_in'] ?? null;
-    $which_floor_are_you_for_shop = $data['which_floor_are_you_for_shop'] ?? null;
-    $when_are_you_planning_to_buy = $data['when_are_you_planning_to_buy'] ?? null;
-    $would_you_like_to_schedule_a_site_visit = $data['would_you_like_to_schedule_a_site_visit'] ?? null;
-    $when_is_the_best_time_to_contact_you = $data['when_is_the_best_time_to_contact_you'] ?? null;
-    $job_title = $data['job_title'] ?? null;
-    $city = $data['city'] ?? null;
-
-    // Existing fields
-    $full_name = $data['full_name'] ?? null;
-    $father_name = $data['father_name'] ?? null;
-    $mother_name = $data['mother_name'] ?? null;
-    $dob = $data['dob'] ?? null;
-    $permanent_address = $data['permanent_address'] ?? null;
-    $nid_or_passport = $data['nid_or_passport'] ?? null;
-    $phone_number = $data['phone_number'] ?? null;
-    $alt_phone_number = $data['alt_phone_number'] ?? null;
-    $email = $data['email'] ?? null;
-    $source_type_id = $data['source_type_id'] ?? null;
-    $assigned_id = $data['assigned_id'] ?? null;
-    $address = $data['address'] ?? null;
-    $pref_location = $data['pref_location'] ?? null;
-    $designation = $data['designation'] ?? null;
-    $project_type = $data['project_type'] ?? null;
-    $pref_flat_size = $data['pref_flat_size'] ?? null;
-    $communication_type = $data['communication_type'] ?? null;
-    $tags = $data['tags'] ?? null;
-    $description = $data['description'] ?? null;
-    $visibility = $data['visibility'] ?? 'public';
-    $status = $data['status'] ?? 'active';
-    $lead_quality = $data['lead_quality'] ?? 'Pending';
-    $lead_type = $data['lead_type'] ?? null;
-    $company_name = $data['company_name'] ?? null;
-    $created_by = $data['created_by'] ?? null;
-
-    // Bind parameters (CSV first, then existing)
-    $stmt->bind_param(
-        "ssssssssssssssssssiisssssssssssssi",
-        $campaign_name,
-        $platform,
-        $which_apartment_size_are_you_interested_in,
-        $which_floor_are_you_for_shop,
-        $when_are_you_planning_to_buy,
-        $would_you_like_to_schedule_a_site_visit,
-        $when_is_the_best_time_to_contact_you,
-        $job_title,
-        $city,
-        $full_name,
-        $father_name,
-        $mother_name,
-        $dob,
-        $permanent_address,
-        $nid_or_passport,
-        $phone_number,
-        $alt_phone_number,
-        $email,
-        $source_type_id,
-        $assigned_id,
-        $address,
-        $pref_location,
-        $designation,
-        $project_type,
-        $pref_flat_size,
-        $communication_type,
-        $tags,
-        $description,
-        $visibility,
-        $status,
-        $lead_quality,
-        $lead_type,
-        $company_name,
-        $created_by
-    );
-
-    if ($stmt->execute()) {
-        setSuccess("Lead created successfully!");
-        return true;
-    } else {
-        setError("Lead creation failed: " . $stmt->error);
-        return false;
-    }
-}
 
 
 
@@ -445,10 +440,6 @@ public function create($data)
 
         return true;
     }
-
-
-
-
     public function countLeadsByMonth($year, $month)
     {
         $stmt = $this->db->prepare("
@@ -487,7 +478,6 @@ public function create($data)
 
         return $stmt->execute();
     }
-
 
 
     public function softDelete($leadId)
@@ -534,10 +524,6 @@ public function create($data)
             return false;
         }
     }
-
-
-
-
 
     // user for dashboard 
 

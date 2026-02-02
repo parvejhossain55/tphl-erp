@@ -3,12 +3,15 @@ $page_title = "Home Dashboard";
 $show_breadcrumb = false;
 ?>
 <div class="row mb-2">
+    <div class="card__wrapper">
     <div class="btn__group mb-3">
         <a href="?period=daily" class="btn btn-sm <?= ($period ?? '') == 'daily' ? 'btn-primary' : 'btn-outline-secondary' ?>">Daily</a>
         <a href="?period=weekly" class="btn btn-sm <?= ($period ?? '') == 'weekly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Weekly</a>
         <a href="?period=monthly" class="btn btn-sm <?= ($period ?? '') == 'monthly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Monthly</a>
         <a href="?period=yearly" class="btn btn-sm <?= ($period ?? '') == 'yearly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Yearly</a>
     </div>
+    </div>
+
 
 </div>
 <div class="row  align-items-stretch">
