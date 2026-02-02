@@ -16,114 +16,120 @@ class CentralStatementController extends Controller
     /**
      * Main index - Show central statement page
      */
-    public function index()
-    {
-        // Check if this is a print request
-        $isPrint = isset($_GET['print']) && $_GET['print'] == 'true';
+ /**
+ * Main index - Show central statement page
+ */
+public function index()
+{
+    // Check if this is a print request
+    $isPrint = isset($_GET['print']) && $_GET['print'] == 'true';
 
-        // If it's a print request, use the print method
-        if ($isPrint) {
-            $this->printStatement();
-            return;
-        }
+    // If it's a print request, use the print method
+    if ($isPrint) {
+        $this->printStatement();
+        return;
+    }
 
-        // Get filters from query params with proper defaults
-        $periodType = $_GET['period_type'] ?? 'monthly';
-        $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
-        $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
-        $startDate = $_GET['start_date'] ?? null;
-        $endDate = $_GET['end_date'] ?? null;
-        $projectId = $_GET['project_id'] ?? null;
-        $category = $_GET['category'] ?? 'all';
+    // Get filters from query params with proper defaults
+    $periodType = $_GET['period_type'] ?? 'monthly';
+    $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+    $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+    $startDate = $_GET['start_date'] ?? null;
+    $endDate = $_GET['end_date'] ?? null;
+    $projectId = $_GET['project_id'] ?? null;
+    $category = $_GET['category'] ?? 'all';
 
-        // Card period filter
-        $cardPeriod = $_GET['card_period'] ?? 'all_time';
-        $cardYear = isset($_GET['card_year']) ? (int)$_GET['card_year'] : (int)date('Y');
-        $cardMonth = isset($_GET['card_month']) ? (int)$_GET['card_month'] : (int)date('m');
-        $cardStartDate = $_GET['card_start_date'] ?? null;
-        $cardEndDate = $_GET['card_end_date'] ?? null;
+    // Card period filter
+    $cardPeriod = $_GET['card_period'] ?? 'all_time';
+    $cardYear = isset($_GET['card_year']) ? (int)$_GET['card_year'] : (int)date('Y');
+    $cardMonth = isset($_GET['card_month']) ? (int)$_GET['card_month'] : (int)date('m');
+    $cardStartDate = $_GET['card_start_date'] ?? null;
+    $cardEndDate = $_GET['card_end_date'] ?? null;
 
-        // Debug log
-        error_log("Central Statement Index - Period Type: $periodType, Year: $year, Month: $month");
+    // Debug log
+    error_log("Central Statement Index - Period Type: $periodType, Year: $year, Month: $month");
 
-        // Get statement data based on period type
-        $statementData = null;
-        $periodText = '';
+    // Get statement data based on period type
+    $statementData = null;
+    $periodText = '';
 
-        switch ($periodType) {
-            case 'monthly':
-                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
-                $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $month) . "-01"));
-                break;
+    switch ($periodType) {
+        case 'monthly':
+            $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
+            $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $month) . "-01"));
+            break;
 
-            case '6months':
-                $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
-                $periodText = 'Last 6 Months';
-                break;
+        case '6months':
+            $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
+            $periodText = 'Last 6 Months';
+            break;
 
-            case 'yearly':
-                $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
-                $periodText = "Year $year";
-                break;
+        case 'yearly':
+            $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
+            $periodText = "Year $year";
+            break;
 
-            case 'custom':
-                if ($startDate && $endDate) {
-                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
-                    $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
-                } else {
-                    // Default to current month if dates not provided
-                    $year = (int)date('Y');
-                    $month = (int)date('m');
-                    $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
-                    $periodText = date('F Y');
-                    $periodType = 'monthly';
-                }
-                break;
-
-            default:
+        case 'custom':
+            if ($startDate && $endDate) {
+                $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
+                $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
+            } else {
+                // Default to current month if dates not provided
                 $year = (int)date('Y');
                 $month = (int)date('m');
                 $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
                 $periodText = date('F Y');
                 $periodType = 'monthly';
-        }
+            }
+            break;
 
-        // Get projects for dropdown
-        $projects = $this->getProjects();
-
-        // Get overall statistics with card period filter
-        $overallStats = $this->statementModel->getOverallStatistics(
-            $cardPeriod,
-            $cardYear,
-            $cardMonth,
-            $cardStartDate,
-            $cardEndDate
-        );
-
-        // Prepare view data
-        $viewData = [
-            'current_route' => 'central-statement',
-            'page_title' => 'Central Financial Statement',
-            'period_type' => $periodType,
-            'period_text' => $periodText,
-            'year' => $year,
-            'month' => sprintf('%02d', $month),
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'project_id' => $projectId,
-            'category' => $category,
-            'projects' => $projects,
-            'statement_data' => $statementData,
-            'overall_stats' => $overallStats,
-            'card_period' => $cardPeriod,
-            'card_year' => $cardYear,
-            'card_month' => sprintf('%02d', $cardMonth),
-            'card_start_date' => $cardStartDate,
-            'card_end_date' => $cardEndDate
-        ];
-
-        $this->view('accounts/central-statement', $viewData);
+        default:
+            $year = (int)date('Y');
+            $month = (int)date('m');
+            $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
+            $periodText = date('F Y');
+            $periodType = 'monthly';
     }
+
+    // Get projects for dropdown
+    $projects = $this->getProjects();
+
+    // Get overall statistics with card period filter
+    // IMPORTANT: For summary cards, always show ALL cashout regardless of selected category
+    $overallStats = $this->statementModel->getOverallStatistics(
+        $cardPeriod,
+        $cardYear,
+        $cardMonth,
+        $cardStartDate,
+        $cardEndDate,
+        $projectId,
+        'all'  // Always use 'all' for summary cards to show total cashout
+    );
+
+    // Prepare view data
+    $viewData = [
+        'current_route' => 'central-statement',
+        'page_title' => 'Central Financial Statement',
+        'period_type' => $periodType,
+        'period_text' => $periodText,
+        'year' => $year,
+        'month' => sprintf('%02d', $month),
+        'start_date' => $startDate,
+        'end_date' => $endDate,
+        'project_id' => $projectId,
+        'category' => $category,
+        'projects' => $projects,
+        'statement_data' => $statementData,
+        'overall_stats' => $overallStats,
+        'card_period' => $cardPeriod,
+        'card_year' => $cardYear,
+        'card_month' => sprintf('%02d', $cardMonth),
+        'card_start_date' => $cardStartDate,
+        'card_end_date' => $cardEndDate
+    ];
+
+    $this->view('accounts/central-statement', $viewData);
+}
 
     /**
      * Get projects list
@@ -744,16 +750,16 @@ class CentralStatementController extends Controller
                     <div class="summary-title">PERIOD SUMMARY</div>
                     <div class="summary-grid">
                         <div class="summary-box">
+                           
                             <?php if ($category === 'all' || $category === 'landshare'): ?>
                                 <div class="summary-row">
-                                    <span class="summary-label">Total Landshare:</span>
-                                    <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_landshare'], 2) ?></span>
+                                    <span class="summary-label">Landshare:</span>
+                                    <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_agreement'] ?? $statementData['summary']['total_landshare'] ?? 0, 2) ?></span>
                                 </div>
                             <?php endif; ?>
-
                             <?php if ($category === 'all' || $category === 'service_fee'): ?>
                                 <div class="summary-row">
-                                    <span class="summary-label">Total Service Fee:</span>
+                                    <span class="summary-label">Service Fee:</span>
                                     <span class="summary-value revenue">৳<?= number_format($statementData['summary']['total_service_fee'], 2) ?></span>
                                 </div>
                             <?php endif; ?>

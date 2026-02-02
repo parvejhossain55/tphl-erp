@@ -310,7 +310,7 @@ $routes = [
     //Rafi Start  Accounts
     // ==================== ACCOUNTS====================
     'dashboard' => ["controller" => "DashboardController", "method" => "index"],
-    'account-dashboard' => ["controller" => "DashboardController", "method" => "index"],
+    'accounts-dashboard' => ["controller" => "DashboardController", "method" => "index"],
     'dashboard/get-statistics' => ["controller" => "DashboardController", "method" => "getStatistics"],
 
     // ==================== CLIENT CASH IN ROUTES ====================
