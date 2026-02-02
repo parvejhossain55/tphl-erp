@@ -100,7 +100,6 @@ $show_breadcrumb = true;
                             <th>Unit / Share</th>
                             <th>Share Price</th>
                             <th>Paid Amount</th>
-                            <th class="text-center">Action</th>
                         </tr>
                     </thead>
 
@@ -146,15 +145,7 @@ $show_breadcrumb = true;
                                             : '-' ?>
                                     </td>
 
-                                    <td class="text-center">
-                                        <a 
-                                            class="table__icon download"
-                                            href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['lead_id'] ?>"
-                                            title="View Lead"
-                                        >
-                                            <i class="fa-regular fa-eye"></i>
-                                        </a>
-                                    </td>
+                                   
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
