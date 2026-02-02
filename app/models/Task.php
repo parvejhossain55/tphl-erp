@@ -8,24 +8,82 @@ class Task extends Model
     {
         return parent::__construct($db);
     }
+    // public function getPaginated($limit, $offset, $search = '')
+    // {
+    //     // Base SQL
+    //     $sql = "SELECT 
+    //             t.*, 
+    //             e.full_name AS employee_name, 
+    //             e.photo AS employee_photo, 
+    //             e.id AS employee_code,
+    //             u.full_name AS assigned_by_name,
+    //             u.photo AS user_photo,
+    //             u.email AS assigned_by_email
+    //         FROM tasks AS t
+    //         JOIN users AS e ON t.user_id = e.id
+    //         JOIN users AS u ON t.assigned_by = u.id
+    //         WHERE 1";
+
+    //     $params = [];
+    //     $types = "";
+
+    //     // Search by title
+    //     if (!empty($search)) {
+    //         $sql .= " AND t.title LIKE ?";
+    //         $params[] = "%$search%";
+    //         $types .= "s";
+    //     }
+
+    //     // Add LIMIT & OFFSET
+    //     $sql .= " ORDER BY t.id DESC LIMIT ? OFFSET ?";
+    //     $params[] = $limit;
+    //     $params[] = $offset;
+    //     $types .= "ii";
+
+    //     // Prepare statement
+    //     $stmt = $this->db->prepare($sql);
+    //     if (!$stmt) {
+    //         die("Prepare failed: " . $this->db->error);
+    //     }
+
+    //     // Bind parameters dynamically
+    //     $stmt->bind_param($types, ...$params);
+
+    //     // Execute & fetch
+    //     $stmt->execute();
+    //     $result = $stmt->get_result();
+
+    //     return $result->fetch_all(MYSQLI_ASSOC);
+    // }
+
+
+
     public function getPaginated($limit, $offset, $search = '')
     {
-        // Base SQL
-        $sql = "SELECT 
-                t.*, 
-                e.full_name AS employee_name, 
-                e.photo AS employee_photo, 
-                e.id AS employee_code,
-                u.full_name AS assigned_by_name,
-                u.photo AS user_photo,
-                u.email AS assigned_by_email
-            FROM tasks AS t
-            JOIN users AS e ON t.user_id = e.id
-            JOIN users AS u ON t.assigned_by = u.id
-            WHERE 1";
+        // Current logged-in user
+        $currentUserId = $_SESSION['user']['id'] ?? 0;
 
-        $params = [];
-        $types = "";
+        $sql = "SELECT 
+       t.*, 
+    e.full_name AS employee_name, 
+    e.photo AS employee_photo, 
+    e.id AS employee_code,
+    des.name AS user_designation,
+    desig.name AS assigned_designation,
+    u.full_name AS assigned_by_name,
+    u.photo AS user_photo,
+    u.email AS assigned_by_email
+FROM tasks AS t
+LEFT JOIN users AS e ON t.user_id = e.id
+LEFT JOIN users AS u ON t.assigned_by = u.id
+LEFT JOIN designations AS des ON e.designation_id = des.id
+LEFT JOIN designations AS desig ON u.designation_id = desig.id
+
+        WHERE t.assigned_by = ? AND t.user_id IS NOT NULL"; 
+        // only tasks assigned to current user
+
+        $params = [$currentUserId];
+        $types = "i";
 
         // Search by title
         if (!empty($search)) {
@@ -34,28 +92,22 @@ class Task extends Model
             $types .= "s";
         }
 
-        // Add LIMIT & OFFSET
         $sql .= " ORDER BY t.id DESC LIMIT ? OFFSET ?";
         $params[] = $limit;
         $params[] = $offset;
         $types .= "ii";
 
-        // Prepare statement
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             die("Prepare failed: " . $this->db->error);
         }
 
-        // Bind parameters dynamically
         $stmt->bind_param($types, ...$params);
-
-        // Execute & fetch
         $stmt->execute();
         $result = $stmt->get_result();
 
         return $result->fetch_all(MYSQLI_ASSOC);
     }
-
 
 
     public function getAll()
@@ -72,25 +124,25 @@ class Task extends Model
 
     public function countAll($search = '')
     {
-        $sql = "SELECT COUNT(*) as total FROM users WHERE 1";
-        $params = [];
-        $types = "";
+        $currentUserId = $_SESSION['user']['id'] ?? 0;
 
-        if ($search) {
-            $sql .= "  AND (t.title LIKE ?)";
+        $sql = "SELECT COUNT(*) as total FROM tasks WHERE user_id = ?";
+        $params = [$currentUserId];
+        $types = "i";
+
+        if (!empty($search)) {
+            $sql .= " AND title LIKE ?";
             $params[] = "%$search%";
             $types .= "s";
         }
 
-
         $stmt = $this->db->prepare($sql);
-        if ($params) {
-            $stmt->bind_param($types, ...$params);
-        }
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
-        return $result['total'];
+        return $result['total'] ?? 0;
     }
+
 
     public function create($data)
     {
@@ -124,8 +176,7 @@ class Task extends Model
     //employee id find for edit
     public function find($id)
     {
-        $stmt = $this->db->prepare("
-        SELECT 
+        $stmt = $this->db->prepare(" SELECT 
             t.*, 
 
             -- Employee
@@ -142,10 +193,10 @@ class Task extends Model
 
         FROM tasks t
 
-        JOIN users e 
+      LEFT JOIN users e 
             ON t.user_id = e.id
 
-        JOIN users u 
+        LEFT JOIN users u 
             ON t.assigned_by = u.id
 
         LEFT JOIN designations des_emp 

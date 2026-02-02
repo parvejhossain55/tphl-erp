@@ -3,17 +3,17 @@
     $page = 'Task Lists';
     $show_breadcrumb = true;
     ?>
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
 
-    <h4 class="mb-2 mb-md-0">
-       Task Management
-    </h4>
+      <h4 class="mb-2 mb-md-0">
+          Task Management
+      </h4>
 
-    <div class="d-flex gap-2">
-        <a href="<?= $GLOBALS['base_url'] ?>/create-task" class="btn btn-primary"> <i class="fa-light fa-plus me-1"></i> Add Task</a>
-    </div>
+      <div class="d-flex gap-2">
+          <a href="<?= $GLOBALS['base_url'] ?>/create-task" class="btn btn-primary"> <i class="fa-light fa-plus me-1"></i> Add Task</a>
+      </div>
 
-</div>
+  </div>
 
   <div class="row align-items-stretch">
       <?php foreach ($tasks as $task): ?>
@@ -56,24 +56,39 @@
                   <div class="task__team mb-20 d-flex justify-content-between">
                       <div class="assign-by">
                           <span class="task__meta-title mb-8">Assigned By:</span>
-                          <div class="avatar">
-                              <ul>
-                                  <li><img class="img-36 border-circle" src="<?= getImage('users', $task['user_photo']) ?>" alt="image"><span><?= $task['assigned_by_name'] ?></span>
-                                  </li>
+                          <div class="d-flex align-items-center gap-2">
+                              <img class="img-36 border-circle" src="<?= getImage('users', $task['user_photo']) ?>" alt="image">
+                              <div class="d-flex flex-column">
+                                  <span class="fw-semibold">
+                                      <?= $task['assigned_by_name'] ?>
+                                  </span>
+                                  <small class="text-muted">
+                                      <?= $task['assigned_designation'] ?>
+                                  </small>
+                              </div>
 
-                              </ul>
                           </div>
                       </div>
                       <div class="assign-to">
                           <span class="task__meta-title mb-8">Assigned To:</span>
-                          <div class="avatar">
-                              <ul>
-                                  <li><img class="img-36 border-circle" src="<?= getImage('employees', $task['employee_photo']) ?>" alt="image"><span><?= $task['employee_name'] ?></span>
-                                  </li>
 
-                              </ul>
+                          <div class="d-flex align-items-center gap-2">
+                              <img
+                                  class="img-36 border-circle"
+                                  src="<?= getImage('users', $task['employee_photo']) ?>"
+                                  alt="image">
+
+                              <div class="d-flex flex-column">
+                                  <span class="fw-semibold">
+                                      <?= $task['employee_name'] ?>
+                                  </span>
+                                  <small class="text-muted">
+                                      <?= $task['user_designation'] ?>
+                                  </small>
+                              </div>
                           </div>
                       </div>
+
 
 
                   </div>
@@ -81,7 +96,7 @@
                       <div class="d-flex justify-content-between mb-8">
                           <span class="task__meta-title">Task Progress</span>
 
-                          <span class="task__meta-title">%</span>
+                          <span class="task__meta-title"><?= $task['progress'] ?? 0 ?>%</span>
                       </div>
                       <div class="progress">
                           <div class="progress-bar" role="progressbar" style="width: <?= $task['progress'] ?>%" aria-valuenow=" <?= $task['progress'] ?>" aria-valuemin="0" aria-valuemax="100" data-toggle="tooltip"
@@ -115,4 +130,3 @@
           </div>
       <?php endforeach ?>
   </div>
-
