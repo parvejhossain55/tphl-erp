@@ -305,7 +305,6 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                                 <optgroup label="Expense Categories">
                                     <option value="cashout" <?= ($category ?? '') === 'cashout' ? 'selected' : '' ?>>Cash Out</option>
                                     <option value="utilities" <?= ($category ?? '') === 'utilities' ? 'selected' : '' ?>>Utilities</option>
-                                    <option value="other" <?= ($category ?? '') === 'other' ? 'selected' : '' ?>>Other</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -337,28 +336,41 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
         </div>
     </div>
 
-    <!-- Statistics Cards with Period Filters -->
-    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper stat-card revenue">
+    <!-- Add this new card as the first card in the statistics section -->
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
+        <div class="card__wrapper stat-card cash-in">
             <div class="d-flex align-items-center gap-1">
                 <div class="card__icon">
                     <span><i class="fa-light fa-money-bill-trend-up"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Revenue
-                        <span id="revenuePeriodText">(All Time)</span>
-                    </h6>
-
+                    <h6 class="card__sub-title mb-10">Total Cash IN</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title fs-6">৳<?= number_format($overall_stats['total_revenue'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title fs-6">৳<?= number_format($overall_stats['total_cashin'] ?? 0, 2) ?></h4>
                     </div>
-
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
+    <!-- Update existing cards to col-xxl-3 instead of col-xxl-4 -->
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
+        <div class="card__wrapper stat-card revenue">
+            <div class="d-flex align-items-center gap-1">
+                <div class="card__icon">
+                    <span><i class="fa-light fa-chart-line"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-10">Total Revenue </h6>
+                    <div class="d-flex flex-wrap align-items-end gap-10">
+                        <h4 class="card__title fs-6">৳<?= number_format($overall_stats['total_revenue'] ?? 0, 2) ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper stat-card cash-out">
             <div class="d-flex align-items-center gap-1">
                 <div class="card__icon">
@@ -366,7 +378,7 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                 </div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Cash Out
-                        <span id="cashoutPeriodText">(All Time)</span>
+
                     </h6>
 
                     <div class="d-flex flex-wrap align-items-end gap-10">
@@ -377,7 +389,7 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper stat-card net-balance">
             <div class="d-flex align-items-center gap-1">
                 <div class="card__icon">
@@ -385,7 +397,6 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                 </div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Net Balance
-                        <span id="balancePeriodText">(All Time)</span>
                     </h6>
 
                     <div class="d-flex flex-wrap align-items-end gap-10">
@@ -436,6 +447,7 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
     <div class="col-xxl-12 mb-4">
         <div class="card__wrapper">
             <div class="card__body">
+                <!-- In the daily data table section -->
                 <?php if (isset($statement_data['daily_data'])): ?>
                     <div class="table__wrapper table-responsive">
                         <table class="table mb-20 multiple_tables">
@@ -445,7 +457,7 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                                     <th>Day</th>
 
                                     <?php if ($category === 'all' || $category === 'landshare'): ?>
-                                        <th>Landshare (৳)</th>
+                                        <th>Agreement Value (৳)</th> <!-- Changed from Landshare -->
                                     <?php endif; ?>
 
                                     <?php if ($category === 'all' || $category === 'service_fee'): ?>
@@ -453,7 +465,8 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                                     <?php endif; ?>
 
                                     <?php if ($category === 'all'): ?>
-                                        <th>Total Revenue (৳)</th>
+                                        <th>Management Cashin (৳)</th> <!-- Added this -->
+                                        <th>Total Cash IN (৳)</th> <!-- Changed from Total Revenue -->
                                     <?php endif; ?>
 
                                     <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
@@ -471,42 +484,43 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                             <tbody class="table__body">
                                 <?php foreach ($statement_data['daily_data'] as $row): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($row['formatted_date']) ?></td>
-                                        <td><?= htmlspecialchars($row['day_name']) ?></td>
+                                        <td><?= htmlspecialchars($row['formatted_date'] ?? '') ?></td>
+                                        <td><?= htmlspecialchars($row['day_name'] ?? '') ?></td>
 
                                         <?php if ($category === 'all' || $category === 'landshare'): ?>
-                                            <td class="positive"><strong>৳<?= number_format($row['landshare'], 2) ?></strong></td>
+                                            <td class="positive"><strong>৳<?= number_format($row['agreement_value'] ?? $row['landshare'] ?? 0, 2) ?></strong></td>
                                         <?php endif; ?>
 
                                         <?php if ($category === 'all' || $category === 'service_fee'): ?>
-                                            <td class="positive"><strong>৳<?= number_format($row['service_fee'], 2) ?></strong></td>
+                                            <td class="positive"><strong>৳<?= number_format($row['service_fee'] ?? 0, 2) ?></strong></td>
                                         <?php endif; ?>
 
                                         <?php if ($category === 'all'): ?>
-                                            <td class="positive"><strong>৳<?= number_format($row['total_revenue'], 2) ?></strong></td>
+                                            <td class="positive"><strong>৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></strong></td>
+                                            <td class="positive"><strong>৳<?= number_format($row['total_cashin'] ?? $row['total_revenue'] ?? 0, 2) ?></strong></td>
                                         <?php endif; ?>
 
                                         <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
-                                            <td class="negative"><strong>৳<?= number_format($row['cash_out'], 2) ?></strong></td>
+                                            <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
                                         <?php endif; ?>
 
                                         <?php if ($category === 'all'): ?>
-                                            <td class="<?= $row['net_amount'] >= 0 ? 'positive' : 'negative' ?>">
-                                                <strong>৳<?= number_format($row['net_amount'], 2) ?></strong>
+                                            <td class="<?= ($row['net_amount'] ?? 0) >= 0 ? 'positive' : 'negative' ?>">
+                                                <strong>৳<?= number_format($row['net_amount'] ?? 0, 2) ?></strong>
                                             </td>
-                                            <td class="<?= $row['running_balance'] >= 0 ? 'positive' : 'negative' ?>">
-                                                <strong>৳<?= number_format($row['running_balance'], 2) ?></strong>
+                                            <td class="<?= ($row['running_balance'] ?? 0) >= 0 ? 'positive' : 'negative' ?>">
+                                                <strong>৳<?= number_format($row['running_balance'] ?? 0, 2) ?></strong>
                                             </td>
                                         <?php else: ?>
                                             <?php
                                             // Show specific category amount
                                             $amount = 0;
                                             if ($category === 'landshare') {
-                                                $amount = $row['landshare'];
+                                                $amount = $row['agreement_value'] ?? $row['landshare'] ?? 0;
                                             } elseif ($category === 'service_fee') {
-                                                $amount = $row['service_fee'];
+                                                $amount = $row['service_fee'] ?? 0;
                                             } else {
-                                                $amount = $row['cash_out'];
+                                                $amount = $row['cash_out'] ?? 0;
                                             }
                                             $colorClass = in_array($category, ['landshare', 'service_fee']) ? 'positive' : 'negative';
                                             ?>
@@ -519,6 +533,8 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- For monthly_data (yearly, 6months views) -->
                 <?php elseif (isset($statement_data['monthly_data'])): ?>
                     <div class="table__wrapper table-responsive">
                         <table class="table mb-20 multiple_tables">
@@ -526,26 +542,26 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                                 <tr class="table__title table__sort">
                                     <th>Month</th>
 
-                                    <?php if ($category === 'all' || $category === 'landshare'): ?>
-                                        <th>Landshare (৳)</th>
-                                    <?php endif; ?>
-
-                                    <?php if ($category === 'all' || $category === 'service_fee'): ?>
+                                    <?php if ($category === 'all'): ?>
+                                        <!-- Show all columns only for 'all' category -->
+                                        <th>Agreement Value (৳)</th>
                                         <th>Service Fee (৳)</th>
-                                    <?php endif; ?>
-
-                                    <?php if ($category === 'all'): ?>
-                                        <th>Total Revenue (৳)</th>
-                                    <?php endif; ?>
-
-                                    <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
+                                        <th>Management Cashin (৳)</th>
+                                        <th>Total Cash IN (৳)</th>
                                         <th>Cash Out (৳)</th>
-                                    <?php endif; ?>
-
-                                    <?php if ($category === 'all'): ?>
                                         <th>Net Amount (৳)</th>
                                         <th>Running Balance (৳)</th>
-                                    <?php else: ?>
+                                    <?php elseif ($category === 'landshare'): ?>
+                                        <!-- For landshare only -->
+                                        <th>Agreement Value (৳)</th>
+                                        <th>Amount (৳)</th>
+                                    <?php elseif ($category === 'service_fee'): ?>
+                                        <!-- For service fee only -->
+                                        <th>Service Fee (৳)</th>
+                                        <th>Amount (৳)</th>
+                                    <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
+                                        <!-- For cashout/expense categories -->
+                                        <th>Cash Out (৳)</th>
                                         <th>Amount (৳)</th>
                                     <?php endif; ?>
                                 </tr>
@@ -555,64 +571,41 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                                     <tr>
                                         <td><?= htmlspecialchars($row['month']) ?></td>
 
-                                        <?php if ($category === 'all' || $category === 'landshare'): ?>
-                                            <td class="positive"><strong>৳<?= number_format($row['landshare'], 2) ?></strong></td>
-                                        <?php endif; ?>
-
-                                        <?php if ($category === 'all' || $category === 'service_fee'): ?>
-                                            <td class="positive"><strong>৳<?= number_format($row['service_fee'], 2) ?></strong></td>
-                                        <?php endif; ?>
-
                                         <?php if ($category === 'all'): ?>
-                                            <td class="positive"><strong>৳<?= number_format($row['total_revenue'], 2) ?></strong></td>
-                                        <?php endif; ?>
-
-                                        <?php if (in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
-                                            <td class="negative"><strong>৳<?= number_format($row['cash_out'], 2) ?></strong></td>
-                                        <?php endif; ?>
-
-                                        <?php if ($category === 'all'): ?>
-                                            <td class="<?= $row['net_amount'] >= 0 ? 'positive' : 'negative' ?>">
-                                                <strong>৳<?= number_format($row['net_amount'], 2) ?></strong>
+                                            <!-- Show all data for 'all' category -->
+                                            <td class="positive"><strong>৳<?= number_format($row['agreement_value'] ?? $row['landshare'] ?? 0, 2) ?></strong></td>
+                                            <td class="positive"><strong>৳<?= number_format($row['service_fee'] ?? 0, 2) ?></strong></td>
+                                            <td class="positive"><strong>৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></strong></td>
+                                            <td class="positive"><strong>৳<?= number_format($row['total_cashin'] ?? $row['total_revenue'] ?? 0, 2) ?></strong></td>
+                                            <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
+                                            <td class="<?= ($row['net_amount'] ?? 0) >= 0 ? 'positive' : 'negative' ?>">
+                                                <strong>৳<?= number_format($row['net_amount'] ?? 0, 2) ?></strong>
                                             </td>
-                                            <td class="<?= $row['running_balance'] >= 0 ? 'positive' : 'negative' ?>">
-                                                <strong>৳<?= number_format($row['running_balance'], 2) ?></strong>
+                                            <td class="<?= ($row['running_balance'] ?? 0) >= 0 ? 'positive' : 'negative' ?>">
+                                                <strong>৳<?= number_format($row['running_balance'] ?? 0, 2) ?></strong>
                                             </td>
-                                        <?php else: ?>
-                                            <?php
-                                            // Show specific category amount
-                                            $amount = 0;
-                                            if ($category === 'landshare') {
-                                                $amount = $row['landshare'];
-                                            } elseif ($category === 'service_fee') {
-                                                $amount = $row['service_fee'];
-                                            } else {
-                                                $amount = $row['cash_out'];
-                                            }
-                                            $colorClass = in_array($category, ['landshare', 'service_fee']) ? 'positive' : 'negative';
-                                            ?>
-                                            <td class="<?= $colorClass ?>">
-                                                <strong>৳<?= number_format($amount, 2) ?></strong>
-                                            </td>
+                                        <?php elseif ($category === 'landshare'): ?>
+                                            <!-- Show only landshare data -->
+                                            <td class="positive"><strong>৳<?= number_format($row['agreement_value'] ?? $row['landshare'] ?? 0, 2) ?></strong></td>
+                                            <td class="positive"><strong>৳<?= number_format($row['agreement_value'] ?? $row['landshare'] ?? 0, 2) ?></strong></td>
+                                        <?php elseif ($category === 'service_fee'): ?>
+                                            <!-- Show only service fee data -->
+                                            <td class="positive"><strong>৳<?= number_format($row['service_fee'] ?? 0, 2) ?></strong></td>
+                                            <td class="positive"><strong>৳<?= number_format($row['service_fee'] ?? 0, 2) ?></strong></td>
+                                        <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
+                                            <!-- Show only cashout data -->
+                                            <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
+                                            <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
                                         <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
-                <?php else: ?>
-                    <div class="text-center py-4">
-                        <div class="text-muted">
-                            <i class="fa-light fa-chart-line fa-2x mb-3"></i><br>
-                            No statement data available. Please select a valid period to generate the statement.
-                        </div>
-                    </div>
                 <?php endif; ?>
             </div>
         </div>
     </div>
-
-
 </div>
 
 <script>
@@ -776,3 +769,4 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
         updateCardPeriodText();
     });
 </script>
+<?php ?>
