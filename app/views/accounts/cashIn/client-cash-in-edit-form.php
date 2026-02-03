@@ -67,6 +67,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                     <select name="payment_type" id="paymentType" class="form-select" required>
                                         <option value="">Select Payment Type</option>
                                         <option value="booking_money" <?= ($transaction['payment_type'] ?? '') === 'booking_money' ? 'selected' : '' ?>>Booking Money</option>
+                                        <option value="land_share" <?= ($transaction['payment_type'] ?? '') === 'land_share' ? 'selected' : '' ?>>Land Share</option>
                                         <option value="registration" <?= ($transaction['payment_type'] ?? '') === 'registration' ? 'selected' : '' ?>>Registration</option>
                                         <option value="emi" <?= ($transaction['payment_type'] ?? '') === 'emi' ? 'selected' : '' ?>>EMI</option>
                                         <option value="down_payment" <?= ($transaction['payment_type'] ?? '') === 'down_payment' ? 'selected' : '' ?>>Down Payment</option>

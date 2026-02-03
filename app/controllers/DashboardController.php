@@ -67,7 +67,7 @@ class DashboardController extends Controller
         }
 
         $this->view("accounts/dashboard/accounts-dashboard", [
-            "current_route" => "dashboard",
+            "current_route" => "accounts-dashboard",
             "page_title" => "Dashboard",
             "viewType" => $viewType,
             "period" => $period,

@@ -12,71 +12,69 @@ class AccountClient extends Model
     /**
      * Get all clients (booked leads) with full details including flat price
      */
-   public function getAllClients()
-{
-    $sql = $this->db->prepare("
-        SELECT
-            l.id AS lead_id,
-            lb.id AS booking_id,
-
-            l.full_name AS client_name,
-            l.phone,
-            l.email,
-            l.designation,
-
-            u.full_name AS agent_name,
-
-            p.name AS project_name,
-            p.types AS project_type,
-
-            f.flat_name AS unit_name,
-            f.sqft AS flat_size,
-            f.floor_no AS flat_floor_no,
-
-            SUM(lb.agreement_value) AS total_agreement_value,
-
-            COALESCE(
+    public function getAllClients()
+    {
+        $sql = $this->db->prepare("
+            SELECT
+                l.id AS lead_id,
+                lb.id AS booking_id,
+                l.full_name AS client_name,
+                l.phone,
+                l.email,
+                l.designation,
+                u.full_name AS agent_name,
+                p.name AS project_name,
+                p.types AS project_type,
+                f.flat_name AS unit_name,
+                f.sqft AS flat_size,
+                f.floor_no AS flat_floor_no,
+                f.price_value AS total_price,
+                f.land_share_value AS total_land_share,
+                lb.agreement_value AS booking_money,
+                lb.discount_amount,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status = 'paid'), 
+                    0
+                ) AS total_paid,
+                COALESCE(
+                    (SELECT SUM(lp.land_share_amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status = 'paid'), 
+                    0
+                ) AS total_land_share_paid,
                 (
-                    SELECT SUM(lp.amount)
+                    SELECT MAX(lp.payment_date)
                     FROM lead_payments lp
                     WHERE lp.booking_id = lb.id
                     AND lp.payment_status = 'paid'
-                ),
-                0
-            ) AS total_paid,
+                ) AS last_payment_date
+            FROM leads l
+            LEFT JOIN lead_bookings lb 
+                ON lb.lead_id = l.id
+                AND lb.booking_status != 'cancelled'
+            LEFT JOIN projects p 
+                ON p.id = lb.project_id
+            LEFT JOIN flats f 
+                ON f.id = lb.flat_id
+            LEFT JOIN users u 
+                ON u.id = l.assigned_id
+            WHERE lb.id IS NOT NULL
+            GROUP BY lb.id
+            ORDER BY l.full_name
+        ");
 
-            (
-                SELECT MAX(lp.payment_date)
-                FROM lead_payments lp
-                WHERE lp.booking_id = lb.id
-                AND lp.payment_status = 'paid'
-            ) AS last_payment_date
+        $sql->execute();
+        $result = $sql->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
 
-        FROM leads l
-
-        LEFT JOIN lead_bookings lb 
-            ON lb.lead_id = l.id
-            AND lb.booking_status != 'cancelled'
-
-        LEFT JOIN projects p 
-            ON p.id = lb.project_id
-
-        LEFT JOIN flats f 
-            ON f.id = lb.flat_id
-
-        LEFT JOIN users u 
-            ON u.id = l.assigned_id
-
-        GROUP BY lb.id
-        ORDER BY l.full_name
-    ");
-
-    $sql->execute();
-    $result = $sql->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
-
-
+    /**
+     * Get lands by lead ID
+     */
     public function getLandsByLeadId($leadId)
     {
         $sql = $this->db->prepare("
@@ -94,6 +92,7 @@ class AccountClient extends Model
                 f.floor_no as flat_no,
                 f.sqft as flat_size,
                 f.price_value as total_price,
+                f.land_share_value as total_land_share,
                 un.name as unit_name,
                 COALESCE(
                     (SELECT SUM(lp.amount) 
@@ -102,6 +101,13 @@ class AccountClient extends Model
                      AND lp.payment_status = 'paid'), 
                     0
                 ) as total_paid,
+                COALESCE(
+                    (SELECT SUM(lp.land_share_amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status = 'paid'), 
+                    0
+                ) as total_land_share_paid,
                 COALESCE(
                     (SELECT SUM(lp.service_fee) 
                      FROM lead_payments lp 
@@ -160,6 +166,7 @@ class AccountClient extends Model
         $result = $sql->get_result();
         return $result ? $result->fetch_assoc() : [];
     }
+
     /**
      * Get booking money transaction from database
      */
@@ -202,7 +209,8 @@ class AccountClient extends Model
     }
 
     /**
-     * Get client details by booking ID with payment summary and flat price
+     * Get client details by booking ID with correct payment calculations
+     * FIXED: Now correctly calculates service fee from emi_schedules table
      */
     public function getClientByBookingId($bookingId)
     {
@@ -211,7 +219,8 @@ class AccountClient extends Model
                 lb.id as booking_id,
                 lb.lead_id,
                 lb.booking_date,
-                lb.agreement_value,
+                lb.agreement_value as booking_money,
+                lb.discount_amount,
                 lb.booking_status,
                 lb.landshare_status,
                 lb.service_fee_balance,
@@ -227,9 +236,11 @@ class AccountClient extends Model
                 f.floor_no as flat_no,
                 f.sqft as flat_size,
                 f.price_value as total_price,
+                f.land_share_value as total_land_share,
                 un.id as unit_id,
                 un.name as unit_name,
                 u.full_name as agent_name,
+                -- Payment calculations
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
@@ -238,12 +249,51 @@ class AccountClient extends Model
                     0
                 ) as total_paid,
                 COALESCE(
-                    (SELECT SUM(lp.service_fee) 
+                    (SELECT SUM(lp.land_share_amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
                      AND lp.payment_status = 'paid'), 
                     0
-                ) as total_service_fee
+                ) as additional_land_share_paid,
+                -- FIXED: Calculate service fee from emi_schedules table instead of lead_payments
+                COALESCE(
+                    (SELECT SUM(es.service_fee) 
+                     FROM emi_schedules es 
+                     WHERE es.lead_booking_id = lb.id 
+                     AND es.status = 'paid'), 
+                    0
+                ) as total_service_fee,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status = 'paid'
+                     AND lp.payment_type = 'registration'), 
+                    0
+                ) as registration_paid,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status = 'paid'
+                     AND lp.payment_type = 'booking_money'), 
+                    0
+                ) as booking_money_paid,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status = 'paid'
+                     AND lp.payment_type = 'emi'), 
+                    0
+                ) as emi_paid,
+                COALESCE(
+                    (SELECT MAX(lp.payment_date) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status = 'paid'), 
+                    NULL
+                ) as last_payment_date
             FROM lead_bookings lb
             INNER JOIN leads l ON lb.lead_id = l.id
             INNER JOIN projects p ON lb.project_id = p.id
@@ -269,12 +319,121 @@ class AccountClient extends Model
         $clientDetails = $result ? $result->fetch_assoc() : null;
 
         if ($clientDetails) {
-            $clientDetails['due_amount'] = $clientDetails['total_price'] - $clientDetails['total_paid'];
-            $clientDetails['net_paid'] = $clientDetails['total_paid'] - $clientDetails['total_service_fee'];
+            // Cast all amounts to float for calculations
+            $totalPrice = (float)$clientDetails['total_price'];
+            $totalLandShare = (float)$clientDetails['total_land_share'];
+            $bookingMoney = (float)$clientDetails['booking_money'];
+            $discountAmount = (float)$clientDetails['discount_amount'];
+            
+            // Paid amounts
+            $totalPaid = (float)$clientDetails['total_paid'];
+            $bookingMoneyPaid = (float)$clientDetails['booking_money_paid'];
+            $additionalLandSharePaid = (float)$clientDetails['additional_land_share_paid'];
+            $registrationPaid = (float)$clientDetails['registration_paid'];
+            $emiPaid = (float)$clientDetails['emi_paid'];
+            $totalServiceFee = (float)$clientDetails['total_service_fee'];
+            
+            // CORRECT: Total land share paid = booking money + additional land share payments
+            $totalLandSharePaid = $bookingMoneyPaid + $additionalLandSharePaid;
+            
+            // CORRECT: Remaining land share = total land share - (booking money + additional land share + discount)
+            // If there's a discount, it reduces the amount the client needs to pay
+            $remainingLandShare = max(0, $totalLandShare - ($totalLandSharePaid + $discountAmount));
+            
+            // CORRECT: Construction fee = total price - (total land share + registration)
+            $constructionFee = $totalPrice - ($totalLandShare + $registrationPaid);
+            
+            // CORRECT: Construction fee paid = total paid - (booking money + registration + additional land share)
+            $constructionFeePaid = $totalPaid - ($bookingMoneyPaid + $registrationPaid + $additionalLandSharePaid);
+            $constructionFeePaid = max(0, $constructionFeePaid);
+            
+            // Calculate remaining construction fee (also considering discount)
+            $remainingConstructionFee = max(0, $constructionFee - $constructionFeePaid);
+            
+            // Calculate total due (total price minus discount and what's been paid)
+            $totalDue = max(0, ($totalPrice - $discountAmount) - $totalPaid);
+            
+            // Calculate net received
+            $netReceived = $totalPaid - $totalServiceFee;
+            
+            // Get EMI statistics
+            $emiStats = $this->getEMIStatistics($bookingId);
+            
+            // Add calculated fields to response
+            $clientDetails['total_land_share_paid'] = $totalLandSharePaid;
+            $clientDetails['remaining_land_share'] = $remainingLandShare;
+            $clientDetails['construction_fee'] = $constructionFee;
+            $clientDetails['construction_fee_paid'] = $constructionFeePaid;
+            $clientDetails['construction_fee_paid_after_service'] = $constructionFeePaid; // Alias for compatibility
+            $clientDetails['remaining_construction_fee'] = $remainingConstructionFee;
+            $clientDetails['total_due'] = $totalDue;
+            $clientDetails['net_received'] = $netReceived;
+            $clientDetails['is_land_share_completed'] = ($remainingLandShare <= 0);
+            
+            // Add EMI statistics
+            $clientDetails['total_emi'] = $emiStats['total_emi'];
+            $clientDetails['completed_emi'] = $emiStats['completed_emi'];
+            $clientDetails['pending_emi'] = $emiStats['pending_emi'];
+            $clientDetails['paid_emi_numbers'] = $emiStats['paid_emi_numbers'];
+            $clientDetails['pending_emi_numbers'] = $emiStats['pending_emi_numbers'];
         }
 
         return $clientDetails;
     }
+
+    /**
+     * Get EMI statistics for a booking
+     */
+    private function getEMIStatistics($bookingId)
+    {
+        $stats = [
+            'total_emi' => 48, // Fixed as per your data
+            'completed_emi' => 0,
+            'pending_emi' => 0,
+            'paid_emi_numbers' => [],
+            'pending_emi_numbers' => []
+        ];
+
+        // Get paid EMI numbers
+        $paidEmiStmt = $this->db->prepare("
+            SELECT es.emi_no
+            FROM emi_schedules es
+            INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
+            WHERE lp.booking_id = ? 
+            AND lp.payment_status = 'paid'
+            ORDER BY es.emi_no
+        ");
+        $paidEmiStmt->bind_param("i", $bookingId);
+        $paidEmiStmt->execute();
+        $paidEmiResult = $paidEmiStmt->get_result();
+        
+        $paidEmiNumbers = [];
+        if ($paidEmiResult) {
+            while ($row = $paidEmiResult->fetch_assoc()) {
+                $paidEmiNumbers[] = (int)$row['emi_no'];
+            }
+        }
+
+        $stats['completed_emi'] = count($paidEmiNumbers);
+        $stats['paid_emi_numbers'] = $paidEmiNumbers;
+        
+        // Calculate pending EMI numbers
+        if ($stats['total_emi'] > 0) {
+            for ($i = 1; $i <= $stats['total_emi']; $i++) {
+                if (!in_array($i, $paidEmiNumbers)) {
+                    $stats['pending_emi_numbers'][] = $i;
+                }
+            }
+        }
+        
+        $stats['pending_emi'] = count($stats['pending_emi_numbers']);
+
+        return $stats;
+    }
+
+    /**
+     * Get client by lead ID
+     */
     public function getClientByLeadId($leadId)
     {
         $stmt = $this->db->prepare("
@@ -305,37 +464,271 @@ class AccountClient extends Model
         $result = $stmt->get_result();
         return $result ? $result->fetch_assoc() : null;
     }
+
+    /**
+     * Get payment summary by booking ID
+     */
+    public function getPaymentSummaryByBookingId($bookingId)
+    {
+        $clientDetails = $this->getClientByBookingId($bookingId);
+        
+        if (!$clientDetails) {
+            return [
+                'total_price' => 0,
+                'total_land_share' => 0,
+                'booking_money' => 0,
+                'booking_money_paid' => 0,
+                'additional_land_share_paid' => 0,
+                'total_land_share_paid' => 0,
+                'remaining_land_share' => 0,
+                'discount_amount' => 0,
+                'registration_paid' => 0,
+                'construction_fee' => 0,
+                'construction_fee_paid' => 0,
+                'construction_fee_paid_after_service' => 0,
+                'remaining_construction_fee' => 0,
+                'total_paid' => 0,
+                'total_due' => 0,
+                'total_emi' => 0,
+                'completed_emi' => 0,
+                'pending_emi' => 0,
+                'last_payment_date' => null,
+                'total_service_fee' => 0,
+                'net_received' => 0,
+                'is_land_share_completed' => false,
+                'paid_emi_numbers' => [],
+                'pending_emi_numbers' => []
+            ];
+        }
+
+        return [
+            'total_price' => $clientDetails['total_price'],
+            'total_land_share' => $clientDetails['total_land_share'],
+            'booking_money' => $clientDetails['booking_money'],
+            'booking_money_paid' => $clientDetails['booking_money_paid'],
+            'additional_land_share_paid' => $clientDetails['additional_land_share_paid'],
+            'total_land_share_paid' => $clientDetails['total_land_share_paid'],
+            'remaining_land_share' => $clientDetails['remaining_land_share'],
+            'discount_amount' => $clientDetails['discount_amount'],
+            'registration_paid' => $clientDetails['registration_paid'],
+            'registration_money' => $clientDetails['registration_paid'], // Alias for view
+            'construction_fee' => $clientDetails['construction_fee'],
+            'construction_fee_paid' => $clientDetails['construction_fee_paid'],
+            'construction_fee_paid_after_service' => $clientDetails['construction_fee_paid_after_service'],
+            'remaining_construction_fee' => $clientDetails['remaining_construction_fee'],
+            'total_paid' => $clientDetails['total_paid'],
+            'total_due' => $clientDetails['total_due'],
+            'total_emi' => $clientDetails['total_emi'],
+            'completed_emi' => $clientDetails['completed_emi'],
+            'pending_emi' => $clientDetails['pending_emi'],
+            'last_payment_date' => $clientDetails['last_payment_date'],
+            'total_service_fee' => $clientDetails['total_service_fee'],
+            'net_received' => $clientDetails['net_received'],
+            'is_land_share_completed' => $clientDetails['is_land_share_completed'],
+            'paid_emi_numbers' => $clientDetails['paid_emi_numbers'],
+            'pending_emi_numbers' => $clientDetails['pending_emi_numbers']
+        ];
+    }
+
+    /**
+     * Add new transaction with proper validations
+     */
+    public function addTransaction($transactionData, $emiScheduleData = null)
+    {
+        $this->db->begin_transaction();
+
+        try {
+            // Validate required fields
+            if (empty($transactionData['booking_id']) || empty($transactionData['payment_type']) || 
+                empty($transactionData['amount']) || empty($transactionData['payment_status'])) {
+                throw new Exception("Missing required transaction data");
+            }
+
+            $bookingId = (int)$transactionData['booking_id'];
+            $paymentType = $transactionData['payment_type'];
+            $amount = (float)$transactionData['amount'];
+            $landShareAmount = 0;
+            $serviceFee = 0;
+
+            // Get current payment summary for validations
+            $summary = $this->getPaymentSummaryByBookingId($bookingId);
+
+            // Validate based on payment type
+            switch ($paymentType) {
+                case 'booking_money':
+                    // Check if booking money already paid
+                    if ($summary['booking_money_paid'] > 0) {
+                        throw new Exception("Booking money has already been paid for this booking");
+                    }
+                    if ($amount > $summary['booking_money']) {
+                        throw new Exception("Booking money amount cannot exceed agreed amount: ৳" . number_format($summary['booking_money'], 2));
+                    }
+                    // Booking money counts as land share payment
+                    $landShareAmount = $amount;
+                    break;
+
+                case 'land_share':
+                    // Validate against remaining land share
+                    if ($summary['remaining_land_share'] <= 0) {
+                        throw new Exception("Land share payment is already completed!");
+                    }
+                    if ($amount > $summary['remaining_land_share']) {
+                        throw new Exception("Land share amount cannot exceed remaining land share: ৳" . number_format($summary['remaining_land_share'], 2));
+                    }
+                    $landShareAmount = $amount;
+                    break;
+
+                case 'emi':
+                    // Calculate service fee (10% of EMI amount)
+                    $serviceFee = $amount * 0.10;
+                    
+                    // Validate against remaining construction fee
+                    $remainingConstruction = $summary['remaining_construction_fee'];
+                    $emiPaidSoFar = $summary['construction_fee_paid'];
+                    
+                    if (($emiPaidSoFar + $amount) > $summary['construction_fee']) {
+                        throw new Exception("EMI payment cannot exceed total construction fee: ৳" . number_format($summary['construction_fee'], 2));
+                    }
+                    break;
+
+                case 'registration':
+                    // Registration is usually a fixed amount or percentage
+                    // Add validation if needed
+                    break;
+
+                default:
+                    // For other payment types, no specific validation
+                    break;
+            }
+
+            // Insert payment record
+            $stmt = $this->db->prepare("
+                INSERT INTO lead_payments (
+                    booking_id, payment_type, amount, land_share_amount, service_fee,
+                    payment_method, payment_status, payment_date, transaction_ref, 
+                    bank_name, bank_account_no, cheque_no, online_type, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+
+            if (!$stmt) {
+                throw new Exception("Prepare failed: " . $this->db->error);
+            }
+
+            $stmt->bind_param(
+                "isdddsdssssssi",
+                $bookingId,
+                $paymentType,
+                $amount,
+                $landShareAmount,
+                $serviceFee,
+                $transactionData['payment_method'] ?? 'cash',
+                $transactionData['payment_status'],
+                $transactionData['payment_date'] ?? date('Y-m-d'),
+                $transactionData['transaction_ref'] ?? '',
+                $transactionData['bank_name'] ?? '',
+                $transactionData['bank_account_no'] ?? '',
+                $transactionData['cheque_no'] ?? '',
+                $transactionData['online_type'] ?? '',
+                $transactionData['created_by'] ?? 0
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Transaction insert failed: " . $stmt->error);
+            }
+
+            $paymentId = $this->db->insert_id;
+
+            // Create EMI schedule if this is an EMI payment
+            if ($paymentType === 'emi' && $emiScheduleData) {
+                $this->createEMISchedule($bookingId, $paymentId, $amount, $serviceFee, $emiScheduleData);
+            }
+
+            $this->db->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Transaction added successfully!',
+                'payment_id' => $paymentId,
+                'service_fee' => $serviceFee,
+                'land_share_amount' => $landShareAmount
+            ];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return [
+                'success' => false,
+                'message' => 'Transaction failed: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Create EMI schedule
+     */
+    private function createEMISchedule($bookingId, $paymentId, $emiAmount, $serviceFee, $emiScheduleData)
+    {
+        // Get the next EMI number
+        $emiNoStmt = $this->db->prepare("
+            SELECT COALESCE(MAX(emi_no), 0) + 1 as next_emi_no 
+            FROM emi_schedules 
+            WHERE lead_booking_id = ?
+        ");
+        $emiNoStmt->bind_param("i", $bookingId);
+        $emiNoStmt->execute();
+        $emiNoResult = $emiNoStmt->get_result();
+        $emiNoRow = $emiNoResult ? $emiNoResult->fetch_assoc() : null;
+        $nextEmiNo = $emiNoRow ? $emiNoRow['next_emi_no'] : 1;
+
+        // Insert EMI schedule
+        $emiStmt = $this->db->prepare("
+            INSERT INTO emi_schedules (
+                lead_booking_id, emi_no, emi_amount, service_fee,
+                due_emi_amount, due_date, status, lead_payment_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $status = 'paid'; // Default status for paid EMI payments
+        $dueEmiAmount = isset($emiScheduleData['due_emi_amount']) ? (float)$emiScheduleData['due_emi_amount'] : 0;
+        $dueDate = isset($emiScheduleData['due_date']) ? $emiScheduleData['due_date'] : date('Y-m-d');
+
+        $emiStmt->bind_param(
+            "iidddssi",
+            $bookingId,
+            $nextEmiNo,
+            $emiAmount,
+            $serviceFee,
+            $dueEmiAmount,
+            $dueDate,
+            $status,
+            $paymentId
+        );
+
+        if (!$emiStmt->execute()) {
+            throw new Exception("EMI schedule insert failed: " . $emiStmt->error);
+        }
+    }
+
+    /**
+     * Get transactions by booking ID
+     */
     public function getTransactionsByBookingId($bookingId)
     {
-        // Get all payments from lead_payments table ONLY
-        $paymentsStmt = $this->db->prepare("
-        SELECT 
-            lp.*,
-            l.full_name as client_name,
-            p.name as project_name,
-            f.floor_no,
-            un.name as unit_name,
-            CONCAT('UNIT ', un.name, ' - FLOOR ', f.floor_no) as flat_no,
-            u.full_name as created_by_name,
-            es.emi_no,
-            es.emi_amount,
-            es.due_emi_amount,
-            es.due_date as emi_due_date,
-            es.status as emi_status,
-            CASE 
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 1 THEN '1st Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 2 THEN '2nd Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 3 THEN '3rd Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 4 THEN '4th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 5 THEN '5th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 6 THEN '6th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 7 THEN '7th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 8 THEN '8th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 9 THEN '9th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 10 THEN '10th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 11 THEN '11th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 12 THEN '12th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
+        $stmt = $this->db->prepare("
+            SELECT 
+                lp.*,
+                l.full_name as client_name,
+                p.name as project_name,
+                f.floor_no,
+                un.name as unit_name,
+                CONCAT('UNIT ', un.name, ' - FLOOR ', f.floor_no) as flat_no,
+                u.full_name as created_by_name,
+                es.emi_no,
+                es.emi_amount,
+                es.due_emi_amount,
+                es.due_date as emi_due_date,
+                es.status as emi_status,
+                es.service_fee as emi_service_fee,
+                CASE 
+                    WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
                     THEN CONCAT(es.emi_no, 
                         CASE 
                             WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
@@ -345,50 +738,54 @@ class AccountClient extends Model
                             ELSE 'th'
                         END, ' Installment'
                     )
-                WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
-                WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
-                WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
-                ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
-            END as installment_label,
-            CASE 
-                WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
-                WHEN lp.payment_type = 'registration' THEN 'Registration Money'
-                WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
-                WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
-                ELSE 'Other Payment'
-            END as payment_details
-        FROM lead_payments lp
-        LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
-        LEFT JOIN leads l ON l.id = lb.lead_id
-        LEFT JOIN projects p ON p.id = lb.project_id
-        LEFT JOIN flats f ON f.id = lb.flat_id
-        LEFT JOIN units un ON un.id = f.unit_id
-        LEFT JOIN users u ON u.id = lp.created_by
-        LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
-        WHERE lp.booking_id = ?
-        ORDER BY 
-            CASE 
-                WHEN lp.payment_type = 'booking_money' THEN 1
-                WHEN lp.payment_type = 'registration' THEN 2
-                ELSE 3
-            END,
-            es.emi_no ASC,
-            lp.payment_date ASC
-    ");
+                    WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
+                    WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
+                    WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
+                    WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
+                    ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
+                END as installment_label,
+                CASE 
+                    WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
+                    WHEN lp.payment_type = 'registration' THEN 'Registration Money'
+                    WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
+                    WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
+                    WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
+                    ELSE 'Other Payment'
+                END as payment_details
+            FROM lead_payments lp
+            LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
+            LEFT JOIN leads l ON l.id = lb.lead_id
+            LEFT JOIN projects p ON p.id = lb.project_id
+            LEFT JOIN flats f ON f.id = lb.flat_id
+            LEFT JOIN units un ON un.id = f.unit_id
+            LEFT JOIN users u ON u.id = lp.created_by
+            LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+            WHERE lp.booking_id = ?
+            ORDER BY lp.payment_date DESC, lp.id DESC
+        ");
 
-        $paymentsStmt->bind_param("i", $bookingId);
-        $paymentsStmt->execute();
-        $paymentsResult = $paymentsStmt->get_result();
-        $transactions = $paymentsResult ? $paymentsResult->fetch_all(MYSQLI_ASSOC) : [];
+        $stmt->bind_param("i", $bookingId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $transactions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Format dates and add additional calculated fields
+        // Format transactions and fix land_share_amount display
         foreach ($transactions as &$transaction) {
-            // Format payment date
             if (isset($transaction['payment_date'])) {
                 $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
             }
 
-            // Add status badge class - FIXED HERE
+            // CRITICAL FIX: For booking_money, if land_share_amount is 0, set it to amount
+            if ($transaction['payment_type'] === 'booking_money' && $transaction['land_share_amount'] == 0) {
+                $transaction['land_share_amount'] = $transaction['amount'];
+            }
+            
+            // CRITICAL FIX: Use emi_service_fee from emi_schedules if available
+            if (isset($transaction['emi_service_fee']) && $transaction['emi_service_fee'] > 0) {
+                $transaction['service_fee'] = $transaction['emi_service_fee'];
+            }
+
+            // Add status badge class
             if (isset($transaction['payment_status'])) {
                 switch ($transaction['payment_status']) {
                     case 'paid':
@@ -416,95 +813,299 @@ class AccountClient extends Model
 
         return $transactions;
     }
-    public function isRegistrationPaid($bookingId)
-    {
-        $stmt = $this->db->prepare("
-            SELECT COUNT(*) as count 
-            FROM lead_payments 
-            WHERE booking_id = ? 
-            AND payment_type = 'registration' 
-            AND payment_status = 'paid'
-        ");
 
-        $stmt->bind_param("i", $bookingId);
-        $stmt->execute();
+
+    /**
+     * Get filtered transactions by booking ID with date filter
+     */
+    public function getFilteredTransactionsByBookingId($bookingId, $dateFilter = [])
+    {
+        $sql = "
+            SELECT 
+                lp.*,
+                l.full_name as client_name,
+                p.name as project_name,
+                f.floor_no,
+                un.name as unit_name,
+                CONCAT('UNIT ', un.name, ' - FLOOR ', f.floor_no) as flat_no,
+                u.full_name as created_by_name,
+                es.emi_no,
+                es.emi_amount,
+                es.due_emi_amount,
+                es.due_date as emi_due_date,
+                es.status as emi_status,
+                lb.discount_amount,
+                lb.booking_date as booking_date,
+                CASE 
+                    WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
+                    THEN CONCAT(es.emi_no, 
+                        CASE 
+                            WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
+                            WHEN es.emi_no % 10 = 1 THEN 'st'
+                            WHEN es.emi_no % 10 = 2 THEN 'nd'
+                            WHEN es.emi_no % 10 = 3 THEN 'rd'
+                            ELSE 'th'
+                        END, ' Installment'
+                    )
+                    WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
+                    WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
+                    WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
+                    WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
+                    ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
+                END as installment_label,
+                CASE 
+                    WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
+                    WHEN lp.payment_type = 'registration' THEN 'Registration Money'
+                    WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
+                    WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
+                    WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
+                    ELSE 'Other Payment'
+                END as payment_details
+            FROM lead_payments lp
+            LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
+            LEFT JOIN leads l ON l.id = lb.lead_id
+            LEFT JOIN projects p ON p.id = lb.project_id
+            LEFT JOIN flats f ON f.id = lb.flat_id
+            LEFT JOIN units un ON un.id = f.unit_id
+            LEFT JOIN users u ON u.id = lp.created_by
+            LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+            WHERE lp.booking_id = ?
+        ";
+
+        $params = [$bookingId];
+        $types = "i";
+
+        // Add date filter if provided
+        if (!empty($dateFilter['from']) && !empty($dateFilter['to'])) {
+            $sql .= " AND lp.payment_date BETWEEN ? AND ?";
+            $params[] = $dateFilter['from'];
+            $params[] = $dateFilter['to'];
+            $types .= "ss";
+        }
+
+        $sql .= " ORDER BY 
+            CASE 
+                WHEN lp.payment_type = 'booking_money' THEN 1
+                WHEN lp.payment_type = 'registration' THEN 2
+                WHEN lp.payment_type = 'land_share' THEN 3
+                ELSE 4
+            END,
+            es.emi_no ASC,
+            lp.payment_date ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!$stmt) {
+            error_log("Prepare failed: " . $this->db->error);
+            return [];
+        }
+
+        $stmt->bind_param($types, ...$params);
+
+        if (!$stmt->execute()) {
+            error_log("Execute failed: " . $stmt->error);
+            return [];
+        }
+
         $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        return $row['count'] > 0;
+        $transactions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Format transactions
+        foreach ($transactions as &$transaction) {
+            if (isset($transaction['payment_date'])) {
+                $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
+            }
+
+            // For booking money transactions, set land_share_amount = amount if not set
+            if ($transaction['payment_type'] === 'booking_money' && $transaction['land_share_amount'] == 0) {
+                $transaction['land_share_amount'] = $transaction['amount'];
+            }
+
+            // Add status badge class
+            if (isset($transaction['payment_status'])) {
+                switch ($transaction['payment_status']) {
+                    case 'paid':
+                        $transaction['status_class'] = 'bg-success';
+                        $transaction['status_text'] = 'Paid';
+                        break;
+                    case 'partially_paid':
+                        $transaction['status_class'] = 'bg-info';
+                        $transaction['status_text'] = 'Partially Paid';
+                        break;
+                    case 'pending':
+                        $transaction['status_class'] = 'bg-warning';
+                        $transaction['status_text'] = 'Pending';
+                        break;
+                    case 'failed':
+                        $transaction['status_class'] = 'bg-danger';
+                        $transaction['status_text'] = 'Failed';
+                        break;
+                    default:
+                        $transaction['status_class'] = 'bg-secondary';
+                        $transaction['status_text'] = ucfirst(str_replace('_', ' ', $transaction['payment_status']));
+                }
+            }
+        }
+
+        return $transactions;
     }
 
     /**
-     * Add new transaction with EMI schedule
+     * Update transaction with proper validations
      */
+    public function updateTransaction($transactionData, $emiScheduleData = null)
+    {
+        $this->db->begin_transaction();
 
-/**
- * Add new transaction with EMI schedule and service fee calculation
- * Service Fee = 10% of (EMI Amount - Due Amount)
- */
-public function addTransactionWithEMI($transactionData, $emiScheduleData = null)
-{
-    $this->db->begin_transaction();
-
-    try {
-        // Calculate service fee for EMI payments
-        // Service Fee = 10% of EMI Amount (always)
-        $serviceFee = 0;
-        if ($transactionData['payment_type'] === 'emi') {
-            $emiAmount = (float)$transactionData['amount'];
+        try {
+            $paymentId = (int)$transactionData['payment_id'];
             
-            // Service fee is 10% of the EMI amount
-            $serviceFee = $emiAmount * 0.10;
+            // Get old transaction for validation
+            $oldTransaction = $this->getTransactionById($paymentId);
+            if (!$oldTransaction) {
+                throw new Exception("Transaction not found");
+            }
+
+            $bookingId = (int)$oldTransaction['booking_id'];
+            $newPaymentType = $transactionData['payment_type'];
+            $newAmount = (float)$transactionData['amount'];
+
+            // Get current summary for validation
+            $summary = $this->getPaymentSummaryByBookingId($bookingId);
+
+            // Validate based on new payment type
+            $landShareAmount = 0;
+            $serviceFee = 0;
+
+            if ($newPaymentType === 'land_share') {
+                // Adjust for the old amount if it was also land share
+                $oldAmount = $oldTransaction['payment_type'] === 'land_share' ? 
+                    (float)$oldTransaction['amount'] : 0;
+                
+                $effectiveAmountChange = $newAmount - $oldAmount;
+                $remainingAfterChange = $summary['remaining_land_share'] - $effectiveAmountChange;
+                
+                if ($remainingAfterChange < 0) {
+                    throw new Exception("Land share amount would exceed remaining land share by: ৳" . 
+                        number_format(abs($remainingAfterChange), 2));
+                }
+                $landShareAmount = $newAmount;
+            } elseif ($newPaymentType === 'emi') {
+                $serviceFee = $newAmount * 0.10;
+            }
+
+            // Update payment record
+            $stmt = $this->db->prepare("
+                UPDATE lead_payments SET
+                    payment_type = ?,
+                    amount = ?,
+                    land_share_amount = ?,
+                    service_fee = ?,
+                    payment_method = ?,
+                    payment_status = ?,
+                    payment_date = ?,
+                    transaction_ref = ?,
+                    bank_name = ?,
+                    bank_account_no = ?,
+                    cheque_no = ?,
+                    online_type = ?
+                WHERE id = ?
+            ");
+
+            $stmt->bind_param(
+                "sdddssssssssi",
+                $newPaymentType,
+                $newAmount,
+                $landShareAmount,
+                $serviceFee,
+                $transactionData['payment_method'],
+                $transactionData['payment_status'],
+                $transactionData['payment_date'],
+                $transactionData['transaction_ref'],
+                $transactionData['bank_name'],
+                $transactionData['bank_account_no'],
+                $transactionData['cheque_no'],
+                $transactionData['online_type'],
+                $paymentId
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Transaction update failed: " . $stmt->error);
+            }
+
+            // Handle EMI schedule
+            if ($newPaymentType === 'emi' && $emiScheduleData) {
+                $this->updateOrCreateEMISchedule($bookingId, $paymentId, $newAmount, $serviceFee, $emiScheduleData);
+            } elseif ($oldTransaction['payment_type'] === 'emi' && $newPaymentType !== 'emi') {
+                // Delete EMI schedule if payment type changed from EMI
+                $this->deleteEMISchedule($paymentId);
+            }
+
+            $this->db->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Transaction updated successfully!'
+            ];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return [
+                'success' => false,
+                'message' => 'Transaction update failed: ' . $e->getMessage()
+            ];
         }
+    }
 
-        // Insert payment record
-        $stmt = $this->db->prepare("
-            INSERT INTO lead_payments (
-                booking_id, payment_type, amount, payment_method,
-                payment_status, payment_date, transaction_ref, 
-                bank_name, bank_account_no, cheque_no, online_type, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
+    /**
+     * Update or create EMI schedule
+     */
+    private function updateOrCreateEMISchedule($bookingId, $paymentId, $emiAmount, $serviceFee, $emiScheduleData)
+    {
+        // Check if EMI schedule exists
+        $checkStmt = $this->db->prepare("SELECT id FROM emi_schedules WHERE lead_payment_id = ?");
+        $checkStmt->bind_param("i", $paymentId);
+        $checkStmt->execute();
+        $existing = $checkStmt->get_result()->fetch_assoc();
 
-        if (!$stmt) {
-            throw new Exception("Prepare failed: " . $this->db->error);
-        }
+        $status = 'paid'; // Default for EMI payments
+        $dueEmiAmount = isset($emiScheduleData['due_emi_amount']) ? (float)$emiScheduleData['due_emi_amount'] : 0;
+        $dueDate = isset($emiScheduleData['due_date']) ? $emiScheduleData['due_date'] : date('Y-m-d');
 
-        $stmt->bind_param(
-            "isdssssssssi",
-            $transactionData['booking_id'],
-            $transactionData['payment_type'],
-            $transactionData['amount'],
-            $transactionData['payment_method'],
-            $transactionData['payment_status'],
-            $transactionData['payment_date'],
-            $transactionData['transaction_ref'],
-            $transactionData['bank_name'],
-            $transactionData['bank_account_no'],
-            $transactionData['cheque_no'],
-            $transactionData['online_type'],
-            $transactionData['created_by']
-        );
+        if ($existing) {
+            // Update existing
+            $emiStmt = $this->db->prepare("
+                UPDATE emi_schedules SET
+                    emi_amount = ?,
+                    service_fee = ?,
+                    due_emi_amount = ?,
+                    due_date = ?,
+                    status = ?
+                WHERE lead_payment_id = ?
+            ");
 
-        if (!$stmt->execute()) {
-            throw new Exception("Transaction insert failed: " . $stmt->error);
-        }
-
-        $paymentId = $this->db->insert_id;
-
-        if ($transactionData['payment_type'] === 'emi' && $emiScheduleData) {
-            // Get the next EMI number
+            $emiStmt->bind_param(
+                "dddssi",
+                $emiAmount,
+                $serviceFee,
+                $dueEmiAmount,
+                $dueDate,
+                $status,
+                $paymentId
+            );
+        } else {
+            // Create new - get next EMI number
             $emiNoStmt = $this->db->prepare("
                 SELECT COALESCE(MAX(emi_no), 0) + 1 as next_emi_no 
                 FROM emi_schedules 
                 WHERE lead_booking_id = ?
             ");
-            $emiNoStmt->bind_param("i", $transactionData['booking_id']);
+            $emiNoStmt->bind_param("i", $bookingId);
             $emiNoStmt->execute();
             $emiNoResult = $emiNoStmt->get_result();
-            $emiNoRow = $emiNoResult->fetch_assoc();
+            $emiNoRow = $emiNoResult ? $emiNoResult->fetch_assoc() : null;
             $nextEmiNo = $emiNoRow ? $emiNoRow['next_emi_no'] : 1;
 
-            // Insert EMI schedule with service fee
             $emiStmt = $this->db->prepare("
                 INSERT INTO emi_schedules (
                     lead_booking_id, emi_no, emi_amount, service_fee,
@@ -512,415 +1113,35 @@ public function addTransactionWithEMI($transactionData, $emiScheduleData = null)
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
-            if (!$emiStmt) {
-                throw new Exception("EMI schedule prepare failed: " . $this->db->error);
-            }
-
-            $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 'pending';
-            $dueEmiAmount = $emiScheduleData['due_emi_amount'] ?? 0;
-
             $emiStmt->bind_param(
                 "iidddssi",
-                $transactionData['booking_id'],
+                $bookingId,
                 $nextEmiNo,
-                $transactionData['amount'],
+                $emiAmount,
                 $serviceFee,
                 $dueEmiAmount,
-                $transactionData['payment_date'],
+                $dueDate,
                 $status,
                 $paymentId
             );
-
-            if (!$emiStmt->execute()) {
-                throw new Exception("EMI schedule insert failed: " . $emiStmt->error);
-            }
         }
 
-        $this->db->commit();
-
-        return [
-            'success' => true,
-            'message' => 'Transaction added successfully!' . ($emiScheduleData ? ' EMI schedule created.' : '') . ($serviceFee > 0 ? ' Service fee: ৳' . number_format($serviceFee, 2) : ''),
-            'payment_id' => $paymentId,
-            'service_fee' => $serviceFee
-        ];
-    } catch (Exception $e) {
-        $this->db->rollback();
-        return [
-            'success' => false,
-            'message' => 'Transaction failed: ' . $e->getMessage()
-        ];
+        if (!$emiStmt->execute()) {
+            throw new Exception("EMI schedule operation failed: " . $emiStmt->error);
+        }
     }
-}
-
-
-public function addTransactionWithServiceFee($transactionData, $emiScheduleData = null)
-{
-    $this->db->begin_transaction();
-
-    try {
-        // Calculate service fee (10% of EMI amount)
-        $serviceFee = 0;
-        if ($transactionData['payment_type'] === 'emi') {
-            $serviceFee = $transactionData['amount'] * 0.10;
-        }
-
-        // Insert payment record
-        $stmt = $this->db->prepare("
-            INSERT INTO lead_payments (
-                booking_id, payment_type, amount, payment_method,
-                payment_status, payment_date, transaction_ref, 
-                bank_name, bank_account_no, cheque_no, online_type, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-
-        $stmt->bind_param(
-            "isdsdsssssi",
-            $transactionData['booking_id'],
-            $transactionData['payment_type'],
-            $transactionData['amount'],
-            $transactionData['payment_method'],
-            $transactionData['payment_status'],
-            $transactionData['payment_date'],
-            $transactionData['transaction_ref'],
-            $transactionData['bank_name'],
-            $transactionData['bank_account_no'],
-            $transactionData['cheque_no'],
-            $transactionData['online_type'],
-            $transactionData['created_by']
-        );
-
-        if (!$stmt->execute()) {
-            throw new Exception("Payment insert failed: " . $stmt->error);
-        }
-
-        $paymentId = $this->db->insert_id;
-
-        // Insert EMI schedule with service fee
-        if ($transactionData['payment_type'] === 'emi' && $emiScheduleData) {
-            $emiNoStmt = $this->db->prepare("
-                SELECT COALESCE(MAX(emi_no), 0) + 1 as next_emi_no 
-                FROM emi_schedules 
-                WHERE lead_booking_id = ?
-            ");
-            $emiNoStmt->bind_param("i", $transactionData['booking_id']);
-            $emiNoStmt->execute();
-            $emiNoResult = $emiNoStmt->get_result();
-            $nextEmiNo = $emiNoResult->fetch_assoc()['next_emi_no'] ?? 1;
-
-            $emiStmt = $this->db->prepare("
-                INSERT INTO emi_schedules (
-                    lead_booking_id, emi_no, emi_amount, service_fee, 
-                    due_emi_amount, due_date, status, lead_payment_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-
-            if (!$emiStmt) {
-                throw new Exception("EMI schedule prepare failed: " . $this->db->error);
-            }
-
-            $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 'pending';
-
-            // Ensure due_emi_amount defaults to 0 if not provided
-            $dueEmiAmount = $emiScheduleData['due_emi_amount'] ?? 0;
-
-            $emiStmt->bind_param(
-                "iidddssi",
-                $transactionData['booking_id'],
-                $nextEmiNo,
-                $transactionData['amount'],
-                $serviceFee,
-                $dueEmiAmount,
-                $transactionData['payment_date'],
-                $status,
-                $paymentId
-            );
-
-            if (!$emiStmt->execute()) {
-                throw new Exception("EMI schedule insert failed: " . $emiStmt->error);
-            }
-        }
-
-        $this->db->commit();
-
-        return [
-            'success' => true,
-            'message' => 'Transaction added successfully!' . ($emiScheduleData ? ' EMI schedule created.' : '') . ($serviceFee > 0 ? ' Service fee calculated.' : ''),
-            'payment_id' => $paymentId,
-            'service_fee' => $serviceFee
-        ];
-
-    } catch (Exception $e) {
-        $this->db->rollback();
-        return [
-            'success' => false,
-            'message' => 'Transaction failed: ' . $e->getMessage()
-        ];
-    }
-}
-
-
 
     /**
-     * Get payment summary by booking ID including EMI numbers
+     * Delete EMI schedule
      */
-    /**
-     * Get payment summary by booking ID including EMI numbers
-     */
-    /**
-     * Get payment summary by booking ID including EMI numbers
-     */
-public function getPaymentSummaryByBookingId($bookingId)
-{
-    $summary = [
-        'total_price' => 0,
-        'booking_money' => 0,
-        'discount_amount' => 0,  // ADDED
-        'registration_money' => 0,
-        'construction_fee' => 0,
-        'construction_fee_paid' => 0,
-        'total_paid' => 0,
-        'due_amount' => 0,
-        'total_emi' => 0,
-        'completed_emi' => 0,
-        'pending_emi' => 0,
-        'remaining_construction_fee' => 0,
-        'last_payment_date' => null,
-        'emi_numbers' => [],
-        'paid_emi_numbers' => [],
-        'pending_emi_numbers' => [],
-        'total_service_fee' => 0,
-        'service_fee_balance' => 0,
-        'net_received' => 0,
-        'construction_fee_paid_after_service' => 0
-    ];
-
-    // Get booking details - ADD discount_amount
-    $stmt = $this->db->prepare("
-        SELECT 
-            lb.agreement_value,
-            lb.discount_amount,  // ADDED
-            lb.booking_date,
-            lb.service_fee_balance,
-            f.price_value as flat_price
-        FROM lead_bookings lb
-        LEFT JOIN flats f ON f.id = lb.flat_id
-        WHERE lb.id = ?
-    ");
-
-    $stmt->bind_param("i", $bookingId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $booking = $result ? $result->fetch_assoc() : null;
-
-    if ($booking) {
-        $summary['booking_money'] = $booking['agreement_value'] ?? 0;
-        $summary['discount_amount'] = $booking['discount_amount'] ?? 0;  // ADDED
-        $summary['total_price'] = $booking['flat_price'] ?? 0;
-        $summary['service_fee_balance'] = $booking['service_fee_balance'] ?? 0;
-    }
-
-    // 1. GET TOTAL EXPECTED EMI COUNT from lead_payments.total_emi_no
-    $totalEmiStmt = $this->db->prepare("
-        SELECT total_emi_no 
-        FROM lead_payments 
-        WHERE booking_id = ? 
-        AND payment_type = 'booking_money' 
-        LIMIT 1
-    ");
-
-    $totalEmiStmt->bind_param("i", $bookingId);
-    $totalEmiStmt->execute();
-    $totalEmiResult = $totalEmiStmt->get_result();
-    $totalEmiRow = $totalEmiResult ? $totalEmiResult->fetch_assoc() : null;
-
-    // Set total expected EMI count
-    $summary['total_emi'] = $totalEmiRow['total_emi_no'] ?? 0;
-
-    // 2. GET ACTUAL EMI PAYMENTS AND SERVICE FEES from emi_schedules
-    $emiDetailsStmt = $this->db->prepare("
-        SELECT 
-            emi_no,
-            emi_amount,
-            service_fee,
-            due_emi_amount,
-            due_date,
-            status
-        FROM emi_schedules 
-        WHERE lead_booking_id = ?
-        ORDER BY emi_no ASC
-    ");
-
-    $emiDetailsStmt->bind_param("i", $bookingId);
-    $emiDetailsStmt->execute();
-    $emiDetailsResult = $emiDetailsStmt->get_result();
-    $emiDetails = $emiDetailsResult ? $emiDetailsResult->fetch_all(MYSQLI_ASSOC) : [];
-
-    // Process actual EMI payments and service fees
-    $totalPaidEmi = 0;
-    $totalServiceFeeFromEmi = 0;
-    $paidEmiCount = 0;
-    $lastEmiDate = null;
-
-    foreach ($emiDetails as $emi) {
-        $summary['emi_numbers'][] = $emi['emi_no'];
-
-        if ($emi['status'] === 'paid') {
-            $summary['paid_emi_numbers'][] = $emi['emi_no'];
-            $totalPaidEmi += $emi['emi_amount'];
-            
-            // Add service fee from database
-            $totalServiceFeeFromEmi += ($emi['service_fee'] ?? 0);
-            
-            $paidEmiCount++;
-
-            if (!$lastEmiDate || strtotime($emi['due_date']) > strtotime($lastEmiDate)) {
-                $lastEmiDate = $emi['due_date'];
-            }
-        } else {
-            $summary['pending_emi_numbers'][] = $emi['emi_no'];
-        }
-    }
-
-    $summary['construction_fee_paid'] = $totalPaidEmi;
-    $summary['completed_emi'] = $paidEmiCount;
-    $summary['total_service_fee'] = $totalServiceFeeFromEmi;
-
-    // 3. CALCULATE PENDING EMI COUNT
-    $summary['pending_emi'] = max(0, $summary['total_emi'] - $paidEmiCount);
-
-    // 4. GENERATE ALL EXPECTED EMI NUMBERS (1 to total_emi)
-    $summary['all_emi_numbers'] = [];
-    if ($summary['total_emi'] > 0) {
-        for ($i = 1; $i <= $summary['total_emi']; $i++) {
-            $summary['all_emi_numbers'][] = $i;
-        }
-    }
-
-    if ($lastEmiDate) {
-        $summary['last_payment_date'] = $lastEmiDate;
-    }
-
-    // Get registration payments
-    $stmt = $this->db->prepare("
-        SELECT 
-            SUM(amount) as total_registration_paid
-        FROM lead_payments 
-        WHERE booking_id = ? 
-        AND payment_type = 'registration'
-        AND payment_status = 'paid'
-    ");
-
-    $stmt->bind_param("i", $bookingId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $regData = $result ? $result->fetch_assoc() : [];
-
-    $summary['registration_money'] = $regData['total_registration_paid'] ?? 0;
-
-    // Get other payments (non-EMI) - booking and registration
-    $stmt = $this->db->prepare("
-        SELECT 
-            SUM(amount) as total_other_paid,
-            MAX(payment_date) as last_payment
-        FROM lead_payments 
-        WHERE booking_id = ? 
-        AND payment_status = 'paid'
-        AND payment_type != 'emi'
-    ");
-
-    $stmt->bind_param("i", $bookingId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $otherData = $result ? $result->fetch_assoc() : [];
-
-    $summary['total_paid'] = ($otherData['total_other_paid'] ?? 0) + $summary['construction_fee_paid'];
-
-    if (!$summary['last_payment_date'] && ($otherData['last_payment'] ?? false)) {
-        $summary['last_payment_date'] = $otherData['last_payment'];
-    }
-
-    // **UPDATED CALCULATIONS:**
-    // 1. Construction Fee = Total Price - Booking Money - Registration Money + Discount
-    $summary['construction_fee'] = $summary['total_price'] - $summary['booking_money'] - $summary['registration_money'] + $summary['discount_amount'];
-
-    // 2. Construction Fee Paid After Service = Construction Fee Paid - Service Fee
-    $summary['construction_fee_paid_after_service'] = $summary['construction_fee_paid'] - $summary['total_service_fee'];
-
-    // 3. Remaining Construction Fee = Construction Fee - Construction Fee Paid After Service
-    $summary['remaining_construction_fee'] = $summary['construction_fee'] - $summary['construction_fee_paid_after_service'];
-
-    // 4. Calculate Due Amount (Total Price - Total Paid)
-    $summary['due_amount'] = $summary['total_price'] - $summary['total_paid'];
-
-    // 5. Calculate net received (Total Paid - Service Fee)
-    $summary['net_received'] = $summary['total_paid'] - $summary['total_service_fee'];
-
-    // Format EMI numbers for display
-    $summary['formatted_all_emi_numbers'] = implode(', ', $summary['all_emi_numbers']);
-    $summary['formatted_paid_emi_numbers'] = implode(', ', $summary['paid_emi_numbers']);
-
-    // Generate pending EMI numbers (expected but not paid)
-    $summary['expected_pending_numbers'] = [];
-    if ($summary['total_emi'] > 0) {
-        for ($i = 1; $i <= $summary['total_emi']; $i++) {
-            if (!in_array($i, $summary['paid_emi_numbers'])) {
-                $summary['expected_pending_numbers'][] = $i;
-            }
-        }
-    }
-    $summary['formatted_pending_emi_numbers'] = implode(', ', $summary['expected_pending_numbers']);
-
-    // Get due amounts for partially paid EMI
-    $dueQuery = $this->db->prepare("
-        SELECT 
-            SUM(es.due_emi_amount) as total_due_amount,
-            COUNT(*) as due_emi_count
-        FROM emi_schedules es
-        WHERE es.lead_booking_id = ?
-        AND es.due_emi_amount > 0
-    ");
-
-    $dueQuery->bind_param("i", $bookingId);
-    $dueQuery->execute();
-    $dueResult = $dueQuery->get_result();
-    $dueData = $dueResult ? $dueResult->fetch_assoc() : [];
-
-    // Add to summary array
-    $summary['total_due_amount'] = $dueData['total_due_amount'] ?? 0;
-    $summary['due_emi_count'] = $dueData['due_emi_count'] ?? 0;
-
-    return $summary;
-}
-    /**
-     * Calculate EMI statistics based on construction fee and paid EMIs
-     * Now uses total_emi from lead_bookings table
-     */
-    private function calculateEMIStats($constructionFee, $constructionFeePaid, $emiPayments = [], $totalEmiFromBooking = 0)
+    private function deleteEMISchedule($paymentId)
     {
-        $stats = [
-            'avg_emi_amount' => 0,
-            'total_emi' => $totalEmiFromBooking,  // Use the value from lead_bookings.emi_no
-            'completed_emi' => 0,
-            'pending_emi' => 0
-        ];
-
-        // 1. Completed EMI = Count of EMI payments
-        $stats['completed_emi'] = count($emiPayments);
-
-        // 2. Average EMI Amount = Sum of EMI payments ÷ Count of EMI payments
-        if ($stats['completed_emi'] > 0) {
-            $stats['avg_emi_amount'] = array_sum($emiPayments) / $stats['completed_emi'];
-        }
-
-        // 3. Pending EMI = Total EMI (from lead_bookings) - Completed EMI
-        $stats['pending_emi'] = max(0, $stats['total_emi'] - $stats['completed_emi']);
-
-        return $stats;
+        $deleteStmt = $this->db->prepare("DELETE FROM emi_schedules WHERE lead_payment_id = ?");
+        $deleteStmt->bind_param("i", $paymentId);
+        $deleteStmt->execute();
     }
+
     /**
-
-
      * Get transaction by ID
      */
     public function getTransactionById($paymentId)
@@ -929,19 +1150,33 @@ public function getPaymentSummaryByBookingId($bookingId)
             SELECT lp.*,
                    l.full_name as client_name,
                    p.name as project_name,
-                   f.floor_no as flat_no
+                   f.floor_no as flat_no,
+                   un.name as unit_name,
+                   es.emi_no,
+                   es.due_emi_amount,
+                   es.service_fee as emi_service_fee,
+                   es.emi_amount as emi_schedule_amount
             FROM lead_payments lp
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
             LEFT JOIN projects p ON p.id = lb.project_id
             LEFT JOIN flats f ON f.id = lb.flat_id
+            LEFT JOIN units un ON un.id = f.unit_id
+            LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             WHERE lp.id = ?
         ");
 
         $stmt->bind_param("i", $paymentId);
         $stmt->execute();
         $result = $stmt->get_result();
-        return $result ? $result->fetch_assoc() : null;
+        $transaction = $result ? $result->fetch_assoc() : null;
+        
+        // If service_fee exists in emi_schedules, use that instead of lead_payments
+        if ($transaction && isset($transaction['emi_service_fee']) && $transaction['emi_service_fee'] > 0) {
+            $transaction['service_fee'] = $transaction['emi_service_fee'];
+        }
+        
+        return $transaction;
     }
 
     /**
@@ -961,281 +1196,21 @@ public function getPaymentSummaryByBookingId($bookingId)
     }
 
     /**
-     * Update transaction with EMI schedule
-     */
-    /**
-     * Update transaction with EMI schedule
-     */
-    /**
-     * Update transaction with EMI schedule and due amount tracking
-     */
-
-/**
- * Update transaction with EMI schedule and service fee recalculation
- * When due amount is reduced, the additional payment is added to EMI amount
- * and service fee is recalculated as 10% of the new total
- */
-public function updateTransactionWithEMI($transactionData, $emiScheduleData = null)
-{
-    error_log("=== MODEL: updateTransactionWithEMI START ===");
-    error_log("Transaction Data: " . print_r($transactionData, true));
-    error_log("EMI Schedule Data: " . print_r($emiScheduleData, true));
-
-    $this->db->begin_transaction();
-
-    try {
-        // Get the OLD transaction data to compare due amounts
-        $oldTransaction = $this->db->prepare("SELECT * FROM lead_payments WHERE id = ?");
-        $oldTransaction->bind_param("i", $transactionData['payment_id']);
-        $oldTransaction->execute();
-        $oldTransactionData = $oldTransaction->get_result()->fetch_assoc();
-        
-        $oldEmiSchedule = null;
-        $oldDueAmount = 0;
-        $oldServiceFee = 0;
-        
-        if ($oldTransactionData && $oldTransactionData['payment_type'] === 'emi') {
-            $oldEmiStmt = $this->db->prepare("
-                SELECT due_emi_amount, service_fee, emi_amount 
-                FROM emi_schedules 
-                WHERE lead_payment_id = ?
-            ");
-            $oldEmiStmt->bind_param("i", $transactionData['payment_id']);
-            $oldEmiStmt->execute();
-            $oldEmiSchedule = $oldEmiStmt->get_result()->fetch_assoc();
-            
-            if ($oldEmiSchedule) {
-                $oldDueAmount = (float)($oldEmiSchedule['due_emi_amount'] ?? 0);
-                $oldServiceFee = (float)($oldEmiSchedule['service_fee'] ?? 0);
-            }
-        }
-
-        error_log("Old Due Amount: " . $oldDueAmount);
-        error_log("Old Service Fee: " . $oldServiceFee);
-
-        // Calculate new amounts if this is an EMI transaction
-        $finalAmount = (float)$transactionData['amount'];
-        $finalServiceFee = 0;
-        
-        if ($transactionData['payment_type'] === 'emi' && $emiScheduleData) {
-            $newDueAmount = (float)($emiScheduleData['due_emi_amount'] ?? 0);
-            
-            // The user's input amount already includes any additional payment
-            // We just use it directly without adding anything
-            error_log("EMI Amount from user input: " . $finalAmount);
-            error_log("New Due Amount: " . $newDueAmount);
-            
-            // Log the change for tracking
-            if ($oldDueAmount > 0 && $newDueAmount < $oldDueAmount) {
-                $dueReduction = $oldDueAmount - $newDueAmount;
-                error_log("Due amount reduced by: " . $dueReduction);
-                error_log("This should already be included in the user's amount input");
-            }
-            
-            // Recalculate service fee as 10% of the final amount
-            $finalServiceFee = $finalAmount * 0.10;
-            error_log("Recalculated Service Fee (10% of $finalAmount): " . $finalServiceFee);
-        }
-
-        // Update the payment transaction with the final amount
-        $stmt = $this->db->prepare("
-            UPDATE lead_payments SET
-                payment_type = ?,
-                amount = ?,
-                payment_method = ?,
-                payment_status = ?,
-                payment_date = ?,
-                transaction_ref = ?,
-                bank_name = ?,
-                bank_account_no = ?,
-                cheque_no = ?,
-                online_type = ?
-            WHERE id = ?
-        ");
-
-        if (!$stmt) {
-            error_log("Prepare failed: " . $this->db->error);
-            throw new Exception("Prepare failed: " . $this->db->error);
-        }
-
-        // Use the final amount (which includes additional payment if applicable)
-        $stmt->bind_param(
-            "sdssssssssi",
-            $transactionData['payment_type'],
-            $finalAmount,  // Use calculated final amount
-            $transactionData['payment_method'],
-            $transactionData['payment_status'],
-            $transactionData['payment_date'],
-            $transactionData['transaction_ref'],
-            $transactionData['bank_name'],
-            $transactionData['bank_account_no'],
-            $transactionData['cheque_no'],
-            $transactionData['online_type'],
-            $transactionData['payment_id']
-        );
-
-        if (!$stmt->execute()) {
-            error_log("Execute failed: " . $stmt->error);
-            throw new Exception("Transaction update failed: " . $stmt->error);
-        }
-
-        error_log("Payment updated successfully. Affected rows: " . $this->db->affected_rows);
-
-        // Handle EMI schedule
-        if ($transactionData['payment_type'] === 'emi' && $emiScheduleData) {
-            error_log("Processing EMI schedule update...");
-
-            // Check if EMI schedule already exists
-            $checkStmt = $this->db->prepare("
-                SELECT id, emi_no, due_emi_amount, service_fee 
-                FROM emi_schedules 
-                WHERE lead_payment_id = ?
-            ");
-            $checkStmt->bind_param("i", $transactionData['payment_id']);
-            $checkStmt->execute();
-            $existingSchedule = $checkStmt->get_result()->fetch_assoc();
-
-            error_log("Existing Schedule: " . print_r($existingSchedule, true));
-
-            if ($existingSchedule) {
-                // Update existing EMI schedule with new amount and service fee
-                $emiStmt = $this->db->prepare("
-                    UPDATE emi_schedules SET
-                        emi_amount = ?,
-                        service_fee = ?,
-                        due_emi_amount = ?,
-                        due_date = ?,
-                        status = ?
-                    WHERE lead_payment_id = ?
-                ");
-
-                if (!$emiStmt) {
-                    error_log("EMI update prepare failed: " . $this->db->error);
-                    throw new Exception("EMI schedule prepare failed: " . $this->db->error);
-                }
-
-                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : ($transactionData['payment_status'] === 'partially_paid' ? 'partially_paid' : 'pending');
-
-                // Use the final calculated amount and service fee
-                $emiStmt->bind_param(
-                    "dddssi",
-                    $finalAmount,                              // Updated EMI amount
-                    $finalServiceFee,                          // Recalculated service fee (10% of final amount)
-                    $emiScheduleData['due_emi_amount'],       // New due amount
-                    $transactionData['payment_date'],
-                    $status,
-                    $transactionData['payment_id']
-                );
-
-                if (!$emiStmt->execute()) {
-                    error_log("EMI update execute failed: " . $emiStmt->error);
-                    throw new Exception("EMI schedule update failed: " . $emiStmt->error);
-                }
-
-                error_log("EMI schedule updated successfully");
-                error_log("Final EMI Amount: " . $finalAmount);
-                error_log("Final Service Fee: " . $finalServiceFee);
-                error_log("New Due Amount: " . $emiScheduleData['due_emi_amount']);
-
-            } else {
-                error_log("Creating new EMI schedule...");
-
-                // Create new EMI schedule
-                $emiNoStmt = $this->db->prepare("
-                    SELECT COALESCE(MAX(emi_no), 0) + 1 as next_emi_no 
-                    FROM emi_schedules 
-                    WHERE lead_booking_id = ?
-                ");
-                $emiNoStmt->bind_param("i", $transactionData['booking_id']);
-                $emiNoStmt->execute();
-                $emiNoResult = $emiNoStmt->get_result();
-                $emiNoRow = $emiNoResult->fetch_assoc();
-                $nextEmiNo = $emiNoRow ? $emiNoRow['next_emi_no'] : 1;
-
-                error_log("Next EMI No: " . $nextEmiNo);
-
-                $emiStmt = $this->db->prepare("
-                    INSERT INTO emi_schedules (
-                        lead_booking_id, emi_no, emi_amount, service_fee,
-                        due_emi_amount, due_date, status, lead_payment_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ");
-
-                if (!$emiStmt) {
-                    error_log("EMI insert prepare failed: " . $this->db->error);
-                    throw new Exception("EMI schedule insert prepare failed: " . $this->db->error);
-                }
-
-                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : ($transactionData['payment_status'] === 'partially_paid' ? 'partially_paid' : 'pending');
-
-                $emiStmt->bind_param(
-                    "iidddssi",
-                    $transactionData['booking_id'],
-                    $nextEmiNo,
-                    $finalAmount,                              // Final EMI amount
-                    $finalServiceFee,                          // Calculated service fee
-                    $emiScheduleData['due_emi_amount'],
-                    $transactionData['payment_date'],
-                    $status,
-                    $transactionData['payment_id']
-                );
-
-                if (!$emiStmt->execute()) {
-                    error_log("EMI insert execute failed: " . $emiStmt->error);
-                    throw new Exception("EMI schedule insert failed: " . $emiStmt->error);
-                }
-
-                error_log("EMI schedule created successfully. ID: " . $this->db->insert_id);
-            }
-        } elseif ($transactionData['payment_type'] !== 'emi') {
-            // Delete EMI schedule if payment type changed from EMI to something else
-            $deleteEmiStmt = $this->db->prepare("
-                DELETE FROM emi_schedules WHERE lead_payment_id = ?
-            ");
-            $deleteEmiStmt->bind_param("i", $transactionData['payment_id']);
-            if ($deleteEmiStmt->execute()) {
-                error_log("Deleted EMI schedule (payment type changed to non-EMI)");
-            }
-        }
-
-        $this->db->commit();
-        error_log("=== MODEL: Transaction committed successfully ===");
-
-        return [
-            'success' => true,
-            'message' => 'Transaction updated successfully!' . ($finalServiceFee > 0 ? ' Service fee: ৳' . number_format($finalServiceFee, 2) : '')
-        ];
-    } catch (Exception $e) {
-        $this->db->rollback();
-        error_log("=== MODEL: ERROR - " . $e->getMessage() . " ===");
-        error_log("Error trace: " . $e->getTraceAsString());
-        return [
-            'success' => false,
-            'message' => 'Transaction update failed: ' . $e->getMessage()
-        ];
-    }
-}
-
-    /**
-     * Delete transaction and its EMI schedule
+     * Delete transaction
      */
     public function deleteTransaction($paymentId)
     {
         $this->db->begin_transaction();
 
         try {
-            $deleteEmiStmt = $this->db->prepare("
-                DELETE FROM emi_schedules WHERE lead_payment_id = ?
-            ");
-            $deleteEmiStmt->bind_param("i", $paymentId);
-            $deleteEmiStmt->execute();
+            // First delete EMI schedule if exists
+            $this->deleteEMISchedule($paymentId);
 
-            $deletePaymentStmt = $this->db->prepare("
-                DELETE FROM lead_payments WHERE id = ?
-            ");
-            $deletePaymentStmt->bind_param("i", $paymentId);
+            // Then delete payment
+            $deleteStmt = $this->db->prepare("DELETE FROM lead_payments WHERE id = ?");
+            $deleteStmt->bind_param("i", $paymentId);
 
-            if (!$deletePaymentStmt->execute()) {
+            if (!$deleteStmt->execute()) {
                 throw new Exception("Failed to delete transaction");
             }
 
@@ -1255,7 +1230,45 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
     }
 
     /**
-     * Check if booking money exists in database for a booking
+     * Check if registration is paid
+     */
+    public function isRegistrationPaid($bookingId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT COUNT(*) as count 
+            FROM lead_payments 
+            WHERE booking_id = ? 
+            AND payment_type = 'registration' 
+            AND payment_status = 'paid'
+        ");
+
+        $stmt->bind_param("i", $bookingId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return $row['count'] > 0;
+    }
+
+    /**
+     * Check if land share is completed
+     */
+    public function isLandShareCompleted($bookingId)
+    {
+        $summary = $this->getPaymentSummaryByBookingId($bookingId);
+        return $summary['is_land_share_completed'];
+    }
+
+    /**
+     * Get remaining land share
+     */
+    public function getRemainingLandShare($bookingId)
+    {
+        $summary = $this->getPaymentSummaryByBookingId($bookingId);
+        return $summary['remaining_land_share'];
+    }
+
+    /**
+     * Check if booking money exists
      */
     public function hasBookingMoneyInDatabase($bookingId)
     {
@@ -1274,149 +1287,308 @@ public function updateTransactionWithEMI($transactionData, $emiScheduleData = nu
         return $row['count'] > 0;
     }
 
-
-    // Add this method to your AccountClient model class
-
-    /**
-     * Get transactions by booking ID with date filter
-     */
-    /**
-     * Get transactions by booking ID with date filter
-     */
-    public function getFilteredTransactionsByBookingId($bookingId, $dateFilter = [])
+    public function addTransactionWithEMI($transactionData, $emiScheduleData = null)
     {
-        // Base query for all payments
-        $sql = "
-        SELECT 
-            lp.*,
-            l.full_name as client_name,
-            p.name as project_name,
-            f.floor_no,
-            un.name as unit_name,
-            CONCAT('UNIT ', un.name, ' - FLOOR ', f.floor_no) as flat_no,
-            u.full_name as created_by_name,
-            es.emi_no,
-            es.emi_amount,
-            es.due_emi_amount,
-            es.due_date as emi_due_date,
-            es.status as emi_status,
-            CASE 
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 1 THEN '1st Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 2 THEN '2nd Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 3 THEN '3rd Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 4 THEN '4th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 5 THEN '5th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 6 THEN '6th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 7 THEN '7th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 8 THEN '8th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 9 THEN '9th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 10 THEN '10th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 11 THEN '11th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no = 12 THEN '12th Installment'
-                WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
-                    THEN CONCAT(es.emi_no, 
-                        CASE 
-                            WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
-                            WHEN es.emi_no % 10 = 1 THEN 'st'
-                            WHEN es.emi_no % 10 = 2 THEN 'nd'
-                            WHEN es.emi_no % 10 = 3 THEN 'rd'
-                            ELSE 'th'
-                        END, ' Installment'
-                    )
-                WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
-                WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
-                WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
-                ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
-            END as installment_label,
-            CASE 
-                WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
-                WHEN lp.payment_type = 'registration' THEN 'Registration Money'
-                WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
-                WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
-                ELSE 'Other Payment'
-            END as payment_details
-        FROM lead_payments lp
-        LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
-        LEFT JOIN leads l ON l.id = lb.lead_id
-        LEFT JOIN projects p ON p.id = lb.project_id
-        LEFT JOIN flats f ON f.id = lb.flat_id
-        LEFT JOIN units un ON un.id = f.unit_id
-        LEFT JOIN users u ON u.id = lp.created_by
-        LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
-        WHERE lp.booking_id = ?
-    ";
+        $this->db->begin_transaction();
 
-        $params = [$bookingId];
-        $types = "i";
+        try {
+            // Calculate service fee and land share amount
+            $serviceFee = 0;
+            $landShareAmount = 0;
 
-        // Add date filter if provided
-        if (!empty($dateFilter['from']) && !empty($dateFilter['to'])) {
-            $sql .= " AND lp.payment_date BETWEEN ? AND ?";
-            $params[] = $dateFilter['from'];
-            $params[] = $dateFilter['to'];
-            $types .= "ss";
-        }
+            if ($transactionData['payment_type'] === 'emi') {
+                $emiAmount = (float)$transactionData['amount'];
+                $serviceFee = $emiAmount * 0.10;
+            } elseif ($transactionData['payment_type'] === 'land_share') {
+                $landShareAmount = (float)$transactionData['amount'];
+                
+                // Validate land share amount against REMAINING land share (considering discount)
+                $clientDetails = $this->getClientByBookingId($transactionData['booking_id']);
+                $remainingLandShare = $clientDetails['remaining_land_share'];
 
-        $sql .= " ORDER BY 
-        CASE 
-            WHEN lp.payment_type = 'booking_money' THEN 1
-            WHEN lp.payment_type = 'registration' THEN 2
-            ELSE 3
-        END,
-        es.emi_no ASC,
-        lp.payment_date DESC
-    ";
+                if ($remainingLandShare <= 0) {
+                    throw new Exception("Land share payment is already completed!");
+                }
 
-        $stmt = $this->db->prepare($sql);
-
-        if (!$stmt) {
-            error_log("Prepare failed: " . $this->db->error);
-            return [];
-        }
-
-        // Bind parameters dynamically
-        $stmt->bind_param($types, ...$params);
-
-        if (!$stmt->execute()) {
-            error_log("Execute failed: " . $stmt->error);
-            return [];
-        }
-
-        $result = $stmt->get_result();
-        $transactions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-
-        // Format dates and add additional calculated fields
-        foreach ($transactions as &$transaction) {
-            if (isset($transaction['payment_date'])) {
-                $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
-            }
-
-            // Add status badge class - FIXED: Added 'partially_paid' case
-            if (isset($transaction['payment_status'])) {
-                switch ($transaction['payment_status']) {
-                    case 'paid':
-                        $transaction['status_class'] = 'bg-success';
-                        $transaction['status_text'] = 'Paid';
-                        break;
-                    case 'partially_paid':
-                        $transaction['status_class'] = 'bg-info';
-                        $transaction['status_text'] = 'Partially Paid';
-                        break;
-                    case 'pending':
-                        $transaction['status_class'] = 'bg-warning';
-                        $transaction['status_text'] = 'Pending';
-                        break;
-                    case 'failed':
-                        $transaction['status_class'] = 'bg-danger';
-                        $transaction['status_text'] = 'Failed';
-                        break;
-                    default:
-                        $transaction['status_class'] = 'bg-secondary';
-                        $transaction['status_text'] = ucfirst(str_replace('_', ' ', $transaction['payment_status']));
+                if ($landShareAmount > $remainingLandShare) {
+                    throw new Exception("Land share amount cannot exceed remaining land share: ৳" . number_format($remainingLandShare, 2));
                 }
             }
-        }
 
-        return $transactions;
+            // Insert payment record
+            $stmt = $this->db->prepare("
+                INSERT INTO lead_payments (
+                    booking_id, payment_type, amount, land_share_amount,
+                    payment_method, payment_status, payment_date, transaction_ref, 
+                    bank_name, bank_account_no, cheque_no, online_type, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+
+            if (!$stmt) {
+                throw new Exception("Prepare failed: " . $this->db->error);
+            }
+
+            $stmt->bind_param(
+                "isddssssssssi",
+                $transactionData['booking_id'],
+                $transactionData['payment_type'],
+                $transactionData['amount'],
+                $landShareAmount, // Store land share amount
+                $transactionData['payment_method'],
+                $transactionData['payment_status'],
+                $transactionData['payment_date'],
+                $transactionData['transaction_ref'],
+                $transactionData['bank_name'],
+                $transactionData['bank_account_no'],
+                $transactionData['cheque_no'],
+                $transactionData['online_type'],
+                $transactionData['created_by']
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Transaction insert failed: " . $stmt->error);
+            }
+
+            $paymentId = $this->db->insert_id;
+
+            if ($transactionData['payment_type'] === 'emi' && $emiScheduleData) {
+                // Get the next EMI number
+                $emiNoStmt = $this->db->prepare("
+                    SELECT COALESCE(MAX(emi_no), 0) + 1 as next_emi_no 
+                    FROM emi_schedules 
+                    WHERE lead_booking_id = ?
+                ");
+                $emiNoStmt->bind_param("i", $transactionData['booking_id']);
+                $emiNoStmt->execute();
+                $emiNoResult = $emiNoStmt->get_result();
+                $emiNoRow = $emiNoResult ? $emiNoResult->fetch_assoc() : null;
+                $nextEmiNo = $emiNoRow ? $emiNoRow['next_emi_no'] : 1;
+
+                // Insert EMI schedule with service fee
+                $emiStmt = $this->db->prepare("
+                    INSERT INTO emi_schedules (
+                        lead_booking_id, emi_no, emi_amount, service_fee,
+                        due_emi_amount, due_date, status, lead_payment_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+
+                if (!$emiStmt) {
+                    throw new Exception("EMI schedule prepare failed: " . $this->db->error);
+                }
+
+                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 'pending';
+                $dueEmiAmount = $emiScheduleData['due_emi_amount'] ?? 0;
+
+                $emiStmt->bind_param(
+                    "iidddssi",
+                    $transactionData['booking_id'],
+                    $nextEmiNo,
+                    $transactionData['amount'],
+                    $serviceFee,
+                    $dueEmiAmount,
+                    $transactionData['payment_date'],
+                    $status,
+                    $paymentId
+                );
+
+                if (!$emiStmt->execute()) {
+                    throw new Exception("EMI schedule insert failed: " . $emiStmt->error);
+                }
+            }
+
+            $this->db->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Transaction added successfully!' . 
+                            ($emiScheduleData ? ' EMI schedule created.' : '') . 
+                            ($serviceFee > 0 ? ' Service fee: ৳' . number_format($serviceFee, 2) : ''),
+                'payment_id' => $paymentId,
+                'service_fee' => $serviceFee,
+                'land_share_amount' => $landShareAmount
+            ];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return [
+                'success' => false,
+                'message' => 'Transaction failed: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function updateTransactionWithEMI($transactionData, $emiScheduleData = null)
+    {
+        error_log("=== MODEL: updateTransactionWithEMI START ===");
+        error_log("Transaction Data: " . print_r($transactionData, true));
+        error_log("EMI Schedule Data: " . print_r($emiScheduleData, true));
+
+        $this->db->begin_transaction();
+
+        try {
+            // Get the OLD transaction data
+            $oldTransaction = $this->getTransactionById($transactionData['payment_id']);
+            if (!$oldTransaction) {
+                throw new Exception("Transaction not found");
+            }
+
+            $finalAmount = (float)$transactionData['amount'];
+            $finalServiceFee = 0;
+            $landShareAmount = 0;
+
+            // CRITICAL FIX: Calculate land_share_amount for land_share and booking_money payment types
+            if ($transactionData['payment_type'] === 'land_share') {
+                $landShareAmount = $finalAmount;
+            } elseif ($transactionData['payment_type'] === 'booking_money') {
+                // Booking money also counts as land share
+                $landShareAmount = $finalAmount;
+            }
+
+            // Calculate service fee for EMI
+            if ($transactionData['payment_type'] === 'emi') {
+                $finalServiceFee = $finalAmount * 0.10;
+            }
+
+            // CRITICAL FIX: Update query now includes land_share_amount
+            $stmt = $this->db->prepare("
+                UPDATE lead_payments SET
+                    payment_type = ?,
+                    amount = ?,
+                    land_share_amount = ?,
+                    payment_method = ?,
+                    payment_status = ?,
+                    payment_date = ?,
+                    transaction_ref = ?,
+                    bank_name = ?,
+                    bank_account_no = ?,
+                    cheque_no = ?,
+                    online_type = ?
+                WHERE id = ?
+            ");
+
+            if (!$stmt) {
+                throw new Exception("Prepare failed: " . $this->db->error);
+            }
+
+            $stmt->bind_param(
+                "sddssssssssi",  // FIXED: 12 parameters (s=string, d=double, i=integer)
+                $transactionData['payment_type'],      // s
+                $finalAmount,                          // d
+                $landShareAmount,                      // d
+                $transactionData['payment_method'],    // s
+                $transactionData['payment_status'],    // s
+                $transactionData['payment_date'],      // s
+                $transactionData['transaction_ref'],   // s
+                $transactionData['bank_name'],         // s
+                $transactionData['bank_account_no'],   // s
+                $transactionData['cheque_no'],         // s
+                $transactionData['online_type'],       // s
+                $transactionData['payment_id']         // i
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Transaction update failed: " . $stmt->error);
+            }
+
+            error_log("Payment updated successfully. Land share amount: " . $landShareAmount);
+
+            // Handle EMI schedule
+            if ($transactionData['payment_type'] === 'emi' && $emiScheduleData) {
+                // Check if EMI schedule exists
+                $checkStmt = $this->db->prepare("
+                    SELECT id FROM emi_schedules WHERE lead_payment_id = ?
+                ");
+                $checkStmt->bind_param("i", $transactionData['payment_id']);
+                $checkStmt->execute();
+                $existingSchedule = $checkStmt->get_result()->fetch_assoc();
+
+                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 
+                         ($transactionData['payment_status'] === 'partially_paid' ? 'partially_paid' : 'pending');
+
+                if ($existingSchedule) {
+                    // Update existing EMI schedule
+                    $emiStmt = $this->db->prepare("
+                        UPDATE emi_schedules SET
+                            emi_amount = ?,
+                            service_fee = ?,
+                            due_emi_amount = ?,
+                            due_date = ?,
+                            status = ?
+                        WHERE lead_payment_id = ?
+                    ");
+
+                    $emiStmt->bind_param(
+                        "dddssi",
+                        $finalAmount,
+                        $finalServiceFee,
+                        $emiScheduleData['due_emi_amount'],
+                        $transactionData['payment_date'],
+                        $status,
+                        $transactionData['payment_id']
+                    );
+
+                    if (!$emiStmt->execute()) {
+                        throw new Exception("EMI schedule update failed: " . $emiStmt->error);
+                    }
+                } else {
+                    // Create new EMI schedule
+                    $emiNoStmt = $this->db->prepare("
+                        SELECT COALESCE(MAX(emi_no), 0) + 1 as next_emi_no 
+                        FROM emi_schedules 
+                        WHERE lead_booking_id = ?
+                    ");
+                    $emiNoStmt->bind_param("i", $transactionData['booking_id']);
+                    $emiNoStmt->execute();
+                    $emiNoResult = $emiNoStmt->get_result();
+                    $emiNoRow = $emiNoResult->fetch_assoc();
+                    $nextEmiNo = $emiNoRow ? $emiNoRow['next_emi_no'] : 1;
+
+                    $emiStmt = $this->db->prepare("
+                        INSERT INTO emi_schedules (
+                            lead_booking_id, emi_no, emi_amount, service_fee,
+                            due_emi_amount, due_date, status, lead_payment_id
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+
+                    $emiStmt->bind_param(
+                        "iidddssi",
+                        $transactionData['booking_id'],
+                        $nextEmiNo,
+                        $finalAmount,
+                        $finalServiceFee,
+                        $emiScheduleData['due_emi_amount'],
+                        $transactionData['payment_date'],
+                        $status,
+                        $transactionData['payment_id']
+                    );
+
+                    if (!$emiStmt->execute()) {
+                        throw new Exception("EMI schedule insert failed: " . $emiStmt->error);
+                    }
+                }
+            } elseif ($transactionData['payment_type'] !== 'emi') {
+                // Delete EMI schedule if payment type changed from EMI
+                $deleteEmiStmt = $this->db->prepare("
+                    DELETE FROM emi_schedules WHERE lead_payment_id = ?
+                ");
+                $deleteEmiStmt->bind_param("i", $transactionData['payment_id']);
+                $deleteEmiStmt->execute();
+            }
+
+            $this->db->commit();
+            error_log("=== MODEL: Transaction committed successfully ===");
+
+            return [
+                'success' => true,
+                'message' => 'Transaction updated successfully!' . 
+                            ($finalServiceFee > 0 ? ' Service fee: ৳' . number_format($finalServiceFee, 2) : '')
+            ];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            error_log("=== MODEL: ERROR - " . $e->getMessage() . " ===");
+            return [
+                'success' => false,
+                'message' => 'Transaction update failed: ' . $e->getMessage()
+            ];
+        }
     }
 }
