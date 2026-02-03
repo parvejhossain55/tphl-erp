@@ -17,7 +17,8 @@ class BookingLead extends Model
        l.full_name, 
        p.name AS project_name, 
        u2.name AS flat_name, 
-       u1.full_name AS created_by_name
+       u1.full_name AS created_by_name,
+       lb.booking_date as booking_pay_date
 FROM lead_bookings lb
 LEFT JOIN leads l ON lb.lead_id = l.id
 LEFT JOIN flats f ON lb.flat_id = f.id
@@ -92,8 +93,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
 
     public function getAllMyOnboardProject($userId, $year = null, $month = null)
-{
-    $sql = "SELECT 
+    {
+        $sql = "SELECT 
             lb.*, 
             l.full_name, 
             l.id AS lead_id,
@@ -119,33 +120,33 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
           AND lb.booking_status = 'completed'
           AND lb.sales_by_id = ?";
 
-    $params = [$userId];
-    $types  = "i";
+        $params = [$userId];
+        $types  = "i";
 
-    if (!empty($year)) {
-        $sql .= " AND YEAR(l.created_at) = ?";
-        $params[] = (int)$year;
-        $types   .= "i";
+        if (!empty($year)) {
+            $sql .= " AND YEAR(l.created_at) = ?";
+            $params[] = (int)$year;
+            $types   .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(l.created_at) = ?";
+            $params[] = (int)$month;
+            $types   .= "i";
+        }
+
+        $sql .= " ORDER BY lb.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+
+        if (!$stmt->execute()) {
+            return [];
+        }
+
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-
-    if (!empty($month)) {
-        $sql .= " AND MONTH(l.created_at) = ?";
-        $params[] = (int)$month;
-        $types   .= "i";
-    }
-
-    $sql .= " ORDER BY lb.id DESC";
-
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param($types, ...$params);
-
-    if (!$stmt->execute()) {
-        return [];
-    }
-
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
 
 
     //dashboard

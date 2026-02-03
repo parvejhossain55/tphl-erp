@@ -122,5 +122,3 @@ $show_breadcrumb = true;
 
     </div>
 </div>
-
-</div>

@@ -164,6 +164,17 @@ $routes = [
     "assign-multiple-leads" => ["controller" => "LeadController", "method" => "assignMultipleLeads"],
 
 
+    // == access onboard clients ==
+
+    "onboard-access-client-lists" => ["controller" => "OnboardClientController", "method" => "index"],
+    "create-onboard-client" => ["controller" => "OnboardClientController", "method" => "create"],
+    "store-onboard-client" => ["controller" => "OnboardClientController", "method" => "store"],
+    
+    "edit-onboard-client/(\d+)" => ["controller" => "OnboardClientController", "method" => "edit"],
+    "update-onboard-client/(\d+)" => ["controller" => "OnboardClientController", "method" => "update"],
+   
+    "get-lead-booking-details/(\d+)" => ["controller" => "OnboardClientController", "method" => "getLeadBookingDetails"],
+    "assign-onboard-client" => ["controller" => "OnboardClientController", "method" => "assignMultipleLeads"],
 
 
 
