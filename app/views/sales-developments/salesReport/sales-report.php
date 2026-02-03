@@ -55,7 +55,7 @@ $page = 'Sales report'
                                                     <td><?= htmlspecialchars($row['project_name']) ?></td>
                                                     <td><?= htmlspecialchars($row['flat_name']) ?></td>
                                                     <td><?= htmlspecialchars($row['agreement_value']) ?></td>
-                                                    <td><?= htmlspecialchars($row['user_name'])  ?? '' ?><span><?= $row['user_id'] ?></span></td>
+                                                    <td><?= $row['user_name'] ?? $row['assigned_user_name'] ?> - ID:<span><?= $row['user_id'] ?></span></td>
                                                     <td>
                                                         <?php if ($row['booking_status'] === 'completed'): ?>
                                                             <span class="bd-badge bg-success">Completed</span>

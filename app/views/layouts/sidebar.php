@@ -169,6 +169,9 @@
                         <li class="slide">
                             <a href="<?= $base_url ?>/today-follow-up" class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today Follow Up</a>
                         </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/my-onboarding-projects" class="sidebar__menu-item <?= isActive('my-onboarding-projects', $current_route) ?>">My Onboarding Projects </a>
+                        </li>
                     </ul>
                 <?php endif; ?>
                 <!-- for sales executive  -->
@@ -410,7 +413,7 @@
                         <a href="<?= $base_url ?>/accounts-dashboard" class="sidebar__menu-item <?= isActive('accounts-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">Accounts Dashboard</span>
-                            
+
                         </a>
                     </li>
                     <li class="slide <?= isActive('central-statement', $current_route) ?>">

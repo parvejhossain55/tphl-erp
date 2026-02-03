@@ -142,6 +142,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <th>Client</th>
                             <th>Project</th>
                             <th>Flat</th>
+                            <th>Sales By</th>
                             <th>Created By</th>
                             <th>Discount Approved Status /Amount </th>
                             <th>Actions</th>
@@ -169,7 +170,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                         </small>
                                     </td>
 
-                                    <td><?= htmlspecialchars($_SESSION['user']['name'] ?? '-') ?></td>
+                                    <td><?= $or['sales_user'] ?? 'N/A'?></td>
+                                    <td><?= $or['created_user'] ?? 'N/A'?></td>
 
                                     <!-- Discount Status -->
                                     <td>

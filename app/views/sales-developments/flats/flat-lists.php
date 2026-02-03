@@ -67,11 +67,11 @@ $show_breadcrumb = false;
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20">
+                <table class="table mb-20 multiple_tables">
                     <thead>
                         <tr class="table__title">
-                            <th class="th_1">Project</th>
-                            <th class="th_2">Flat/Unit</th>
+                            <th>Project</th>
+                            <th >Flat/Unit</th>
                             <th>BHK</th>
 
                             <th>Floor No</th>

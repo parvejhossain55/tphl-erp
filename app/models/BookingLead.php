@@ -90,6 +90,64 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     }
 
 
+
+    public function getAllMyOnboardProject($userId, $year = null, $month = null)
+{
+    $sql = "SELECT 
+            lb.*, 
+            l.full_name, 
+            l.id AS lead_id,
+            l.phone,
+            l.email,
+            p.name AS project_name, 
+            u2.name AS flat_name, 
+            lp.payment_method,
+            lp.amount,
+            lp.created_at AS booking_pay_date,
+            u1.full_name AS created_by_name,
+            f.flat_name,
+            f.sqft,
+            f.price_value
+        FROM lead_bookings lb
+        LEFT JOIN leads l ON lb.lead_id = l.id
+        LEFT JOIN flats f ON lb.flat_id = f.id
+        LEFT JOIN units u2 ON f.unit_id = u2.id
+        LEFT JOIN projects p ON f.project_id = p.id
+        LEFT JOIN users u1 ON lb.created_by = u1.id
+        LEFT JOIN lead_payments lp ON lp.booking_id = lb.id
+        WHERE lb.deleted_at IS NULL
+          AND lb.booking_status = 'completed'
+          AND lb.sales_by_id = ?";
+
+    $params = [$userId];
+    $types  = "i";
+
+    if (!empty($year)) {
+        $sql .= " AND YEAR(l.created_at) = ?";
+        $params[] = (int)$year;
+        $types   .= "i";
+    }
+
+    if (!empty($month)) {
+        $sql .= " AND MONTH(l.created_at) = ?";
+        $params[] = (int)$month;
+        $types   .= "i";
+    }
+
+    $sql .= " ORDER BY lb.id DESC";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+
+    if (!$stmt->execute()) {
+        return [];
+    }
+
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
+
     //dashboard
     public function getTotalBookings($period = null)
     {
@@ -235,11 +293,13 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                f.flat_name, 
                f.sqft,
                f.price_value, 
-               u.name AS unit_name
+               us.full_name as created_user,
+               users.full_name as sales_user
         FROM lead_bookings o
         LEFT JOIN projects p ON o.project_id = p.id
         LEFT JOIN flats f ON o.flat_id = f.id
-        LEFT JOIN units u ON f.unit_id = u.id
+        LEFT JOIN users us ON o.created_by = us.id
+        LEFT JOIN users  ON o.sales_by_id = users.id
         WHERE o.deleted_at IS NULL
           AND o.lead_id = ?
     ");
@@ -334,12 +394,14 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     {
         $query = "SELECT lb.*, l.full_name AS client_name, l.phone, p.name AS project_name,
                      f.flat_name, f.price_value,
-                     u.full_name AS user_name,u.id AS user_id
+                     u.full_name AS user_name,u.id AS user_id,
+                     us.full_name AS assigned_user_name,us.id AS user_id 
               FROM lead_bookings lb
               LEFT JOIN leads l ON lb.lead_id = l.id
               LEFT JOIN projects p ON lb.project_id = p.id
               LEFT JOIN flats f ON lb.flat_id = f.id
-              LEFT JOIN users u ON l.assigned_id = u.id
+              LEFT JOIN users u ON lb.sales_by_id = u.id
+              LEFT JOIN users us ON l.assigned_id= us.id
               WHERE lb.deleted_at IS NULL";
 
         // Filter by type

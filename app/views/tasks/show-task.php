@@ -102,7 +102,7 @@
                                         <img class="img-50 border-circle" src="<?= getImage('users', $task['assigned_photo']) ?>" alt="user image">
                                         <div class="profile-info">
                                             <h6><?= $task['assigned_by_name'] ?>.</h6>
-                                            <p class="mb-0"><?= $task['employee_designation'] ?></p>
+                                            <p class="mb-0"><?= $task['assigned_by_designation'] ?></p>
                                         </div>
                                     </div>
                                 </li>
@@ -118,7 +118,7 @@
                             <ul class="user__list">
                                 <li>
                                     <div class="d-flex align-items-center gap-10 mb-10">
-                                        <img class="img-50 border-circle" src="<?= getImage('employees', $task['emp_photo']) ?>" alt="user image">
+                                        <img class="img-50 border-circle" src="<?= getImage('users', $task['emp_photo']) ?>" alt="user image">
                                         <div class="profile-info">
                                             <h6><?= $task['employee_name'] ?>.</h6>
                                             <p class="mb-0"><?= $task['employee_designation'] ?></p>

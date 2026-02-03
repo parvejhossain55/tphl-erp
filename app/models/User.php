@@ -223,7 +223,11 @@ class User extends Model
         $sql = $this->db->prepare("
         SELECT
             u.id, 
+            des.name  as designation_name,
+            r.name  as role_name,
            u.full_name  From users AS u
+           LEFT JOIN designations des ON u.designation_id = des.id
+           LEFT JOIN roles r ON u.role_id = r.id
     ");
         if (!$sql->execute()) {
             return []; // Error handle koro

@@ -726,172 +726,162 @@ function renderApprovalContext(array $req)
     $ctx = $req['context'];
 ?>
 
-    <div class="card__wrapper shadow-sm border-0 mb-3">
-        <div class="card-header_title ">
-            <h6 class="mb-2">
-                Details
-            </h6>
-        </div>
-        <div class="info-card-body">
-            <div class="row ">
-                <ul class=" list-group-flush">
-                    <?php if (!empty($ctx['requester'])): ?>
-                        <li class="px-0 border-0 border-top py-2">
-                            <div class="row align-items-center">
-                                <div class="col-4 col-md-3">
-                                    <span class="badge bg-primary ms-2" style="font-size: 0.85rem;">
-                                      Requested By
-                                    </span>
-                                </div>
-                                <div class="col-8 col-md-9">
-                                    <div class="d-flex align-items-center ">
-
-                                        <div>
-                                            <strong class="d-block"><?= esc($ctx['requester']['user_name']) ?>
-                                                <small class="ms-2 fw-semibold text-muted">
-                                                    <i class="bi bi-envelope"></i>
-                                                    <?= esc($ctx['requester']['email']) ?>
-                                                </small>
-                                            </strong>
-                                            <strong><?= esc($ctx['requester']['designation']) ?></strong>
-
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </div>
-                        </li>
-                    <?php endif; ?>
-                    <!-- Lead -->
-                    <?php if (!empty($ctx['lead'])): ?>
-                        <li class="list-group-item px-0 border-0">
-                            <div class="row align-items-center">
-                                <div class="col-4 col-md-3">
-                                    <span class="badge bg-info text-light ms-2" style="font-size: 0.85rem;">Client</span>
-                                </div>
-                                <div class="col-8 col-md-9">
-                                    <strong><?= esc($ctx['lead']['full_name']) ?></strong>
-                                    <br>
-                                    <small class="fw-semibold  text-muted">
-                                        <i class="bi bi-telephone"></i>
-                                        <?= esc($ctx['lead']['phone'], 'N/A') ?>
-                                    </small>
-                                </div>
-                            </div>
-                        </li>
-                    <?php endif; ?>
-
-                    <!-- Flat -->
-                    <?php if (!empty($ctx['flat'])): ?>
-                        <li class="px-0 border-0 border-top py-2">
-                            <div class="row align-items-center">
-                                <div class="col-4 col-md-3 ">
-                                    <span class="badge bg-success ms-2" style="font-size: 0.85rem;">Project</span>
-                                </div>
-                                <div class="col-8 col-md-9">
-                                    <strong><?= esc($ctx['flat']['project_name'], 'Unknown Project') ?></strong>
-                                    —
-                                    <?= esc($ctx['flat']['location_name']) ?>
-
-                                    <br>
-                                    <strong><?= esc($ctx['flat']['flat_name']) ?></strong> <span>,</span>
-                                    <small class="fw-semibold text-muted">
-
-                                        <strong class=" " style="font-size: 0.85rem;">Size</strong>
-                                        <?= esc($ctx['flat']['sqft'], 0) ?> sqft
-                                    </small>
-                                </div>
-                            </div>
-                        </li>
-                    <?php endif; ?>
-
-                    <!-- Employee -->
-                    <?php if (!empty($ctx['employee'])): ?>
-                        <li class="px-0 border-0 border-top py-2">
-                            <div class="row align-items-center">
-                                <div class="col-4 col-md-3">
-                                    <span class="badge bg-warning text-dark ms-2" style="font-size: 0.85rem;">Employee</span>
-                                </div>
-                                <div class="col-8 col-md-9">
-                                    <strong><?= esc($ctx['employee']['full_name']) ?></strong>
-                                    <br>
-                                    <small class="fw-semibold text-muted">
-                                        <i class="bi bi-briefcase"></i>
-                                        <?= esc($ctx['employee']['designation'], 'N/A') ?>
-                                    </small>
-                                </div>
-                            </div>
-                        </li>
-                    <?php endif; ?>
-
-                    <!-- Salary -->
-                    <?php if (!empty($ctx['salary'])): ?>
-                        <li class="px-0 border-0 border-top py-2">
-                            <div class="row align-items-center mb-2">
-                                <div class="col-4 col-md-3">
-                                    <span class="badge bg-secondary" style="font-size: 0.85rem;">Salary Month</span>
-                                </div>
-                                <div class="col-8 col-md-9">
-                                    <strong><?= esc($ctx['salary']['salary_month'], '-') ?></strong>
-                                </div>
-                            </div>
-                            <div class="row align-items-center">
-                                <div class="col-4 col-md-3">
-                                    <span class="badge bg-secondary" style="font-size: 0.85rem;">Gross Salary</span>
-                                </div>
-                                <div class="col-8 col-md-9">
-                                    <strong class="text-success">
-                                        ৳ <?= number_format($ctx['salary']['gross_salary'] ?? 0, 2) ?>
-                                    </strong>
-                                </div>
-                            </div>
-                        </li>
-                    <?php endif; ?>
-
-                    <!-- Leave -->
-                    <?php if (!empty($ctx['leave'])): ?>
-                        <li class="px-0 border-0 border-top py-2">
-                            <div class="row align-items-center mb-2">
-                                <div class="col-4 col-md-3">
-                                    <span class="badge bg-danger" style="font-size: 0.85rem;">Leave Type</span>
-                                </div>
-                                <div class="col-8 col-md-9">
-                                    <strong><?= esc($ctx['leave']['leave_type'], 'N/A') ?></strong>
-                                </div>
-                            </div>
-                            <div class="row align-items-center">
-                                <div class="col-4 col-md-3">
-                                    <span class="badge bg-danger" style="font-size: 0.85rem;">Duration</span>
-                                </div>
-                                <div class="col-8 col-md-9">
-                                    <strong><?= esc($ctx['leave']['requested_days'], 0) ?> days</strong>
-                                </div>
-                            </div>
-                        </li>
-                    <?php endif; ?>
-
-                    <!-- Accounts Meta -->
-                    <?php if (!empty($ctx['meta'])): ?>
-                        <?php foreach ($ctx['meta'] as $key => $value): ?>
-                            <li class="px-0 border-0 border-top py-2">
-                                <div class="row align-items-center">
-                                    <div class="col-4 col-md-3">
-                                        <span class="badge bg-secondary" style="font-size: 0.85rem;">
-                                            <?= esc(ucfirst(str_replace('_', ' ', $key))) ?>
-                                        </span>
-                                    </div>
-                                    <div class="col-8 col-md-9">
-                                        <strong><?= esc($value, 'N/A') ?></strong>
-                                    </div>
-                                </div>
-                            </li>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-
-                </ul>
-            </div>
-        </div>
+<div class="card__wrapper shadow-sm border-0 mb-3">
+    <div class="card-header_title">
+        <h6 class="mb-2">Details</h6>
     </div>
+
+    <div class="info-card-body">
+        <ul class="list-group list-group-flush">
+
+            <!-- Requested By -->
+            <?php if (!empty($ctx['requester'])): ?>
+                <li class="px-0 border-0 border-top py-2">
+                    <div class="row g-1">
+                        <div class="col-12 col-md-3 mb-1 mb-md-0">
+                            <span class="badge bg-primary ms-md-2">Requested By</span>
+                        </div>
+                        <div class="col-12 col-md-9 text-break">
+                            <strong><?= esc($ctx['requester']['user_name']) ?></strong>
+                            <div class="small text-muted">
+                                <i class="bi bi-envelope"></i>
+                                <?= esc($ctx['requester']['email']) ?>
+                            </div>
+                            <small class="fw-semibold">
+                                <?= esc($ctx['requester']['designation']) ?>
+                            </small>
+                        </div>
+                    </div>
+                </li>
+            <?php endif; ?>
+
+            <!-- Client -->
+            <?php if (!empty($ctx['lead'])): ?>
+                <li class="px-0 border-0 border-top py-2">
+                    <div class="row g-1">
+                        <div class="col-12 col-md-3 mb-1 mb-md-0">
+                            <span class="badge bg-info text-light ms-md-2">Client</span>
+                        </div>
+                        <div class="col-12 col-md-9">
+                            <strong><?= esc($ctx['lead']['full_name']) ?></strong>
+                            <div class="small text-muted">
+                                <i class="bi bi-telephone"></i>
+                                <?= esc($ctx['lead']['phone'], 'N/A') ?>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            <?php endif; ?>
+
+            <!-- Project / Flat -->
+            <?php if (!empty($ctx['flat'])): ?>
+                <li class="px-0 border-0 border-top py-2">
+                    <div class="row g-1">
+                        <div class="col-12 col-md-3 mb-1 mb-md-0">
+                            <span class="badge bg-success ms-md-2">Project</span>
+                        </div>
+                        <div class="col-12 col-md-9 text-break">
+                            <strong><?= esc($ctx['flat']['project_name'], 'Unknown Project') ?></strong>
+                            <div class="small text-muted">
+                                <?= esc($ctx['flat']['location_name']) ?>
+                            </div>
+                            <div>
+                                <?= esc($ctx['flat']['flat_name']) ?>,
+                                <small class="text-muted">
+                                    <?= esc($ctx['flat']['sqft'], 0) ?> sqft
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            <?php endif; ?>
+
+            <!-- Employee -->
+            <?php if (!empty($ctx['employee'])): ?>
+                <li class="px-0 border-0 border-top py-2">
+                    <div class="row g-1">
+                        <div class="col-12 col-md-3 mb-1 mb-md-0">
+                            <span class="badge bg-warning text-dark ms-md-2">Employee</span>
+                        </div>
+                        <div class="col-12 col-md-9">
+                            <strong><?= esc($ctx['employee']['full_name']) ?></strong>
+                            <div class="small text-muted">
+                                <i class="bi bi-briefcase"></i>
+                                <?= esc($ctx['employee']['designation'], 'N/A') ?>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            <?php endif; ?>
+
+            <!-- Salary -->
+            <?php if (!empty($ctx['salary'])): ?>
+                <li class="px-0 border-0 border-top py-2">
+                    <div class="row g-1 mb-1">
+                        <div class="col-12 col-md-3">
+                            <span class="badge bg-secondary ms-md-2">Salary Month</span>
+                        </div>
+                        <div class="col-12 col-md-9">
+                            <strong><?= esc($ctx['salary']['salary_month'], '-') ?></strong>
+                        </div>
+                    </div>
+                    <div class="row g-1">
+                        <div class="col-12 col-md-3">
+                            <span class="badge bg-secondary ms-md-2">Gross Salary</span>
+                        </div>
+                        <div class="col-12 col-md-9">
+                            <strong class="text-success">
+                                ৳ <?= number_format($ctx['salary']['gross_salary'] ?? 0, 2) ?>
+                            </strong>
+                        </div>
+                    </div>
+                </li>
+            <?php endif; ?>
+
+            <!-- Leave -->
+            <?php if (!empty($ctx['leave'])): ?>
+                <li class="px-0 border-0 border-top py-2">
+                    <div class="row g-1 mb-1">
+                        <div class="col-12 col-md-3">
+                            <span class="badge bg-danger ms-md-2">Leave Type</span>
+                        </div>
+                        <div class="col-12 col-md-9">
+                            <strong><?= esc($ctx['leave']['leave_type'], 'N/A') ?></strong>
+                        </div>
+                    </div>
+                    <div class="row g-1">
+                        <div class="col-12 col-md-3">
+                            <span class="badge bg-danger ms-md-2">Duration</span>
+                        </div>
+                        <div class="col-12 col-md-9">
+                            <strong><?= esc($ctx['leave']['requested_days'], 0) ?> days</strong>
+                        </div>
+                    </div>
+                </li>
+            <?php endif; ?>
+
+            <!-- Meta -->
+            <?php if (!empty($ctx['meta'])): ?>
+                <?php foreach ($ctx['meta'] as $key => $value): ?>
+                    <li class="px-0 border-0 border-top py-2">
+                        <div class="row g-1">
+                            <div class="col-12 col-md-3 mb-1 mb-md-0">
+                                <span class="badge bg-secondary ms-md-2">
+                                    <?= esc(ucfirst(str_replace('_', ' ', $key))) ?>
+                                </span>
+                            </div>
+                            <div class="col-12 col-md-9">
+                                <strong><?= esc($value, 'N/A') ?></strong>
+                            </div>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            <?php endif; ?>
+
+        </ul>
+    </div>
+</div>
+
 
 <?php
 }

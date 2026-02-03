@@ -61,7 +61,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <div class="col-lg-6">
                             <div class="form__input-title">
 
-                                <label class="form__input-title">Land Share Value</label>
+                                <label class="form__input-title">Project Share Value</label>
                             </div>
                             <input type="text" class="form-control" value="<?= number_format($booking['price_value'], 2) ?>" readonly>
                         </div>

@@ -6,6 +6,7 @@ class UserDashboardController extends Controller
     protected $leadModel;
     protected $taskModel;
     protected $followUpModel;
+    protected $bookingModel;
 
     public function __construct($db)
     {
@@ -13,82 +14,95 @@ class UserDashboardController extends Controller
         $this->leadModel = new Lead($this->db);
         $this->taskModel = new Task($this->db);
         $this->followUpModel = new FollowUp($this->db);
+        $this->bookingModel = new BookingLead($this->db);
     }
 
-public function index()
+    public function index()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user']['id'])) {
+            echo "User not logged in";
+            return;
+        }
+
+        $loggedUserId = (int) $_SESSION['user']['id'];
+
+        // only assigned today leads for logged user
+        $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
+
+        $this->view("sales-executive/user-dashboard", [
+            "current_route" => "user-dashboard",
+            "page_title"    => "User Dashboard",
+            "todayLeads"    => $todayLeads,
+        ]);
+    }
+
+
+
+
+    public function updateCallStatus()
+    {
+        $id = $_POST['lead_id'];
+        $status = $_POST['call_status'];
+
+        $this->db->query(
+            "UPDATE leads SET call_status='$status' WHERE id=$id"
+        );
+    }
+
+
+    public function updateCallNote()
+    {
+        $id = $_POST['lead_id'];
+        $note = $this->db->real_escape_string($_POST['call_note']);
+
+        $this->db->query(
+            "UPDATE leads SET call_note='$note' WHERE id=$id"
+        );
+    }
+
+
+    public function todayFollowUp()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userId = $_SESSION['user']['id'] ?? null;
+
+        $todayFollowUpLeads = [];
+        if ($userId) {
+            $todayFollowUpLeads = $this->followUpModel
+                ->getTodayFollowUpLoginUser((int)$userId);
+        }
+
+        $this->view("sales-executive/today-followup", [
+            "current_route"       => "user-dashboard",
+            "page_title"          => "User Dashboard",
+            "todayFollowUpLeads"  => $todayFollowUpLeads,
+        ]);
+    }
+
+public function myOnboardProject()
 {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
 
-    if (!isset($_SESSION['user']['id'])) {
-        echo "User not logged in";
-        return;
-    }
+    $userId = $_SESSION['user']['id'] ?? 0;
 
-    $loggedUserId = (int) $_SESSION['user']['id'];
+    $year  = $_GET['year']  ?? null;
+    $month = $_GET['month'] ?? null;
 
-    // only assigned today leads for logged user
-    $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
+    $myOnboardProjects = $this->bookingModel
+        ->getAllMyOnboardProject($userId, $year, $month);
 
-    $this->view("sales-executive/user-dashboard", [
-        "current_route" => "user-dashboard",
-        "page_title"    => "User Dashboard",
-        "todayLeads"    => $todayLeads,
+    $this->view('sales-executive/my-onboard-projects', [
+        'projects' => $myOnboardProjects
     ]);
 }
 
-
-
-
-public function updateCallStatus()
-{
-    $id = $_POST['lead_id'];
-    $status = $_POST['call_status'];
-
-    $this->db->query(
-        "UPDATE leads SET call_status='$status' WHERE id=$id"
-    );
 }
-
-
-public function updateCallNote()
-{
-    $id = $_POST['lead_id'];
-    $note = $this->db->real_escape_string($_POST['call_note']);
-
-    $this->db->query(
-        "UPDATE leads SET call_note='$note' WHERE id=$id"
-    );
-}
-
-
-
-
-
-
-public function todayFollowUp()
-{
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-
-    $userId = $_SESSION['user']['id'] ?? null;
-
-    $todayFollowUpLeads = [];
-    if ($userId) {
-        $todayFollowUpLeads = $this->followUpModel
-            ->getTodayFollowUpLoginUser((int)$userId);
-    }
-
-    $this->view("sales-executive/today-followup", [
-        "current_route"       => "user-dashboard",
-        "page_title"          => "User Dashboard",
-        "todayFollowUpLeads"  => $todayFollowUpLeads,
-    ]);
-}
-
-
-
-    }
-
