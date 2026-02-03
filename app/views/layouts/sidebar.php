@@ -131,7 +131,13 @@
                         </a>
                     </li>
 
-
+                    <!-- Clients For Login  -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/onboard-access-client-lists" class="sidebar__menu-item <?= isActive('onboard-access-client-lists',$current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="sidebar__menu-label">Access Onboard Clients</span>
+                        </a>
+                    </li>
                 <?php endif; ?>
 
 

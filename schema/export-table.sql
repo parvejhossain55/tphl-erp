@@ -402,4 +402,27 @@ DELETE FROM leads
 WHERE deleted_at IS NOT NULL;
 
 
+--03/02/26
+CREATE TABLE onboard_clients (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    lead_booking_id INT UNSIGNED NULL,
+    lead_id INT UNSIGNED NULL,
+    project_id INT UNSIGNED NULL,
+    flat_id INT UNSIGNED NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    cameraLink1 VARCHAR(255),
+    cameraLink2 VARCHAR(255),
+    moneyReceiptLink VARCHAR(255),
+    purchaseDetailsLink VARCHAR(255),
+   `created_by` int (10) UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_lead_booking
+        FOREIGN KEY (lead_booking_id)
+        REFERENCES lead_bookings(id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
 -- farzana
