@@ -71,7 +71,9 @@ class AccountClientController extends Controller
         $transactions = array_values($filteredTransactions);
 
         // Get payment summary statistics (now includes service fee)
-        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+           $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+    
+
 
         $this->view("accounts/cashIn/clients-cash-in-history", [
             "current_route" => "clients-cash-in-history",
@@ -728,9 +730,116 @@ public function viewPaymentInvoice($paymentId = null)
     include $viewPath;
     exit;
 }
-
+public function getClientPaymentHistory()
+{
+    $bookingId = $_GET['booking_id'] ?? 0;
+    
+    $accountModel = new AccountClient();
+    
+    // Get client details with land share calculations
+    $clientDetails = $accountModel->getClientByBookingId($bookingId);
+    
+    // Get payment summary with land share
+    $paymentSummary = $accountModel->getPaymentSummaryByBookingId($bookingId);
+    
+    // Get transactions
+    $transactions = $accountModel->getTransactionsByBookingId($bookingId);
+    
+    // Prepare data for view
+    $data = [
+        'client' => $clientDetails,
+        'summary' => $paymentSummary,
+        'transactions' => $transactions,
+        'remaining_land_share' => $paymentSummary['remaining_land_share'],
+        'is_land_share_completed' => $paymentSummary['is_land_share_completed']
+    ];
+    
+    // Return JSON or load view
+    echo json_encode($data);
+}
 // Add this method to your AccountClientController class
-
+public function addPayment()
+{
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $data = $_POST;
+        
+        $accountModel = new AccountClient();
+        
+        // Prepare transaction data
+        $transactionData = [
+            'booking_id' => $data['booking_id'],
+            'payment_type' => $data['payment_type'],
+            'amount' => $data['amount'],
+            'payment_method' => $data['payment_method'],
+            'payment_status' => $data['payment_status'],
+            'payment_date' => $data['payment_date'],
+            'transaction_ref' => $data['transaction_ref'] ?? '',
+            'bank_name' => $data['bank_name'] ?? '',
+            'bank_account_no' => $data['bank_account_no'] ?? '',
+            'cheque_no' => $data['cheque_no'] ?? '',
+            'online_type' => $data['online_type'] ?? '',
+            'created_by' => $_SESSION['user_id']
+        ];
+        
+        // For land share payments, validate remaining amount
+        if ($data['payment_type'] === 'land_share') {
+            $remainingLandShare = $accountModel->getRemainingLandShare($data['booking_id']);
+            
+            if ($remainingLandShare <= 0) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Land share payment is already completed!'
+                ]);
+                return;
+            }
+            
+            if ($data['amount'] > $remainingLandShare) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Land share amount cannot exceed remaining: ৳' . number_format($remainingLandShare, 2)
+                ]);
+                return;
+            }
+        }
+        
+        // Prepare EMI schedule data if applicable
+        $emiScheduleData = null;
+        if ($data['payment_type'] === 'emi') {
+            $emiScheduleData = [
+                'due_emi_amount' => $data['due_emi_amount'] ?? 0,
+                'due_date' => $data['due_date'] ?? date('Y-m-d')
+            ];
+        }
+        
+        $result = $accountModel->addTransaction($transactionData, $emiScheduleData);
+        
+        echo json_encode($result);
+    }
+}
+public function getPaymentForm()
+{
+    $bookingId = $_GET['booking_id'] ?? 0;
+    
+    $accountModel = new AccountClient();
+    
+    // Get client details
+    $client = $accountModel->getClientByBookingId($bookingId);
+    
+    // Get remaining land share
+    $remainingLandShare = $accountModel->getRemainingLandShare($bookingId);
+    $isLandShareCompleted = $accountModel->isLandShareCompleted($bookingId);
+    
+    // Prepare form data
+    $formData = [
+        'client' => $client,
+        'remaining_land_share' => $remainingLandShare,
+        'is_land_share_completed' => $isLandShareCompleted,
+        'max_land_share_amount' => $isLandShareCompleted ? 0 : $remainingLandShare
+    ];
+    
+    // Load view with form data
+    // echo json_encode($formData);
+}
 /**
  * View client statement with period filter
  */

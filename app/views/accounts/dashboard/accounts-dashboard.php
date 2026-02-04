@@ -174,9 +174,7 @@ function getStatusBadge($status) {
         </div>
     </div>
 
-    <!-- Overview Cards Row - FIXED: Changed from 3 cards to 4 cards -->
-
-
+    <!-- Overview Cards Row -->
     <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card card-success">
             <div class="d-flex align-items-center gap-2 h-100">
@@ -218,8 +216,6 @@ function getStatusBadge($status) {
             </div>
         </div>
     </div>
-
-
 
     <!-- Charts Section -->
     <div class="col-xxl-8 col-xl-12 col-lg-12 mb-3">
@@ -344,7 +340,7 @@ function getStatusBadge($status) {
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Total Cash In</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['management_cashin'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">৳<?= number_format($overviewStats['total_cashin'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -435,7 +431,7 @@ function getStatusBadge($status) {
         </div>
 
     <?php else: ?>
-        <!-- Cash Out Statistics -->
+        <!-- Cash Out Statistics (CORRECTED - REMOVED DUPLICATE) -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
@@ -492,7 +488,7 @@ function getStatusBadge($status) {
             </div>
         </div>
 
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <!-- <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
                     <div class="card__icon icon-success">
@@ -506,7 +502,7 @@ function getStatusBadge($status) {
             </div>
         </div>
 
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <!-- <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
                     <div class="card__icon icon-purple">
@@ -518,9 +514,9 @@ function getStatusBadge($status) {
                     </div>
                 </div>
             </div>
-        </div>
+        </div> -->
 
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <!-- <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
                     <div class="card__icon icon-teal">
@@ -532,9 +528,9 @@ function getStatusBadge($status) {
                     </div>
                 </div>
             </div>
-        </div>
+        </div> -->
 
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <!-- <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
                     <div class="card__icon icon-indigo">
@@ -546,7 +542,8 @@ function getStatusBadge($status) {
                     </div>
                 </div>
             </div>
-        </div>
+        </div> -->
+
     <?php endif; ?>
 
     <!-- Recent Transactions / Cashout Requests -->

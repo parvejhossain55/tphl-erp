@@ -8,7 +8,7 @@ $show_breadcrumb = true;
 
 <div class="row">
 
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -23,7 +23,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -38,7 +38,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -53,21 +53,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-sack-dollar"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Service Fee Collected</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentStats['total_service_fee_collected'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <div class="col-xxl-12">
         <div class="card__wrapper">
