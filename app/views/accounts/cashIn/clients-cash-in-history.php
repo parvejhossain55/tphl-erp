@@ -34,118 +34,187 @@ $show_breadcrumb = true;
     </div>
 
     <!-- Summary Cards -->
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-money-bill"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Price</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['total_price'] ?? 0, 2) ?></h4>
+    <div class="row">
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-money-bill"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Price</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">৳<?= number_format($paymentSummary['total_price'] ?? 0, 2) ?></h4>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-hand-holding-usd"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Land Share</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['booking_money'] ?? 0, 2) ?></h4>
-                    </div>
+        <!-- Total Land Share Card -->
+<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+    <div class="card__wrapper">
+        <div class="d-flex align-items-center gap-1">
+            <div class="card__icon" >
+                <span><i class="fa-light fa-landmark"></i></span>
+            </div>
+            <div class="card__title-wrap">
+                <h6 class="card__sub-title mb-10">Total Land Share</h6>
+                <div class="d-flex flex-wrap align-items-end gap-10">
+                    <h4 class="card__title">৳<?= number_format($paymentSummary['total_land_share'] ?? 0, 2) ?></h4>
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-file-certificate"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Registration Money</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['registration_money'] ?? 0, 2) ?></h4>
+</div>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-hand-holding-usd"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Booking Money</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">৳<?= number_format($paymentSummary['booking_money'] ?? 0, 2) ?></h4>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-building"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Construction Fee</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['construction_fee'] ?? 0, 2) ?></h4>
-                    </div>
+<!-- Paid Land Share Card -->
+<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+    <div class="card__wrapper">
+        <div class="d-flex align-items-center gap-1">
+            <div class="card__icon" >
+                <span><i class="fa-light fa-hand-holding-usd"></i></span>
+            </div>
+            <div class="card__title-wrap">
+                <h6 class="card__sub-title mb-10"> Land Share Paid</h6>
+                <div class="d-flex flex-wrap align-items-end gap-10">
+                    <h4 class="card__title">৳<?= number_format($paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-money-check-dollar"></i></span>
+</div>
+<!-- Remaining Land Share Card -->
+<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+    <div class="card__wrapper">
+        <div class="d-flex align-items-center gap-1">
+            <div class="card__icon" >
+                <span><i class="fa-light fa-scale-balanced"></i></span>
+            </div>
+            <div class="card__title-wrap">
+                <h6 class="card__sub-title mb-10">Remaining Land Share</h6>
+                <div class="d-flex flex-wrap align-items-end gap-10">
+                    <h4 class="card__title">৳<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?></h4>
                 </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Construction Fee Paid</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['construction_fee_paid_after_service'] ?? 0, 2) ?></h4>
+
+
+            </div>
+        </div>
+    </div>
+</div>
+        <!-- NEW: DISCOUNT CARD -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-tag"></i></span> <!-- Changed icon -->
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Discount Amount</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title text-success">৳<?= number_format($paymentSummary['discount_amount'] ?? 0, 2) ?></h4>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-hand-holding-dollar"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Service Fee (10%)</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['total_service_fee'] ?? 0, 2) ?></h4>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-file-certificate"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Registration Money</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">৳<?= number_format($paymentSummary['registration_money'] ?? 0, 2) ?></h4>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-money-check-dollar"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Remaining Construction Fee</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['remaining_construction_fee'] ?? 0, 2) ?></h4>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-building"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Construction Fee</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">৳<?= number_format($paymentSummary['construction_fee'] ?? 0, 2) ?></h4>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-money-check-dollar"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Construction Fee Paid</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">৳<?= number_format($paymentSummary['construction_fee_paid_after_service'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-hand-holding-dollar"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Service Fee (10%)</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">৳<?= number_format($paymentSummary['total_service_fee'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-money-check-dollar"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Remaining Construction Fee</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">৳<?= number_format($paymentSummary['remaining_construction_fee'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REMOVED: Average EMI Amount Card -->
+        <!--
     <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-1">
@@ -161,71 +230,73 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
+    -->
 
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-list-ol"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total EMI</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentSummary['total_emi'] ?? 0 ?> </h4>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-list-ol"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total EMI</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title"><?= $paymentSummary['total_emi'] ?? 0 ?> </h4>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-check-circle"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Completed EMI</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentSummary['completed_emi'] ?? 0 ?></h4>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-check-circle"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Completed EMI</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title"><?= $paymentSummary['completed_emi'] ?? 0 ?></h4>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-clock"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Pending EMI</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentSummary['pending_emi'] ?? 0 ?></h4>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-clock"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Pending EMI</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title"><?= $paymentSummary['pending_emi'] ?? 0 ?></h4>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-calendar-check"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Last Payment</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">
-                            <?php if ($paymentSummary['last_payment_date']): ?>
-                                <?= date('d M, Y', strtotime($paymentSummary['last_payment_date'])) ?>
-                            <?php else: ?>
-                                N/A
-                            <?php endif; ?>
-                        </h4>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-calendar-check"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Last Payment</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">
+                                <?php if ($paymentSummary['last_payment_date']): ?>
+                                    <?= date('d M, Y', strtotime($paymentSummary['last_payment_date'])) ?>
+                                <?php else: ?>
+                                    N/A
+                                <?php endif; ?>
+                            </h4>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -248,199 +319,81 @@ $show_breadcrumb = true;
                     </a>
                 </div>
                 <div class="table__wrapper table-responsive">
-                    <table class="table mb-20 multiple_tables">
+                    <table class="table table-hover">
                         <thead>
-                            <tr class="table__title table__sort">
+                            <tr>
                                 <th>Date</th>
-                                <th>Installment</th>
-                                <th>Paid Amount</th>
-                                <th>Service Fee (10%)</th>
-                                <th>Net Paid EMI</th>
-                                <th>Due Amount</th>
+                                <th>Payment Type</th>
+                                <th>Details</th>
+                                <th>Amount</th>
+                                <th>Land Share</th>
+                                <th>Service Fee</th>
                                 <th>Status</th>
-                                <th>Method</th>
-                                <th>Payment Details</th>
-                                <th>Action</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="table__body">
-                            <?php if (!empty($transactions)): ?>
-                                <?php foreach ($transactions as $transaction): ?>
-                                    <?php
-                                    // Get service fee for this transaction from emi_schedules
-                                    $serviceFee = 0;
-                                    $netPaidEmi = 0;
-                                    
-                                    if ($transaction['payment_type'] === 'emi' && isset($transaction['id'])) {
-                                        // Fetch service fee from emi_schedules
-                                        $serviceFeeStmt = $this->db->prepare("
-                                            SELECT service_fee 
-                                            FROM emi_schedules 
-                                            WHERE lead_payment_id = ?
-                                        ");
-                                        if ($serviceFeeStmt) {
-                                            $serviceFeeStmt->bind_param("i", $transaction['id']);
-                                            $serviceFeeStmt->execute();
-                                            $serviceFeeResult = $serviceFeeStmt->get_result();
-                                            $serviceFeeData = $serviceFeeResult ? $serviceFeeResult->fetch_assoc() : null;
-                                            $serviceFee = $serviceFeeData['service_fee'] ?? 0;
-                                        }
-                                        
-                                        // Calculate Net Paid EMI = Paid Amount - Service Fee
-                                        $netPaidEmi = ($transaction['amount'] ?? 0) - $serviceFee;
-                                    }
-                                    ?>
-                                    <tr>
-                                        <td>
-                                            <?php
-                                            if (isset($transaction['payment_date'])) {
-                                                echo date('d M, Y', strtotime($transaction['payment_date']));
-                                            } elseif (isset($transaction['booking_date'])) {
-                                                echo date('d M, Y', strtotime($transaction['booking_date']));
-                                            } else {
-                                                echo 'N/A';
-                                            }
-                                            ?>
-                                        </td>
-                                        <td>
-                                            <?php if ($transaction['payment_type'] === 'emi'): ?>
-                                                <span class="bd-badge bg-primary">
-                                                    <?= $transaction['installment_label'] ?? 'EMI' ?>
-                                                </span>
-                                            <?php elseif ($transaction['payment_type'] === 'booking_money'): ?>
-                                                <span class="bd-badge bg-secondary">
-                                                    BOOKING
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="bd-badge bg-info">
-                                                    <?= ucfirst(str_replace('_', ' ', $transaction['payment_type'])) ?>
-                                                </span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <strong>৳<?= number_format($transaction['amount'] ?? 0, 2) ?></strong>
-                                        </td>
-                                        <!-- Service Fee Column -->
-                                        <td>
-                                            <?php if ($serviceFee > 0): ?>
-                                                <div class="d-flex align-items-center gap-1">
-                                                    <strong style="color: #e67e22;">৳<?= number_format($serviceFee, 2) ?></strong>
-                                                </div>
-                                            <?php else: ?>
-                                                <span class="text-muted" style="font-size: 18px;">—</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <!-- NEW: Net Paid EMI Column -->
-                                        <td>
-                                            <?php if ($transaction['payment_type'] === 'emi' && $netPaidEmi > 0): ?>
-                                                <div class="d-flex align-items-center gap-1">
-                                                    <strong style="color: #27ae60;">৳<?= number_format($netPaidEmi, 2) ?></strong>
-                                                </div>
-                                            <?php else: ?>
-                                                <span class="text-muted" style="font-size: 18px;">—</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <!-- Due Amount Column -->
-                                        <td>
-                                            <?php 
-                                            $dueAmount = 0;
-                                            
-                                            // For EMI transactions, get due_emi_amount from emi_schedules
-                                            if ($transaction['payment_type'] === 'emi' && isset($transaction['due_emi_amount'])) {
-                                                $dueAmount = floatval($transaction['due_emi_amount']);
-                                            }
-                                            
-                                            // Display due amount with styling
-                                            if ($dueAmount > 0): 
-                                            ?>
-                                                <div class="d-flex align-items-center gap-1">
-                                                    <strong style="color: #e74c3c;">৳<?= number_format($dueAmount, 2) ?></strong>
-                                                </div>
-                                            <?php else: ?>
-                                                <span class="text-muted" style="font-size: 18px;">—</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if (isset($transaction['status_class']) && isset($transaction['status_text'])): ?>
-                                                <span class="bd-badge <?= $transaction['status_class'] ?>">
-                                                    <?= $transaction['status_text'] ?>
-                                                </span>
-                                            <?php else: ?>
-                                                <?php if (($transaction['payment_status'] ?? 'paid') == 'paid'): ?>
-                                                    <span class="bd-badge bg-success">Paid</span>
-                                                <?php elseif (($transaction['payment_status'] ?? '') == 'partially_paid'): ?>
-                                                    <span class="bd-badge bg-info">Partially Paid</span>
-                                                <?php elseif (($transaction['payment_status'] ?? '') == 'pending'): ?>
-                                                    <span class="bd-badge bg-warning">Pending</span>
-                                                <?php else: ?>
-                                                    <span class="bd-badge bg-danger">Failed</span>
-                                                <?php endif; ?>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <span class="bd-badge bg-light text-dark">
-                                                <?= ucfirst($transaction['payment_method'] ?? 'agreement') ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <small>
-                                                <?php if (($transaction['payment_method'] ?? '') === 'bank'): ?>
-                                                    <?= $transaction['bank_name'] ? htmlspecialchars($transaction['bank_name']) : '' ?>
-                                                    <?= $transaction['bank_account_no'] ? ' (' . htmlspecialchars($transaction['bank_account_no']) . ')' : '' ?>
-                                                <?php elseif (($transaction['payment_method'] ?? '') === 'cheque'): ?>
-                                                    Cheque No: <?= $transaction['cheque_no'] ? htmlspecialchars($transaction['cheque_no']) : 'N/A' ?>
-                                                    <?= $transaction['bank_name'] ? ' - ' . htmlspecialchars($transaction['bank_name']) : '' ?>
-                                                <?php elseif (($transaction['payment_method'] ?? '') === 'online'): ?>
-                                                    <?= $transaction['online_type'] ? htmlspecialchars($transaction['online_type']) : 'Online' ?>
-                                                <?php elseif (($transaction['payment_method'] ?? '') === 'agreement'): ?>
-                                                    Land Share Agreement
-                                                <?php else: ?>
-                                                    Cash Payment
-                                                <?php endif; ?>
-                                            </small>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center justify-content-start gap-10">
-                                                <?php if (!empty($transaction['id']) && strpos($transaction['id'], 'booking-') === false): ?>
-                                                    <!-- INVOICE BUTTON -->
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $transaction['id'] ?>"
-                                                        class="table__icon invoice"
-                                                        style="color: #fff; background-color: #6c5ffc;"
-                                                        title="View Invoice"
-                                                        target="_blank">
-                                                        <i class="fa-light fa-file-invoice"></i>
-                                                    </a>
-                                                    <!-- EDIT BUTTON -->
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/edit-client-cash-in/<?= $transaction['id'] ?>"
-                                                        class="table__icon edit"
-                                                        title="Edit">
-                                                        <i class="fa-sharp fa-light fa-pen"></i>
-                                                    </a>
-                                                    <!-- DELETE BUTTON -->
-                                                    <a href="#" class="removeBtn table__icon delete"
-                                                        onclick="deleteTransaction(<?= $transaction['id'] ?>); return false;"
-                                                        title="Delete">
-                                                        <i class="fa-regular fa-trash"></i>
-                                                    </a>
-                                                <?php else: ?>
-                                                    <span class="table__icon disabled" title="System Generated">
-                                                        <i class="fa-regular fa-lock"></i>
-                                                    </span>
-                                                <?php endif; ?>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
+                        <tbody>
+                            <?php foreach ($transactions as $transaction): ?>
                                 <tr>
-                                    <td colspan="10" class="text-center py-4">
-                                        <div class="text-muted">
-                                            <i class="fa-light fa-receipt fa-2x mb-3"></i><br>
-                                            No transactions found
+                                    <td><?php echo $transaction['formatted_date']; ?></td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            <?php echo $transaction['installment_label']; ?>
+                                        </span>
+                                    </td>
+                                    <td><?php echo $transaction['payment_details']; ?></td>
+                                    <td>৳<?php echo number_format($transaction['amount'], 2); ?></td>
+                                    <td>
+                                        <?php if ($transaction['land_share_amount'] > 0): ?>
+                                            ৳<?php echo number_format($transaction['land_share_amount'], 2); ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($transaction['service_fee'] > 0): ?>
+                                            ৳<?php echo number_format($transaction['service_fee'], 2); ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge <?php echo $transaction['status_class']; ?>">
+                                            <?php echo $transaction['status_text']; ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center justify-content-start gap-10">
+                                            <?php if (!empty($transaction['id']) && strpos($transaction['id'], 'booking-') === false): ?>
+                                                <!-- INVOICE BUTTON -->
+                                                <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $transaction['id'] ?>"
+                                                    class="table__icon invoice"
+                                                    style="color: #fff; background-color: #6c5ffc;"
+                                                    title="View Invoice"
+                                                    target="_blank">
+                                                    <i class="fa-light fa-file-invoice"></i>
+                                                </a>
+                                                <!-- EDIT BUTTON -->
+                                                <a href="<?= $GLOBALS['base_url'] ?>/edit-client-cash-in/<?= $transaction['id'] ?>"
+                                                    class="table__icon edit"
+                                                    title="Edit">
+                                                    <i class="fa-sharp fa-light fa-pen"></i>
+                                                </a>
+                                                <!-- DELETE BUTTON - FIXED -->
+                                                <a href="#" class="removeBtn table__icon delete"
+                                                    onclick="deleteTransaction(<?= $transaction['id'] ?>); return false;"
+                                                    title="Delete">
+                                                    <i class="fa-regular fa-trash"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="table__icon disabled" title="System Generated">
+                                                    <i class="fa-regular fa-lock"></i>
+                                                </span>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
-                            <?php endif; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
@@ -449,9 +402,10 @@ $show_breadcrumb = true;
     </div>
 
     <script>
-        function deleteTransaction(transactionId, bookingId) {
+        // ✅ FIXED: Changed from $clientDetails['id'] to $clientDetails['booking_id']
+        function deleteTransaction(transactionId) {
             if (confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
-                let currentBookingId = <?= $clientDetails['id'] ?? 'null' ?>;
+                let currentBookingId = <?= $clientDetails['booking_id'] ?? 'null' ?>;
 
                 if (currentBookingId) {
                     window.location.href = '<?= $GLOBALS['base_url'] ?>/delete-transaction?payment_id=' + transactionId + '&booking_id=' + currentBookingId;
@@ -496,6 +450,7 @@ $show_breadcrumb = true;
             .card__wrapper .card__body h3 {
                 font-size: 1.3rem;
             }
+
             .card__title {
                 font-size: 1rem;
             }
@@ -519,6 +474,7 @@ $show_breadcrumb = true;
                 font-size: 16px;
                 padding: 6px 21px;
             }
+
             .position {
                 justify-content: start !important;
             }
