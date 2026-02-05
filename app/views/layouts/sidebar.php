@@ -390,16 +390,20 @@
 
 
                     <!-- Cash In Manage -->
-                    <li class="slide has-sub <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view'], $current_route) ?>">
+                    <li class="slide has-sub <?= isActive(['ced-dashboard','clients-cashin-view', 'clients-cash-in-history-view'], $current_route) ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['clients-cashin-view', 'clients-cash-in-history-view'], $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
                             <span class="sidebar__menu-label">Cash In View</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
-                        <ul class="sidebar-menu child2" style="<?= isMenuOpen(['clients-cashin-view', 'clients-cashin-history-view'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                        <ul class="sidebar-menu child2" style="<?= isMenuOpen(['ced-dashboard','clients-cashin-view', 'clients-cashin-history-view'], $current_route) ? 'display:block;' : 'display:none;' ?>">
                             <li class="slide <?= isActive('clients-cashin-view', $current_route) ?>">
                                 <a href="<?= $base_url ?>/clients-cashin-view" class="sidebar__menu-item <?= isActive('clients-cashin-view', $current_route) ?>">Clients</a>
                             </li>
+                            <li class="slide <?= isActive('ced-dashboard', $current_route) ?>">
+                                <a href="<?= $base_url ?>/ced-dashboard" class="sidebar__menu-item <?= isActive('ced-dashboard', $current_route) ?>">CED Dashboard</a>
+                            </li>
+
 
                         </ul>
                     </li>
