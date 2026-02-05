@@ -36,10 +36,10 @@ class CentralStatementController extends Controller
         $projectId = $_GET['project_id'] ?? null;
         $category = $_GET['category'] ?? 'all';
 
-        // ============================================
-        // REMOVED SEPARATE CARD PERIOD LOGIC
-        // Summary cards will now use the same period as the table
-        // ============================================
+        // Convert empty string to null for projectId
+        if ($projectId === '') {
+            $projectId = null;
+        }
 
         // Get statement data based on period type
         $statementData = null;
@@ -100,14 +100,9 @@ class CentralStatementController extends Controller
         // Get projects for dropdown
         $projects = $this->getProjects();
 
-        // ============================================
-        // FIX: Use summary from statement data instead of separate call
-        // This ensures summary cards match the table exactly
-        // ============================================
-        
         // Extract summary stats from the statement data
         $overallStats = [
-            'total_agreement' => $statementData['summary']['total_agreement'] ?? 0,
+            'total_agreement' => $statementData['summary']['total_agreement_value'] ?? 0,
             'total_service_fee' => $statementData['summary']['total_service_fee'] ?? 0,
             'total_management_cashin' => $statementData['summary']['total_management_cashin'] ?? 0,
             'total_cashin' => $statementData['summary']['total_cashin'] ?? 0,
@@ -120,7 +115,6 @@ class CentralStatementController extends Controller
         // For the current statement period, also calculate revenue
         $revenueData = null;
         if ($statementStartDate && $statementEndDate) {
-            // Use the same project filter but for revenue calculation, we need all data
             $revenueData = $this->statementModel->calculateRevenue($statementStartDate, $statementEndDate, $projectId);
         }
 
@@ -138,9 +132,8 @@ class CentralStatementController extends Controller
             'category' => $category,
             'projects' => $projects,
             'statement_data' => $statementData,
-            'overall_stats' => $overallStats,  // Now matches table data exactly
+            'overall_stats' => $overallStats,
             'revenue_data' => $revenueData,
-            // Remove separate card period variables - not needed anymore
         ];
 
         $this->view('accounts/central-statement', $viewData);
@@ -165,125 +158,151 @@ class CentralStatementController extends Controller
     /**
      * Print statement - separate method for print view
      */
-    public function printStatement()
-    {
-        // Get period type from query params
-        $periodType = $_GET['period_type'] ?? 'monthly';
-        $year = $_GET['year'] ?? date('Y');
-        $month = $_GET['month'] ?? date('m');
-        $startDate = $_GET['start_date'] ?? null;
-        $endDate = $_GET['end_date'] ?? null;
-        $projectId = $_GET['project_id'] ?? null;
-        $category = $_GET['category'] ?? 'all';
+public function printStatement()
+{
+    // Get period type from query params
+    $periodType = $_GET['period_type'] ?? 'monthly';
+    $year = $_GET['year'] ?? date('Y');
+    $month = $_GET['month'] ?? date('m');
+    $startDate = $_GET['start_date'] ?? null;
+    $endDate = $_GET['end_date'] ?? null;
+    $projectId = $_GET['project_id'] ?? null;
+    $category = $_GET['category'] ?? 'all';
 
-        // Get statement data based on period type
-        $statementData = null;
-        $periodText = '';
-        $statementStartDate = '';
-        $statementEndDate = '';
+    // Get statement data based on period type
+    $statementData = null;
+    $periodText = '';
+    $statementStartDate = '';
+    $statementEndDate = '';
 
-        switch ($periodType) {
-            case 'monthly':
-                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
-                $periodText = date('F Y', strtotime("$year-$month-01"));
-                $statementStartDate = "$year-$month-01";
-                $statementEndDate = date('Y-m-t', strtotime($statementStartDate));
-                break;
+    switch ($periodType) {
+        case 'monthly':
+            $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
+            $periodText = date('F Y', strtotime("$year-$month-01"));
+            $statementStartDate = "$year-$month-01";
+            $statementEndDate = date('Y-m-t', strtotime($statementStartDate));
+            break;
 
-            case '6months':
-                $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
-                $periodText = 'Last 6 Months';
-                $statementStartDate = date('Y-m-01', strtotime("-5 months", strtotime("$year-$month-01")));
-                $statementEndDate = date('Y-m-t', strtotime("$year-$month-01"));
-                break;
+        case '6months':
+            $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
+            $periodText = 'Last 6 Months';
+            $statementStartDate = date('Y-m-01', strtotime("-5 months", strtotime("$year-$month-01")));
+            $statementEndDate = date('Y-m-t', strtotime("$year-$month-01"));
+            break;
 
-            case 'yearly':
-                $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
-                $periodText = "Year $year";
-                $statementStartDate = "$year-01-01";
-                $statementEndDate = "$year-12-31";
-                break;
+        case 'yearly':
+            $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
+            $periodText = "Year $year";
+            $statementStartDate = "$year-01-01";
+            $statementEndDate = "$year-12-31";
+            break;
 
-            case 'custom':
-                if ($startDate && $endDate) {
-                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
-                    $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
-                    $statementStartDate = $startDate;
-                    $statementEndDate = $endDate;
-                } else {
-                    // Default to current month if dates not provided
-                    $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
-                    $periodText = date('F Y');
-                    $periodType = 'monthly';
-                    $statementStartDate = date('Y-m-01');
-                    $statementEndDate = date('Y-m-t');
-                }
-                break;
-
-            default:
+        case 'custom':
+            if ($startDate && $endDate) {
+                $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
+                $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
+                $statementStartDate = $startDate;
+                $statementEndDate = $endDate;
+            } else {
+                // Default to current month if dates not provided
                 $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
                 $periodText = date('F Y');
                 $periodType = 'monthly';
                 $statementStartDate = date('Y-m-01');
                 $statementEndDate = date('Y-m-t');
-        }
-
-        // ============================================
-        // FIX: Use summary from statement data for print as well
-        // ============================================
-        $overallStats = [
-            'total_agreement' => $statementData['summary']['total_agreement'] ?? 0,
-            'total_service_fee' => $statementData['summary']['total_service_fee'] ?? 0,
-            'total_management_cashin' => $statementData['summary']['total_management_cashin'] ?? 0,
-            'total_cashin' => $statementData['summary']['total_cashin'] ?? 0,
-            'total_revenue' => $statementData['summary']['total_revenue'] ?? 0,
-            'total_cash_out' => $statementData['summary']['total_cash_out'] ?? 0,
-            'net_balance' => $statementData['summary']['net_balance'] ?? 0,
-            'final_balance' => $statementData['summary']['final_balance'] ?? 0
-        ];
-
-        // Calculate revenue for the statement period
-        $revenueData = null;
-        if ($statementStartDate && $statementEndDate) {
-            $revenueData = $this->statementModel->calculateRevenue($statementStartDate, $statementEndDate, $projectId);
-        }
-
-        // Company information
-        $company_name = "THE PREMIUM HOMES LTD.";
-        $company_address = "Land View Commercial Center, 9th Floor 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
-        $company_phone = "+8801958253300";
-        $company_email = "info@thepremiumhomes.com";
-
-        // Get project name if filtered
-        $projectName = '';
-        if ($projectId) {
-            $query = "SELECT name FROM projects WHERE id = ?";
-            $stmt = $this->db->prepare($query);
-            $stmt->bind_param("i", $projectId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($row = $result->fetch_assoc()) {
-                $projectName = $row['name'];
             }
-        }
+            break;
 
-        // Get category name
-        $categoryName = '';
-        if ($category !== 'all') {
-            $categoryName = ucfirst(str_replace('_', ' ', $category));
-            // Special handling for cashout and utilities
-            if ($category === 'cashout') {
-                $categoryName = 'Cash Out';
-            } elseif ($category === 'utilities') {
-                $categoryName = 'Utilities (Bill/Electricity/Wifi/etc)';
-            }
-        }
-
-        // Include the print template
-        include __DIR__ . '/../views/accounts/central-statement-print.php';
-        exit;
+        default:
+            $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
+            $periodText = date('F Y');
+            $periodType = 'monthly';
+            $statementStartDate = date('Y-m-01');
+            $statementEndDate = date('Y-m-t');
     }
 
+    // FIXED: Use consistent variable naming
+    $statement_data = $statementData;
+    
+    // FIXED: Extract summary stats from the statement data
+    $overall_stats = [
+        'total_agreement' => $statement_data['summary']['total_agreement_value'] ?? 0,
+        'total_service_fee' => $statement_data['summary']['total_service_fee'] ?? 0,
+        'total_management_cashin' => $statement_data['summary']['total_management_cashin'] ?? 0,
+        'total_cashin' => $statement_data['summary']['total_cashin'] ?? 0,
+        'total_revenue' => $statement_data['summary']['total_revenue'] ?? 0,
+        'total_cash_out' => $statement_data['summary']['total_cash_out'] ?? 0,
+        'net_balance' => $statement_data['summary']['net_balance'] ?? 0,
+        'final_balance' => $statement_data['summary']['final_balance'] ?? 0
+    ];
+
+    // Calculate revenue for the statement period
+    $revenue_data = null;
+    if ($statementStartDate && $statementEndDate) {
+        $revenue_data = $this->statementModel->calculateRevenue($statementStartDate, $statementEndDate, $projectId);
+    }
+
+    // Company information
+    $company_name = "THE PREMIUM HOMES LTD.";
+    $company_address = "Land View Commercial Center, 9th Floor 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+    $company_phone = "+8801958253300";
+    $company_email = "info@thepremiumhomes.com";
+
+    // Get project name if filtered
+    $projectName = '';
+    if ($projectId) {
+        $query = "SELECT name FROM projects WHERE id = ?";
+        $stmt = $this->db->prepare($query);
+        $stmt->bind_param("i", $projectId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $projectName = $row['name'];
+        }
+    }
+
+    // Get category name
+    $categoryName = '';
+    if ($category !== 'all') {
+        $categoryName = ucfirst(str_replace('_', ' ', $category));
+        // Special handling for cashout and utilities
+        if ($category === 'cashout') {
+            $categoryName = 'Cash Out';
+        } elseif ($category === 'utilities') {
+            $categoryName = 'Utilities (Bill/Electricity/Wifi/etc)';
+        }
+    }
+
+    // FIXED: Pass all variables needed by the print view
+    $viewData = [
+        'statement_data' => $statement_data,
+        'overall_stats' => $overall_stats,
+        'period_text' => $periodText,
+        'start_date' => $statementStartDate,
+        'end_date' => $statementEndDate,
+        'category' => $category,
+        'projectName' => $projectName,
+        'categoryName' => $categoryName,
+        'company_name' => $company_name,
+        'company_address' => $company_address,
+        'company_phone' => $company_phone,
+        'company_email' => $company_email,
+        'period_type' => $periodType,
+        'year' => $year,
+        'month' => $month,
+    ];
+
+    // FIXED: If utilities category, get transactions
+    if ($category === 'utilities') {
+        $utilitiesTransactions = $this->statementModel->getUtilitiesTransactions($statementStartDate, $statementEndDate);
+        $viewData['utilitiesTransactions'] = $utilitiesTransactions;
+    }
+
+    // FIXED: Include the print template with all variables
+    extract($viewData);
+    include __DIR__ . '/../views/accounts/central-statement-print.php';
+    exit;
+}
 
     /**
      * Export statement to CSV

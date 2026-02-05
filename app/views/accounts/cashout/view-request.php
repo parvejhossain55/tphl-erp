@@ -66,6 +66,27 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                         <label class="form-label">Request Date:</label>
                                         <p class="form-control-static"><?= date('d M, Y', strtotime($request['created_at'])) ?></p>
                                     </div>
+                                    
+                                    <!-- NEW: Project Information -->
+                                    <?php if (!empty($request['project_name'])): ?>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Project:</label>
+                                        <p class="form-control-static">
+                                            <strong><?= htmlspecialchars($request['project_name']) ?></strong>
+                                        </p>
+                                    </div>
+                                    <?php endif; ?>
+                                    
+                                    <!-- NEW: Office Information -->
+                                    <?php if (!empty($request['office'])): ?>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Office:</label>
+                                        <p class="form-control-static">
+                                            <strong><?= htmlspecialchars($request['office']) ?></strong>
+                                        </p>
+                                    </div>
+                                    <?php endif; ?>
+                                    
                                     <div class="col-md-12 mb-3">
                                         <label class="form-label">Purpose / Paid To:</label>
                                         <p class="form-control-static"><strong><?= htmlspecialchars($request['purpose_paid_to']) ?></strong></p>
@@ -175,6 +196,10 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                                 <th>Method</th>
                                                 <th>Reference</th>
                                                 <th>Recorded By</th>
+                                                <!-- NEW: Project & Office in Payment History -->
+                                                <?php if (!empty($payments[0]['project_name']) || !empty($payments[0]['office'])): ?>
+                                                <th>Project/Office</th>
+                                                <?php endif; ?>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -185,13 +210,28 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                                     <td><?= ucfirst($payment['payment_method']) ?></td>
                                                     <td><?= htmlspecialchars($payment['transaction_ref'] ?? '-') ?></td>
                                                     <td><?= htmlspecialchars($payment['created_by_name'] ?? 'N/A') ?></td>
+                                                    <!-- NEW: Display Project/Office in payments -->
+                                                    <?php if (!empty($payments[0]['project_name']) || !empty($payments[0]['office'])): ?>
+                                                    <td>
+                                                        <?php if (!empty($payment['project_name'])): ?>
+                                                            <small class="text-muted">Project:</small><br>
+                                                            <span class="text-info"><?= htmlspecialchars($payment['project_name']) ?></span>
+                                                        <?php elseif (!empty($payment['office'])): ?>
+                                                            <small class="text-muted">Office:</small><br>
+                                                            <span class="text-info"><?= htmlspecialchars($payment['office']) ?></span>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">-</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <?php endif; ?>
                                                 </tr>
                                             <?php endforeach; ?>
                                         </tbody>
                                         <tfoot>
                                             <tr>
-                                                <td colspan="1" class="text-end"><strong>Total Paid:</strong></td>
-                                                <td colspan="4"><strong class="text-success">৳<?= number_format($total_paid, 2) ?></strong></td>
+                                                <?php $colspan = !empty($payments[0]['project_name']) || !empty($payments[0]['office']) ? 6 : 5; ?>
+                                                <td colspan="<?= $colspan - 1 ?>" class="text-end"><strong>Total Paid:</strong></td>
+                                                <td colspan="1"><strong class="text-success">৳<?= number_format($total_paid, 2) ?></strong></td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -252,6 +292,22 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                             <?php endif; ?>
                                         </p>
                                     <?php endif; ?>
+                                    
+                                    <!-- NEW: Project/Office Info Box -->
+                                    <?php if (!empty($request['project_name']) || !empty($request['office'])): ?>
+                                    <div class="mt-3 pt-3 border-top">
+                                        <p class="mb-1 small">
+                                            <?php if (!empty($request['project_name'])): ?>
+                                                <i class="fa-light fa-building me-1 text-primary"></i>
+                                                <strong>Project:</strong> <?= htmlspecialchars($request['project_name']) ?><br>
+                                            <?php endif; ?>
+                                            <?php if (!empty($request['office'])): ?>
+                                                <i class="fa-light fa-building-columns me-1 text-info"></i>
+                                                <strong>Office:</strong> <?= htmlspecialchars($request['office']) ?>
+                                            <?php endif; ?>
+                                        </p>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endif; ?>
@@ -299,6 +355,28 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                     <div class="mb-3">
                                         <label class="form-label">Approval Note:</label>
                                         <p class="form-control-static"><?= nl2br(htmlspecialchars($approval_request['approval_note'])) ?></p>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <!-- NEW: Include project/office in approval info if available -->
+                                <?php if (!empty($request['project_name']) || !empty($request['office'])): ?>
+                                    <div class="mb-3 pt-2 border-top">
+                                        <label class="form-label">Associated With:</label>
+                                        <p class="form-control-static">
+                                            <?php if (!empty($request['project_name'])): ?>
+                                                <span class="text-primary">
+                                                    <i class="fa-light fa-building me-1"></i>
+                                                    <?= htmlspecialchars($request['project_name']) ?>
+                                                </span>
+                                                <br>
+                                            <?php endif; ?>
+                                            <?php if (!empty($request['office'])): ?>
+                                                <span class="text-info">
+                                                    <i class="fa-light fa-building-columns me-1"></i>
+                                                    <?= htmlspecialchars($request['office']) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </p>
                                     </div>
                                 <?php endif; ?>
                                 

@@ -28,7 +28,6 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                 <!-- Land Share Status Alert -->
                 <?php if ($remainingLandShare <= 0): ?>
                 <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
-                    <i class="fa-solid fa-circle-check me-2"></i>
                     <strong>Land Share Completed!</strong> All land share payments have been made. You can now add construction fee/EMI payments.
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
@@ -37,7 +36,6 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                 <!-- Registration Required Alert -->
                 <?php if (!$isRegistrationPaid): ?>
                 <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
-                    <i class="fa-solid fa-exclamation-triangle me-2"></i>
                     <strong>Registration Required!</strong> Registration payment must be completed before adding EMI payments.
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
