@@ -25,12 +25,14 @@
 
                                    <!-- <th>Source Type</th> -->
 
-                                   <th>Company name/Project</th>
+                                   <th>Company name</th>
                                    <th>phone_number</th>
-                                   <th>job title</th>
-                                   <th>Interested Apartment Size</th>
-                                   <th>Interset Floor for Shop</th>
-                                   <th>Planning To Buy Time</th>
+                                   <th>Follow Up</th>
+                                   <th>Booking</th>
+                                   <th class="d-none">job title</th>
+                                   <th class="d-none">Interested Apartment Size</th>
+                                   <th class="d-none">Interset Floor for Shop</th>
+                                   <th class="d-none">Planning To Buy Time</th>
                                    <th>Best Time to Contact</th>
                                    <th>city</th>
                                    <th class="d-none">Interest On</th>
@@ -55,22 +57,50 @@
                                        <td><?= htmlspecialchars($lead['phone_number'] ?? 'N/A') ?></td>
 
                                        <!-- Job Title -->
-                                       <td><?= htmlspecialchars($lead['job_title'] ?? 'N/A') ?></td>
+                                       <td class="d-none"><?= htmlspecialchars($lead['job_title'] ?? 'N/A') ?></td>
 
                                        <!-- Apartment Size -->
-                                       <td>
+                                       <td class="d-none">
                                            <?= htmlspecialchars($lead['which_apartment_size_are_you_interested_in'] ?? $lead['pref_flat_size'] ?? 'N/A') ?>
                                        </td>
 
                                        <!-- Floor -->
-                                       <td>
+                                       <td class="d-none">
                                            <?= htmlspecialchars($lead['which_floor_are_you_for_shop'] ?? 'N/A') ?>
                                        </td>
 
                                        <!-- Planning to Buy -->
-                                       <td>
+                                       <td class="d-none">
                                            <?= htmlspecialchars($lead['when_are_you_planning_to_buy'] ?? 'N/A') ?>
                                        </td>
+
+                                       <td>
+                                           <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
+                                               class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">
+
+                                               <span>Follow Up</span>
+
+                                               <?php if (!empty($followUpCounts[$lead['id']])): ?>
+                                                   <span class="followup-badge">
+                                                       <?= $followUpCounts[$lead['id']] ?>
+                                                   </span>
+                                               <?php endif; ?>
+                                           </a>
+                                       </td>
+                                       <td>
+                                           <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
+                                               class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
+                                               <?php if (!empty($bookingCount[$lead['id']])): ?>
+                                                   <span>Booked </span>
+                                                   <span class="followup-badge">
+                                                       <?= $bookingCount[$lead['id']] ?>
+                                                   </span>
+                                               <?php else: ?>
+                                                   <span>Booking </span>
+                                               <?php endif ?>
+                                           </a>
+                                       </td>
+
 
                                        <!-- Best Time to Contact -->
                                        <td>
@@ -105,11 +135,15 @@
 
 
                                        <td class="note-cell">
-                                           <textarea
-                                               class="call-note"
-                                               data-id="<?= $lead['id'] ?>"
-                                               placeholder="Click to add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
+                                           <div class="note-wrapper">
+                                               <textarea
+                                                   class="call-note"
+                                                   data-id="<?= $lead['id'] ?>"
+                                                   placeholder="Click to add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
+                                               <button type="button" class="btn btn-sm btn-success note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
+                                           </div>
                                        </td>
+
 
 
                                    </tr>
@@ -154,41 +188,39 @@
                });
            });
        });
-       // after typing note auto safe 
 
-document.querySelectorAll('.call-note').forEach(textarea => {
 
-    let timeout = null;
+       document.querySelectorAll('.note-save-btn').forEach(btn => {
+           btn.addEventListener('click', function() {
+               const leadId = this.dataset.id;
+               const textarea = document.querySelector('.call-note[data-id="' + leadId + '"]');
+               saveNote(leadId, textarea.value, textarea);
+           });
+       });
 
-    textarea.addEventListener('keyup', function () {
-        clearTimeout(timeout);
+       document.querySelectorAll('.call-note').forEach(textarea => {
+           textarea.addEventListener('keydown', function(e) {
+               if (e.key === 'Enter' && !e.shiftKey) { // shift+enter for newline
+                   e.preventDefault(); // avoid new line
+                   saveNote(this.dataset.id, this.value, this);
+               }
+           });
+       });
 
-        timeout = setTimeout(() => {
-            saveNote(this);
-        }, 800); // 800ms pause হলে save
-    });
-
-    textarea.addEventListener('blur', function () {
-        saveNote(this);
-    });
-
-    function saveNote(el) {
-        fetch('<?= $base_url ?>/update-call-notes', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body:
-                'lead_id=' + encodeURIComponent(el.dataset.id) +
-                '&call_note=' + encodeURIComponent(el.value)
-        })
-        .then(res => res.text())
-        .then(() => {
-            el.style.borderColor = '#198754'; // success hint
-            setTimeout(() => el.style.borderColor = '#ddd', 800);
-        });
-    }
-});
+       function saveNote(leadId, note, el) {
+           fetch('<?= $base_url ?>/update-call-notes', {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/x-www-form-urlencoded'
+                   },
+                   body: 'lead_id=' + encodeURIComponent(leadId) + '&call_note=' + encodeURIComponent(note)
+               })
+               .then(res => res.text())
+               .then(() => {
+                   el.style.borderColor = '#198754'; // success hint
+                   setTimeout(() => el.style.borderColor = '#ddd', 800);
+               });
+       }
    </script>
    <style>
        /* Note column width */
@@ -240,55 +272,73 @@ document.querySelectorAll('.call-note').forEach(textarea => {
 
        /* status update   */
        .call-status-cell {
-    min-width: 130px;
+           min-width: 130px;
+       }
+
+       /* Base dropdown */
+       .call-status {
+           height: 32px;
+           padding: 0 28px 0 10px;
+           font-size: 12px;
+           font-weight: 600;
+           border-radius: 999px;
+           border: 1px solid #ddd;
+           background-color: #f8f9fa;
+           cursor: pointer;
+           transition: all .2s ease;
+       }
+
+       /* Hover */
+       .call-status:hover {
+           border-color: #0d6efd;
+       }
+
+       /* Focus */
+       .call-status:focus {
+           outline: none;
+           box-shadow: 0 0 0 2px rgba(13, 110, 253, .15);
+       }
+
+       /* Status colors */
+       .call-status[value="not_called"],
+       .call-status option[value="not_called"]:checked {
+           background-color: #f1f3f5;
+           color: #495057;
+       }
+
+       .call-status[value="called"],
+       .call-status option[value="called"]:checked {
+           background-color: #fff3cd;
+           color: #856404;
+       }
+
+       .call-status[value="received"],
+       .call-status option[value="received"]:checked {
+           background-color: #d1e7dd;
+           color: #0f5132;
+       }
+
+       .call-status[value="not_received"],
+       .call-status option[value="not_received"]:checked {
+           background-color: #f8d7da;
+           color: #842029;
+       }
+
+       .note-cell .note-wrapper {
+    display: flex;
+    gap: 5px; /* textarea & button gap */
+    align-items: center;
 }
 
-/* Base dropdown */
-.call-status {
+.note-cell .call-note {
+    flex: 1;  /* textarea width auto adjust */
     height: 32px;
-    padding: 0 28px 0 10px;
+}
+
+.note-cell .note-save-btn {
+    height: 32px;
+    padding: 0 8px;
     font-size: 12px;
-    font-weight: 600;
-    border-radius: 999px;
-    border: 1px solid #ddd;
-    background-color: #f8f9fa;
-    cursor: pointer;
-    transition: all .2s ease;
 }
 
-/* Hover */
-.call-status:hover {
-    border-color: #0d6efd;
-}
-
-/* Focus */
-.call-status:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(13,110,253,.15);
-}
-
-/* Status colors */
-.call-status[value="not_called"],
-.call-status option[value="not_called"]:checked {
-    background-color: #f1f3f5;
-    color: #495057;
-}
-
-.call-status[value="called"],
-.call-status option[value="called"]:checked {
-    background-color: #fff3cd;
-    color: #856404;
-}
-
-.call-status[value="received"],
-.call-status option[value="received"]:checked {
-    background-color: #d1e7dd;
-    color: #0f5132;
-}
-
-.call-status[value="not_received"],
-.call-status option[value="not_received"]:checked {
-    background-color: #f8d7da;
-    color: #842029;
-}
    </style>

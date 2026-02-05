@@ -44,7 +44,7 @@
 
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.14.0-beta3/css/bootstrap-select.min.css">
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 </head>
 

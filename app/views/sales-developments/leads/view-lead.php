@@ -250,7 +250,7 @@ $page = "View Lead";
 
                         <div class="lead-name-section me-2">
                             <h2 class="mb-0">
-                                <?= htmlspecialchars($leadData['full_name'] ?? $leadData['lead_name'] ) ?>
+                                <?= htmlspecialchars($leadData['full_name'] ?? $leadData['lead_name']) ?>
                             </h2>
                             <p class="text-muted mb-0">
                                 <i class="fa-light fa-phone me-1"></i><?= $leadData['phone'] ?>
@@ -284,9 +284,10 @@ $page = "View Lead";
                     <a href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $leadData['id'] ?>" class="btn-modern btn-primary">
                         <i class="fa-light fa-edit"></i> Edit Lead
                     </a>
-                    <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn-modern btn-secondary">
+                    <a href="javascript:history.back()" class="btn-modern btn-secondary">
                         <i class="fa-light fa-arrow-left"></i> Back to List
                     </a>
+
                 </div>
             </div>
         </div>
@@ -548,5 +549,3 @@ $page = "View Lead";
 
     </div>
 </div>
-
-

@@ -390,21 +390,6 @@ function prepareUserData($postData, $isFromEmployee = false)
     return $data;
 }
 
-// function getUserProfileImage($user)
-// {
-//     // User created from employee
-//     if (!empty($user['employee_id']) && !empty($user['employee_photo'])) {
-//         return getImage('employees', $user['employee_photo']);
-//     }
-
-//     // Normal user
-//     if (!empty($user['photo'])) {
-//         return getImage('users', $user['photo']);
-//     }
-
-//     // Default avatar
-//     return getImage('users', 'default.png');
-// }
 function getUserProfileImage($user)
 {
     $default = $GLOBALS['base_url'] . '/public/assets/images/avatar/avatar.png';
@@ -429,10 +414,11 @@ function getLoggedInUserImage()
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
+    $default = $GLOBALS['base_url'] . '/public/assets/images/avatar/avatar.png';
 
     $userId = $_SESSION['user']['id'] ?? null;
     if (!$userId) {
-        return getImage('users', 'default.png');
+        return $default;
     }
 
     $db = $GLOBALS['db'];
@@ -459,7 +445,7 @@ function getLoggedInUserImage()
         return getImage('users', $row['user_photo']);
     }
 
-    return getImage('users', 'default.png');
+    return $default;
 }
 
 // sweet alert 
@@ -738,10 +724,10 @@ function renderApprovalContext(array $req)
             <?php if (!empty($ctx['requester'])): ?>
                 <li class="px-0 border-0 border-top py-2">
                     <div class="row g-1">
-                        <div class="col-12 col-md-3 mb-1 mb-md-0">
+                        <div class="col-12 col-md-6 mb-1 mb-md-0">
                             <span class="badge bg-primary ms-md-2">Requested By</span>
                         </div>
-                        <div class="col-12 col-md-9 text-break">
+                        <div class="col-12 col-md-6 text-break">
                             <strong><?= esc($ctx['requester']['user_name']) ?></strong>
                             <div class="small text-muted">
                                 <i class="bi bi-envelope"></i>
@@ -759,10 +745,10 @@ function renderApprovalContext(array $req)
             <?php if (!empty($ctx['lead'])): ?>
                 <li class="px-0 border-0 border-top py-2">
                     <div class="row g-1">
-                        <div class="col-12 col-md-3 mb-1 mb-md-0">
+                        <div class="col-12 col-md-6 mb-1 mb-md-0">
                             <span class="badge bg-info text-light ms-md-2">Client</span>
                         </div>
-                        <div class="col-12 col-md-9">
+                        <div class="col-12 col-md-6">
                             <strong><?= esc($ctx['lead']['full_name']) ?></strong>
                             <div class="small text-muted">
                                 <i class="bi bi-telephone"></i>
@@ -777,10 +763,10 @@ function renderApprovalContext(array $req)
             <?php if (!empty($ctx['flat'])): ?>
                 <li class="px-0 border-0 border-top py-2">
                     <div class="row g-1">
-                        <div class="col-12 col-md-3 mb-1 mb-md-0">
+                        <div class="col-12 col-md-6 mb-1 mb-md-0">
                             <span class="badge bg-success ms-md-2">Project</span>
                         </div>
-                        <div class="col-12 col-md-9 text-break">
+                        <div class="col-12 col-md-6 text-break">
                             <strong><?= esc($ctx['flat']['project_name'], 'Unknown Project') ?></strong>
                             <div class="small text-muted">
                                 <?= esc($ctx['flat']['location_name']) ?>
@@ -800,10 +786,10 @@ function renderApprovalContext(array $req)
             <?php if (!empty($ctx['employee'])): ?>
                 <li class="px-0 border-0 border-top py-2">
                     <div class="row g-1">
-                        <div class="col-12 col-md-3 mb-1 mb-md-0">
+                        <div class="col-12 col-md-6 mb-1 mb-md-0">
                             <span class="badge bg-warning text-dark ms-md-2">Employee</span>
                         </div>
-                        <div class="col-12 col-md-9">
+                        <div class="col-12 col-md-6">
                             <strong><?= esc($ctx['employee']['full_name']) ?></strong>
                             <div class="small text-muted">
                                 <i class="bi bi-briefcase"></i>
@@ -818,18 +804,18 @@ function renderApprovalContext(array $req)
             <?php if (!empty($ctx['salary'])): ?>
                 <li class="px-0 border-0 border-top py-2">
                     <div class="row g-1 mb-1">
-                        <div class="col-12 col-md-3">
+                        <div class="col-12 col-md-6">
                             <span class="badge bg-secondary ms-md-2">Salary Month</span>
                         </div>
-                        <div class="col-12 col-md-9">
+                        <div class="col-12 col-md-6">
                             <strong><?= esc($ctx['salary']['salary_month'], '-') ?></strong>
                         </div>
                     </div>
                     <div class="row g-1">
-                        <div class="col-12 col-md-3">
+                        <div class="col-12 col-md-6">
                             <span class="badge bg-secondary ms-md-2">Gross Salary</span>
                         </div>
-                        <div class="col-12 col-md-9">
+                        <div class="col-12 col-md-6">
                             <strong class="text-success">
                                 ৳ <?= number_format($ctx['salary']['gross_salary'] ?? 0, 2) ?>
                             </strong>
@@ -842,18 +828,18 @@ function renderApprovalContext(array $req)
             <?php if (!empty($ctx['leave'])): ?>
                 <li class="px-0 border-0 border-top py-2">
                     <div class="row g-1 mb-1">
-                        <div class="col-12 col-md-3">
+                        <div class="col-12 col-md-6">
                             <span class="badge bg-danger ms-md-2">Leave Type</span>
                         </div>
-                        <div class="col-12 col-md-9">
+                        <div class="col-12 col-md-6">
                             <strong><?= esc($ctx['leave']['leave_type'], 'N/A') ?></strong>
                         </div>
                     </div>
                     <div class="row g-1">
-                        <div class="col-12 col-md-3">
+                        <div class="col-12 col-md-6">
                             <span class="badge bg-danger ms-md-2">Duration</span>
                         </div>
-                        <div class="col-12 col-md-9">
+                        <div class="col-12 col-md-6">
                             <strong><?= esc($ctx['leave']['requested_days'], 0) ?> days</strong>
                         </div>
                     </div>
@@ -865,12 +851,12 @@ function renderApprovalContext(array $req)
                 <?php foreach ($ctx['meta'] as $key => $value): ?>
                     <li class="px-0 border-0 border-top py-2">
                         <div class="row g-1">
-                            <div class="col-12 col-md-3 mb-1 mb-md-0">
+                            <div class="col-12 col-md-6 mb-1 mb-md-0">
                                 <span class="badge bg-secondary ms-md-2">
                                     <?= esc(ucfirst(str_replace('_', ' ', $key))) ?>
                                 </span>
                             </div>
-                            <div class="col-12 col-md-9">
+                            <div class="col-12 col-md-6">
                                 <strong><?= esc($value, 'N/A') ?></strong>
                             </div>
                         </div>

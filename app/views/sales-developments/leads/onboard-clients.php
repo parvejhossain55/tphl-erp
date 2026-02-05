@@ -81,7 +81,7 @@ $show_breadcrumb = true;
                         <button type="submit" class="btn btn-secondary w-100 ">
                             Search Client
                         </button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-success  w-100">
+                        <a href="<?= $GLOBALS['base_url'] ?>/onboarding-clients" class="btn btn-success  w-100">
                             Reset
                         </a>
                     </div>

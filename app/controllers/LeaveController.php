@@ -3,7 +3,7 @@ class LeaveController extends Controller
 {
     protected $db;
     protected $leaveModel;
-    protected $employeeModel;
+    protected $userModel;
     protected $leaveTypeModel;
     protected $approvalRequestModel;
 
@@ -11,7 +11,7 @@ class LeaveController extends Controller
     {
         $this->db = $db;
         $this->leaveModel = new EmployeeLeave($this->db);
-        $this->employeeModel = new Employee();
+        $this->userModel = new User($this->db);
         $this->leaveTypeModel = new LeaveType($db);
         $this->approvalRequestModel = new ApprovalRequest($db);
     }
@@ -38,14 +38,14 @@ class LeaveController extends Controller
         // $assignedUsers = $this->userModel->getAll();
         // $sources = $this->leadSource->getAll();
 
-        $employees = $this->employeeModel->getAll();
+        $users = $this->userModel->getAll();
         $leaveTypes = $this->leaveTypeModel->getAll();
         $this->view("hrm/emp-leaves/create-emp-leave", [
             "current_route"   => "create-employee-leave",
             "active"          => "create-employee-leave",
             "page_title"      => "Add Leave",
             "show_breadcrumb" => true,
-            "employees" => $employees,
+            "users" => $users,
             "leaveTypes" => $leaveTypes,
 
             // "assignedUsers" => $assignedUsers,
@@ -56,37 +56,38 @@ class LeaveController extends Controller
 
 
     //     // Handle form submission
-    public function remainingDays()
-    {
-        $employee_id = $_GET['employee_id'] ?? 0;
-        $leave_type_id = $_GET['leave_type_id'] ?? 0;
+public function remainingDays()
+{
+    $user_id = $_GET['user_id'] ?? 0;
+    $leave_type_id = $_GET['leave_type_id'] ?? 0;
 
-        if ($leave_type_id == 0 || $employee_id == 0) {
-            echo json_encode(['remaining_days' => 0]);
-            exit;
-        }
-
-        // Check if unpaid
-        $stmt = $this->db->prepare("SELECT total_days, is_paid FROM leave_types WHERE id = ?");
-        $stmt->bind_param("i", $leave_type_id);
-        $stmt->execute();
-        $lt = $stmt->get_result()->fetch_assoc();
-
-        if (!$lt) {
-            echo json_encode(['remaining_days' => 0]);
-            exit;
-        }
-
-        if ($lt['is_paid'] == 0) {
-            $remaining = 'N/A'; // unpaid leave
-        } else {
-            $remaining = $this->leaveModel->getRemainingLeave($employee_id, $leave_type_id);
-        }
-
-        header('Content-Type: application/json');
-        echo json_encode(['remaining_days' => $remaining]);
+    if ($user_id == 0 || $leave_type_id == 0) {
+        echo json_encode(['remaining_days' => 0]);
         exit;
     }
+
+    // Check if leave type is paid
+    $stmt = $this->db->prepare("SELECT total_days, is_paid FROM leave_types WHERE id = ?");
+    $stmt->bind_param("i", $leave_type_id);
+    $stmt->execute();
+    $leaveType = $stmt->get_result()->fetch_assoc();
+
+    if (!$leaveType) {
+        echo json_encode(['remaining_days' => 0]);
+        exit;
+    }
+
+    if ($leaveType['is_paid'] == 0) {
+        $remaining = 'N/A'; // unpaid leave
+    } else {
+        $remaining = $this->leaveModel->getRemainingLeave($user_id, $leave_type_id);
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode(['remaining_days' => $remaining]);
+    exit;
+}
+
 
 
     /**
@@ -95,7 +96,7 @@ class LeaveController extends Controller
     public function store()
     {
         $data = [
-            'employee_id'   => $_POST['employee_id'] ?? '',
+            'user_id'   => $_POST['user_id'] ?? '',
             'leave_type_id' => $_POST['leave_type_id'] ?? '',
             'start_date'    => $_POST['start_date'] ?? '',
             'end_date'      => $_POST['end_date'] ?? '',
@@ -131,7 +132,7 @@ class LeaveController extends Controller
             'requested_days'   =>  $_POST['number_days'] ?? 0,
             'approve_role'   => 'management',
             'meta_data' => json_encode([
-                'employee_id' => $data['employee_id'],
+                'user_id' => $data['user_id'],
                 'leave_type_id' => $data['leave_type_id'],
                 'requested_days' => $data['requested_days'],
             ])

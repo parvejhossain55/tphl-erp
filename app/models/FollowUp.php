@@ -188,6 +188,22 @@ class FollowUp extends Model
     }
 
 
+public function getTodayFollowUpCountByUser(int $userId): int
+{
+    $sql = "
+        SELECT COUNT(*) AS total
+        FROM lead_follow_ups
+        WHERE created_by = {$userId}
+          AND follow_up_date = CURDATE()
+          AND deleted_at IS NULL
+    ";
+
+    $row = $this->db->query($sql)->fetch_assoc();
+    return (int) ($row['total'] ?? 0);
+}
+
+
+
     public function getTodayFollowUpCountByLead()
     {
         $sql = "SELECT lf.lead_id, COUNT(*) AS follow_up_count
@@ -296,5 +312,7 @@ class FollowUp extends Model
 
     return $followUps;
 }
+
+
 
 }

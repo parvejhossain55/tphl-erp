@@ -53,30 +53,28 @@ class LeadController extends Controller
         ]);
     }
 
-    public function assignMultipleLeads()
-    {
-        $userId = (int)($_POST['user_id'] ?? 0);
-        $leadIds = $_POST['lead_ids'] ?? '';
+public function assignMultipleLeads()
+{
+    $userId = (int)($_POST['user_id'] ?? 0);
+    $leadIds = $_POST['lead_ids'] ?? '';
 
-        if (!$userId || !$leadIds) {
-            echo json_encode(['success' => false]);
-            return;
-        }
-
-        $ids = array_map('intval', explode(',', $leadIds));
-
-        $idsStr = implode(',', $ids);
-
-        $this->db->query("UPDATE leads SET assigned_id=$userId WHERE id IN ($idsStr)");
-
-        // Get user name for instant table update
-        $userName = $this->db->query("SELECT full_name FROM users WHERE id=$userId")->fetch_assoc()['full_name'] ?? '';
-
-        echo json_encode([
-            'success' => true,
-            'user_name' => $userName
-        ]);
+    if (!$userId || !$leadIds) {
+        setError("Please select user and leads!") ;
+        header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
+        exit;
     }
+
+    $ids = array_map('intval', explode(',', $leadIds));
+    $idsStr = implode(',', $ids);
+
+    $this->db->query("UPDATE leads SET assigned_id=$userId WHERE id IN ($idsStr)");
+
+    $userName = $this->db->query("SELECT full_name FROM users WHERE id=$userId")->fetch_assoc()['full_name'] ?? '';
+ setSuccess("Leads assigned successfully to $userName!") ;
+    header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
+    exit;
+}
+
 
 
     public function showOnboardClient()
@@ -181,10 +179,10 @@ class LeadController extends Controller
 
             setSuccess("Lead created successfully!");
 
-            if ($loggedInRoleId === 8) {
-                header("Location: {$GLOBALS['base_url']}/user-dashboard");
+            if ($loggedInRoleId === 5) {
+                 header("Location: {$GLOBALS['base_url']}/lead-lists");
             } else {
-                header("Location: {$GLOBALS['base_url']}/lead-lists");
+                header("Location: {$GLOBALS['base_url']}/today-leads");
             }
 
             exit;

@@ -89,7 +89,7 @@ $show_breadcrumb = true;
                 </div>
                 <!--land share -->
                 <div class="col-xl-6">
-                    <label>Price (BDT)</label>
+                    <label>Price (BDT) <span class="text-danger"> (Approx.Changable)</span></label>
                     <input type="number" step="0.01" name="price_value" class="form-control">
                 </div>
 

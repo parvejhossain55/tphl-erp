@@ -147,6 +147,9 @@ class SalesHeadDashboardController extends Controller
             $flatSalesSeries[] = (int)$row['flat_sold'];
         }
 
+
+        // search project report 
+
         // Pass variables to view
         $this->view("sales-developments/salesTeamHead-dashboard", [
             "current_route" => "sales-team-head-dashboard",
@@ -165,7 +168,8 @@ class SalesHeadDashboardController extends Controller
             "todayFollowUpData" => $todayFollowUpData,
             "totalTodayFollowUps" => $totalTodayFollowUps,
             "flatSalesLabels" => $flatSalesLabels,
-            "flatSalesSeries" => $flatSalesSeries
+            "flatSalesSeries" => $flatSalesSeries,
+
 
         ]);
     }
@@ -173,7 +177,7 @@ class SalesHeadDashboardController extends Controller
     public function salesTeamView()
     {
 
-            $searchTerm = $_GET['q'] ?? '';
+        $searchTerm = $_GET['q'] ?? '';
         $roleFilter = $_GET['role'] ?? '';
 
         $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
@@ -190,30 +194,44 @@ class SalesHeadDashboardController extends Controller
         // Roles for filter dropdown
         $roles = $this->roleModel->getAll();
         $this->view('sales-developments/salesTeamHead/sales-team-views', [
-              "current_route" => "sales-team-view",
-              "page_title" => "Sales Team",
+            "current_route" => "sales-team-view",
+            "page_title" => "Sales Team",
             'salesUsers' => $salesUsers,
             'roles' => $roles,
             'currentPage' => $currentPage,
             'totalPages' => $totalPages,
-            
+
 
         ]);
     }
 
-    public function salesReport(){
- 
-       $dailySalesReport=  $this->bookingModel->getSalesReport('daily');
-       $monthylySalesReport=  $this->bookingModel->getSalesReport('monthly');
-       $yearlySalesReport=  $this->bookingModel->getSalesReport('yearly');
-        $this->view('sales-developments/salesReport/sales-report',[
+public function salesReport()
+{
+    // GET filters
+    $selectedProject = $_GET['project_id'] ?? '';
+    $selectedUser = $_GET['sales_by_id'] ?? '';
+    $searchTerm = $_GET['q'] ?? ''; // optional search input if needed
 
+    // Data load with project, user, search filters
+    $dailySalesReport = $this->bookingModel->getSalesReport('daily', $searchTerm, $selectedProject, $selectedUser);
+    $monthylySalesReport = $this->bookingModel->getSalesReport('monthly', $searchTerm, $selectedProject, $selectedUser);
+    $yearlySalesReport = $this->bookingModel->getSalesReport('yearly', $searchTerm, $selectedProject, $selectedUser);
+
+    $projects = $this->projectModel->getAll();
+    $executiveUsers = $this->userModel->getAllRoleUser();
+
+    $this->view('sales-developments/salesReport/sales-report', [
         'current_route' => 'sales-report',
-        'page_title'=>'Sales Report',
-        'dailySalesReport'=>$dailySalesReport,
-        'monthylySalesReport'=>$monthylySalesReport,
-        'yearlySalesReport'=>$yearlySalesReport,
+        'page_title' => 'Sales Report',
+        'dailySalesReport' => $dailySalesReport,
+        'monthylySalesReport' => $monthylySalesReport,
+        'yearlySalesReport' => $yearlySalesReport,
+        "projects" => $projects,
+        "selectedProject" => $selectedProject,
+        "selectedUser" => $selectedUser,
+        "executiveUsers" => $executiveUsers,
+        "searchTerm" => $searchTerm,
+    ]);
+}
 
-        ]);
-    }
 }

@@ -190,41 +190,41 @@ $show_breadcrumb = true;
             </div>
 
             <!-- Assign Leads Card -->
- 
-                <div class="col-md-6">
-                    <div id="assignCard"
-                        class="card shadow-sm p-3 "
-                        style="display:none; border-radius:12px; background:#f9f9f9;">
 
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <label for="assignUserSelect" class="fw-bold mb-0" style="white-space: nowrap;">
-                                Assign Selected Leads to:
-                            </label>
+            <div class="col-md-6">
+                <div id="assignCard"
+                    class="card shadow-sm p-3 "
+                    style="display:none; border-radius:12px; background:#f9f9f9;">
 
-                            <select id="assignUserSelect"
-                                class="form-select form-select-sm"
-                                style="min-width:200px; width:auto;">
-                                <option value="">Assigned User</option>
-                                <?php foreach ($assignedUsers as $user): ?>
-                                    <option value="<?= $user['id'] ?>">
-                                        <?= htmlspecialchars($user['full_name']) ?>
-                                    </option>
-                                <?php endforeach ?>
-                            </select>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <label for="assignUserSelect" class="fw-bold mb-0" style="white-space: nowrap;">
+                            Assign Selected Leads to:
+                        </label>
 
-                            <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
-                                <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
-                            </button>
+                        <select id="assignUserSelect"
+                            class="form-select form-select-sm"
+                            style="min-width:200px; width:auto;">
+                            <option value="">Assigned User</option>
+                            <?php foreach ($assignedUsers as $user): ?>
+                                <option value="<?= $user['id'] ?>">
+                                    <?= htmlspecialchars($user['full_name']) ?>-<?= htmlspecialchars($user['role_name']) ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
 
-                            <span id="assignFeedback"
-                                class="text-success fw-bold"
-                                style="display:none;">
-                                Leads assigned successfully!
-                            </span>
-                        </div>
+                        <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
+                            <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
+                        </button>
 
+                        <span id="assignFeedback"
+                            class="text-success fw-bold"
+                            style="display:none;">
+                            Leads assigned successfully!
+                        </span>
                     </div>
+
                 </div>
+            </div>
 
 
 
@@ -251,11 +251,9 @@ $show_breadcrumb = true;
                             <!-- <th>Alt Phone</th> -->
                             <th>Project Campaign</th>
                             <!-- <th>Source Type</th> -->
-                            
+
                             <th>Follow Up</th>
                             <th>Booking</th>
-                            <th>Contact Status</th>
-                            <th>Contact Note</th>
                             <th class="d-none">Interest On</th>
                             <th class="text-center">Action</th>
                         </tr>
@@ -272,8 +270,9 @@ $show_breadcrumb = true;
                                 <td class=""><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
                                 <td class="td_1"><?= $lead['full_name'] ?? '' ?></td>
                                 <td><?= $lead['phone_number'] ?? $lead['phone'] ?></td>
-                                <td><?= $lead['campaign_name'] ?? $lead['project_type'] ?></td>
-
+                                <td><?= !empty($lead['campaign_name'])
+                                        ? $lead['campaign_name']
+                                        : (!empty($lead['project_type']) ? $lead['project_type'] : '-') ?></td>
                                 <td>
                                     <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
                                         class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">
@@ -300,8 +299,7 @@ $show_breadcrumb = true;
                                         <?php endif ?>
                                     </a>
                                 </td>
-                                <td><span class="bd-badge bg-success"><?= $lead['call_status'] ?? '' ?></span></td>
-                                <td><span class="bd-badge bg-success"><?= $lead['call_note'] ?? 'N/A' ?></span></td>
+                              
                                 <td class="d-none"><?= $lead['interest_on'] ?? '' ?></td>
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-10">
@@ -447,76 +445,43 @@ $show_breadcrumb = true;
 
 <!-- assigned user select  -->
 <script>
-    document.getElementById('assignUserBtn').addEventListener('click', function() {
+document.getElementById('assignUserBtn').addEventListener('click', function() {
+    const userId = document.getElementById('assignUserSelect').value;
+    const selectedLeads = [];
 
-        const userId = document.getElementById('assignUserSelect').value;
-
-        if (!userId) {
-            alert("Please select a user to assign leads!");
-            return;
-        }
-
-        // Get all selected leads
-        const selectedLeads = [];
-        document.querySelectorAll('.selectedId:checked').forEach(cb => {
-            const tr = cb.closest('tr');
-            if (tr) selectedLeads.push(tr.dataset.id || tr.querySelector('.selectedId').dataset.id);
-        });
-
-        if (selectedLeads.length === 0) {
-            alert("Please select at least one lead!");
-            return;
-        }
-
-        // Send AJAX request
-        fetch('<?= $base_url ?>/assign-multiple-leads', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'user_id=' + encodeURIComponent(userId) +
-                    '&lead_ids=' + encodeURIComponent(selectedLeads.join(','))
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert("Leads assigned successfully!");
-
-                    // Update table instantly
-                    document.querySelectorAll('.selectedId:checked').forEach(cb => {
-                        const tr = cb.closest('tr');
-                        if (tr) {
-                            tr.querySelector('td:nth-child(3)').textContent = data.user_name; // assigned user name column (customize as needed)
-                            cb.checked = false; // uncheck
-                        }
-                    });
-                } else {
-                    alert("Failed to assign leads!");
-                }
-            });
+    document.querySelectorAll('.selectedId:checked').forEach(cb => {
+        const tr = cb.closest('tr');
+        if (tr) selectedLeads.push(tr.dataset.id || tr.querySelector('.selectedId').dataset.id);
     });
+
+    // If nothing selected, just return
+    if (!userId || selectedLeads.length === 0) {
+        return; // no alert
+    }
+
+    // Create a form dynamically and submit
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '<?= $base_url ?>/assign-multiple-leads';
+
+    const inputUser = document.createElement('input');
+    inputUser.type = 'hidden';
+    inputUser.name = 'user_id';
+    inputUser.value = userId;
+    form.appendChild(inputUser);
+
+    const inputLeads = document.createElement('input');
+    inputLeads.type = 'hidden';
+    inputLeads.name = 'lead_ids';
+    inputLeads.value = selectedLeads.join(',');
+    form.appendChild(inputLeads);
+
+    document.body.appendChild(form);
+    form.submit();
+});
 </script>
 
-<!-- <script>
-const selectAll = document.getElementById('selectAllLeads');
 
-selectAll.addEventListener('change', function() {
-    const checkboxes = document.querySelectorAll('.selectedId');
-    checkboxes.forEach(cb => cb.checked = this.checked);
-});
-
-// Optional: if any checkbox is manually unchecked, uncheck selectAll
-document.querySelectorAll('.selectedId').forEach(cb => {
-    cb.addEventListener('change', function() {
-        if (!this.checked) selectAll.checked = false;
-
-        // If all checked, then check selectAll
-        const allChecked = Array.from(document.querySelectorAll('.selectedId'))
-                                .every(c => c.checked);
-        if (allChecked) selectAll.checked = true;
-    });
-});
-</script> -->
 <script>
     const selectAll = document.getElementById('selectAllLeads');
     const assignCard = document.getElementById('assignCard');

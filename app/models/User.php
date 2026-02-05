@@ -240,8 +240,7 @@ class User extends Model
     {
 
 
-        $sql = $this->db->prepare("
-        SELECT
+        $sql = $this->db->prepare("  SELECT
                 u.*,
                 e.id AS employee_id,
                 e.photo AS employee_photo,
@@ -252,7 +251,8 @@ class User extends Model
             LEFT JOIN employees e ON e.user_id = u.id
             LEFT JOIN designations AS d ON d.id = u.designation_id
             LEFT JOIN roles AS r ON r.id = u.role_id
-            WHERE r.name  = 'Sales Executive'
+           WHERE r.name IS NOT NULL AND r.name IN('Sales Executive','Sales Manager','Sales Team Head')
+
     ");
         if (!$sql->execute()) {
             return []; // Error handle koro

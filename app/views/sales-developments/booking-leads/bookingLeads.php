@@ -80,7 +80,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <div class="col-lg-6">
                         <div class="form__input-title">
 
-                            <label class="form-label">Total Unit Value</label>
+                            <label class="form-label">Total Unit Value <span>(Approx)</span> </label>
                         </div>
                         <input type="text"
                             class="form-control"
@@ -154,7 +154,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <?php foreach ($bookingRecords as $index => $or): ?>
                                 <tr>
                                     <td><?= $index + 1 ?></td>
-                                    <pre>
+                              
 
 
                                     <td><?= htmlspecialchars($lead['full_name'] ?? '-') ?></td>

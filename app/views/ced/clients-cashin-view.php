@@ -6,31 +6,34 @@ $addPage = true;
 $show_breadcrumb = true;
 ?>
 <style>
-        .card__icon span {
-    color: var(--clr-theme-primary);
-    background: rgba(108, 95, 252, 0.1);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    text-align: center;
-    justify-content: center;
-    align-items: center;
-    font-size: 16px;
-}
-.card__title {
-    font-size: 1.25rem;
-}
-@media (max-width: 575px) {
-.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
-    font-size: 12px;
-    padding: 6px 8px;
-}
-.dataTables_wrapper .dataTables_paginate .paginate_button {
-    font-size: 12px;
-    padding: 6px 16px;
-}
-}
+    .card__icon span {
+        color: var(--clr-theme-primary);
+        background: rgba(108, 95, 252, 0.1);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
+        font-size: 16px;
+    }
+
+    .card__title {
+        font-size: 1.25rem;
+    }
+
+    @media (max-width: 575px) {
+        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            font-size: 12px;
+            padding: 6px 16px;
+        }
+    }
 </style>
 <div class="row">
 
@@ -86,7 +89,7 @@ $show_breadcrumb = true;
             <div class="d-flex  justify-content-between mb-20">
                 <h4>Clients Information</h4>
             </div>
- 
+
             <div class="table__wrapper table-responsive">
                 <table class="table mb-20 multiple_tables">
                     <thead>
@@ -123,7 +126,7 @@ $show_breadcrumb = true;
                                         <div>
                                         </div>
                                         <div class="text-muted small">
-                                         ৳<?= format_bdt($client['total_agreement_value']) ?>
+                                            ৳<?= format_bdt($client['total_agreement_value']) ?>
                                         </div>
                                     </td>
                                     <td>
@@ -166,110 +169,6 @@ $show_breadcrumb = true;
     </div>
 
 </div>
-
-<!-- Add Transaction Modal -->
-<!-- <div class="modal fade" id="addTransactionModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add Transaction</h5>
-                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
-                    <i class="fa-solid fa-xmark-large"></i>
-                </button>
-            </div>
-
-            <div class="modal-body">
-                <form action="<?= $GLOBALS['base_url'] ?>/add-transaction" method="post" id="transactionForm">
-                    <input type="hidden" name="booking_id" id="modal_booking_id">
-                    
-                    <div class="row">
-                        <div class="col-md-12 mb-20">
-                            <div class="alert alert-info">
-                                <strong>Client:</strong> <span id="modal_client_name"></span><br>
-                                <strong>Agreement Value:</strong> ৳<span id="modal_total_agreement_value"></span><br>
-                                <strong>Already Paid:</strong> ৳<span id="modal_paid_amount"></span><br>
-                                <strong>Remaining:</strong> ৳<span id="modal_remaining_amount"></span>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6 mb-20">
-                            <div class="form__input-title">
-                                <label>Payment Type <span>*</span></label>
-                            </div>
-                            <div class="form__input">
-                                <select name="payment_type" class="form-select" required>
-                                    <option value="booking_money">Booking Money</option>
-                                    <option value="registration">Registration</option>
-                                    <option value="emi">EMI</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6 mb-20">
-                            <div class="form__input-title">
-                                <label>Amount <span>*</span></label>
-                            </div>
-                            <div class="form__input">
-                                <input type="number" name="amount" class="form-control" 
-                                       step="0.01" required>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6 mb-20">
-                            <div class="form__input-title">
-                                <label>Payment Method <span>*</span></label>
-                            </div>
-                            <div class="form__input">
-                                <select name="payment_method" class="form-select" required>
-                                    <option value="cash">Cash</option>
-                                    <option value="bank">Bank Transfer</option>
-                                    <option value="online">Online Payment</option>
-                                    <option value="cheque">Cheque</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6 mb-20">
-                            <div class="form__input-title">
-                                <label>Payment Date <span>*</span></label>
-                            </div>
-                            <div class="form__input">
-                                <input type="date" name="payment_date" class="form-control" 
-                                       value="<?= date('Y-m-d') ?>" required>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6 mb-20">
-                            <div class="form__input-title">
-                                <label>Transaction Reference</label>
-                            </div>
-                            <div class="form__input">
-                                <input type="text" name="transaction_ref" class="form-control">
-                            </div>
-                        </div>
-
-                        <div class="col-md-6 mb-20">
-                            <div class="form__input-title">
-                                <label>Payment Status <span>*</span></label>
-                            </div>
-                            <div class="form__input">
-                                <select name="payment_status" class="form-select" required>
-                                    <option value="paid">Paid</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="failed">Failed</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="submit__btn text-center mt-20">
-                        <button type="submit" class="btn btn-primary">Add Transaction</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div> -->
 
 <script>
     function openTransactionModal(bookingId, clientName, agreementValue, paidAmount) {
