@@ -10,101 +10,141 @@ class CashoutRequest extends Model
     }
 
     // Create new cashout request - ALWAYS start as pending
-    public function createRequest($data)
-    {
-        $this->db->begin_transaction();
+// Create new cashout request - ALWAYS start as pending
+public function createRequest($data)
+{
+    $this->db->begin_transaction();
 
-        try {
-            // ALWAYS set initial status as 'pending'
-            $status = 'pending';
-            $dueAmount = $data['amount'];
+    try {
+        // ALWAYS set initial status as 'pending'
+        $status = 'pending';
+        $dueAmount = $data['amount'];
 
-            // Insert into cashout_requests
-            $sql = "INSERT INTO {$this->table} 
-                    (requested_by, purpose_paid_to, amount, description, payment_method, 
-                     transaction_ref, due_amount, status, attachment_path, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        // Insert into cashout_requests
+        $sql = "INSERT INTO {$this->table} 
+                (requested_by, purpose_paid_to, amount, description, payment_method, 
+                 transaction_ref, due_amount, status, attachment_path, project_id, office, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
-            $stmt = $this->db->prepare($sql);
+        $stmt = $this->db->prepare($sql);
 
-            if (!$stmt) {
-                throw new Exception("Prepare failed: " . $this->db->error);
-            }
-
-            $stmt->bind_param(
-                "isdssssss",
-                $data['requested_by'],
-                $data['purpose_paid_to'],
-                $data['amount'],
-                $data['description'],
-                $data['payment_method'],
-                $data['transaction_ref'],
-                $dueAmount,
-                $status,
-                $data['attachment_path']
-            );
-
-            if (!$stmt->execute()) {
-                throw new Exception("Execute failed: " . $stmt->error);
-            }
-
-            $insertId = $this->db->insert_id;
-            $stmt->close();
-
-            // Create approval request entry - ALWAYS pending
-            $approvalSql = "INSERT INTO approval_requests 
-                          (department, request_type, title, source_table, source_id, 
-                           request_amount, requested_by, approve_role, meta_data, status, created_at)
-                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())";
-
-            $approvalStmt = $this->db->prepare($approvalSql);
-
-            $department = 'Accounts';
-            $requestType = 'cashout';
-            $title = 'Cashout Request: ' . substr($data['purpose_paid_to'], 0, 100);
-            $sourceTable = 'cashout_requests';
-            $approveRole = 'management';
-
-            // Get requester name for meta data
-            $requesterName = $this->getUserName($data['requested_by']);
-
-            $metaData = json_encode([
-                'purpose' => $data['purpose_paid_to'],
-                'payment_method' => $data['payment_method'],
-                'requester_name' => $requesterName,
-                'description' => $data['description']
-            ]);
-
-            $approvalStmt->bind_param(
-                "ssssidsss",
-                $department,
-                $requestType,
-                $title,
-                $sourceTable,
-                $insertId,
-                $data['amount'],
-                $data['requested_by'],
-                $approveRole,
-                $metaData
-            );
-
-            if (!$approvalStmt->execute()) {
-                throw new Exception("Approval request creation failed: " . $approvalStmt->error);
-            }
-
-            $approvalStmt->close();
-            $this->db->commit();
-
-            return [
-                'success' => true,
-                'message' => 'Cashout request submitted successfully! Waiting for approval.',
-                'id' => $insertId
-            ];
-        } catch (Exception $e) {
-            $this->db->rollback();
-            error_log("Cashout request error: " . $e->getMessage());
-            return ['success' => false, 'message' => 'Failed to submit request: ' . $e->getMessage()];
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $this->db->error);
         }
+
+        // Prepare parameters - ensure null values are handled correctly
+        $projectId = !empty($data['project_id']) ? $data['project_id'] : null;
+        $office = !empty($data['office']) ? $data['office'] : null;
+        
+        // Bind parameters including project_id and office
+        $stmt->bind_param(
+            "isdssssssss",
+            $data['requested_by'],
+            $data['purpose_paid_to'],
+            $data['amount'],
+            $data['description'],
+            $data['payment_method'],
+            $data['transaction_ref'],
+            $dueAmount,
+            $status,
+            $data['attachment_path'],
+            $projectId,
+            $office
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+
+        $insertId = $this->db->insert_id;
+        $stmt->close();
+
+        // Create approval request entry - ALWAYS pending
+        $approvalSql = "INSERT INTO approval_requests 
+                      (department, request_type, title, source_table, source_id, 
+                       request_amount, requested_by, approve_role, meta_data, status, created_at)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())";
+
+        $approvalStmt = $this->db->prepare($approvalSql);
+
+        $department = 'Accounts';
+        $requestType = 'cashout';
+        
+        // Include project and office in title if available
+        $titlePrefix = '';
+        $projectName = null;
+        
+        if (!empty($data['project_id'])) {
+            $projectName = $this->getProjectName($data['project_id']);
+            $titlePrefix = "[Project: {$projectName}] ";
+        }
+        if (!empty($data['office'])) {
+            $titlePrefix .= "[Office: {$data['office']}] ";
+        }
+        
+        $title = $titlePrefix . 'Cashout Request: ' . substr($data['purpose_paid_to'], 0, 100);
+        $sourceTable = 'cashout_requests';
+        $approveRole = 'management';
+
+        // Get requester name for meta data
+        $requesterName = $this->getUserName($data['requested_by']);
+
+        $metaData = json_encode([
+            'purpose' => $data['purpose_paid_to'],
+            'payment_method' => $data['payment_method'],
+            'requester_name' => $requesterName,
+            'description' => $data['description'],
+            'project_id' => $data['project_id'] ?? null,
+            'project_name' => $projectName,
+            'office' => $data['office'] ?? null
+        ]);
+
+        $approvalStmt->bind_param(
+            "ssssidsss",
+            $department,
+            $requestType,
+            $title,
+            $sourceTable,
+            $insertId,
+            $data['amount'],
+            $data['requested_by'],
+            $approveRole,
+            $metaData
+        );
+
+        if (!$approvalStmt->execute()) {
+            throw new Exception("Approval request creation failed: " . $approvalStmt->error);
+        }
+
+        $approvalStmt->close();
+        $this->db->commit();
+
+        return [
+            'success' => true,
+            'message' => 'Cashout request submitted successfully! Waiting for approval.',
+            'id' => $insertId
+        ];
+    } catch (Exception $e) {
+        $this->db->rollback();
+        error_log("Cashout request error: " . $e->getMessage());
+        return ['success' => false, 'message' => 'Failed to submit request: ' . $e->getMessage()];
+    }
+}
+
+    // Get project name
+    private function getProjectName($projectId)
+    {
+        if (!$projectId) return null;
+        
+        $sql = "SELECT name FROM projects WHERE id = ? AND deleted_at IS NULL LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("i", $projectId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $project = $result->fetch_assoc();
+        $stmt->close();
+
+        return $project['name'] ?? null;
     }
 
     // Get user name for meta data
@@ -121,155 +161,172 @@ class CashoutRequest extends Model
         return $user['full_name'] ?? 'Unknown';
     }
 
-// Get all requests for a user with proper approval status
-public function getUserRequests($userId)
-{
-    $sql = "SELECT cr.*, 
-            u.full_name as requester_name,
-            ar.status as approval_status,
-            ar.approved_amount as approval_approved_amount,
-            ar.approved_at as approval_approved_at,
-            ar.approved_by as approval_user_id,
-            ar.id as approval_id,
-            ar.approval_note,
-            approver.full_name as approved_by_name,
-            rejector.full_name as rejected_by_name
-            FROM {$this->table} cr
-            LEFT JOIN users u ON cr.requested_by = u.id
-            LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
-            LEFT JOIN users approver ON ar.approved_by = approver.id
-            LEFT JOIN users rejector ON cr.rejected_by = rejector.id
-            WHERE cr.requested_by = ?
-            ORDER BY cr.created_at DESC";
+    // Get all requests for a user with proper approval status
+    public function getUserRequests($userId)
+    {
+        $sql = "SELECT cr.*, 
+                u.full_name as requester_name,
+                p.name as project_name,
+                ar.status as approval_status,
+                ar.approved_amount as approval_approved_amount,
+                ar.approved_at as approval_approved_at,
+                ar.approved_by as approval_user_id,
+                ar.id as approval_id,
+                ar.approval_note,
+                approver.full_name as approved_by_name,
+                rejector.full_name as rejected_by_name
+                FROM {$this->table} cr
+                LEFT JOIN users u ON cr.requested_by = u.id
+                LEFT JOIN projects p ON cr.project_id = p.id
+                LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
+                LEFT JOIN users approver ON ar.approved_by = approver.id
+                LEFT JOIN users rejector ON cr.rejected_by = rejector.id
+                WHERE cr.requested_by = ?
+                ORDER BY cr.created_at DESC";
 
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-    $requests = [];
-    while ($row = $result->fetch_assoc()) {
-        // FIX: Copy approved_amount from approval system to main field
-        if (!empty($row['approval_approved_amount'])) {
-            $row['approved_amount'] = $row['approval_approved_amount'];
+        $requests = [];
+        while ($row = $result->fetch_assoc()) {
+            // FIX: Copy approved_amount from approval system to main field
+            if (!empty($row['approval_approved_amount'])) {
+                $row['approved_amount'] = $row['approval_approved_amount'];
+            }
+            $row['display_status'] = $this->syncStatusWithApproval($row);
+            $requests[] = $row;
         }
-        $row['display_status'] = $this->syncStatusWithApproval($row);
-        $requests[] = $row;
-    }
 
-    $stmt->close();
-    return $requests;
-}
+        $stmt->close();
+        return $requests;
+    }
 
     // Get all requests (for admin/approvers)
-// Get all requests (for admin/approvers)
-public function getAllRequests($filters = [])
-{
-    $sql = "
-        SELECT 
-            cr.*,
-            u.full_name AS requester_name,
+    public function getAllRequests($filters = [])
+    {
+        $sql = "
+            SELECT 
+                cr.*,
+                u.full_name AS requester_name,
+                p.name AS project_name,
 
-            ar.status AS approval_status,
-            ar.approved_amount AS approval_approved_amount,
-            ar.approved_at AS approval_approved_at,
-            ar.approved_by AS approval_user_id,
-            ar.id AS approval_id,
+                ar.status AS approval_status,
+                ar.approved_amount AS approval_approved_amount,
+                ar.approved_at AS approval_approved_at,
+                ar.approved_by AS approval_user_id,
+                ar.id AS approval_id,
 
-            cr.approval_note,   
+                cr.approval_note,   
 
-            approver.full_name AS approved_by_name,
-            rejector.full_name AS rejected_by_name
+                approver.full_name AS approved_by_name,
+                rejector.full_name AS rejected_by_name
 
-        FROM {$this->table} cr
-        LEFT JOIN users u 
-            ON cr.requested_by = u.id
-        LEFT JOIN approval_requests ar 
-            ON ar.source_table = 'cashout_requests' 
-           AND ar.source_id = cr.id
-        LEFT JOIN users approver 
-            ON ar.approved_by = approver.id
-        LEFT JOIN users rejector 
-            ON cr.rejected_by = rejector.id
-        WHERE 1 = 1
-    ";
+            FROM {$this->table} cr
+            LEFT JOIN users u 
+                ON cr.requested_by = u.id
+            LEFT JOIN projects p 
+                ON cr.project_id = p.id
+            LEFT JOIN approval_requests ar 
+                ON ar.source_table = 'cashout_requests' 
+               AND ar.source_id = cr.id
+            LEFT JOIN users approver 
+                ON ar.approved_by = approver.id
+            LEFT JOIN users rejector 
+                ON cr.rejected_by = rejector.id
+            WHERE 1 = 1
+        ";
 
-    $params = [];
-    $types  = "";
+        $params = [];
+        $types  = "";
 
-    // Status filter
-    if (!empty($filters['status'])) {
-        $status = $filters['status'];
+        // Status filter
+        if (!empty($filters['status'])) {
+            $status = $filters['status'];
 
-        if (in_array($status, ['pending', 'approved', 'rejected', 'partially_paid', 'fully_paid'])) {
-            $sql .= " AND cr.status = ?";
-            $params[] = $status;
-            $types   .= "s";
-        } else {
-            // approval_requests status
-            $sql .= " AND ar.status = ?";
-            $params[] = $status;
-            $types   .= "s";
-        }
-    }
-
-    // User filter
-    if (!empty($filters['user_id'])) {
-        $sql .= " AND cr.requested_by = ?";
-        $params[] = $filters['user_id'];
-        $types   .= "i";
-    }
-
-    // Date range
-    if (!empty($filters['start_date'])) {
-        $sql .= " AND DATE(cr.created_at) >= ?";
-        $params[] = $filters['start_date'];
-        $types   .= "s";
-    }
-
-    if (!empty($filters['end_date'])) {
-        $sql .= " AND DATE(cr.created_at) <= ?";
-        $params[] = $filters['end_date'];
-        $types   .= "s";
-    }
-
-    // ✅ ORDER BY only once
-    $sql .= " ORDER BY cr.created_at DESC";
-
-    $stmt = $this->db->prepare($sql);
-    if (!$stmt) {
-        throw new Exception($this->db->error);
-    }
-
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $requests = [];
-    while ($row = $result->fetch_assoc()) {
-
-        // approval system amount override
-        if (!empty($row['approval_approved_amount'])) {
-            $row['approved_amount'] = $row['approval_approved_amount'];
+            if (in_array($status, ['pending', 'approved', 'rejected', 'partially_paid', 'fully_paid'])) {
+                $sql .= " AND cr.status = ?";
+                $params[] = $status;
+                $types   .= "s";
+            } else {
+                // approval_requests status
+                $sql .= " AND ar.status = ?";
+                $params[] = $status;
+                $types   .= "s";
+            }
         }
 
-        $row['display_status'] = $this->syncStatusWithApproval($row);
-        $requests[] = $row;
+        // User filter
+        if (!empty($filters['user_id'])) {
+            $sql .= " AND cr.requested_by = ?";
+            $params[] = $filters['user_id'];
+            $types   .= "i";
+        }
+
+        // Project filter
+        if (!empty($filters['project_id'])) {
+            $sql .= " AND cr.project_id = ?";
+            $params[] = $filters['project_id'];
+            $types   .= "i";
+        }
+
+        // Office filter
+        if (!empty($filters['office'])) {
+            $sql .= " AND cr.office = ?";
+            $params[] = $filters['office'];
+            $types   .= "s";
+        }
+
+        // Date range
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND DATE(cr.created_at) >= ?";
+            $params[] = $filters['start_date'];
+            $types   .= "s";
+        }
+
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND DATE(cr.created_at) <= ?";
+            $params[] = $filters['end_date'];
+            $types   .= "s";
+        }
+
+        // ✅ ORDER BY only once
+        $sql .= " ORDER BY cr.created_at DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            throw new Exception($this->db->error);
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $requests = [];
+        while ($row = $result->fetch_assoc()) {
+            // approval system amount override
+            if (!empty($row['approval_approved_amount'])) {
+                $row['approved_amount'] = $row['approval_approved_amount'];
+            }
+
+            $row['display_status'] = $this->syncStatusWithApproval($row);
+            $requests[] = $row;
+        }
+
+        $stmt->close();
+        return $requests;
     }
-
-    $stmt->close();
-    return $requests;
-}
-
 
     // Get request by ID
     public function getRequestById($id)
     {
         $sql = "SELECT cr.*, 
                 u.full_name as requester_name,
+                p.name as project_name,
                 ar.status as approval_status,
                 ar.approved_amount as approval_approved_amount,
                 ar.approval_note,
@@ -280,6 +337,7 @@ public function getAllRequests($filters = [])
                 rejector.full_name as rejected_by_name
                 FROM {$this->table} cr
                 LEFT JOIN users u ON cr.requested_by = u.id
+                LEFT JOIN projects p ON cr.project_id = p.id
                 LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
                 LEFT JOIN users approver ON ar.approved_by = approver.id
                 LEFT JOIN users rejector ON cr.rejected_by = rejector.id
@@ -542,4 +600,19 @@ public function getAllRequests($filters = [])
 
         return $result;
     }
+
+    // NEW: Get all projects for dropdown
+    public function getAllProjects()
+    {
+        $sql = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
+        $result = $this->db->query($sql);
+        
+        $projects = [];
+        while ($row = $result->fetch_assoc()) {
+            $projects[] = $row;
+        }
+        
+        return $projects;
+    }
 }
+?>

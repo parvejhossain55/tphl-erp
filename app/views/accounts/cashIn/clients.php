@@ -83,7 +83,7 @@ $show_breadcrumb = true;
                                 <tr>
                                     <td><?= htmlspecialchars($client['client_name']) ?></td>
                                     <td><?= htmlspecialchars($client['company'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['phone']) ?></td>
+                                    <td><?= htmlspecialchars($client['phone'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['email'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['designation'] ?? 'N/A') ?></td>

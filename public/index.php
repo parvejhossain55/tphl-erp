@@ -345,6 +345,12 @@ $routes = [
     "client-cash-in-form" => ["controller" => "AccountClientController", "method" => "showAddTransactionForm"],
     "update-transaction" => ["controller" => "AccountClientController", "method" => "updateTransaction"],
     "delete-transaction" => ["controller" => "AccountClientController", "method" => "deleteTransaction"],
+  
+    // ========================CED Routes====================================
+    // Add this to your routes array (around line 510-520 would be good)
+'ced-dashboard' => ["controller" => "AccountClientController", "method" => "CedView"],
+    // ========================CED Routes====================================
+
 
     // ==================== MANAGEMENT CASH IN ROUTES ====================
     'management-cash-in' => ["controller" => "AccountManagementController", "method" => "index"],
@@ -366,6 +372,8 @@ $routes = [
     // Add these routes to your routes array
     // ==================== CLIENT INVOICE ROUTES ====================
     'payment-invoice' => ["controller" => "AccountClientController", "method" => "viewPaymentInvoice"],
+    'booking-invoice' => ["controller" => "AccountClientController", "method" => "viewBookingInvoice"],
+    'booking-invoice/(\d+)' => ["controller" => "AccountClientController", "method" => "viewBookingInvoice"],
     'payment-invoice/(\d+)' => ["controller" => "AccountClientController", "method" => "viewPaymentInvoice"],
     // ==================== CLIENT STATEMENT ROUTES ====================
     'client-statement' => [

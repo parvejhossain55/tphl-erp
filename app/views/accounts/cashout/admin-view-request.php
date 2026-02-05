@@ -16,6 +16,7 @@ $roleNames = [
 $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
 ?>
 <style>
+    
     .status-badge {
         padding: 5px 12px;
         border-radius: 20px;
@@ -333,7 +334,8 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                                             <?= date('d M, Y', strtotime($payment['created_at'])) ?><br>
                                             <small class="text-muted"><?= date('h:i A', strtotime($payment['created_at'])) ?></small>
                                         </td>
-                                        <?php if ($userRole == 3): // Super Admin ?>
+                                        <!-- // Super Admin -->
+                                        <?php if ($userRole == 3):  ?>
                                             <td>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/delete-cashout-payment?id=<?= $payment['id'] ?>&request_id=<?= $request['id'] ?>" 
                                                    class="btn btn-sm btn-danger" 
