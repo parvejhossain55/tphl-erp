@@ -1,5 +1,5 @@
 <?php
-class Dashboard
+class Dashboard extends Model
 {
     protected $db;
 
@@ -66,7 +66,7 @@ class Dashboard
     /**
      * Get Cash In breakdown by payment method with period filter
      */
-    public function getCashInByPaymentMethod($period = 'all_time')
+    public function getCashInByPaymentMethod($period = 'all_time', $projectId = null)
     {
         $dateRange = $this->getDateRangeByPeriod($period);
         $startDate = $dateRange['start'];
@@ -74,16 +74,27 @@ class Dashboard
 
         $sql = "
             SELECT 
-                payment_method,
-                SUM(amount) as total
-            FROM lead_payments
-            WHERE payment_status = 'paid'
-            AND payment_date BETWEEN ? AND ?
-            GROUP BY payment_method
+                lp.payment_method,
+                SUM(lp.amount) as total
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE lp.payment_status = 'paid'
+            AND lp.payment_date BETWEEN ? AND ?
         ";
 
+        $params = [$startDate, $endDate];
+        $types = "ss";
+
+        if ($projectId) {
+            $sql .= " AND lb.project_id = ?";
+            $params[] = $projectId;
+            $types .= "i";
+        }
+
+        $sql .= " GROUP BY lp.payment_method";
+
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
 
@@ -110,7 +121,7 @@ class Dashboard
     /**
      * Get overview statistics
      */
-    public function getOverviewStatistics($period = 'all_time')
+    public function getOverviewStatistics($period = 'all_time', $projectId = null)
     {
         $dateRange = $this->getDateRangeByPeriod($period);
         $startDate = $dateRange['start'];
@@ -127,19 +138,30 @@ class Dashboard
             'total_discount' => 0,
             'total_agreement_value' => 0,
             'total_emi_amount' => 0,
-            'total_service_fees' => 0
+            'total_service_fees' => 0,
+            'projects_summary' => [] // NEW: Projects summary
         ];
 
         // Get land share
         $sqlLandShare = "
-            SELECT COALESCE(SUM(land_share_amount), 0) as total
-            FROM lead_payments
-            WHERE payment_status = 'paid'
-            AND payment_type = 'land_share'
-            AND payment_date BETWEEN ? AND ?
+            SELECT COALESCE(SUM(lp.land_share_amount), 0) as total
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE lp.payment_status = 'paid'
+            AND lp.payment_type = 'land_share'
+            AND lp.payment_date BETWEEN ? AND ?
         ";
+        
+        if ($projectId) {
+            $sqlLandShare .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlLandShare);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -149,14 +171,24 @@ class Dashboard
 
         // Get registration
         $sqlRegistration = "
-            SELECT COALESCE(SUM(amount), 0) as total
-            FROM lead_payments
-            WHERE payment_status = 'paid'
-            AND payment_type = 'registration'
-            AND payment_date BETWEEN ? AND ?
+            SELECT COALESCE(SUM(lp.amount), 0) as total
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE lp.payment_status = 'paid'
+            AND lp.payment_type = 'registration'
+            AND lp.payment_date BETWEEN ? AND ?
         ";
+        
+        if ($projectId) {
+            $sqlRegistration .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlRegistration);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -172,8 +204,17 @@ class Dashboard
             AND booking_status = 'booked'
             AND landshare_status = 'active'
         ";
+        
+        if ($projectId) {
+            $sqlDiscount .= " AND project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlDiscount);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -189,8 +230,17 @@ class Dashboard
             AND booking_status = 'booked'
             AND landshare_status = 'active'
         ";
+        
+        if ($projectId) {
+            $sqlAgreement .= " AND project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlAgreement);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -200,13 +250,23 @@ class Dashboard
 
         // Get EMI amount
         $sqlEmi = "
-            SELECT COALESCE(SUM(emi_amount), 0) as total
-            FROM emi_schedules
-            WHERE due_date BETWEEN ? AND ?
-            AND status = 'paid'
+            SELECT COALESCE(SUM(es.emi_amount), 0) as total
+            FROM emi_schedules es
+            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE es.due_date BETWEEN ? AND ?
+            AND es.status = 'paid'
         ";
+        
+        if ($projectId) {
+            $sqlEmi .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlEmi);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -216,13 +276,23 @@ class Dashboard
 
         // Get service fees
         $sqlServiceFees = "
-            SELECT COALESCE(SUM(service_fee), 0) as total
-            FROM emi_schedules
-            WHERE due_date BETWEEN ? AND ?
-            AND status = 'paid'
+            SELECT COALESCE(SUM(es.service_fee), 0) as total
+            FROM emi_schedules es
+            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE es.due_date BETWEEN ? AND ?
+            AND es.status = 'paid'
         ";
+        
+        if ($projectId) {
+            $sqlServiceFees .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlServiceFees);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -239,17 +309,17 @@ class Dashboard
         $stats['total_revenue'] = $stats['total_landshare'] - $stats['total_discount'] + 
                                   $stats['total_agreement_value'] + $stats['total_service_fees'];
 
-        // Get Cash Out
+        // Get Cash Out with project filtering
         $sqlCashOut = "
             SELECT COALESCE(SUM(total_amount), 0) as total
             FROM (
-                SELECT amount as total_amount, transaction_date as date
+                SELECT amount as total_amount, transaction_date as date, NULL as project_id
                 FROM management_cashout
                 WHERE payment_status = 'paid'
                 
                 UNION ALL
                 
-                SELECT cp.amount as total_amount, cp.payment_date as date
+                SELECT cp.amount as total_amount, cp.payment_date as date, cp.project_id
                 FROM cashout_payments cp
                 LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
                 WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
@@ -257,14 +327,24 @@ class Dashboard
                 UNION ALL
                 
                 SELECT net_salary as total_amount, 
-                       STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date
+                       STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date,
+                       NULL as project_id
                 FROM payslips
                 WHERE status = 'paid'
             ) combined
             WHERE date BETWEEN ? AND ?
         ";
+        
+        if ($projectId) {
+            $sqlCashOut .= " AND (project_id = ? OR project_id IS NULL)";
+        }
+
         $stmt = $this->db->prepare($sqlCashOut);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -277,13 +357,23 @@ class Dashboard
 
         // Total Clients
         $sqlClients = "
-            SELECT COUNT(DISTINCT booking_id) as total 
-            FROM lead_payments 
-            WHERE payment_date BETWEEN ? AND ?
-            AND payment_status = 'paid'
+            SELECT COUNT(DISTINCT lp.booking_id) as total 
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE lp.payment_date BETWEEN ? AND ?
+            AND lp.payment_status = 'paid'
         ";
+        
+        if ($projectId) {
+            $sqlClients .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlClients);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -291,13 +381,58 @@ class Dashboard
         }
         $stmt->close();
 
+        // NEW: Get projects summary (only if no specific project is selected)
+        if (!$projectId) {
+            $stats['projects_summary'] = $this->getProjectsSummary($startDate, $endDate);
+        }
+
         return $stats;
+    }
+
+    /**
+     * Get projects summary for dashboard
+     */
+    private function getProjectsSummary($startDate, $endDate)
+    {
+        $sql = "
+            SELECT 
+                p.id,
+                p.name,
+                COALESCE(SUM(lp.amount), 0) as total_revenue,
+                COUNT(DISTINCT lp.booking_id) as total_clients
+            FROM projects p
+            LEFT JOIN lead_bookings lb ON p.id = lb.project_id
+            LEFT JOIN lead_payments lp ON lb.id = lp.booking_id AND lp.payment_status = 'paid' 
+                AND lp.payment_date BETWEEN ? AND ?
+            WHERE p.deleted_at IS NULL
+            GROUP BY p.id, p.name
+            ORDER BY total_revenue DESC
+            LIMIT 5
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $projects = [];
+        while ($row = $result->fetch_assoc()) {
+            $projects[] = [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'total_revenue' => floatval($row['total_revenue']),
+                'total_clients' => intval($row['total_clients'])
+            ];
+        }
+
+        $stmt->close();
+        return $projects;
     }
 
     /**
      * Get Cash In Statistics
      */
-    public function getCashInStatistics($period = 'all_time')
+    public function getCashInStatistics($period = 'all_time', $projectId = null)
     {
         $dateRange = $this->getDateRangeByPeriod($period);
         $startDate = $dateRange['start'];
@@ -320,25 +455,35 @@ class Dashboard
             'total_registration' => 0,
             'total_discount' => 0,
             'total_agreement_value' => 0,
-            'total_emi_amount' => 0
+            'total_emi_amount' => 0,
+            'by_project' => [] // NEW: Cashin by project
         ];
 
-        // Get all payment types from lead_payments
+        // Get all payment types from lead_payments with project filter
         $sqlClient = "
             SELECT 
-                COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN amount ELSE 0 END), 0) as all_paid,
-                COALESCE(SUM(CASE WHEN payment_type = 'land_share' AND payment_status = 'paid' THEN land_share_amount ELSE 0 END), 0) as land_share_paid,
-                COALESCE(SUM(CASE WHEN payment_type = 'booking_money' AND payment_status = 'paid' THEN amount ELSE 0 END), 0) as booking_money,
-                COALESCE(SUM(CASE WHEN payment_type = 'registration' AND payment_status = 'paid' THEN amount ELSE 0 END), 0) as registration_money,
-                COALESCE(SUM(CASE WHEN payment_type = 'emi' AND payment_status = 'paid' THEN amount ELSE 0 END), 0) as emi_payments,
-                COALESCE(SUM(CASE WHEN payment_status = 'pending' THEN amount ELSE 0 END), 0) as pending,
+                COALESCE(SUM(CASE WHEN lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as all_paid,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'land_share' AND lp.payment_status = 'paid' THEN lp.land_share_amount ELSE 0 END), 0) as land_share_paid,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' AND lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as booking_money,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as registration_money,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as emi_payments,
+                COALESCE(SUM(CASE WHEN lp.payment_status = 'pending' THEN lp.amount ELSE 0 END), 0) as pending,
                 COUNT(*) as total_count
-            FROM lead_payments
-            WHERE payment_date BETWEEN ? AND ?
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE lp.payment_date BETWEEN ? AND ?
         ";
+        
+        if ($projectId) {
+            $sqlClient .= " AND lb.project_id = ?";
+        }
 
         $stmt = $this->db->prepare($sqlClient);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -352,15 +497,25 @@ class Dashboard
         }
         $stmt->close();
 
-        // Get component values for revenue calculation
+        // Get component values for revenue calculation with project filter
         $sqlLandShare = "
-            SELECT COALESCE(SUM(land_share_amount), 0) as total_landshare
-            FROM lead_payments
-            WHERE payment_status = 'paid' AND payment_type = 'land_share'
-            AND payment_date BETWEEN ? AND ?
+            SELECT COALESCE(SUM(lp.land_share_amount), 0) as total_landshare
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE lp.payment_status = 'paid' AND lp.payment_type = 'land_share'
+            AND lp.payment_date BETWEEN ? AND ?
         ";
+        
+        if ($projectId) {
+            $sqlLandShare .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlLandShare);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -369,13 +524,23 @@ class Dashboard
         $stmt->close();
 
         $sqlReg = "
-            SELECT COALESCE(SUM(amount), 0) as total_registration
-            FROM lead_payments
-            WHERE payment_status = 'paid' AND payment_type = 'registration'
-            AND payment_date BETWEEN ? AND ?
+            SELECT COALESCE(SUM(lp.amount), 0) as total_registration
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE lp.payment_status = 'paid' AND lp.payment_type = 'registration'
+            AND lp.payment_date BETWEEN ? AND ?
         ";
+        
+        if ($projectId) {
+            $sqlReg .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlReg);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -389,8 +554,17 @@ class Dashboard
             WHERE booking_date BETWEEN ? AND ?
             AND booking_status = 'booked' AND landshare_status = 'active'
         ";
+        
+        if ($projectId) {
+            $sqlDiscount .= " AND project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlDiscount);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -404,8 +578,17 @@ class Dashboard
             WHERE booking_date BETWEEN ? AND ?
             AND booking_status = 'booked' AND landshare_status = 'active'
         ";
+        
+        if ($projectId) {
+            $sqlAgreement .= " AND project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlAgreement);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -414,13 +597,23 @@ class Dashboard
         $stmt->close();
 
         $sqlEmiAmount = "
-            SELECT COALESCE(SUM(emi_amount), 0) as total_emi
-            FROM emi_schedules
-            WHERE due_date BETWEEN ? AND ?
-            AND status = 'paid'
+            SELECT COALESCE(SUM(es.emi_amount), 0) as total_emi
+            FROM emi_schedules es
+            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE es.due_date BETWEEN ? AND ?
+            AND es.status = 'paid'
         ";
+        
+        if ($projectId) {
+            $sqlEmiAmount .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlEmiAmount);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -446,15 +639,25 @@ class Dashboard
         }
         $stmt->close();
 
-        // Service fees
+        // Service fees with project filter
         $sqlServiceFees = "
-            SELECT COALESCE(SUM(service_fee), 0) as total_fees
-            FROM emi_schedules
-            WHERE due_date BETWEEN ? AND ?
-            AND status = 'paid'
+            SELECT COALESCE(SUM(es.service_fee), 0) as total_fees
+            FROM emi_schedules es
+            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            WHERE es.due_date BETWEEN ? AND ?
+            AND es.status = 'paid'
         ";
+        
+        if ($projectId) {
+            $sqlServiceFees .= " AND lb.project_id = ?";
+        }
+
         $stmt = $this->db->prepare($sqlServiceFees);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -468,18 +671,25 @@ class Dashboard
         $sqlMonth = "
             SELECT COALESCE(SUM(amount), 0) as total
             FROM (
-                SELECT amount, payment_date as date 
-                FROM lead_payments 
-                WHERE payment_status = 'paid'
+                SELECT lp.amount, lp.payment_date as date 
+                FROM lead_payments lp
+                INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+                WHERE lp.payment_status = 'paid'
+                " . ($projectId ? " AND lb.project_id = ?" : "") . "
                 UNION ALL
-                SELECT amount, transaction_date as date 
-                FROM management_cashin 
-                WHERE payment_status = 'paid'
+                SELECT mci.amount, mci.transaction_date as date 
+                FROM management_cashin mci 
+                WHERE mci.payment_status = 'paid'
             ) as combined
             WHERE date BETWEEN ? AND ?
         ";
+
         $stmt = $this->db->prepare($sqlMonth);
-        $stmt->bind_param("ss", $currentMonthStart, $currentMonthEnd);
+        if ($projectId) {
+            $stmt->bind_param("ssss", $currentMonthStart, $currentMonthEnd, $currentMonthStart, $currentMonthEnd);
+        } else {
+            $stmt->bind_param("ss", $currentMonthStart, $currentMonthEnd);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -495,13 +705,59 @@ class Dashboard
         $stats['total_revenue'] = $totalCashIn - ($stats['total_landshare'] - $stats['total_discount'] + 
                                   $stats['total_agreement_value'] + $stats['total_service_fees']);
 
+        // NEW: Get cashin by project (only if no specific project is selected)
+        if (!$projectId) {
+            $stats['by_project'] = $this->getCashInByProject($startDate, $endDate);
+        }
+
         return $stats;
+    }
+
+    /**
+     * Get cashin by project
+     */
+    private function getCashInByProject($startDate, $endDate)
+    {
+        $sql = "
+            SELECT 
+                p.id,
+                p.name,
+                COALESCE(SUM(lp.amount), 0) as total_cashin,
+                COUNT(DISTINCT lp.id) as transaction_count
+            FROM projects p
+            LEFT JOIN lead_bookings lb ON p.id = lb.project_id
+            LEFT JOIN lead_payments lp ON lb.id = lp.booking_id 
+                AND lp.payment_status = 'paid'
+                AND lp.payment_date BETWEEN ? AND ?
+            WHERE p.deleted_at IS NULL
+            GROUP BY p.id, p.name
+            ORDER BY total_cashin DESC
+            LIMIT 5
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $projects = [];
+        while ($row = $result->fetch_assoc()) {
+            $projects[] = [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'total_cashin' => floatval($row['total_cashin']),
+                'transaction_count' => intval($row['transaction_count'])
+            ];
+        }
+
+        $stmt->close();
+        return $projects;
     }
 
     /**
      * FIXED: Get Cash Out Statistics with complete payment method breakdown
      */
-    public function getCashOutStatistics($period = 'all_time')
+    public function getCashOutStatistics($period = 'all_time', $projectId = null)
     {
         $dateRange = $this->getDateRangeByPeriod($period);
         $startDate = $dateRange['start'];
@@ -515,7 +771,8 @@ class Dashboard
             'total_transactions' => 0,
             'this_month' => 0,
             'pending_amount' => 0,
-            'paid_amount' => 0
+            'paid_amount' => 0,
+            'by_project' => [] // NEW: Cashout by project
         ];
 
         // Management Cashout
@@ -538,7 +795,7 @@ class Dashboard
         }
         $stmt->close();
 
-        // Cashout Request Payments
+        // Cashout Request Payments with project filter
         $sqlCashoutPayments = "
             SELECT 
                 COALESCE(SUM(cp.amount), 0) as total,
@@ -548,8 +805,17 @@ class Dashboard
             WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
             AND cp.payment_date BETWEEN ? AND ?
         ";
+        
+        if ($projectId) {
+            $sqlCashoutPayments .= " AND (cr.project_id = ? OR cp.project_id = ?)";
+        }
+
         $stmt = $this->db->prepare($sqlCashoutPayments);
-        $stmt->bind_param("ss", $startDate, $endDate);
+        if ($projectId) {
+            $stmt->bind_param("ssii", $startDate, $endDate, $projectId, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -580,19 +846,19 @@ class Dashboard
         $stats['paid_amount'] = $stats['management_cashout'] + $stats['cashout_payments'] + $stats['salary_payments'];
         $stats['total_amount'] = $stats['paid_amount'] + $stats['pending_amount'];
 
-        // This Month
+        // This Month with project filter
         $currentMonthStart = date('Y-m-01');
         $currentMonthEnd = date('Y-m-t');
         $sqlMonth = "
             SELECT COALESCE(SUM(total_amount), 0) as total
             FROM (
-                SELECT amount as total_amount, transaction_date as date
+                SELECT amount as total_amount, transaction_date as date, NULL as project_id
                 FROM management_cashout
                 WHERE payment_status = 'paid'
                 
                 UNION ALL
                 
-                SELECT cp.amount as total_amount, cp.payment_date as date
+                SELECT cp.amount as total_amount, cp.payment_date as date, cp.project_id
                 FROM cashout_payments cp
                 LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
                 WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
@@ -600,14 +866,24 @@ class Dashboard
                 UNION ALL
                 
                 SELECT net_salary as total_amount, 
-                       STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date
+                       STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date,
+                       NULL as project_id
                 FROM payslips
                 WHERE status = 'paid'
             ) combined
             WHERE date BETWEEN ? AND ?
         ";
+        
+        if ($projectId) {
+            $sqlMonth .= " AND (project_id = ? OR project_id IS NULL)";
+        }
+
         $stmt = $this->db->prepare($sqlMonth);
-        $stmt->bind_param("ss", $currentMonthStart, $currentMonthEnd);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $currentMonthStart, $currentMonthEnd, $projectId);
+        } else {
+            $stmt->bind_param("ss", $currentMonthStart, $currentMonthEnd);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
@@ -615,8 +891,7 @@ class Dashboard
         }
         $stmt->close();
 
-        // FIXED: Payment Method Breakdown - Include ALL sources with comprehensive mapping
-        // Initialize all payment methods to 0
+        // FIXED: Payment Method Breakdown with project filter
         $stats['by_payment_method'] = [
             'cash' => 0,
             'bank' => 0,
@@ -630,15 +905,15 @@ class Dashboard
                 COALESCE(SUM(amount), 0) as total
             FROM (
                 -- Management Cashout
-                SELECT payment_method, amount
+                SELECT payment_method, amount, transaction_date as date, NULL as project_id
                 FROM management_cashout
                 WHERE payment_status = 'paid'
                 AND transaction_date BETWEEN ? AND ?
                 
                 UNION ALL
                 
-                -- Cashout Request Payments (THIS IS THE MAIN SOURCE)
-                SELECT cp.payment_method, cp.amount
+                -- Cashout Request Payments
+                SELECT cp.payment_method, cp.amount, cp.payment_date as date, cp.project_id
                 FROM cashout_payments cp
                 LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
                 WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
@@ -647,16 +922,29 @@ class Dashboard
                 UNION ALL
                 
                 -- Salary Payments (assume bank transfer)
-                SELECT 'Bank' as payment_method, net_salary as amount
+                SELECT 'Bank' as payment_method, net_salary as amount, 
+                       STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date,
+                       NULL as project_id
                 FROM payslips
                 WHERE status = 'paid'
                 AND STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') BETWEEN ? AND ?
             ) combined
-            GROUP BY payment_method
+            WHERE 1=1
         ";
         
+        if ($projectId) {
+            $sqlMethod .= " AND (project_id = ? OR project_id IS NULL)";
+            $params = [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate, $projectId];
+            $types = "ssssssi";
+        } else {
+            $params = [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate];
+            $types = "ssssss";
+        }
+        
+        $sqlMethod .= " GROUP BY payment_method";
+        
         $stmt = $this->db->prepare($sqlMethod);
-        $stmt->bind_param("ssssss", $startDate, $endDate, $startDate, $endDate, $startDate, $endDate);
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -666,7 +954,6 @@ class Dashboard
                 $methodLower = strtolower($method);
                 $amount = floatval($row['total']);
                 
-                // Comprehensive mapping - check both original case and lowercase
                 if (in_array($methodLower, ['cash', 'cash payment']) || $method === 'Cash') {
                     $stats['by_payment_method']['cash'] += $amount;
                 } 
@@ -680,118 +967,301 @@ class Dashboard
                     $stats['by_payment_method']['online'] += $amount;
                 } 
                 else {
-                    // If unrecognized, add to cash (or you can log this for debugging)
                     $stats['by_payment_method']['cash'] += $amount;
                 }
             }
         }
         $stmt->close();
 
+        // NEW: Get cashout by project (only if no specific project is selected)
+        if (!$projectId) {
+            $stats['by_project'] = $this->getCashOutByProject($startDate, $endDate);
+        }
+
         return $stats;
     }
 
     /**
-     * Get Recent Cash In Transactions
+     * Get cashout by project
      */
-    public function getRecentCashInTransactions($limit = 10, $period = 'all_time')
+    private function getCashOutByProject($startDate, $endDate)
     {
-        $dateRange = $this->getDateRangeByPeriod($period);
-        $startDate = $dateRange['start'];
-        $endDate = $dateRange['end'];
-
         $sql = "
             SELECT 
-                'client' as source,
-                lp.id,
-                lp.payment_date as date,
-                lp.payment_type as type,
-                lp.amount,
-                lp.payment_method,
-                lp.payment_status,
-                CONCAT(l.full_name, ' - ', p.name) as description
-            FROM lead_payments lp
-            LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
-            LEFT JOIN leads l ON lb.lead_id = l.id
-            LEFT JOIN projects p ON lb.project_id = p.id
-            WHERE lp.payment_date BETWEEN ? AND ?
-            AND lp.payment_status = 'paid'
-            
-            UNION ALL
-            
-            SELECT 
-                'management' as source,
-                mci.id,
-                mci.transaction_date as date,
-                'management' as type,
-                mci.amount,
-                mci.payment_method,
-                mci.payment_status,
-                CONCAT(mci.role_name, ' - ', mci.source) as description
-            FROM management_cashin mci
-            WHERE mci.transaction_date BETWEEN ? AND ?
-            
-            ORDER BY date DESC
-            LIMIT ?
+                p.id,
+                p.name,
+                COALESCE(SUM(cp.amount), 0) as total_cashout,
+                COUNT(DISTINCT cp.id) as transaction_count
+            FROM projects p
+            LEFT JOIN cashout_requests cr ON p.id = cr.project_id
+            LEFT JOIN cashout_payments cp ON cr.id = cp.cashout_request_id
+                AND cp.payment_date BETWEEN ? AND ?
+                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+            WHERE p.deleted_at IS NULL
+            GROUP BY p.id, p.name
+            HAVING total_cashout > 0
+            ORDER BY total_cashout DESC
+            LIMIT 5
         ";
 
         $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $projects = [];
+        while ($row = $result->fetch_assoc()) {
+            $projects[] = [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'total_cashout' => floatval($row['total_cashout']),
+                'transaction_count' => intval($row['transaction_count'])
+            ];
+        }
+
+        $stmt->close();
+        return $projects;
+    }
+
+    /**
+     * Get Recent Cash In Transactions with project filter
+     */
+public function getRecentCashInTransactions($limit = 10, $period = 'all_time', $projectId = null)
+{
+    $dateRange = $this->getDateRangeByPeriod($period);
+    $startDate = $dateRange['start'];
+    $endDate = $dateRange['end'];
+
+    $sql = "
+        SELECT 
+            'client' as source,
+            lp.id,
+            lp.payment_date as date,
+            lp.payment_type as type,
+            lp.amount,
+            lp.payment_method,
+            lp.payment_status,
+            CONCAT(l.full_name, ' - ', p.name) as description,
+            p.id as project_id,
+            p.name as project_name
+        FROM lead_payments lp
+        LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
+        LEFT JOIN leads l ON lb.lead_id = l.id
+        LEFT JOIN projects p ON lb.project_id = p.id
+        WHERE lp.payment_date BETWEEN ? AND ?
+        AND lp.payment_status = 'paid'
+    ";
+    
+    if ($projectId) {
+        $sql .= " AND lb.project_id = ?";
+    }
+
+    $sql .= "
+        UNION ALL
+        
+        SELECT 
+            'management' as source,
+            mci.id,
+            mci.transaction_date as date,
+            'management' as type,
+            mci.amount,
+            mci.payment_method,
+            mci.payment_status,
+            CONCAT(mci.role_name, ' - ', mci.source) as description,
+            NULL as project_id,
+            NULL as project_name
+        FROM management_cashin mci
+        WHERE mci.transaction_date BETWEEN ? AND ?
+        
+        ORDER BY date DESC
+        LIMIT ?
+    ";
+
+    $stmt = $this->db->prepare($sql);
+    
+    if ($projectId) {
+        // When projectId is provided: startDate, endDate, projectId, startDate, endDate, limit
+        $stmt->bind_param("ssissi", $startDate, $endDate, $projectId, $startDate, $endDate, $limit);
+    } else {
+        // When projectId is null: startDate, endDate, startDate, endDate, limit
         $stmt->bind_param("ssssi", $startDate, $endDate, $startDate, $endDate, $limit);
-        $stmt->execute();
-        $result = $stmt->get_result();
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-        $transactions = [];
-        while ($row = $result->fetch_assoc()) {
-            $transactions[] = $row;
-        }
-
-        $stmt->close();
-        return $transactions;
+    $transactions = [];
+    while ($row = $result->fetch_assoc()) {
+        $transactions[] = $row;
     }
 
+    $stmt->close();
+    return $transactions;
+}
+
     /**
-     * Get Recent Cash Out Transactions
+     * Get Recent Cash Out Transactions with project filter
      */
-    public function getRecentCashOutTransactions($limit = 10, $period = 'all_time')
-    {
+public function getRecentCashOutTransactions($limit = 10, $period = 'all_time', $projectId = null)
+{
+    $dateRange = $this->getDateRangeByPeriod($period);
+    $startDate = $dateRange['start'];
+    $endDate = $dateRange['end'];
+
+    $sql = "
+        SELECT 
+            'management' as source,
+            mco.id,
+            mco.transaction_date as date,
+            mco.role_name,
+            mco.person_name,
+            mco.paid_to,
+            mco.amount,
+            mco.payment_method,
+            mco.payment_status,
+            mco.description,
+            NULL as project_id,
+            NULL as project_name
+        FROM management_cashout mco
+        WHERE mco.transaction_date BETWEEN ? AND ?
+        
+        UNION ALL
+        
+        SELECT 
+            'cashout_request' as source,
+            cp.id,
+            cp.payment_date as date,
+            'Cashout Request' as role_name,
+            u.full_name as person_name,
+            cr.purpose_paid_to as paid_to,
+            cp.amount,
+            cp.payment_method,
+            'paid' as payment_status,
+            cr.description,
+            cr.project_id,
+            p.name as project_name
+        FROM cashout_payments cp
+        LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+        LEFT JOIN users u ON cr.requested_by = u.id
+        LEFT JOIN projects p ON cr.project_id = p.id
+        WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
+        AND cp.payment_date BETWEEN ? AND ?
+    ";
+    
+    if ($projectId) {
+        $sql .= " AND (cr.project_id = ? OR cp.project_id = ?)";
+    }
+
+    $sql .= " ORDER BY date DESC LIMIT ?";
+
+    $stmt = $this->db->prepare($sql);
+    
+    if ($projectId) {
+        // When projectId is provided: startDate, endDate, startDate, endDate, projectId, projectId, limit
+        $stmt->bind_param("ssssiii", $startDate, $endDate, $startDate, $endDate, $projectId, $projectId, $limit);
+    } else {
+        // When projectId is null: startDate, endDate, startDate, endDate, limit
+        $stmt->bind_param("ssssi", $startDate, $endDate, $startDate, $endDate, $limit);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $transactions = [];
+    while ($row = $result->fetch_assoc()) {
+        $transactions[] = $row;
+    }
+
+    $stmt->close();
+    return $transactions;
+}
+
+    /**
+     * Get Monthly Cash In Data with project filter
+     */
+// Fix the getMonthlyCashInData method for 'all_time' period with projectId
+public function getMonthlyCashInData($months = 6, $period = 'all_time', $projectId = null)
+{
+    if ($period !== 'all_time') {
         $dateRange = $this->getDateRangeByPeriod($period);
         $startDate = $dateRange['start'];
         $endDate = $dateRange['end'];
 
         $sql = "
             SELECT 
-                id,
-                transaction_date as date,
-                role_name,
-                person_name,
-                paid_to,
-                amount,
-                payment_method,
-                payment_status,
-                description
-            FROM management_cashout
-            WHERE transaction_date BETWEEN ? AND ?
-            ORDER BY transaction_date DESC, id DESC
-            LIMIT ?
+                DATE_FORMAT(date, '%Y-%m') as month,
+                COALESCE(SUM(amount), 0) as total
+            FROM (
+                SELECT lp.payment_date as date, lp.amount 
+                FROM lead_payments lp
+                INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+                WHERE lp.payment_status = 'paid'
+                " . ($projectId ? " AND lb.project_id = ?" : "") . "
+                UNION ALL
+                SELECT mci.transaction_date as date, mci.amount 
+                FROM management_cashin mci 
+                WHERE mci.payment_status = 'paid'
+            ) as combined
+            WHERE date BETWEEN ? AND ?
+            GROUP BY month
+            ORDER BY month ASC
         ";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("ssi", $startDate, $endDate, $limit);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $transactions = [];
-        while ($row = $result->fetch_assoc()) {
-            $transactions[] = $row;
+        if ($projectId) {
+            // When projectId is provided: projectId, startDate, endDate
+            $stmt->bind_param("iss", $projectId, $startDate, $endDate);
+        } else {
+            // When projectId is null: startDate, endDate
+            $stmt->bind_param("ss", $startDate, $endDate);
         }
+    } else {
+        $sql = "
+            SELECT 
+                DATE_FORMAT(date, '%Y-%m') as month,
+                COALESCE(SUM(amount), 0) as total
+            FROM (
+                SELECT lp.payment_date as date, lp.amount 
+                FROM lead_payments lp
+                INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+                WHERE lp.payment_status = 'paid'
+                " . ($projectId ? " AND lb.project_id = ?" : "") . "
+                UNION ALL
+                SELECT mci.transaction_date as date, mci.amount 
+                FROM management_cashin mci 
+                WHERE mci.payment_status = 'paid'
+            ) as combined
+            WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL ? MONTH)
+            GROUP BY month
+            ORDER BY month ASC
+        ";
 
-        $stmt->close();
-        return $transactions;
+        $stmt = $this->db->prepare($sql);
+        if ($projectId) {
+            // When projectId is provided: months, projectId
+            $stmt->bind_param("ii", $months, $projectId);
+        } else {
+            // When projectId is null: months
+            $stmt->bind_param("i", $months);
+        }
     }
 
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = $row;
+    }
+
+    $stmt->close();
+    return $data;
+}
+
     /**
-     * Get Monthly Cash In Data
+     * Get Monthly Cash Out Data with project filter
      */
-    public function getMonthlyCashInData($months = 6, $period = 'all_time')
+    public function getMonthlyCashOutData($months = 6, $period = 'all_time', $projectId = null)
     {
         if ($period !== 'all_time') {
             $dateRange = $this->getDateRangeByPeriod($period);
@@ -803,42 +1273,78 @@ class Dashboard
                     DATE_FORMAT(date, '%Y-%m') as month,
                     COALESCE(SUM(amount), 0) as total
                 FROM (
-                    SELECT payment_date as date, amount 
-                    FROM lead_payments 
+                    SELECT transaction_date as date, amount, NULL as project_id
+                    FROM management_cashout
                     WHERE payment_status = 'paid'
+                    
                     UNION ALL
-                    SELECT transaction_date as date, amount 
-                    FROM management_cashin 
-                    WHERE payment_status = 'paid'
-                ) as combined
+                    
+                    SELECT cp.payment_date as date, cp.amount, cp.project_id
+                    FROM cashout_payments cp
+                    LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                    WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                    
+                    UNION ALL
+                    
+                    SELECT STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date, 
+                           net_salary as amount, NULL as project_id
+                    FROM payslips
+                    WHERE status = 'paid'
+                ) combined
                 WHERE date BETWEEN ? AND ?
-                GROUP BY month
-                ORDER BY month ASC
             ";
+            
+            if ($projectId) {
+                $sql .= " AND (project_id = ? OR project_id IS NULL)";
+            }
+
+            $sql .= " GROUP BY month ORDER BY month ASC";
 
             $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("ss", $startDate, $endDate);
+            if ($projectId) {
+                $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+            } else {
+                $stmt->bind_param("ss", $startDate, $endDate);
+            }
         } else {
             $sql = "
                 SELECT 
                     DATE_FORMAT(date, '%Y-%m') as month,
                     COALESCE(SUM(amount), 0) as total
                 FROM (
-                    SELECT payment_date as date, amount 
-                    FROM lead_payments 
+                    SELECT transaction_date as date, amount, NULL as project_id
+                    FROM management_cashout
                     WHERE payment_status = 'paid'
+                    
                     UNION ALL
-                    SELECT transaction_date as date, amount 
-                    FROM management_cashin 
-                    WHERE payment_status = 'paid'
-                ) as combined
+                    
+                    SELECT cp.payment_date as date, cp.amount, cp.project_id
+                    FROM cashout_payments cp
+                    LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+                    WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                    
+                    UNION ALL
+                    
+                    SELECT STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date, 
+                           net_salary as amount, NULL as project_id
+                    FROM payslips
+                    WHERE status = 'paid'
+                ) combined
                 WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL ? MONTH)
-                GROUP BY month
-                ORDER BY month ASC
             ";
+            
+            if ($projectId) {
+                $sql .= " AND (project_id = ? OR project_id IS NULL)";
+            }
+
+            $sql .= " GROUP BY month ORDER BY month ASC";
 
             $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("i", $months);
+            if ($projectId) {
+                $stmt->bind_param("ii", $months, $projectId);
+            } else {
+                $stmt->bind_param("i", $months);
+            }
         }
 
         $stmt->execute();
@@ -854,92 +1360,9 @@ class Dashboard
     }
 
     /**
-     * Get Monthly Cash Out Data
+     * Get Weekly Transaction Data with project filter
      */
-    public function getMonthlyCashOutData($months = 6, $period = 'all_time')
-    {
-        if ($period !== 'all_time') {
-            $dateRange = $this->getDateRangeByPeriod($period);
-            $startDate = $dateRange['start'];
-            $endDate = $dateRange['end'];
-
-            $sql = "
-                SELECT 
-                    DATE_FORMAT(date, '%Y-%m') as month,
-                    COALESCE(SUM(amount), 0) as total
-                FROM (
-                    SELECT transaction_date as date, amount
-                    FROM management_cashout
-                    WHERE payment_status = 'paid'
-                    
-                    UNION ALL
-                    
-                    SELECT cp.payment_date as date, cp.amount
-                    FROM cashout_payments cp
-                    LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
-                    WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
-                    
-                    UNION ALL
-                    
-                    SELECT STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date, net_salary as amount
-                    FROM payslips
-                    WHERE status = 'paid'
-                ) combined
-                WHERE date BETWEEN ? AND ?
-                GROUP BY month
-                ORDER BY month ASC
-            ";
-
-            $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("ss", $startDate, $endDate);
-        } else {
-            $sql = "
-                SELECT 
-                    DATE_FORMAT(date, '%Y-%m') as month,
-                    COALESCE(SUM(amount), 0) as total
-                FROM (
-                    SELECT transaction_date as date, amount
-                    FROM management_cashout
-                    WHERE payment_status = 'paid'
-                    
-                    UNION ALL
-                    
-                    SELECT cp.payment_date as date, cp.amount
-                    FROM cashout_payments cp
-                    LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
-                    WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
-                    
-                    UNION ALL
-                    
-                    SELECT STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date, net_salary as amount
-                    FROM payslips
-                    WHERE status = 'paid'
-                ) combined
-                WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL ? MONTH)
-                GROUP BY month
-                ORDER BY month ASC
-            ";
-
-            $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("i", $months);
-        }
-
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $data = [];
-        while ($row = $result->fetch_assoc()) {
-            $data[] = $row;
-        }
-
-        $stmt->close();
-        return $data;
-    }
-
-    /**
-     * Get Weekly Transaction Data
-     */
-    public function getWeeklyTransactionData($viewType = 'cashin', $period = 'all_time')
+    public function getWeeklyTransactionData($viewType = 'cashin', $period = 'all_time', $projectId = null)
     {
         if ($period === 'all_time') {
             $startOfWeek = date('Y-m-d', strtotime('monday this week'));
@@ -957,13 +1380,15 @@ class Dashboard
                     DAYOFWEEK(date) as day_num,
                     COALESCE(SUM(amount), 0) as total
                 FROM (
-                    SELECT payment_date as date, amount 
-                    FROM lead_payments 
-                    WHERE payment_status = 'paid'
+                    SELECT lp.payment_date as date, lp.amount 
+                    FROM lead_payments lp
+                    INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+                    WHERE lp.payment_status = 'paid'
+                    " . ($projectId ? " AND lb.project_id = ?" : "") . "
                     UNION ALL
-                    SELECT transaction_date as date, amount 
-                    FROM management_cashin 
-                    WHERE payment_status = 'paid'
+                    SELECT mci.transaction_date as date, mci.amount 
+                    FROM management_cashin mci 
+                    WHERE mci.payment_status = 'paid'
                 ) as combined
                 WHERE date BETWEEN ? AND ?
                 GROUP BY DAYOFWEEK(date), DAYNAME(date)
@@ -976,31 +1401,43 @@ class Dashboard
                     DAYOFWEEK(date) as day_num,
                     COALESCE(SUM(amount), 0) as total
                 FROM (
-                    SELECT transaction_date as date, amount
+                    SELECT transaction_date as date, amount, NULL as project_id
                     FROM management_cashout
                     WHERE payment_status = 'paid'
                     
                     UNION ALL
                     
-                    SELECT cp.payment_date as date, cp.amount
+                    SELECT cp.payment_date as date, cp.amount, cp.project_id
                     FROM cashout_payments cp
                     LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
                     WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
                     
                     UNION ALL
                     
-                    SELECT STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date, net_salary as amount
+                    SELECT STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date, 
+                           net_salary as amount, NULL as project_id
                     FROM payslips
                     WHERE status = 'paid'
                 ) combined
                 WHERE date BETWEEN ? AND ?
-                GROUP BY DAYOFWEEK(date), DAYNAME(date)
-                ORDER BY DAYOFWEEK(date)
             ";
+            
+            if ($projectId) {
+                $sql .= " AND (project_id = ? OR project_id IS NULL)";
+            }
+
+            $sql .= " GROUP BY DAYOFWEEK(date), DAYNAME(date) ORDER BY DAYOFWEEK(date)";
         }
 
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("ss", $startOfWeek, $endOfWeek);
+        if ($viewType === 'cashin' && $projectId) {
+            $stmt->bind_param("ssss", $projectId, $startOfWeek, $endOfWeek);
+        } elseif ($viewType === 'cashout' && $projectId) {
+            $stmt->bind_param("sssi", $startOfWeek, $endOfWeek, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startOfWeek, $endOfWeek);
+        }
+        
         $stmt->execute();
         $result = $stmt->get_result();
 
@@ -1020,9 +1457,9 @@ class Dashboard
     }
 
     /**
-     * Get Yearly Transaction Data
+     * Get Yearly Transaction Data with project filter
      */
-    public function getYearlyTransactionData($viewType = 'cashin', $years = 3, $period = 'all_time')
+    public function getYearlyTransactionData($viewType = 'cashin', $years = 3, $period = 'all_time', $projectId = null)
     {
         if ($period !== 'all_time') {
             $dateRange = $this->getDateRangeByPeriod($period);
@@ -1035,13 +1472,15 @@ class Dashboard
                         YEAR(date) as year,
                         COALESCE(SUM(amount), 0) as total
                     FROM (
-                        SELECT payment_date as date, amount 
-                        FROM lead_payments 
-                        WHERE payment_status = 'paid'
+                        SELECT lp.payment_date as date, lp.amount 
+                        FROM lead_payments lp
+                        INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+                        WHERE lp.payment_status = 'paid'
+                        " . ($projectId ? " AND lb.project_id = ?" : "") . "
                         UNION ALL
-                        SELECT transaction_date as date, amount 
-                        FROM management_cashin 
-                        WHERE payment_status = 'paid'
+                        SELECT mci.transaction_date as date, mci.amount 
+                        FROM management_cashin mci 
+                        WHERE mci.payment_status = 'paid'
                     ) as combined
                     WHERE date BETWEEN ? AND ?
                     GROUP BY YEAR(date)
@@ -1053,31 +1492,42 @@ class Dashboard
                         YEAR(date) as year,
                         COALESCE(SUM(amount), 0) as total
                     FROM (
-                        SELECT transaction_date as date, amount
+                        SELECT transaction_date as date, amount, NULL as project_id
                         FROM management_cashout
                         WHERE payment_status = 'paid'
                         
                         UNION ALL
                         
-                        SELECT cp.payment_date as date, cp.amount
+                        SELECT cp.payment_date as date, cp.amount, cp.project_id
                         FROM cashout_payments cp
                         LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
                         WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
                         
                         UNION ALL
                         
-                        SELECT STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date, net_salary as amount
+                        SELECT STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date, 
+                               net_salary as amount, NULL as project_id
                         FROM payslips
                         WHERE status = 'paid'
                     ) combined
                     WHERE date BETWEEN ? AND ?
-                    GROUP BY YEAR(date)
-                    ORDER BY YEAR(date) ASC
                 ";
+                
+                if ($projectId) {
+                    $sql .= " AND (project_id = ? OR project_id IS NULL)";
+                }
+
+                $sql .= " GROUP BY YEAR(date) ORDER BY YEAR(date) ASC";
             }
 
             $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("ss", $startDate, $endDate);
+            if ($viewType === 'cashin' && $projectId) {
+                $stmt->bind_param("ssss", $projectId, $startDate, $endDate);
+            } elseif ($viewType === 'cashout' && $projectId) {
+                $stmt->bind_param("sssi", $startDate, $endDate, $projectId);
+            } else {
+                $stmt->bind_param("ss", $startDate, $endDate);
+            }
         } else {
             if ($viewType === 'cashin') {
                 $sql = "
@@ -1085,13 +1535,15 @@ class Dashboard
                         YEAR(date) as year,
                         COALESCE(SUM(amount), 0) as total
                     FROM (
-                        SELECT payment_date as date, amount 
-                        FROM lead_payments 
-                        WHERE payment_status = 'paid'
+                        SELECT lp.payment_date as date, lp.amount 
+                        FROM lead_payments lp
+                        INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+                        WHERE lp.payment_status = 'paid'
+                        " . ($projectId ? " AND lb.project_id = ?" : "") . "
                         UNION ALL
-                        SELECT transaction_date as date, amount 
-                        FROM management_cashin 
-                        WHERE payment_status = 'paid'
+                        SELECT mci.transaction_date as date, mci.amount 
+                        FROM management_cashin mci 
+                        WHERE mci.payment_status = 'paid'
                     ) as combined
                     WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL ? YEAR)
                     GROUP BY YEAR(date)
@@ -1103,31 +1555,42 @@ class Dashboard
                         YEAR(date) as year,
                         COALESCE(SUM(amount), 0) as total
                     FROM (
-                        SELECT transaction_date as date, amount
+                        SELECT transaction_date as date, amount, NULL as project_id
                         FROM management_cashout
                         WHERE payment_status = 'paid'
                         
                         UNION ALL
                         
-                        SELECT cp.payment_date as date, cp.amount
+                        SELECT cp.payment_date as date, cp.amount, cp.project_id
                         FROM cashout_payments cp
                         LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
                         WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
                         
                         UNION ALL
                         
-                        SELECT STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date, net_salary as amount
+                        SELECT STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date, 
+                               net_salary as amount, NULL as project_id
                         FROM payslips
                         WHERE status = 'paid'
                     ) combined
                     WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL ? YEAR)
-                    GROUP BY YEAR(date)
-                    ORDER BY YEAR(date) ASC
                 ";
+                
+                if ($projectId) {
+                    $sql .= " AND (project_id = ? OR project_id IS NULL)";
+                }
+
+                $sql .= " GROUP BY YEAR(date) ORDER BY YEAR(date) ASC";
             }
 
             $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("i", $years);
+            if ($viewType === 'cashin' && $projectId) {
+                $stmt->bind_param("ii", $years, $projectId);
+            } elseif ($viewType === 'cashout' && $projectId) {
+                $stmt->bind_param("ii", $years, $projectId);
+            } else {
+                $stmt->bind_param("i", $years);
+            }
         }
 
         $stmt->execute();
@@ -1143,14 +1606,15 @@ class Dashboard
     }
 
     /**
-     * Get recent cashout requests
+     * Get recent cashout requests with project filter
      */
-    public function getRecentCashOutRequests($limit = 5, $period = 'all_time')
+    public function getRecentCashOutRequests($limit = 5, $period = 'all_time', $projectId = null)
     {
         $dateCondition = $this->getPeriodCondition($period, 'cr.created_at');
 
         $sql = "SELECT cr.*, 
                 u.full_name as requester_name,
+                p.name as project_name,
                 ar.status as approval_status,
                 ar.approved_amount as approval_approved_amount,
                 ar.approved_at as approval_approved_at,
@@ -1161,15 +1625,28 @@ class Dashboard
                 rejector.full_name as rejected_by_name
                 FROM cashout_requests cr
                 LEFT JOIN users u ON cr.requested_by = u.id
+                LEFT JOIN projects p ON cr.project_id = p.id
                 LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
                 LEFT JOIN users approver ON ar.approved_by = approver.id
                 LEFT JOIN users rejector ON cr.rejected_by = rejector.id
-                {$dateCondition}
-                ORDER BY cr.created_at DESC
-                LIMIT ?";
+                WHERE 1=1 ";
+        
+        if ($dateCondition) {
+            $sql .= " AND " . substr($dateCondition, 6); // Remove "WHERE " from condition
+        }
+        
+        if ($projectId) {
+            $sql .= " AND cr.project_id = ?";
+        }
+        
+        $sql .= " ORDER BY cr.created_at DESC LIMIT ?";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("i", $limit);
+        if ($projectId) {
+            $stmt->bind_param("ii", $projectId, $limit);
+        } else {
+            $stmt->bind_param("i", $limit);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
 
@@ -1186,6 +1663,49 @@ class Dashboard
 
         $stmt->close();
         return $requests;
+    }
+
+    /**
+     * Get all projects for dropdown
+     */
+    public function getAllProjects()
+    {
+        $sql = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
+        $result = $this->db->query($sql);
+        
+        $projects = [];
+        while ($row = $result->fetch_assoc()) {
+            $projects[] = $row;
+        }
+        
+        return $projects;
+    }
+
+    /**
+     * Get projects with cashout data
+     */
+    public function getProjectsWithCashout()
+    {
+        $sql = "
+            SELECT DISTINCT 
+                p.id,
+                p.name
+            FROM projects p
+            LEFT JOIN cashout_requests cr ON p.id = cr.project_id
+            LEFT JOIN cashout_payments cp ON p.id = cp.project_id
+            WHERE p.deleted_at IS NULL
+            AND (cr.id IS NOT NULL OR cp.id IS NOT NULL)
+            ORDER BY p.name
+        ";
+        
+        $result = $this->db->query($sql);
+        
+        $projects = [];
+        while ($row = $result->fetch_assoc()) {
+            $projects[] = $row;
+        }
+        
+        return $projects;
     }
 
     /**

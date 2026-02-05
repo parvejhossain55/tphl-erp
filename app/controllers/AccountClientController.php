@@ -30,60 +30,80 @@ class AccountClientController extends Controller
         ]);
     }
 
- public function indexTwo($bookingId = null)
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        // Get booking_id from URL parameter or query string
-        if (!$bookingId) {
-            $bookingId = $_GET['booking_id'] ?? null;
-        }
-
-        if (!$bookingId) {
-            setError("No land share ID provided");
-            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
-            exit;
-        }
-
-        // Get client details
-        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
-
-        if (!$clientDetails) {
-            setError("Land share not found");
-            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
-            exit;
-        }
-
-        // Get transaction history for this booking
-        $transactions = $this->clientModel->getTransactionsByBookingId($bookingId);
-        
-        // Filter out any automatically generated booking money transactions
-        $filteredTransactions = array_filter($transactions, function($transaction) {
-            if (isset($transaction['id']) && is_string($transaction['id']) && strpos($transaction['id'], 'booking-') === 0) {
-                return false;
-            }
-            return true;
-        });
-        
-        // Re-index the array
-        $transactions = array_values($filteredTransactions);
-
-        // Get payment summary statistics (now includes service fee)
-           $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
-    
-
-
-        $this->view("accounts/cashIn/clients-cash-in-history", [
-            "current_route" => "clients-cash-in-history",
-            "page_title" => "Transaction History - " . $clientDetails['client_name'],
-            "clientDetails" => $clientDetails,
-            "transactions" => $transactions,
-            "paymentSummary" => $paymentSummary
-        ]);
+public function indexTwo($bookingId = null)
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
     }
 
+    // Get booking_id from URL parameter or query string
+    if (!$bookingId) {
+        $bookingId = $_GET['booking_id'] ?? null;
+    }
+
+    if (!$bookingId) {
+        setError("No land share ID provided");
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+        exit;
+    }
+
+    // Get client details
+    $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+
+    if (!$clientDetails) {
+        setError("Land share not found");
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+        exit;
+    }
+
+    // Get transaction history for this booking
+    $transactions = $this->clientModel->getTransactionsByBookingId($bookingId);
+    
+    // Check if booking money transaction exists in database
+    $hasBookingMoneyInDB = $this->clientModel->hasBookingMoneyInDatabase($bookingId);
+    
+    // If booking money doesn't exist in transactions, add it from agreement
+    if (!$hasBookingMoneyInDB && !empty($clientDetails['booking_money'])) {
+        $bookingMoneyTransaction = $this->clientModel->getBookingMoneyTransaction($bookingId);
+        
+        // If still not found, create a display entry from the agreement
+        if (!$bookingMoneyTransaction) {
+            $bookingMoneyTransaction = [
+                'id' => 'booking-' . $bookingId,
+                'payment_date' => $clientDetails['booking_date'],
+                'formatted_date' => date('d M, Y', strtotime($clientDetails['booking_date'])),
+                'payment_type' => 'booking_money',
+                'installment_label' => 'BOOKING',
+                'payment_details' => 'Booking Agreement',
+                'amount' => $clientDetails['booking_money'],
+                'land_share_amount' => $clientDetails['booking_money'],
+                'service_fee' => 0,
+                'payment_status' => 'paid',
+                'status_class' => 'bg-success',
+                'status_text' => 'Paid',
+                'payment_method' => 'agreement',
+                'client_name' => $clientDetails['client_name'],
+                'project_name' => $clientDetails['project_name'],
+                'flat_no' => $clientDetails['flat_no'],
+                'unit_name' => $clientDetails['unit_name']
+            ];
+        }
+        
+        // Add booking money transaction at the beginning
+        array_unshift($transactions, $bookingMoneyTransaction);
+    }
+
+    // Get payment summary statistics
+    $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+
+    $this->view("accounts/cashIn/clients-cash-in-history", [
+        "current_route" => "clients-cash-in-history",
+        "page_title" => "Transaction History - " . $clientDetails['client_name'],
+        "clientDetails" => $clientDetails,
+        "transactions" => $transactions,
+        "paymentSummary" => $paymentSummary
+    ]);
+}
  public function getClientLands($leadId = null)
     {
         if (!$leadId) {
@@ -128,6 +148,25 @@ class AccountClientController extends Controller
             "paymentStats" => $paymentStats
         ]);
     }
+    public function CedView()
+    {
+        // Get all clients (booked leads with their details)
+        $clients = $this->clientModel->getAllClients();
+
+        // Get payment statistics for each client
+        $paymentStats = $this->clientModel->getPaymentStatistics();
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $this->view("ced/ced-dashboard", [
+            "current_route" => "ced-dashboard",
+            "page_title" => "Clients Management - Cash In View",
+            "clients" => $clients,
+            "paymentStats" => $paymentStats
+        ]);
+    }
     
 
 public function indexTwoView($bookingId = null)
@@ -163,7 +202,80 @@ public function indexTwoView($bookingId = null)
         "paymentSummary" => $paymentSummary
     ]);
 }
+/**
+ * View booking money invoice/receipt
+ */
+public function viewBookingInvoice($bookingId = null)
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 
+    // Get booking_id from URL parameter or query string
+    if (!$bookingId) {
+        $bookingId = $_GET['booking_id'] ?? null;
+    }
+
+    if (!$bookingId) {
+        setError("No booking ID provided");
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+        exit;
+    }
+
+    // Get client details
+    $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+
+    if (!$clientDetails) {
+        setError("Client not found");
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+        exit;
+    }
+
+    // Check if there's an actual booking money payment in the database
+    $bookingMoneyPayment = $this->clientModel->getBookingMoneyTransaction($bookingId);
+    
+    if ($bookingMoneyPayment) {
+        // If there's an actual payment record, redirect to the regular invoice
+        header("Location: {$GLOBALS['base_url']}/payment-invoice?payment_id=" . $bookingMoneyPayment['id']);
+        exit;
+    }
+
+    // Create a payment object from the booking agreement
+    $payment = [
+        'id' => 'booking-' . $bookingId,
+        'payment_date' => $clientDetails['booking_date'],
+        'payment_type' => 'booking_money',
+        'amount' => $clientDetails['booking_money'],
+        'land_share_amount' => $clientDetails['booking_money'],
+        'service_fee' => 0,
+        'payment_status' => 'paid',
+        'payment_method' => 'agreement',
+        'transaction_ref' => '',
+        'bank_name' => '',
+        'bank_account_no' => '',
+        'cheque_no' => '',
+        'online_type' => '',
+        'installment_label' => 'BOOKING',
+        'payment_details' => 'Booking Agreement',
+        'client_name' => $clientDetails['client_name'],
+        'project_name' => $clientDetails['project_name'],
+        'flat_no' => $clientDetails['flat_no'],
+        'unit_name' => $clientDetails['unit_name'],
+        'flat_id' => $clientDetails['flat_id'],
+        'floor_no' => $clientDetails['flat_no']
+    ];
+
+    // Use the same invoice view
+    $root = dirname(dirname(__DIR__));
+    $viewPath = $root . '/app/views/accounts/cashIn/invoice.php';
+    
+    if (!file_exists($viewPath)) {
+        die("View file not found at: " . $viewPath);
+    }
+    
+    include $viewPath;
+    exit;
+}
     /*
      * Show add transaction form
      */

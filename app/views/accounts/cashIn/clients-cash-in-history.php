@@ -363,6 +363,7 @@ $show_breadcrumb = true;
                                         </span>
                                     </td>
                                     <td>
+                                        
                                         <div class="d-flex align-items-center justify-content-start gap-10">
                                             <?php if (!empty($transaction['id']) && strpos($transaction['id'], 'booking-') === false): ?>
                                                 <!-- INVOICE BUTTON -->

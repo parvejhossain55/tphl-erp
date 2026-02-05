@@ -67,18 +67,26 @@ class CashoutRequestController extends Controller
         $filters = [
             'status' => $_GET['status'] ?? null,
             'user_id' => $_GET['user_id'] ?? null,
+            'project_id' => $_GET['project_id'] ?? null,
+            'office' => $_GET['office'] ?? null,
             'start_date' => $_GET['start_date'] ?? null,
             'end_date' => $_GET['end_date'] ?? null
         ];
 
         $requests = $this->cashoutModel->getAllRequests($filters);
         $statistics = $this->cashoutModel->getStatistics();
+        $projects = $this->cashoutModel->getAllProjects();
+        
+        // Get all unique offices for filter dropdown
+        $offices = $this->getUniqueOffices();
 
         $this->view("accounts/cashout/admin-request-list", [
             "current_route" => "admin-cashout-requests",
             "page_title" => "Cashout Requests Management",
             "requests" => $requests,
             "statistics" => $statistics,
+            "projects" => $projects,
+            "offices" => $offices,
             "filters" => $filters,
             "isAdmin" => true,
             "userRole" => $this->userRole
@@ -88,10 +96,26 @@ class CashoutRequestController extends Controller
     // Create form
     public function create()
     {
+        $projects = $this->cashoutModel->getAllProjects();
+        
+        // Define office options
+        $officeOptions = [
+            '' => 'Select Office (Optional)',
+            'Head Office' => 'Head Office',
+            'Regional Office' => 'Regional Office',
+            'Site Office' => 'Site Office',
+            'Branch Office' => 'Branch Office',
+            'Corporate Office' => 'Corporate Office',
+            'Marketing Office' => 'Marketing Office',
+            'Sales Office' => 'Sales Office'
+        ];
+
         $this->view("accounts/cashout/create-request", [
             "current_route" => "create-cashout-request",
             "page_title" => "Request Cashout",
-            "isAdmin" => $this->isAdminUser()
+            "isAdmin" => $this->isAdminUser(),
+            "projects" => $projects,
+            "officeOptions" => $officeOptions
         ]);
     }
 
@@ -124,7 +148,9 @@ class CashoutRequestController extends Controller
             'description' => trim($_POST['description'] ?? ''),
             'payment_method' => $_POST['payment_method'] ?? 'cash',
             'transaction_ref' => trim($_POST['transaction_ref'] ?? ''),
-            'attachment_path' => $attachmentPath
+            'attachment_path' => $attachmentPath,
+            'project_id' => !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null,
+            'office' => !empty($_POST['office']) ? trim($_POST['office']) : null
         ];
 
         // Validation
@@ -244,32 +270,34 @@ class CashoutRequestController extends Controller
             "userId" => $this->userId
         ]);
     }
-public function syncAllApprovals()
-{
-    if (!$this->isAdminUser()) {
-        setError("Unauthorized access.");
-        header("Location: {$GLOBALS['base_url']}/cashout-requests");
+
+    public function syncAllApprovals()
+    {
+        if (!$this->isAdminUser()) {
+            setError("Unauthorized access.");
+            header("Location: {$GLOBALS['base_url']}/cashout-requests");
+            exit;
+        }
+
+        // Get all cashout requests with pending approval status
+        $sql = "SELECT cr.id FROM cashout_requests cr
+                LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
+                WHERE cr.status = 'pending' AND ar.status IN ('approved', 'partial', 'rejected')";
+        
+        $result = $this->db->query($sql);
+        $synced = 0;
+        
+        while ($row = $result->fetch_assoc()) {
+            if ($this->syncWithApprovalSystem($row['id'])) {
+                $synced++;
+            }
+        }
+        
+        setSuccess("Successfully synced {$synced} requests with approval system.");
+        header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
         exit;
     }
 
-    // Get all cashout requests with pending approval status
-    $sql = "SELECT cr.id FROM cashout_requests cr
-            LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
-            WHERE cr.status = 'pending' AND ar.status IN ('approved', 'partial', 'rejected')";
-    
-    $result = $this->db->query($sql);
-    $synced = 0;
-    
-    while ($row = $result->fetch_assoc()) {
-        if ($this->syncWithApprovalSystem($row['id'])) {
-            $synced++;
-        }
-    }
-    
-    setSuccess("Successfully synced {$synced} requests with approval system.");
-    header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
-    exit;
-}
     // Add payment
     public function addPayment()
     {
@@ -298,12 +326,16 @@ public function syncAllApprovals()
             'payment_method' => $_POST['payment_method'] ?? 'cash',
             'transaction_ref' => trim($_POST['transaction_ref'] ?? ''),
             'payment_date' => $_POST['payment_date'] ?? date('Y-m-d'),
+            'bank_name' => $_POST['bank_name'] ?? null,
+            'bank_account_no' => $_POST['bank_account_no'] ?? null,
+            'cheque_no' => $_POST['cheque_no'] ?? null,
+            'online_type' => $_POST['online_type'] ?? null,
             'created_by' => $this->userId
         ];
 
         if ($data['amount'] <= 0) {
             setError("Please enter a valid amount.");
-            header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
             exit;
         }
 
@@ -313,7 +345,7 @@ public function syncAllApprovals()
             // Update due amount
             $request = $this->cashoutModel->getRequestById($requestId);
             $totalPaid = $this->paymentModel->getTotalPaid($requestId);
-            $dueAmount = $request['amount'] - $totalPaid;
+            $dueAmount = ($request['approved_amount'] ?? $request['amount']) - $totalPaid;
 
             $this->cashoutModel->updateDueAmount($requestId, $dueAmount);
 
@@ -329,7 +361,7 @@ public function syncAllApprovals()
             setError($result['message']);
         }
 
-        header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
+        header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
         exit;
     }
 
@@ -375,7 +407,8 @@ public function syncAllApprovals()
         header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
         exit;
     }
-    // Add this method to handle sync with approval system
+
+    // Sync with approval system
     private function syncWithApprovalSystem($cashoutId)
     {
         // Get approval request details
@@ -417,6 +450,7 @@ public function syncAllApprovals()
 
         return false;
     }
+
     // Reject request
     public function reject()
     {
@@ -500,7 +534,21 @@ public function syncAllApprovals()
         exit;
     }
 
-    // Helper methods (keep same as before)
+    // Helper method to get unique offices for filter
+    private function getUniqueOffices()
+    {
+        $sql = "SELECT DISTINCT office FROM cashout_requests WHERE office IS NOT NULL AND office != '' ORDER BY office";
+        $result = $this->db->query($sql);
+        
+        $offices = [];
+        while ($row = $result->fetch_assoc()) {
+            $offices[] = $row['office'];
+        }
+        
+        return $offices;
+    }
+
+    // Helper methods
     private function isAdminUser()
     {
         $adminRoles = [1, 3, 4, 5, 6];
@@ -509,7 +557,6 @@ public function syncAllApprovals()
 
     private function handleFileUpload($file)
     {
-        // Same as before
         $allowedTypes = ['doc', 'docx', 'pdf', 'jpg', 'jpeg', 'png'];
         $maxSize = 5 * 1024 * 1024;
 
@@ -610,8 +657,11 @@ public function syncAllApprovals()
         fputcsv($output, [
             'ID',
             'Requester',
+            'Project',
+            'Office',
             'Purpose/Paid To',
             'Amount',
+            'Approved Amount',
             'Due Amount',
             'Description',
             'Payment Method',
@@ -628,8 +678,11 @@ public function syncAllApprovals()
             fputcsv($output, [
                 $request['id'],
                 $request['requester_name'],
+                $request['project_name'] ?? 'N/A',
+                $request['office'] ?? 'N/A',
                 $request['purpose_paid_to'],
                 $request['amount'],
+                $request['approved_amount'] ?? $request['amount'],
                 $request['due_amount'],
                 $request['description'],
                 $request['payment_method'],
@@ -667,4 +720,17 @@ public function syncAllApprovals()
         header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
         exit;
     }
+    public function getAllProjects()
+{
+    $sql = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
+    $result = $this->db->query($sql);
+    
+    $projects = [];
+    while ($row = $result->fetch_assoc()) {
+        $projects[] = $row;
+    }
+    
+    return $projects;
 }
+}
+?> 

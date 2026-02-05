@@ -60,7 +60,7 @@ class LoginController extends Controller
                     } elseif ($role === 6) {
                         $redirect_url = "{$GLOBALS['base_url']}/accounts-dashboard";
                     } elseif ($role === 7) {
-                        $redirect_url = "{$GLOBALS['base_url']}/clients-cashin-view";
+                        $redirect_url = "{$GLOBALS['base_url']}/ced-dashboard";
                     } elseif ($role === 8) {
                         $redirect_url = "{$GLOBALS['base_url']}/user-dashboard";
                     } elseif ($role === 9) {
