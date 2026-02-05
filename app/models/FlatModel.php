@@ -209,6 +209,7 @@ public function find($id)
         $stmt = $this->db->prepare("SELECT f.id, f.flat_name,f.is_booked,f.sqft,f.floor_no
                                      FROM flats f
                                      WHERE f.project_id = ?
+                                     AND f.deleted_at IS NULL
                                      ORDER BY f.flat_name ASC");
         $stmt->bind_param("i", $projectId);
         $stmt->execute();

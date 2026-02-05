@@ -95,14 +95,18 @@ class Lead extends Model
     public function getAllWithFilter($year = null, $month = null)
     {
         $sql = "
-        SELECT 
-            l.*,
-            u.id AS assigned_id,
-            u.full_name AS agent_name
-        FROM leads AS l
-        LEFT JOIN users AS u ON l.assigned_id = u.id
-        Where l.deleted_at IS NULL
-        ";
+    SELECT 
+        l.*,
+        u.id AS assigned_id,
+        u.full_name AS agent_name,
+        p.name AS project_name
+    FROM leads AS l
+    LEFT JOIN users AS u ON l.assigned_id = u.id
+    LEFT JOIN lead_bookings AS lb ON lb.lead_id = l.id
+    LEFT JOIN projects AS p ON lb.project_id = p.id
+    WHERE l.deleted_at IS NULL
+";
+
 
 
         $params = [];

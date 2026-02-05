@@ -25,7 +25,7 @@
                     </li>
                 <?php endif; ?>
 
-                <!-- Sales Head CATEGORY -->
+                <!-- Sales Manager CATEGORY -->
 
                 <?php if (hasPermission("sales & business")):  ?>
 
@@ -131,19 +131,9 @@
                         </a>
                     </li>
 
-                    <!-- Clients For Login  -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/onboard-access-client-lists" class="sidebar__menu-item <?= isActive('onboard-access-client-lists',$current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
-                            <span class="sidebar__menu-label">Access Onboard Clients</span>
-                        </a>
-                    </li>
+
                 <?php endif; ?>
-
-
-
-
-                <!--End Sales CATEGORY -->
+                <!--End Sales Manager CATEGORY -->
 
 
                 <!-- For Sales head -->
@@ -164,11 +154,14 @@
                             <a href="<?= $base_url ?>/user-dashboard" class="sidebar__menu-item <?= isActive('user-dashboard', $current_route) ?>">My Dashboard</a>
                         </li>
                         <li class="slide">
+                            <a href="<?= $base_url ?>/today-leads" class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">Today Leads Assigned</a>
+                        </li>
+                        <li class="slide">
                             <a href="<?= $base_url ?>/task-dashboard" class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
-
                                 <span class="sidebar__menu-label">Task Dashbaord</span>
                             </a>
                         </li>
+                        
                         <li class="slide">
                             <a href="<?= $base_url ?>/create-lead" class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">Add Lead</a>
                         </li>
@@ -247,7 +240,13 @@
                             </li>
                         </ul>
                     </li>
-
+                    <!-- Inventroy -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/inventory-lists" class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
+                            <span class="sidebar__menu-label">Project Wise Inventory</span>
+                        </a>
+                    </li>
 
                 <?php endif; ?>
                 <!--End For Sales Team Head  -->
@@ -325,7 +324,7 @@
                                 <a class="sidebar__menu-item <?= isActive('leave-types', $current_route) ?>" href="<?= $base_url ?>/leave-types">Add Leave Type</a>
                             </li>
                             <li class="slide <?= isActive('leave-lists', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists">Employee Leave List</a>
+                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists">Employee Leave Request List</a>
                             </li>
                         </ul>
                     </li>
@@ -386,9 +385,6 @@
                     <li class="sidebar__menu-category">
                         <span class="category-name">CED</span>
                     </li>
-
-
-
                     <!-- Cash In Manage -->
                     <li class="slide has-sub <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view'], $current_route) ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['clients-cashin-view', 'clients-cash-in-history-view'], $current_route) ?>">
@@ -403,6 +399,20 @@
 
                         </ul>
                     </li>
+                    <!-- Clients For Login  -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/onboard-access-client-lists" class="sidebar__menu-item <?= isActive('onboard-access-client-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="sidebar__menu-label">Access Onboard Clients</span>
+                        </a>
+                    </li>
+                   
+                        <li class="slide <?= isActive('create-user', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('create-user', $current_route) ?>" href="<?= $base_url ?>/create-user">
+                                 <div class="side-menu__icon"><i class="fa-solid fa-user"></i></div>
+                            <span class="sidebar__menu-label">Add User</span>
+                            </a>
+                        </li>
 
                 <?php endif; ?>
                 <!--End CED CATEGORY -->

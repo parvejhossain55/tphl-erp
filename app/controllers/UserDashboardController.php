@@ -27,18 +27,58 @@ class UserDashboardController extends Controller
             echo "User not logged in";
             return;
         }
+        $bookingCount = $this->bookingModel->getBookingCountByLead();
+        $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
 
         $loggedUserId = (int) $_SESSION['user']['id'];
 
         // only assigned today leads for logged user
         $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
 
-        $this->view("sales-executive/user-dashboard", [
-            "current_route" => "user-dashboard",
-            "page_title"    => "User Dashboard",
+        $this->view("sales-executive/today-leads", [
+            "current_route" => "today-leads",
+            "page_title"    => "Leads Today Assign",
             "todayLeads"    => $todayLeads,
+            "bookingCount"    => $bookingCount,
+            "todayFollowUp"    => $todayFollowUp,
         ]);
     }
+    public function dashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user']['id'])) {
+            echo "User not logged in";
+            return;
+        }
+
+        $loggedUserId = (int) $_SESSION['user']['id'];
+
+        // only assigned today leads for logged user
+        $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
+        $todayLeadsCount = count($todayLeads);
+        $todayTask = $this->taskModel->getTodayTaskCountByUser($loggedUserId);
+    $myTotalShareSold = $this->bookingModel->getMyTotalFlatSales($loggedUserId);
+
+        $bookingCount   = $this->bookingModel->getBookingCountByLead();
+        // $todayFollowUp  = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
+        $todayFollowUp  = $this->followUpModel->getTodayFollowUpCountByUser($loggedUserId);
+
+        $this->view("sales-executive/my-dashboard", [
+            "current_route"   => "my-dashboard",
+            "page_title"      => "my-dashboard",
+            "todayLeads"      => $todayLeads,
+            "bookingCount"    => $bookingCount,
+            "todayFollowUp"   => $todayFollowUp,
+            "todayLeadsCount"   => $todayLeadsCount,
+            "todayTask"   => $todayTask,
+            "myTotalShareSold"   => $myTotalShareSold,
+
+        ]);
+    }
+
 
 
 
@@ -86,23 +126,24 @@ class UserDashboardController extends Controller
         ]);
     }
 
-public function myOnboardProject()
-{
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+    public function myOnboardProject()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        $year  = $_GET['year']  ?? null;
+        $month = $_GET['month'] ?? null;
+
+        $myOnboardProjects = $this->bookingModel
+            ->getAllMyOnboardProject($userId, $year, $month);
+
+        $this->view('sales-executive/my-onboard-projects', [
+            'projects' => $myOnboardProjects
+        ]);
     }
 
-    $userId = $_SESSION['user']['id'] ?? 0;
-
-    $year  = $_GET['year']  ?? null;
-    $month = $_GET['month'] ?? null;
-
-    $myOnboardProjects = $this->bookingModel
-        ->getAllMyOnboardProject($userId, $year, $month);
-
-    $this->view('sales-executive/my-onboard-projects', [
-        'projects' => $myOnboardProjects
-    ]);
-}
 
 }

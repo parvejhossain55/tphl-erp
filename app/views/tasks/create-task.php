@@ -36,7 +36,7 @@
                                               <div class="form__input">
                                                   <select id="user_id" name="user_id" class="form-select">
                                                       <?php foreach ($users as $user): ?>
-                                                          <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?>-<?= $user['designation_name'] ?? 'N/A' ?></option>
+                                                          <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?> - <?= $user['designation_name'] ?? 'N/A' ?></option>
                                                       <?php endforeach; ?>
                                                   </select>
 

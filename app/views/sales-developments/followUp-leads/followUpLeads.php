@@ -32,7 +32,7 @@ $show_breadcrumb = true;
                     <input type="hidden" name="lead_id" value="<?= $selected_lead_id ?? '' ?>">
                     <!-- Lead -->
                     <!-- <div class="col-lg-6">
-                        <label class="form-label">Select Lead*</label>
+                        <label class="form__input-title">Select Lead*</label>
                         <select name="lead_id" class="form-select" required>
                             <option value="">Select Lead</option>
                             <php foreach ($leads as $lead): ?>
@@ -43,7 +43,7 @@ $show_breadcrumb = true;
 
                     <!-- Project -->
                     <div class="col-lg-6">
-                        <label class="form-label">Project</label>
+                        <label class="form__input-title">Project</label>
                         <select name="project_id" id="projectSelect" class="form-select">
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>
@@ -54,14 +54,14 @@ $show_breadcrumb = true;
 
                     <!-- Flat -->
                     <!-- <div class="col-lg-6">
-                        <label class="form-label">Flat</label>
+                        <label class="form__input-title">Flat</label>
                         <select name="flat_id" id="flatSelect" class="form-select">
                             <option value="">Select Flat</option>
                         </select>
                     </div> -->
                     <!-- Flat -->
                     <div class="col-lg-6">
-                        <label class="form-label">Flat / Unit *</label>
+                        <label class="form__input-title">Flat / Unit *</label>
                         <select id="flatSelect" name="flat_id" class="form-select " data-live-search="true">
 
                             <option value="">Select Flat</option>
@@ -70,19 +70,19 @@ $show_breadcrumb = true;
 
                     <!-- Follow Up Date -->
                     <div class="col-lg-6">
-                        <label class="form-label">Follow Up Date*</label>
+                        <label class="form__input-title">Follow Up Date*</label>
                         <input type="date" name="follow_up_date" class="form-control" required>
                     </div>
 
                     <!-- Follow Up Time -->
                     <div class="col-lg-6">
-                        <label class="form-label">Follow Up Time</label>
+                        <label class="form__input-title">Follow Up Time</label>
                         <input type="time" name="follow_up_time" class="form-control">
                     </div>
 
                     <!-- Follow Up Type -->
                     <div class="col-lg-6">
-                        <label class="form-label">Follow Up Type*</label>
+                        <label class="form__input-title">Follow Up Type*</label>
                         <select name="follow_up_type" class="form-select" required>
                             <option value="">Select Type</option>
                             <option value="call">Call</option>
@@ -93,7 +93,7 @@ $show_breadcrumb = true;
                         </select>
                     </div>
                     <div class="col-lg-6">
-                        <label class="form-label">Assign user For follow up*</label>
+                        <label class="form__input-title">Assign user For follow up*</label>
                         <select name="assigned_with" class="form-select">
                             <option value="">Select User</option>
                             <?php foreach ($assignedUsers as $user): ?>
@@ -107,19 +107,19 @@ $show_breadcrumb = true;
 
                     <!-- Discussion Note -->
                     <div class="col-lg-12">
-                        <label class="form-label">Discussion Note</label>
+                        <label class="form__input-title">Discussion Note</label>
                         <textarea name="discussion_note" class="form-control" rows="3"></textarea>
                     </div>
 
                     <!-- Next Follow Up Date -->
                     <div class="col-lg-6">
-                        <label class="form-label">Next Follow Up Date</label>
+                        <label class="form__input-title">Next Follow Up Date</label>
                         <input type="date" name="next_follow_up_date" class="form-control">
                     </div>
 
                     <!-- Next Action -->
                     <div class="col-lg-6">
-                        <label class="form-label">Next Action</label>
+                        <label class="form__input-title">Next Action</label>
                         <select name="next_action" class="form-select">
                             <option value="">Select Action</option>
                             <option value="site visit">Site Visit</option>

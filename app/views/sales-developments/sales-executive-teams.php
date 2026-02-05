@@ -9,10 +9,10 @@ $show_breadcrumb = false;
    
 </div>
 <form method="GET" action="">
-    <div class="row g-20 mb-20 justify-content-between align-items-end">
+    <div class="row g-20 mb-20  align-items-end">
 
         <!-- Search by Name / Phone / Email -->
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4">
+        <div class="col-xxl-6 col-xl-6  col-md-6">
             <div class="card__wrapper">
                 <div class="search-box">
                     <input type="text" class="form-control" name="q" placeholder="User Name / Phone / Email"
@@ -21,24 +21,9 @@ $show_breadcrumb = false;
             </div>
         </div>
 
-        <!-- Role Filter -->
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4">
-            <div class="card__wrapper">
-                <div class="from__input-box">
-                    <select class="form-control" name="role">
-                        <option value="">All Roles</option>
-                        <?php foreach ($roles as $role): ?>
-                            <option value="<?= $role['id'] ?>" <?= (isset($selectedRole) && $selectedRole == $role['id']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($role['name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            </div>
-        </div>
 
         <!-- Buttons -->
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4">
+        <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-4">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center justify-content-between gap-15">
                     <button type="submit" class="btn btn-secondary">Filters</button>

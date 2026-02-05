@@ -11,26 +11,26 @@ $page = "create Lead"
                 <!-- Lead Name -->
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="leadName">Lead Name*</label>
+                        <label class="form__input-title" for="leadName">Lead Name <span class="text-danger">*</span></label>
                         <input class="form-control" name="full_name" id="leadName" type="text">
                     </div>
                 </div>
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="leadName">Father Name</label>
+                        <label class="form__input-title" for="leadName">Father Name <span class="text-danger">*</span></label>
                         <input class="form-control" name="father_name" id="father_name" type="text">
                     </div>
                 </div>
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="leadName">Mother Name</label>
+                        <label class="form__input-title" for="leadName">Mother Name <span class="text-mute">(optional)</span></label>
                         <input class="form-control" name="mother_name" id="mother_name" type="text">
                     </div>
                 </div>
                 <div class="col-lg-6">
                     <div class="from__input-box">
                         <div class="form__input-title">
-                            <label class="form-check-label">Date Of Birth <span>*</span></label>
+                            <label class="form-check-label">Date Of Birth <small class="text-dark">(optional)</small></label>
                         </div>
                         <div class="form__input">
                             <input name="dob" class="form-control" id="humanFriendlyDates" type="text" readonly="readonly">
@@ -46,42 +46,42 @@ $page = "create Lead"
                 </div>
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title">Campaign Name</label>
+                        <label class="form__input-title">Project Campaign Name <span class="text-mute">(optional)</span></label>
                         <input type="text" class="form-control" name="campaign_name">
                     </div>
                 </div>
 
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title">Platform</label>
+                        <label class="form__input-title">Platform </label><span class="text-mute">(optional)</span>
                         <input type="text" class="form-control" name="platform">
                     </div>
                 </div>
 
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title">Which Apartment Size Interested</label>
+                        <label class="form__input-title">Which Apartment Size Interested <span class="text-mute">(optional)</span> </label>
                         <input type="text" class="form-control" name="which_apartment_size_are_you_interested_in">
                     </div>
                 </div>
 
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title">Which Floor for Shop</label>
+                        <label class="form__input-title">Which Floor for Shop <span class="text-mute">(optional)</span></label>
                         <input type="text" class="form-control" name="which_floor_are_you_for_shop">
                     </div>
                 </div>
 
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title">When Are Planning to Buy</label>
+                        <label class="form__input-title">When Are Planning to Buy <span class="text-mute">(optional)</span> </label>
                         <input type="date" class="form-control" name="when_are_you_planning_to_buy">
                     </div>
                 </div>
 
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title">Would You Like to Schedule a Site Visit?</label>
+                        <label class="form__input-title">Would You Like to Schedule a Site Visit? <span class="text-mute">(optional)</span></label>
                         <select class="form-select" name="would_you_like_to_schedule_a_site_visit">
                             <option value="">Select</option>
                             <option value="1">Yes</option>
@@ -106,7 +106,7 @@ $page = "create Lead"
 
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title">City</label>
+                        <label class="form__input-title">City <span class="text-mute">(optional)</span></label>
                         <input type="text" class="form-control" name="city">
                     </div>
                 </div>
@@ -135,7 +135,7 @@ $page = "create Lead"
                 <!-- Phone -->
                 <div class="col-md-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="phoneNumber">Mobile Number*</label>
+                        <label class="form__input-title" for="phoneNumber">Mobile Number <span class="text-danger">*</span></label>
                         <input class="form-control" name="phone_number" id="phoneNumber" type="text">
                     </div>
                 </div>
@@ -143,7 +143,7 @@ $page = "create Lead"
                 <!-- Alternate Phone -->
                 <div class="col-md-6">
                     <div class="from__input-box">
-                        <label for="altPhone">Alternate Number</label>
+                        <label for="altPhone">Alternate Number <span class="text-mute">(optional)</span></label>
                         <input class="form-control" name="alt_phone_number" id="altPhone" type="text">
                     </div>
                 </div>
@@ -151,17 +151,17 @@ $page = "create Lead"
                 <!-- Email -->
                 <div class="col-md-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="emailAddress">Email*</label>
+                        <label class="form__input-title" for="emailAddress">Email* <span class="text-danger">*</span></label>
                         <input class="form-control" name="email" id="emailAddress" type="email">
                     </div>
                 </div>
 
                 <!-- Source -->
                 <div class="col-xl-6">
-                    <label>Lead Source </label>
+                    <label>Lead Source <span class="text-danger">*</span></label>
                     <div class="d-flex gap-2">
                         <select name="source_type_id" class="form-control" style="flex:1;">
-                            <option value="">Select Source</option>
+                            <option value="">Select Source </option>
                             <?php foreach ($sources as $source): ?>
                                 <option value="<?= $source['id']; ?>"><?= $source['name']; ?></option>
                             <?php endforeach; ?>
@@ -178,7 +178,7 @@ $page = "create Lead"
                 <!-- Preferred Location -->
                 <div class="col-md-6">
                     <div class="from__input-box">
-                        <label>Preferred Location</label>
+                        <label>Preferred Location <span class="text-danger">*</span></label>
                         <div class="d-flex gap-2">
                             <select name="sourcepref_location_id_type_id" class="form-control" required style="flex:1;">
                                 <option value="">Select Location</option>
@@ -196,13 +196,13 @@ $page = "create Lead"
                 <!-- Tags -->
                 <div class="col-md-6">
                     <div class="tagify__wrapper">
-                        <label>Extra notes</label>
+                        <label>Extra notes <span class="text-mute">(optional)</span></label>
                         <input id="TagifyBasic" class="form-control" name="tags">
                     </div>
                 </div>
 
                 <!-- Project Type -->
-                <div class="col-md-6">
+                <div class="col-md-6 d-none">
                     <div class="from__input-box">
                         <label>Preferred Project *</label>
                         <select name="project_type" class="form-select">
@@ -215,7 +215,7 @@ $page = "create Lead"
                 <!-- Interest On -->
                 <div class="col-md-6 d-none">
                     <div class="from__input-box">
-                        <label>Prject Campaign Name*</label>
+                        <label>Prject Campaign Name <span class="text-mute">(optional)</span></label>
                         <input type="text" class="form-control" name="campaign_name">
                     </div>
                 </div>
@@ -223,7 +223,7 @@ $page = "create Lead"
                 <!-- Preferred Flat Size -->
                 <div class="col-md-6 ">
                     <div class="from__input-box">
-                        <label>Preferred Size*</label>
+                        <label>Preferred Size <span class="text-mute">(optional)</span></label>
                         <input type="text" class="form-control" name="pref_flat_size">
                     </div>
                 </div>
@@ -252,21 +252,21 @@ $page = "create Lead"
                 <!-- Address -->
                 <div class="col-md-6">
                     <div class="from__input-box">
-                        <label>Present Address</label>
+                        <label>Present Address <span class="text-danger">*</span></label>
                         <textarea class="form-control" name="address"></textarea>
                     </div>
                 </div>
                 <!-- Description -->
                 <div class="col-md-6">
                     <div class="from__input-box">
-                        <label>Permanent Address</label>
+                        <label>Permanent Address <span class="text-mute">(optional)</span></label>
                         <textarea class="form-control" name="permanent_address"></textarea>
                     </div>
                 </div>
                 <!-- Preferred Flat Size -->
                 <div class="col-md-6 ">
                     <div class="from__input-box">
-                        <label>NID/Passpor Number*</label>
+                        <label>NID/Passpor Number <span class="text-mute">(optional)</span></label>
                         <input type="text" class="form-control" name="nid_or_passport">
                     </div>
                 </div>
@@ -275,11 +275,11 @@ $page = "create Lead"
 
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="assignedUser">Assigned User*</label>
+                        <label class="form__input-title" for="assignedUser">Assigned User <span class="text-danger">*</span></label>
                         <select name="assigned_id" id="assignedUser" class="form-select">
                             <option value="">Select</option>
                             <?php foreach ($assignedUsers as $user) : ?>
-                                <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?></option>
+                                <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?> - <?= $user['role_name'] ?> </option>
                             <?php endforeach; ?>
                         </select>
                     </div>

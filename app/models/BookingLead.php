@@ -183,8 +183,69 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     }
 
     // Get a single follow-up by ID
+    // public function create($data)
+    // {
+    //     $sql = "
+    //     INSERT INTO lead_bookings
+    //     (
+    //         lead_id,
+    //         project_id,
+    //         flat_id,
+    //         created_by,
+    //         agreement_value,
+    //         booking_date,
+    //         booking_status,
+    //         discount_amount,
+    //         approval_status,
+    //         sales_by_id
+    //     )
+    //     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    // ";
+
+    //     $stmt = $this->db->prepare($sql);
+    //     if (!$stmt) {
+    //         throw new Exception($this->db->error);
+    //     }
+
+    //     $stmt->bind_param(
+    //         "iiiidssssi",
+    //         $data['lead_id'],
+    //         $data['project_id'],
+    //         $data['flat_id'],
+    //         $data['created_by'],
+    //         $data['agreement_value'],
+    //         $data['booking_date'],
+    //         $data['booking_status'],
+    //         $data['discount_amount'],
+    //         $data['approval_status'],
+    //         $data['sales_by_id']
+    //     );
+
+    //     if ($stmt->execute()) {
+    //         return $this->db->insert_id;
+    //     }
+
+    //     return false;
+    // }
     public function create($data)
     {
+        // 1️⃣ discount_amount
+        $discountAmount = isset($data['discount_amount']) && $data['discount_amount'] !== ''
+            ? (float) $data['discount_amount']
+            : null;
+
+        // 2️⃣ approval_status (ENUM-safe)
+        $allowedStatuses = ['not_required', 'pending', 'approved', 'rejected'];
+        $approvalStatus = $data['approval_status'] ?? 'not_required';
+
+        // sanitize: match ENUM exactly
+        if (!in_array(strtolower($approvalStatus), $allowedStatuses)) {
+            $approvalStatus = 'not_required';
+        } else {
+            $approvalStatus = strtolower($approvalStatus);
+        }
+
+        // 3️⃣ SQL
         $sql = "
         INSERT INTO lead_bookings
         (
@@ -207,26 +268,30 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             throw new Exception($this->db->error);
         }
 
+        // 4️⃣ Bind params (note: approval_status is string 's')
         $stmt->bind_param(
             "iiiidssssi",
-            $data['lead_id'],
-            $data['project_id'],
-            $data['flat_id'],
-            $data['created_by'],
-            $data['agreement_value'],
-            $data['booking_date'],
-            $data['booking_status'],
-            $data['discount_amount'],
-            $data['approval_status'],
-            $data['sales_by_id']
+            $data['lead_id'],         // i
+            $data['project_id'],      // i
+            $data['flat_id'],         // i
+            $data['created_by'],      // i
+            $data['agreement_value'], // d
+            $data['booking_date'],    // s
+            $data['booking_status'],  // s
+            $discountAmount,          // d
+            $approvalStatus,          // s  ✅ ENUM = string
+            $data['sales_by_id']      // i
         );
 
+        // 5️⃣ Execute
         if ($stmt->execute()) {
             return $this->db->insert_id;
         }
 
-        return false;
+        throw new Exception($stmt->error);
     }
+
+
 
 
     // Update follow-up by ID
@@ -391,55 +456,173 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     }
 
 
-    public function getSalesReport($type = 'daily')
+    public function getSalesReport($type = 'daily', $search = '', $projectId = '', $userId = '')
     {
-        $query = "SELECT lb.*, l.full_name AS client_name, l.phone, p.name AS project_name,
-                     f.flat_name, f.price_value,
-                     u.full_name AS user_name,u.id AS user_id,
-                     us.full_name AS assigned_user_name,us.id AS user_id 
-              FROM lead_bookings lb
-              LEFT JOIN leads l ON lb.lead_id = l.id
-              LEFT JOIN projects p ON lb.project_id = p.id
-              LEFT JOIN flats f ON lb.flat_id = f.id
-              LEFT JOIN users u ON lb.sales_by_id = u.id
-              LEFT JOIN users us ON l.assigned_id= us.id
-              WHERE lb.deleted_at IS NULL";
-
-        // Filter by type
         if ($type === 'daily') {
+            $query = "SELECT 
+                lb.*, 
+                l.full_name AS client_name, 
+                l.phone, 
+                p.name AS project_name, 
+                l.id as lead_id,
+                f.flat_name, 
+                f.sqft,
+                (f.price_value - IFNULL(lb.discount_amount,0)) AS final_price,
+                u.full_name AS user_name, 
+                u.id AS sales_user_id,
+                us.full_name AS assigned_user_name, 
+                us.id AS user_id
+          FROM lead_bookings lb
+          LEFT JOIN leads l ON lb.lead_id = l.id
+          LEFT JOIN projects p ON lb.project_id = p.id
+          LEFT JOIN flats f ON lb.flat_id = f.id
+          LEFT JOIN users u ON lb.sales_by_id = u.id
+          LEFT JOIN users us ON l.assigned_id = us.id
+          WHERE lb.deleted_at IS NULL";
+
+            $types = '';
+            $params = [];
+
+            if (!empty($userId)) {
+                $query .= " AND lb.sales_by_id = ?";
+                $types .= 'i';
+                $params[] = $userId;
+            }
+
+            if (!empty($projectId)) {
+                $query .= " AND lb.project_id = ?";
+                $types .= 'i';
+                $params[] = $projectId;
+            }
+
+            if (!empty($search)) {
+                $query .= " AND (l.full_name LIKE ? OR f.flat_name LIKE ? OR p.name LIKE ?)";
+                $types .= 'sss';
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+            }
+
             $query .= " ORDER BY lb.booking_date ASC";
-        } elseif ($type === 'monthly') {
-            $query = "   SELECT 
-            DATE_FORMAT(lb.booking_date, '%Y-%m') AS month_key,
-            DATE_FORMAT(lb.booking_date, '%M %Y') AS month_name,
-            COUNT(lb.id) AS total_flats,
-            COUNT(DISTINCT lb.lead_id) AS total_clients,
-            SUM(lb.agreement_value - IFNULL(lb.discount_amount,0)) AS total_booking_value,
-            SUM(CASE WHEN lb.booking_status = 'completed' THEN 1 ELSE 0 END) AS completed
-        FROM lead_bookings lb
-        WHERE lb.deleted_at IS NULL
-        GROUP BY month_key
-        ORDER BY month_key DESC";
-        } elseif ($type === 'yearly') {
-            $query = " SELECT 
+
+            $stmt = $this->db->prepare($query);
+            if (!$stmt) {
+                setError($this->db->error);
+                return [];
+            }
+
+            if (!empty($params)) {
+                $stmt->bind_param($types, ...$params);
+            }
+
+            $stmt->execute();
+            $result = $stmt->get_result();
+            return $result->fetch_all(MYSQLI_ASSOC);
+        }
+
+
+        // ------------------- Monthly -------------------
+        elseif ($type === 'monthly') {
+            $query = "SELECT 
+        DATE_FORMAT(lb.booking_date, '%Y-%m') AS month_key,
+        DATE_FORMAT(lb.booking_date, '%M %Y') AS month_name,
+        COUNT(lb.id) AS total_flats,
+        COUNT(DISTINCT lb.lead_id) AS total_clients,
+        SUM(lb.agreement_value) AS total_booking_value,
+        SUM(f.price_value - IFNULL(lb.discount_amount,0)) AS share_price,
+        SUM(CASE WHEN lb.booking_status = 'completed' THEN 1 ELSE 0 END) AS completed
+    FROM lead_bookings lb
+    LEFT JOIN leads l ON lb.lead_id = l.id
+    LEFT JOIN projects p ON lb.project_id = p.id
+    LEFT JOIN flats f ON lb.flat_id = f.id
+    WHERE lb.deleted_at IS NULL";
+
+            if (!empty($userId)) {
+                $query .= " AND lb.sales_by_id = $userId";
+            }
+
+            if (!empty($projectId)) {
+                $query .= " AND lb.project_id = $projectId";
+            }
+
+            if (!empty($search)) {
+                $query .= " AND (l.full_name LIKE '%$search%' OR f.flat_name LIKE '%$search%' OR p.name LIKE '%$search%')";
+            }
+
+            $query .= " GROUP BY month_key ORDER BY month_key DESC";
+
+            $stmt = $this->db->prepare($query);
+            if (!$stmt) {
+                setError($this->db->error);
+                return [];
+            }
+
+            $stmt->execute();
+            $result = $stmt->get_result();
+            return $result->fetch_all(MYSQLI_ASSOC);
+        }
+
+
+        // ------------------- Yearly -------------------
+        elseif ($type === 'yearly') {
+            $query = "SELECT 
             YEAR(lb.booking_date) AS year,
             COUNT(lb.id) AS total_flats,
             COUNT(DISTINCT lb.lead_id) AS total_clients,
             SUM(lb.agreement_value - IFNULL(lb.discount_amount,0)) AS total_amount,
             SUM(CASE WHEN lb.booking_status = 'completed' THEN 1 ELSE 0 END) AS completed
         FROM lead_bookings lb
-        WHERE lb.deleted_at IS NULL
-        GROUP BY year
-        ORDER BY year DESC";
-        }
+        LEFT JOIN leads l ON lb.lead_id = l.id
+        LEFT JOIN projects p ON lb.project_id = p.id
+        LEFT JOIN flats f ON lb.flat_id = f.id
+        WHERE lb.deleted_at IS NULL";
 
-        $stmt = $this->db->prepare($query);
-        if (!$stmt) {
-            setError($this->db->error);
-            return false;
+            if (!empty($userId)) {
+                $query .= " AND lb.sales_by_id = $userId";
+            }
+
+            if (!empty($projectId)) {
+                $query .= " AND lb.project_id = $projectId";
+            }
+
+            if (!empty($search)) {
+                $query .= " AND (l.full_name LIKE '%$search%' OR f.flat_name LIKE '%$search%' OR p.name LIKE '%$search%')";
+            }
+
+            $query .= " GROUP BY year ORDER BY year DESC";
+
+            $stmt = $this->db->prepare($query);
+            if (!$stmt) {
+                setError($this->db->error);
+                return [];
+            }
+
+            $stmt->execute();
+            $result = $stmt->get_result();
+            return $result->fetch_all(MYSQLI_ASSOC);
         }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        return $result->fetch_all(MYSQLI_ASSOC);
     }
+
+
+public function getMyTotalFlatSales(int $userId): array
+{
+    $userId = (int) $userId;
+
+    $sql = "
+        SELECT 
+            COUNT(*) AS total_flats
+        FROM lead_bookings
+        WHERE sales_by_id = {$userId}
+          AND booking_status IN ('completed', 'booked')
+          AND deleted_at IS NULL
+    ";
+
+    $row = $this->db->query($sql)->fetch_assoc();
+
+    return [
+        'total_flats' => (int) ($row['total_flats'] ?? 0),
+    ];
+}
+
+
 }

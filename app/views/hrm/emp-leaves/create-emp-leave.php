@@ -15,10 +15,10 @@ $page = 'Create leave'
 
                             <label for="employeeSelect" class="form-label">Employee <span class="text-danger">*</span></label>
                         </div>
-                        <select id="employeeSelect" name="employee_id" class="form-select" required>
+                        <select id="employeeSelect" name="user_id" class="form-select" required>
                             <option value="">Select Employee</option>
-                            <?php foreach ($employees as $emp): ?>
-                                <option value="<?= $emp['id'] ?>"><?= $emp['full_name'] ?></option>
+                            <?php foreach ($users as $emp): ?>
+                                <option value="<?= $emp['id'] ?>"><?= $emp['full_name'] ?> - (<?= $emp['role_name'] ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -109,28 +109,29 @@ function fetchRemainingDays() {
     const employeeId = employeeSelect.value;
     const leaveTypeId = leaveTypeSelect.value;
 
-    if(!employeeId || !leaveTypeId){
+    if (!employeeId || !leaveTypeId) {
         remainingDaysInput.value = '';
         numberDaysInput.max = '';
         return;
     }
-
-    fetch('<?= $GLOBALS['base_url'] ?>/remaining-days?employee_id=' + employeeId + '&leave_type_id=' + leaveTypeId)
+fetch('<?= $GLOBALS['base_url'] ?>/remaining-days?user_id=' + employeeId + '&leave_type_id=' + leaveTypeId)
     .then(res => res.json())
     .then(data => {
+        console.log('Remaining days data:', data); // << Debug
         remainingDaysInput.value = data.remaining_days;
-        if(data.remaining_days === 'N/A'){
+        if (data.remaining_days === 'N/A') {
             numberDaysInput.max = 365;
         } else {
             numberDaysInput.max = parseInt(data.remaining_days);
         }
     })
-    .catch(err => console.error('Error fetching remaining days:', err));
+
+        .catch(err => console.error('Error fetching remaining days:', err));
 }
 
+employeeSelect.addEventListener('change', fetchRemainingDays);
+leaveTypeSelect.addEventListener('change', fetchRemainingDays);
 
-        employeeSelect.addEventListener('change', fetchRemainingDays);
-        leaveTypeSelect.addEventListener('change', fetchRemainingDays);
 
         function calculateNumberOfDays() {
             const start = new Date(startDateInput.value);

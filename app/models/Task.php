@@ -409,4 +409,20 @@ LEFT JOIN designations AS desig ON u.designation_id = desig.id
 
         return $notifications;
     }
+public function getTodayTaskCountByUser(int $userId): int
+{
+    $userId = (int) $userId;
+
+    $sql = "
+        SELECT COUNT(*) AS total
+        FROM tasks
+        WHERE user_id = {$userId}
+          AND start_date = CURDATE()
+    ";
+
+    $row = $this->db->query($sql)->fetch_assoc();
+    return (int) ($row['total'] ?? 0);
+}
+
+
 }
