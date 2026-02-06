@@ -40,7 +40,7 @@ $show_breadcrumb = true;
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-3 col-lg-3 col-md-3 col-12">
+    <div class="col-xxl-4 col-xl-4 col-md-3 col-12">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">

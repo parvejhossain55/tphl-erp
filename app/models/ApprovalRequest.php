@@ -103,13 +103,19 @@ private function getEmployeeById(int $id)
 
 private function getSalaryDetails(int $employeeId, ?string $month = null)
 {
-    $sql = "SELECT * FROM payslips WHERE employee_id = {$employeeId}";
     if ($month) {
-        $sql .= " AND payslip_month = '{$month}'";
+        $mysqlMonth = date('Y-m-d', strtotime($month));
+        $stmt = $this->db->prepare("SELECT * FROM payslips WHERE employee_id = ? AND payslip_month = ?");
+        $stmt->bind_param("is", $employeeId, $mysqlMonth);
+    } else {
+        $stmt = $this->db->prepare("SELECT * FROM payslips WHERE employee_id = ?");
+        $stmt->bind_param("i", $employeeId);
     }
 
-    return $this->db->query($sql)->fetch_assoc();
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc();
 }
+
 
 private function getLeaveDetails(int $leaveId)
 {

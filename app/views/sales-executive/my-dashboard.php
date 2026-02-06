@@ -52,7 +52,7 @@
     }
 
     .stat-value {
-        font-size: 2.5rem;
+        font-size: 2rem;
         font-weight: bold;
         margin: 0.5rem 0;
     }

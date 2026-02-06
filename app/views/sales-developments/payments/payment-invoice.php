@@ -330,7 +330,7 @@
                 padding: 0;
                 margin: 0;
                 font-size: 10px;
-                line-height: 1.25;
+                line-height: 1.20;
                 background: #fff !important;
             }
 
@@ -371,7 +371,7 @@
             }
 
             .section-header {
-                padding-bottom: 4px;
+                padding-bottom: 2px;
                 /* margin-bottom: 6px; */
                 border-bottom: 1px solid #999;
             }
@@ -891,7 +891,7 @@
 
                     <?php $rulesArray = getFlatRulesArray(); ?>
 
-                    <div style="margin-top: 3rem; padding: 2rem; background: linear-gradient(135deg, #e6f7f1 0%, #f0fdf4 100%); border-radius: 12px; border: 2px solid var(--primary-light);">
+                    <div style="margin-top: 3rem;  background: linear-gradient(135deg, #e6f7f1 0%, #f0fdf4 100%); border-radius: 12px; border: 2px solid var(--primary-light);">
                         <div style="text-align: center;">
                             <ul style="list-style-type: decimal; padding-left: 1.5rem; text-align: left; color: var(--primary); font-weight: 600;">
                                 <?php foreach ($rulesArray as $rule): ?>
@@ -904,7 +904,7 @@
                         </div>
                     </div>
                     <!-- Footer Section -->
-                    <div class="section-header my-2">
+                    <div class="section-header mt-2">
                         <h2 class="section-title2">DECLARATION</h2>
                     </div>
                     <div style=" display: flex; flex-direction: column; gap: 2rem; font-size: 0.95rem;">
