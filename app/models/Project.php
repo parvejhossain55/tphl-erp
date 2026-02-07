@@ -76,8 +76,8 @@ class Project extends Model
             description, apartment_count, amenities_details, amenities_image,
             map_image, map_link, passenger_lift, cargo_lift,
             rooftop_gardening, swimming_pool, convention, electricity_backup,
-            image, image2, image3,car_parking,created_by
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            image, image2, image3,car_parking,created_by,floor_wise_unit_meta,project_map_location
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         if (!$stmt) {
@@ -86,7 +86,7 @@ class Project extends Model
         }
 
         $stmt->bind_param(
-            "ssssssssssssssssssssssssssssssi",
+            "ssssssssssssssssssssssssssssssiss",
             $data['name'],
             $data['location_id'],
             $data['community_id'],
@@ -117,7 +117,9 @@ class Project extends Model
             $image2,
             $image3,
             $data['car_parking'],
-            $data['created_by']
+            $data['created_by'],
+            $data['floor_wise_unit_meta'],
+            $data['project_map_location']
         );
 
         return $stmt->execute();
@@ -187,49 +189,50 @@ class Project extends Model
         // Update Query
         // ======================
         $stmt = $this->db->prepare("
-        UPDATE projects SET
-            name = ?, 
-            location_id = ?, 
-            community_id = ?, 
-            plot_no = ?, 
-            block_no = ?, 
-            building_type = ?,
-            total_share = ?, 
-            unit_per_floor = ?, 
-            types = ?, 
-            front_road = ?,
-            hover_text = ?, 
-            price_range = ?, 
-            plot_size = ?, 
-            brochure_link = ?,
-            description = ?, 
-            apartment_count = ?, 
-            amenities_details = ?, 
-            amenities_image = ?,
-            map_image = ?, 
-            map_link = ?, 
-            passenger_lift = ?, 
-            cargo_lift = ?,
-            rooftop_gardening = ?, 
-            swimming_pool = ?, 
-            convention = ?, 
-            electricity_backup = ?,
-            image = ?, 
-            image2 = ?, 
-            image3 = ?,
-            car_parking = ?,
-            created_by = ?
+    UPDATE projects SET
+        name = ?, 
+        location_id = ?, 
+        community_id = ?, 
+        plot_no = ?, 
+        block_no = ?, 
+        building_type = ?,
+        total_share = ?, 
+        unit_per_floor = ?, 
+        types = ?, 
+        front_road = ?,
+        hover_text = ?, 
+        price_range = ?, 
+        plot_size = ?, 
+        brochure_link = ?,
+        description = ?, 
+        apartment_count = ?, 
+        amenities_details = ?, 
+        amenities_image = ?,
+        map_image = ?, 
+        map_link = ?, 
+        passenger_lift = ?, 
+        cargo_lift = ?,
+        rooftop_gardening = ?, 
+        swimming_pool = ?, 
+        convention = ?, 
+        electricity_backup = ?,
+        image = ?, 
+        image2 = ?, 
+        image3 = ?,
+        car_parking = ?,
+        created_by = ?,
+        floor_wise_unit_meta = ?,
+        project_map_location = ?
+    WHERE id = ?
+");
 
-        WHERE id = ?
-    ");
 
         if (!$stmt) {
             setError($this->db->error);
             return false;
         }
-
         $stmt->bind_param(
-            "ssssssssssssssssssssssssssssssii",
+            "ssssssssssssssssssssssssssssssissi",
             $data['name'],
             $data['location_id'],
             $data['community_id'],
@@ -261,8 +264,11 @@ class Project extends Model
             $image3,
             $data['car_parking'],
             $data['created_by'],
+            $data['floor_wise_unit_meta'],
+            $data['project_map_location'],
             $id
         );
+
 
         return $stmt->execute();
     }

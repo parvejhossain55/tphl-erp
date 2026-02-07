@@ -56,73 +56,91 @@ class ProjectController extends Controller
     /* =========================
        Store Project
     ========================== */
-    public function store()
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+public function store()
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    // ======================
+    // Collect Form Data
+    // ======================
+    $data = [
+        'name'              => $_POST['name'] ?? null,
+        'location_id'       => $_POST['location_id'] ?? null,
+        'community_id'      => $_POST['community_id'] ?? null,
+        'building_type'     => $_POST['building_type'] ?? null,
+        'total_share'       => $_POST['total_share'] ?? null,
+        'unit_per_floor'    => $_POST['unit_per_floor'] ?? null,
+        'front_road'        => $_POST['front_road'] ?? null,
+        'types'             => $_POST['types'] ?? null,
+        'price_range'       => $_POST['price_range'] ?? null,
+        'apartment_count'   => $_POST['apartment_count'] ?? null,
+        'hover_text'        => $_POST['hover_text'] ?? null,
+        'plot_size'         => $_POST['plot_size'] ?? null,
+        'plot_no'           => $_POST['plot_no'] ?? null,
+        'block_no'          => $_POST['block_no'] ?? null,
+        'brochure_link'     => $_POST['brochure_link'] ?? null,
+        'passenger_lift'    => $_POST['passenger_lift'] ?? null,
+        'cargo_lift'        => $_POST['cargo_lift'] ?? null,
+        // Facilities (checkbox → default 0)
+        'rooftop_gardening' => $_POST['rooftop_gardening'] ?? 0,
+        'car_parking'       => $_POST['car_parking'] ?? 0,
+        'convention'        => $_POST['convention'] ?? 0,
+        'electricity_backup'=> $_POST['electricity_backup'] ?? 0,
+        'amenities_details' => $_POST['amenities_details'] ?? null,
+        'map_link'          => $_POST['map_link'] ?? null,
+        'description'       => $_POST['description'] ?? null,
+        'project_map_location'       => $_POST['project_map_location'] ?? null,
+        'created_by'        => $_SESSION['user']['id'] ?? null,
+    ];
+
+    // ======================
+    // Floor Wise Unit Meta
+    // ======================
+    $floorWiseUnitMeta = null;
+    if (!empty($_POST['units']) && is_array($_POST['units'])) {
+        $cleanUnits = [];
+        foreach ($_POST['units'] as $unit) {
+            if (!empty($unit['unit_name']) && !empty($unit['sqft'])) {
+                $cleanUnits[] = [
+                    'unit_name' => trim($unit['unit_name']),
+                    'sqft'      => (int) $unit['sqft']
+                ];
+            }
         }
-        // ======================
-        // Collect Form Data
-        // ======================
-        $data = [
-            'name'              => $_POST['name'] ?? null,
-            'location_id'       => $_POST['location_id'] ?? null,
-            'community_id'      => $_POST['community_id'] ?? null,
-
-            'building_type'     => $_POST['building_type'] ?? null,
-            'total_share'       => $_POST['total_share'] ?? null,
-            'unit_per_floor'    => $_POST['unit_per_floor'] ?? null,
-            'front_road'        => $_POST['front_road'] ?? null,
-
-            'types'             => $_POST['types'] ?? null,
-            'price_range'       => $_POST['price_range'] ?? null,
-            'apartment_count'   => $_POST['apartment_count'] ?? null,
-
-            'hover_text'        => $_POST['hover_text'] ?? null,
-            // 'tag'               => $_POST['tag'] ?? null,
-            'plot_size'               => $_POST['plot_size'] ?? null,
-            'plot_no'               => $_POST['plot_no'] ?? null,
-            'block_no'               => $_POST['block_no'] ?? null,
-            'brochure_link'     => $_POST['brochure_link'] ?? null,
-
-            'passenger_lift'    => $_POST['passenger_lift'] ?? null,
-            'cargo_lift'        => $_POST['cargo_lift'] ?? null,
-
-            // Facilities (checkbox → default 0)
-            'rooftop_gardening' => $_POST['rooftop_gardening'] ?? 0,
-            'car_parking'    => $_POST['car_parking'] ?? 0,
-            'convention'       => $_POST['convention'] ?? 0,
-            'electricity_backup' => $_POST['electricity_backup'] ?? 0,
-
-            'amenities_details' => $_POST['amenities_details'] ?? null,
-
-            'map_link'          => $_POST['map_link'] ?? null,
-            'description'       => $_POST['description'] ?? null,
-            'created_by'      => $_SESSION['user']['id'] ?? null,
-        ];
-
-        // ======================
-        // Basic Validation
-        // ======================
-        if (empty($data['name']) || empty($data['location_id']) || empty($data['community_id'])) {
-            setError("Project name, location and community are required");
-            header("Location: {$GLOBALS['base_url']}/create-project");
-            exit;
+        if (!empty($cleanUnits)) {
+            $floorWiseUnitMeta = json_encode([
+                'typical_floor' => $cleanUnits
+            ]);
         }
+    }
 
-        // ======================
-        // Store via Model
-        // ======================
-        if ($this->projectModel->create($data)) {
-            setSuccess("Project created successfully!");
-            header("Location: {$GLOBALS['base_url']}/project-lists");
-            exit;
-        }
+    $data['floor_wise_unit_meta'] = $floorWiseUnitMeta;
 
-        setError("Project creation failed");
+    // ======================
+    // Basic Validation
+    // ======================
+    if (empty($data['name']) || empty($data['location_id']) || empty($data['community_id'])) {
+        setError("Project name, location and community are required");
         header("Location: {$GLOBALS['base_url']}/create-project");
         exit;
     }
+
+    // ======================
+    // Store via Model
+    // ======================
+    if ($this->projectModel->create($data)) {
+        setSuccess("Project created successfully!");
+        header("Location: {$GLOBALS['base_url']}/project-lists");
+        exit;
+    }
+
+    setError("Project creation failed");
+    header("Location: {$GLOBALS['base_url']}/create-project");
+    exit;
+}
+
 
     public function show($id){
         $project = $this->projectModel->find($id);
@@ -150,54 +168,70 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function update($id)
-    {
-        if (session_status() === PHP_SESSION_NONE) session_start();
+public function update($id)
+{
+    if(session_status() === PHP_SESSION_NONE) session_start();
 
-        $data = [
-            'name'              => $_POST['name'] ?? null,
-            'location_id'       => $_POST['location_id'] ?? null,
-            'community_id'      => $_POST['community_id'] ?? null,
+    $data = [
+        'name' => $_POST['name'] ?? null,
+        'location_id' => $_POST['location_id'] ?? null,
+        'community_id' => $_POST['community_id'] ?? null,
+        'building_type' => $_POST['building_type'] ?? null,
+        'total_share' => $_POST['total_share'] ?? null,
+        'unit_per_floor' => $_POST['unit_per_floor'] ?? null,
+        'types' => $_POST['types'] ?? null,
+        'price_range' => $_POST['price_range'] ?? null,
+        'apartment_count' => $_POST['apartment_count'] ?? null,
+        'front_road' => $_POST['front_road'] ?? null,
+        'hover_text' => $_POST['hover_text'] ?? null,
+        'plot_size' => $_POST['plot_size'] ?? null,
+        'plot_no' => $_POST['plot_no'] ?? null,
+        'block_no' => $_POST['block_no'] ?? null,
+        'brochure_link' => $_POST['brochure_link'] ?? null,
+        'passenger_lift' => $_POST['passenger_lift'] ?? null,
+        'cargo_lift' => $_POST['cargo_lift'] ?? null,
+        'rooftop_gardening' => isset($_POST['rooftop_gardening']) ? 1 : 0,
+        'car_parking' => isset($_POST['car_parking']) ? 1 : 0,
+        'convention' => isset($_POST['convention']) ? 1 : 0,
+        'electricity_backup' => isset($_POST['electricity_backup']) ? 1 : 0,
+        'amenities_details' => $_POST['amenities_details'] ?? null,
+        'map_link' => $_POST['map_link'] ?? null,
+        'description' => $_POST['description'] ?? null,
+        'project_map_location' => $_POST['project_map_location'] ?? null,
+        'created_by' => $_SESSION['user']['id'] ?? null,
+    ];
 
-            'building_type'     => $_POST['building_type'] ?? null,
-            'total_share'       => $_POST['total_share'] ?? null,
-            'unit_per_floor'    => $_POST['unit_per_floor'] ?? null,
-            'front_road'        => $_POST['front_road'] ?? null,
-
-            'types'             => $_POST['types'] ?? null,
-            'price_range'       => $_POST['price_range'] ?? null,
-            'apartment_count'   => $_POST['apartment_count'] ?? null,
-
-            'hover_text'        => $_POST['hover_text'] ?? null,
-            'plot_size'         => $_POST['plot_size'] ?? null,
-            'plot_no'           => $_POST['plot_no'] ?? null,
-            'block_no'        => $_POST['block_no'] ?? null,
-
-            'brochure_link'     => $_POST['brochure_link'] ?? null,
-            'passenger_lift'    => $_POST['passenger_lift'] ?? null,
-            'cargo_lift'        => $_POST['cargo_lift'] ?? null,
-
-            'rooftop_gardening' => isset($_POST['rooftop_gardening']) ? 1 : 0,
-            'car_parking'       => isset($_POST['car_parking']) ? 1 : 0,
-            'convention'        => isset($_POST['convention']) ? 1 : 0,
-            'electricity_backup'=> isset($_POST['electricity_backup']) ? 1 : 0,
-
-            'amenities_details' => $_POST['amenities_details'] ?? null,
-            'map_link'          => $_POST['map_link'] ?? null,
-            'description'       => $_POST['description'] ?? null,
-            'created_by'      => $_SESSION['user']['id'] ?? null,
-        ];
-
-        if ($this->projectModel->update($id, $data)) {
-            setSuccess("Project updated successfully!");
-            header("Location: {$GLOBALS['base_url']}/project-lists");
-            exit;
+    // ======================
+    // Floor Units
+    // ======================
+    $floorWiseUnitMeta = null;
+    if (!empty($_POST['units']) && is_array($_POST['units'])) {
+        $cleanUnits = [];
+        foreach($_POST['units'] as $unit) {
+            if(!empty($unit['unit_name']) && !empty($unit['sqft'])){
+                $cleanUnits[] = [
+                    'unit_name' => trim($unit['unit_name']),
+                    'sqft' => (int)$unit['sqft']
+                ];
+            }
         }
+        if(!empty($cleanUnits)){
+            $floorWiseUnitMeta = json_encode(['typical_floor' => $cleanUnits]);
+        }
+    }
+    $data['floor_wise_unit_meta'] = $floorWiseUnitMeta;
 
-        setError("Project update failed");
-        header("Location: {$GLOBALS['base_url']}/edit-project/$id");
+    if($this->projectModel->update($id, $data)){
+        setSuccess("Project updated successfully!");
+        header("Location: {$GLOBALS['base_url']}/project-lists");
         exit;
     }
+
+    setError("Project update failed");
+    header("Location: {$GLOBALS['base_url']}/edit-project/$id");
+    exit;
+}
+
 
 
 
