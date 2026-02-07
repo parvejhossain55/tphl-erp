@@ -121,273 +121,294 @@ class Dashboard extends Model
     /**
      * Get overview statistics
      */
-    public function getOverviewStatistics($period = 'all_time', $projectId = null)
-    {
-        $dateRange = $this->getDateRangeByPeriod($period);
-        $startDate = $dateRange['start'];
-        $endDate = $dateRange['end'];
+/**
+ * Get overview statistics
+ */
+public function getOverviewStatistics($period = 'all_time', $projectId = null)
+{
+    $dateRange = $this->getDateRangeByPeriod($period);
+    $startDate = $dateRange['start'];
+    $endDate = $dateRange['end'];
 
-        $stats = [
-            'total_cashin' => 0,
-            'total_cashout' => 0,
-            'net_balance' => 0,
-            'total_clients' => 0,
-            'total_revenue' => 0,
-            'total_landshare' => 0,
-            'total_registration' => 0,
-            'total_discount' => 0,
-            'total_agreement_value' => 0,
-            'total_emi_amount' => 0,
-            'total_service_fees' => 0,
-            'projects_summary' => [] // NEW: Projects summary
-        ];
+    $stats = [
+        'total_cashin' => 0,
+        'total_cashout' => 0,
+        'net_balance' => 0,
+        'total_clients' => 0,
+        'total_revenue' => 0,
+        'total_landshare' => 0,
+        'total_registration' => 0,
+        'total_discount' => 0,
+        'total_agreement_value' => 0,
+        'total_emi_amount' => 0,
+        'total_service_fees' => 0,
+        'management_cashin' => 0, // This will be populated
+        'projects_summary' => [] // NEW: Projects summary
+    ];
 
-        // Get land share
-        $sqlLandShare = "
-            SELECT COALESCE(SUM(lp.land_share_amount), 0) as total
-            FROM lead_payments lp
-            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-            WHERE lp.payment_status = 'paid'
-            AND lp.payment_type = 'land_share'
-            AND lp.payment_date BETWEEN ? AND ?
-        ";
-        
-        if ($projectId) {
-            $sqlLandShare .= " AND lb.project_id = ?";
-        }
-
-        $stmt = $this->db->prepare($sqlLandShare);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $stats['total_landshare'] = floatval($row['total']);
-        }
-        $stmt->close();
-
-        // Get registration
-        $sqlRegistration = "
-            SELECT COALESCE(SUM(lp.amount), 0) as total
-            FROM lead_payments lp
-            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-            WHERE lp.payment_status = 'paid'
-            AND lp.payment_type = 'registration'
-            AND lp.payment_date BETWEEN ? AND ?
-        ";
-        
-        if ($projectId) {
-            $sqlRegistration .= " AND lb.project_id = ?";
-        }
-
-        $stmt = $this->db->prepare($sqlRegistration);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $stats['total_registration'] = floatval($row['total']);
-        }
-        $stmt->close();
-
-        // Get discount
-        $sqlDiscount = "
-            SELECT COALESCE(SUM(discount_amount), 0) as total
-            FROM lead_bookings
-            WHERE booking_date BETWEEN ? AND ?
-            AND booking_status = 'booked'
-            AND landshare_status = 'active'
-        ";
-        
-        if ($projectId) {
-            $sqlDiscount .= " AND project_id = ?";
-        }
-
-        $stmt = $this->db->prepare($sqlDiscount);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $stats['total_discount'] = floatval($row['total']);
-        }
-        $stmt->close();
-
-        // Get agreement value
-        $sqlAgreement = "
-            SELECT COALESCE(SUM(agreement_value), 0) as total
-            FROM lead_bookings
-            WHERE booking_date BETWEEN ? AND ?
-            AND booking_status = 'booked'
-            AND landshare_status = 'active'
-        ";
-        
-        if ($projectId) {
-            $sqlAgreement .= " AND project_id = ?";
-        }
-
-        $stmt = $this->db->prepare($sqlAgreement);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $stats['total_agreement_value'] = floatval($row['total']);
-        }
-        $stmt->close();
-
-        // Get EMI amount
-        $sqlEmi = "
-            SELECT COALESCE(SUM(es.emi_amount), 0) as total
-            FROM emi_schedules es
-            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
-            WHERE es.due_date BETWEEN ? AND ?
-            AND es.status = 'paid'
-        ";
-        
-        if ($projectId) {
-            $sqlEmi .= " AND lb.project_id = ?";
-        }
-
-        $stmt = $this->db->prepare($sqlEmi);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $stats['total_emi_amount'] = floatval($row['total']);
-        }
-        $stmt->close();
-
-        // Get service fees
-        $sqlServiceFees = "
-            SELECT COALESCE(SUM(es.service_fee), 0) as total
-            FROM emi_schedules es
-            LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
-            WHERE es.due_date BETWEEN ? AND ?
-            AND es.status = 'paid'
-        ";
-        
-        if ($projectId) {
-            $sqlServiceFees .= " AND lb.project_id = ?";
-        }
-
-        $stmt = $this->db->prepare($sqlServiceFees);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $stats['total_service_fees'] = floatval($row['total']);
-        }
-        $stmt->close();
-
-        // Calculate Total Cash In
-        $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] + 
-                                 $stats['total_agreement_value'] + $stats['total_emi_amount'] - 
-                                 $stats['total_discount'];
-
-        // Calculate Total Revenue
-        $stats['total_revenue'] = $stats['total_landshare'] - $stats['total_discount'] + 
-                                  $stats['total_agreement_value'] + $stats['total_service_fees'];
-
-        // Get Cash Out with project filtering
-        $sqlCashOut = "
-            SELECT COALESCE(SUM(total_amount), 0) as total
-            FROM (
-                SELECT amount as total_amount, transaction_date as date, NULL as project_id
-                FROM management_cashout
-                WHERE payment_status = 'paid'
-                
-                UNION ALL
-                
-                SELECT cp.amount as total_amount, cp.payment_date as date, cp.project_id
-                FROM cashout_payments cp
-                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
-                WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
-                
-                UNION ALL
-                
-                SELECT net_salary as total_amount, 
-                       STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date,
-                       NULL as project_id
-                FROM payslips
-                WHERE status = 'paid'
-            ) combined
-            WHERE date BETWEEN ? AND ?
-        ";
-        
-        if ($projectId) {
-            $sqlCashOut .= " AND (project_id = ? OR project_id IS NULL)";
-        }
-
-        $stmt = $this->db->prepare($sqlCashOut);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $stats['total_cashout'] = floatval($row['total']);
-        }
-        $stmt->close();
-
-        // Net Balance
-        $stats['net_balance'] = $stats['total_cashin'] - $stats['total_cashout'];
-
-        // Total Clients
-        $sqlClients = "
-            SELECT COUNT(DISTINCT lp.booking_id) as total 
-            FROM lead_payments lp
-            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-            WHERE lp.payment_date BETWEEN ? AND ?
-            AND lp.payment_status = 'paid'
-        ";
-        
-        if ($projectId) {
-            $sqlClients .= " AND lb.project_id = ?";
-        }
-
-        $stmt = $this->db->prepare($sqlClients);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $stats['total_clients'] = intval($row['total']);
-        }
-        $stmt->close();
-
-        // NEW: Get projects summary (only if no specific project is selected)
-        if (!$projectId) {
-            $stats['projects_summary'] = $this->getProjectsSummary($startDate, $endDate);
-        }
-
-        return $stats;
+    // Get land share
+    $sqlLandShare = "
+        SELECT COALESCE(SUM(lp.land_share_amount), 0) as total
+        FROM lead_payments lp
+        INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+        WHERE lp.payment_status = 'paid'
+        AND lp.payment_type = 'land_share'
+        AND lp.payment_date BETWEEN ? AND ?
+    ";
+    
+    if ($projectId) {
+        $sqlLandShare .= " AND lb.project_id = ?";
     }
+
+    $stmt = $this->db->prepare($sqlLandShare);
+    if ($projectId) {
+        $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+    } else {
+        $stmt->bind_param("ss", $startDate, $endDate);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['total_landshare'] = floatval($row['total']);
+    }
+    $stmt->close();
+
+    // Get registration
+    $sqlRegistration = "
+        SELECT COALESCE(SUM(lp.amount), 0) as total
+        FROM lead_payments lp
+        INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+        WHERE lp.payment_status = 'paid'
+        AND lp.payment_type = 'registration'
+        AND lp.payment_date BETWEEN ? AND ?
+    ";
+    
+    if ($projectId) {
+        $sqlRegistration .= " AND lb.project_id = ?";
+    }
+
+    $stmt = $this->db->prepare($sqlRegistration);
+    if ($projectId) {
+        $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+    } else {
+        $stmt->bind_param("ss", $startDate, $endDate);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['total_registration'] = floatval($row['total']);
+    }
+    $stmt->close();
+
+    // Get discount
+    $sqlDiscount = "
+        SELECT COALESCE(SUM(discount_amount), 0) as total
+        FROM lead_bookings
+        WHERE booking_date BETWEEN ? AND ?
+        AND booking_status = 'booked'
+        AND landshare_status = 'active'
+    ";
+    
+    if ($projectId) {
+        $sqlDiscount .= " AND project_id = ?";
+    }
+
+    $stmt = $this->db->prepare($sqlDiscount);
+    if ($projectId) {
+        $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+    } else {
+        $stmt->bind_param("ss", $startDate, $endDate);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['total_discount'] = floatval($row['total']);
+    }
+    $stmt->close();
+
+    // Get agreement value
+    $sqlAgreement = "
+        SELECT COALESCE(SUM(agreement_value), 0) as total
+        FROM lead_bookings
+        WHERE booking_date BETWEEN ? AND ?
+        AND booking_status = 'booked'
+        AND landshare_status = 'active'
+    ";
+    
+    if ($projectId) {
+        $sqlAgreement .= " AND project_id = ?";
+    }
+
+    $stmt = $this->db->prepare($sqlAgreement);
+    if ($projectId) {
+        $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+    } else {
+        $stmt->bind_param("ss", $startDate, $endDate);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['total_agreement_value'] = floatval($row['total']);
+    }
+    $stmt->close();
+
+    // Get EMI amount
+    $sqlEmi = "
+        SELECT COALESCE(SUM(es.emi_amount), 0) as total
+        FROM emi_schedules es
+        LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+        WHERE es.due_date BETWEEN ? AND ?
+        AND es.status = 'paid'
+    ";
+    
+    if ($projectId) {
+        $sqlEmi .= " AND lb.project_id = ?";
+    }
+
+    $stmt = $this->db->prepare($sqlEmi);
+    if ($projectId) {
+        $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+    } else {
+        $stmt->bind_param("ss", $startDate, $endDate);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['total_emi_amount'] = floatval($row['total']);
+    }
+    $stmt->close();
+
+    // Get service fees
+    $sqlServiceFees = "
+        SELECT COALESCE(SUM(es.service_fee), 0) as total
+        FROM emi_schedules es
+        LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+        WHERE es.due_date BETWEEN ? AND ?
+        AND es.status = 'paid'
+    ";
+    
+    if ($projectId) {
+        $sqlServiceFees .= " AND lb.project_id = ?";
+    }
+
+    $stmt = $this->db->prepare($sqlServiceFees);
+    if ($projectId) {
+        $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+    } else {
+        $stmt->bind_param("ss", $startDate, $endDate);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['total_service_fees'] = floatval($row['total']);
+    }
+    $stmt->close();
+
+    // ==== FIX: GET MANAGEMENT CASHIN ====
+    $sqlManagementCashIn = "
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM management_cashin
+        WHERE payment_status = 'paid'
+        AND transaction_date BETWEEN ? AND ?
+    ";
+    
+    $stmt = $this->db->prepare($sqlManagementCashIn);
+    $stmt->bind_param("ss", $startDate, $endDate);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['management_cashin'] = floatval($row['total']);
+    }
+    $stmt->close();
+
+    // Calculate Total Cash In (NOW INCLUDES management_cashin)
+    $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] + 
+                             $stats['total_agreement_value'] + $stats['total_emi_amount'] + $stats['management_cashin'] - 
+                             $stats['total_discount'];
+
+    // Calculate Total Revenue
+    $stats['total_revenue'] = $stats['total_landshare'] + 
+                              $stats['total_agreement_value'] + $stats['total_service_fees'];
+
+    // Get Cash Out with project filtering
+    $sqlCashOut = "
+        SELECT COALESCE(SUM(total_amount), 0) as total
+        FROM (
+            SELECT amount as total_amount, transaction_date as date, NULL as project_id
+            FROM management_cashout
+            WHERE payment_status = 'paid'
+            
+            UNION ALL
+            
+            SELECT cp.amount as total_amount, cp.payment_date as date, cp.project_id
+            FROM cashout_payments cp
+            LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+            WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
+            
+            UNION ALL
+            
+            SELECT net_salary as total_amount, 
+                   STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date,
+                   NULL as project_id
+            FROM payslips
+            WHERE status = 'paid'
+        ) combined
+        WHERE date BETWEEN ? AND ?
+    ";
+    
+    if ($projectId) {
+        $sqlCashOut .= " AND (project_id = ? OR project_id IS NULL)";
+    }
+
+    $stmt = $this->db->prepare($sqlCashOut);
+    if ($projectId) {
+        $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+    } else {
+        $stmt->bind_param("ss", $startDate, $endDate);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['total_cashout'] = floatval($row['total']);
+    }
+    $stmt->close();
+
+    // Net Balance
+    $stats['net_balance'] = $stats['total_cashin'] - $stats['total_cashout'];
+
+    // Total Clients
+    $sqlClients = "
+        SELECT COUNT(DISTINCT lp.booking_id) as total 
+        FROM lead_payments lp
+        INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+        WHERE lp.payment_date BETWEEN ? AND ?
+        AND lp.payment_status = 'paid'
+    ";
+    
+    if ($projectId) {
+        $sqlClients .= " AND lb.project_id = ?";
+    }
+
+    $stmt = $this->db->prepare($sqlClients);
+    if ($projectId) {
+        $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+    } else {
+        $stmt->bind_param("ss", $startDate, $endDate);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['total_clients'] = intval($row['total']);
+    }
+    $stmt->close();
+
+    // NEW: Get projects summary (only if no specific project is selected)
+    if (!$projectId) {
+        $stats['projects_summary'] = $this->getProjectsSummary($startDate, $endDate);
+    }
+
+    return $stats;
+}
 
     /**
      * Get projects summary for dashboard
@@ -700,7 +721,7 @@ class Dashboard extends Model
         $stats['total_amount'] = $stats['lead_payments'] + $stats['management_cashin'];
         
         $totalCashIn = $stats['total_landshare'] + $stats['total_registration'] + 
-                       $stats['total_agreement_value'] + $stats['total_emi_amount'] - 
+                       $stats['total_agreement_value'] + $stats['total_emi_amount'] + $stats['management_cashin'] - 
                        $stats['total_discount'];
         $stats['total_revenue'] = $totalCashIn - ($stats['total_landshare'] - $stats['total_discount'] + 
                                   $stats['total_agreement_value'] + $stats['total_service_fees']);
