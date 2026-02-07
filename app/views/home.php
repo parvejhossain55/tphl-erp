@@ -4,12 +4,12 @@ $show_breadcrumb = false;
 ?>
 <div class="row mb-2">
     <div class="card__wrapper">
-    <div class="btn__group mb-3">
-        <a href="?period=daily" class="btn btn-sm <?= ($period ?? '') == 'daily' ? 'btn-primary' : 'btn-outline-secondary' ?>">Daily</a>
-        <a href="?period=weekly" class="btn btn-sm <?= ($period ?? '') == 'weekly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Weekly</a>
-        <a href="?period=monthly" class="btn btn-sm <?= ($period ?? '') == 'monthly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Monthly</a>
-        <a href="?period=yearly" class="btn btn-sm <?= ($period ?? '') == 'yearly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Yearly</a>
-    </div>
+        <div class="btn__group mb-3">
+            <a href="?period=daily" class="btn btn-sm <?= ($period ?? '') == 'daily' ? 'btn-primary' : 'btn-outline-secondary' ?>">Daily</a>
+            <a href="?period=weekly" class="btn btn-sm <?= ($period ?? '') == 'weekly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Weekly</a>
+            <a href="?period=monthly" class="btn btn-sm <?= ($period ?? '') == 'monthly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Monthly</a>
+            <a href="?period=yearly" class="btn btn-sm <?= ($period ?? '') == 'yearly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Yearly</a>
+        </div>
     </div>
 
 
@@ -453,7 +453,20 @@ $show_breadcrumb = false;
                                         <div>
                                             <h6 class="mb-1"><?= htmlspecialchars($req['department']) ?> Department</h6>
                                             <small class="text-muted d-block"><?= htmlspecialchars($req['title']) ?></small>
-                                            <small class="text-muted">Requested: <?= date('d M Y', strtotime($req['created_at'])) ?></small>
+                                            <?php
+                                            $requestedOn = $req['context']['requested_on']
+                                                ?? ($req['context']['leave']['created_at'] ?? null)
+                                                ?? $req['created_at'];
+
+                                            ?>
+                                            <?php if ($requestedOn): ?>
+                                                <small class="text-muted">
+                                                    Requested: <?= date('d M Y', strtotime($requestedOn)) ?>
+                                                </small>
+                                            <?php endif; ?>
+
+
+
                                         </div>
                                         <span class="badge bg-warning text-dark"><?= ucfirst($req['status']) ?></span>
                                     </div>
@@ -521,7 +534,7 @@ $show_breadcrumb = false;
                                                         </div>
                                                         <div class="mb-3">
                                                             <label class="form-label">Approve Amount</label>
-                                                            <input type="number" class="form-control" name="approved_amount"  placeholder="Enter approved amount" required>
+                                                            <input type="number" class="form-control" name="approved_amount" placeholder="Enter approved amount" required>
                                                         </div>
                                                         <div class="mb-3">
                                                             <label class="form-label">Note</label>

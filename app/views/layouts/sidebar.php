@@ -324,13 +324,13 @@
                                 <a class="sidebar__menu-item <?= isActive('leave-types', $current_route) ?>" href="<?= $base_url ?>/leave-types">Add Leave Type</a>
                             </li>
                             <li class="slide <?= isActive('leave-lists', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists">Employee Leave Request List</a>
+                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists">Employee Leave Request</a>
                             </li>
                         </ul>
                     </li>
-
-
                 <?php endif; ?>
+
+
                 <!--Payroll CATEGORY -->
                 <?php if (hasPermission("Payroll Manage")):  ?>
                     <li class="sidebar__menu-category ">
@@ -383,16 +383,16 @@
                 <?php if (hasPermission("CED Manage")):  ?>
                     <!--CED CATEGORY -->
                     <li class="sidebar__menu-category">
-                        
+
                         <span class="category-name">CED</span>
                     </li>
-                      <li class="slide ">
+                    <li class="slide ">
                         <a href="<?= $base_url ?>/ced-dashboard" class="sidebar__menu-item <?= isActive('ced-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">CED Dashboard</span>
                         </a>
                     </li>
-            
+
 
                     <!-- Cash In Manage -->
                     <li class="slide has-sub <?= isActive(['ced-dashboard', 'clients-cashin-view', 'clients-cash-in-history-view'], $current_route) ?>">
@@ -417,7 +417,7 @@
                         </a>
                     </li>
 
-               
+
 
                 <?php endif; ?>
                 <!--End CED CATEGORY -->
@@ -539,7 +539,16 @@
                 <?php endif ?>
                 <!--ROle & Permission -->
 
+                <?php if(hasPermission("My Leave Request")): ?>
+                <ul class="sidebar-menu child2" style="display:block;">
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/create-self-leave-request" class="sidebar__menu-item <?= isActive('create-self-leave-request', $current_route) ?>">
 
+                            <span class="sidebar__menu-label">My Leave Request</span>
+                        </a>
+                    </li>
+                </ul>
+                <?php endif ?>
 
                 <!-- FOR Task Manage  -->
 

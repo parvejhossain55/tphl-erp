@@ -61,9 +61,9 @@ class ApprovalRequest extends Model
             ->fetch_assoc();
     }
 
-private function getFlatById(int $id)
-{
-    $sql = "
+    private function getFlatById(int $id)
+    {
+        $sql = "
         SELECT 
             f.id,
             f.flat_name,
@@ -77,15 +77,15 @@ private function getFlatById(int $id)
         LIMIT 1
     ";
 
-    return $this->db->query($sql)->fetch_assoc();
-}
+        return $this->db->query($sql)->fetch_assoc();
+    }
 
 
 
 
-private function getEmployeeById(int $id)
-{
-    $sql = "
+    private function getEmployeeById(int $id)
+    {
+        $sql = "
         SELECT 
             e.id,
             e.full_name,
@@ -97,46 +97,48 @@ private function getEmployeeById(int $id)
         LIMIT 1
     ";
 
-    return $this->db->query($sql)->fetch_assoc();
-}
-
-
-private function getSalaryDetails(int $employeeId, ?string $month = null)
-{
-    if ($month) {
-        $mysqlMonth = date('Y-m-d', strtotime($month));
-        $stmt = $this->db->prepare("SELECT * FROM payslips WHERE employee_id = ? AND payslip_month = ?");
-        $stmt->bind_param("is", $employeeId, $mysqlMonth);
-    } else {
-        $stmt = $this->db->prepare("SELECT * FROM payslips WHERE employee_id = ?");
-        $stmt->bind_param("i", $employeeId);
+        return $this->db->query($sql)->fetch_assoc();
     }
 
-    $stmt->execute();
-    return $stmt->get_result()->fetch_assoc();
-}
 
 
-private function getLeaveDetails(int $leaveId)
-{
-    return $this->db
-        ->query("
+    private function getSalaryDetails(int $employeeId, ?string $month = null)
+    {
+        if ($month) {
+            $mysqlMonth = date('Y-m-d', strtotime($month));
+            $stmt = $this->db->prepare("SELECT * FROM payslips WHERE employee_id = ? AND payslip_month = ?");
+            $stmt->bind_param("is", $employeeId, $mysqlMonth);
+        } else {
+            $stmt = $this->db->prepare("SELECT * FROM payslips WHERE employee_id = ?");
+            $stmt->bind_param("i", $employeeId);
+        }
+
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
+
+
+    private function getLeaveDetails(int $leaveId)
+    {
+        return $this->db
+            ->query("
             SELECT el.*, lt.name AS leave_type
             FROM employee_leaves el
             LEFT JOIN leave_types lt ON lt.id = el.leave_type_id
             WHERE el.id = {$leaveId}
         ")
-        ->fetch_assoc();
-}
+            ->fetch_assoc();
+    }
 
-private function getAccountDetails(string $sourceTable, int $sourceId)
-{
-    return $this->db
-        ->query("SELECT * FROM {$sourceTable} WHERE id = {$sourceId}")
-        ->fetch_assoc();
-}
-private function getUserById(int $id) {
-    $stmt = $this->db->prepare("
+    private function getAccountDetails(string $sourceTable, int $sourceId)
+    {
+        return $this->db
+            ->query("SELECT * FROM {$sourceTable} WHERE id = {$sourceId}")
+            ->fetch_assoc();
+    }
+    private function getUserById(int $id)
+    {
+        $stmt = $this->db->prepare("
         SELECT 
             users.id, 
             users.full_name AS user_name, 
@@ -146,83 +148,90 @@ private function getUserById(int $id) {
         LEFT JOIN designations AS d ON users.designation_id = d.id
         WHERE users.id = ?
     ");
-    $stmt->bind_param('i', $id);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_assoc();
-}
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
 
 
-private function resolveApprovalDetails(array $approval)
-{
-    $meta = $this->parseMetaData($approval['meta_data']);
-    $details = [];
+    private function resolveApprovalDetails(array $approval)
+    {
+        $meta = $this->parseMetaData($approval['meta_data']);
+        $details = [];
 
-    /* =====================
+        /* =====================
        SALES → LEAD DISCOUNT
        ===================== */
-    if ($approval['request_type'] === 'discount') {
+        if ($approval['request_type'] === 'discount') {
 
-        if (!empty($meta['lead_id'])) {
-            $details['lead'] = $this->getLeadById((int)$meta['lead_id']);
+            if (!empty($meta['lead_id'])) {
+                $details['lead'] = $this->getLeadById((int)$meta['lead_id']);
+            }
+
+            if (!empty($meta['flat_id'])) {
+                $details['flat'] = $this->getFlatById((int)$meta['flat_id']);
+            }
+
+            // Universal requested date fallback
+$details['requested_on'] = $details['requested_on']
+    ?? $approval['created_at'];
+
         }
 
-        if (!empty($meta['flat_id'])) {
-            $details['flat'] = $this->getFlatById((int)$meta['flat_id']);
-        }
-    }
-
-    /* =====================
+        /* =====================
        HR → SALARY
        ===================== */
-    if ($approval['request_type'] === 'salary') {
+        if ($approval['request_type'] === 'salary') {
 
-        if (!empty($meta['employee_id'])) {
-            $details['employee'] = $this->getEmployeeById((int)$meta['employee_id']);
-            $details['salary'] = $this->getSalaryDetails(
-                (int)$meta['employee_id'],
-                $meta['month'] ?? null
-            );
+            if (!empty($meta['employee_id'])) {
+                $details['employee'] = $this->getEmployeeById((int)$meta['employee_id']);
+                $details['salary'] = $this->getSalaryDetails(
+                    (int)$meta['employee_id'],
+                    $meta['month'] ?? null
+                );
+            }
         }
-    }
 
-    /* =====================
+        /* =====================
        HR → LEAVE
        ===================== */
-    if ($approval['request_type'] === 'leave') {
+ if ($approval['request_type'] === 'leave') {
 
-        if (!empty($meta['employee_id'])) {
-            $details['employee'] = $this->getEmployeeById((int)$meta['employee_id']);
-        }
-
-        if (!empty($approval['source_id'])) {
-            $details['leave'] = $this->getLeaveDetails((int)$approval['source_id']);
-        }
+    if (!empty($meta['user_id'])) {
+        $details['employee'] = $this->getUserById((int)$meta['user_id']);
     }
 
-    /* =====================
+    if (!empty($approval['source_id'])) {
+        $leave = $this->getLeaveDetails((int)$approval['source_id']);
+
+        if ($leave) {
+            $details['leave'] = $leave;
+            $details['requested_on'] = $leave['created_at'];
+        }
+    }
+}
+
+
+        /* =====================
        ACCOUNTS → CASH IN / OUT
        ===================== */
-    if ($approval['department'] === 'Accounts') {
+        if ($approval['department'] === 'Accounts') {
 
-        $details['account'] = $this->getAccountDetails(
-            $approval['source_table'],
-            (int)$approval['source_id']
-        );
+            $details['account'] = $this->getAccountDetails(
+                $approval['source_table'],
+                (int)$approval['source_id']
+            );
 
-        $details['meta'] = $meta; // purpose, payment_method etc
+            $details['meta'] = $meta; // purpose, payment_method etc
+        }
+        // Fetch requester info
+        if (!empty($approval['requested_by'])) {
+            $details['requester'] = $this->getUserById((int)$approval['requested_by']);
+        }
+
+
+        return $details;
     }
-    // Fetch requester info
-if (!empty($approval['requested_by'])) {
-    $details['requester'] = $this->getUserById((int)$approval['requested_by']);
-}
-
-
-    return $details;
-}
-
-
-
-  
 
     public function getPendingForRole(array $roles, $limit = 5)
     {
@@ -247,7 +256,7 @@ if (!empty($approval['requested_by'])) {
 
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // 🔥 THIS PART WAS MISSING
+        //  THIS PART WAS MISSING
         foreach ($rows as &$row) {
             $row['context'] = $this->resolveApprovalDetails($row);
         }
@@ -256,7 +265,8 @@ if (!empty($approval['requested_by'])) {
     }
 
 
-    public function updateStatus($id, $status, $approvedAmount = null, $approved_days = null,$approvalNote= null){
+    public function updateStatus($id, $status, $approvedAmount = null, $approved_days = null, $approvalNote = null)
+    {
         $approvedBy = $_SESSION['user']['id'] ?? null;
 
 
@@ -282,7 +292,7 @@ if (!empty($approval['requested_by'])) {
         );
         $stmt->execute();
 
- 
+
         $request = $this->find($id);
         if (!$request || empty($request['source_table']) || empty($request['source_id'])) {
             return false;
@@ -301,7 +311,7 @@ if (!empty($approval['requested_by'])) {
             $columns[] = $row['Field'];
         }
 
-  
+
         $sourceStatus = match ($status) {
             'partial', 'partially_approved' => 'partial',
             'approved' => 'approved',
@@ -331,7 +341,7 @@ if (!empty($approval['requested_by'])) {
             $params[] = $approved_days;
         }
 
-    //    7. Execute source update 
+        //    7. Execute source update 
         if (!empty($updateFields)) {
             $sql2 = "UPDATE {$sourceTable} SET " . implode(', ', $updateFields) . " WHERE id = ?";
             $types .= 'i';
