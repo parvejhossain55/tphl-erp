@@ -391,7 +391,7 @@ class CashoutRequestController extends Controller
         // Check if request is pending
         if (!in_array($request['display_status'], ['pending'])) {
             setError("This request cannot be approved. Current status: " . ucfirst(str_replace('_', ' ', $request['display_status'])));
-            header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
             exit;
         }
 

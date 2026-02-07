@@ -7,55 +7,131 @@ class CentralStatement extends Model
     {
         $this->db = $db;
     }
+/**
+ * Get total management cashin
+ */
+private function getTotalManagementCashin($startDate, $endDate)
+{
+    $query = "
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM management_cashin
+        WHERE payment_status = 'paid'
+        AND transaction_date BETWEEN ? AND ?
+    ";
 
-    public function calculateRevenue($startDate, $endDate, $projectId = null)
-    {
-        // Get all required totals
-        $totalLandShare = $this->getTotalLandShare($startDate, $endDate, $projectId);
-        $totalDiscount = $this->getTotalDiscount($startDate, $endDate, $projectId);
-        $totalAgreementValue = $this->getTotalAgreementValue($startDate, $endDate, $projectId);
-        $totalServiceFee = $this->getTotalServiceFee($startDate, $endDate, $projectId);
+    $stmt = $this->db->prepare($query);
+    $stmt->bind_param("ss", $startDate, $endDate);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    return (float)($row['total'] ?? 0);
+}
 
-        // Get individual payment type totals for cashin calculation
-        $landsharePayments = $this->getTotalPaymentByType('land_share', $startDate, $endDate, $projectId);
-        $registrationPayments = $this->getTotalPaymentByType('registration', $startDate, $endDate, $projectId);
-        $emiPayments = $this->getTotalPaymentByType('emi', $startDate, $endDate, $projectId);
-        $bookingMoneyPayments = $this->getTotalPaymentByType('booking_money', $startDate, $endDate, $projectId);
+/**
+ * Get management cashin breakdown
+ */
+private function getManagementCashinBreakdown($startDate, $endDate)
+{
+    $query = "
+        SELECT 
+            id,
+            transaction_date,
+            role_name,
+            person_name,
+            amount,
+            payment_method,
+            source,
+            description
+        FROM management_cashin
+        WHERE payment_status = 'paid'
+        AND transaction_date BETWEEN ? AND ?
+        ORDER BY transaction_date DESC
+    ";
 
-        // Calculate cashin according to formula
-        $totalCashin = $landsharePayments + $registrationPayments + $totalAgreementValue + $emiPayments - $totalDiscount;
+    $stmt = $this->db->prepare($query);
+    $stmt->bind_param("ss", $startDate, $endDate);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-        // Calculate revenue according to formula
-        $totalRevenue = $totalLandShare - $totalDiscount + $totalAgreementValue + $totalServiceFee;
+    $breakdown = [];
+    $totalAmount = 0;
 
-        // Additional breakdowns
-        $paymentBreakdown = $this->getPaymentBreakdown($startDate, $endDate, $projectId);
-        $emiBreakdown = $this->getEMIBreakdown($startDate, $endDate, $projectId);
-        $landShareBreakdown = $this->getLandShareBreakdown($startDate, $endDate, $projectId);
-
-        return [
-            'summary' => [
-                'total_landshare_from_payments' => $totalLandShare,
-                'total_landshare_payments' => $landsharePayments,
-                'total_registration_payments' => $registrationPayments,
-                'total_emi_payments' => $emiPayments,
-                'total_booking_money_payments' => $bookingMoneyPayments,
-                'total_discount_from_bookings' => $totalDiscount,
-                'total_agreement_value' => $totalAgreementValue,
-                'total_service_fee' => $totalServiceFee,
-                'total_cashin' => $totalCashin,
-                'total_revenue' => $totalRevenue,
-                'revenue_percentage' => $totalCashin > 0 ? ($totalRevenue / $totalCashin) * 100 : 0
-            ],
-            'payment_breakdown' => $paymentBreakdown,
-            'emi_breakdown' => $emiBreakdown,
-            'landshare_breakdown' => $landShareBreakdown,
-            'period' => [
-                'start_date' => $startDate,
-                'end_date' => $endDate
-            ]
+    while ($row = $result->fetch_assoc()) {
+        $amount = (float)$row['amount'];
+        $breakdown[] = [
+            'id' => $row['id'],
+            'transaction_date' => $row['transaction_date'],
+            'role_name' => $row['role_name'],
+            'person_name' => $row['person_name'],
+            'amount' => $amount,
+            'payment_method' => $row['payment_method'],
+            'source' => $row['source'],
+            'description' => $row['description']
         ];
+        $totalAmount += $amount;
     }
+
+    return [
+        'breakdown' => $breakdown,
+        'total_amount' => $totalAmount,
+        'transaction_count' => count($breakdown)
+    ];
+}
+public function calculateRevenue($startDate, $endDate, $projectId = null)
+{
+    // Get all required totals
+    $totalLandShare = $this->getTotalLandShare($startDate, $endDate, $projectId);
+    $totalDiscount = $this->getTotalDiscount($startDate, $endDate, $projectId);
+    $totalAgreementValue = $this->getTotalAgreementValue($startDate, $endDate, $projectId);
+    $totalServiceFee = $this->getTotalServiceFee($startDate, $endDate, $projectId);
+    $totalManagementCashin = $this->getTotalManagementCashin($startDate, $endDate); // ADDED
+
+    // Get individual payment type totals for cashin calculation
+    $landsharePayments = $this->getTotalPaymentByType('land_share', $startDate, $endDate, $projectId);
+    $registrationPayments = $this->getTotalPaymentByType('registration', $startDate, $endDate, $projectId);
+    $emiPayments = $this->getTotalPaymentByType('emi', $startDate, $endDate, $projectId);
+    $bookingMoneyPayments = $this->getTotalPaymentByType('booking_money', $startDate, $endDate, $projectId);
+
+    // Calculate cashin according to formula (INCLUDES management_cashin)
+    $totalCashin = $landsharePayments + $registrationPayments + 
+                   $totalAgreementValue + $emiPayments + $totalManagementCashin ; // ADDED management_cashin
+
+    // Calculate revenue according to formula (REMOVED discount from revenue)
+    // OLD: $totalRevenue = $totalLandShare - $totalDiscount + $totalAgreementValue + $totalServiceFee;
+    // NEW: Remove discount from revenue calculation
+    $totalRevenue = $totalLandShare + $totalAgreementValue + $totalServiceFee; // REMOVED - $totalDiscount
+
+    // Additional breakdowns
+    $paymentBreakdown = $this->getPaymentBreakdown($startDate, $endDate, $projectId);
+    $emiBreakdown = $this->getEMIBreakdown($startDate, $endDate, $projectId);
+    $landShareBreakdown = $this->getLandShareBreakdown($startDate, $endDate, $projectId);
+    $managementCashinBreakdown = $this->getManagementCashinBreakdown($startDate, $endDate); // ADDED
+
+    return [
+        'summary' => [
+            'total_landshare_from_payments' => $totalLandShare,
+            'total_landshare_payments' => $landsharePayments,
+            'total_registration_payments' => $registrationPayments,
+            'total_emi_payments' => $emiPayments,
+            'total_booking_money_payments' => $bookingMoneyPayments,
+            'total_discount_from_bookings' => $totalDiscount,
+            'total_agreement_value' => $totalAgreementValue,
+            'total_service_fee' => $totalServiceFee,
+            'total_management_cashin' => $totalManagementCashin, // ADDED
+            'total_cashin' => $totalCashin,
+            'total_revenue' => $totalRevenue,
+            'revenue_percentage' => $totalCashin > 0 ? ($totalRevenue / $totalCashin) * 100 : 0
+        ],
+        'payment_breakdown' => $paymentBreakdown,
+        'emi_breakdown' => $emiBreakdown,
+        'landshare_breakdown' => $landShareBreakdown,
+        'management_cashin_breakdown' => $managementCashinBreakdown, // ADDED
+        'period' => [
+            'start_date' => $startDate,
+            'end_date' => $endDate
+        ]
+    ];
+}
 
     private function getTotalPaymentByType($paymentType, $startDate, $endDate, $projectId = null)
     {
@@ -461,14 +537,13 @@ public function getMonthlyStatement($year, $month, $projectId = null, $category 
     // Get opening balance
     $openingBalance = $this->getOpeningBalance($startDate, $projectId, $category);
 
-    // Get payment breakdown by type - FIXED: Ensure we get landshare payments correctly
+    // Get payment breakdown by type
     $landsharePaymentsData = $this->getDailyPaymentByType('land_share', $startDate, $endDate, $projectId);
     $registrationPaymentsData = $this->getDailyPaymentByType('registration', $startDate, $endDate, $projectId);
     $emiPaymentsData = $this->getDailyPaymentByType('emi', $startDate, $endDate, $projectId);
-    // Note: booking_money is removed since agreement_value is now booking money
     $agreementData = $this->getDailyAgreementValues($startDate, $endDate, $projectId);
     $serviceFeeData = $this->getDailyServiceFees($startDate, $endDate, $projectId);
-    $managementCashinData = $this->getDailyManagementCashins($startDate, $endDate);
+    $managementCashinData = $this->getDailyManagementCashins($startDate, $endDate); // Already exists
     $discountData = $this->getDailyDiscounts($startDate, $endDate, $projectId);
     $cashOutData = $this->getCashOutData($startDate, $endDate, $category, $projectId);
 
@@ -496,7 +571,7 @@ public function getMonthlyStatement($year, $month, $projectId = null, $category 
         $landsharePayments = $landsharePaymentsData[$date] ?? 0;
         $registrationPayments = $registrationPaymentsData[$date] ?? 0;
         $emiPayments = $emiPaymentsData[$date] ?? 0;
-        $agreement = $agreementData[$date] ?? 0; // This is now Booking Money
+        $agreement = $agreementData[$date] ?? 0;
         $serviceFee = $serviceFeeData[$date] ?? 0;
         $managementCashin = $managementCashinData[$date] ?? 0;
         $discount = $discountData[$date] ?? 0;
@@ -504,8 +579,8 @@ public function getMonthlyStatement($year, $month, $projectId = null, $category 
         // Calculate cashin based on selected category
         $cashin = 0;
         if ($category === 'all' || $category === 'total_cashin') {
-            // Total cashin includes all revenue sources minus discount
-            $cashin = $landsharePayments + $registrationPayments + $agreement + $emiPayments - $discount;
+            // Total cashin includes all revenue sources INCLUDING management_cashin minus discount
+            $cashin = $landsharePayments + $registrationPayments + $agreement + $emiPayments + $managementCashin; // ADDED management_cashin
         } elseif ($category === 'emi') {
             $cashin = $emiPayments;
         } elseif ($category === 'landshare') {
@@ -515,7 +590,7 @@ public function getMonthlyStatement($year, $month, $projectId = null, $category 
         } elseif ($category === 'service_fee') {
             $cashin = $serviceFee;
         } elseif ($category === 'agreement') {
-            $cashin = $agreement - $discount; // Booking Money minus discount
+            $cashin = $agreement - $discount;
         } elseif ($category === 'management_cashin') {
             $cashin = $managementCashin;
         }
@@ -534,7 +609,7 @@ public function getMonthlyStatement($year, $month, $projectId = null, $category 
         $totals['emi_payments'] += $emiPayments;
         $totals['agreement_value'] += $agreement;
         $totals['service_fee'] += $serviceFee;
-        $totals['management_cashin'] += $managementCashin;
+        $totals['management_cashin'] += $managementCashin; // Accumulate
         $totals['discount'] += $discount;
         $totals['cash_out'] += $cashOut;
 
@@ -542,13 +617,12 @@ public function getMonthlyStatement($year, $month, $projectId = null, $category 
             'date' => $date,
             'formatted_date' => date('d M, Y', strtotime($date)),
             'day_name' => date('l', strtotime($date)),
-            // Detailed breakdown
-            'agreement_value' => $agreement, // This is Booking Money
+            'agreement_value' => $agreement,
             'registration' => $registrationPayments,
             'emi_payments' => $emiPayments,
-            'landshare_payments' => $landsharePayments, // This is actual landshare payments
+            'landshare_payments' => $landsharePayments,
             'service_fee' => $serviceFee,
-            'management_cashin' => $managementCashin,
+            'management_cashin' => $managementCashin, // Show in breakdown
             'discount' => $discount,
             'total_cashin' => $cashin,
             'cash_out' => $cashOut,
@@ -562,10 +636,12 @@ public function getMonthlyStatement($year, $month, $projectId = null, $category 
     $totalRevenue = 0;
 
     if ($category === 'all' || $category === 'total_cashin') {
+        // Include management_cashin in total cashin
         $totalCashin = $totals['landshare_payments'] + $totals['registration_payments'] +
-            $totals['agreement_value'] + $totals['emi_payments'] - $totals['discount'];
-        $totalRevenue = $totals['landshare_payments'] - $totals['discount'] +
-            $totals['agreement_value'] + $totals['service_fee'];
+            $totals['agreement_value'] + $totals['emi_payments'] + $totals['management_cashin'] ; // ADDED management_cashin
+        
+        // Remove discount from revenue calculation
+        $totalRevenue = $totals['landshare_payments'] + $totals['agreement_value'] + $totals['service_fee']; // REMOVED - $totals['discount']
     } elseif ($category === 'emi') {
         $totalCashin = $totals['emi_payments'];
         $totalRevenue = $totals['emi_payments'];
@@ -579,8 +655,8 @@ public function getMonthlyStatement($year, $month, $projectId = null, $category 
         $totalCashin = $totals['service_fee'];
         $totalRevenue = $totals['service_fee'];
     } elseif ($category === 'agreement') {
-        $totalCashin = $totals['agreement_value'] - $totals['discount'];
-        $totalRevenue = $totals['agreement_value'] - $totals['discount'];
+        $totalCashin = $totals['agreement_value'] ;
+        $totalRevenue = $totals['agreement_value'];
     } elseif ($category === 'management_cashin') {
         $totalCashin = $totals['management_cashin'];
         $totalRevenue = $totals['management_cashin'];
@@ -596,12 +672,12 @@ public function getMonthlyStatement($year, $month, $projectId = null, $category 
             'total_agreement_value' => $totals['agreement_value'],
             'total_registration_payments' => $totals['registration_payments'],
             'total_emi_payments' => $totals['emi_payments'],
-            'total_landshare_payments' => $totals['landshare_payments'], // Fixed: Use landshare_payments, not agreement_value
+            'total_landshare_payments' => $totals['landshare_payments'],
             'total_service_fee' => $totals['service_fee'],
-            'total_management_cashin' => $totals['management_cashin'],
+            'total_management_cashin' => $totals['management_cashin'], // Added to summary
             'total_discount' => $totals['discount'],
             'total_cashin' => $totalCashin,
-            'total_revenue' => $totalRevenue,
+            'total_revenue' => $totalRevenue, // Now excludes discount
             'total_cash_out' => $totals['cash_out'],
             'net_balance' => $totalCashin - $totals['cash_out'],
             'final_balance' => $category === 'all' ? $runningBalance : $totalCashin
@@ -1021,7 +1097,8 @@ public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $ca
         }
 
         // Calculate cashin according to formula
-        $cashin = $landsharePayments + $registrationPayments + $agreement + $emiPayments - $discount;
+// CORRECT - adding management_cashin
+$cashin = $landsharePayments + $registrationPayments + $agreement + $emiPayments + $managementCashin;
 
         $netAmount = $cashin - $cashOut;
         $runningBalance += $netAmount;
@@ -1057,9 +1134,9 @@ public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $ca
 
     // Calculate final totals
     $totalCashin = $totals['landshare_payments'] + $totals['registration_payments'] +
-        $totals['agreement_value'] + $totals['emi_payments'] - $totals['discount'];
+        $totals['agreement_value'] + $totals['emi_payments'] + $totals['management_cashin']; // Include management_cashin in total cashin;
 
-    $totalRevenue = $totals['landshare_payments'] - $totals['discount'] +
+    $totalRevenue = $totals['landshare_payments'] +
         $totals['agreement_value'] + $totals['service_fee'];
 
     return [
@@ -1261,7 +1338,7 @@ public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $ca
             }
 
             // Calculate cashin according to formula
-            $cashin = $landsharePayments + $registrationPayments + $agreement + $emiPayments - $discount;
+            $cashin = $landsharePayments + $registrationPayments + $agreement + $emiPayments + $managementCashin;
 
             $netAmount = $cashin - $cashOut;
             $runningBalance += $netAmount;
@@ -1300,9 +1377,9 @@ public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $ca
 
         // Calculate final totals
         $totalCashin = $totals['landshare_payments'] + $totals['registration_payments'] +
-            $totals['agreement_value'] + $totals['emi_payments'] - $totals['discount'];
+            $totals['agreement_value'] + $totals['emi_payments'] + $totals['management_cashin'];
 
-        $totalRevenue = $totals['landshare_payments'] - $totals['discount'] +
+        $totalRevenue = $totals['landshare_payments']  +
             $totals['agreement_value'] + $totals['service_fee'];
 
         return [
@@ -1387,7 +1464,7 @@ public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $ca
             $cashin = 0;
             if ($category === 'all' || $category === 'total_cashin') {
                 // Total cashin includes all revenue sources minus discount
-                $cashin = $landsharePayments + $registrationPayments + $agreement + $emiPayments - $discount;
+                $cashin = $landsharePayments + $registrationPayments + $agreement + $emiPayments + $managementCashin ;
             } elseif ($category === 'emi') {
                 $cashin = $emiPayments;
             } elseif ($category === 'landshare') {
@@ -1451,8 +1528,8 @@ public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $ca
 
         if ($category === 'all' || $category === 'total_cashin') {
             $totalCashin = $totals['landshare_payments'] + $totals['registration_payments'] +
-                $totals['agreement_value'] + $totals['emi_payments'] - $totals['discount'];
-            $totalRevenue = $totals['landshare_payments'] - $totals['discount'] +
+                $totals['agreement_value'] + $totals['emi_payments'] + $totals['management_cashin'] ;
+            $totalRevenue = $totals['landshare_payments'] +
                 $totals['agreement_value'] + $totals['service_fee'];
         } elseif ($category === 'emi') {
             $totalCashin = $totals['emi_payments'];
@@ -1467,8 +1544,8 @@ public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $ca
             $totalCashin = $totals['service_fee'];
             $totalRevenue = $totals['service_fee'];
         } elseif ($category === 'agreement') {
-            $totalCashin = $totals['agreement_value'] - $totals['discount'];
-            $totalRevenue = $totals['agreement_value'] - $totals['discount'];
+            $totalCashin = $totals['agreement_value'] ;
+            $totalRevenue = $totals['agreement_value'] ;
         } elseif ($category === 'booking_money') {
             $totalCashin = $totals['booking_money'];
             $totalRevenue = $totals['booking_money'];
@@ -1688,7 +1765,7 @@ public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $ca
             $cashin = 0;
             if ($category === 'all' || $category === 'total_cashin') {
                 // Total cashin includes all revenue sources minus discount
-                $cashin = $landsharePayments + $registrationPayments + $agreement + $emiPayments - $discount;
+                $cashin = $landsharePayments + $registrationPayments + $agreement + $emiPayments + $managementCashin ;
             } elseif ($category === 'emi') {
                 $cashin = $emiPayments;
             } elseif ($category === 'landshare') {
@@ -1754,9 +1831,9 @@ public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $ca
 
         if ($category === 'all' || $category === 'total_cashin') {
             $totalCashin = $totals['landshare_payments'] + $totals['registration_payments'] +
-                $totals['agreement_value'] + $totals['emi_payments'] - $totals['discount'];
-            $totalRevenue = $totals['landshare_payments'] - $totals['discount'] +
-                $totals['agreement_value'] + $totals['service_fee'];
+                $totals['agreement_value'] + $totals['emi_payments'] + $totals['management_cashin'];
+            $totalRevenue = $totals['landshare_payments']  +
+                $totals['agreement_value'] + $totals['service_fee'] + $totals['management_cashin'];
         } elseif ($category === 'emi') {
             $totalCashin = $totals['emi_payments'];
             $totalRevenue = $totals['emi_payments'];
@@ -1770,8 +1847,8 @@ public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $ca
             $totalCashin = $totals['service_fee'];
             $totalRevenue = $totals['service_fee'];
         } elseif ($category === 'agreement') {
-            $totalCashin = $totals['agreement_value'] - $totals['discount'];
-            $totalRevenue = $totals['agreement_value'] - $totals['discount'];
+            $totalCashin = $totals['agreement_value'] ;
+            $totalRevenue = $totals['agreement_value'] ;
         } elseif ($category === 'booking_money') {
             $totalCashin = $totals['booking_money'];
             $totalRevenue = $totals['booking_money'];
