@@ -90,7 +90,7 @@ $show_breadcrumb = false;
                     <span><i class="fa-light fa-file-certificate"></i></span>
                 </div>
                 <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-1 text-muted">Total Revenue</h6>
+                    <h6 class="card__sub-title mb-1 text-muted">Total Clients Payments</h6>
                     <h4 class="card__title mb-0 text-break">৳<?= format_bdt($statistics['lead_payments']) ?></h4>
                 </div>
             </div>
@@ -105,7 +105,7 @@ $show_breadcrumb = false;
                         <span><i class="fa-light fa-arrow-down"></i></span>
                     </div>
                     <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Total Cash In</h6>
+                        <h6 class="card__sub-title mb-2 text-muted mb-2">Total Cash In</h6>
                         <h4 class="card__title mb-0 text-primary text-break">৳<?= format_bdt($overviewStats['total_cashin']) ?></h4>
                     </div>
                 </div>
@@ -121,7 +121,22 @@ $show_breadcrumb = false;
                         <span><i class="fa-light fa-arrow-up"></i></span>
                     </div>
                     <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Total Cash Out</h6>
+                        <h6 class="card__sub-title mb-2 text-muted">Total Revenue</h6>
+                        <h4 class="card__title mb-0 text-success text-break">৳<?= format_bdt($overviewStats['total_revenue'] ) ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
+        <div class="card__wrapper">
+            <div class="d-flex align-items-center gap-10">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-danger">
+                        <span><i class="fa-light fa-arrow-up"></i></span>
+                    </div>
+                    <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-2 text-muted">Total Expenses</h6>
                         <h4 class="card__title mb-0 text-danger text-break">৳<?= format_bdt($overviewStats['total_cashout']) ?></h4>
                     </div>
                 </div>
@@ -130,39 +145,9 @@ $show_breadcrumb = false;
     </div>
 
 
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-10">
-                <div class="card__icon icon-success">
-                    <span><i class="fa-light fa-wallet"></i></span>
-                </div>
-                <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">Net Balance</h6>
-                    <h4 class="card__title mb-0 text-break <?= $overviewStats['net_balance'] >= 0 ? 'text-primary' : 'text-danger' ?>">
-                        ৳<?= format_bdt($overviewStats['net_balance']) ?>
-                    </h4>
-                </div>
-            </div>
-        </div>
-    </div>
+    
 
-    <div class="d-none col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-10">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-badge-check"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Complete Tasks</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h3 class="card__title"><?= $completedTasks ?? '' ?></h3>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    
     <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
             <div class="d-flex align-items-center gap-2 h-100">
@@ -184,7 +169,7 @@ $show_breadcrumb = false;
                     <span><i class="fa-light fa-hand-holding-usd"></i></span>
                 </div>
                 <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">Booking Money</h6>
+                    <h6 class="card__sub-title mb-2 text-muted">Total Land</h6>
                     <h4 class="card__title mb-0 text-break">৳<?= format_bdt($statistics['booking_money']) ?></h4>
                 </div>
             </div>
