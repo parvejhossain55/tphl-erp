@@ -18,12 +18,24 @@ if (empty($chartLabels) && !empty($monthlyData)) {
 // Period display text - CHANGED: Default to 'all_time'
 $periodText = '';
 switch ($period ?? 'all_time') {
-    case 'daily': $periodText = 'Today'; break;
-    case 'weekly': $periodText = 'This Week'; break;
-    case 'monthly': $periodText = 'This Month'; break;
-    case 'yearly': $periodText = 'This Year'; break;
-    case 'all_time': $periodText = 'All Time'; break;
-    default: $periodText = 'All Time'; break;
+    case 'daily':
+        $periodText = 'Today';
+        break;
+    case 'weekly':
+        $periodText = 'This Week';
+        break;
+    case 'monthly':
+        $periodText = 'This Month';
+        break;
+    case 'yearly':
+        $periodText = 'This Year';
+        break;
+    case 'all_time':
+        $periodText = 'All Time';
+        break;
+    default:
+        $periodText = 'All Time';
+        break;
 }
 
 // Weekly data for charts
@@ -48,7 +60,8 @@ if (isset($statistics['by_payment_method'])) {
 $hasTransactions = !empty($recentTransactions);
 
 // Helper function to get status badge
-function getStatusBadge($status) {
+function getStatusBadge($status)
+{
     switch ($status) {
         case 'pending':
             return '<span class="bd-badge bg-warning">Pending</span>';
@@ -112,7 +125,7 @@ function getStatusBadge($status) {
             min-width: 118px;
         }
     }
-    
+
     .no-data-placeholder {
         height: 350px;
         display: flex;
@@ -121,7 +134,7 @@ function getStatusBadge($status) {
         flex-direction: column;
         color: #6c757d;
     }
-    
+
     .no-data-placeholder i {
         font-size: 48px;
         margin-bottom: 15px;
@@ -147,7 +160,7 @@ function getStatusBadge($status) {
                         </select>
                     </div>
                 </div>
-                
+
                 <!-- Period Filter Buttons -->
                 <div class="row mt-3">
                     <div class="col-12">
@@ -632,12 +645,18 @@ function getStatusBadge($status) {
                             <?php if ($hasTransactions): ?>
                                 <?php foreach ($recentTransactions as $request): ?>
                                     <tr>
-                                        <td><?= date('d M, Y', strtotime($request['created_at'])) ?></td>
                                         <td>
-                                            <strong><?= htmlspecialchars($request['requester_name'] ?? 'N/A') ?></strong>
+                                            <?php
+                                            // FIX: Check if 'created_at' exists, fall back to 'date' or current date
+                                            $date = $request['created_at'] ?? $request['date'] ?? date('Y-m-d');
+                                            echo date('d M, Y', strtotime($date));
+                                            ?>
                                         </td>
                                         <td>
-                                            <strong><?= htmlspecialchars($request['purpose_paid_to'] ?? 'N/A') ?></strong>
+                                            <strong><?= htmlspecialchars($request['requester_name'] ?? $request['person_name'] ?? $request['role_name'] ?? 'N/A') ?></strong>
+                                        </td>
+                                        <td>
+                                            <strong><?= htmlspecialchars($request['purpose_paid_to'] ?? $request['paid_to'] ?? 'N/A') ?></strong>
                                             <?php if (!empty($request['description'])): ?>
                                                 <br><small class="text-muted"><?= htmlspecialchars(substr($request['description'], 0, 50)) ?><?= strlen($request['description']) > 50 ? '...' : '' ?></small>
                                             <?php endif; ?>
@@ -656,7 +675,11 @@ function getStatusBadge($status) {
                                             </span>
                                         </td>
                                         <td>
-                                            <?= getStatusBadge($request['display_status'] ?? 'pending') ?>
+                                            <?php
+                                            // FIX: Check for status in multiple possible fields
+                                            $status = $request['display_status'] ?? $request['payment_status'] ?? 'pending';
+                                            echo getStatusBadge($status);
+                                            ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -686,7 +709,7 @@ function getStatusBadge($status) {
         const periodButtons = document.querySelectorAll('.btn__group .btn');
 
         // View type change handler
-        viewTypeSelector.addEventListener('change', function () {
+        viewTypeSelector.addEventListener('change', function() {
             const url = new URL(window.location.href);
             url.searchParams.set('view', this.value);
             window.location.href = url.toString();
@@ -703,7 +726,7 @@ function getStatusBadge($status) {
 
         // Chart data from PHP
         const dynamicChartLabels = <?= json_encode($chartLabels) ?>;
-        const dynamicChartData   = <?= json_encode($chartData) ?>;
+        const dynamicChartData = <?= json_encode($chartData) ?>;
         const paymentMethodLabels = <?= json_encode($paymentMethodLabels) ?>;
         const paymentMethodData = <?= json_encode($paymentMethodData) ?>;
 
@@ -738,8 +761,7 @@ function getStatusBadge($status) {
                 type: 'line',
                 data: {
                     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                    datasets: [
-                        {
+                    datasets: [{
                             label: 'Cash In',
                             data: <?= json_encode($weeklyCashInData) ?>,
                             borderColor: colors.success,
@@ -772,15 +794,24 @@ function getStatusBadge($status) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    animation: { duration: 2000, easing: 'easeOutQuart' },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeOutQuart'
+                    },
                     plugins: {
                         legend: {
                             position: 'bottom',
                             labels: {
                                 usePointStyle: true,
                                 padding: 20,
-                                font: { size: 13, weight: '500' }
+                                font: {
+                                    size: 13,
+                                    weight: '500'
+                                }
                             }
                         },
                         tooltip: {
@@ -797,17 +828,30 @@ function getStatusBadge($status) {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            border: { display: false },
-                            grid: { color: 'rgba(0, 0, 0, 0.05)', drawTicks: false },
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawTicks: false
+                            },
                             ticks: {
                                 padding: 10,
-                                callback: function(value) { return formatCurrency(value); }
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
                             }
                         },
                         x: {
-                            border: { display: false },
-                            grid: { display: false },
-                            ticks: { padding: 10 }
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                padding: 10
+                            }
                         }
                     }
                 }
@@ -840,32 +884,55 @@ function getStatusBadge($status) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animations: { y: { duration: 1500, from: 0, easing: 'easeOutBounce' } },
+                    animations: {
+                        y: {
+                            duration: 1500,
+                            from: 0,
+                            easing: 'easeOutBounce'
+                        }
+                    },
                     plugins: {
-                        legend: { display: false },
+                        legend: {
+                            display: false
+                        },
                         tooltip: {
                             backgroundColor: 'rgba(0, 0, 0, 0.8)',
                             padding: 12,
                             cornerRadius: 8,
                             callbacks: {
-                                label: function(context) { return formatCurrency(context.parsed.y); }
+                                label: function(context) {
+                                    return formatCurrency(context.parsed.y);
+                                }
                             }
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            border: { display: false },
-                            grid: { color: 'rgba(0, 0, 0, 0.05)', drawTicks: false },
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawTicks: false
+                            },
                             ticks: {
                                 padding: 10,
-                                callback: function(value) { return formatCurrency(value); }
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
                             }
                         },
                         x: {
-                            border: { display: false },
-                            grid: { display: false },
-                            ticks: { padding: 10 }
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                padding: 10
+                            }
                         }
                     }
                 }
@@ -906,32 +973,52 @@ function getStatusBadge($status) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: { duration: 2000, easing: 'easeOutQuart' },
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeOutQuart'
+                    },
                     plugins: {
-                        legend: { display: false },
+                        legend: {
+                            display: false
+                        },
                         tooltip: {
                             backgroundColor: 'rgba(0, 0, 0, 0.8)',
                             padding: 12,
                             cornerRadius: 8,
                             callbacks: {
-                                label: function(context) { return formatCurrency(context.parsed.y); }
+                                label: function(context) {
+                                    return formatCurrency(context.parsed.y);
+                                }
                             }
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            border: { display: false },
-                            grid: { color: 'rgba(0, 0, 0, 0.05)', drawTicks: false },
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawTicks: false
+                            },
                             ticks: {
                                 padding: 10,
-                                callback: function(value) { return formatCurrency(value); }
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
                             }
                         },
                         x: {
-                            border: { display: false },
-                            grid: { display: false },
-                            ticks: { padding: 10 }
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                padding: 10
+                            }
                         }
                     }
                 }
@@ -969,7 +1056,9 @@ function getStatusBadge($status) {
                             labels: {
                                 usePointStyle: true,
                                 padding: 15,
-                                font: { size: 12 },
+                                font: {
+                                    size: 12
+                                },
                                 color: '#6b7280'
                             }
                         },
