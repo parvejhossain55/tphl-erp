@@ -324,13 +324,13 @@
                                 <a class="sidebar__menu-item <?= isActive('leave-types', $current_route) ?>" href="<?= $base_url ?>/leave-types">Add Leave Type</a>
                             </li>
                             <li class="slide <?= isActive('leave-lists', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists">Employee Leave Request List</a>
+                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists">Employee Leave Request</a>
                             </li>
                         </ul>
                     </li>
-
-
                 <?php endif; ?>
+
+
                 <!--Payroll CATEGORY -->
                 <?php if (hasPermission("Payroll Manage")):  ?>
                     <li class="sidebar__menu-category ">
@@ -383,16 +383,16 @@
                 <?php if (hasPermission("CED Manage")):  ?>
                     <!--CED CATEGORY -->
                     <li class="sidebar__menu-category">
-                        
+
                         <span class="category-name">CED</span>
                     </li>
-                      <li class="slide ">
+                    <li class="slide ">
                         <a href="<?= $base_url ?>/ced-dashboard" class="sidebar__menu-item <?= isActive('ced-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">CED Dashboard</span>
                         </a>
                     </li>
-            
+
 
                     <!-- Cash In Manage -->
                     <li class="slide has-sub <?= isActive(['ced-dashboard', 'clients-cashin-view', 'clients-cash-in-history-view'], $current_route) ?>">
@@ -417,7 +417,7 @@
                         </a>
                     </li>
 
-               
+
 
                 <?php endif; ?>
                 <!--End CED CATEGORY -->
@@ -539,7 +539,16 @@
                 <?php endif ?>
                 <!--ROle & Permission -->
 
+                <?php if (hasPermission("My Leave Request")): ?>
+                    <ul class="sidebar-menu child2" style="display:block;">
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/create-self-leave-request" class="sidebar__menu-item <?= isActive('create-self-leave-request', $current_route) ?>">
 
+                                <span class="sidebar__menu-label">My Leave Request</span>
+                            </a>
+                        </li>
+                    </ul>
+                <?php endif ?>
 
                 <!-- FOR Task Manage  -->
 
@@ -571,22 +580,33 @@
                     </li>
 
 
-                    <li class="slide has-sub <?= isActive(['create-review', 'review-lists'], $current_route) ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-review', 'review-lists'], $current_route) ?>">
+                    <li class="slide has-sub <?= isActive(['create-review', 'review-lists'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['create-review', 'review-lists'], $current_route) ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i>
+                            <div class="side-menu__icon">
+                                <i class="fas fa-clipboard-list"></i>
                             </div>
                             <span class="sidebar__menu-label">Review Manage</span>
                         </a>
-                        <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-review', 'review-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+
+                        <!-- always open -->
+                        <ul class="sidebar-menu child1" style="display:block;">
                             <li class="slide <?= isActive('create-review', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('create-review', $current_route) ?>" href="<?= $base_url ?>/create-review">Add Review</a>
+                                <a class="sidebar__menu-item <?= isActive('create-review', $current_route) ?>"
+                                    href="<?= $base_url ?>/create-review">
+                                    Add Review
+                                </a>
                             </li>
                             <li class="slide <?= isActive('review-lists', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('review-lists', $current_route) ?>" href="<?= $base_url ?>/review-lists">Review List</a>
+                                <a class="sidebar__menu-item <?= isActive('review-lists', $current_route) ?>"
+                                    href="<?= $base_url ?>/review-lists">
+                                    Review List
+                                </a>
                             </li>
                         </ul>
                     </li>
+
 
                     <!-- Location -->
                     <li class="slide ">
@@ -598,43 +618,70 @@
 
 
                     <!-- Site Manage -->
-                    <li class="slide has-sub <?= isActive(['slider-manage', 'site-settings', 'home-footer-setting'], $current_route) ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['slider-manage', 'site-settings', 'home-footer-setting'], $current_route) ?>">
+                    <li class="slide has-sub <?= isActive(['slider-manage', 'site-settings', 'home-footer-setting', 'flat-purchase-rules'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['slider-manage', 'site-settings', 'home-footer-setting', 'flat-purchase-rules'], $current_route) ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            <div class="side-menu__icon"><i class="fa-solid fa-gear"></i></div>
+                            <div class="side-menu__icon">
+                                <i class="fa-solid fa-gear"></i>
+                            </div>
                             <span class="sidebar__menu-label">Site Manage</span>
                         </a>
-                        <ul class="sidebar-menu child1" style="<?= isMenuOpen(['slider-manage', 'site-settings', 'home-footer-setting'], $current_route) ? 'display:block;' : '' ?>">
+
+                        <!-- always open -->
+                        <ul class="sidebar-menu child1" style="display:block;">
                             <li class="slide <?= isActive('slider-manage', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('slider-manage', $current_route) ?>" href="<?= $GLOBALS['base_url'] ?>/slider-manage">Silder Manage </a>
+                                <a class="sidebar__menu-item <?= isActive('slider-manage', $current_route) ?>"
+                                    href="<?= $GLOBALS['base_url'] ?>/slider-manage">
+                                    Slider Manage
+                                </a>
                             </li>
+
                             <li class="slide <?= isActive('site-settings', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('settings', $current_route) ?>" href="<?= $GLOBALS['base_url'] ?>/site-settings">Setting Manage</a>
-                            </li>
-                            <li class="slide  <?= isActive('flat-purchase-rules', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('flat-purchase-rules', $current_route) ?>" href="<?= $GLOBALS['base_url'] ?>/flat-purchase-rules">Flat Purchase Rules</a>
+                                <a class="sidebar__menu-item <?= isActive('site-settings', $current_route) ?>"
+                                    href="<?= $GLOBALS['base_url'] ?>/site-settings">
+                                    Setting Manage
+                                </a>
                             </li>
 
-
+                            <li class="slide <?= isActive('flat-purchase-rules', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('flat-purchase-rules', $current_route) ?>"
+                                    href="<?= $GLOBALS['base_url'] ?>/flat-purchase-rules">
+                                    Flat Purchase Rules
+                                </a>
+                            </li>
                         </ul>
                     </li>
 
-                    <li class="slide has-sub <?= isActive(['create-blog', 'blog-lists'], $current_route) ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isMenuOpen(['create-blog', 'blog-lists'], $current_route) ?>">
+
+                    <li class="slide has-sub <?= isActive(['create-blog', 'blog-lists'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['create-blog', 'blog-lists'], $current_route) ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i>
+                            <div class="side-menu__icon">
+                                <i class="fas fa-clipboard-list"></i>
                             </div>
                             <span class="sidebar__menu-label">Blog Manage</span>
                         </a>
-                        <ul class="sidebar-menu child1" style="<?= isMenuOpen(['create-blog', 'blog-lists'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+
+                        <!-- always open -->
+                        <ul class="sidebar-menu child1" style="display:block;">
                             <li class="slide <?= isActive('create-blog', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('create-blog', $current_route) ?>" href="<?= $base_url ?>/create-blog">Add Blog</a>
+                                <a class="sidebar__menu-item <?= isActive('create-blog', $current_route) ?>"
+                                    href="<?= $base_url ?>/create-blog">
+                                    Add Blog
+                                </a>
                             </li>
+
                             <li class="slide <?= isActive('blog-lists', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('blog-lists', $current_route) ?>" href="<?= $base_url ?>/blog-lists">Blog List</a>
+                                <a class="sidebar__menu-item <?= isActive('blog-lists', $current_route) ?>"
+                                    href="<?= $base_url ?>/blog-lists">
+                                    Blog List
+                                </a>
                             </li>
                         </ul>
                     </li>
+
 
 
                 <?php endif; ?>

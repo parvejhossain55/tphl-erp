@@ -198,7 +198,23 @@ public function totalLeaveCount()
 
     return (int) $row['total'];
 }
+public function getMyLeaves($user_id)
+{
+    $stmt = $this->db->prepare("
+        SELECT 
+            el.*,
+            lt.name AS leave_type_name,lt.total_days
+        FROM employee_leaves el
+        JOIN leave_types lt ON el.leave_type_id = lt.id
+        WHERE el.user_id = ?
+        ORDER BY el.created_at DESC
+    ");
 
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 
 
 }

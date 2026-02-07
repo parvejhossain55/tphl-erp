@@ -18,7 +18,7 @@ class FlatPurchaseRuleController extends Controller
     {
         $rules = $this->ruleModel->getAll();
         $this->view("site-manage/flat-rules/flat-purchase-rules", [
-            "current_route" => "flat-purchase-rule",
+            "current_route" => "flat-purchase-rules",
             "page_title" => "Flat Purchasing Rules",
             "rules" => $rules
         ]);

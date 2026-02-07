@@ -144,6 +144,11 @@ $routes = [
     "create-employee-leave" => ["controller" => "LeaveController", "method" => "create"],
     "store-employee-leave" => ["controller" => "LeaveController", "method" => "store"],
     "remaining-days" => ["controller" => "LeaveController", "method" => "remainingDays"],
+
+    // self leave 
+       "store-self-leave-request" => ["controller" => "LeaveController", "method" => "store"],
+       "create-self-leave-request" => ["controller" => "LeaveController", "method" => "createSelf"],
+       "remaining-days-self" => ["controller" => "LeaveController", "method" => "remainingDaysSelf"],
     // "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
     // "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 

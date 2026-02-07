@@ -75,67 +75,70 @@ class AccountClient extends Model
     /**
      * Get lands by lead ID
      */
-    public function getLandsByLeadId($leadId)
-    {
-        $sql = $this->db->prepare("
-            SELECT 
-                lb.id as booking_id,
-                lb.booking_date,
-                lb.agreement_value,
-                lb.booking_status,
-                lb.landshare_status,
-                lb.service_fee_balance,
-                p.id as project_id,
-                p.name as project_name,
-                p.types as project_type,
-                f.id as flat_id,
-                f.floor_no as flat_no,
-                f.sqft as flat_size,
-                f.price_value as total_price,
-                f.land_share_value as total_land_share,
-                un.name as unit_name,
-                COALESCE(
-                    (SELECT SUM(lp.amount) 
-                     FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
-                    0
-                ) as total_paid,
-                COALESCE(
-                    (SELECT SUM(lp.land_share_amount) 
-                     FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
-                    0
-                ) as total_land_share_paid,
-                COALESCE(
-                    (SELECT SUM(lp.service_fee) 
-                     FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
-                    0
-                ) as total_service_fee,
-                COALESCE(
-                    (SELECT MAX(lp.payment_date) 
-                     FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
-                    NULL
-                ) as last_payment_date
-            FROM lead_bookings lb
-            INNER JOIN projects p ON lb.project_id = p.id
-            INNER JOIN flats f ON lb.flat_id = f.id
-            INNER JOIN units un ON f.unit_id = un.id
-            WHERE lb.lead_id = ? 
-            AND (lb.booking_status = 'booked' OR lb.booking_status = '' OR lb.booking_status IS NULL)
-            ORDER BY lb.booking_date DESC
-        ");
+public function getLandsByLeadId($leadId)
+{
+    $sql = $this->db->prepare("
+        SELECT 
+            lb.id as booking_id,
+            lb.booking_date,
+            lb.agreement_value,
+            lb.booking_status,
+            lb.landshare_status,
+            lb.service_fee_balance,
+            
+            p.id as project_id,
+            p.name as project_name,
+            p.types as project_type,
+            
+            f.id as flat_id,
+            f.floor_no as flat_no,
+            f.sqft as flat_size,
+            f.price_value as total_price,
+            f.land_share_value as total_land_share,
+            f.flat_name as unit_name,
+            
+            COALESCE(
+                (SELECT SUM(lp.amount) 
+                 FROM lead_payments lp 
+                 WHERE lp.booking_id = lb.id 
+                 AND lp.payment_status = 'paid'), 
+                0
+            ) as total_paid,
+            COALESCE(
+                (SELECT SUM(lp.land_share_amount) 
+                 FROM lead_payments lp 
+                 WHERE lp.booking_id = lb.id 
+                 AND lp.payment_status = 'paid'), 
+                0
+            ) as total_land_share_paid,
+            COALESCE(
+                (SELECT SUM(lp.service_fee) 
+                 FROM lead_payments lp 
+                 WHERE lp.booking_id = lb.id 
+                 AND lp.payment_status = 'paid'), 
+                0
+            ) as total_service_fee,
+            COALESCE(
+                (SELECT MAX(lp.payment_date) 
+                 FROM lead_payments lp 
+                 WHERE lp.booking_id = lb.id 
+                 AND lp.payment_status = 'paid'), 
+                NULL
+            ) as last_payment_date
+        FROM lead_bookings lb
+        LEFT JOIN projects p ON lb.project_id = p.id
+        LEFT JOIN flats f ON lb.flat_id = f.id
+        LEFT JOIN units un ON f.unit_id = un.id
+        WHERE lb.lead_id = ?
+        ORDER BY lb.booking_date DESC
+    ");
 
-        $sql->bind_param("i", $leadId);
-        $sql->execute();
-        $result = $sql->get_result();
-        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-    }
+    $sql->bind_param("i", $leadId);
+    $sql->execute();
+    $result = $sql->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
 
     /**
      * Get payment statistics
