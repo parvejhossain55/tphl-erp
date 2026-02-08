@@ -76,15 +76,15 @@ $show_breadcrumb = true;
                 <div class="col-12">
                     <label>Floor Wise Units</label>
                     <div id="unit-wrapper">
-                        <div class="row unit-row mb-2">
-                            <div class="col-md-5 col-12">
+                        <div class="row unit-row mb-2 align-items-center">
+                            <div class="col-md-6 col-12">
                                 <input type="text" name="units[0][unit_name]" class="form-control" placeholder="Unit Name (A)">
                             </div>
                             <div class="col-md-5 col-12">
                                 <input type="number" name="units[0][sqft]" class="form-control" placeholder="Sqft">
                             </div>
-                            <div class="col-md-2 ">
-                                <button type="button" class="btn btn-danger remove-unit w-full">×</button>
+                            <div class="col-md-1 col-12 d-flex justify-content-center">
+                                <button type="button" class="btn btn-danger remove-unit w-100">×</button>
                             </div>
                         </div>
                     </div>
@@ -285,17 +285,19 @@ $show_breadcrumb = true;
     // Add new unit
     document.getElementById('add-unit').addEventListener('click', function() {
         const html = `
-    <div class="row unit-row mb-2">
-        <div class="col-md-5">
+           <div id="unit-wrapper">
+    <div class="row unit-row mb-2 align-items-center">
+        <div class="col-md-6 col-12">
             <input type="text" name="units[${unitIndex}][unit_name]" class="form-control" placeholder="Unit Name">
         </div>
-        <div class="col-md-5">
+        <div class="col-md-5 col-12">
             <input type="number" name="units[${unitIndex}][sqft]" class="form-control" placeholder="Sqft">
         </div>
-        <div class="col-md-2 d-flex gap-1">
-            <button type="button" class="btn btn-danger remove-unit">×</button>
+        <div class="col-md-1 col-12 d-flex justify-content-center">
+            <button type="button" class="btn btn-danger remove-unit w-100">×</button>
         </div>
     </div>
+
     `;
         wrapper.insertAdjacentHTML('beforeend', html);
         unitIndex++;

@@ -82,7 +82,7 @@ if (!empty($project['floor_wise_unit_meta'])) {
                         <?php if (!empty($floorUnits)): ?>
                             <?php foreach ($floorUnits as $index => $unit): ?>
                                 <div class="row unit-row mb-2 g-2 align-items-center">
-                                    <div class="col-md-5 col-12">
+                                    <div class="col-md-6 col-12">
                                         <input type="text" name="units[<?= $index ?>][unit_name]" class="form-control"
                                             placeholder="Unit Name" value="<?= htmlspecialchars($unit['unit_name']) ?>">
                                     </div>
@@ -90,7 +90,7 @@ if (!empty($project['floor_wise_unit_meta'])) {
                                         <input type="number" name="units[<?= $index ?>][sqft]" class="form-control"
                                             placeholder="Sqft" value="<?= htmlspecialchars($unit['sqft']) ?>">
                                     </div>
-                                    <div class="col-md-2 col-12 d-flex justify-content-center">
+                                    <div class="col-md-1 col-12 d-flex justify-content-center">
                                         <button type="button" class="btn btn-danger btn-mg remove-unit w-100">×</button>
                                     </div>
                                 </div>
@@ -138,23 +138,39 @@ if (!empty($project['floor_wise_unit_meta'])) {
                         foreach ($ranges as $range):
                         ?>
                             <option value="<?= $range ?>"
-                                <?= (($project['price_range'] ?? '') === $range) ? 'selected' : '' ?>
-
+                                <?= (($project['price_range'] ?? '') === $range) ? 'selected' : '' ?>>
                                 <?= $range ?>
-                                </option>
-                            <?php endforeach; ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
+
                 </div>
 
+                <!-- Project Wise  Tag -->
+                <div class="col-xl-4">
+                    <label>Project Wise Current Status</label>
+                  <select name="price_range" class="form-control">
+                        <?php
+                        $tags = ["Sold Out", "On Sale", "Upcoming"];
+                        foreach ($tags as $tag):
+                        ?>
+                            <option value="<?= $tag ?>"
+                                <?= (($project['project_sale_status'] ?? '') === $tag) ? 'selected' : '' ?>>
+                                <?= $tag ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                </div>
                 <!-- Front Road -->
-                <div class="col-xl-6">
+                <div class="col-xl-4">
                     <label>Front Road</label>
                     <input type="text" name="front_road" class="form-control"
                         value="<?= $project['front_road'] ?? '' ?>">
                 </div>
 
                 <!-- Apartment Count -->
-                <div class="col-xl-6">
+                <div class="col-xl-4">
                     <label>Apartment Count</label>
                     <input type="number" name="apartment_count" class="form-control"
                         value="<?= $project['apartment_count'] ?? '' ?>">
@@ -292,11 +308,11 @@ if (!empty($project['floor_wise_unit_meta'])) {
     // Add new unit
     document.getElementById('add-unit').addEventListener('click', function() {
         const html = `
-    <div class="row unit-row mb-2">
-        <div class="col-md-5 col-12">
+    <div class="row unit-row mb-2 align-items-center">
+        <div class="col-md-6 col-12">
             <input type="text" name="units[${unitIndex}][unit_name]" class="form-control" placeholder="Unit Name">
         </div>
-        <div class="col-md-6 col-12">
+        <div class="col-md-5 col-12">
             <input type="number" name="units[${unitIndex}][sqft]" class="form-control" placeholder="Sqft">
         </div>
        <div class="col-md-1 col-12 d-flex justify-content-center">
