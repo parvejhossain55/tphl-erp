@@ -477,14 +477,37 @@ function setErrors(array $errors)
  * @param string $column
  * @return string
  */
-function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug')
-{
-    // lowercase, trim, replace spaces/non-alphanum with dash
-    $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($name)));
+// function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug')
+// {
+//     // lowercase, trim, replace spaces/non-alphanum with dash
+//     $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($name)));
+//     $originalSlug = $slug;
+//     $i = 1;
+
+//     // loop until unique
+//     while (slugExists($db, $slug, $table, $column)) {
+//         $slug = $originalSlug . '-' . $i;
+//         $i++;
+//     }
+
+//     return $slug;
+// }
+function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug') {
+    // Convert to lowercase & trim
+    $slug = trim($name);
+
+    // Replace spaces & punctuation with dash
+    $slug = preg_replace('/[^\p{L}\p{N}]+/u', '-', $slug);
+
+    // Remove leading/trailing dashes
+    $slug = trim($slug, '-');
+
+    // Lowercase (optional, keeps English lowercase)
+    $slug = mb_strtolower($slug, 'UTF-8');
+
     $originalSlug = $slug;
     $i = 1;
 
-    // loop until unique
     while (slugExists($db, $slug, $table, $column)) {
         $slug = $originalSlug . '-' . $i;
         $i++;

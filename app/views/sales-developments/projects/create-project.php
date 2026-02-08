@@ -111,13 +111,23 @@ $show_breadcrumb = true;
                         <option value="Above 5 Crore BDT">Above 5 Crore BDT</option>
                     </select>
                 </div>
-                <!-- Front Road -->
+            <!-- Project wise Status -->
                 <div class="col-xl-6">
+                    <label>Project Current Status</label>
+                    <select name="project_sale_status" class="form-control">
+                        <option value="">Select Project Current Status</option>
+                        <option value="Sold Out">Sold Out</option>
+                        <option value="On Sale">On Sale</option>
+                        <option value="Upcoming">Upcoming</option>
+                    </select>
+                </div>
+                <!-- Front Road -->
+                <div class="col-xl-4 col-12">
                     <label>Front Road</label>
                     <input type="text" name="front_road" class="form-control" placeholder="In Feet">
                 </div>
                 <!-- Apartment Count -->
-                <div class="col-xl-6">
+                <div class="col-xl-4 col-12">
                     <label>Apartment Count</label>
                     <input type="number" name="apartment_count" class="form-control">
                 </div>

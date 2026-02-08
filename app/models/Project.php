@@ -70,14 +70,14 @@ class Project extends Model
         // ======================
         $stmt = $this->db->prepare("
         INSERT INTO projects (
-            name, location_id, community_id,plot_no,block_no, building_type,
+            name,slug, location_id, community_id,plot_no,block_no, building_type,
             total_share, unit_per_floor, types, front_road,
             hover_text, price_range, plot_size, brochure_link,
             description, apartment_count, amenities_details, amenities_image,
             map_image, map_link, passenger_lift, cargo_lift,
             rooftop_gardening, swimming_pool, convention, electricity_backup,
-            image, image2, image3,car_parking,created_by,floor_wise_unit_meta,project_map_location
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            image, image2, image3,car_parking,created_by,floor_wise_unit_meta,project_map_location,project_sale_status
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         if (!$stmt) {
@@ -86,8 +86,9 @@ class Project extends Model
         }
 
         $stmt->bind_param(
-            "ssssssssssssssssssssssssssssssiss",
+            "sssssssssssssssssssssssssssssssisss",
             $data['name'],
+            $data['slug'],
             $data['location_id'],
             $data['community_id'],
             $data['plot_no'],
@@ -119,7 +120,8 @@ class Project extends Model
             $data['car_parking'],
             $data['created_by'],
             $data['floor_wise_unit_meta'],
-            $data['project_map_location']
+            $data['project_map_location'],
+            $data['project_sale_status']
         );
 
         return $stmt->execute();
@@ -191,6 +193,7 @@ class Project extends Model
         $stmt = $this->db->prepare("
     UPDATE projects SET
         name = ?, 
+        slug = ?, 
         location_id = ?, 
         community_id = ?, 
         plot_no = ?, 
@@ -222,7 +225,8 @@ class Project extends Model
         car_parking = ?,
         created_by = ?,
         floor_wise_unit_meta = ?,
-        project_map_location = ?
+        project_map_location = ?,
+        project_sale_status = ?
     WHERE id = ?
 ");
 
@@ -232,8 +236,9 @@ class Project extends Model
             return false;
         }
         $stmt->bind_param(
-            "ssssssssssssssssssssssssssssssissi",
+            "sssssssssssssssssssssssssssssssisssi",
             $data['name'],
+            $data['slug'],
             $data['location_id'],
             $data['community_id'],
             $data['plot_no'],
@@ -266,6 +271,7 @@ class Project extends Model
             $data['created_by'],
             $data['floor_wise_unit_meta'],
             $data['project_map_location'],
+            $data['project_sale_status'],
             $id
         );
 

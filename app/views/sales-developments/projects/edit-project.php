@@ -148,12 +148,13 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
                 <!-- Project Wise  Tag -->
                 <div class="col-xl-4">
-                    <label>Project Wise Current Status</label>
-                  <select name="price_range" class="form-control">
+                    <label>Project Current Status</label>
+                  <select name="project_sale_status" class="form-control">
                         <?php
                         $tags = ["Sold Out", "On Sale", "Upcoming"];
                         foreach ($tags as $tag):
                         ?>
+                              <option value="">Select Project Status</option>
                             <option value="<?= $tag ?>"
                                 <?= (($project['project_sale_status'] ?? '') === $tag) ? 'selected' : '' ?>>
                                 <?= $tag ?>
