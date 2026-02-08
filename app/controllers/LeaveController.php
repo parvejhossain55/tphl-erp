@@ -178,7 +178,7 @@ class LeaveController extends Controller
         $roleId        = (int)($sessionUser['role_id'] ?? 0);
 
         // Roles who can create leave for others
-        $privilegedRoles = [1, 3, 5]; // Admin, HR, Management
+        $privilegedRoles = [1, 3, 4]; // Admin, HR, Management
 
         /**
          * Decide user_id

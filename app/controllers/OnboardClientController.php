@@ -29,7 +29,7 @@ class OnboardClientController extends Controller
         $message = "";
 
         $this->view("sales-developments/accessOnboardClient/access-onboard-clients", [
-            "current_route" => "lead-lists",
+            "current_route" => "onboard-access-client-lists",
             "page_title" => "Lead List",
             "owners" => $owners,
             "onboardAccessClients" => $onboardAccessClients,
