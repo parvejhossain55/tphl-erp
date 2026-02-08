@@ -66,12 +66,13 @@ class Blog extends Model
 
 
 
-        $stmt = $this->db->prepare("INSERT INTO blogs (title,content,author,excerpt,published_date,read_time,image, status,created_by) VALUES (?,?,?,?,?,?,?,?,?)");
+        $stmt = $this->db->prepare("INSERT INTO blogs (title,slug,content,author,excerpt,published_date,read_time,image, status,created_by) VALUES (?,?,?,?,?,?,?,?,?,?)");
 
 
         $stmt->bind_param(
-            "sssssssii",
+            "ssssssssii",
             $data['title'],
+            $data['slug'],
             $data['content'],
             $data['author'],
             $data['excerpt'],
@@ -144,7 +145,7 @@ class Blog extends Model
 
         // Prepare update statement
         $stmt = $this->db->prepare(
-            "UPDATE blogs SET title = ?, content = ?, author = ?, excerpt = ?, published_date = ?, read_time = ?, image = ?, status = ?,created_by =? WHERE id = ?"
+            "UPDATE blogs SET title = ?, slug=?,content = ?, author = ?, excerpt = ?, published_date = ?, read_time = ?, image = ?, status = ?,created_by =? WHERE id = ?"
         );
         if (!$stmt) {
             echo "Prepare failed: " . $this->db->error;
@@ -152,8 +153,9 @@ class Blog extends Model
         }
 
         $stmt->bind_param(
-            "sssssssiii",
+            "ssssssssiii",
             $data['title'],
+            $data['slug'],
             $data['content'],
             $data['author'],
             $data['excerpt'],

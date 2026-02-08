@@ -227,6 +227,8 @@ $routes = [
     //Others Site controller 
     "slider-manage" => ["controller" => "SiteManage\\SliderController", "method" => "index"],
     "store-slider" => ["controller" => "SiteManage\\SliderController", "method" => "store"],
+    "update-slider" => ["controller" => "SiteManage\\SliderController", "method" => "update"],
+    "delete-slider" => ["controller" => "SiteManage\\SliderController", "method" => "delete"],
     // "store-leave-type" => ["controller" => "Leaves\\LeaveTypeController","method" => "store" ],
 
     // site-Setting 

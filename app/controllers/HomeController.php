@@ -123,31 +123,45 @@ class HomeController extends Controller
             $viewType = 'cashin';
         }
 
-        // Get dashboard statistics based on view type
-        if ($viewType === 'cashin') {
-            $statistics = $this->dashboardModel->getCashInStatistics();
 
-            // Add payment method breakdown for Cash In
-            $statistics['by_payment_method'] = $this->dashboardModel->getCashInByPaymentMethod();
 
-            $recentTransactions = $this->dashboardModel->getRecentCashInTransactions(10);
-            $monthlyData = $this->dashboardModel->getMonthlyCashInData();
-        } else {
-            $statistics = $this->dashboardModel->getCashOutStatistics();
-            $recentTransactions = $this->dashboardModel->getRecentCashOutTransactions(10);
-            $monthlyData = $this->dashboardModel->getMonthlyCashOutData();
-        }
 
+
+
+
+
+        // if you have project filter
+
+$viewType = $_GET['view'] ?? 'cashin';
+$period   = $_GET['period'] ?? 'all_time'; // default to 'all_time'
+$projectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+
+if ($viewType === 'cashin') {
+    $statistics = $this->dashboardModel->getCashInStatistics($period, $projectId);
+    $statistics['by_payment_method'] = $this->dashboardModel->getCashInByPaymentMethod($period, $projectId);
+    $recentTransactions = $this->dashboardModel->getRecentCashInTransactions(10, $period, $projectId);
+    $monthlyData = $this->dashboardModel->getMonthlyCashInData(6, $period, $projectId);
+    $weeklyData = $this->dashboardModel->getWeeklyTransactionData('cashin', $period, $projectId);
+    $yearlyData = $this->dashboardModel->getYearlyTransactionData('cashin', 3, $period, $projectId);
+} else {
+    $statistics = $this->dashboardModel->getCashOutStatistics($period, $projectId);
+    $recentTransactions = $this->dashboardModel->getRecentCashOutTransactions(10, $period, $projectId);
+    $monthlyData = $this->dashboardModel->getMonthlyCashOutData(6, $period, $projectId);
+    $weeklyData = $this->dashboardModel->getWeeklyTransactionData('cashout', $period, $projectId);
+    $yearlyData = $this->dashboardModel->getYearlyTransactionData('cashout', 3, $period, $projectId);
+}
         // Get combined overview statistics (always shown)
-        $overviewStats = $this->dashboardModel->getOverviewStatistics();
+       $overviewStats = $this->dashboardModel->getOverviewStatistics($period, $projectId);
 
 
-        
+
         //end accounts
 
 
         $period = $_GET['period'] ?? null;
         $totalFlatsBooking = $this->bookingModel->getTotalBookings($period);
+
+
 
         // chart value get 
 
@@ -251,6 +265,8 @@ class HomeController extends Controller
             "statistics" => $statistics,
             "recentTransactions" => $recentTransactions,
             "monthlyData" => $monthlyData,
+            "weeklyData" => $weeklyData,
+            "yearlyData" => $yearlyData,
             "overviewStats" => $overviewStats,
             "totalFlatsBooking" => $totalFlatsBooking,
 
@@ -271,40 +287,40 @@ class HomeController extends Controller
 
 
 
-public function approveFull($id)
-{
-    $this->db->begin_transaction();
+    public function approveFull($id)
+    {
+        $this->db->begin_transaction();
 
-    try {
-        $request = $this->approvalModel->find($id);
-        $approved_days = null;
-        $approved_amount = $_POST['approved_amount'] ?? null;
+        try {
+            $request = $this->approvalModel->find($id);
+            $approved_days = null;
+            $approved_amount = $_POST['approved_amount'] ?? null;
 
-        if ($request['source_table'] === 'employee_leaves') {
-            $leave = $this->leaveModel->find($request['source_id']);
-            if ($leave && $leave['leave_type_id']) {
-                $start = new DateTime($leave['start_date']);
-                $end   = new DateTime($leave['end_date']);
-                $approved_days = $start->diff($end)->days + 1;
-                $this->deductLeaveBalance($leave, $approved_days);
+            if ($request['source_table'] === 'employee_leaves') {
+                $leave = $this->leaveModel->find($request['source_id']);
+                if ($leave && $leave['leave_type_id']) {
+                    $start = new DateTime($leave['start_date']);
+                    $end   = new DateTime($leave['end_date']);
+                    $approved_days = $start->diff($end)->days + 1;
+                    $this->deductLeaveBalance($leave, $approved_days);
+                }
+            } else {
+                // Full approval fallback
+                if ($approved_amount === null || $approved_amount <= 0) {
+                    $approved_amount = $request['request_amount']; // use requested amount
+                }
             }
-        } else {
-            // Full approval fallback
-            if ($approved_amount === null || $approved_amount <= 0) {
-                $approved_amount = $request['request_amount']; // use requested amount
-            }
+
+            $this->approvalModel->updateStatus($id, 'approved', $approved_amount, $approved_days);
+
+            $this->db->commit();
+            header("Location: " . $GLOBALS['base_url'] . "/home");
+            exit;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            die($e->getMessage());
         }
-
-        $this->approvalModel->updateStatus($id, 'approved', $approved_amount, $approved_days);
-
-        $this->db->commit();
-        header("Location: " . $GLOBALS['base_url'] . "/home");
-        exit;
-    } catch (Exception $e) {
-        $this->db->rollback();
-        die($e->getMessage());
     }
-}
 
 
     // Partial approve

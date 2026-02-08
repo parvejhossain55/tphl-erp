@@ -131,9 +131,9 @@
   --bd-fs-h1: 42px;
   --bd-fs-h2: 34px;
   --bd-fs-h3: 30px;
-  --bd-fs-h4: 24px;
-  --bd-fs-h5: 20px;
-  --bd-fs-h6: 16px;
+  --bd-fs-h4: 20px;
+  --bd-fs-h5: 16px;
+  --bd-fs-h6: 14px;
 }
 
 * {
@@ -9966,7 +9966,7 @@ font-family: "Font Awesome 6 Pro";
 
 .table > thead > tr th {
   color: var(--clr-text-label);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
 }
 

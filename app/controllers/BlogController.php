@@ -56,9 +56,10 @@ class BlogController extends Controller
 
 
         $read_time = calculateReadTime(strip_tags($content));
-
+        $slug = generateUniqueSlug($this->db, $_POST['title'], 'blogs', 'slug');
         $data = [
             'title' => $_POST['title'],
+            'slug' => $slug,
             'excerpt' => trim($excerpt),
             'content' => trim($content),
             'author' => $_POST['author'],
@@ -94,6 +95,8 @@ class BlogController extends Controller
     }
     public function update($id)
     {
+           // Fetch existing blog
+    $blog = $this->blogModel->find($id);
         $content = $_POST['content'] ?? '';
         $excerpt = $_POST['excerpt'] ?? '';
 
@@ -115,6 +118,10 @@ class BlogController extends Controller
             'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
+
+        if (empty($blog['slug'])) {
+            $data['slug'] = generateUniqueSlug($this->db, $_POST['title'], 'blogs', 'slug');
+        }
 
         $photoInputName = 'image';
 
