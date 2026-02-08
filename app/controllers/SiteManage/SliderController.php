@@ -13,7 +13,7 @@ class SliderController extends Controller
     public function __construct($db)
     {
         $this->db = $db;
-        $this->sliderModel =new Slider($db);
+        $this->sliderModel = new Slider($db);
     }
     public function index()
     {
@@ -26,12 +26,12 @@ class SliderController extends Controller
     }
 
     // Handle form submission
-  public function store()
+    public function store()
     {
         $data = [
             'title'      => $_POST['title'] ?? '',
             'subtitle'      => $_POST['subtitle'] ?? '',
-            
+
             'link'      => $_POST['link'] ?? '',
             'status' => isset($_POST['status']) ? 1 : 0,
             'created_by'      => $_SESSION['user']['id'] ?? null,
@@ -39,7 +39,7 @@ class SliderController extends Controller
         $photoInputName = 'image';
 
         try {
-            if ($this->sliderModel->create($data,$photoInputName)) {
+            if ($this->sliderModel->create($data, $photoInputName)) {
                 setSuccess('slider Created Successfully');
                 header("Location: {$GLOBALS['base_url']}/slider-manage");
                 exit;
@@ -50,28 +50,42 @@ class SliderController extends Controller
             exit;
         }
     }
-    
-    public function update()
-    {
-        $data = [
-            'id'     => $_POST['id'] ?? 0,
-            'name'   => $_POST['name'] ?? '',
-            'status' => isset($_POST['status']) ? intval($_POST['status']) : 0,
-        ];
-        print_r($data); // debug: check values
-    }
-    public function show()
-    {
-        $this->view("tasks/view-task", [
-            "current_route" => "show-task",
-            "active" => "show-task",
-            "psge_title" => "Show Task",
-            "show_breadcrumb" => true,
-        ]);
-    }
+public function update()
+{
+    $id = $_POST['id'];
+    $data = [
+        'id'     => $_POST['id'] ?? 0,
+        'title'   => $_POST['title'] ?? '',   // must match input name
+        'link'   => $_POST['link'] ?? '',   // if slider has link field
+        'status' => isset($_POST['status']) ? intval($_POST['status']) : 0,
+    ];
 
-    public function delete()
+    $photoInputName = 'image';
+
+    try {
+        if ($this->sliderModel->update($data, $id, $photoInputName)) {
+            setSuccess('Slider updated successfully');
+            header("Location: {$GLOBALS['base_url']}/slider-manage");
+            exit;
+        }
+    } catch (\Throwable $th) {
+        setError($th->getMessage());
+        header("Location: {$GLOBALS['base_url']}/slider-manage");
+        exit;
+    }
+}
+
+
+   public function delete()
     {
         $id = $_POST['id'] ?? 0;
+
+        if ($id && $this->sliderModel->delete($id)) {
+            setSuccess("slider deleted successfully.");
+            header("Location: {$GLOBALS['base_url']}/slider-manage");
+            exit;
+        } else {
+          setError("Slider Deleted Failed");
+        }
     }
 }

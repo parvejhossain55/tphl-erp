@@ -80,27 +80,6 @@ $stmt->bind_param(
 }
 
 
-// public function countAll($search = '')
-// {
-//     $sql = "SELECT COUNT(*) as total FROM departments WHERE 1";
-//     $params = [];
-//     $types = "";
-
-//     if ($search) {
-//         $sql .= " AND (name LIKE ?)";
-//         $params[] = "%$search%";
-//         $types .= "s";
-//     }
-
-//     $stmt = $this->db->prepare($sql);
-//     if ($params) {
-//         $stmt->bind_param($types, ...$params);
-//     }
-//     $stmt->execute();
-//     $result = $stmt->get_result()->fetch_assoc();
-//     return $result['total'];
-// }
-
 
  // Update role name + permissions
 public function update($data)

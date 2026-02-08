@@ -493,16 +493,15 @@ function setErrors(array $errors)
 //     return $slug;
 // }
 function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug') {
-    // Convert to lowercase & trim
-    $slug = trim($name);
+    $name = trim($name);
 
-    // Replace spaces & punctuation with dash
-    $slug = preg_replace('/[^\p{L}\p{N}]+/u', '-', $slug);
+    // Split words by space or punctuation (Unicode aware)
+    $words = preg_split('/[\s\p{P}]+/u', $name, -1, PREG_SPLIT_NO_EMPTY);
 
-    // Remove leading/trailing dashes
-    $slug = trim($slug, '-');
+    // Join words with dash
+    $slug = implode('-', $words);
 
-    // Lowercase (optional, keeps English lowercase)
+    // Lowercase English letters only
     $slug = mb_strtolower($slug, 'UTF-8');
 
     $originalSlug = $slug;
@@ -515,6 +514,7 @@ function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug
 
     return $slug;
 }
+
 
 
 /**

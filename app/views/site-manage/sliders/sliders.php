@@ -28,117 +28,137 @@ $show_breadcrumb = true;
                             </thead>
 
                             <tbody class="table__body">
-                                <?php foreach($sliders as $key => $slider): ?>
-                                <tr>
-                                    <td>#<?= $key + 1 ?></td>
-                                    <td><?= $slider['title'] ?? '' ?></td>
-                                    <td><?= $slider['subtitle'] ?? '-' ?></td>
-                                    <td>
-                                        <?php if(!empty($slider['image'])): ?>
-                                        <img src="<?= getImage('sliders',$slider['image']) ?>" alt="" width="100">
-                                        <?php endif; ?>
-                                    </td>
-                                    
-                                    <td>
-                                        <?php if ($slider['status'] == 1): ?>
-                                        <span class="bd-badge bg-success">Active</span>
-                                        <?php else: ?>
-                                        <span class="bd-badge bg-danger">Inactive</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-10">
-
-                                            <!-- Edit Button -->
-                                            <button
-                                                type="button"
-                                                class="table__icon edit"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#sliderEdit<?= $slider['id'] ?>">
-                                                <i class="fa-sharp fa-light fa-pen"></i>
-                                            </button>
-
-                                            <!-- Delete Button -->
-                                            <button
-                                                type="button"
-                                                class="table__icon delete removeBtn"
-                                                data-id="<?= $slider['id'] ?>">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
-
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <!-- Slider Edit Modal -->
-                                <div class="modal fade" id="sliderEdit<?= $slider['id'] ?>" tabindex="-1" aria-labelledby="sliderEditLabel<?= $slider['id'] ?>" aria-hidden="true">
-                                    <div class="modal-dialog modal-dialog-centered modal-md">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="sliderEditLabel<?= $slider['id'] ?>">Edit Slider</h5>
-                                                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close"><i class="fa-solid fa-xmark-large"></i></button>
+                                <?php foreach ($sliders as $key => $slider): ?>
+                                    <tr>
+                                        <td>#<?= $key + 1 ?></td>
+                                        <td><?= $slider['title'] ?? '-' ?></td>
+                                        <td><?= $slider['subtitle'] ?? '-' ?></td>
+                                        <td>
+                                            <?php if (!empty($slider['image'])): ?>
+                                                <img src="<?= getImage('sliders', $slider['image']) ?>" alt="" width="100">
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($slider['status'] == 1): ?>
+                                                <span class="bd-badge bg-success">Active</span>
+                                            <?php else: ?>
+                                                <span class="bd-badge bg-danger">Inactive</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-10">
+                                                <!-- Edit Button -->
+                                                <button
+                                                    type="button"
+                                                    class="table__icon edit"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#sliderEdit<?= $slider['id'] ?>"
+                                                    data-id="<?= $slider['id'] ?>"
+                                                    data-title="<?= htmlspecialchars($slider['title'] ?? '') ?>"
+                                                    data-subtitle="<?= htmlspecialchars($slider['subtitle'] ?? '') ?>"
+                                                    data-link="<?= htmlspecialchars($slider['link'] ?? '') ?>"
+                                                    data-status="<?= $slider['status'] ?? 0 ?>"
+                                                    data-image="<?= $slider['image'] ?? '' ?>">
+                                                    <i class="fa-sharp fa-light fa-pen"></i>
+                                                </button>
+                                        <button class="removeBtnCust table__icon delete"
+                                            data-id="<?= $slider['id'] ?>"
+                                            data-name="<?= $slider['title'] ?>"
+                                            data-action="delete-slider">
+                                            <i class="fa-regular fa-trash"></i>
+                                        </button>
+                                           
                                             </div>
-                                            <div class="modal-body">
-                                                <form action="<?= $GLOBALS['base_url'] ?>/update-slider/<?= $slider['id'] ?>" method="post" enctype="multipart/form-data">
-                                                    <div class="card__wrapper mb-20">
-                                                        <div class="row g-20 gy-20">
-                                                            <div class="col-lg-12">
-                                                                <div class="from__input-box">
-                                                                    <div class="form__input-title">
-                                                                        <label>Title <span>*</span></label>
-                                                                    </div>
-                                                                    <div class="form__input">
-                                                                        <input class="form-control" name="title" type="text" value="<?= $slider['title'] ?>">
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-lg-12">
-                                                                <div class="from__input-box">
-                                                                    <div class="form__input-title">
-                                                                        <label>Link</label>
-                                                                    </div>
-                                                                    <div class="form__input">
-                                                                        <input class="form-control" name="link" type="text" value="<?= $slider['link'] ?>">
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-lg-12">
-                                                                <div class="from__input-box">
-                                                                    <div class="form__input-title">
-                                                                        <label>Image</label>
-                                                                    </div>
-                                                                    <div class="form__input">
-                                                                        <input class="form-control" name="image" type="file">
+                                        </td>
+                                    </tr>
+
+                                    <!-- Slider Edit Modal -->
+                                    <div class="modal fade" id="sliderEdit<?= $slider['id'] ?>" tabindex="-1" aria-labelledby="sliderEditLabel<?= $slider['id'] ?>" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered modal-md">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="sliderEditLabel<?= $slider['id'] ?>">Edit Slider</h5>
+                                                    <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                                                        <i class="fa-solid fa-xmark-large"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <form action="<?= $GLOBALS['base_url'] ?>/update-slider/" method="post" enctype="multipart/form-data">
+                                                        <input type="hidden" name="id" class="edit-id">
+
+                                                        <div class="card__wrapper mb-20">
+                                                            <div class="row g-20 gy-20">
+                                                                <div class="col-lg-12">
+                                                                    <div class="from__input-box">
+                                                                        <div class="form__input-title">
+                                                                            <label>Title <span>*</span></label>
+                                                                        </div>
+                                                                        <div class="form__input">
+                                                                            <input class="form-control edit-title" name="title" type="text">
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                           
-                                                            <div class="col-lg-12">
-                                                                <div class="from__input-box">
-                                                                    <div class="form__input-title">
-                                                                        <label>Status</label>
-                                                                    </div>
-                                                                    <div class="form__input">
-                                                                        <select class="form-control" name="status">
-                                                                            <option value="1" <?= $slider['status'] == 1 ? 'selected' : '' ?>>Active</option>
-                                                                            <option value="0" <?= $slider['status'] == 0 ? 'selected' : '' ?>>Inactive</option>
-                                                                        </select>
+
+                                                                <div class="col-lg-12">
+                                                                    <div class="from__input-box">
+                                                                        <div class="form__input-title">
+                                                                            <label>Sub Title</label>
+                                                                        </div>
+                                                                        <div class="form__input">
+                                                                            <input class="form-control edit-subtitle" name="subtitle" type="text">
+                                                                        </div>
                                                                     </div>
                                                                 </div>
+
+                                                                <div class="col-lg-12">
+                                                                    <div class="from__input-box">
+                                                                        <div class="form__input-title">
+                                                                            <label>Link</label>
+                                                                        </div>
+                                                                        <div class="form__input">
+                                                                            <input class="form-control edit-link" name="link" type="text">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="col-lg-12">
+                                                                    <div class="from__input-box">
+                                                                        <div class="form__input-title">
+                                                                            <label>Image</label>
+                                                                        </div>
+                                                                        <div class="form__input">
+                                                                            <input class="form-control edit-image" name="image" type="file">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="col-lg-12">
+                                                                    <div class="from__input-box">
+                                                                        <div class="form__input-title">
+                                                                            <label>Status</label>
+                                                                        </div>
+                                                                        <div class="form__input">
+                                                                            <select class="form-control edit-status" name="status">
+                                                                                <option value="1">Active</option>
+                                                                                <option value="0">Inactive</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div class="submit__btn text-center">
-                                                        <button class="btn btn-primary">Update</button>
-                                                    </div>
-                                                </form>
+                                                        <div class="submit__btn text-center">
+                                                            <button class="btn btn-primary">Update</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <!-- End Edit Modal -->
+                                    <!-- End Edit Modal -->
+                                <?php endforeach; ?>
 
-                                <?php endforeach ?>
                             </tbody>
                         </table>
                     </div>
@@ -200,7 +220,7 @@ $show_breadcrumb = true;
                                     </div>
                                 </div>
                             </div>
-                    
+
                             <div class="col-lg-12">
                                 <div class="from__input-box">
                                     <div class="form__input-title">
@@ -225,3 +245,44 @@ $show_breadcrumb = true;
     </div>
 </div>
 <!-- End Add Slider Modal -->
+
+<script>
+    const base_url = "<?= $GLOBALS['base_url'] ?>"
+document.addEventListener("DOMContentLoaded", function() {
+    // Get all modals
+    const modals = document.querySelectorAll('.modal');
+    
+    modals.forEach(modal => {
+        modal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget; // clicked button
+            
+            const id = button.getAttribute('data-id');
+            const title = button.getAttribute('data-title');
+            const subtitle = button.getAttribute('data-subtitle');
+            const link = button.getAttribute('data-link');
+            const status = button.getAttribute('data-status');
+
+            // Set values in modal inputs
+            modal.querySelector('.edit-id').value = id;
+            modal.querySelector('.edit-title').value = title ?? '';
+            modal.querySelector('.edit-subtitle').value = subtitle ?? '';
+            modal.querySelector('.edit-link').value = link ?? '';
+            modal.querySelector('.edit-status').value = status ?? 0;
+
+            // Image input cannot be prefilled, browser security
+            // We can optionally show existing image as preview
+            const imagePreview = modal.querySelector('.edit-image-preview');
+            if(imagePreview) {
+                const imageName = button.getAttribute('data-image');
+                if(imageName) {
+                    imagePreview.src = "<?= $GLOBALS['base_url'] ?>/public/uploads/sliders/" + imageName;
+                    imagePreview.style.display = 'block';
+                } else {
+                    imagePreview.style.display = 'none';
+                }
+            }
+        });
+    });
+});
+
+</script>

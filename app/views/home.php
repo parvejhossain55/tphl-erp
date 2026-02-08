@@ -5,11 +5,13 @@ $show_breadcrumb = false;
 <div class="row mb-2">
     <div class="card__wrapper">
         <div class="btn__group mb-3">
-            <a href="?period=daily" class="btn btn-sm <?= ($period ?? '') == 'daily' ? 'btn-primary' : 'btn-outline-secondary' ?>">Daily</a>
-            <a href="?period=weekly" class="btn btn-sm <?= ($period ?? '') == 'weekly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Weekly</a>
-            <a href="?period=monthly" class="btn btn-sm <?= ($period ?? '') == 'monthly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Monthly</a>
-            <a href="?period=yearly" class="btn btn-sm <?= ($period ?? '') == 'yearly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Yearly</a>
+            <a href="?period=daily" class="btn btn-sm <?= ($period ?? '') === 'daily' ? 'btn-primary' : 'btn-outline-secondary' ?>">Daily</a>
+            <a href="?period=weekly" class="btn btn-sm <?= ($period ?? '') === 'weekly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Weekly</a>
+            <a href="?period=monthly" class="btn btn-sm <?= ($period ?? '') === 'monthly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Monthly</a>
+            <a href="?period=yearly" class="btn btn-sm <?= ($period ?? '') === 'yearly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Yearly</a>
+            <a href="<?= $GLOBALS['base_url'] ?>/home" class="btn btn-sm <?= empty($period) || $period === 'all_time' ? 'btn-primary' : 'btn-outline-secondary' ?>">All Over</a>
         </div>
+
     </div>
 
 
@@ -122,7 +124,7 @@ $show_breadcrumb = false;
                     </div>
                     <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Total Revenue</h6>
-                        <h4 class="card__title mb-0 text-success text-break">৳<?= format_bdt($overviewStats['total_revenue'] ) ?></h4>
+                        <h4 class="card__title mb-0 text-success text-break">৳<?= format_bdt($overviewStats['total_revenue']) ?></h4>
                     </div>
                 </div>
             </div>
@@ -143,20 +145,15 @@ $show_breadcrumb = false;
             </div>
         </div>
     </div>
-
-
-    
-
-    
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12 mb-3">
+    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
             <div class="d-flex align-items-center gap-2 h-100">
-                <div class="card__icon icon-purple">
-                    <span><i class="fa-light fa-building"></i></span>
+                <div class="card__icon icon-orange">
+                    <span><i class="fa-light fa-calendar-check"></i></span>
                 </div>
-                <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">Management Cash In</h6>
-                    <h4 class="card__title mb-0 text-break">৳<?= format_bdt($statistics['management_cashin']) ?></h4>
+                <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                    <h6 class="card__sub-title mb-2 text-muted">EMI Payments</h6>
+                    <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['emi_payments'] ?? 0, 2) ?></h4>
                 </div>
             </div>
         </div>
@@ -169,12 +166,13 @@ $show_breadcrumb = false;
                     <span><i class="fa-light fa-hand-holding-usd"></i></span>
                 </div>
                 <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">Total Land</h6>
+                    <h6 class="card__sub-title mb-2 text-muted">Total Land Share</h6>
                     <h4 class="card__title mb-0 text-break">৳<?= format_bdt($statistics['booking_money']) ?></h4>
                 </div>
             </div>
         </div>
     </div>
+
     <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
             <div class="d-flex align-items-center gap-2 h-100">
@@ -182,12 +180,13 @@ $show_breadcrumb = false;
                     <span><i class="fa-light fa-money-bill-wave"></i></span>
                 </div>
                 <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">Total Resitration Fee</h6>
+                    <h6 class="card__sub-title mb-2 text-muted">Total Registration Fee</h6>
                     <h4 class="card__title mb-0 text-break">৳<?= format_bdt($statistics['registration_money']) ?></h4>
                 </div>
             </div>
         </div>
     </div>
+
     <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
             <div class="d-flex align-items-center gap-2 h-100">
@@ -566,15 +565,8 @@ $show_breadcrumb = false;
                 </div>
             </div>
         </div>
-
-
-
-
-
     </div>
 </div>
-
-
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
