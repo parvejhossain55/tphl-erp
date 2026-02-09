@@ -228,7 +228,7 @@ $show_breadcrumb = true;
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5 class="mb-3">Project Description</h5>
-                            <div class="description-box p-3 fw-semibold border rounded bg-light">
+                            <div class="description-box p-3 fw-semibold border rounded ">
                                 <?= $project['description'] ?>
                             </div>
                         </div>
@@ -240,7 +240,7 @@ $show_breadcrumb = true;
                     <div class="row mb-4">
                         <div class="col-12">
                             <h5 class="mb-3">Amenities Details</h5>
-                            <div class="amenities-box p-3 fw-semibold border rounded bg-light">
+                            <div class="amenities-box p-3 fw-semibold border rounded ">
                                 <?= $project['amenities_details'] ?>
                             </div>
                         </div>
@@ -350,10 +350,7 @@ $show_breadcrumb = true;
         .project_name {
             font-size: 15px;
         }
-        .btn{
-            padding:0 10px!important;
-        }
-
+       
         .btn_actions {
             padding: 0 0;
         }

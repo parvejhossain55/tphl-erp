@@ -119,6 +119,7 @@ $page = "View Lead";
         color: #6c757d;
         font-weight: 600;
         font-size: 0.9rem;
+
     }
 
     .info-value {
@@ -223,7 +224,69 @@ $page = "View Lead";
             width: 55%;
             font-size: 14px;
         }
+          .lead-header-card {
+        padding: 1.25rem;
+        border-radius: 12px;
     }
+
+    .lead-avatar {
+        width: 70px;
+        height: 70px;
+    }
+
+    .lead-name-section {
+        margin-left: 0;
+    }
+
+    .lead-name-section h2 {
+        font-size: 1.1rem;
+        line-height: 1.3;
+    }
+
+    .lead-name-section p {
+        font-size: 0.85rem;
+    }
+
+    .badge-container {
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+
+    .custom-badge {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.75rem;
+    }
+
+    .action-buttons {
+        width: 100%;
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .action-buttons a {
+        flex: 1;
+        font-size: 0.8rem;
+        padding: 0.5rem;
+        text-align: center;
+    }
+        .info-label {
+        display: contents;
+
+        font-weight: 500;
+        font-size: 0.8rem;
+        
+    }
+    .info-value{
+        margin-left: 10px;
+    }
+    .followup-title{
+        font-size: 17px;
+    }
+    }
+
+
+
+
 </style>
 
 <div class="lead-view-container">

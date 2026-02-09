@@ -80,18 +80,30 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <div class="col-lg-6">
                         <div class="form__input-title">
 
-                            <label class="form-label">Total Unit Value <span>(Approx)</span> </label>
+                            <label class="form-label">Total Flat Value <span>(Approx)</span> </label>
                         </div>
                         <input type="text"
                             class="form-control"
                             id="flatPrice"
                             readonly>
                     </div>
+                    <!-- Land Share Value -->
+                    <div class="col-lg-6">
+                        <div class="form__input-title">
+
+                            <label class="form-label"> Land Share amount  </label>
+                        </div>
+                        <input type="text"
+                            class="form-control"
+                            id="landValue"
+                            readonly>
+                    </div>
+
                     <!-- Agreement Value -->
                     <div class="col-lg-6">
                         <div class="form__input-title">
 
-                            <label class="form-label">Land Share Value/Booking Money *</label>
+                            <label class="form-label">Land Share Money/Booking Money *</label>
                         </div>
                         <input type="number" name="agreement_value" class="form-control"
                             placeholder="e.g. 5000000" required>
@@ -102,22 +114,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <label class="form-label">Discount Amount</label>
                         </div>
                         <input type="number" name="discount_amount" class="form-control"
-                            placeholder="" required>
+                            placeholder="" >
                     </div>
 
-                    <!-- Status -->
-                    <div class="col-lg-6">
-                        <div class="form__input-title">
-
-                            <label class="form-label">Status</label>
-                        </div>
-                        <select name="booking_status" class="form-select">
-                            <option value="booked">Booked</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
-
+                    
                 </div>
 
                 <div class="mt-4">
@@ -316,6 +316,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         const projectSelect = document.getElementById('projectSelect');
         const flatSelect = document.getElementById('flatSelect');
         const flatPriceInput = document.getElementById('flatPrice');
+        const landValueInput = document.getElementById('landValue');
 
         let flatData = []; // store flats
 
@@ -324,6 +325,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 const projectId = this.value;
                 flatSelect.innerHTML = '<option>Loading...</option>';
                 flatPriceInput.value = '';
+                landValueInput.value = '';
 
                 if (!projectId) {
                     flatSelect.innerHTML = '<option value="">Select Flat</option>';
@@ -363,6 +365,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
             const flat = flatData.find(f => f.flat_id == selectedFlatId);
             flatPriceInput.value = flat ? Number(flat.price_value).toLocaleString() : '';
+            landValueInput.value = flat ? Number(flat.land_share_value).toLocaleString() : '';
         });
     });
 </script>
