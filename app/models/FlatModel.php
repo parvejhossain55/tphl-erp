@@ -228,6 +228,7 @@ public function find($id)
                 f.sqft,
                 f.bhk,
                 f.price_value,
+                f.land_share_value,
                 f.flat_name
             FROM flats f
             WHERE f.project_id = ?

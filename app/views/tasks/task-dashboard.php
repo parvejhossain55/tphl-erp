@@ -27,7 +27,7 @@
                 ?>
 
                 <div class="col-lg-6 col-md-6 col-sm-12">
-                    <div class="task-card <?= $cardClass ?>">
+                    <div class="card__wrapper <?= $cardClass ?>">
                         <!-- Task Header -->
                         <div class="task-header">
                             <div class="task-title-section">
@@ -234,7 +234,7 @@
     margin: 0;
     font-size: 18px;
     font-weight: 700;
-    color: #212529;
+    /* color: #212529; */
     line-height: 1.3;
 }
 
@@ -307,7 +307,7 @@
 }
 
 .assigned-info-card {
-    background: linear-gradient(135deg, #e8f5e9 0%, #f8f9fa 100%);
+    /* background: linear-gradient(135deg, #e8f5e9 0%, #f8f9fa 100%); */
     border-radius: 12px;
     padding: 16px;
     display: flex;
@@ -345,7 +345,7 @@
 .info-value {
     font-size: 16px;
     font-weight: 700;
-    color: #212529;
+    /* color: #212529; */
     margin: 0 0 2px 0;
 }
 
@@ -370,12 +370,12 @@
 }
 
 .description-content {
-    background: #f8f9fa;
+    /* background: #f8f9fa; */
     border-radius: 10px;
     padding: 14px;
     font-size: 14px;
     line-height: 1.6;
-    color: #495057;
+    /* color: #495057; */
     border-left: 3px solid #198754;
 }
 
@@ -388,7 +388,7 @@
 }
 
 .date-card {
-    background: #ffffff;
+    /* background: #ffffff; */
     border: 1.5px solid #e8f5e9;
     border-radius: 10px;
     padding: 14px;
@@ -430,7 +430,7 @@
 
 .date-label {
     font-size: 11px;
-    color: #6c757d;
+    /* color: #6c757d; */
     margin: 0 0 4px 0;
     text-transform: uppercase;
     font-weight: 600;
@@ -440,7 +440,6 @@
 .date-value {
     font-size: 14px;
     font-weight: 700;
-    color: #212529;
     margin: 0;
 }
 

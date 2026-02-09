@@ -78,11 +78,11 @@
                                   src="<?= getImage('users', $task['employee_photo']) ?>"
                                   alt="image">
 
-                              <div class="d-flex flex-column">
+                              <div class="d-flex flex-column ">
                                   <span class="fw-semibold">
                                       <?= $task['employee_name'] ?>
                                   </span>
-                                  <small class="text-muted">
+                                  <small class="text-muted ms-2">
                                       <?= $task['user_designation'] ?>
                                   </small>
                               </div>

@@ -71,7 +71,7 @@ $show_breadcrumb = false;
                     <thead>
                         <tr class="table__title">
                             <th>Project</th>
-                            <th >Flat/Unit</th>
+                            <th>Flat/Unit</th>
                             <th>BHK</th>
 
                             <th>Floor No</th>
@@ -118,19 +118,19 @@ $show_breadcrumb = false;
                                             title="View Transaction History"> <i class="fa-regular fa-eye"></i>
                                         </a>
                                         <?php if (hasPermission("view lead")): ?>
-                                        <button class="d-none table__icon delete removeBtnCust  "
-                                            data-name="<?= $flat['flat_name'] ?>"
-                                            data-action="delete-flat"
-                                            data-id="<?= $flat['id'] ?>">
-                                            <i class="fa-regular fa-trash"></i>
-                                        </button>
+                                            <button class="d-none table__icon delete removeBtnCust  "
+                                                data-name="<?= $flat['flat_name'] ?>"
+                                                data-action="delete-flat"
+                                                data-id="<?= $flat['id'] ?>">
+                                                <i class="fa-regular fa-trash"></i>
+                                            </button>
                                         <?php else: ?>
-                                             <button class="table__icon delete removeBtnCust  "
-                                            data-name="<?= $flat['flat_name'] ?>"
-                                            data-action="delete-flat"
-                                            data-id="<?= $flat['id'] ?>">
-                                            <i class="fa-regular fa-trash"></i>
-                                        </button>
+                                            <button class="table__icon delete removeBtnCust  "
+                                                data-name="<?= $flat['flat_name'] ?>"
+                                                data-action="delete-flat"
+                                                data-id="<?= $flat['id'] ?>">
+                                                <i class="fa-regular fa-trash"></i>
+                                            </button>
                                         <?php endif ?>
                                     </div>
                                 </td>
@@ -162,3 +162,18 @@ $show_breadcrumb = false;
         });
     });
 </script>
+<style>
+    @media (max-width: 575.98px) {
+        .card__wrapper .d-flex {
+            flex-direction: row !important;
+        }
+
+        .card__wrapper .btn {
+            flex: 1 1 0;
+            width: auto !important;
+            font-size: 0.8rem;
+            padding: 0.45rem 0.5rem;
+            white-space: nowrap;
+        }
+    }
+</style>

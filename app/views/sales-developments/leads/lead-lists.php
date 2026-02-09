@@ -148,7 +148,7 @@ $show_breadcrumb = true;
                 <div class="card__wrapper h-100">
                     <div class="d-flex flex-row gap-2 align-items-center p-0">
                         <button type="submit" class="btn btn-secondary btn-sm flex-grow-1 py-1">
-                            Search Lead
+                            Search 
                         </button>
                         <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class=" d-none btn btn-success  w-100">
                             Reset
@@ -171,11 +171,6 @@ $show_breadcrumb = true;
                     </div>
                 </div>
             </div>
-
-
-
-
-
         </div>
     </form>
 
@@ -244,7 +239,7 @@ $show_breadcrumb = true;
                                 <input type="checkbox" id="selectAllLeads" title="Select All">
                                 S/L
                             </th><!-- non-sticky first column -->
-                            <th class="">Create Lead</th>
+                            <th class="d-none d-lg-block">Create Lead</th>
                             <th class="th_1">Lead Name</th>
 
                             <th>Phone</th>
@@ -267,7 +262,7 @@ $show_breadcrumb = true;
                                     <?= $key + 1 ?>
                                 </td>
 
-                                <td class=""><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
+                                <td class="d-none d-lg-block"><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
                                 <td class="td_1"><?= $lead['full_name'] ?? '' ?></td>
                                 <td><?= $lead['phone_number'] ?? $lead['phone'] ?></td>
                                 <td><?= !empty($lead['campaign_name'])
