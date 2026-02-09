@@ -306,7 +306,7 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                                     <option value="service_fee" <?= ($category ?? '') === 'service_fee' ? 'selected' : '' ?>>Service Fee Only</option>
                                     <option value="emi" <?= ($category ?? '') === 'emi' ? 'selected' : '' ?>>EMI Only</option>
                                     <option value="registration" <?= ($category ?? '') === 'registration' ? 'selected' : '' ?>>Registration Only</option>
-                                    <option value="agreement" <?= ($category ?? '') === 'agreement' ? 'selected' : '' ?>>Booking Money Only</option>
+                                    <option value="booking_money" <?= ($category ?? '') === 'booking_money' ? 'selected' : '' ?>>Booking Money Only</option>
                                     <option value="management_cashin" <?= ($category ?? '') === 'management_cashin' ? 'selected' : '' ?>>Management Cashin Only</option>
                                 </optgroup>
                                 <optgroup label="Expense Categories">
@@ -632,7 +632,7 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
 
                                     <?php if ($category === 'all'): ?>
                                         <!-- Show all data for 'all' category -->
-                                        <td class="positive"><strong>৳<?= number_format($row['agreement_value'] ?? 0, 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['booking_money'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['service_fee'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['emi_payments'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['landshare_payments'] ?? 0, 2) ?></strong></td>
