@@ -121,9 +121,6 @@ class Dashboard extends Model
     /**
      * Get overview statistics
      */
-    /**
-     * Get overview statistics
-     */
     public function getOverviewStatistics($period = 'all_time', $projectId = null)
     {
         $dateRange = $this->getDateRangeByPeriod($period);
@@ -139,11 +136,11 @@ class Dashboard extends Model
             'total_landshare' => 0,
             'total_registration' => 0,
             'total_discount' => 0,
-            'total_agreement_value' => 0,
+            'total_booking_money' => 0,
             'total_emi_amount' => 0,
             'total_service_fees' => 0,
-            'management_cashin' => 0, // This will be populated
-            'projects_summary' => [] // NEW: Projects summary
+            'management_cashin' => 0,
+            'projects_summary' => []
         ];
 
         // Get land share
@@ -226,20 +223,21 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // Get agreement value
-        $sqlAgreement = "
-        SELECT COALESCE(SUM(agreement_value), 0) as total
-        FROM lead_bookings
-        WHERE booking_date BETWEEN ? AND ?
-        AND booking_status = 'booked'
-        AND landshare_status = 'active'
+        // Get booking money
+        $sqlBookingMoney = "
+        SELECT COALESCE(SUM(lp.amount), 0) as total
+        FROM lead_payments lp
+        INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+        WHERE lp.payment_status = 'paid'
+        AND lp.payment_type = 'booking_money'
+        AND lp.payment_date BETWEEN ? AND ?
     ";
 
         if ($projectId) {
-            $sqlAgreement .= " AND project_id = ?";
+            $sqlBookingMoney .= " AND lb.project_id = ?";
         }
 
-        $stmt = $this->db->prepare($sqlAgreement);
+        $stmt = $this->db->prepare($sqlBookingMoney);
         if ($projectId) {
             $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
         } else {
@@ -248,7 +246,7 @@ class Dashboard extends Model
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
-            $stats['total_agreement_value'] = floatval($row['total']);
+            $stats['total_booking_money'] = floatval($row['total']);
         }
         $stmt->close();
 
@@ -304,7 +302,7 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // ==== FIX: GET MANAGEMENT CASHIN ====
+        // Get management cashin
         $sqlManagementCashIn = "
         SELECT COALESCE(SUM(amount), 0) as total
         FROM management_cashin
@@ -321,14 +319,13 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // Calculate Total Cash In (NOW INCLUDES management_cashin)
-        $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] +
-            $stats['total_agreement_value'] + $stats['total_emi_amount'] + $stats['management_cashin'] -
+        // Calculate Total Cash In
+        $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] + 
+            $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['management_cashin'] - 
             $stats['total_discount'];
 
         // Calculate Total Revenue
-        $stats['total_revenue'] = $stats['total_landshare'] +
-            $stats['total_agreement_value'] + $stats['total_service_fees'];
+        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_service_fees'];
 
         // Get Cash Out with project filtering
         $sqlCashOut = "
@@ -402,7 +399,7 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // NEW: Get projects summary (only if no specific project is selected)
+        // Get projects summary (only if no specific project is selected)
         if (!$projectId) {
             $stats['projects_summary'] = $this->getProjectsSummary($startDate, $endDate);
         }
@@ -475,9 +472,8 @@ class Dashboard extends Model
             'total_landshare' => 0,
             'total_registration' => 0,
             'total_discount' => 0,
-            'total_agreement_value' => 0,
             'total_emi_amount' => 0,
-            'by_project' => [] // NEW: Cashin by project
+            'by_project' => []
         ];
 
         // Get all payment types from lead_payments with project filter
@@ -593,30 +589,6 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        $sqlAgreement = "
-            SELECT COALESCE(SUM(agreement_value), 0) as total_agreement
-            FROM lead_bookings
-            WHERE booking_date BETWEEN ? AND ?
-            AND booking_status = 'booked' AND landshare_status = 'active'
-        ";
-
-        if ($projectId) {
-            $sqlAgreement .= " AND project_id = ?";
-        }
-
-        $stmt = $this->db->prepare($sqlAgreement);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $stats['total_agreement_value'] = floatval($row['total_agreement']);
-        }
-        $stmt->close();
-
         $sqlEmiAmount = "
             SELECT COALESCE(SUM(es.emi_amount), 0) as total_emi
             FROM emi_schedules es
@@ -707,7 +679,7 @@ class Dashboard extends Model
 
         $stmt = $this->db->prepare($sqlMonth);
         if ($projectId) {
-            $stmt->bind_param("ssss", $currentMonthStart, $currentMonthEnd, $currentMonthStart, $currentMonthEnd);
+            $stmt->bind_param("isss", $projectId, $currentMonthStart, $currentMonthEnd);
         } else {
             $stmt->bind_param("ss", $currentMonthStart, $currentMonthEnd);
         }
@@ -720,13 +692,10 @@ class Dashboard extends Model
 
         $stats['total_amount'] = $stats['lead_payments'] + $stats['management_cashin'];
 
-        $totalCashIn = $stats['total_landshare'] + $stats['total_registration'] +
-            $stats['total_agreement_value'] + $stats['total_emi_amount'] + $stats['management_cashin'] -
-            $stats['total_discount'];
-        $stats['total_revenue'] = $totalCashIn - ($stats['total_landshare'] - $stats['total_discount'] +
-            $stats['total_agreement_value'] + $stats['total_service_fees']);
+        // Calculate total revenue
+        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_service_fees'];
 
-        // NEW: Get cashin by project (only if no specific project is selected)
+        // Get cashin by project (only if no specific project is selected)
         if (!$projectId) {
             $stats['by_project'] = $this->getCashInByProject($startDate, $endDate);
         }
@@ -776,7 +745,7 @@ class Dashboard extends Model
     }
 
     /**
-     * FIXED: Get Cash Out Statistics with complete payment method breakdown
+     * Get Cash Out Statistics with complete payment method breakdown
      */
     public function getCashOutStatistics($period = 'all_time', $projectId = null)
     {
@@ -793,7 +762,7 @@ class Dashboard extends Model
             'this_month' => 0,
             'pending_amount' => 0,
             'paid_amount' => 0,
-            'by_project' => [] // NEW: Cashout by project
+            'by_project' => []
         ];
 
         // Management Cashout
@@ -912,7 +881,7 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // FIXED: Payment Method Breakdown with project filter
+        // Payment Method Breakdown with project filter
         $stats['by_payment_method'] = [
             'cash' => 0,
             'bank' => 0,
@@ -990,7 +959,7 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // NEW: Get cashout by project (only if no specific project is selected)
+        // Get cashout by project (only if no specific project is selected)
         if (!$projectId) {
             $stats['by_project'] = $this->getCashOutByProject($startDate, $endDate);
         }
@@ -1097,10 +1066,8 @@ class Dashboard extends Model
         $stmt = $this->db->prepare($sql);
 
         if ($projectId) {
-            // When projectId is provided: startDate, endDate, projectId, startDate, endDate, limit
             $stmt->bind_param("ssissi", $startDate, $endDate, $projectId, $startDate, $endDate, $limit);
         } else {
-            // When projectId is null: startDate, endDate, startDate, endDate, limit
             $stmt->bind_param("ssssi", $startDate, $endDate, $startDate, $endDate, $limit);
         }
 
@@ -1174,10 +1141,8 @@ class Dashboard extends Model
         $stmt = $this->db->prepare($sql);
 
         if ($projectId) {
-            // When projectId is provided: startDate, endDate, startDate, endDate, projectId, projectId, limit
             $stmt->bind_param("ssssiii", $startDate, $endDate, $startDate, $endDate, $projectId, $projectId, $limit);
         } else {
-            // When projectId is null: startDate, endDate, startDate, endDate, limit
             $stmt->bind_param("ssssi", $startDate, $endDate, $startDate, $endDate, $limit);
         }
 
@@ -1196,7 +1161,6 @@ class Dashboard extends Model
     /**
      * Get Monthly Cash In Data with project filter
      */
-    // Fix the getMonthlyCashInData method for 'all_time' period with projectId
     public function getMonthlyCashInData($months = 6, $period = 'all_time', $projectId = null)
     {
         if ($period !== 'all_time') {
@@ -1226,10 +1190,8 @@ class Dashboard extends Model
 
             $stmt = $this->db->prepare($sql);
             if ($projectId) {
-                // When projectId is provided: projectId, startDate, endDate
                 $stmt->bind_param("iss", $projectId, $startDate, $endDate);
             } else {
-                // When projectId is null: startDate, endDate
                 $stmt->bind_param("ss", $startDate, $endDate);
             }
         } else {
@@ -1255,10 +1217,8 @@ class Dashboard extends Model
 
             $stmt = $this->db->prepare($sql);
             if ($projectId) {
-                // When projectId is provided: months, projectId
-                $stmt->bind_param("ii", $months, $projectId);
+                $stmt->bind_param("ii", $projectId, $months);
             } else {
-                // When projectId is null: months
                 $stmt->bind_param("i", $months);
             }
         }
@@ -1448,9 +1408,9 @@ class Dashboard extends Model
 
         $stmt = $this->db->prepare($sql);
         if ($viewType === 'cashin' && $projectId) {
-            $stmt->bind_param("ssss", $projectId, $startOfWeek, $endOfWeek);
+            $stmt->bind_param("iss", $projectId, $startOfWeek, $endOfWeek);
         } elseif ($viewType === 'cashout' && $projectId) {
-            $stmt->bind_param("sssi", $startOfWeek, $endOfWeek, $projectId);
+            $stmt->bind_param("ssi", $startOfWeek, $endOfWeek, $projectId);
         } else {
             $stmt->bind_param("ss", $startOfWeek, $endOfWeek);
         }
@@ -1539,9 +1499,9 @@ class Dashboard extends Model
 
             $stmt = $this->db->prepare($sql);
             if ($viewType === 'cashin' && $projectId) {
-                $stmt->bind_param("ssss", $projectId, $startDate, $endDate);
+                $stmt->bind_param("iss", $projectId, $startDate, $endDate);
             } elseif ($viewType === 'cashout' && $projectId) {
-                $stmt->bind_param("sssi", $startDate, $endDate, $projectId);
+                $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
             } else {
                 $stmt->bind_param("ss", $startDate, $endDate);
             }
@@ -1602,7 +1562,7 @@ class Dashboard extends Model
 
             $stmt = $this->db->prepare($sql);
             if ($viewType === 'cashin' && $projectId) {
-                $stmt->bind_param("ii", $years, $projectId);
+                $stmt->bind_param("ii", $projectId, $years);
             } elseif ($viewType === 'cashout' && $projectId) {
                 $stmt->bind_param("ii", $years, $projectId);
             } else {
@@ -1649,7 +1609,7 @@ class Dashboard extends Model
                 WHERE 1=1 ";
 
         if ($dateCondition) {
-            $sql .= " AND " . substr($dateCondition, 6); // Remove "WHERE " from condition
+            $sql .= " AND " . substr($dateCondition, 6);
         }
 
         if ($projectId) {

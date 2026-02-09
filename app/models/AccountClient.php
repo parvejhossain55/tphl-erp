@@ -30,7 +30,13 @@ class AccountClient extends Model
                 f.floor_no AS flat_floor_no,
                 f.price_value AS total_price,
                 f.land_share_value AS total_land_share,
-                lb.agreement_value AS booking_money,
+                COALESCE(
+                (SELECT SUM(lp.amount) 
+                 FROM lead_payments lp 
+                 WHERE lp.booking_id = lb.id 
+                 AND lp.payment_type = 'booking_money'
+                 AND lp.payment_status = 'paid'), 
+                0 ) as booking_money,
                 lb.discount_amount,
                 COALESCE(
                     (SELECT SUM(lp.amount) 
@@ -75,9 +81,9 @@ class AccountClient extends Model
     /**
      * Get lands by lead ID
      */
-public function getLandsByLeadId($leadId)
-{
-    $sql = $this->db->prepare("
+    public function getLandsByLeadId($leadId)
+    {
+        $sql = $this->db->prepare("
         SELECT 
             lb.id as booking_id,
             lb.booking_date,
@@ -133,11 +139,11 @@ public function getLandsByLeadId($leadId)
         ORDER BY lb.booking_date DESC
     ");
 
-    $sql->bind_param("i", $leadId);
-    $sql->execute();
-    $result = $sql->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
+        $sql->bind_param("i", $leadId);
+        $sql->execute();
+        $result = $sql->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
 
 
     /**
@@ -222,7 +228,13 @@ public function getLandsByLeadId($leadId)
                 lb.id as booking_id,
                 lb.lead_id,
                 lb.booking_date,
-                lb.agreement_value as booking_money,
+                COALESCE(
+                 (SELECT SUM(lp.amount) 
+                 FROM lead_payments lp 
+                WHERE lp.booking_id = lb.id 
+                 AND lp.payment_type = 'booking_money'
+                 AND lp.payment_status = 'paid'), 
+                 0) AS booking_money,
                 lb.discount_amount,
                 lb.booking_status,
                 lb.landshare_status,
@@ -327,7 +339,7 @@ public function getLandsByLeadId($leadId)
             $totalLandShare = (float)$clientDetails['total_land_share'];
             $bookingMoney = (float)$clientDetails['booking_money'];
             $discountAmount = (float)$clientDetails['discount_amount'];
-            
+
             // Paid amounts
             $totalPaid = (float)$clientDetails['total_paid'];
             $bookingMoneyPaid = (float)$clientDetails['booking_money_paid'];
@@ -335,33 +347,33 @@ public function getLandsByLeadId($leadId)
             $registrationPaid = (float)$clientDetails['registration_paid'];
             $emiPaid = (float)$clientDetails['emi_paid'];
             $totalServiceFee = (float)$clientDetails['total_service_fee'];
-            
+
             // CORRECT: Total land share paid = booking money + additional land share payments
             $totalLandSharePaid = $bookingMoneyPaid + $additionalLandSharePaid;
-            
+
             // CORRECT: Remaining land share = total land share - (booking money + additional land share + discount)
             // If there's a discount, it reduces the amount the client needs to pay
             $remainingLandShare = max(0, $totalLandShare - ($totalLandSharePaid + $discountAmount));
-            
+
             // CORRECT: Construction fee = total price - (total land share + registration)
             $constructionFee = $totalPrice - ($totalLandShare + $registrationPaid);
-            
+
             // CORRECT: Construction fee paid = total paid - (booking money + registration + additional land share)
             $constructionFeePaid = $totalPaid - ($bookingMoneyPaid + $registrationPaid + $additionalLandSharePaid);
             $constructionFeePaid = max(0, $constructionFeePaid);
-            
+
             // Calculate remaining construction fee (also considering discount)
             $remainingConstructionFee = max(0, $constructionFee - $constructionFeePaid);
-            
+
             // Calculate total due (total price minus discount and what's been paid)
             $totalDue = max(0, ($totalPrice - $discountAmount) - $totalPaid);
-            
+
             // Calculate net received
             $netReceived = $totalPaid - $totalServiceFee;
-            
+
             // Get EMI statistics
             $emiStats = $this->getEMIStatistics($bookingId);
-            
+
             // Add calculated fields to response
             $clientDetails['total_land_share_paid'] = $totalLandSharePaid;
             $clientDetails['remaining_land_share'] = $remainingLandShare;
@@ -372,7 +384,7 @@ public function getLandsByLeadId($leadId)
             $clientDetails['total_due'] = $totalDue;
             $clientDetails['net_received'] = $netReceived;
             $clientDetails['is_land_share_completed'] = ($remainingLandShare <= 0);
-            
+
             // Add EMI statistics
             $clientDetails['total_emi'] = $emiStats['total_emi'];
             $clientDetails['completed_emi'] = $emiStats['completed_emi'];
@@ -389,8 +401,20 @@ public function getLandsByLeadId($leadId)
      */
     private function getEMIStatistics($bookingId)
     {
+            $totalEmiStmt = $this->db->prepare("
+        SELECT total_emi_no 
+        FROM lead_payments 
+        WHERE booking_id = ? 
+        AND total_emi_no IS NOT NULL
+        LIMIT 1
+    ");
+    $totalEmiStmt->bind_param("i", $bookingId);
+    $totalEmiStmt->execute();
+    $totalEmiResult = $totalEmiStmt->get_result();
+    $totalEmiRow = $totalEmiResult ? $totalEmiResult->fetch_assoc() : null;
+    $totalEmi = $totalEmiRow && $totalEmiRow['total_emi_no'] ? (int)$totalEmiRow['total_emi_no'] : 0;
         $stats = [
-            'total_emi' => 48, // Fixed as per your data
+            'total_emi' => $totalEmi,
             'completed_emi' => 0,
             'pending_emi' => 0,
             'paid_emi_numbers' => [],
@@ -409,7 +433,7 @@ public function getLandsByLeadId($leadId)
         $paidEmiStmt->bind_param("i", $bookingId);
         $paidEmiStmt->execute();
         $paidEmiResult = $paidEmiStmt->get_result();
-        
+
         $paidEmiNumbers = [];
         if ($paidEmiResult) {
             while ($row = $paidEmiResult->fetch_assoc()) {
@@ -419,7 +443,7 @@ public function getLandsByLeadId($leadId)
 
         $stats['completed_emi'] = count($paidEmiNumbers);
         $stats['paid_emi_numbers'] = $paidEmiNumbers;
-        
+
         // Calculate pending EMI numbers
         if ($stats['total_emi'] > 0) {
             for ($i = 1; $i <= $stats['total_emi']; $i++) {
@@ -428,7 +452,7 @@ public function getLandsByLeadId($leadId)
                 }
             }
         }
-        
+
         $stats['pending_emi'] = count($stats['pending_emi_numbers']);
 
         return $stats;
@@ -474,7 +498,7 @@ public function getLandsByLeadId($leadId)
     public function getPaymentSummaryByBookingId($bookingId)
     {
         $clientDetails = $this->getClientByBookingId($bookingId);
-        
+
         if (!$clientDetails) {
             return [
                 'total_price' => 0,
@@ -542,8 +566,10 @@ public function getLandsByLeadId($leadId)
 
         try {
             // Validate required fields
-            if (empty($transactionData['booking_id']) || empty($transactionData['payment_type']) || 
-                empty($transactionData['amount']) || empty($transactionData['payment_status'])) {
+            if (
+                empty($transactionData['booking_id']) || empty($transactionData['payment_type']) ||
+                empty($transactionData['amount']) || empty($transactionData['payment_status'])
+            ) {
                 throw new Exception("Missing required transaction data");
             }
 
@@ -584,11 +610,11 @@ public function getLandsByLeadId($leadId)
                 case 'emi':
                     // Calculate service fee (10% of EMI amount)
                     $serviceFee = $amount * 0.10;
-                    
+
                     // Validate against remaining construction fee
                     $remainingConstruction = $summary['remaining_construction_fee'];
                     $emiPaidSoFar = $summary['construction_fee_paid'];
-                    
+
                     if (($emiPaidSoFar + $amount) > $summary['construction_fee']) {
                         throw new Exception("EMI payment cannot exceed total construction fee: ৳" . number_format($summary['construction_fee'], 2));
                     }
@@ -782,7 +808,7 @@ public function getLandsByLeadId($leadId)
             if ($transaction['payment_type'] === 'booking_money' && $transaction['land_share_amount'] == 0) {
                 $transaction['land_share_amount'] = $transaction['amount'];
             }
-            
+
             // CRITICAL FIX: Use emi_service_fee from emi_schedules if available
             if (isset($transaction['emi_service_fee']) && $transaction['emi_service_fee'] > 0) {
                 $transaction['service_fee'] = $transaction['emi_service_fee'];
@@ -963,7 +989,7 @@ public function getLandsByLeadId($leadId)
 
         try {
             $paymentId = (int)$transactionData['payment_id'];
-            
+
             // Get old transaction for validation
             $oldTransaction = $this->getTransactionById($paymentId);
             if (!$oldTransaction) {
@@ -983,14 +1009,14 @@ public function getLandsByLeadId($leadId)
 
             if ($newPaymentType === 'land_share') {
                 // Adjust for the old amount if it was also land share
-                $oldAmount = $oldTransaction['payment_type'] === 'land_share' ? 
+                $oldAmount = $oldTransaction['payment_type'] === 'land_share' ?
                     (float)$oldTransaction['amount'] : 0;
-                
+
                 $effectiveAmountChange = $newAmount - $oldAmount;
                 $remainingAfterChange = $summary['remaining_land_share'] - $effectiveAmountChange;
-                
+
                 if ($remainingAfterChange < 0) {
-                    throw new Exception("Land share amount would exceed remaining land share by: ৳" . 
+                    throw new Exception("Land share amount would exceed remaining land share by: ৳" .
                         number_format(abs($remainingAfterChange), 2));
                 }
                 $landShareAmount = $newAmount;
@@ -1173,12 +1199,12 @@ public function getLandsByLeadId($leadId)
         $stmt->execute();
         $result = $stmt->get_result();
         $transaction = $result ? $result->fetch_assoc() : null;
-        
+
         // If service_fee exists in emi_schedules, use that instead of lead_payments
         if ($transaction && isset($transaction['emi_service_fee']) && $transaction['emi_service_fee'] > 0) {
             $transaction['service_fee'] = $transaction['emi_service_fee'];
         }
-        
+
         return $transaction;
     }
 
@@ -1304,7 +1330,7 @@ public function getLandsByLeadId($leadId)
                 $serviceFee = $emiAmount * 0.10;
             } elseif ($transactionData['payment_type'] === 'land_share') {
                 $landShareAmount = (float)$transactionData['amount'];
-                
+
                 // Validate land share amount against REMAINING land share (considering discount)
                 $clientDetails = $this->getClientByBookingId($transactionData['booking_id']);
                 $remainingLandShare = $clientDetails['remaining_land_share'];
@@ -1403,9 +1429,9 @@ public function getLandsByLeadId($leadId)
 
             return [
                 'success' => true,
-                'message' => 'Transaction added successfully!' . 
-                            ($emiScheduleData ? ' EMI schedule created.' : '') . 
-                            ($serviceFee > 0 ? ' Service fee: ৳' . number_format($serviceFee, 2) : ''),
+                'message' => 'Transaction added successfully!' .
+                    ($emiScheduleData ? ' EMI schedule created.' : '') .
+                    ($serviceFee > 0 ? ' Service fee: ৳' . number_format($serviceFee, 2) : ''),
                 'payment_id' => $paymentId,
                 'service_fee' => $serviceFee,
                 'land_share_amount' => $landShareAmount
@@ -1504,8 +1530,7 @@ public function getLandsByLeadId($leadId)
                 $checkStmt->execute();
                 $existingSchedule = $checkStmt->get_result()->fetch_assoc();
 
-                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : 
-                         ($transactionData['payment_status'] === 'partially_paid' ? 'partially_paid' : 'pending');
+                $status = $transactionData['payment_status'] === 'paid' ? 'paid' : ($transactionData['payment_status'] === 'partially_paid' ? 'partially_paid' : 'pending');
 
                 if ($existingSchedule) {
                     // Update existing EMI schedule
@@ -1582,8 +1607,8 @@ public function getLandsByLeadId($leadId)
 
             return [
                 'success' => true,
-                'message' => 'Transaction updated successfully!' . 
-                            ($finalServiceFee > 0 ? ' Service fee: ৳' . number_format($finalServiceFee, 2) : '')
+                'message' => 'Transaction updated successfully!' .
+                    ($finalServiceFee > 0 ? ' Service fee: ৳' . number_format($finalServiceFee, 2) : '')
             ];
         } catch (Exception $e) {
             $this->db->rollback();

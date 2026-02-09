@@ -366,7 +366,7 @@ function getStatusBadge($status)
                         <span><i class="fa-light fa-hand-holding-usd"></i></span>
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Land Shares</h6>
+                        <h6 class="card__sub-title mb-2 text-muted">Land Share <br><small>(booking money excluded)</small></h6>
                         <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['booking_money'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
