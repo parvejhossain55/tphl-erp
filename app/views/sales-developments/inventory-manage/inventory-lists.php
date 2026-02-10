@@ -165,7 +165,7 @@ $show_breadcrumb = false;
                                         <td>
 
                                             <?= isset($flat['agreement_value']) && $flat['agreement_value'] > 0
-                                                ?       '<span class="fw-semibold fs-6"> Booking Money: </span>' . format_bdt($flat['agreement_value']) . " ৳"
+                                                ?       '<span class="fw-semibold "> Booking Money: </span>' . format_bdt($flat['agreement_value']) . " ৳"
                                                 : '<span class="bd-badge bg-primary  p-2">Not Yet Booked</span>'; ?>
                                         </td>
 

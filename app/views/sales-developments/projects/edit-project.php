@@ -230,22 +230,22 @@ if (!empty($project['floor_wise_unit_meta'])) {
                     <label>Map Link</label>
                     <input type="text" name="map_link" class="form-control" value="<?= $project['map_link'] ?? '' ?>">
                 </div>
-                <div class="col-xl-3 col-6">
+                <div class="col-xl-3 col-12">
                     <label>Amenities Image</label>
                     <input type="file" name="amenities_image" class="form-control">
                 </div>
                 <!-- Project Images -->
-                <div class="col-xl-3 col-6">
+                <div class="col-xl-3 col-12">
                     <label>Main Image</label>
                     <input type="file" name="image" class="form-control">
                 </div>
 
-                <div class="col-xl-3 col-6">
+                <div class="col-xl-3 col-12">
                     <label>Image 2</label>
                     <input type="file" name="image2" class="form-control">
                 </div>
 
-                <div class="col-xl-3 col-6">
+                <div class="col-xl-3 col-12">
                     <label>Image 3</label>
                     <input type="file" name="image3" class="form-control">
                 </div
