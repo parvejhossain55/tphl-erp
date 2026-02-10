@@ -6969,7 +6969,7 @@ font-family: "Font Awesome 6 Pro";
 }
 @media (max-width:450px) {
   .card__wrapper {
-    padding: 15px 15px;
+    padding: 15px 8px;
   }
 }
 .card__wrapper.style_two {

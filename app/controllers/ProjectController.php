@@ -165,8 +165,8 @@ class ProjectController extends Controller
         $locations   = $this->locationModel->getAll();
         $communities = $this->communityModel->getAll();
         $this->view("sales-developments/projects/edit-project", [
-            "current_route"   => "edit-lead",
-            "page_title"      => "Edit Lead",
+            "current_route"   => "project-lists",
+            "page_title"      => "Edit Project",
             "locations"        => $locations,
             "communities"        => $communities,
             "project" => $project,

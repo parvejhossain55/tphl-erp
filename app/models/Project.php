@@ -186,6 +186,9 @@ class Project extends Model
         $amenities_image = !empty($_FILES['amenities_image']['name'])
             ? uploadImage('amenities_image', 'projects', 'fixed')
             : $old['amenities_image'];
+$plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
+    ? null
+    : (float)$data['plot_size'];
 
         // ======================
         // Update Query
@@ -250,7 +253,8 @@ class Project extends Model
             $data['front_road'],
             $data['hover_text'],
             $data['price_range'],
-            $data['plot_size'],
+            $plot_size,
+
             $data['brochure_link'],
             $data['description'],
             $data['apartment_count'],
