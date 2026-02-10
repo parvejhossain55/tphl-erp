@@ -98,7 +98,7 @@ class CentralStatement extends Model
 
         // Calculate revenue according to formula (REMOVED discount from revenue)
         // NEW: Remove discount from revenue calculation
-        $totalRevenue = $totalLandShare + $totalServiceFee; // REMOVED - $totalDiscount
+        $totalRevenue = $totalLandShare + $totalBookingMoney + $totalServiceFee; // REMOVED - $totalDiscount
 
         // Additional breakdowns
         $paymentBreakdown = $this->getPaymentBreakdown($startDate, $endDate, $projectId);
@@ -1136,7 +1136,7 @@ private function getDailyBookingMoney($startDate, $endDate, $projectId = null)
         $totalCashin = $totals['landshare_payments'] + $totals['registration_payments'] +
             $totals['booking_money'] + $totals['emi_payments'] + $totals['management_cashin']; // Include management_cashin in total cashin;
 
-        $totalRevenue = $totals['landshare_payments'] + $totals['service_fee'];
+        $totalRevenue = $totals['landshare_payments']  + $totals['booking_money'] + $totals['service_fee'];
 
         return [
             'period' => 'Last 6 Months',
@@ -1521,7 +1521,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         if ($category === 'all' || $category === 'total_cashin') {
             $totalCashin = $totals['landshare_payments'] + $totals['registration_payments'] +
                 $totals['booking_money'] + $totals['emi_payments'] + $totals['management_cashin'];
-            $totalRevenue = $totals['landshare_payments'] + $totals['service_fee'];
+            $totalRevenue = $totals['landshare_payments'] + $totals['booking_money'] + $totals['service_fee'];
         } elseif ($category === 'emi') {
             $totalCashin = $totals['emi_payments'];
             $totalRevenue = $totals['emi_payments'];
@@ -1789,7 +1789,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         if ($category === 'all' || $category === 'total_cashin') {
             $totalCashin = $totals['landshare_payments'] + $totals['registration_payments'] +
                 $totals['booking_money'] + $totals['emi_payments'] + $totals['management_cashin'];
-            $totalRevenue = $totals['landshare_payments']  +$totals['service_fee'] ;
+            $totalRevenue = $totals['landshare_payments'] + $totals['booking_money'] + $totals['service_fee'];
         } elseif ($category === 'emi') {
             $totalCashin = $totals['emi_payments'];
             $totalRevenue = $totals['emi_payments'];

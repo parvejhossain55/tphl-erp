@@ -325,7 +325,7 @@ class Dashboard extends Model
             $stats['total_discount'];
 
         // Calculate Total Revenue
-        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_service_fees'];
+        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'];
 
         // Get Cash Out with project filtering
         $sqlCashOut = "
@@ -469,6 +469,7 @@ class Dashboard extends Model
             'pending_amount' => 0,
             'total_revenue' => 0,
             'total_service_fees' => 0,
+            'total_booking_money' => 0,
             'total_landshare' => 0,
             'total_registration' => 0,
             'total_discount' => 0,
@@ -693,7 +694,7 @@ class Dashboard extends Model
         $stats['total_amount'] = $stats['lead_payments'] + $stats['management_cashin'];
 
         // Calculate total revenue
-        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_service_fees'];
+        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'];
 
         // Get cashin by project (only if no specific project is selected)
         if (!$projectId) {
