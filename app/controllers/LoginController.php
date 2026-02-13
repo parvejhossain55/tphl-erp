@@ -21,64 +21,44 @@ class LoginController extends Controller
         $message = "";
 
 
-        
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
             $email = trim($_POST['email'] ?? '');
             $password = trim($_POST['password'] ?? '');
 
-            // DB থেকে user fetch
-            $user = $this->userModel->getByEmail($email);
+            if (empty($email) || empty($password)) {
+                $message = "Email and Password are required!";
+            } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $message = "Invalid Email Format!";
+            } else {
 
-            if ($user) {
-                $hashedPassword = $user['password'] ?? null;
+                $user = $this->userModel->getByEmail($email);
 
-                if ($hashedPassword && password_verify($password, $hashedPassword)) {
-                    // Login successful
+                if ($user && password_verify($password, $user['password'])) {
+
+                    session_regenerate_id(true);
+
                     $_SESSION['user'] = [
                         "id" => $user['id'],
                         "name" => $user["full_name"],
                         "user_name" => $user["user_name"],
                         "email" => $user["email"],
                         "role_id" => $user["role_id"],
+                        "employee_id" => $user["employee_id"] ?? '',
                         "role_name" => strtolower($user['role_name'] ?? ''),
                     ];
 
-                    $permissions = $this->userModel->getPermissionsByRole($user['role_id']);
-                    $_SESSION['user']['permissions'] = $permissions;
+                    $_SESSION['user']['permissions'] =
+                        $this->userModel->getPermissionsByRole($user['role_id']);
 
-                    // Role-based redirect
-                    $role = (int) $user['role_id'];
-
-                    if (in_array($role, [1, 3], true)) {
-                        $redirect_url = "{$GLOBALS['base_url']}/home";
-                    } elseif ($role === 2) {
-                        $redirect_url = "{$GLOBALS['base_url']}/employee-dashboard";
-                    } elseif ($role === 5) {
-                        $redirect_url = "{$GLOBALS['base_url']}/sales-dashboard";
-                    } elseif ($role === 4) {
-                        $redirect_url = "{$GLOBALS['base_url']}/hrm-dashboard";
-                    } elseif ($role === 6) {
-                        $redirect_url = "{$GLOBALS['base_url']}/accounts-dashboard";
-                    } elseif ($role === 7) {
-                        $redirect_url = "{$GLOBALS['base_url']}/ced-dashboard";
-                    } elseif ($role === 8) {
-                        $redirect_url = "{$GLOBALS['base_url']}/user-dashboard";
-                    } elseif ($role === 9) {
-                        $redirect_url = "{$GLOBALS['base_url']}/sales-team-head-dashboard";
-                    } else {
-                        // fallback
-                        $redirect_url = "{$GLOBALS['base_url']}/admin-login";
-                    }
-
-                    header("Location: $redirect_url");
-                    exit;
+                    // redirect logic...
                 } else {
-                    $message = "Incorrect Password!";
+                    $message = "Invalid Email or Password!";
                 }
-            } else {
-                $message = "User Not Found";
             }
         }
+
 
         $this->view("auth/login", [
             "current_route" => "admin-login",

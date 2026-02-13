@@ -15,10 +15,13 @@ $page = 'Create leave'
 
                             <label for="employeeSelect" class="form-label">Employee <span class="text-danger">*</span></label>
                         </div>
-                        <select id="employeeSelect" name="user_id" class="form-select" required>
+                        <select id="employeeSelect" name="employee_id" class="form-select" required>
                             <option value="">Select Employee</option>
-                            <?php foreach ($users as $emp): ?>
-                                <option value="<?= $emp['id'] ?>"><?= $emp['full_name'] ?> - (<?= $emp['role_name'] ?>)</option>
+                            <?php foreach ($employees as $emp): ?>
+                                <option value="<?= (int)$emp['id'] ?>">
+                                    <?= htmlspecialchars($emp['full_name']) ?>
+                                </option>
+
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -64,6 +67,7 @@ $page = 'Create leave'
                         </div>
                         <input type="text" id="remainingDays" class="form-control" readonly>
                     </div>
+
                     <div class="col-xxl-6 col-md-6 col-12">
                         <div class="form__input-title">
 
@@ -101,37 +105,36 @@ $page = 'Create leave'
         const endDateInput = document.getElementById('endDate');
         const numberDaysInput = document.getElementById('numberDays');
 
-//   leaveTypeSelect.addEventListener('change', function() {
-//         alert("Leave type changed! Selected ID: " + this.value);
-//     });
+        //   leaveTypeSelect.addEventListener('change', function() {
+        //         alert("Leave type changed! Selected ID: " + this.value);
+        //     });
 
-function fetchRemainingDays() {
-    const employeeId = employeeSelect.value;
-    const leaveTypeId = leaveTypeSelect.value;
+        function fetchRemainingDays() {
+            const employeeId = employeeSelect.value;
+            const leaveTypeId = leaveTypeSelect.value;
 
-    if (!employeeId || !leaveTypeId) {
-        remainingDaysInput.value = '';
-        numberDaysInput.max = '';
-        return;
-    }
-fetch('<?= $GLOBALS['base_url'] ?>/remaining-days?user_id=' + employeeId + '&leave_type_id=' + leaveTypeId)
-    .then(res => res.json())
-    .then(data => {
-        console.log('Remaining days data:', data); // << Debug
-        remainingDaysInput.value = data.remaining_days;
-        if (data.remaining_days === 'N/A') {
-            numberDaysInput.max = 365;
-        } else {
-            numberDaysInput.max = parseInt(data.remaining_days);
+            if (!employeeId || !leaveTypeId) {
+                remainingDaysInput.value = '';
+                numberDaysInput.max = '';
+                return;
+            }
+
+            fetch('<?= $GLOBALS['base_url'] ?>/remaining-days?employee_id=' + employeeId + '&leave_type_id=' + leaveTypeId)
+                .then(res => res.json())
+                .then(data => {
+                    remainingDaysInput.value = data.remaining_days;
+                    if (data.remaining_days === 'N/A') {
+                        numberDaysInput.max = 365;
+                    } else {
+                        numberDaysInput.max = parseInt(data.remaining_days);
+                    }
+                })
+                .catch(err => console.error('Error fetching remaining days:', err));
         }
-    })
 
-        .catch(err => console.error('Error fetching remaining days:', err));
-}
 
-employeeSelect.addEventListener('change', fetchRemainingDays);
-leaveTypeSelect.addEventListener('change', fetchRemainingDays);
-
+        employeeSelect.addEventListener('change', fetchRemainingDays);
+        leaveTypeSelect.addEventListener('change', fetchRemainingDays);
 
         function calculateNumberOfDays() {
             const start = new Date(startDateInput.value);

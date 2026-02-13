@@ -27,6 +27,21 @@
                                  </div>
                              </div>
                          </div>
+
+                         <div class="col-lg-6">
+                             <div class="from__input-box">
+                                 <div class="form__input-title">
+                                     <label>Employee ID</label>
+                                 </div>
+                                 <div class="form__input">
+                                     <input class="form-control"
+                                         name="employee_id"
+                                         value="<?= $employeeCode ?>"
+                                         readonly>
+                                 </div>
+                             </div>
+                         </div>
+
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
@@ -37,6 +52,7 @@
                                  </div>
                              </div>
                          </div>
+
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
@@ -47,6 +63,7 @@
                                  </div>
                              </div>
                          </div>
+
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
@@ -57,6 +74,7 @@
                                  </div>
                              </div>
                          </div>
+
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
@@ -67,16 +85,19 @@
                                  </div>
                              </div>
                          </div>
+
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
                                      <label for="userName">User Name <span>*</span></label>
                                  </div>
                                  <div class="form__input">
-                                     <input class="form-control" name="userName" id="userName" type="text">
+                                     <input class="form-control" name="username" id="username" type="text" required>
+
                                  </div>
                              </div>
                          </div>
+
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
@@ -99,6 +120,23 @@
                              </div>
                          </div>
 
+                         <div class="col-lg-6">
+                             <div class="from__input-box">
+                                 <div class="form__input-title">
+                                     <label>Employee Role<span>*</span></label>
+                                 </div>
+
+                                 <div class="form__input">
+                                     <select class="form-control" name="role_id">
+                                        <option value="">Select Role</option>
+                                         <?php foreach ($roles as $role): ?>
+                                             <option value="<?= $role['id'] ?>"><?= $role['name'] ?></option>
+                                         <?php endforeach ?>
+                                     </select>
+
+                                 </div>
+                             </div>
+                         </div>
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
@@ -152,7 +190,7 @@
                                      <label class="form-check-label">Date Of Birth <span>*</span></label>
                                  </div>
                                  <div class="form__input">
-                                     <input name="dob" class="form-control" id="humanFriendlyDates" type="date" readonly >
+                                     <input name="dob" class="form-control" id="humanFriendlyDates" type="date" readonly>
                                  </div>
                              </div>
                          </div>
@@ -194,7 +232,8 @@
                                      <label for="branchname">Branch Name <span>*</span></label>
                                  </div>
                                  <div class="form__input">
-                                     <input class="form-control" name="branchname" id="branchname" type="text">
+                                     <input class="form-control" name="branch_name" id="branch_name" type="text" required>
+
                                  </div>
                              </div>
                          </div>

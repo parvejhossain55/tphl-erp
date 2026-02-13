@@ -145,19 +145,22 @@ $show_breadcrumb = false;
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-        <div class="card__wrapper h-100 dashboard-card">
-            <div class="d-flex align-items-center gap-2 h-100">
-                <div class="card__icon icon-orange">
-                    <span><i class="fa-light fa-calendar-check"></i></span>
-                </div>
-                <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">EMI Payments</h6>
-                    <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['emi_payments'] ?? 0, 2) ?></h4>
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
+        <div class="card__wrapper">
+            <div class="d-flex align-items-center gap-10">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-danger">
+                       <span><i class="fa-light fa-calendar-check"></i></span>
+                    </div>
+                    <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-2 text-muted">EMI Payments</h6>
+                        <h4 class="card__title mb-0 text-primary text-break">৳<?= format_bdt($statistics['emi_payments']) ?></h4>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
 
     <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
@@ -428,7 +431,7 @@ $show_breadcrumb = false;
                 </div>
 
 
-                <div class="card__body">
+                   <div class="card__body">
                     <div class="approval-scrollable" style="max-height: 500px; overflow-y: auto; padding: 1rem;">
                         <?php if (!empty($pendingRequests)): ?>
                             <?php foreach ($pendingRequests as $req): ?>
@@ -437,20 +440,7 @@ $show_breadcrumb = false;
                                         <div>
                                             <h6 class="mb-1"><?= htmlspecialchars($req['department']) ?> Department</h6>
                                             <small class="text-muted d-block"><?= htmlspecialchars($req['title']) ?></small>
-                                            <?php
-                                            $requestedOn = $req['context']['requested_on']
-                                                ?? ($req['context']['leave']['created_at'] ?? null)
-                                                ?? $req['created_at'];
-
-                                            ?>
-                                            <?php if ($requestedOn): ?>
-                                                <small class="text-muted">
-                                                    Requested: <?= date('d M Y', strtotime($requestedOn)) ?>
-                                                </small>
-                                            <?php endif; ?>
-
-
-
+                                            <small class="text-muted">Requested: <?= date('d M Y', strtotime($req['created_at'])) ?></small>
                                         </div>
                                         <span class="badge bg-warning text-dark"><?= ucfirst($req['status']) ?></span>
                                     </div>

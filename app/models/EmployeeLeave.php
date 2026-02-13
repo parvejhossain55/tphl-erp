@@ -18,7 +18,7 @@ class EmployeeLeave extends Model
         $sql = $this->db->prepare("
             SELECT el.*, e.full_name AS employee_name, lt.name AS leave_type_name,lt.total_days
             FROM employee_leaves el
-            JOIN users e ON el.user_id = e.id
+            JOIN employees e ON el.employee_id = e.id
             JOIN leave_types lt ON el.leave_type_id = lt.id
             ORDER BY el.created_at DESC
         ");
@@ -37,13 +37,13 @@ class EmployeeLeave extends Model
 public function create($data)
 {
     $sql = "INSERT INTO employee_leaves 
-        (user_id, leave_type_id, start_date, end_date, requested_days, approved_days, approval_status, reason)
+        (employee_id, leave_type_id, start_date, end_date, requested_days, approved_days, approval_status, reason)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
     $stmt = $this->db->prepare($sql);
     $stmt->bind_param(
         "iissiiss",
-        $data['user_id'],
+        $data['employee_id'],
         $data['leave_type_id'],
         $data['start_date'],
         $data['end_date'],
@@ -71,7 +71,7 @@ public function create($data)
         $stmt = $this->db->prepare("
             SELECT el.*, e.full_name AS employee_name, lt.name AS leave_type_name
             FROM employee_leaves el
-            JOIN employees e ON el.user_id = e.id
+            JOIN employees e ON el.employee_id = e.id
             JOIN leave_types lt ON el.leave_type_id = lt.id
             WHERE el.id = ?
         ");
@@ -88,14 +88,14 @@ public function create($data)
     {
         $stmt = $this->db->prepare("
             UPDATE employee_leaves
-            SET user_id = ?, leave_type_id = ?, start_date = ?, end_date = ?, requested_days = ?, 
+            SET employee_id = ?, leave_type_id = ?, start_date = ?, end_date = ?, requested_days = ?, 
                 approved_days = ?, approval_status = ?, reason = ?, updated_at = NOW()
             WHERE id = ?
         ");
 
         $stmt->bind_param(
             "iississsi",
-            $data['user_id'],
+            $data['employee_id'],
             $data['leave_type_id'],
             $data['start_date'],
             $data['end_date'],
@@ -129,15 +129,15 @@ public function create($data)
     /**
      * Get remaining leave for an employee & leave type
      */
-public function getRemainingLeave($user_id, $leave_type_id)
+public function getRemainingLeave($employee_id, $leave_type_id)
 {
-    // Make sure column is updated to user_id in DB
+    // Make sure column is updated to employee_id in DB
     $stmt = $this->db->prepare("
         SELECT remaining_days 
         FROM employee_leave_balances 
-        WHERE user_id = ? AND leave_type_id = ?
+        WHERE employee_id = ? AND leave_type_id = ?
     ");
-    $stmt->bind_param("ii", $user_id, $leave_type_id);
+    $stmt->bind_param("ii", $employee_id, $leave_type_id);
     $stmt->execute();
     $result = $stmt->get_result()->fetch_assoc();
 
@@ -198,7 +198,7 @@ public function totalLeaveCount()
 
     return (int) $row['total'];
 }
-public function getMyLeaves($user_id)
+public function getMyLeaves($employee_id)
 {
     $stmt = $this->db->prepare("
         SELECT 
@@ -206,11 +206,11 @@ public function getMyLeaves($user_id)
             lt.name AS leave_type_name,lt.total_days
         FROM employee_leaves el
         JOIN leave_types lt ON el.leave_type_id = lt.id
-        WHERE el.user_id = ?
+        WHERE el.employee_id = ?
         ORDER BY el.created_at DESC
     ");
 
-    $stmt->bind_param("i", $user_id);
+    $stmt->bind_param("i", $employee_id);
     $stmt->execute();
 
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
