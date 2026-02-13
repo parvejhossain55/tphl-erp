@@ -122,12 +122,21 @@
     const endDateInput = document.getElementById('endDate');
     const numberDaysInput = document.getElementById('numberDays');
 
-    leaveType.addEventListener('change', () => {
-        fetch('<?= $GLOBALS['base_url'] ?>/remaining-days-self?leave_type_id=' + leaveType.value)
-            .then(res => res.json())
-            .then(data => remaining.value = data.remaining_days);
-    });
+leaveType.addEventListener('change', () => {
+    fetch('<?= $GLOBALS['base_url'] ?>/remaining-days-self?leave_type_id=' + leaveType.value)
+        .then(res => res.json())
+        .then(data => {
+            remaining.value = data.remaining_days;
 
+            if(data.remaining_days === 'N/A'){
+                numberDaysInput.max = 365;
+            } else {
+                numberDaysInput.max = parseInt(data.remaining_days) || '';
+            }
+
+            calculateNumberOfDays();
+        });
+});
     function calculateNumberOfDays() {
         const start = new Date(startDateInput.value);
         const end = new Date(endDateInput.value);
