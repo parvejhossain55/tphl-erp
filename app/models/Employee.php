@@ -154,15 +154,15 @@ public function getNextEmployeeCode()
         $result = $stmt->get_result()->fetch_assoc();
         return $result['total'];
     }
-public function create($data, $photoInputName = '')
-{
-    $photo = '';
+    public function create($data, $photoInputName = '')
+    {
+        $photo = '';
 
-    if (!empty($_FILES[$photoInputName]['name'])) {
-        $photo = uploadImage($photoInputName, 'employees', 'fixed', 300, 300);
-    }
+        if (!empty($_FILES[$photoInputName]['name'])) {
+            $photo = uploadImage($photoInputName, 'employees', 'fixed', 300, 300);
+        }
 
-    $stmt = $this->db->prepare("
+        $stmt = $this->db->prepare("
         INSERT INTO employees (
             employee_id, full_name, basic_salary, username, email,
             father_name, phone, emergency_contact, qualification,
@@ -175,60 +175,62 @@ public function create($data, $photoInputName = '')
         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
-    $tempEmployeeId = '';
+        $tempEmployeeId = '';
+        $dob = !empty($data['dob']) ? $data['dob'] : null;
+        $joining_date = !empty($data['joining_date']) ? $data['joining_date'] : null;
 
-    $password = !empty($data['password'])
-        ? password_hash($data['password'], PASSWORD_DEFAULT)
-        : '';
+        $password = !empty($data['password'])
+            ? password_hash($data['password'], PASSWORD_DEFAULT)
+            : '';
 
-    $stmt->bind_param(
-        "ssdssssssssssiissssssssssisiss",
-        $tempEmployeeId,
-        $data['full_name'],
-        $data['basic_salary'],
-        $data['username'],
-        $data['email'],
-        $data['father_name'],
-        $data['phone'],
-        $data['emergency_contact'],
-        $data['qualification'],
-        $data['experience'],
-        $data['address'],
-        $data['pass_num'],
-        $data['nid'],
-        $data['department_id'],
-        $data['designation_id'],
-        $data['dob'],
-        $data['joining_date'],
-        $data['account_holder_name'],
-        $data['account_number'],
-        $data['bank_name'],
-        $data['branch_name'],
-        $data['social_media1'],
-        $data['social_media2'],
-        $data['social_media3'],
-        $photo,
-        $data['make_user'],
-        $password,
-        $data['created_by'],
-        $data['employee_type'],
-        $data['employee_status']
-    );
+        $stmt->bind_param(
+            "ssdssssssssssiissssssssssisiss",
+            $tempEmployeeId,
+            $data['full_name'],
+            $data['basic_salary'],
+            $data['username'],
+            $data['email'],
+            $data['father_name'],
+            $data['phone'],
+            $data['emergency_contact'],
+            $data['qualification'],
+            $data['experience'],
+            $data['address'],
+            $data['pass_num'],
+            $data['nid'],
+            $data['department_id'],
+            $data['designation_id'],
+            $dob,
+            $joining_date,
+            $data['account_holder_name'],
+            $data['account_number'],
+            $data['bank_name'],
+            $data['branch_name'],
+            $data['social_media1'],
+            $data['social_media2'],
+            $data['social_media3'],
+            $photo,
+            $data['make_user'],
+            $password,
+            $data['created_by'],
+            $data['employee_type'],
+            $data['employee_status']
+        );
 
-    if (!$stmt->execute()) {
-        die("Employee Create Failed: " . $stmt->error);
+        if (!$stmt->execute()) {
+            die("Employee Create Failed: " . $stmt->error);
+        }
+
+        $id = $this->db->insert_id;
+
+        $employeeCode = 'EMP-' . str_pad($id, 5, '0', STR_PAD_LEFT);
+
+        $update = $this->db->prepare("UPDATE employees SET employee_id = ? WHERE id = ?");
+        $update->bind_param("si", $employeeCode, $id);
+        $update->execute();
+
+        return $id;
     }
-
-    $id = $this->db->insert_id;
-
-    $employeeCode = 'EMP-' . str_pad($id, 5, '0', STR_PAD_LEFT);
-
-    $update = $this->db->prepare("UPDATE employees SET employee_id = ? WHERE id = ?");
-    $update->bind_param("si", $employeeCode, $id);
-    $update->execute();
-
-    return $id;
-}
 
 
 

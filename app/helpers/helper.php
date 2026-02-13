@@ -852,13 +852,14 @@ function renderApprovalContext(array $req)
                 <?php if (!empty($ctx['leave'])): ?>
                     <li class="list-group-item px-0 border-0 border-top">
                         <div class="row align-items-center mb-2">
-                            <div class="col-4 col-md-3">
+                            <div class="col-4 col-md-4 col-lg-3">
                                 <span class="badge bg-danger" style="font-size: 0.85rem;">Leave Type</span>
                             </div>
-                            <div class="col-8 col-md-9">
+                            <div class="col-8 col-md-8 col-lg-9 ps-lg-4">
                                 <strong><?= esc($ctx['leave']['leave_type'], 'N/A') ?></strong>
                             </div>
                         </div>
+
                         <div class="row align-items-center">
                             <div class="col-4 col-md-3">
                                 <span class="badge bg-danger" style="font-size: 0.85rem;">Duration</span>
