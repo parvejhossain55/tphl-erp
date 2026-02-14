@@ -267,12 +267,14 @@ public function getNextEmployeeCode()
     public function find($id)
     {
         $stmt = $this->db->prepare("SELECT 
-            e.*, 
+            e.*,
+            u.role_id as role_id, 
             desg.name AS designation_name, 
             dept.name AS department_name
         FROM employees AS e
         LEFT JOIN designations AS desg ON e.designation_id = desg.id
         LEFT JOIN departments AS dept ON e.department_id = dept.id
+        LEFT JOIN users AS u ON u.employee_id = e.id
         WHERE e.id = ?
 ");
         $stmt->bind_param("i", $id);
@@ -434,7 +436,7 @@ public function getNextEmployeeCode()
         FROM notifications n
         LEFT JOIN tasks t ON n.task_id = t.id
         LEFT JOIN users u ON n.assigned_by = u.id
-        WHERE n.employee_id = ?
+        WHERE n.user_id = ?
           AND n.is_read = 0
           AND (t.status IS NULL OR t.status != 'completed')
         ORDER BY n.created_at DESC

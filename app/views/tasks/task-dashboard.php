@@ -534,12 +534,12 @@
 }
 
 .btn-accept {
-    background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+    background: orange;
     color: white;
 }
 
 .btn-accept:hover {
-    background: linear-gradient(135deg, #146c43 0%, #0f5132 100%);
+    background: orange;
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(25, 135, 84, 0.3);
 }

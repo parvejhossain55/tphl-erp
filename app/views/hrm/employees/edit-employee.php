@@ -1,6 +1,6 @@
  <?php
-    $page_title = "Create Employee";
-    $page = 'Add Employee';
+    $page_title = "Edit Employee";
+    $page = 'Edit Employee';
     $show_breadcrumb = true;
 
     ?>
@@ -65,7 +65,26 @@
                          value="<?= htmlspecialchars($employee['qualification']) ?>">
                  </div>
 
+                 <div class="col-lg-6">
+                     <div class="from__input-box">
+                         <div class="form__input-title">
+                             <label>Employee Role<span>*</span></label>
+                         </div>
 
+                         <div class="form__input">
+                             <select class="form-control" name="role_id">
+                                 <option value="">Select Role</option>
+                                 <?php foreach ($roles as $role): ?>
+                                     <option value="<?= $role['id'] ?>"
+                                         <?= ($employee['role_id'] == $role['id']) ? 'selected' : '' ?>>
+                                         <?= $role['name'] ?>
+                                     </option>
+                                 <?php endforeach ?>
+                             </select>
+                         </div>
+
+                     </div>
+                 </div>
 
                  <!-- Department -->
                  <div class="col-lg-6">
@@ -115,7 +134,7 @@
                  <!-- Joining Date -->
                  <div class="col-lg-6">
                      <label> Date Of Birth<span>*</span></label>
-                     <input class="form-control" id="humanFriendlyDates" type="text"  name="dob" readonly
+                     <input class="form-control" id="humanFriendlyDates" type="text" name="dob" readonly
                          value="<?= htmlspecialchars($dobFormatted) ?>">
                  </div>
                  <!-- Joining Date -->
@@ -184,7 +203,7 @@
                          <option value="permanent" <?= ($employee['employee_type'] ?? '') == 'permanent' ? 'selected' : '' ?>>Permanent</option>
                          <option value="contract" <?= ($employee['employee_type'] ?? '') == 'contract' ? 'selected' : '' ?>>Contract</option>
                          <option value="director" <?= ($employee['employee_type'] ?? '') == 'director' ? 'selected' : '' ?>>Director</option>
-                     
+
                      </select>
                  </div>
                  <div class="col-lg-6">
@@ -199,7 +218,7 @@
                  </div>
 
 
-                 <div class="col-lg-12">
+                 <div class="col-lg-6">
                      <div class="form__input-box">
                          <div class="form__input-box">
                              <label>

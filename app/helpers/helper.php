@@ -229,8 +229,12 @@ function redirectByRole()
             $url = "{$GLOBALS['base_url']}/account-dashboard";
             break;
 
+
         case 7: // Client Cash In
             $url = "{$GLOBALS['base_url']}/clients-cashin-view";
+            break;
+        case 8: // Accounts
+            $url = "{$GLOBALS['base_url']}/user-dashboard";
             break;
 
         default:
@@ -853,7 +857,7 @@ function renderApprovalContext(array $req)
                     <li class="list-group-item px-0 border-0 border-top">
                         <div class="row align-items-center mb-2">
                             <div class="col-4 col-md-4 col-lg-3">
-                                <span class="badge bg-danger" style="font-size: 0.85rem;">Leave Type</span>
+                                <span class="badge bg-danger ms-2" >Leave Type</span>
                             </div>
                             <div class="col-8 col-md-8 col-lg-9 ps-lg-4">
                                 <strong><?= esc($ctx['leave']['leave_type'], 'N/A') ?></strong>
@@ -862,7 +866,7 @@ function renderApprovalContext(array $req)
 
                         <div class="row align-items-center">
                             <div class="col-4 col-md-3">
-                                <span class="badge bg-danger" style="font-size: 0.85rem;">Duration</span>
+                                <span class="badge bg-danger ms-2" >Duration</span>
                             </div>
                             <div class="col-8 col-md-9">
                                 <strong><?= esc($ctx['leave']['requested_days'], 0) ?> days</strong>
