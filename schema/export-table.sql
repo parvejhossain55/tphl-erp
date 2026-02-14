@@ -481,3 +481,19 @@ created_at	Timestamp of the event
 You can log whenever FFmpeg starts, stops, or a camera is restarted by the watchdog.
 
 -- farzana
+
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+SET @tables = NULL;
+
+SELECT GROUP_CONCAT(CONCAT('`', table_name, '`')) INTO @tables
+FROM information_schema.tables
+WHERE table_schema = 'tphl_db';
+
+SET @tables = CONCAT('DROP TABLE IF EXISTS ', @tables);
+PREPARE stmt FROM @tables;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET FOREIGN_KEY_CHECKS = 1;
