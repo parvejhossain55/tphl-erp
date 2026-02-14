@@ -43,12 +43,12 @@ class FollowUp extends Model
             setError($this->db->error);
             return false;
         }
-
+        $flat_id = !empty($data['flat_id']) ? (int)$data['flat_id'] : null;
         $stmt->bind_param(
             "iiissssssssi",
             $data['lead_id'],
             $data['project_id'],
-            $data['flat_id'],
+            $flat_id,
             $data['follow_up_date'],
             $data['follow_up_time'],
             $data['follow_up_type'],
@@ -188,9 +188,9 @@ class FollowUp extends Model
     }
 
 
-public function getTodayFollowUpCountByUser(int $userId): int
-{
-    $sql = "
+    public function getTodayFollowUpCountByUser(int $userId): int
+    {
+        $sql = "
         SELECT COUNT(*) AS total
         FROM lead_follow_ups
         WHERE created_by = {$userId}
@@ -198,9 +198,9 @@ public function getTodayFollowUpCountByUser(int $userId): int
           AND deleted_at IS NULL
     ";
 
-    $row = $this->db->query($sql)->fetch_assoc();
-    return (int) ($row['total'] ?? 0);
-}
+        $row = $this->db->query($sql)->fetch_assoc();
+        return (int) ($row['total'] ?? 0);
+    }
 
 
 
@@ -270,12 +270,12 @@ public function getTodayFollowUpCountByUser(int $userId): int
 
         return $followUps;
     }
-  public function getTodayFollowUpLoginUser(int $userId)
-{
-    $userId = (int) $userId;
-    $today = date('Y-m-d');
+    public function getTodayFollowUpLoginUser(int $userId)
+    {
+        $userId = (int) $userId;
+        $today = date('Y-m-d');
 
-    $sql = "
+        $sql = "
         SELECT f.*, 
                l.full_name,
                l.phone_number,
@@ -301,18 +301,15 @@ public function getTodayFollowUpCountByUser(int $userId): int
         ORDER BY f.follow_up_date DESC, f.follow_up_time DESC
     ";
 
-    $result = $this->db->query($sql);
+        $result = $this->db->query($sql);
 
-    $followUps = [];
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $followUps[] = $row;
+        $followUps = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $followUps[] = $row;
+            }
         }
+
+        return $followUps;
     }
-
-    return $followUps;
-}
-
-
-
 }

@@ -249,7 +249,7 @@ $show_breadcrumb = true;
 
                             <th>Follow Up</th>
                             <th>Booking</th>
-                            <th class="d-none">Interest On</th>
+                            <th class="">Assigned Executive</th>
                             <th class="text-center">Action</th>
                         </tr>
                     </thead>
@@ -295,7 +295,7 @@ $show_breadcrumb = true;
                                     </a>
                                 </td>
                               
-                                <td class="d-none"><?= $lead['interest_on'] ?? '' ?></td>
+                                <td class=""><?= $lead['agent_name'] ?? '' ?></td>
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-10">
 

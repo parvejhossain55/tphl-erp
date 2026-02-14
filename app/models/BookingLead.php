@@ -147,6 +147,67 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+public function getAllAssignedLeads($userId, $year = null, $month = null)
+{
+    $sql = "SELECT 
+                lb.*, 
+                l.full_name, 
+                l.id AS lead_id,
+                l.phone,
+                l.email,
+                p.name AS project_name, 
+                u2.name AS flat_name, 
+                lp.payment_method,
+                lp.amount,
+                lp.created_at AS booking_pay_date,
+                u1.full_name AS created_by_name,
+                f.flat_name,
+                f.sqft,
+                f.price_value
+            FROM lead_bookings lb
+            LEFT JOIN leads l ON lb.lead_id = l.id
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            LEFT JOIN units u2 ON f.unit_id = u2.id
+            LEFT JOIN projects p ON f.project_id = p.id
+            LEFT JOIN users u1 ON lb.created_by = u1.id
+            LEFT JOIN lead_payments lp ON lp.booking_id = lb.id
+            WHERE lb.deleted_at IS NULL
+              AND lb.sales_by_id = ?";
+
+    $params = [(int)$userId];
+    $types  = "i";
+
+    // Year filter (booking date based)
+    if (!empty($year)) {
+        $sql .= " AND YEAR(lb.created_at) = ?";
+        $params[] = (int)$year;
+        $types .= "i";
+    }
+
+    // Month filter (booking date based)
+    if (!empty($month)) {
+        $sql .= " AND MONTH(lb.created_at) = ?";
+        $params[] = (int)$month;
+        $types .= "i";
+    }
+
+    $sql .= " ORDER BY lb.id DESC";
+
+    $stmt = $this->db->prepare($sql);
+    if (!$stmt) {
+        return [];
+    }
+
+    $stmt->bind_param($types, ...$params);
+
+    if (!$stmt->execute()) {
+        return [];
+    }
+
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
 
 
     //dashboard
@@ -182,59 +243,15 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return (int)($row['onboarded'] ?? 0);
     }
 
-    // Get a single follow-up by ID
-    // public function create($data)
-    // {
-    //     $sql = "
-    //     INSERT INTO lead_bookings
-    //     (
-    //         lead_id,
-    //         project_id,
-    //         flat_id,
-    //         created_by,
-    //         agreement_value,
-    //         booking_date,
-    //         booking_status,
-    //         discount_amount,
-    //         approval_status,
-    //         sales_by_id
-    //     )
-    //     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    // ";
-
-    //     $stmt = $this->db->prepare($sql);
-    //     if (!$stmt) {
-    //         throw new Exception($this->db->error);
-    //     }
-
-    //     $stmt->bind_param(
-    //         "iiiidssssi",
-    //         $data['lead_id'],
-    //         $data['project_id'],
-    //         $data['flat_id'],
-    //         $data['created_by'],
-    //         $data['agreement_value'],
-    //         $data['booking_date'],
-    //         $data['booking_status'],
-    //         $data['discount_amount'],
-    //         $data['approval_status'],
-    //         $data['sales_by_id']
-    //     );
-
-    //     if ($stmt->execute()) {
-    //         return $this->db->insert_id;
-    //     }
-
-    //     return false;
-    // }
+    
     public function create($data)
     {
-        // 1️⃣ discount_amount
+        // 1 discount_amount
         $discountAmount = isset($data['discount_amount']) && $data['discount_amount'] !== ''
             ? (float) $data['discount_amount']
             : null;
 
-        // 2️⃣ approval_status (ENUM-safe)
+        // 2 approval_status (ENUM-safe)
         $allowedStatuses = ['not_required', 'pending', 'approved', 'rejected'];
         $approvalStatus = $data['approval_status'] ?? 'not_required';
 
@@ -245,7 +262,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $approvalStatus = strtolower($approvalStatus);
         }
 
-        // 3️⃣ SQL
+        // 3 SQL
         $sql = "
         INSERT INTO lead_bookings
         (
@@ -268,7 +285,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             throw new Exception($this->db->error);
         }
 
-        // 4️⃣ Bind params (note: approval_status is string 's')
+        // 4 Bind params (note: approval_status is string 's')
         $stmt->bind_param(
             "iiiidssssi",
             $data['lead_id'],         // i
@@ -279,21 +296,17 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $data['booking_date'],    // s
             $data['booking_status'],  // s
             $discountAmount,          // d
-            $approvalStatus,          // s  ✅ ENUM = string
+            $approvalStatus,          // s  
             $data['sales_by_id']      // i
         );
 
-        // 5️⃣ Execute
+        // 5 Execute
         if ($stmt->execute()) {
             return $this->db->insert_id;
         }
 
         throw new Exception($stmt->error);
     }
-
-
-
-
     // Update follow-up by ID
     public function update($data, $id)
     {

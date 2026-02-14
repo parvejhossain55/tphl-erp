@@ -29,12 +29,13 @@ class UserDashboardController extends Controller
         }
         $bookingCount = $this->bookingModel->getBookingCountByLead();
         $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
-        $followUpOverDue = 
+        $followUpOverDue =
 
-        $loggedUserId = (int) $_SESSION['user']['id'];
+            $loggedUserId = (int) $_SESSION['user']['id'];
 
         // only assigned today leads for logged user
         $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
+        $myAllLeads = $this->leadModel->getAllMyLeads($loggedUserId);
 
         $this->view("sales-executive/today-leads", [
             "current_route" => "today-leads",
@@ -42,6 +43,7 @@ class UserDashboardController extends Controller
             "todayLeads"    => $todayLeads,
             "bookingCount"    => $bookingCount,
             "todayFollowUp"    => $todayFollowUp,
+
         ]);
     }
     public function dashboard()
@@ -61,7 +63,7 @@ class UserDashboardController extends Controller
         $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
         $todayLeadsCount = count($todayLeads);
         $todayTask = $this->taskModel->getTodayTaskCountByUser($loggedUserId);
-    $myTotalShareSold = $this->bookingModel->getMyTotalFlatSales($loggedUserId);
+        $myTotalShareSold = $this->bookingModel->getMyTotalFlatSales($loggedUserId);
 
         $bookingCount   = $this->bookingModel->getBookingCountByLead();
         // $todayFollowUp  = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
@@ -121,8 +123,8 @@ class UserDashboardController extends Controller
         }
 
         $this->view("sales-executive/today-followup", [
-            "current_route"       => "user-dashboard",
-            "page_title"          => "User Dashboard",
+            "current_route"       => "today-follow-up",
+            "page_title"          => "Today Follow Up",
             "todayFollowUpLeads"  => $todayFollowUpLeads,
         ]);
     }
@@ -142,9 +144,28 @@ class UserDashboardController extends Controller
             ->getAllMyOnboardProject($userId, $year, $month);
 
         $this->view('sales-executive/my-onboard-projects', [
-            'projects' => $myOnboardProjects
+            'projects' => $myOnboardProjects,
+
+            'current_page' => 'my-onboarding-projects',
         ]);
     }
+    public function myAssignedLeads()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
+        $userId = $_SESSION['user']['id'] ?? 0;
 
+        $year  = $_GET['year']  ?? null;
+        $month = $_GET['month'] ?? null;
+
+        $myAssignedClients = $this->leadModel
+            ->getAllMyLeads($userId, $year, $month);
+
+        $this->view('sales-executive/my-assigned-leads', [
+            'myAllleads' => $myAssignedClients,
+            'current_page' => 'my-all-assigned-leads',
+        ]);
+    }
 }

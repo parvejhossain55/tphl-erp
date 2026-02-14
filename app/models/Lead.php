@@ -192,6 +192,38 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
+public function getAllMyLeads(int $userId, $year = null, $month = null)
+{
+    $sql = "SELECT * FROM leads WHERE assigned_id = ?";
+
+    $params = [$userId];
+    $types  = "i";
+
+    if (!empty($year)) {
+        $sql .= " AND YEAR(created_at) = ?";
+        $params[] = (int)$year;
+        $types .= "i";
+    }
+
+    if (!empty($month)) {
+        $sql .= " AND MONTH(created_at) = ?";
+        $params[] = (int)$month;
+        $types .= "i";
+    }
+
+    $sql .= " ORDER BY id DESC";
+
+    $stmt = $this->db->prepare($sql);
+    if (!$stmt) return [];
+
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
+
 
 
     public function create($data)

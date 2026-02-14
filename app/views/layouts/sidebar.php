@@ -178,7 +178,7 @@
                             <a href="<?= $base_url ?>/user-dashboard" class="sidebar__menu-item <?= isActive('user-dashboard', $current_route) ?>">My Dashboard</a>
                         </li>
                         <li class="slide">
-                            <a href="<?= $base_url ?>/today-leads" class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">My All Assigned Leads </a>
+                            <a href="<?= $base_url ?>/my-all-assigned-leads" class="sidebar__menu-item <?= isActive('my-all-assigned-leads', $current_route) ?>">My All Assigned Leads </a>
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/today-leads" class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">Today Leads Assigned</a>
@@ -194,6 +194,9 @@
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/today-follow-up" class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today Follow Up</a>
+                        </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/today-follow-up" class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Overdue & Upcoming Follow Up</a>
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/my-onboarding-projects" class="sidebar__menu-item <?= isActive('my-onboarding-projects', $current_route) ?>">My Onboarding Projects </a>

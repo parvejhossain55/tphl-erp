@@ -30,7 +30,7 @@ class FollowUpController extends Controller
         if ($lead_id) {
             $followUpLeads = $this->followUpModel->getByLead($lead_id);
         }
- $assignedUsers = $this->userModel->getAllRoleUser();
+        $assignedUsers = $this->userModel->getAllRoleUser();
         $projects = $this->projectModel->getAll(); // optional
         $flats = $this->flatModel->getAll();       // optional
 
@@ -64,11 +64,19 @@ class FollowUpController extends Controller
     public function store()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        $flat_id = $_POST['flat_id'] ?? null;
+
+        // empty string বা 0 হলে NULL বানাও
+        if (empty($flat_id)) {
+            $flat_id = null;
+        } else {
+            $flat_id = (int) $flat_id;
+        }
 
         $followUpData = [
-            'lead_id' => $_POST['lead_id'],
-            'project_id' => $_POST['project_id'] ?? null,
-            'flat_id' => $_POST['flat_id'] ?? null,
+            'lead_id' => (int) $_POST['lead_id'],
+            'project_id' => !empty($_POST['project_id']) ? (int) $_POST['project_id'] : null,
+            'flat_id' => $flat_id,   
             'follow_up_date' => $_POST['follow_up_date'],
             'follow_up_time' => $_POST['follow_up_time'] ?? null,
             'follow_up_type' => $_POST['follow_up_type'],
@@ -76,10 +84,12 @@ class FollowUpController extends Controller
             'discussion_note' => $_POST['discussion_note'] ?? null,
             'next_follow_up_date' => $_POST['next_follow_up_date'] ?? null,
             'next_action' => $_POST['next_action'] ?? null,
-            'assigned_with' => $_POST['assigned_with'] ?? null,
-            'created_by'      => $_SESSION['user']['id'] ?? null,
-
+            'assigned_with' => !empty($_POST['assigned_with']) ? (int)$_POST['assigned_with'] : null,
+            'created_by' => $_SESSION['user']['id'] ?? null,
         ];
+
+
+
 
         //  Create follow-up
         $created = $this->followUpModel->create($followUpData);
@@ -113,7 +123,7 @@ class FollowUpController extends Controller
             'discussion_note' => $_POST['discussion_note'] ?? null,
             'next_follow_up_date' => $_POST['next_follow_up_date'] ?: null,
             'next_action' => $_POST['next_action'] ?? null,
-            
+
         ];
 
 
