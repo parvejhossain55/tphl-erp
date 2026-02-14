@@ -178,6 +178,9 @@
                             <a href="<?= $base_url ?>/user-dashboard" class="sidebar__menu-item <?= isActive('user-dashboard', $current_route) ?>">My Dashboard</a>
                         </li>
                         <li class="slide">
+                            <a href="<?= $base_url ?>/today-leads" class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">My All Assigned Leads </a>
+                        </li>
+                        <li class="slide">
                             <a href="<?= $base_url ?>/today-leads" class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">Today Leads Assigned</a>
                         </li>
                         <li class="slide">
