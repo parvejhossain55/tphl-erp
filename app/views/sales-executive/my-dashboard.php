@@ -154,13 +154,92 @@
             </div>
         </div>
 
+
         <!-- Performance Score -->
         <div class="col-md-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <p class="stat-label mb-2">My Total Share Sale</p>
+                            <p class="stat-label mb-2">My Total Sale </p>
+                            <h2 class="stat-value text-info">
+                                <?= $myTotalShareSold['total_flats'] ?>
+                            </h2>
+
+                        </div>
+                        <div class="stat-card-icon stat-card-purple text-white">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Performance Score -->
+        <div class="col-md-6 col-lg-3">
+            <div class="card__wrapper stat-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2">Monthly Target</p>
+                            <h2 class="stat-value text-info">
+                                <?= $myTotalShareSold['total_flats'] ?>
+                            </h2>
+
+                        </div>
+                        <div class="stat-card-icon stat-card-purple text-white">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Performance Score -->
+        <div class="col-md-6 col-lg-3">
+            <div class="card__wrapper stat-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2">Over Due Follow Up </p>
+                            <h2 class="stat-value text-info">
+                                <?= $myTotalShareSold['total_flats'] ?>
+                            </h2>
+
+                        </div>
+                        <div class="stat-card-icon stat-card-purple text-white">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card__wrapper stat-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2">Overdue FollowUp</p>
+                            <h2 class="stat-value text-info">
+                                <?= $myTotalShareSold['total_flats'] ?>
+                            </h2>
+
+                        </div>
+                        <div class="stat-card-icon stat-card-purple text-white">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="card__wrapper stat-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2"> Target Achievement %</p>
                             <h2 class="stat-value text-info">
                                 <?= $myTotalShareSold['total_flats'] ?>
                             </h2>

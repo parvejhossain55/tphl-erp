@@ -45,7 +45,7 @@ class EmployeeDashboardController extends Controller
         $stmt = $this->db->prepare("
         SELECT t.*
         FROM tasks t
-        WHERE t.employee_id = ?
+        WHERE t.user_id = ?
           AND t.status != 'completed'   -- only incomplete tasks
         ORDER BY t.deadline ASC
     ");

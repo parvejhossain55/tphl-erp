@@ -136,6 +136,30 @@
                 <!--End Sales Manager CATEGORY -->
 
 
+
+                <!-- Camera Manage -->
+                      <?php if (hasPermission("Camera Manage")):  ?>
+                <li class="slide has-sub <?= isActive(['create-camera', 'camera-lists'], $current_route) ? 'active' : '' ?>">
+                    <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['create-camera', 'camera-lists'], $current_route) ? 'menu-open active' : '' ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-camera"></i></div>
+                        <span class="sidebar__menu-label">Camera Manage</span>
+                        <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                    </a>
+                    <ul class="sidebar-menu child2" style="display:block;">
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/create-camera" class="sidebar__menu-item <?= isActive('create-camera', $current_route) ?>">Add Camera</a>
+                        </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/camera-lists" class="sidebar__menu-item <?= isActive('camera-lists', $current_route) ?>">Camera List</a>
+                        </li>
+                    </ul>
+                </li>
+                <?php endif ?>
+
+
+
+
+
                 <!-- For Sales head -->
                 <?php if (hasPermission("Add User")):  ?>
                     <ul class="d-none sidebar-menu child1" style="display:block;">
@@ -152,6 +176,9 @@
                     <ul class="sidebar-menu child2" style="display:block;">
                         <li class="slide">
                             <a href="<?= $base_url ?>/user-dashboard" class="sidebar__menu-item <?= isActive('user-dashboard', $current_route) ?>">My Dashboard</a>
+                        </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/today-leads" class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">My All Assigned Leads </a>
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/today-leads" class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">Today Leads Assigned</a>

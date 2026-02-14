@@ -52,7 +52,8 @@ class LoginController extends Controller
                     $_SESSION['user']['permissions'] =
                         $this->userModel->getPermissionsByRole($user['role_id']);
 
-                    // redirect logic...
+                    // role wise redirect
+                    redirectByRole();
                 } else {
                     $message = "Invalid Email or Password!";
                 }
@@ -64,7 +65,7 @@ class LoginController extends Controller
             "current_route" => "admin-login",
             "page_title" => "Admin Login",
             "message" => $message,
-        ], false); // false = don't use master layout
+        ], false);
     }
 
 

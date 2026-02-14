@@ -354,7 +354,8 @@ CREATE TABLE
 
 -- employee_leave_balance
 -- Leave balance per employee for quick access (denormalized for performance).
-CREATE TABLE IF NOT EXISTS employee_leave_balances (
+CREATE TABLE
+  IF NOT EXISTS employee_leave_balances (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     employee_id INT UNSIGNED NOT NULL,
     leave_type_id INT UNSIGNED NOT NULL,
@@ -362,48 +363,47 @@ CREATE TABLE IF NOT EXISTS employee_leave_balances (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY (employee_id, leave_type_id),
-    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
-    FOREIGN KEY (leave_type_id) REFERENCES leave_types(id) ON DELETE CASCADE
-);
-
-
+    FOREIGN KEY (employee_id) REFERENCES employees (id) ON DELETE CASCADE,
+    FOREIGN KEY (leave_type_id) REFERENCES leave_types (id) ON DELETE CASCADE
+  );
 
 -- ==== 29/01/15
 ALTER TABLE `leads`
-    ADD COLUMN `campaign_name` VARCHAR(255) FIRST,
-    ADD COLUMN `platform` VARCHAR(100) AFTER `campaign_name`,
-    ADD COLUMN `which_apartment_size_are_you_interested_in` VARCHAR(100) AFTER `platform`,
-    ADD COLUMN `which_floor_are_you_for_shop` VARCHAR(50) AFTER `which_apartment_size_are_you_interested_in`,
-    ADD COLUMN `when_are_planning_to_buy` DATE AFTER `which_floor_are_you_for_shop`,
-    ADD COLUMN `would_you_like_to_schedule_a_site_visit` TINYINT(1) DEFAULT 0 AFTER `when_are_planning_to_buy`,
-    ADD COLUMN `when_is_the_best_time_to_contact_you` VARCHAR(50) AFTER `would_you_like_to_schedule_a_site_visit`,
-    ADD COLUMN `full_name` VARCHAR(150) AFTER `when_is_the_best_time_to_contact_you`,
-    ADD COLUMN `jobtitle` VARCHAR(100) AFTER `full_name`,
-    ADD COLUMN `company_name` VARCHAR(150) AFTER `jobtitle`,
-    ADD COLUMN `phone_number` VARCHAR(20) AFTER `company_name`,
-    ADD COLUMN `city` VARCHAR(100) AFTER `phone_number`;
+ADD COLUMN `campaign_name` VARCHAR(255) FIRST,
+ADD COLUMN `platform` VARCHAR(100) AFTER `campaign_name`,
+ADD COLUMN `which_apartment_size_are_you_interested_in` VARCHAR(100) AFTER `platform`,
+ADD COLUMN `which_floor_are_you_for_shop` VARCHAR(50) AFTER `which_apartment_size_are_you_interested_in`,
+ADD COLUMN `when_are_planning_to_buy` DATE AFTER `which_floor_are_you_for_shop`,
+ADD COLUMN `would_you_like_to_schedule_a_site_visit` TINYINT (1) DEFAULT 0 AFTER `when_are_planning_to_buy`,
+ADD COLUMN `when_is_the_best_time_to_contact_you` VARCHAR(50) AFTER `would_you_like_to_schedule_a_site_visit`,
+ADD COLUMN `full_name` VARCHAR(150) AFTER `when_is_the_best_time_to_contact_you`,
+ADD COLUMN `jobtitle` VARCHAR(100) AFTER `full_name`,
+ADD COLUMN `company_name` VARCHAR(150) AFTER `jobtitle`,
+ADD COLUMN `phone_number` VARCHAR(20) AFTER `company_name`,
+ADD COLUMN `city` VARCHAR(100) AFTER `phone_number`;
 
 ALTER TABLE leads
-ADD COLUMN call_status ENUM('not_called','called','received','not_received') 
-    DEFAULT 'not_called' AFTER phone_number,
+ADD COLUMN call_status ENUM (
+  'not_called',
+  'called',
+  'received',
+  'not_received'
+) DEFAULT 'not_called' AFTER phone_number,
 ADD COLUMN call_note TEXT NULL AFTER call_status;
-
 
 -- ai sql ta chalale r kothay foraign key thakle o delete korle problem hobe na 
 ALTER TABLE lead_bookings
 DROP FOREIGN KEY lead_bookings_ibfk_1;
 
-ALTER TABLE lead_bookings
-ADD CONSTRAINT lead_bookings_ibfk_1
-FOREIGN KEY (lead_id) REFERENCES leads(id)
-ON DELETE CASCADE;
+ALTER TABLE lead_bookings ADD CONSTRAINT lead_bookings_ibfk_1 FOREIGN KEY (lead_id) REFERENCES leads (id) ON DELETE CASCADE;
 
 DELETE FROM leads
-WHERE deleted_at IS NOT NULL;
-
+WHERE
+  deleted_at IS NOT NULL;
 
 --03/02/26
-CREATE TABLE onboard_clients (
+CREATE TABLE
+  onboard_clients (
     id INT AUTO_INCREMENT PRIMARY KEY,
     lead_booking_id INT UNSIGNED NULL,
     lead_id INT UNSIGNED NULL,
@@ -415,14 +415,85 @@ CREATE TABLE onboard_clients (
     cameraLink2 VARCHAR(255),
     moneyReceiptLink VARCHAR(255),
     purchaseDetailsLink VARCHAR(255),
-   `created_by` int (10) UNSIGNED NOT NULL,
+    `created_by` int (10) UNSIGNED NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_lead_booking
-        FOREIGN KEY (lead_booking_id)
-        REFERENCES lead_bookings(id)
-        ON DELETE SET NULL
-        ON UPDATE CASCADE
-) ENGINE=InnoDB;
+    CONSTRAINT fk_lead_booking FOREIGN KEY (lead_booking_id) REFERENCES lead_bookings (id) ON DELETE SET NULL ON UPDATE CASCADE
+  ) ENGINE = InnoDB;
+
+--14/2/26
+CREATE TABLE
+  cameras (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    project_id INT NULL,
+    camera_name VARCHAR(255) NOT NULL,
+    camera_slug VARCHAR(255) NOT NULL,
+    rtsp_url TEXT NOT NULL, --rtsp://admin:password@103.139.144.106:8555/stream-path  --Camera এর real streaming source। --এটা frontend এ কখনো যাবে না
+    hls_path VARCHAR(255) NULL, --hls_path FFmpeg convert করার পর তৈরি হওয়া stream file path। --hls/the_premium_smart_city/cam01.m3u8 --hls/the_premium_smart_city/cam01.m3u8
+    --Frontend এটা ব্যবহার করে video play করে।
+    status ENUM ('active', 'inactive') DEFAULT 'active',
+    last_heartbeat TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE SET NULL
+  );
+
+--   project_name,	camera_name,rtsp_url,	hls_url,
+-- The Premium Harmony Residence,	cam01,	rtsp://admin:Hik2025S@103.139.144.106:8555/stream-path,	C:\xampp\htdocs\multicam\hls\The Floral Heaven\cam01.m3u8
+
+CREATE TABLE
+  camera_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    camera_id INT,
+    event_type VARCHAR(50),
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+
+
+
+  1️⃣ Your cameras table
+Column	Purpose
+id	Primary key. Auto-increment.
+project_id	Links to projects table. Optional. Helps group cameras by project.
+camera_name	Human-readable camera name (cam01, cam02…).
+camera_slug	URL-safe / file-safe name (cam01 → cam01).
+rtsp_url	Private RTSP stream (DO NOT expose to frontend).
+hls_path	Path to .m3u8 generated by FFmpeg (used in frontend).
+status	'active' / 'inactive'. Updated by watchdog when stream dies.
+last_heartbeat	Last live timestamp. Updated by watchdog script.
+created_at	Auto timestamp when camera is added.
+
+When you add a camera via PHP, you populate project_id, camera_name, camera_slug, and rtsp_url.
+hls_path will be filled after FFmpeg generates the .m3u8 file.
+status defaults to active.
+
+2️⃣ Your camera_logs table
+
+This is optional but very useful for tracking events per camera.
+
+Column	Purpose
+id	Auto-increment PK
+camera_id	FK to cameras.id
+event_type	e.g., 'stream_started', 'stream_stopped', 'ffmpeg_error', 'watchdog_restart'
+message	Extra details about the event
+created_at	Timestamp of the event
+
+You can log whenever FFmpeg starts, stops, or a camera is restarted by the watchdog.
 
 -- farzana
+
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+SET @tables = NULL;
+
+SELECT GROUP_CONCAT(CONCAT('`', table_name, '`')) INTO @tables
+FROM information_schema.tables
+WHERE table_schema = 'tphl_db';
+
+SET @tables = CONCAT('DROP TABLE IF EXISTS ', @tables);
+PREPARE stmt FROM @tables;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET FOREIGN_KEY_CHECKS = 1;

@@ -29,6 +29,7 @@ class UserDashboardController extends Controller
         }
         $bookingCount = $this->bookingModel->getBookingCountByLead();
         $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
+        $followUpOverDue = 
 
         $loggedUserId = (int) $_SESSION['user']['id'];
 
