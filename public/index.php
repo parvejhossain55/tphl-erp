@@ -324,6 +324,10 @@ $routes = [
     "delete-payslip-item" => ["controller" => "PayslipItemController", "method" => "delete"],
     //======payrolls==========//
 
+    // ====== Camera Controller ======= //
+"camera-lists" => ["controller" => "CameraController", "method" => "index"],
+"create-camera" => ["controller" => "CameraController", "method" => "create"],
+"store-camera" => ["controller" => "CameraController", "method" => "store"],
 
 
     //===== AI ChatBox Generate====//

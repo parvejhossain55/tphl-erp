@@ -481,21 +481,7 @@ function setErrors(array $errors)
  * @param string $column
  * @return string
  */
-// function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug')
-// {
-//     // lowercase, trim, replace spaces/non-alphanum with dash
-//     $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($name)));
-//     $originalSlug = $slug;
-//     $i = 1;
 
-//     // loop until unique
-//     while (slugExists($db, $slug, $table, $column)) {
-//         $slug = $originalSlug . '-' . $i;
-//         $i++;
-//     }
-
-//     return $slug;
-// }
 function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug')
 {
     $name = trim($name);
@@ -518,6 +504,54 @@ function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug
     }
 
     return $slug;
+}
+
+function addCameraWithHls($db, $project_id, $project_name, $camera_name, $rtsp_url, $status = 'active', $hlsBase = __DIR__ . '/hls', $ffmpegPath = 'C:/ffmpeg/bin/ffmpeg.exe')
+{
+    // 1️⃣ Generate slugs
+    $project_slug = strtolower(trim(preg_replace('/[^\w]+/', '_', $project_name)));
+    $camera_slug  = strtolower(trim(preg_replace('/[^\w]+/', '_', $camera_name)));
+
+    // 2️⃣ Insert camera into DB WITHOUT hls_path
+    $stmt = $db->prepare("INSERT INTO cameras (project_id, camera_name, camera_slug, rtsp_url, status) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("issss", $project_id, $camera_name, $camera_slug, $rtsp_url, $status);
+    $stmt->execute();
+
+    // ✅ mysqli এর জন্য last inserted ID
+    $camera_id = $db->insert_id;
+
+    // 3️⃣ Prepare HLS folder
+    $projectDir = rtrim($hlsBase, '/') . '/' . $project_slug;
+    if (!is_dir($projectDir)) mkdir($projectDir, 0777, true);
+
+    // 4 HLS file path
+    $hlsPath = $projectDir . '/' . $camera_slug . '.m3u8';
+    $hlsDbPath = "hls/$project_slug/$camera_slug.m3u8"; // relative path for DB/frontend
+
+    // 5️⃣ Run FFmpeg to generate HLS (background)
+    $cmd = "\"$ffmpegPath\" -rtsp_transport tcp -i " . escapeshellarg($rtsp_url) . " "
+         . "-c:v copy -c:a aac "
+         . "-f hls -hls_time 2 -hls_list_size 6 "
+         . "-hls_flags delete_segments+append_list+independent_segments "
+         . escapeshellarg($hlsPath) . " > NUL 2>&1 &";
+
+    exec($cmd);
+
+    // 6️⃣ Update DB with HLS path
+    $stmt = $db->prepare("UPDATE cameras SET hls_path = ? WHERE id = ?");
+    $stmt->bind_param("si", $hlsDbPath, $camera_id);
+    $stmt->execute();
+
+    // 7️⃣ Return camera data
+    return [
+        'id' => $camera_id,
+        'project_id' => $project_id,
+        'camera_name' => $camera_name,
+        'camera_slug' => $camera_slug,
+        'rtsp_url' => $rtsp_url,
+        'hls_path' => $hlsDbPath,
+        'status' => $status
+    ];
 }
 
 
@@ -857,7 +891,7 @@ function renderApprovalContext(array $req)
                     <li class="list-group-item px-0 border-0 border-top">
                         <div class="row align-items-center mb-2">
                             <div class="col-4 col-md-4 col-lg-3">
-                                <span class="badge bg-danger ms-2" >Leave Type</span>
+                                <span class="badge bg-danger ms-2">Leave Type</span>
                             </div>
                             <div class="col-8 col-md-8 col-lg-9 ps-lg-4">
                                 <strong><?= esc($ctx['leave']['leave_type'], 'N/A') ?></strong>
@@ -866,7 +900,7 @@ function renderApprovalContext(array $req)
 
                         <div class="row align-items-center">
                             <div class="col-4 col-md-3">
-                                <span class="badge bg-danger ms-2" >Duration</span>
+                                <span class="badge bg-danger ms-2">Duration</span>
                             </div>
                             <div class="col-8 col-md-9">
                                 <strong><?= esc($ctx['leave']['requested_days'], 0) ?> days</strong>
