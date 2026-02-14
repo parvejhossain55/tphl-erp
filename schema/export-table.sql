@@ -483,6 +483,9 @@ You can log whenever FFmpeg starts, stops, or a camera is restarted by the watch
 -- farzana
 
 
+
+
+
 SET FOREIGN_KEY_CHECKS = 0;
 
 SET @tables = NULL;
