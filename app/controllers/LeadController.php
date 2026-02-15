@@ -309,7 +309,7 @@ public function assignMultipleLeads()
         $lastAction = $_POST['last_lead_action'] ?? null;
 
         // Allowed enum values (important for security)
-        $allowedActions = ['not_called', 'calling', 'called', 'visited'];
+        $allowedActions = ['not_called', 'booked', 'called', 'visited','canceled'];
 
         if (!$leadId || !in_array($lastAction, $allowedActions)) {
             setError("Invalid lead action selected.");

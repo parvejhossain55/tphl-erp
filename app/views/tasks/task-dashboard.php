@@ -1,6 +1,14 @@
         <?php
         $page_title = "Your Task  ";
         ?>
+        <!-- Today Task Count Card -->
+        <div class="card mb-4">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Today's Task</h5>
+                <span class="badge bg-primary fs-5"><?= $todayTaskCount ?></span>
+            </div>
+        </div>
+
 
         <!-- Task Notification Section -->
         <?php if (!empty($pendingTasks)): ?>
@@ -115,7 +123,7 @@
                                         method="POST" class="action-form">
                                         <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
 
-                                      <?php if ($task['employee_accept'] == 0): ?>
+                                        <?php if ($task['employee_accept'] == 0): ?>
                                             <!-- Accept Button -->
                                             <button type="submit" name="accept" class="btn-task-action btn-accept">
                                                 <i class="bi bi-hand-thumbs-up me-2"></i>

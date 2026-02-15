@@ -79,7 +79,7 @@ LEFT JOIN users AS u ON t.assigned_by = u.id
 LEFT JOIN designations AS des ON e.designation_id = des.id
 LEFT JOIN designations AS desig ON u.designation_id = desig.id
 
-        WHERE t.assigned_by = ? AND t.user_id IS NOT NULL"; 
+        WHERE t.assigned_by = ? AND t.user_id IS NOT NULL";
         // only tasks assigned to current user
 
         $params = [$currentUserId];
@@ -409,7 +409,39 @@ LEFT JOIN designations AS desig ON u.designation_id = desig.id
 
         return $notifications;
     }
-public function getTodayTaskCountByUser(int $userId): int
+/**
+ * Get all pending tasks for a user (regardless of deadline)
+ */
+public function getPendingTaskCountByUser(int $userId): int
+{
+    $userId = (int) $userId;
+
+    $sql = "
+        SELECT COUNT(*) AS total
+        FROM tasks
+        WHERE user_id = ?
+          AND progress < 100
+          AND status != 'completed'
+    ";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        return (int) ($row['total'] ?? 0);
+    }
+
+    return 0;
+}
+
+
+
+/**
+ * Get count of tasks due today or next 3 days for dashboard card
+ */
+public function getTodayPendingTaskCountByUser(int $userId): int
 {
     $userId = (int) $userId;
 
@@ -417,7 +449,9 @@ public function getTodayTaskCountByUser(int $userId): int
         SELECT COUNT(*) AS total
         FROM tasks
         WHERE user_id = {$userId}
-          AND start_date = CURDATE()
+          AND progress < 100
+          AND status != 'completed'
+          AND (deadline IS NULL OR DATE(deadline) BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 3 DAY))
     ";
 
     $row = $this->db->query($sql)->fetch_assoc();

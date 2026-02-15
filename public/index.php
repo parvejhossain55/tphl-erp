@@ -66,12 +66,16 @@ $routes = [
     "user-profile/(\d+)"          => ["controller" => "UserController", "method" => "show"],
     "update-user/(\d+)"          => ["controller" => "UserController", "method" => "update"],
     "delete-user"          => ["controller" => "UserController", "method" => "delete"],
-    "user-dashboard"          => ["controller" => "UserDashboardController", "method" => "dashboard"],
+    "my-dashboard"          => ["controller" => "UserDashboardController", "method" => "dashboard"],
     "today-leads"          => ["controller" => "UserDashboardController", "method" => "index"],
     "update-call-status"          => ["controller" => "UserDashboardController", "method" => "updateCallStatus"],
     "update-call-notes"          => ["controller" => "UserDashboardController", "method" => "updateCallNote"],
     "today-follow-up"          => ["controller" => "UserDashboardController", "method" => "todayFollowUp"],
+    "upcoming-follow-up"          => ["controller" => "UserDashboardController", "method" => "myUpcomingFollowLeads"],
     "my-onboarding-projects"          => ["controller" => "UserDashboardController", "method" => "myOnboardProject"],
+    "my-all-assigned-leads"          => ["controller" => "UserDashboardController", "method" => "myAssignedLeads"],
+    "follow-up/update-status-note"          => ["controller" => "UserDashboardController", "method" => "updateFollowUpStatusNote"],
+    "overdue-next-followup"          => ["controller" => "UserDashboardController", "method" =>"updateFollowUpStatusNote"],
 
 
     "customer-lists"       => ["controller" => "CustomerController", "method" => "index"],

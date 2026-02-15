@@ -28,20 +28,25 @@ class UserDashboardController extends Controller
             return;
         }
         $bookingCount = $this->bookingModel->getBookingCountByLead();
-        $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
-        $followUpOverDue = 
+        // $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
 
+
+        $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
         $loggedUserId = (int) $_SESSION['user']['id'];
 
         // only assigned today leads for logged user
         $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
 
+        $myAllLeads = $this->leadModel->getAllMyLeads($loggedUserId);
+
         $this->view("sales-executive/today-leads", [
             "current_route" => "today-leads",
             "page_title"    => "Leads Today Assign",
             "todayLeads"    => $todayLeads,
+       
             "bookingCount"    => $bookingCount,
             "todayFollowUp"    => $todayFollowUp,
+
         ]);
     }
     public function dashboard()
@@ -56,16 +61,19 @@ class UserDashboardController extends Controller
         }
 
         $loggedUserId = (int) $_SESSION['user']['id'];
-
+      
         // only assigned today leads for logged user
         $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
         $todayLeadsCount = count($todayLeads);
-        $todayTask = $this->taskModel->getTodayTaskCountByUser($loggedUserId);
-    $myTotalShareSold = $this->bookingModel->getMyTotalFlatSales($loggedUserId);
-
+        $pendingTasks = $this->taskModel->getPendingTaskCountByUser($loggedUserId);
+        
+        $myTotalShareSold = $this->bookingModel->getMyTotalFlatSales($loggedUserId);
+        $getAllLeads= $this->leadModel->getAllLeadsByUser($loggedUserId);
+        $getAllLeadsCount =count($getAllLeads);
         $bookingCount   = $this->bookingModel->getBookingCountByLead();
         // $todayFollowUp  = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
-        $todayFollowUp  = $this->followUpModel->getTodayFollowUpCountByUser($loggedUserId);
+        $todayFollowUp  = $this->followUpModel->getTodayFollowUpCountLoginUser($loggedUserId);
+        $followUpOverdue  = $this->followUpModel->getOverdueFollowUpCountLoginUser($loggedUserId);
 
         $this->view("sales-executive/my-dashboard", [
             "current_route"   => "my-dashboard",
@@ -74,14 +82,55 @@ class UserDashboardController extends Controller
             "bookingCount"    => $bookingCount,
             "todayFollowUp"   => $todayFollowUp,
             "todayLeadsCount"   => $todayLeadsCount,
-            "todayTask"   => $todayTask,
+            "pendingTasks"   => $pendingTasks,
             "myTotalShareSold"   => $myTotalShareSold,
+            "followUpOverdue"   => $followUpOverdue,
+                 "getAllLeadsCount"    => $getAllLeadsCount,
 
         ]);
     }
+    // today follow up 
+    public function updateFollowUpStatusNote()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed']);
+            exit;
+        }
 
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = $_SESSION['user']['id'] ?? null;
+        if (!$userId) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
 
+        $followUpId = (int) ($_POST['id'] ?? 0);
+        $status = $_POST['status'] ?? null;
+        $next_action = $_POST['next_action'] ?? null;
+        $note = trim($_POST['discussion_note'] ?? '');
 
+        if (!$followUpId || !$status) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing parameters']);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("
+        UPDATE lead_follow_ups
+        SET status = ?, discussion_note = ?, next_action = ?, updated_at = NOW()
+        WHERE id = ?
+    ");
+        $stmt->bind_param("sssi", $status, $note, $next_action, $followUpId);
+
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true, 'message' => 'Follow-up updated successfully']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Update failed']);
+        }
+    }
 
 
     public function updateCallStatus()
@@ -105,7 +154,6 @@ class UserDashboardController extends Controller
         );
     }
 
-
     public function todayFollowUp()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -121,8 +169,8 @@ class UserDashboardController extends Controller
         }
 
         $this->view("sales-executive/today-followup", [
-            "current_route"       => "user-dashboard",
-            "page_title"          => "User Dashboard",
+            "current_route"       => "today-follow-up",
+            "page_title"          => "Today Follow Up",
             "todayFollowUpLeads"  => $todayFollowUpLeads,
         ]);
     }
@@ -142,9 +190,50 @@ class UserDashboardController extends Controller
             ->getAllMyOnboardProject($userId, $year, $month);
 
         $this->view('sales-executive/my-onboard-projects', [
-            'projects' => $myOnboardProjects
+            'projects' => $myOnboardProjects,
+
+            'current_page' => 'my-onboarding-projects',
         ]);
     }
 
+    public function myAssignedLeads()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        $year  = $_GET['year']  ?? null;
+        $month = $_GET['month'] ?? null;
+
+        $myAssignedClients = $this->leadModel
+            ->getAllMyLeads($userId, $year, $month);
+
+        $this->view('sales-executive/my-assigned-leads', [
+            'myAllleads' => $myAssignedClients,
+            'current_page' => 'my-all-assigned-leads',
+        ]);
+    }
+    public function myUpcomingFollowLeads()
+    {
+       if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userId = $_SESSION['user']['id'] ?? null;
+
+
+        $upcomingLeads = [];
+        if ($userId) {
+            $upcomingLeads = $this->followUpModel
+                ->upcomingFollowUp($userId);
+        }
+
+        $this->view("sales-executive/upcoming-follow-ups", [
+            "current_route"       => "upcoming-follow-up",
+            "page_title"          => "Upcoming Follow Up",
+            "upcomingLeads"  => $upcomingLeads,
+        ]);
+    }
 }

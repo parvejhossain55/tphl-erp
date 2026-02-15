@@ -30,16 +30,7 @@ $show_breadcrumb = true;
             <form action="<?= $GLOBALS['base_url'] ?>/store-follow-up" method="POST">
                 <div class="row gy-3">
                     <input type="hidden" name="lead_id" value="<?= $selected_lead_id ?? '' ?>">
-                    <!-- Lead -->
-                    <!-- <div class="col-lg-6">
-                        <label class="form__input-title">Select Lead*</label>
-                        <select name="lead_id" class="form-select" required>
-                            <option value="">Select Lead</option>
-                            <php foreach ($leads as $lead): ?>
-                                <option value="<= $lead['id'] ?>"><= $lead['full_name'] ?> - <= $lead['lead_quality'] ?></option>
-                            <php endforeach; ?>
-                        </select>
-                    </div> -->
+                  
 
                     <!-- Project -->
                     <div class="col-lg-6">
@@ -92,6 +83,17 @@ $show_breadcrumb = true;
                             <option value="email">Email</option>
                         </select>
                     </div>
+                    <!-- Follow Up Type -->
+                    <div class="col-lg-6">
+                        <label class="form__input-title">Follow Up Status*</label>
+                        <select name="status" class="form-select" required>
+                            <option value="">Select Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="missed">Missed</option>
+                            <option value="canceled">Canceled</option>
+                        </select>
+                    </div>
                     <div class="col-lg-6">
                         <label class="form__input-title">Assign user For follow up*</label>
                         <select name="assigned_with" class="form-select">
@@ -106,7 +108,7 @@ $show_breadcrumb = true;
                     </div>
 
                     <!-- Discussion Note -->
-                    <div class="col-lg-12">
+                    <div class="col-lg-6">
                         <label class="form__input-title">Discussion Note</label>
                         <textarea name="discussion_note" class="form-control" rows="3"></textarea>
                     </div>
@@ -157,11 +159,12 @@ $show_breadcrumb = true;
                             <th>Discussion Note</th>
                             <th>Next Follow Up</th>
                             <th>Next Action</th>
-                            <th class="d-none">Created By</th>
+                            <th class="">Follow Up With</th>
                             <th class="d-none">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="table__body">
+                        <!-- <php print_r($followUpLeads); ?> -->
                         <?php foreach ($followUpLeads as $fu): ?>
 
 
@@ -176,7 +179,7 @@ $show_breadcrumb = true;
                                 <td><?= $fu['discussion_note'] ?? '' ?></td>
                                 <td><?= $fu['next_follow_up_date'] ?? '' ?></td>
                                 <td><?= $fu['next_action'] ?? '' ?></td>
-                                <td class="d-none"><?= $fu['created_by_name'] ?? '' ?></td>
+                                <td class=""><?= $fu['assigned_user'] ?? '' ?></td>
                                 <td class="d-none">
                                     <div class="d-flex align-items-center justify-content-start gap-10">
                                         <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-follow-up/<?= $fu['id'] ?>">
