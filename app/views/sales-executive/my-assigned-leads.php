@@ -1,15 +1,105 @@
    <?php
-    $page_title = "User Dashboard ";
+    $page_title = "My All Assigned Lead";
+
     ?>
 
    <div class="row">
        <div class="card__wrapper">
 
            <div class="col-12">
-               <h4 class="mb-0">Today’s Leads</h4>
-               <small class="text-muted">All leads created today</small>
+               <h4 class="mb-0">All Assigned Leads</h4>
            </div>
        </div>
+
+       <form action="" method="get">
+           <div class="row  mb-3 align-items-end">
+
+               <?php
+                $currentYear = date('Y');
+                $startYear   = $currentYear - 10;
+                $selectedYear = $slectedYear ?? '';
+                ?>
+               <!-- Year Select -->
+               <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
+                   <div class="card__wrapper h-100">
+                       <div class="from__input-box">
+                           <select class="form-control" name="year">
+                               <option value="">Year Select</option>
+
+                               <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
+                                   <option
+                                       value="<?= $year ?>"
+                                       <?= $selectedYear == $year ? 'selected' : '' ?>>
+                                       <?= $year ?>
+                                   </option>
+                               <?php endfor; ?>
+
+                           </select>
+                       </div>
+                   </div>
+               </div>
+
+               <?php
+                $months = [
+                    1 => 'January',
+                    2 => 'February',
+                    3 => 'March',
+                    4 => 'April',
+                    5 => 'May',
+                    6 => 'June',
+                    7 => 'July',
+                    8 => 'August',
+                    9 => 'September',
+                    10 => 'October',
+                    11 => 'November',
+                    12 => 'December'
+                ];
+                $selectedMonth = $_GET['month'] ?? '';
+                ?>
+
+               <!-- Month Select -->
+               <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
+                   <div class="card__wrapper h-100">
+                       <div class="from__input-box">
+                           <select class="form-control" name="month">
+                               <option value="">Month Select</option>
+                               <?php foreach ($months as $id => $name): ?>
+
+                                   <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
+                                       <?= $name ?>
+                                   </option>
+                               <?php endforeach; ?>
+                           </select>
+
+                       </div>
+                   </div>
+               </div>
+
+               <!-- Buttons -->
+               <div class="col-xxl-4 col-xl-12 col-lg-12 col-md-12 col-12">
+                   <div class="card__wrapper h-100">
+                       <div class="d-flex flex-row gap-2 align-items-center p-0">
+                           <button type="submit" class="btn btn-secondary btn-sm flex-grow-1 py-1">
+                               Search
+                           </button>
+
+                           <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads"
+                               class="btn btn-success btn-sm py-1 flex-grow-1">
+                               <i class="fa-light fa-file-arrow-up me-1"></i>
+                               Reset
+                           </a>
+
+
+
+                           <a class="btn btn-primary btn-sm flex-grow-1 py-1"
+                               href="<?= $GLOBALS['base_url'] ?>/create-lead">
+                               All Follow Up Leads
+                           </a>
+                       </div>
+                   </div>
+               </div>
+           </div>
+       </form>
 
        <div class="row">
            <div class="col-xxl-12">
@@ -35,10 +125,8 @@
                                    <th class="d-none">Planning To Buy Time</th>
                                    <th>Best Time to Contact</th>
                                    <th>city</th>
-                                   <th class="d-none">Interest On</th>
-                                   <th class="text-center">Status</th>
+                                   <th class="">Last Follow Up Action</th>
                                    <th class="text-center">Action</th>
-                                   <th class="text-center">Note</th>
                                </tr>
                            </thead>
                            <tbody class="table__body">
@@ -87,6 +175,7 @@
                                                <?php endif; ?>
                                            </a>
                                        </td>
+
                                        <td>
                                            <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
                                                class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
@@ -111,39 +200,49 @@
                                        <td><?= htmlspecialchars($lead['city'] ?? 'N/A') ?></td>
 
                                        <!-- Hidden Interest On -->
-                                       <td class="d-none"><?= htmlspecialchars($lead['interest_on'] ?? '') ?></td>
+                                
 
-                                       <!-- Action -->
+
                                        <td>
-                                           <button
-                                               class="btn btn-sm btn-success call-btn"
-                                               data-id="<?= $lead['id'] ?>"
-                                               data-phone="<?= $lead['phone_number'] ?>">
-                                               <?= $lead['call_status'] ?>
-                                           </button>
-                                       </td>
-                                       <td class="call-status-cell">
-                                           <select
-                                               class="call-status"
-                                               data-id="<?= $lead['id'] ?>">
-                                               <option value="not_called" <?= $lead['call_status'] == 'not_called' ? 'selected' : '' ?>>Not Called</option>
-                                               <option value="called" <?= $lead['call_status'] == 'called' ? 'selected' : '' ?>>Called</option>
-                                               <option value="received" <?= $lead['call_status'] == 'received' ? 'selected' : '' ?>>Received</option>
-                                               <option value="not_received" <?= $lead['call_status'] == 'not_received' ? 'selected' : '' ?>>Not Received</option>
-                                           </select>
-                                       </td>
 
-
-                                       <td class="note-cell">
-                                           <div class="note-wrapper">
-                                               <textarea
-                                                   class="call-note"
-                                                   data-id="<?= $lead['id'] ?>"
-                                                   placeholder="Click to add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
-                                               <button type="button" class="btn btn-sm btn-success note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
-                                           </div>
+                                           <span class="bd-badge bg-primary fw-semibold fs-6">
+                                               <?= $lead['next_action'] ?? 'N/A'?>
+                                           </span>
                                        </td>
+                                       <td>
+                                           <!-- New Last Action Update Button -->
+                                           <form method="POST"
+                                               action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>"
+                                               class="m-0 p-0">
 
+                                               <select name="last_lead_action"
+                                                   class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
+                                                   onchange="this.form.submit()">
+
+                                                   <option value=""> Update action </option>
+                                                   <option value="not_called" <?= $lead['last_lead_action'] == 'not_called' ? 'selected' : '' ?>>
+                                                       Not Called
+                                                   </option>
+
+                                                   <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>
+                                                       Booked
+                                                   </option>
+
+                                                   <option value="called" <?= $lead['last_lead_action'] == 'called' ? 'selected' : '' ?>>
+                                                       Called
+                                                   </option>
+
+                                                   <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>
+                                                       Visited
+                                                   </option>
+                                                   <option value="canceled" <?= $lead['last_lead_action'] == 'canceled' ? 'selected' : '' ?>>
+                                                       Canceled
+                                                   </option>
+                                               </select>
+
+                                           </form>
+
+                                       </td>
 
 
                                    </tr>
@@ -325,20 +424,21 @@
        }
 
        .note-cell .note-wrapper {
-    display: flex;
-    gap: 5px; /* textarea & button gap */
-    align-items: center;
-}
+           display: flex;
+           gap: 5px;
+           /* textarea & button gap */
+           align-items: center;
+       }
 
-.note-cell .call-note {
-    flex: 1;  /* textarea width auto adjust */
-    height: 32px;
-}
+       .note-cell .call-note {
+           flex: 1;
+           /* textarea width auto adjust */
+           height: 32px;
+       }
 
-.note-cell .note-save-btn {
-    height: 32px;
-    padding: 0 8px;
-    font-size: 12px;
-}
-
+       .note-cell .note-save-btn {
+           height: 32px;
+           padding: 0 8px;
+           font-size: 12px;
+       }
    </style>

@@ -70,15 +70,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-    <div class="d-none col-xxl-3 col-xl-3  col-md-3 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <a href="<?= $GLOBALS['base_url'] ?>/onboarding-clients" class="btn btn-primary w-100 ">
-                    <span class="fw-semibold fs-6">All Onboard Clients</span>
-                </a>
-            </div>
-        </div>
-    </div>
+  
     <form action="" method="get">
         <div class="row  mb-3 align-items-end">
 
@@ -332,8 +324,8 @@ $show_breadcrumb = true;
                                                     Not Called
                                                 </option>
 
-                                                <option value="calling" <?= $lead['last_lead_action'] == 'calling' ? 'selected' : '' ?>>
-                                                    Calling
+                                                <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>
+                                                    Booked
                                                 </option>
 
                                                 <option value="called" <?= $lead['last_lead_action'] == 'called' ? 'selected' : '' ?>>
@@ -342,6 +334,9 @@ $show_breadcrumb = true;
 
                                                 <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>
                                                     Visited
+                                                </option>
+                                                <option value="canceled" <?= $lead['last_lead_action'] == 'canceled' ? 'selected' : '' ?>>
+                                                    Canceled
                                                 </option>
                                             </select>
 

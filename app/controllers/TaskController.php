@@ -193,7 +193,17 @@ class TaskController extends Controller
 
         // 2 Notifications
         $notifications = $this->taskModel->taskNotification();
-
+// 1. Get count of today's tasks (for card)
+    $stmt = $this->db->prepare("
+        SELECT COUNT(*) AS today_task_count
+        FROM tasks
+        WHERE user_id = ?
+          AND status != 'completed'
+          AND DATE(deadline) = CURDATE()
+    ");
+    $stmt->bind_param("i", $loggedUserId);
+    $stmt->execute();
+    $todayTaskCount = $stmt->get_result()->fetch_assoc()['today_task_count'] ?? 0;
         // 3 Pending tasks for this user
         $stmt = $this->db->prepare("
     SELECT 
@@ -224,13 +234,14 @@ class TaskController extends Controller
         $stmt->execute();
         $pendingTasks = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // 4️ Pass all data to view
+        // 4 Pass all data to view
         $this->view("tasks/task-dashboard", [
             "current_route" => "task-dashboard",
             "page_title"    => "Task Dashboard",
             "user"      => $user,
             "notifications" => $notifications,
             "pendingTasks"  => $pendingTasks,
+            "todayTaskCount"  => $todayTaskCount,
         ]);
     }
 

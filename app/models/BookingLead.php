@@ -147,9 +147,9 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-public function getAllAssignedLeads($userId, $year = null, $month = null)
-{
-    $sql = "SELECT 
+    public function getAllAssignedLeads($userId, $year = null, $month = null)
+    {
+        $sql = "SELECT 
                 lb.*, 
                 l.full_name, 
                 l.id AS lead_id,
@@ -174,39 +174,39 @@ public function getAllAssignedLeads($userId, $year = null, $month = null)
             WHERE lb.deleted_at IS NULL
               AND lb.sales_by_id = ?";
 
-    $params = [(int)$userId];
-    $types  = "i";
+        $params = [(int)$userId];
+        $types  = "i";
 
-    // Year filter (booking date based)
-    if (!empty($year)) {
-        $sql .= " AND YEAR(lb.created_at) = ?";
-        $params[] = (int)$year;
-        $types .= "i";
+        // Year filter (booking date based)
+        if (!empty($year)) {
+            $sql .= " AND YEAR(lb.created_at) = ?";
+            $params[] = (int)$year;
+            $types .= "i";
+        }
+
+        // Month filter (booking date based)
+        if (!empty($month)) {
+            $sql .= " AND MONTH(lb.created_at) = ?";
+            $params[] = (int)$month;
+            $types .= "i";
+        }
+
+        $sql .= " ORDER BY lb.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+
+        $stmt->bind_param($types, ...$params);
+
+        if (!$stmt->execute()) {
+            return [];
+        }
+
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-
-    // Month filter (booking date based)
-    if (!empty($month)) {
-        $sql .= " AND MONTH(lb.created_at) = ?";
-        $params[] = (int)$month;
-        $types .= "i";
-    }
-
-    $sql .= " ORDER BY lb.id DESC";
-
-    $stmt = $this->db->prepare($sql);
-    if (!$stmt) {
-        return [];
-    }
-
-    $stmt->bind_param($types, ...$params);
-
-    if (!$stmt->execute()) {
-        return [];
-    }
-
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
 
 
 
@@ -243,7 +243,7 @@ public function getAllAssignedLeads($userId, $year = null, $month = null)
         return (int)($row['onboarded'] ?? 0);
     }
 
-    
+
     public function create($data)
     {
         // 1 discount_amount
@@ -617,11 +617,11 @@ public function getAllAssignedLeads($userId, $year = null, $month = null)
     }
 
 
-public function getMyTotalFlatSales(int $userId): array
-{
-    $userId = (int) $userId;
+    public function getMyTotalFlatSales(int $userId): array
+    {
+        $userId = (int) $userId;
 
-    $sql = "
+        $sql = "
         SELECT 
             COUNT(*) AS total_flats
         FROM lead_bookings
@@ -630,12 +630,10 @@ public function getMyTotalFlatSales(int $userId): array
           AND deleted_at IS NULL
     ";
 
-    $row = $this->db->query($sql)->fetch_assoc();
+        $row = $this->db->query($sql)->fetch_assoc();
 
-    return [
-        'total_flats' => (int) ($row['total_flats'] ?? 0),
-    ];
-}
-
-
+        return [
+            'total_flats' => (int) ($row['total_flats'] ?? 0),
+        ];
+    }
 }

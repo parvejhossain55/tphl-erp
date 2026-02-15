@@ -192,36 +192,66 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-public function getAllMyLeads(int $userId, $year = null, $month = null)
-{
-    $sql = "SELECT * FROM leads WHERE assigned_id = ?";
+    public function getAllLeadsByUser(int $userId)
+    {
+        $userId = (int) $userId;
 
-    $params = [$userId];
-    $types  = "i";
+        $sql = "
+        SELECT *
+        FROM leads
+        WHERE assigned_id = {$userId}
+          
+          AND deleted_at IS NULL
+        ORDER BY id DESC
+    ";
 
-    if (!empty($year)) {
-        $sql .= " AND YEAR(created_at) = ?";
-        $params[] = (int)$year;
-        $types .= "i";
+        return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+    }
+    public function getAllMyLeads(int $userId, $year = null, $month = null)
+    {
+        $sql = "
+        SELECT leads.*, lf.next_action
+        FROM leads
+        LEFT JOIN (
+            SELECT t1.*
+            FROM lead_follow_ups t1
+            INNER JOIN (
+                SELECT lead_id, MAX(id) AS max_id
+                FROM lead_follow_ups
+                GROUP BY lead_id
+            ) t2 
+            ON t1.id = t2.max_id
+        ) lf ON lf.lead_id = leads.id
+        WHERE leads.assigned_id = ?
+    ";
+
+        $params = [$userId];
+        $types  = "i";
+
+        if (!empty($year)) {
+            $sql .= " AND YEAR(leads.created_at) = ?";
+            $params[] = (int)$year;
+            $types .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(leads.created_at) = ?";
+            $params[] = (int)$month;
+            $types .= "i";
+        }
+
+        $sql .= " ORDER BY leads.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return [];
+
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-    if (!empty($month)) {
-        $sql .= " AND MONTH(created_at) = ?";
-        $params[] = (int)$month;
-        $types .= "i";
-    }
-
-    $sql .= " ORDER BY id DESC";
-
-    $stmt = $this->db->prepare($sql);
-    if (!$stmt) return [];
-
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
 
 
 
@@ -489,16 +519,11 @@ public function getAllMyLeads(int $userId, $year = null, $month = null)
         return (int)($result['total'] ?? 0);
     }
 
-    // public function delete($id)
-    // {
-    //     $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");
-    //     $stmt->bind_param("i", $id);
-    //     return $stmt->execute();
-    // }
+
 
     public function updateLastLeadAction($leadId, $lastAction)
     {
-        $allowedActions = ['not_called', 'calling', 'called', 'visited'];
+        $allowedActions = ['not_called', 'booked', 'called', 'visited', 'canceled'];
 
         if (!in_array($lastAction, $allowedActions)) {
             return false;

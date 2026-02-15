@@ -30,6 +30,72 @@ class PaymentLeadBooking extends Model
 
     // Create a new follow-up
 
+// public function create($data)
+// {
+//     // Start transaction
+//     $this->db->begin_transaction();
+
+//     try {
+//         // 1 Insert payment
+//         $stmt = $this->db->prepare("
+//             INSERT INTO lead_payments
+//             (booking_id, bank_name, bank_account_no, cheque_no, online_type, payment_type, amount, payment_method, payment_status, payment_date,
+//              transaction_ref, total_emi_no, created_by)
+//             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//         ");
+
+//         $stmt->bind_param(
+//             "isssssdssssii",
+//             $data['booking_id'],
+//             $data['bank_name'],
+//             $data['bank_account_no'],
+//             $data['cheque_no'],
+//             $data['online_type'],
+//             $data['payment_type'],
+//             $data['amount'],
+//             $data['payment_method'],
+//             $data['payment_status'],
+//             $data['payment_date'],
+//             $data['transaction_ref'],
+//             $data['total_emi_no'],
+//             $data['created_by']
+//         );
+
+//         if (!$stmt->execute()) {
+//             throw new Exception("Payment insert failed: " . $stmt->error);
+//         }
+
+//         $payment_id = $this->db->insert_id;
+
+//         // 2 Mark flat booked if booking money
+//         if ($data['payment_type'] === 'booking_money') {
+
+//             $sql = "UPDATE flats f
+//                     LEFT JOIN lead_bookings b ON b.flat_id = f.id,
+                  
+//                     SET f.is_booked = 1,
+//                         f.status = 'booked',
+//                         b.booking_status = 'completed'
+//                     WHERE b.id = ?";
+//             $stmt2 = $this->db->prepare($sql);
+//             $stmt2->bind_param("i", $data['booking_id']);
+
+//             if (!$stmt2->execute()) {
+//                 throw new Exception("Flat booking update failed: " . $stmt2->error);
+//             }
+//         }
+//         // 3 Commit transaction
+//         $this->db->commit();
+//         return $payment_id;
+
+//     } catch (Exception $e) {
+//         // Rollback on error
+//         $this->db->rollback();
+//         // Optional: log error
+//         error_log($e->getMessage());
+//         return false;
+//     }
+// }
 public function create($data)
 {
     // Start transaction
@@ -70,8 +136,9 @@ public function create($data)
         // 2 Mark flat booked if booking money
         if ($data['payment_type'] === 'booking_money') {
 
+            // 2a Update flat & booking
             $sql = "UPDATE flats f
-                    JOIN lead_bookings b ON b.flat_id = f.id
+                    LEFT JOIN lead_bookings b ON b.flat_id = f.id
                     SET f.is_booked = 1,
                         f.status = 'booked',
                         b.booking_status = 'completed'
@@ -82,7 +149,20 @@ public function create($data)
             if (!$stmt2->execute()) {
                 throw new Exception("Flat booking update failed: " . $stmt2->error);
             }
+
+            // 2b Update related follow-ups to completed
+            $sql3 = "UPDATE lead_follow_ups lf
+                     INNER JOIN lead_bookings b ON lf.lead_id = b.lead_id
+                     SET lf.status = 'completed'
+                     WHERE b.id = ? AND lf.status = 'pending'";
+            $stmt3 = $this->db->prepare($sql3);
+            $stmt3->bind_param("i", $data['booking_id']);
+
+            if (!$stmt3->execute()) {
+                throw new Exception("Follow-up update failed: " . $stmt3->error);
+            }
         }
+
         // 3 Commit transaction
         $this->db->commit();
         return $payment_id;
@@ -90,7 +170,6 @@ public function create($data)
     } catch (Exception $e) {
         // Rollback on error
         $this->db->rollback();
-        // Optional: log error
         error_log($e->getMessage());
         return false;
     }

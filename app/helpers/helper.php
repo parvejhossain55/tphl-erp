@@ -234,7 +234,7 @@ function redirectByRole()
             $url = "{$GLOBALS['base_url']}/clients-cashin-view";
             break;
         case 8: // Accounts
-            $url = "{$GLOBALS['base_url']}/user-dashboard";
+            $url = "{$GLOBALS['base_url']}/my-dashboard";
             break;
 
         default:
@@ -308,6 +308,46 @@ function db()
         $db = new Database($config);
     }
     return $db->conn; // return mysqli connection
+}
+
+ function getFollowUpCount(int $userId, string $type = 'today'): int
+{
+    $userId = (int) $userId;
+   $db = $GLOBALS['db'];
+    if ($type === 'today') {
+        // Only today
+        $sql = "
+            SELECT COUNT(*) AS total
+            FROM lead_follow_ups
+            WHERE deleted_at IS NULL
+              AND status = 'pending'
+              AND assigned_with = ?
+              AND DATE(next_follow_up_date) = CURDATE()
+        ";
+    } elseif ($type === 'upcoming') {
+        // Next 3 days
+        $sql = "
+            SELECT COUNT(*) AS total
+            FROM lead_follow_ups
+            WHERE deleted_at IS NULL
+              AND status = 'pending'
+              AND assigned_with = ?
+              AND DATE(next_follow_up_date) > CURDATE()
+              AND DATE(next_follow_up_date) <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
+        ";
+    } else {
+        return 0;
+    }
+
+    $stmt = $db->prepare($sql);
+    if (!$stmt) return 0;
+
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+
+    return (int) ($row['total'] ?? 0);
 }
 
 
@@ -888,21 +928,21 @@ function renderApprovalContext(array $req)
 
                 <!-- Leave -->
                 <?php if (!empty($ctx['leave'])): ?>
-                    <li class="list-group-item px-0 border-0 border-top">
-                        <div class="row align-items-center mb-2">
-                            <div class="col-4 col-md-4 col-lg-3">
-                                <span class="badge bg-danger ms-2">Leave Type</span>
+                    <li class="list-group mt-3 px-0 border-0 border-top mt-2">
+                        <div class="row align-items-center my-2">
+                            <div class="col-6 col-md-5 col-lg-6">
+                                <span class="badge bg-danger ">Leave Type</span>
                             </div>
-                            <div class="col-8 col-md-8 col-lg-9 ps-lg-4">
+                            <div class="col-6 col-md-6 col-lg-6">
                                 <strong><?= esc($ctx['leave']['leave_type'], 'N/A') ?></strong>
                             </div>
                         </div>
 
                         <div class="row align-items-center">
-                            <div class="col-4 col-md-3">
+                            <div class="col-6 col-md-5 col-lg-6">
                                 <span class="badge bg-danger ms-2">Duration</span>
                             </div>
-                            <div class="col-8 col-md-9">
+                            <div class="col-6 col-md-6 col-lg-6">
                                 <strong><?= esc($ctx['leave']['requested_days'], 0) ?> days</strong>
                             </div>
                         </div>
@@ -938,8 +978,3 @@ function renderApprovalContext(array $req)
 
 
 
-
-
-
-
-// $readTime = calculateReadTime($_POST['content']);
