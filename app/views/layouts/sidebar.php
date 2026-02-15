@@ -181,6 +181,7 @@
 
                 // call the global helper function
                 $todayCount = getFollowUpCount($userId, 'today');
+                
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
                 <!-- for sales executive  -->
