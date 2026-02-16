@@ -349,11 +349,11 @@ class AccountClient extends Model
             $totalServiceFee = (float)$clientDetails['total_service_fee'];
 
             // CORRECT: Total land share paid = booking money + additional land share payments
-            $totalLandSharePaid = $bookingMoneyPaid + $additionalLandSharePaid;
+            $totalLandSharePaid = $bookingMoney + $additionalLandSharePaid;
 
             // CORRECT: Remaining land share = total land share - (booking money + additional land share + discount)
             // If there's a discount, it reduces the amount the client needs to pay
-            $remainingLandShare = max(0, $totalLandShare - ($totalLandSharePaid + $discountAmount));
+            $remainingLandShare =  $totalLandShare - ($totalLandSharePaid + $discountAmount);
 
             // CORRECT: Construction fee = total price - (total land share + registration)
             $constructionFee = $totalPrice - ($totalLandShare + $registrationPaid);
