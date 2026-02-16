@@ -2684,9 +2684,9 @@ input[type=file] {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100px;
+  width: 164px;
   gap: 6px;
-  height: 100px;
+  height: auto;
   position: absolute;
   top: 50%;
   inset-inline-start: 50%;
@@ -5099,7 +5099,7 @@ body.dark-only .tooltip .tooltip-inner {
 
 .modal-content {
   background-color: var(--clr-bg-body);
-  padding: 25px 25px;
+  padding: 14px 24px;
   border-radius: 10px;
   border: none;
 }

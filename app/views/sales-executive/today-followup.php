@@ -19,10 +19,11 @@
                          <th>Project</th>
                          <th>Flat</th>
                          <th>Last Decussion Note</th>
-                         <th class="text-center">Action</th>
-                         <th class="text-center">Note</th>
+
                          <th>Today Follow Up Action</th>
-                         <th>Today Follow Up</th>
+                         <th class="text-center">Note</th>
+                         <th class="text-center">Status</th>
+                         <th>Next Follow Up</th>
                      </tr>
                  </thead>
                  <tbody id="">
@@ -36,17 +37,18 @@
                                  <td><?= htmlspecialchars($followUp['project_name']) ?></td>
                                  <td><?= htmlspecialchars($followUp['flat_name']) ?></td>
                                  <td><?= htmlspecialchars($followUp['discussion_note']) ?></td>
-
                                  <td class="call-status-cell">
-                                     <select class="call-status" data-id="<?= $followUp['id'] ?>">
-                                         <option value="completed" <?= $followUp['status'] == 'completed' ? 'selected' : '' ?>>Completed</option>
-                                         <option value="pending" <?= $followUp['status'] == 'pending' ? 'selected' : '' ?>>Pending</option>
-                                         <option value="missed" <?= $followUp['status'] == 'missed' ? 'selected' : '' ?>>Missed</option>
-                                         <option value="canceld" <?= $followUp['status'] == 'canceld' ? 'selected' : '' ?>>Canceld</option>
+                                     <select class="next-action" data-id="<?= $followUp['id'] ?>">
+                                         <option value="site visit" <?= $followUp['next_action'] == 'site visit' ? 'selected' : '' ?>>Site visit</option>
+                                         <option value="booking" <?= $followUp['next_action'] == 'booking' ? 'selected' : '' ?>>Booking</option>
+                                         <option value="call_back" <?= $followUp['next_action'] == 'call_back' ? 'selected' : '' ?>>Call back</option>
+                                         <option value="take_time" <?= $followUp['next_action'] == 'take_time' ? 'selected' : '' ?>>Take Time</option>
                                      </select>
 
 
+
                                  </td>
+
 
 
                                  <td class="note-cell">
@@ -57,13 +59,12 @@
                                      </div>
                                  </td>
                                  <td class="call-status-cell">
-                                     <select class="next-action" data-id="<?= $followUp['id'] ?>">
-                                         <option value="site visit" <?= $followUp['next_action'] == 'site visit' ? 'selected' : '' ?>>Site visit</option>
-                                         <option value="booking" <?= $followUp['next_action'] == 'booking' ? 'selected' : '' ?>>Booking</option>
-                                         <option value="call_back" <?= $followUp['next_action'] == 'call_back' ? 'selected' : '' ?>>Call back</option>
-                                         <option value="take_time" <?= $followUp['next_action'] == 'take_time' ? 'selected' : '' ?>>Take Time</option>
+                                     <select class="call-status" data-id="<?= $followUp['id'] ?>">
+                                         <option value="completed" <?= $followUp['status'] == 'completed' ? 'selected' : '' ?>>Completed</option>
+                                         <option value="pending" <?= $followUp['status'] == 'pending' ? 'selected' : '' ?>>Pending</option>
+                                         <option value="missed" <?= $followUp['status'] == 'missed' ? 'selected' : '' ?>>Missed</option>
+                                         <option value="canceld" <?= $followUp['status'] == 'canceld' ? 'selected' : '' ?>>Canceld</option>
                                      </select>
-
 
 
                                  </td>

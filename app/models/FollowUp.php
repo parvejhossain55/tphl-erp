@@ -198,6 +198,7 @@ class FollowUp extends Model
         WHERE lf.deleted_at IS NULL
         AND lf.next_follow_up_date >= CURDATE()
         AND lf.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+        AND lf.status = 'pending'
         AND lf.deleted_at IS NULL
         GROUP BY lf.lead_id
         ORDER BY follow_up_count DESC";
@@ -211,6 +212,7 @@ class FollowUp extends Model
 
         return $data;
     }
+  
 
 
     // Delete follow-up by ID
@@ -243,6 +245,7 @@ class FollowUp extends Model
     LEFT JOIN employees emp ON f.assigned_with = emp.id
     WHERE DATE(f.next_follow_up_date) = '$today'
     AND f.deleted_at IS NULL
+    AND f.status = 'pending'
     ORDER BY f.follow_up_date DESC, f.follow_up_time DESC
     ";
 
@@ -286,6 +289,7 @@ class FollowUp extends Model
         WHERE DATE(f.next_follow_up_date) = '{$today}'
           AND f.assigned_with = {$userId}
           AND f.deleted_at IS NULL
+          AND f.status = 'pending'
         ORDER BY f.follow_up_date DESC, f.follow_up_time DESC
     ";
 
@@ -311,6 +315,27 @@ class FollowUp extends Model
         FROM lead_follow_ups f
         WHERE DATE(f.next_follow_up_date) = ?
         AND f.assigned_with = ?
+        AND f.status = 'pending'
+        AND f.deleted_at IS NULL
+    ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("si", $today, $userId);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+
+        return $result['total'] ?? 0;
+    }
+      public function getTodayFollowUpCompleteCount($userId)
+    {
+         $today = date('Y-m-d');
+
+        $sql = "
+        SELECT COUNT(*) as total
+        FROM lead_follow_ups f
+        WHERE DATE(f.next_follow_up_date) = ?
+        AND f.assigned_with = ?
+        AND f.status = 'completed'
         AND f.deleted_at IS NULL
     ";
 
@@ -374,7 +399,7 @@ public function upcomingFollowUp($userID)
         WHERE f.deleted_at IS NULL
           AND f.status = 'pending'
           AND f.assigned_with = ?
-          AND f.next_follow_up_date >= CURDATE()
+          AND f.next_follow_up_date > CURDATE()
           AND f.next_follow_up_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
         ORDER BY f.next_follow_up_date ASC, f.follow_up_time ASC
     ";

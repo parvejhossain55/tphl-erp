@@ -94,13 +94,23 @@ class Lead extends Model
 
     public function getAllWithFilter($year = null, $month = null)
     {
-        $sql = "
-    SELECT 
+        $sql = "SELECT 
         l.*,
         u.id AS assigned_id,
         u.full_name AS agent_name,
-        p.name AS project_name
+        p.name AS project_name,
+         lf.next_action,lf.follow_up_type
     FROM leads AS l
+       LEFT JOIN (
+            SELECT t1.*
+            FROM lead_follow_ups t1
+            INNER JOIN (
+                SELECT lead_id, MAX(id) AS max_id
+                FROM lead_follow_ups
+                GROUP BY lead_id
+            ) t2 
+            ON t1.id = t2.max_id
+        ) lf ON lf.lead_id = l.id
     LEFT JOIN users AS u ON l.assigned_id = u.id
     LEFT JOIN lead_bookings AS lb ON lb.lead_id = l.id
     LEFT JOIN projects AS p ON lb.project_id = p.id
@@ -210,7 +220,7 @@ class Lead extends Model
     public function getAllMyLeads(int $userId, $year = null, $month = null)
     {
         $sql = "
-        SELECT leads.*, lf.next_action
+        SELECT leads.*, lf.next_action,lf.follow_up_type
         FROM leads
         LEFT JOIN (
             SELECT t1.*

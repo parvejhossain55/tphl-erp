@@ -792,3 +792,33 @@ h4{
     padding: 0 8px;
     font-size: 12px;
 }
+
+
+.preloader {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background: #ffffff;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.preloader-logo {
+  
+    animation: preloader-float 2s ease-in-out infinite;
+}
+
+@keyframes preloader-float {
+    0%   { transform: translateY(0) rotate(0deg); }
+    25%  { transform: translateY(-10px) rotate(-5deg); }
+    50%  { transform: translateY(0) rotate(0deg); }
+    75%  { transform: translateY(10px) rotate(5deg); }
+    100% { transform: translateY(0) rotate(0deg); }
+}
+
+
+

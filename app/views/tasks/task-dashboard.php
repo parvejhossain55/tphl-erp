@@ -230,12 +230,12 @@
             .task-icon-wrapper {
                 width: 44px;
                 height: 44px;
-                background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+                /* background: linear-gradient(135deg, #198754 0%, #146c43 100%); */
                 border-radius: 12px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                color: white;
+                /* color: white; */
                 font-size: 20px;
                 box-shadow: 0 4px 12px rgba(25, 135, 84, 0.25);
             }
@@ -329,12 +329,12 @@
             .info-icon {
                 width: 48px;
                 height: 48px;
-                background: #198754;
+                /* background: #198754; */
                 border-radius: 10px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                color: white;
+                color: #198754;
                 font-size: 22px;
                 flex-shrink: 0;
             }

@@ -299,6 +299,10 @@ $routes = [
     "sales-dashboard" => ["controller" => "SalesDashboardController", "method" => "index"],
     "inventory-lists" => ["controller" => "ProjectInventoryController", "method" => "index"],
     "sales-executive-teams" => ["controller" => "SalesDashboardController", "method" => "salesTeam"],
+    "set-sales-target/(\d+)" => ["controller" => "SalesDashboardController", "method" => "salesTarget"],
+    "save-sales-target/(\d+)" => ["controller" => "SalesDashboardController", "method" => "storeSalesTarget"],
+ "update-sales-target" => ["controller" => "SalesDashboardController", "method" => "updateSalesTarget"],
+
     //Sales Team Head Dashboard
 
     "sales-team-head-dashboard" => ["controller" => "SalesHeadDashboardController", "method" => "index"],

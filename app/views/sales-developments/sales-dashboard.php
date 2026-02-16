@@ -226,7 +226,7 @@
                                     <td><?= date('d M, Y H:i', strtotime($followUp['follow_up_date'] . ' ' . $followUp['follow_up_time'])) ?></td>
                                     <td><?= date('d M, Y H:i', strtotime($followUp['next_follow_up_date'])) ?></td>
                                     <td><?= htmlspecialchars($followUp['discussion_note']) ?></td>
-                                    <td><?= htmlspecialchars($followUp['next_action']) ?></td>
+                                    <td><?= htmlspecialchars($followUp['next_action'] ?? 'N/A') ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>

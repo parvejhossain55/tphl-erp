@@ -7,11 +7,13 @@ class UserDashboardController extends Controller
     protected $taskModel;
     protected $followUpModel;
     protected $bookingModel;
+    protected $userModel;
 
     public function __construct($db)
     {
         $this->db = $db;
         $this->leadModel = new Lead($this->db);
+        $this->userModel = new User($this->db);
         $this->taskModel = new Task($this->db);
         $this->followUpModel = new FollowUp($this->db);
         $this->bookingModel = new BookingLead($this->db);
@@ -32,6 +34,7 @@ class UserDashboardController extends Controller
 
 
         $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
+  
         $loggedUserId = (int) $_SESSION['user']['id'];
 
         // only assigned today leads for logged user
@@ -43,9 +46,10 @@ class UserDashboardController extends Controller
             "current_route" => "today-leads",
             "page_title"    => "Leads Today Assign",
             "todayLeads"    => $todayLeads,
-       
+
             "bookingCount"    => $bookingCount,
             "todayFollowUp"    => $todayFollowUp,
+         
 
         ]);
     }
@@ -61,19 +65,45 @@ class UserDashboardController extends Controller
         }
 
         $loggedUserId = (int) $_SESSION['user']['id'];
-      
+
         // only assigned today leads for logged user
         $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
         $todayLeadsCount = count($todayLeads);
         $pendingTasks = $this->taskModel->getPendingTaskCountByUser($loggedUserId);
-        
+
         $myTotalShareSold = $this->bookingModel->getMyTotalFlatSales($loggedUserId);
-        $getAllLeads= $this->leadModel->getAllLeadsByUser($loggedUserId);
-        $getAllLeadsCount =count($getAllLeads);
+        $getAllLeads = $this->leadModel->getAllLeadsByUser($loggedUserId);
+        $getAllLeadsCount = count($getAllLeads);
         $bookingCount   = $this->bookingModel->getBookingCountByLead();
         // $todayFollowUp  = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
         $todayFollowUp  = $this->followUpModel->getTodayFollowUpCountLoginUser($loggedUserId);
         $followUpOverdue  = $this->followUpModel->getOverdueFollowUpCountLoginUser($loggedUserId);
+
+      $todayFollowUpComplete = $this->followUpModel->getTodayFollowUpCompleteCount($loggedUserId);
+        // executive target from user model
+        // Get targets
+        $month = date('Y-m'); // current month e.g. 2026-02
+        $target = $this->userModel->getTarget($loggedUserId, $month);
+        $monthlySiteVisitTarget = $target['site_visit_target'] ?? 0;
+        $monthlyBookingTarget = $target['booking_target'] ?? 0;
+        $monthlyBookingValueTarget = $target['booking_value_target'] ?? 0.00;
+
+        // Get completions
+        $monthlyVisitComplete = $this->userModel->getMonthlyVisitCompleted($loggedUserId, $month);
+        $monthlyBookingComplete = $this->userModel->getMonthlyBookingCompleted($loggedUserId, $month);
+
+        // Calculate achievement %
+        $visitAchievement = $monthlySiteVisitTarget > 0 ? round(($monthlyVisitComplete / $monthlySiteVisitTarget) * 100, 2) : 0;
+        $bookingAchievement = $monthlyBookingTarget > 0 ? round(($monthlyBookingComplete / $monthlyBookingTarget) * 100, 2) : 0;
+
+        // Deals Closed & Won
+        $dealsClosed = $this->userModel->getDealsClosed($loggedUserId, $month);
+        $dealsClosedAll = $this->userModel->getDealsClosedAllTime($loggedUserId);
+        $dealsWin = $this->userModel->getDealsWon($loggedUserId, $month);
+        $dealsWinAll = $this->userModel->getDealsClosedAllTime($loggedUserId);
+        $dealsLostAll = $this->userModel->getAllDealsLost($loggedUserId);
+
+
 
         $this->view("sales-executive/my-dashboard", [
             "current_route"   => "my-dashboard",
@@ -81,11 +111,23 @@ class UserDashboardController extends Controller
             "todayLeads"      => $todayLeads,
             "bookingCount"    => $bookingCount,
             "todayFollowUp"   => $todayFollowUp,
+               "todayFollowUpComplete"    => $todayFollowUpComplete,
             "todayLeadsCount"   => $todayLeadsCount,
             "pendingTasks"   => $pendingTasks,
             "myTotalShareSold"   => $myTotalShareSold,
             "followUpOverdue"   => $followUpOverdue,
-                 "getAllLeadsCount"    => $getAllLeadsCount,
+            "getAllLeadsCount"    => $getAllLeadsCount,
+            "monthlySiteVisitTarget"    => $monthlySiteVisitTarget,
+            "monthlyBookingComplete"    => $monthlyBookingComplete,
+            "monthlyBookingTarget"    => $monthlyBookingTarget,
+            "visitAchievement"    => $visitAchievement,
+            "bookingAchievement"    => $bookingAchievement,
+            "dealsClosed"    => $dealsClosed,
+            "dealsClosedAll"    => $dealsClosedAll,
+            "dealsWin"    => $dealsWin,
+            "dealsWinAll"    => $dealsWinAll,
+            "dealsLostAll"    => $dealsLostAll,
+            "monthlyVisitComplete"    => $monthlyVisitComplete,
 
         ]);
     }
@@ -217,7 +259,7 @@ class UserDashboardController extends Controller
     }
     public function myUpcomingFollowLeads()
     {
-       if (session_status() === PHP_SESSION_NONE) {
+        if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
@@ -229,7 +271,6 @@ class UserDashboardController extends Controller
             $upcomingLeads = $this->followUpModel
                 ->upcomingFollowUp($userId);
         }
-
         $this->view("sales-executive/upcoming-follow-ups", [
             "current_route"       => "upcoming-follow-up",
             "page_title"          => "Upcoming Follow Up",

@@ -88,9 +88,6 @@
                                <i class="fa-light fa-file-arrow-up me-1"></i>
                                Reset
                            </a>
-
-
-
                            <a class="btn btn-primary btn-sm flex-grow-1 py-1"
                                href="<?= $GLOBALS['base_url'] ?>/create-lead">
                                All Follow Up Leads
@@ -126,7 +123,7 @@
                                    <th>Best Time to Contact</th>
                                    <th>city</th>
                                    <th class="">Last Follow Up Action</th>
-                                   <th class="text-center">Action</th>
+                                   <th class="text-center">Current Action</th>
                                </tr>
                            </thead>
                            <tbody class="table__body">
@@ -200,13 +197,12 @@
                                        <td><?= htmlspecialchars($lead['city'] ?? 'N/A') ?></td>
 
                                        <!-- Hidden Interest On -->
-                                
-
 
                                        <td>
 
-                                           <span class="bd-badge bg-primary fw-semibold fs-6">
-                                               <?= $lead['next_action'] ?? 'N/A'?>
+                                           <span class="bd-badge bg-primary fw-semibold ">
+                                               <?= ucfirst($lead['follow_up_type'] ?? '') ?: 'Not Follow' ?>
+                                               <!-- cfirst($lead['follow_up_type'] ?? '') ?: 'Not Follow' -->
                                            </span>
                                        </td>
                                        <td>

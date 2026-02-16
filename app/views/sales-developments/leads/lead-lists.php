@@ -70,7 +70,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-  
+
     <form action="" method="get">
         <div class="row  mb-3 align-items-end">
 
@@ -140,7 +140,7 @@ $show_breadcrumb = true;
                 <div class="card__wrapper h-100">
                     <div class="d-flex flex-row gap-2 align-items-center p-0">
                         <button type="submit" class="btn btn-secondary btn-sm flex-grow-1 py-1">
-                            Search 
+                            Search
                         </button>
                         <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class=" d-none btn btn-success  w-100">
                             Reset
@@ -241,7 +241,9 @@ $show_breadcrumb = true;
 
                             <th>Follow Up</th>
                             <th>Booking</th>
+                            <th class="">Last client Action</th>
                             <th class="">Assigned Executive</th>
+
                             <th class="text-center">Action</th>
                         </tr>
                     </thead>
@@ -253,14 +255,35 @@ $show_breadcrumb = true;
                                     <input type="checkbox" class="me-2 selectedId" data-id="<?= $lead['id'] ?>">
                                     <?= $key + 1 ?>
                                 </td>
-
                                 <td class="d-none d-lg-block"><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
                                 <td class="td_1"><?= $lead['full_name'] ?? '' ?></td>
                                 <td><?= $lead['phone_number'] ?? $lead['phone'] ?></td>
-                                <td><?= !empty($lead['campaign_name'])
-                                        ? $lead['campaign_name']
-                                        : (!empty($lead['project_type']) ? $lead['project_type'] : '-') ?></td>
+
+                                <?php
+                                $displayName = !empty($lead['campaign_name'])
+                                    ? $lead['campaign_name']
+                                    : (!empty($lead['project_type']) ? $lead['project_type'] : '-');
+
+                                $plainText = strip_tags($displayName);
+                                ?>
+
                                 <td>
+                                    <?= truncateText($displayName, 30) ?>
+
+                                    <?php if (mb_strlen($plainText) > 30): ?>
+                                        <button type="button"
+                                            id="viewCampaignBtn<?= $lead['id'] ?>"
+                                            class="btn btn-sm btn-outline-primary"
+                                            data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#viewProjectCampaignName">
+                                            View
+                                        </button>
+
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+
                                     <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
                                         class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">
 
@@ -273,6 +296,7 @@ $show_breadcrumb = true;
                                         <?php endif; ?>
                                     </a>
                                 </td>
+
                                 <td>
                                     <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
                                         class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
@@ -286,8 +310,9 @@ $show_breadcrumb = true;
                                         <?php endif ?>
                                     </a>
                                 </td>
-                              
-                                <td class=""><?= $lead['agent_name'] ?? '' ?></td>
+
+                                <td><span class="bd-badge bg-primary"> <?= ucfirst($lead['follow_up_type'] ?? 'Not update' ) ?></span></td>
+                                <td class=""><?= ucfirst($lead['agent_name'] ?? '' )?></td>
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-10">
 
@@ -397,6 +422,47 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
+
+
+<!-- view full rule description -->
+<div id="viewProjectCampaignName" class="modal custom-modal fade">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Project Campaing Name</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <textarea id="view_campaign_id" class="form-control" rows="3" readonly></textarea>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<script>
+    var leadModal = document.getElementById('viewProjectCampaignName');
+
+    leadModal.addEventListener('show.bs.modal', function(event) {
+
+        var button = event.relatedTarget;
+
+        if (button) {
+            var description = button.getAttribute("data-description");
+            leadModal.querySelector('#view_campaign_id').value = description;
+        }
+
+    });
+</script>
+
+
+
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>";
     // Disable right-click context menu
@@ -430,45 +496,50 @@ $show_breadcrumb = true;
             else el.value = ''; // input clear
         });
     });
+
+
+    // campaign full show
 </script>
+
+
 
 
 <!-- assigned user select  -->
 <script>
-document.getElementById('assignUserBtn').addEventListener('click', function() {
-    const userId = document.getElementById('assignUserSelect').value;
-    const selectedLeads = [];
+    document.getElementById('assignUserBtn').addEventListener('click', function() {
+        const userId = document.getElementById('assignUserSelect').value;
+        const selectedLeads = [];
 
-    document.querySelectorAll('.selectedId:checked').forEach(cb => {
-        const tr = cb.closest('tr');
-        if (tr) selectedLeads.push(tr.dataset.id || tr.querySelector('.selectedId').dataset.id);
+        document.querySelectorAll('.selectedId:checked').forEach(cb => {
+            const tr = cb.closest('tr');
+            if (tr) selectedLeads.push(tr.dataset.id || tr.querySelector('.selectedId').dataset.id);
+        });
+
+        // If nothing selected, just return
+        if (!userId || selectedLeads.length === 0) {
+            return; // no alert
+        }
+
+        // Create a form dynamically and submit
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<?= $base_url ?>/assign-multiple-leads';
+
+        const inputUser = document.createElement('input');
+        inputUser.type = 'hidden';
+        inputUser.name = 'user_id';
+        inputUser.value = userId;
+        form.appendChild(inputUser);
+
+        const inputLeads = document.createElement('input');
+        inputLeads.type = 'hidden';
+        inputLeads.name = 'lead_ids';
+        inputLeads.value = selectedLeads.join(',');
+        form.appendChild(inputLeads);
+
+        document.body.appendChild(form);
+        form.submit();
     });
-
-    // If nothing selected, just return
-    if (!userId || selectedLeads.length === 0) {
-        return; // no alert
-    }
-
-    // Create a form dynamically and submit
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '<?= $base_url ?>/assign-multiple-leads';
-
-    const inputUser = document.createElement('input');
-    inputUser.type = 'hidden';
-    inputUser.name = 'user_id';
-    inputUser.value = userId;
-    form.appendChild(inputUser);
-
-    const inputLeads = document.createElement('input');
-    inputLeads.type = 'hidden';
-    inputLeads.name = 'lead_ids';
-    inputLeads.value = selectedLeads.join(',');
-    form.appendChild(inputLeads);
-
-    document.body.appendChild(form);
-    form.submit();
-});
 </script>
 
 

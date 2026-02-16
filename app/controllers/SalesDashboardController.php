@@ -190,8 +190,75 @@ class SalesDashboardController extends Controller
             'roles' => $roles,
             'currentPage' => $currentPage,
             'totalPages' => $totalPages,
-            
-
         ]);
     }
+
+public function salesTarget($id){
+    $user = $this->userModel->find($id);
+    $targets = $this->userModel->getAllTargets($id);
+
+    $this->view("sales-developments/set-sales-target",[
+      "current_route" => "sales-executive-teams",
+        'user' => $user,
+        'targets' => $targets
+    ]);
+}
+
+
+
+
+    // Store / update target
+    public function storeSalesTarget($id){
+        $monthInput = $_POST['month']; // e.g. 2026-02
+        $month = date('Y-m-01', strtotime($monthInput));
+
+        $siteVisit = $_POST['site_visit_target'] ?? 0;
+        $bookingTarget = $_POST['booking_target'] ?? 0;
+        $bookingValue = $_POST['booking_value_target'] ?? 0;
+
+        $saved = $this->userModel->saveTarget(
+            $id,
+            $month,
+            $siteVisit,
+            $bookingTarget,
+            $bookingValue
+        );
+
+        if($saved){
+            $_SESSION['success'] = "Target saved successfully!";
+        }else{
+            $_SESSION['error'] = "Failed to save target!";
+        }
+
+        header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $id);
+        exit;
+    }
+
+public function updateSalesTarget() {
+    $id = $_POST['id']; // hidden input
+    $monthInput = $_POST['month'];
+    $month = date('Y-m-01', strtotime($monthInput));
+    $siteVisit = $_POST['site_visit_target'] ?? 0;
+    $booking = $_POST['booking_target'] ?? 0;
+    $bookingValue = $_POST['booking_value_target'] ?? 0;
+
+    $sql = "
+        UPDATE sales_targets 
+        SET month = ?, 
+            site_visit_target = ?, 
+            booking_target = ?, 
+            booking_value_target = ?
+        WHERE id = ?
+    ";
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("siiii", $month, $siteVisit, $booking, $bookingValue, $id);
+    $stmt->execute();
+
+    $_SESSION['success'] = "Target updated successfully!";
+    header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $_POST['user_id']);
+    exit;
+}
+
+
+    
 }

@@ -51,7 +51,7 @@
 <body class="body-area">
 
     <!-- Preloader start -->
-    <div class=" preloader" id="preloader">
+    <!-- <div class=" preloader" id="preloader">
         <div class="loading">
             <span></span>
             <span></span>
@@ -59,7 +59,15 @@
             <span></span>
             <span></span>
         </div>
+    </div> -->
+    <!-- Preloader start -->
+<div class="preloader" id="preloader">
+    <div class="loading">
+        <img src="<?=  getImage('settings', getSetting('white_logo')) ?>" alt="Logo" class="preloader-logo">
+       
     </div>
+</div>
+
     <!-- Preloader start -->
     <!-- Dashboard area start -->
     <div class="page__full-wrapper">
