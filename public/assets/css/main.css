@@ -6958,7 +6958,7 @@ font-family: "Font Awesome 6 Pro";
 }
 .card__wrapper {
   background: var(--clr-bg-card);
-  padding: 25px 25px;
+  padding: 25px 10px;
   margin-bottom: 20px;
   border-radius: 10px;
   box-shadow: 0 6px 30px rgba(182, 186, 203, 0.3);

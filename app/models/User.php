@@ -573,228 +573,31 @@ class User extends Model
 
     // executive target 
 
-    public function getAllTargets($userId)
-    {
-        $sql = "SELECT * FROM sales_targets 
-            WHERE sales_user_id = ?
-            ORDER BY month ASC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("i", $userId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        return $result->fetch_all(MYSQLI_ASSOC);
-    }
 
 
-    /**
-     * Insert or update target
-     */
-    public function saveTarget($userId, $month, $siteVisit, $bookingTarget, $bookingValue)
-    {
-        $sql = "
-            INSERT INTO sales_targets
-            (sales_user_id, month, site_visit_target, booking_target, booking_value_target)
-            VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                site_visit_target = VALUES(site_visit_target),
-                booking_target = VALUES(booking_target),
-                booking_value_target = VALUES(booking_value_target)
-        ";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param(
-            "isiii",
-            $userId,
-            $month,
-            $siteVisit,
-            $bookingTarget,
-            $bookingValue
-        );
-        return $stmt->execute();
-    }
-
-    public function getTargetProgress($userId, $month, $year)
-    {
-        // Booking
-        $sql1 = "SELECT COUNT(*) AS deals_closed, 
-                    SUM(agreement_value - IFNULL(discount_amount,0)) AS total_value
-             FROM lead_bookings
-             WHERE sales_by_id = ? AND booking_status = 'completed' 
-                   AND MONTH(booking_date) = ? AND YEAR(booking_date) = ?";
-        $stmt1 = $this->db->prepare($sql1);
-        $stmt1->bind_param("iii", $userId, $month, $year);
-        $stmt1->execute();
-        $booking = $stmt1->get_result()->fetch_assoc();
-
-        // Visits
-        $sql2 = "SELECT COUNT(*) AS visits_done
-             FROM lead_follow_ups
-             WHERE assigned_with = ? AND follow_up_type='visit' 
-                   AND status='completed' AND MONTH(follow_up_date)=? 
-                   AND YEAR(follow_up_date)=?";
-        $stmt2 = $this->db->prepare($sql2);
-        $stmt2->bind_param("iii", $userId, $month, $year);
-        $stmt2->execute();
-        $visits = $stmt2->get_result()->fetch_assoc();
-
-        return [
-            'deals_closed' => $booking['deals_closed'] ?? 0,
-            'total_booking_value' => $booking['total_value'] ?? 0,
-            'visits_done' => $visits['visits_done'] ?? 0
-        ];
-    }
-
-    // Get target for user + month
-    public function getTarget($userId, $month){
-        $sql = "SELECT * FROM sales_targets WHERE sales_user_id = ? AND DATE_FORMAT(month,'%Y-%m') = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("is", $userId, $month);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        return $result->fetch_assoc();
-    }
- // Get completed site visits for a month
-    public function getMonthlyVisitCompleted($userId, $month){
-        $sql = "SELECT COUNT(*) as completed FROM lead_follow_ups
-                WHERE assigned_with=? AND follow_up_type='visit' AND status='completed'
-                  AND DATE_FORMAT(follow_up_date,'%Y-%m')=?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("is", $userId, $month);
-        $stmt->execute();
-        $result = $stmt->get_result()->fetch_assoc();
-        return $result['completed'] ?? 0;
-    }
-
-    // Get completed bookings for a month
-  public function getMonthlyBookingCompleted($userId, $month)
-{
-    $sql = "
-        SELECT COUNT(*) AS total
-        FROM lead_bookings
-        WHERE sales_by_id = ?
-          AND DATE_FORMAT(booking_date, '%Y-%m') = ?
-          AND booking_status IN ('completed','booked')
-    ";
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param("is", $userId, $month);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return (int)($result['total'] ?? 0);
+public function countSalesTeams(){
+    $sql = $this->db->prepare("SELECT COUNT(*) as total FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name IN ('Sales Manager', 'Sales Executive')");
+    $sql->execute();
+    $result = $sql->get_result()->fetch_assoc();
+    return $result['total'];
 }
-
-// Total Deals Closed (all time, not month restricted)
-public function getDealsClosedAllTime($userId)
-{
-    $sql = "
-        SELECT COUNT(DISTINCT lf.lead_id) AS total
-        FROM lead_follow_ups lf
-        JOIN leads l ON l.id = lf.lead_id
-        WHERE lf.assigned_with = ?
-          AND lf.follow_up_type = 'visit'
-          AND lf.status != 'canceled'
-    ";
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return (int)($result['total'] ?? 0);
+// public function getSalesTeams(){
+//     $sql = $this->db->prepare("SELECT * FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name IN ('Sales Manager', 'Sales Executive')");
+//     $sql->execute();
+//     $result = $sql->get_result();
+//     return $result->fetch_all(MYSQLI_ASSOC);
+// }
+public function getSalesTeams() {
+    // Only fetch users with role_id = 8 (executives)
+    $sql = $this->db->prepare("
+        SELECT u.id, u.full_name, u.role_id 
+        FROM users u
+        WHERE u.role_id IN(8, 5)
+    ");
+    $sql->execute();
+    $result = $sql->get_result();
+    return $result->fetch_all(MYSQLI_ASSOC);
 }
-
-// Total Deals Won (all time, not month restricted)
-public function getDealsWonAllTime($userId)
-{
-    $sql = "
-        SELECT COUNT(*) AS total
-        FROM leads
-        WHERE last_lead_action = 'booked'
-          AND assigned_id = ?
-    ";
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return (int)($result['total'] ?? 0);
-}
-
-public function getAllDealsLost($userId)
-{
-    $sql = "
-        SELECT COUNT(DISTINCT l.id) AS total
-        FROM leads l
-        LEFT JOIN lead_follow_ups lf ON lf.lead_id = l.id
-        WHERE l.assigned_id = ?
-          AND (
-               l.last_lead_action = 'canceled'
-               OR (lf.follow_up_type = 'visit' AND lf.status = 'canceled')
-          )
-    ";
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return (int)($result['total'] ?? 0);
-}
-
-
-public function getDealsClosed($userId, $month)
-{
-    $sql = "
-        SELECT COUNT(DISTINCT lf.lead_id) AS total
-        FROM lead_follow_ups lf
-        JOIN leads l ON l.id = lf.lead_id
-        WHERE lf.assigned_with = ?
-          AND DATE_FORMAT(lf.follow_up_date, '%Y-%m') = ?
-          AND lf.follow_up_type = 'visit'
-          AND lf.status != 'canceled'
-    ";
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param("is", $userId, $month);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return (int)($result['total'] ?? 0);
-}
-
-public function getDealsWon($userId, $month)
-{
-    $sql = "
-        SELECT COUNT(*) AS total
-        FROM leads
-        WHERE last_lead_action = 'booked'
-          AND assigned_id  = ?
-          AND DATE_FORMAT(updated_at, '%Y-%m') = ?
-    ";
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param("is", $userId, $month);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return (int)($result['total'] ?? 0);
-}
-
-
-
-
-public function getDealsLost($userId, $month)
-{
-    $sql = "
-        SELECT COUNT(*) AS total
-        FROM leads l
-        LEFT JOIN lead_follow_ups lf ON lf.lead_id = l.id
-        WHERE l.assigned_id = ?
-          AND DATE_FORMAT(l.updated_at, '%Y-%m') = ?
-          AND (
-               l.last_lead_action = 'canceled'
-               OR (lf.follow_up_type = 'visit' AND lf.status = 'canceled')
-          )
-    ";
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param("is", $userId, $month);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    return (int)($result['total'] ?? 0);
-}
-
-
-
-
 
 
     

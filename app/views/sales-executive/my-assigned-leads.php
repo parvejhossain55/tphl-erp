@@ -174,8 +174,8 @@
                                        </td>
 
                                        <td>
-                                           <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
-                                               class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
+                                           <a href="#"
+                                               class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between no-click" style=" pointer-events: none;cursor: not-allowed;">
                                                <?php if (!empty($bookingCount[$lead['id']])): ?>
                                                    <span>Booked </span>
                                                    <span class="followup-badge">
@@ -183,6 +183,7 @@
                                                    </span>
                                                <?php else: ?>
                                                    <span>Booking </span>
+                                                   <span class="followup-badge">0</span>
                                                <?php endif ?>
                                            </a>
                                        </td>

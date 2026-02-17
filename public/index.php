@@ -75,7 +75,7 @@ $routes = [
     "my-onboarding-projects"          => ["controller" => "UserDashboardController", "method" => "myOnboardProject"],
     "my-all-assigned-leads"          => ["controller" => "UserDashboardController", "method" => "myAssignedLeads"],
     "follow-up/update-status-note"          => ["controller" => "UserDashboardController", "method" => "updateFollowUpStatusNote"],
-    "overdue-next-followup"          => ["controller" => "UserDashboardController", "method" =>"updateFollowUpStatusNote"],
+    "overdue-next-followup"          => ["controller" => "UserDashboardController", "method" => "updateFollowUpStatusNote"],
 
 
     "customer-lists"       => ["controller" => "CustomerController", "method" => "index"],
@@ -150,9 +150,9 @@ $routes = [
     "remaining-days" => ["controller" => "LeaveController", "method" => "remainingDays"],
 
     // self leave 
-       "store-self-leave-request" => ["controller" => "LeaveController", "method" => "store"],
-       "create-self-leave-request" => ["controller" => "LeaveController", "method" => "createSelf"],
-       "remaining-days-self" => ["controller" => "LeaveController", "method" => "remainingDaysSelf"],
+    "store-self-leave-request" => ["controller" => "LeaveController", "method" => "store"],
+    "create-self-leave-request" => ["controller" => "LeaveController", "method" => "createSelf"],
+    "remaining-days-self" => ["controller" => "LeaveController", "method" => "remainingDaysSelf"],
     // "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
     // "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
@@ -179,10 +179,10 @@ $routes = [
     "onboard-access-client-lists" => ["controller" => "OnboardClientController", "method" => "index"],
     "create-onboard-client" => ["controller" => "OnboardClientController", "method" => "create"],
     "store-onboard-client" => ["controller" => "OnboardClientController", "method" => "store"],
-    
+
     "edit-onboard-client/(\d+)" => ["controller" => "OnboardClientController", "method" => "edit"],
     "update-onboard-client/(\d+)" => ["controller" => "OnboardClientController", "method" => "update"],
-   
+
     "get-lead-booking-details/(\d+)" => ["controller" => "OnboardClientController", "method" => "getLeadBookingDetails"],
     "assign-onboard-client" => ["controller" => "OnboardClientController", "method" => "assignMultipleLeads"],
 
@@ -301,7 +301,7 @@ $routes = [
     "sales-executive-teams" => ["controller" => "SalesDashboardController", "method" => "salesTeam"],
     "set-sales-target/(\d+)" => ["controller" => "SalesDashboardController", "method" => "salesTarget"],
     "save-sales-target/(\d+)" => ["controller" => "SalesDashboardController", "method" => "storeSalesTarget"],
- "update-sales-target" => ["controller" => "SalesDashboardController", "method" => "updateSalesTarget"],
+    "update-sales-target" => ["controller" => "SalesDashboardController", "method" => "updateSalesTarget"],
 
     //Sales Team Head Dashboard
 
@@ -333,9 +333,9 @@ $routes = [
     //======payrolls==========//
 
     // ====== Camera Controller ======= //
-"camera-lists" => ["controller" => "CameraController", "method" => "index"],
-"create-camera" => ["controller" => "CameraController", "method" => "create"],
-"store-camera" => ["controller" => "CameraController", "method" => "store"],
+    "camera-lists" => ["controller" => "CameraController", "method" => "index"],
+    "create-camera" => ["controller" => "CameraController", "method" => "create"],
+    "store-camera" => ["controller" => "CameraController", "method" => "store"],
 
 
     //===== AI ChatBox Generate====//
@@ -365,10 +365,10 @@ $routes = [
     "client-cash-in-form" => ["controller" => "AccountClientController", "method" => "showAddTransactionForm"],
     "update-transaction" => ["controller" => "AccountClientController", "method" => "updateTransaction"],
     "delete-transaction" => ["controller" => "AccountClientController", "method" => "deleteTransaction"],
-  
+
     // ========================CED Routes====================================
     // Add this to your routes array (around line 510-520 would be good)
-'ced-dashboard' => ["controller" => "AccountClientController", "method" => "CedView"],
+    'ced-dashboard' => ["controller" => "AccountClientController", "method" => "CedView"],
     // ========================CED Routes====================================
 
 
@@ -468,12 +468,12 @@ $routes = [
     "add-cashout-payment" => ["controller" => "CashoutRequestController", "method" => "addPayment"],
     "delete-cashout-payment" => ["controller" => "CashoutRequestController", "method" => "deletePayment"],
 
-// Utility routes
-"download-cashout-attachment" => ["controller" => "CashoutRequestController", "method" => "downloadAttachment"],
-"export-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "export"],
-"sync-cashout-approvals" => ["controller" => "CashoutRequestController", "method" => "syncAllApprovals"],
+    // Utility routes
+    "download-cashout-attachment" => ["controller" => "CashoutRequestController", "method" => "downloadAttachment"],
+    "export-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "export"],
+    "sync-cashout-approvals" => ["controller" => "CashoutRequestController", "method" => "syncAllApprovals"],
 
-//rafi End
+    //rafi End
 
 
 ];

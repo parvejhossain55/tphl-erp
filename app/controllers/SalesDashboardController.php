@@ -9,6 +9,7 @@ class SalesDashboardController extends Controller
     protected $bookingModel;
     protected $paymentModel;
     protected $userModel;
+    protected $salesTargetModel;
     protected $roleModel;
 
     public function __construct($db)
@@ -20,6 +21,7 @@ class SalesDashboardController extends Controller
         $this->paymentModel = new PaymentLeadBooking($this->db);
         $this->projectModel = new Project($this->db);
         $this->userModel = new User($this->db);
+        $this->salesTargetModel = new SalesTarget($this->db);
         $this->roleModel = new Role($this->db);
 
         if (session_status() === PHP_SESSION_NONE) {
@@ -143,6 +145,51 @@ class SalesDashboardController extends Controller
             $flatSalesSeries[] = (int)$row['flat_sold'];
         }
 
+
+        $totalSalesTeams = $this->userModel->countSalesTeams();
+
+        $weeklyData = $this->salesTargetModel->getExecutiveBookingStats('weekly');
+        $monthlyData = $this->salesTargetModel->getExecutiveBookingStats('monthly');
+        $yearlyData = $this->salesTargetModel->getExecutiveBookingStats('yearly');
+        $fullData = $this->salesTargetModel->getExecutiveBookingStats('fullData');
+
+$allSalesTeams = $this->userModel->getSalesTeams();
+$executiveId = $_GET['executive'] ?? null;
+$month       = $_GET['month'] ?? null;
+$year        = $_GET['year'] ?? null;
+
+$singleData = [
+    'site_visit_target'   => 0,
+    'booking_target'      => 0,
+    'booking_value_target'=> 0,
+    'visit_completed'     => 0,
+    'booking_completed'   => 0,
+    'total_booking_money' => 0,
+    'total_flat_value'    => 0,
+];
+
+$showCards = false;
+$errorMessage = '';
+
+if (!empty($executiveId)) {
+    if (empty($year)) {
+        // Employee selected but no year
+        $errorMessage = "Please select a Year first!";
+    } else {
+        // Employee + Year selected → fetch data
+        $data = $this->salesTargetModel->getExecutiveFullStats($executiveId, $month, $year);
+
+        if (!empty($data)) {
+            $singleData = $data[0];
+        }
+
+        $showCards = true;
+    }
+}
+
+
+
+
         // Pass variables to view
         $this->view("sales-developments/sales-dashboard", [
             "current_route" => "sales-dashboard",
@@ -161,13 +208,25 @@ class SalesDashboardController extends Controller
             "todayFollowUpData" => $todayFollowUpData,
             "totalTodayFollowUps" => $totalTodayFollowUps,
             "flatSalesLabels" => $flatSalesLabels,
-            "flatSalesSeries" => $flatSalesSeries
-
+            "flatSalesSeries" => $flatSalesSeries,
+            "weeklyData" => $weeklyData,
+            "monthlyData" => $monthlyData,
+            "yearlyData" => $yearlyData,
+            "fullData" => $fullData,
+            "totalSalesTeams" => $totalSalesTeams,
+            "allSalesTeams" => $allSalesTeams,
+            "singleData" => $singleData,
+            "showCards" => $showCards,
+            "errorMessage"  => $errorMessage,
+            "executiveId"  => $executiveId,
+            "year"  => $year,
+            "month"  => $month,
         ]);
     }
 
-    public function salesTeam(){
-       $searchTerm = $_GET['q'] ?? '';
+    public function salesTeam()
+    {
+        $searchTerm = $_GET['q'] ?? '';
         $roleFilter = $_GET['role'] ?? '';
 
         $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
@@ -184,8 +243,8 @@ class SalesDashboardController extends Controller
         // Roles for filter dropdown
         $roles = $this->roleModel->getAll();
         $this->view('sales-developments/sales-executive-teams', [
-              "current_route" => "sales-executive-teams",
-              "page_title" => "Sales Executive Team",
+            "current_route" => "sales-executive-teams",
+            "page_title" => "Sales Executive Team",
             'salesUsers' => $salesUsers,
             'roles' => $roles,
             'currentPage' => $currentPage,
@@ -193,22 +252,21 @@ class SalesDashboardController extends Controller
         ]);
     }
 
-public function salesTarget($id){
-    $user = $this->userModel->find($id);
-    $targets = $this->userModel->getAllTargets($id);
+    public function salesTarget($id)
+    {
+        $user = $this->userModel->find($id);
+        $targets = $this->salesTargetModel->getAllTargets($id);
 
-    $this->view("sales-developments/set-sales-target",[
-      "current_route" => "sales-executive-teams",
-        'user' => $user,
-        'targets' => $targets
-    ]);
-}
-
-
-
+        $this->view("sales-developments/set-sales-target", [
+            "current_route" => "sales-executive-teams",
+            'user' => $user,
+            'targets' => $targets
+        ]);
+    }
 
     // Store / update target
-    public function storeSalesTarget($id){
+    public function storeSalesTarget($id)
+    {
         $monthInput = $_POST['month']; // e.g. 2026-02
         $month = date('Y-m-01', strtotime($monthInput));
 
@@ -216,7 +274,7 @@ public function salesTarget($id){
         $bookingTarget = $_POST['booking_target'] ?? 0;
         $bookingValue = $_POST['booking_value_target'] ?? 0;
 
-        $saved = $this->userModel->saveTarget(
+        $saved = $this->salesTargetModel->saveTarget(
             $id,
             $month,
             $siteVisit,
@@ -224,9 +282,9 @@ public function salesTarget($id){
             $bookingValue
         );
 
-        if($saved){
+        if ($saved) {
             $_SESSION['success'] = "Target saved successfully!";
-        }else{
+        } else {
             $_SESSION['error'] = "Failed to save target!";
         }
 
@@ -234,15 +292,16 @@ public function salesTarget($id){
         exit;
     }
 
-public function updateSalesTarget() {
-    $id = $_POST['id']; // hidden input
-    $monthInput = $_POST['month'];
-    $month = date('Y-m-01', strtotime($monthInput));
-    $siteVisit = $_POST['site_visit_target'] ?? 0;
-    $booking = $_POST['booking_target'] ?? 0;
-    $bookingValue = $_POST['booking_value_target'] ?? 0;
+    public function updateSalesTarget()
+    {
+        $id = $_POST['id']; // hidden input
+        $monthInput = $_POST['month'];
+        $month = date('Y-m-01', strtotime($monthInput));
+        $siteVisit = $_POST['site_visit_target'] ?? 0;
+        $booking = $_POST['booking_target'] ?? 0;
+        $bookingValue = $_POST['booking_value_target'] ?? 0;
 
-    $sql = "
+        $sql = "
         UPDATE sales_targets 
         SET month = ?, 
             site_visit_target = ?, 
@@ -250,15 +309,12 @@ public function updateSalesTarget() {
             booking_value_target = ?
         WHERE id = ?
     ";
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param("siiii", $month, $siteVisit, $booking, $bookingValue, $id);
-    $stmt->execute();
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("siiii", $month, $siteVisit, $booking, $bookingValue, $id);
+        $stmt->execute();
 
-    $_SESSION['success'] = "Target updated successfully!";
-    header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $_POST['user_id']);
-    exit;
-}
-
-
-    
+        $_SESSION['success'] = "Target updated successfully!";
+        header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $_POST['user_id']);
+        exit;
+    }
 }

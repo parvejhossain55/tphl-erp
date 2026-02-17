@@ -343,7 +343,7 @@
     </div>
 
     <!-- Info Box -->
-    <div class="row">
+    <div class="row d-none ">
         <div class="col-12">
             <div class="info-box">
                 <p class="mb-0">
