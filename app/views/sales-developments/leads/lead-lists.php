@@ -1,78 +1,78 @@
-<?php
-$page_title = "leads Page";
-$page = 'Lead & Booking Management';
-$addPage = 'Add Leads';
-$addPage = true;
-$show_breadcrumb = true;
-?>
-<div class="d-none flex-wrap justify-content-between align-items-center mb-3">
-    <h4 class="mb-2 mb-md-0">
-        Lead Management
-    </h4>
-
-    <div class="d-flex gap-2">
-
-
-        <a href="<?= $GLOBALS['base_url'] ?>/create-lead"
-            class="btn btn-primary">
-            <i class="fa-light fa-plus me-1"></i>
-            Add Lead
-        </a>
-    </div>
-
+<!-- Breadcrumb -->
+<div class="container-fluid mt-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#" class="text-decoration-none">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Lead & Booking Management</li>
+        </ol>
+    </nav>
 </div>
 
-
-<div class="row lead-select align-items-stretch">
-
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-ban"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Lead</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $leadCounts ?></h4>
-                    </div>
-                </div>
+<!-- Main Content -->
+<!-- Stats Grid -->
+<div class="row  mb-4 align-items-stretch">
+    <div class="col-12 col-md-6 col-lg-4 col-xl-2">
+        <div class="card__wrapper stat-card">
+            <div class="stat-label">Total Leads</div>
+            <div class="stat-value"><?= $leadCounts ?></div>
+            <div class="stat-change positive d-none">
+                <span class="<?= $leadsPercentChange >= 0 ? 'price-increase' : 'price-decrease' ?>">
+                    <i class="fa-light <?= $leadsPercentChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down' ?>"></i>
+                    <?= abs($leadsPercentChange) ?>%
+                </span>
             </div>
         </div>
     </div>
-
-    <div class="col-xxl-4 col-xl-4 col-md-3 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span><i class="fa-sharp fa-regular fa-user"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Booked </h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentCount ?></h4>
-                    </div>
-                </div>
+    <div class="col-12 col-md-6 col-lg-4 col-xl-2">
+        <div class="card__wrapper stat-card">
+            <div class="stat-label">Total Booked</div>
+            <div class="stat-value"><?= $totalBookingCount ?></div>
+            <div class="stat-change positive d-none">
+                <i class="bi bi-arrow-up"></i> 3.1%
             </div>
         </div>
     </div>
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span><i class="fa-sharp fa-regular fa-user"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Today Follow Up</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $totalTodayFollowUps ?></h4>
-                    </div>
-                </div>
+    <div class="col-12 col-md-6 col-lg-4 col-xl-2">
+        <div class="card__wrapper stat-card">
+            <div class="stat-label">Today Follow-Up</div>
+            <div class="stat-value"><?= $totalTodayFollowUps ?></div>
+            <div class="stat-change positive d-none">
+                <i class="bi bi-arrow-up"></i> 1.2%
             </div>
         </div>
     </div>
+    <div class="col-12 col-md-6 col-lg-4 col-xl-2">
+        <div class="card__wrapper stat-card">
+            <div class="stat-label">Pending Follow-Ups</div>
+            <div class="stat-value"><?= $totalTodayPendingFollowUps ?></div>
+            <div class="stat-change negative d-none">
+                <i class="bi bi-arrow-down"></i> 12.5%
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-4 col-xl-2">
+        <div class="card__wrapper stat-card">
+            <div class="stat-label">Conversion Rate</div>
+            <div class="stat-value"><?= format_bdt($conversionRate ?? 0) ?>%</div>
+            <div class="stat-change positive">
+                <i class="bi bi-arrow-up"></i> 8.4%
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-4 col-xl-2">
+        <div class="card__wrapper stat-card">
+            <div class="stat-label">Hot Leads</div>
+            <div class="stat-value"><?= $totalHotLeads ?></div>
+            <div class="stat-change positive d-none">
+                <i class="bi bi-arrow-up"></i> 2.5%
+            </div>
+        </div>
+    </div>
+</div>
 
-    <form action="" method="get">
+<!-- Desktop View: Filters and Table -->
+<div class="desktop-only">
+    <form action="" method="get" class="d-none">
         <div class="row  mb-3 align-items-end">
 
             <?php
@@ -168,219 +168,402 @@ $show_breadcrumb = true;
     </form>
 
 
+    <!-- Filters -->
+    <div class="filters">
+        <form action="" method="get">
+            <div class="row g-2 align-items-center flex-wrap">
+                <div class="col-auto col-sm-6 col-md-auto">
+                    <?php
+                    $currentYear = date('Y');
+                    $startYear   = $currentYear - 10;
+                    $selectedYear = $slectedYear ?? '';
+                    ?>
+                    <select class="form-control" name="year">
+                        <option value="">Year Select</option>
+
+                        <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
+                            <option
+                                value="<?= $year ?>"
+                                <?= $selectedYear == $year ? 'selected' : '' ?>>
+                                <?= $year ?>
+                            </option>
+                        <?php endfor; ?>
+
+                    </select>
+                </div>
+                <?php
+                $months = [
+                    1 => 'January',
+                    2 => 'February',
+                    3 => 'March',
+                    4 => 'April',
+                    5 => 'May',
+                    6 => 'June',
+                    7 => 'July',
+                    8 => 'August',
+                    9 => 'September',
+                    10 => 'October',
+                    11 => 'November',
+                    12 => 'December'
+                ];
+                $selectedMonth = $_GET['month'] ?? '';
+                ?>
+
+                <div class="col-auto col-sm-6 col-md-auto">
+                    <select class="form-control" name="month">
+                        <option value="">Month Select</option>
+                        <?php foreach ($months as $id => $name): ?>
+
+                            <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
+                                <?= $name ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-auto col-sm-6 col-md-auto">
+                    <select class="form-select form-select-sm filter-select">
+                        <option>Project: All Projects</option>
+                        <option>Green Valley</option>
+                        <option>Oceanview Residences</option>
+                    </select>
+                </div>
+                <div class="col-auto col-sm-6 col-md-auto d-none">
+                    <select class="form-select form-select-sm filter-select">
+                        <option>Status: All Status</option>
+                        <option>Follow-Up</option>
+                        <option>Visit</option>
+                        <option>New</option>
+                    </select>
+                </div>
 
 
-    <div class="col-xxl-12">
-        <div class="card__wrapper shadow-sm p-3 d-flex flex-wrap justify-content-between gap-2">
+                <div class="col-auto ms-auto d-flex gap-2 flex-wrap">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1 py-1">
+                        Search
+                    </button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm">
+                            Reset
+                    </a>
 
-            <div>
-                <a class="btn btn-outline-primary" href="<?= $GLOBALS['base_url'] ?>/create-user">+ Add Sales Executive</a>
-            </div>
+                    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#importCsvModal">
+                        Import CSV
+                    </button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/create-lead" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-lg"></i> Add Lead
+                    </a>
 
-            <!-- Assign Leads Card -->
-
-            <div class="col-md-6">
-                <div id="assignCard"
-                    class="card shadow-sm p-3 "
-                    style="display:none; border-radius:12px; background:#f9f9f9;">
-
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <label for="assignUserSelect" class="fw-bold mb-0" style="white-space: nowrap;">
-                            Assign Selected Leads to:
-                        </label>
-
-                        <select id="assignUserSelect"
-                            class="form-select form-select-sm"
-                            style="min-width:200px; width:auto;">
-                            <option value="">Assigned User</option>
-                            <?php foreach ($assignedUsers as $user): ?>
-                                <option value="<?= $user['id'] ?>">
-                                    <?= htmlspecialchars($user['full_name']) ?>-<?= htmlspecialchars($user['role_name']) ?>
-                                </option>
-                            <?php endforeach ?>
-                        </select>
-
-                        <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
-                            <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
-                        </button>
-
-                        <span id="assignFeedback"
-                            class="text-success fw-bold"
-                            style="display:none;">
-                            Leads assigned successfully!
-                        </span>
-                    </div>
-
+                    <button class="d-none btn btn-outline-secondary btn-sm">Export</button>
                 </div>
             </div>
-
-
-
-
-        </div>
     </div>
+    </form>
 
-    <div class="col-xxl-12">
-        <div class="card__wrapper">
-            <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables">
-                    <thead>
-                        <tr class="table__title table__sort">
+</div>
 
 
-                            <th style="min-width:60px;">
-                                <input type="checkbox" id="selectAllLeads" title="Select All">
-                                S/L
-                            </th><!-- non-sticky first column -->
-                            <th class="d-none d-lg-block">Create Lead</th>
-                            <th class="th_1">Lead Name</th>
+<!-- Table -->
+<div class="col-xxl-12">
+    <div class="card__wrapper">
+        <div class="table__wrapper table-responsive">
+            <table class="table no-border-table mb-20 multiple_tables">
+                <thead>
+                    <tr class="table__title table__sort">
+                        <th>Lead Date</th>
+                        <th>Lead Name</th>
+                        <th>Phone</th>
+                        <th>Project Campaign</th>
+                        <th>Status</th>
+                        <th>Next Follow-Up</th>
+                        <th>Sales Executive</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($leads as $key => $lead): ?>
+                        <tr data-id="<?= $lead['id'] ?>">
+                            <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
+                            <td><strong><?= $lead['full_name'] ?? '' ?></strong></td>
+                            <td><?= $lead['phone_number'] ?? $lead['phone']  ?></td>
+                            <?php
+                            $displayName = !empty($lead['campaign_name'])
+                                ? $lead['campaign_name']
+                                : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
 
-                            <th>Phone</th>
-                            <!-- <th>Alt Phone</th> -->
-                            <th>Project Campaign</th>
-                            <!-- <th>Source Type</th> -->
+                            $plainText = strip_tags($displayName);
+                            ?>
 
-                            <th>Follow Up</th>
-                            <th>Booking</th>
-                            <th class="">Last client Action</th>
-                            <th class="">Assigned Executive</th>
 
-                            <th class="text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody class="table__body">
+                            <td>
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <span class="project-badge mb-0">
+                                        <i class="bi bi-building"></i>
+                                        <?= truncateText($displayName, 15) ?>
+                                    </span>
 
-                        <?php foreach ($leads as $key => $lead): ?>
-                            <tr data-id="<?= $lead['id'] ?>">
-                                <td>
-                                    <input type="checkbox" class="me-2 selectedId" data-id="<?= $lead['id'] ?>">
-                                    <?= $key + 1 ?>
-                                </td>
-                                <td class="d-none d-lg-block"><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
-                                <td class="td_1"><?= $lead['full_name'] ?? '' ?></td>
-                                <td><?= $lead['phone_number'] ?? $lead['phone'] ?></td>
-
-                                <?php
-                                $displayName = !empty($lead['campaign_name'])
-                                    ? $lead['campaign_name']
-                                    : (!empty($lead['project_type']) ? $lead['project_type'] : '-');
-
-                                $plainText = strip_tags($displayName);
-                                ?>
-
-                                <td>
-                                    <?= truncateText($displayName, 30) ?>
-
-                                    <?php if (mb_strlen($plainText) > 30): ?>
+                                    <?php if (mb_strlen($plainText) > 15): ?>
                                         <button type="button"
                                             id="viewCampaignBtn<?= $lead['id'] ?>"
-                                            class="btn btn-sm btn-outline-primary"
+                                            class="btn btn-sm btn-outline-primary flex-shrink-0"
                                             data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
                                             data-bs-toggle="modal"
                                             data-bs-target="#viewProjectCampaignName">
                                             View
                                         </button>
-
                                     <?php endif; ?>
-                                </td>
-                                <td>
+                                </div>
+                            </td>
 
+                            <!-- last_action_form  -->
+                            <!-- New Last Action Update Button -->
+                            <td>
+
+                                <form method="POST"
+                                    action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>"
+                                    class="m-0 p-0">
+
+                                    <select name="last_lead_action"
+                                        class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
+                                        onchange="this.form.submit()">
+
+                                        <option value=""> Update action </option>
+                                        <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>
+                                            New
+                                        </option>
+
+                                        <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>
+                                            Booked
+                                        </option>
+
+                                        <option value="follow up"
+                                            <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>
+                                            class="<?= $lead['last_lead_action'] == 'follow up' ? 'action-follow_up' : '' ?>">
+                                            Follow Up
+                                        </option>
+
+
+                                        <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>
+                                            Visited
+                                        </option>
+                                        <option value="cancel" <?= $lead['last_lead_action'] == 'cancel' ? 'selected' : '' ?>>
+                                            Cancel
+                                        </option>
+
+                                    </select>
+
+                                </form>
+                            </td>
+
+
+
+                            <!-- last_action_form  -->
+                            <td>
+                                <div><?= formatDate($lead['next_follow_up_date'] ?? 'No Follow-up Date') ?></div>
+                            </td>
+                            <td><?= $lead['agent_name'] ?? 'No Agent Assigned' ?></td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+
+                                    <!-- Follow Up -->
                                     <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
-                                        class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">
+                                        class="btn btn-primary">
 
                                         <span>Follow Up</span>
 
                                         <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                            <span class="followup-badge">
+                                            <span class="action-badge">
                                                 <?= $followUpCounts[$lead['id']] ?>
                                             </span>
                                         <?php endif; ?>
                                     </a>
-                                </td>
 
-                                <td>
+                                    <!-- Booking -->
                                     <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
-                                        class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
+                                        class="btn btn-secondary">
+
+                                        <span>
+                                            <?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?>
+                                        </span>
+
                                         <?php if (!empty($bookingCount[$lead['id']])): ?>
-                                            <span>Booked </span>
-                                            <span class="followup-badge">
+                                            <span class="action-badge">
                                                 <?= $bookingCount[$lead['id']] ?>
                                             </span>
-                                        <?php else: ?>
-                                            <span>Booking </span>
-                                        <?php endif ?>
+                                        <?php endif; ?>
                                     </a>
-                                </td>
 
-                                <td><span class="bd-badge bg-primary"> <?= ucfirst($lead['follow_up_type'] ?? 'Not update' ) ?></span></td>
-                                <td class=""><?= ucfirst($lead['agent_name'] ?? '' )?></td>
-                                <td>
-                                    <div class="d-flex align-items-center justify-content-start gap-10">
-
-                                        <!-- View Button (Existing) -->
-                                        <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>" title="View Lead">
-                                            <i class="fa-regular fa-eye"></i>
-                                        </a>
-
-                                        <!-- Edit Button (Existing) -->
-                                        <a class="table__icon edit" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>" title="Edit Lead">
-                                            <i class="fa-sharp fa-light fa-pen"></i>
-                                        </a>
-
-                                        <!-- Delete Button (Existing) -->
-                                        <button class="table__icon delete removeBtnCust"
-                                            data-name="<?= $lead['full_name'] ?>"
-                                            data-action="lead-delete"
-                                            data-id="<?= $lead['id'] ?>"
-                                            title="Delete Lead">
-                                            <i class="fa-regular fa-trash"></i>
+                                    <!-- 3 Dot Dropdown -->
+                                    <div class="dropdown">
+                                        <button class="action-dot-btn" type="button" data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots-vertical"></i>
                                         </button>
 
-                                        <!-- New Last Action Update Button -->
-                                        <form method="POST"
-                                            action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>"
-                                            class="m-0 p-0">
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                                            <li>
+                                                <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>">
+                                                    <i class="bi bi-pencil-square me-2 text-primary"></i> Edit
+                                                </a>
+                                            </li>
 
-                                            <select name="last_lead_action"
-                                                class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
-                                                onchange="this.form.submit()">
+                                            <li>
+                                                <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>">
+                                                    <i class="bi bi-eye me-2 text-success"></i> View
+                                                </a>
+                                            </li>
 
-                                                <option value=""> Update action </option>
-                                                <option value="not_called" <?= $lead['last_lead_action'] == 'not_called' ? 'selected' : '' ?>>
-                                                    Not Called
-                                                </option>
-
-                                                <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>
-                                                    Booked
-                                                </option>
-
-                                                <option value="called" <?= $lead['last_lead_action'] == 'called' ? 'selected' : '' ?>>
-                                                    Called
-                                                </option>
-
-                                                <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>
-                                                    Visited
-                                                </option>
-                                                <option value="canceled" <?= $lead['last_lead_action'] == 'canceled' ? 'selected' : '' ?>>
-                                                    Canceled
-                                                </option>
-                                            </select>
-
-                                        </form>
-
-
+                                            <li>
+                                                <buton class="dropdown__item text-danger removeBtnCust" data-name="<?= $lead['full_name'] ?>"
+                                                    data-action="lead-delete"
+                                                    data-id="<?= $lead['id'] ?>">
+                                                    <i class="bi bi-trash me-2"></i> Delete
+                                                </buton>
+                                            </li>
+                                        </ul>
                                     </div>
-                                </td>
 
-                            </tr>
-                        <?php endforeach ?>
-                    </tbody>
-                </table>
+                                </div>
+                            </td>
+
+
+                        </tr>
+                    <?php endforeach; ?>
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Mobile View: Filter Button and Cards -->
+<div class="mobile-only">
+    <!-- Filter & Sort Button -->
+    <button class="filter-button w-100">
+        <i class="bi bi-funnel"></i>
+        Filter & Sort
+    </button>
+
+    <!-- Lead Cards -->
+    <div class="lead-card">
+        <div class="lead-card-header">
+            <div>
+                <div class="lead-name">Alex Johnson</div>
+                <div class="lead-phone">+1 234 567 8900</div>
+            </div>
+            <button class="btn-action">
+                Follow Up <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+        <div class="lead-info-row">
+            <div>
+                <div class="info-label">Status</div>
+                <span class="status-badge follow-up mt-1">
+                    <i class="bi bi-circle-fill" style="font-size: 8px;"></i>
+                    Follow-Up
+                </span>
+            </div>
+            <div class="text-end">
+                <div class="info-label">Booked</div>
+                <div class="info-value">✓ Booked</div>
+            </div>
+        </div>
+        <div class="lead-info-row">
+            <div>
+                <div class="info-label">Project</div>
+                <div class="info-value">Green Valley</div>
+            </div>
+            <div>
+                <i class="bi bi-calendar3 text-muted"></i>
+            </div>
+        </div>
+        <div class="lead-info-row">
+            <div>
+                <div class="info-label">Next Follow-Up</div>
+                <div class="info-value">Oct 12, 2022 | 10:00 AM</div>
             </div>
         </div>
     </div>
-</div>
 
+    <div class="lead-card">
+        <div class="lead-card-header">
+            <div>
+                <div class="lead-name">Richard Lee</div>
+                <div class="lead-phone">+1 345 678 9012</div>
+            </div>
+            <button class="btn-action">
+                Follow Up <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+        <div class="lead-info-row">
+            <div>
+                <div class="info-label">Status</div>
+                <span class="status-badge visit mt-1">
+                    <i class="bi bi-circle-fill" style="font-size: 8px;"></i>
+                    Visit
+                </span>
+            </div>
+            <div class="text-end">
+                <div class="info-label">Booked</div>
+                <div class="info-value">✓ Booked</div>
+            </div>
+        </div>
+        <div class="lead-info-row">
+            <div>
+                <div class="info-label">Project</div>
+                <div class="info-value">Oceanview Residences</div>
+            </div>
+            <div>
+                <i class="bi bi-calendar3 text-muted"></i>
+            </div>
+        </div>
+        <div class="lead-info-row">
+            <div>
+                <div class="info-label">Next Follow-Up</div>
+                <div class="info-value">Oct 11, 2022 | 03:30 PM</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="lead-card">
+        <div class="lead-card-header">
+            <div>
+                <div class="lead-name">Sofia Ahmed</div>
+                <div class="lead-phone">+1 456 789 0123</div>
+            </div>
+            <button class="btn-action">
+                Follow Up <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+        <div class="lead-info-row">
+            <div>
+                <div class="info-label">Status</div>
+                <span class="status-badge new mt-1">
+                    <i class="bi bi-circle-fill" style="font-size: 8px;"></i>
+                    New
+                </span>
+            </div>
+        </div>
+        <div class="lead-info-row">
+            <div>
+                <div class="info-label">Project</div>
+                <div class="info-value">City Heights</div>
+            </div>
+            <div>
+                <i class="bi bi-calendar3 text-muted"></i>
+            </div>
+        </div>
+        <div class="lead-info-row">
+            <div>
+                <div class="info-label">Next Follow-Up</div>
+                <div class="info-value">Oct 11, 2022 | 12:00 PM</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAB Button -->
+    <button class="fab-button">
+        <i class="bi bi-plus-lg"></i>
+    </button>
+</div>
 
 <!-- CSV Import Modal -->
 <div class="modal fade" id="importCsvModal" tabindex="-1">
@@ -438,32 +621,13 @@ $show_breadcrumb = true;
             </div>
 
             <div class="modal-body">
-                <textarea id="view_campaign_id" class="form-control" rows="3" readonly></textarea>
+                <textarea id="view_campaign_id" class="form-control" rows="2" readonly></textarea>
 
             </div>
 
         </div>
     </div>
 </div>
-
-
-<script>
-    var leadModal = document.getElementById('viewProjectCampaignName');
-
-    leadModal.addEventListener('show.bs.modal', function(event) {
-
-        var button = event.relatedTarget;
-
-        if (button) {
-            var description = button.getAttribute("data-description");
-            leadModal.querySelector('#view_campaign_id').value = description;
-        }
-
-    });
-</script>
-
-
-
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>";
     // Disable right-click context menu
@@ -575,6 +739,13 @@ $show_breadcrumb = true;
         });
     });
 </script>
-
-
-
+<script>
+    document.querySelectorAll('[id^="viewCampaignBtn"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            //From data-description  full text 
+            const description = this.getAttribute('data-description');
+            // textarea  set 
+            document.getElementById('view_campaign_id').value = description;
+        });
+    });
+</script>

@@ -819,7 +819,7 @@ input[type=file] {
 .btn {
   font-size: 14px;
   border-radius: 6px;
-  padding: 6px 15px;
+padding: 5px 10px;
   box-shadow: none;
   font-weight: 400;
   transition: all 0.3s linear;
@@ -11693,7 +11693,7 @@ div.DTS div.dataTables_scrollBody table {
   padding: 0 10px 0 0;
 }
 .dataTables_wrapper table.dataTable {
-  border: 1px solid var(--clr-border-1);
+  /* border: 1px solid var(--clr-border-1); */
   border-bottom: 0;
 }
 .dataTables_wrapper table.dataTable tbody td.select-checkbox,

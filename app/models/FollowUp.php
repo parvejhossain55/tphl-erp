@@ -171,7 +171,6 @@ class FollowUp extends Model
     }
 
 
-
     public function getFollowUpCountByLead()
     {
         $sql = "
@@ -198,7 +197,6 @@ class FollowUp extends Model
         WHERE lf.deleted_at IS NULL
         AND lf.next_follow_up_date >= CURDATE()
         AND lf.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
-        AND lf.status = 'pending'
         AND lf.deleted_at IS NULL
         GROUP BY lf.lead_id
         ORDER BY follow_up_count DESC";
@@ -212,8 +210,26 @@ class FollowUp extends Model
 
         return $data;
     }
-  
 
+    public function getTodayFollowUpPendingCount(){
+        $sql = "SELECT lf.lead_id, COUNT(*) AS follow_up_count
+        FROM lead_follow_ups lf
+        WHERE lf.deleted_at IS NULL
+        AND lf.next_follow_up_date >= CURDATE()
+        AND lf.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+        AND lf.status = 'pending'
+        GROUP BY lf.lead_id
+        ORDER BY follow_up_count DESC";
+
+        $result = $this->db->query($sql);
+        $data = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $data[$row['lead_id']] = $row['follow_up_count'];
+        }
+
+        return $data;
+    }
 
     // Delete follow-up by ID
     public function delete($id)
@@ -326,9 +342,9 @@ class FollowUp extends Model
 
         return $result['total'] ?? 0;
     }
-      public function getTodayFollowUpCompleteCount($userId)
+    public function getTodayFollowUpCompleteCount($userId)
     {
-         $today = date('Y-m-d');
+        $today = date('Y-m-d');
 
         $sql = "
         SELECT COUNT(*) as total
@@ -367,12 +383,12 @@ class FollowUp extends Model
         return $result['total'] ?? 0;
     }
 
-public function upcomingFollowUp($userID)
-{
-    // Cast to int just to be safe
-    $userID = (int) $userID;
+    public function upcomingFollowUp($userID)
+    {
+        // Cast to int just to be safe
+        $userID = (int) $userID;
 
-    $sql = "
+        $sql = "
         SELECT 
             f.id,
             f.lead_id,
@@ -404,48 +420,20 @@ public function upcomingFollowUp($userID)
         ORDER BY f.next_follow_up_date ASC, f.follow_up_time ASC
     ";
 
-    $stmt = $this->db->prepare($sql);
-    if (!$stmt) {
-        // Debug if prepare failed
-        error_log("MySQL Prepare Failed: " . $this->db->error);
-        return [];
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            // Debug if prepare failed
+            error_log("MySQL Prepare Failed: " . $this->db->error);
+            return [];
+        }
+
+        $stmt->bind_param("i", $userID);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        // Ensure we return array even if empty
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-    $stmt->bind_param("i", $userID);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    // Ensure we return array even if empty
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
-
-
-// SELECT 
-//     f.id,
-//     f.lead_id,
-//     f.project_id,
-//     f.flat_id,
-//     f.follow_up_date,
-//     f.follow_up_time,
-//     f.status,
-//     f.next_follow_up_date,
-//     f.next_action,
-//     l.full_name AS lead_name,
-//     l.phone_number,
-//     p.name AS project_name,
-//     CONCAT(fl.flat_name, ' - ', fl.id) AS flat_name,
-//     usr.full_name AS created_by_name,
-//     COALESCE(CONCAT(aw.full_name,' - ID-',aw.id), 'Not assigned') AS assigned_with_name
-// FROM lead_follow_ups f
-// LEFT JOIN leads l ON f.lead_id = l.id
-// LEFT JOIN projects p ON f.project_id = p.id
-// LEFT JOIN flats fl ON f.flat_id = fl.id
-// LEFT JOIN users usr ON f.created_by = usr.id
-// LEFT JOIN users aw ON f.assigned_with = aw.id
-// WHERE  f.deleted_at IS NULL
-//   AND f.status = 'pending'
-//   AND f.assigned_with = 23
-//    AND f.next_follow_up_date >= CURDATE()
-//   AND f.next_follow_up_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
-// ORDER BY f.next_follow_up_date ASC, f.follow_up_time ASC;
+    
 }
