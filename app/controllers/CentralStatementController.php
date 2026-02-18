@@ -16,78 +16,58 @@ class CentralStatementController extends Controller
     /**
      * Main index - Show central statement page
      */
-    public function index()
-    {
-        // Check if this is a print request
-        $isPrint = isset($_GET['print']) && $_GET['print'] == 'true';
+public function index()
+{
+    $isPrint = isset($_GET['print']) && $_GET['print'] == 'true';
+    if ($isPrint) {
+        $this->printStatement();
+        return;
+    }
 
-        // If it's a print request, use the print method
-        if ($isPrint) {
-            $this->printStatement();
-            return;
-        }
+    $periodType = $_GET['period_type'] ?? 'monthly';
+    $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+    $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+    $startDate = $_GET['start_date'] ?? null;
+    $endDate = $_GET['end_date'] ?? null;
+    $projectId = $_GET['project_id'] ?? null;
+    $category = $_GET['category'] ?? 'all';
 
-        // Get filters from query params with proper defaults
-        $periodType = $_GET['period_type'] ?? 'monthly';
-        $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
-        $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
-        $startDate = $_GET['start_date'] ?? null;
-        $endDate = $_GET['end_date'] ?? null;
-        $projectId = $_GET['project_id'] ?? null;
-        $category = $_GET['category'] ?? 'all';
+    if ($projectId === '') $projectId = null;
 
-        // Convert empty string to null for projectId
-        if ($projectId === '') {
-            $projectId = null;
-        }
+    $statementData = null;
+    $periodText = '';
+    $statementStartDate = '';
+    $statementEndDate = '';
 
-        // Get statement data based on period type
-        $statementData = null;
-        $periodText = '';
-        $statementStartDate = '';
-        $statementEndDate = '';
+    switch ($periodType) {
+        case 'monthly':
+            $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
+            $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $month) . "-01"));
+            $statementStartDate = "$year-" . sprintf('%02d', $month) . "-01";
+            $statementEndDate = date('Y-m-t', strtotime($statementStartDate));
+            break;
 
-        switch ($periodType) {
-            case 'monthly':
-                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
-                $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $month) . "-01"));
-                $statementStartDate = "$year-" . sprintf('%02d', $month) . "-01";
-                $statementEndDate = date('Y-m-t', strtotime($statementStartDate));
-                break;
+        case '6months':
+            $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
+            $periodText = 'Last 6 Months';
+            $statementStartDate = date('Y-m-01', strtotime("-5 months", strtotime("$year-$month-01")));
+            $statementEndDate = date('Y-m-t', strtotime("$year-$month-01"));
+            break;
 
-            case '6months':
-                $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
-                $periodText = 'Last 6 Months';
-                $statementStartDate = date('Y-m-01', strtotime("-5 months", strtotime("$year-$month-01")));
-                $statementEndDate = date('Y-m-t', strtotime("$year-$month-01"));
-                break;
+        case 'yearly':
+            $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
+            $periodText = "Year $year";
+            $statementStartDate = "$year-01-01";
+            $statementEndDate = "$year-12-31";
+            break;
 
-            case 'yearly':
-                $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
-                $periodText = "Year $year";
-                $statementStartDate = "$year-01-01";
-                $statementEndDate = "$year-12-31";
-                break;
-
-            case 'custom':
-                if ($startDate && $endDate) {
-                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
-                    $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
-                    $statementStartDate = $startDate;
-                    $statementEndDate = $endDate;
-                } else {
-                    // Default to current month if dates not provided
-                    $year = (int)date('Y');
-                    $month = (int)date('m');
-                    $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
-                    $periodText = date('F Y');
-                    $periodType = 'monthly';
-                    $statementStartDate = date('Y-m-01');
-                    $statementEndDate = date('Y-m-t');
-                }
-                break;
-
-            default:
+        case 'custom':
+            if ($startDate && $endDate) {
+                $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
+                $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
+                $statementStartDate = $startDate;
+                $statementEndDate = $endDate;
+            } else {
                 $year = (int)date('Y');
                 $month = (int)date('m');
                 $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
@@ -95,49 +75,67 @@ class CentralStatementController extends Controller
                 $periodType = 'monthly';
                 $statementStartDate = date('Y-m-01');
                 $statementEndDate = date('Y-m-t');
-        }
+            }
+            break;
 
-        // Get projects for dropdown
-        $projects = $this->getProjects();
-
-        // Extract summary stats from the statement data
-        $overallStats = [
-            'total_agreement' => $statementData['summary']['total_agreement_value'] ?? 0,
-            'total_service_fee' => $statementData['summary']['total_service_fee'] ?? 0,
-            'total_management_cashin' => $statementData['summary']['total_management_cashin'] ?? 0,
-            'total_cashin' => $statementData['summary']['total_cashin'] ?? 0,
-            'total_revenue' => $statementData['summary']['total_revenue'] ?? 0,
-            'total_cash_out' => $statementData['summary']['total_cash_out'] ?? 0,
-            'net_balance' => $statementData['summary']['net_balance'] ?? 0,
-            'final_balance' => $statementData['summary']['final_balance'] ?? 0
-        ];
-
-        // For the current statement period, also calculate revenue
-        $revenueData = null;
-        if ($statementStartDate && $statementEndDate) {
-            $revenueData = $this->statementModel->calculateRevenue($statementStartDate, $statementEndDate, $projectId);
-        }
-
-        // Prepare view data
-        $viewData = [
-            'current_route' => 'central-statement',
-            'page_title' => 'Central Financial Statement',
-            'period_type' => $periodType,
-            'period_text' => $periodText,
-            'year' => $year,
-            'month' => sprintf('%02d', $month),
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'project_id' => $projectId,
-            'category' => $category,
-            'projects' => $projects,
-            'statement_data' => $statementData,
-            'overall_stats' => $overallStats,
-            'revenue_data' => $revenueData,
-        ];
-
-        $this->view('accounts/central-statement', $viewData);
+        default:
+            $year = (int)date('Y');
+            $month = (int)date('m');
+            $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
+            $periodText = date('F Y');
+            $periodType = 'monthly';
+            $statementStartDate = date('Y-m-01');
+            $statementEndDate = date('Y-m-t');
     }
+
+    $projects = $this->getProjects();
+
+    $overallStats = [
+        'total_agreement' => $statementData['summary']['total_agreement_value'] ?? 0,
+        'total_service_fee' => $statementData['summary']['total_service_fee'] ?? 0,
+        'total_management_cashin' => $statementData['summary']['total_management_cashin'] ?? 0,
+        'total_cashin' => $statementData['summary']['total_cashin'] ?? 0,
+        'total_revenue' => $statementData['summary']['total_revenue'] ?? 0,
+        'total_cash_out' => $statementData['summary']['total_cash_out'] ?? 0,
+        'net_balance' => $statementData['summary']['net_balance'] ?? 0,
+        'final_balance' => $statementData['summary']['final_balance'] ?? 0
+    ];
+
+    $revenueData = null;
+    if ($statementStartDate && $statementEndDate) {
+        $revenueData = $this->statementModel->calculateRevenue($statementStartDate, $statementEndDate, $projectId);
+    }
+
+    // Fetch cashout payment details (grouped by date) when cashout category is selected
+    $cashoutPaymentDetails = [];
+    if ($category === 'cashout' && $statementStartDate && $statementEndDate) {
+        $cashoutPaymentDetails = $this->statementModel->getCashoutPaymentDetails(
+            $statementStartDate,
+            $statementEndDate,
+            $projectId
+        );
+    }
+
+    $viewData = [
+        'current_route' => 'central-statement',
+        'page_title' => 'Central Financial Statement',
+        'period_type' => $periodType,
+        'period_text' => $periodText,
+        'year' => $year,
+        'month' => sprintf('%02d', $month),
+        'start_date' => $startDate,
+        'end_date' => $endDate,
+        'project_id' => $projectId,
+        'category' => $category,
+        'projects' => $projects,
+        'statement_data' => $statementData,
+        'overall_stats' => $overallStats,
+        'revenue_data' => $revenueData,
+        'cashout_payment_details' => $cashoutPaymentDetails,  // NEW
+    ];
+
+    $this->view('accounts/central-statement', $viewData);
+}
 
     /**
      * Get projects list
@@ -242,6 +240,12 @@ public function printStatement()
         $revenue_data = $this->statementModel->calculateRevenue($statementStartDate, $statementEndDate, $projectId);
     }
 
+    // Get cashout payment details for the selected period (if cashout category is selected)
+    $cashout_payment_details = [];
+    if ($category === 'cashout' && $statementStartDate && $statementEndDate) {
+        $cashout_payment_details = $this->getCashoutPaymentDetails($statementStartDate, $statementEndDate, $projectId);
+    }
+
     // Company information
     $company_name = "THE PREMIUM HOMES LTD.";
     $company_address = "Land View Commercial Center, 9th Floor 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
@@ -290,6 +294,7 @@ public function printStatement()
         'period_type' => $periodType,
         'year' => $year,
         'month' => $month,
+        'cashout_payment_details' => $cashout_payment_details, // ADDED THIS LINE
     ];
 
     // FIXED: If utilities category, get transactions
@@ -302,6 +307,52 @@ public function printStatement()
     extract($viewData);
     include __DIR__ . '/../views/accounts/central-statement-print.php';
     exit;
+}
+
+/**
+ * Get cashout payment details grouped by date
+ */
+private function getCashoutPaymentDetails($start_date, $end_date, $project_id = null)
+{
+    $sql = "SELECT 
+                cp.*,
+                cr.purpose_paid_to,
+                cr.office,
+                p.name as project_name,
+                u.full_name as requester_name
+            FROM cashout_payments cp
+            LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+            LEFT JOIN projects p ON cp.project_id = p.id
+            LEFT JOIN users u ON cr.requested_by = u.id
+            WHERE cp.payment_date BETWEEN ? AND ?";
+    
+    $params = [$start_date, $end_date];
+    $types = "ss";
+    
+    if ($project_id) {
+        $sql .= " AND cp.project_id = ?";
+        $params[] = $project_id;
+        $types .= "i";
+    }
+    
+    $sql .= " ORDER BY cp.payment_date DESC, cp.created_at DESC";
+    
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $payments = [];
+    while ($row = $result->fetch_assoc()) {
+        $date = $row['payment_date'];
+        if (!isset($payments[$date])) {
+            $payments[$date] = [];
+        }
+        $payments[$date][] = $row;
+    }
+    
+    $stmt->close();
+    return $payments;
 }
 
     /**
