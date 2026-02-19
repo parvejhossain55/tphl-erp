@@ -208,8 +208,6 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-
-
     //dashboard
     public function getTotalBookings($period = null)
     {
@@ -217,7 +215,6 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                  FROM lead_bookings 
                  WHERE booking_status = 'booked' 
                  AND deleted_at IS NULL";
-
 
         if ($period) {
             switch ($period) {
@@ -236,13 +233,10 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             }
         }
 
-
-
         $result = $this->db->query($sqlQuery);
         $row = $result->fetch_assoc();
         return (int)($row['onboarded'] ?? 0);
     }
-
 
     public function create($data)
     {
@@ -636,4 +630,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             'total_flats' => (int) ($row['total_flats'] ?? 0),
         ];
     }
+
+
+    
 }

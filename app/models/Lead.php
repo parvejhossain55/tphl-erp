@@ -94,20 +94,35 @@ class Lead extends Model
 
     public function getAllWithFilter($year = null, $month = null)
     {
-        $sql = "
-    SELECT 
+        $sql = "SELECT 
         l.*,
         u.id AS assigned_id,
         u.full_name AS agent_name,
-        p.name AS project_name
+        p.name AS project_name,
+        lf.next_action,
+        lf.follow_up_type,
+        lf.next_follow_up_date
     FROM leads AS l
+
+    LEFT JOIN (
+        SELECT t1.*
+        FROM lead_follow_ups t1
+        INNER JOIN (
+            SELECT lead_id, MAX(id) AS max_id
+            FROM lead_follow_ups
+            GROUP BY lead_id
+        ) t2 
+        ON t1.id = t2.max_id
+    ) lf ON lf.lead_id = l.id
+
     LEFT JOIN users AS u ON l.assigned_id = u.id
     LEFT JOIN lead_bookings AS lb ON lb.lead_id = l.id
     LEFT JOIN projects AS p ON lb.project_id = p.id
-    WHERE l.deleted_at IS NULL
-";
 
+  WHERE l.deleted_at IS NULL
+AND l.status = 'active'
 
+    ";
 
         $params = [];
         $types  = "";
@@ -124,6 +139,7 @@ class Lead extends Model
             $types   .= "i";
         }
 
+        //  Only one ORDER BY at the end
         $sql .= " ORDER BY l.id DESC";
 
         $stmt = $this->db->prepare($sql);
@@ -139,6 +155,14 @@ class Lead extends Model
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+    public function getTotalHotLeads()
+    {
+        $sql = $this->db->prepare("SELECT COUNT(*) AS total_hot FROM leads where lead_type = 'Hot' And deleted_at IS NULL AND status = 'active' AND last_lead_action != 'cancel'");
+        $sql->execute();
+        $result = $sql->get_result()->fetch_assoc();
+        return $result['total_hot'] ?? 0;
+    }
+
 
 
     public function getVisitedLeadCount($period = null)
@@ -210,7 +234,7 @@ class Lead extends Model
     public function getAllMyLeads(int $userId, $year = null, $month = null)
     {
         $sql = "
-        SELECT leads.*, lf.next_action
+        SELECT leads.*, lf.next_action,lf.follow_up_type
         FROM leads
         LEFT JOIN (
             SELECT t1.*
@@ -282,7 +306,7 @@ class Lead extends Model
         address,
         pref_location_id,
         designation,
-        project_type,
+        project_id,
         pref_flat_size,
         communication_type,
         tags,
@@ -327,7 +351,7 @@ class Lead extends Model
         $address = $data['address'] ?? null;
         $pref_location_id = $data['pref_location_id'] ?? null;
         $designation = $data['designation'] ?? null;
-        $project_type = $data['project_type'] ?? null;
+        $project_id = $data['project_id'] ?? null;
         $pref_flat_size = $data['pref_flat_size'] ?? null;
         $communication_type = $data['communication_type'] ?? null;
         $tags = $data['tags'] ?? null;
@@ -341,7 +365,7 @@ class Lead extends Model
 
         // Bind parameters (CSV first, then existing)
         $stmt->bind_param(
-            "ssssssssssssssssssiisisssssssssssi",
+            "ssssssssssssssssssiisisisssssssssi",
             $campaign_name,
             $platform,
             $which_apartment_size_are_you_interested_in,
@@ -365,7 +389,7 @@ class Lead extends Model
             $address,
             $pref_location_id,
             $designation,
-            $project_type,
+            $project_id,
             $pref_flat_size,
             $communication_type,
             $tags,
@@ -523,7 +547,7 @@ class Lead extends Model
 
     public function updateLastLeadAction($leadId, $lastAction)
     {
-        $allowedActions = ['not_called', 'booked', 'called', 'visited', 'canceled'];
+        $allowedActions = ['new', 'booked', 'follow up', 'visited', 'cancel'];
 
         if (!in_array($lastAction, $allowedActions)) {
             return false;

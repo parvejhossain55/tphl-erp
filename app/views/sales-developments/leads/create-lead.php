@@ -202,12 +202,15 @@ $page = "create Lead"
                 </div>
 
                 <!-- Project Type -->
-                <div class="col-md-6 d-none">
+                <div class="col-md-6 ">
                     <div class="from__input-box">
-                        <label>Preferred Project *</label>
-                        <select name="project_type" class="form-select">
-                            <option value="ATI Society">ATI Society</option>
-                            <option value="ASHU Society">ASHU Society</option>
+                        <label>Preferred Project Optional</label>
+                        <select name="project_id" class="form-select">
+                         <option value="">Select Project</option>
+                         <?php foreach ($projects as $project): ?>
+                             <option value="<?= $project['id']; ?>"><?= $project['name']; ?></option>
+                            <?php endforeach; ?>
+       
                         </select>
                     </div>
                 </div>

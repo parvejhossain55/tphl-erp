@@ -2467,3 +2467,32 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+
+--- 16/02/26
+CREATE TABLE sales_targets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    
+    sales_user_id INT NOT NULL,
+    
+    month DATE NOT NULL COMMENT 'Use first day of month e.g. 2026-02-01',
+    
+    site_visit_target INT DEFAULT 0,
+    booking_target INT DEFAULT 0,
+    booking_value_target DECIMAL(15,2) DEFAULT 0.00,
+    
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY unique_sales_month (sales_user_id, month),
+    
+    INDEX idx_sales_month (sales_user_id, month),
+    
+    CONSTRAINT fk_sales_target_user
+        FOREIGN KEY (sales_user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- One's sales executive 
+-- In one month has give one time set official target  tai month unique

@@ -25,15 +25,15 @@
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     }
 
-    .stat-card-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.8rem;
-    }
+.stat-card-icon {
+    width: 52px;
+    height: 53px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
 
     .stat-card-blue {
         background: linear-gradient(135deg, #1abc9c 0%, #198754 100%);
@@ -52,17 +52,17 @@
     }
 
     .stat-value {
-        font-size: 2rem;
+        font-size: 1.5rem;
         font-weight: bold;
         margin: 0.5rem 0;
     }
 
-    .stat-label {
-        font-size: 0.9rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+.stat-label {
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    /* letter-spacing: 0.2px; */
+}
 
     .chart-container {
         background: white;
@@ -104,7 +104,7 @@
     </div>
     <div class="row g-20 mb-4 align-items-stretch">
         <!-- Today's Tasks -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -121,7 +121,7 @@
         </div>
 
         <!-- Today's Leads -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -138,7 +138,7 @@
         </div>
 
         <!-- Today follow up  -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -155,14 +155,15 @@
         </div>
 
         <!-- overdue follow up  -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <p class="stat-label mb-2">Overdue FollowUp</p>
+                            <p class="stat-label mb-2">Today Follow Up Complete</p>
                             <h2 class="stat-value text-info">
-                                <?= $myTotalShareSold['total_flats'] ?>
+                                <?= $todayFollowUpComplete ?? 0 ?>
+                                
                             </h2>
 
                         </div>
@@ -176,7 +177,7 @@
 
 
         <!-- My Total Sale -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -194,8 +195,8 @@
                 </div>
             </div>
         </div>
-    <!-- Total Leads Assigned -->
-        <div class="col-md-6 col-lg-3">
+        <!-- Total Leads Assigned -->
+        <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -213,17 +214,37 @@
                 </div>
             </div>
         </div>
-        
+
+
+        <!--Monthly Visit Target -->
+        <div class="col-md-6 col-lg-4 col-xxl-3">
+            <div class="card__wrapper stat-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2">Monthly Site Visit Target</p>
+                            <h2 class="stat-value text-info">
+                                <?= $monthlySiteVisitTarget ?>
+                            </h2>
+
+                        </div>
+                        <div class="stat-card-icon stat-card-purple text-white">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!--Monthly Target -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <p class="stat-label mb-2">Monthly Target</p>
+                            <p class="stat-label mb-2">My Monthly Booking Target</p>
                             <h2 class="stat-value text-info">
-                                <?= $myTotalShareSold['total_flats'] ?>
+                                <?= $monthlyBookingTarget  ?>
                             </h2>
 
                         </div>
@@ -234,16 +255,32 @@
                 </div>
             </div>
         </div>
-    
-        <!--Monthly Target -->
-        <div class="col-md-6 col-lg-3">
+
+        <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <p class="stat-label mb-2">My Monthly Booking</p>
+                            <p class="stat-label mb-2">Monthly Visit Complete <span class=" stat-value text-info ms-2"><?= $monthlyVisitComplete ?></span></p>
+                            <p class="stat-label mb-2">Monthly Target Visit Achievement  <span class=" stat-value text-info ms-2"><?= $visitAchievement ?> %</span></p>
+
+
+                        </div>
+                        <div class="stat-card-icon stat-card-purple text-white">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-4 col-xxl-3">
+            <div class="card__wrapper stat-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2 "> Monthly Booking Target Complete</p>
                             <h2 class="stat-value text-info">
-                                <?= $myTotalShareSold['total_flats'] ?>
+                                <?= $monthlyBookingComplete  ?>
                             </h2>
 
                         </div>
@@ -254,15 +291,15 @@
                 </div>
             </div>
         </div>
-    
-        <div class="col-md-6 col-lg-3">
+        <!-- Total Leads Assigned -->
+        <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <p class="stat-label mb-2"> Target Achievement %</p>
+                            <p class="stat-label mb-2">Deal Lost </p>
                             <h2 class="stat-value text-info">
-                                <?= $myTotalShareSold['total_flats'] ?>
+                                <?= $dealsLostAll ?>
                             </h2>
 
                         </div>
@@ -273,52 +310,15 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2 "> Monthly Target Complete</p>
-                            <h2 class="stat-value text-info">
-                                <?= $myTotalShareSold['total_flats'] ?>
-                            </h2>
-
-                        </div>
-                        <div class="stat-card-icon stat-card-purple text-white">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    <!-- Total Leads Assigned -->
-        <div class="col-md-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">Deal Closed </p>
-                            <h2 class="stat-value text-info">
-                                <?= $followUpOverdue ?>
-                            </h2>
-
-                        </div>
-                        <div class="stat-card-icon stat-card-purple text-white">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-            <!-- Total Leads Assigned -->
-        <div class="col-md-6 col-lg-3">
+        <!-- Total Leads Assigned -->
+        <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <p class="stat-label mb-2">Deal Win</p>
                             <h2 class="stat-value text-info">
-                                <?= $followUpOverdue ?>
+                                <?= $dealsWinAll ?>
                             </h2>
 
                         </div>
@@ -333,7 +333,7 @@
     </div>
 
     <!-- Performance Chart -->
-    <div class="row mt-4 d-none">
+    <div class="d-none row mt-4">
         <div class="col-12">
             <div class="chart-container">
                 <h3 class="chart-title">Weekly Performance</h3>
@@ -343,7 +343,7 @@
     </div>
 
     <!-- Info Box -->
-    <div class="row">
+    <div class="row d-none ">
         <div class="col-12">
             <div class="info-box">
                 <p class="mb-0">
@@ -357,6 +357,110 @@
     <div class="mb-5"></div>
 
 </div>
+
+<div class="card__wrapper shadow-sm p-3">
+    <h5>My Monthly Performance (<?= date('F Y') ?>)</h5>
+    <div id="monthlyPerformanceChart"></div>
+</div>
+
+<!-- ApexCharts JS -->
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    const monthlyData = {
+        labels: [
+            'Site Visit Target',
+            'Booking Target',
+            'Visit Completed',
+            'Booking Completed',
+            'Visit %',
+            'Booking %',
+            'Deals Closed',
+            'Deals Won',
+            'Deals Lost'
+        ],
+        totals: [
+            <?= $monthlySiteVisitTarget ?? 0 ?>,
+            <?= $monthlyBookingTarget ?? 0 ?>,
+            <?= $monthlyVisitComplete ?? 0 ?>,
+            <?= $monthlyBookingComplete ?? 0 ?>,
+            <?= $visitAchievement ?? 0 ?>,
+            <?= $bookingAchievement ?? 0 ?>,
+            <?= $dealsClosed ?? 0 ?>,
+            <?= $dealsWon ?? 0 ?>,
+            <?= $dealsLost ?? 0 ?>
+        ]
+    };
+
+    const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#189441', '#808594', '#20c997', '#fd7e14'];
+
+const chartOptions = {
+    chart: {
+        type: 'bar',
+        height: 350,
+        toolbar: { show: false }
+    },
+    series: [{
+        name: 'Performance',
+        data: monthlyData.totals
+    }],
+    plotOptions: {
+        bar: {
+            distributed: true,
+            borderRadius: 4,
+            columnWidth: '50%'
+        }
+    },
+    dataLabels: { enabled: true },
+
+    xaxis: {
+        categories: monthlyData.labels,
+        labels: {
+            rotate: -15,
+            style: {
+                colors: '#1a6e40',   // GREEN
+                fontSize: '12px',
+                fontWeight: 700
+            }
+        }
+    },
+
+    yaxis: {
+        min: 0,
+        title: {
+            text: 'Count / %',
+            style: {
+                color: '#1a6e40'
+            }
+        },
+        labels: {
+            style: {
+                colors: '#1a6e40',  // GREEN
+                fontSize: '12px',
+                fontWeight: 700
+            }
+        }
+    },
+
+    tooltip: { y: { formatter: val => val } },
+    colors: colors
+};
+
+const monthlyChart = new ApexCharts(
+    document.querySelector("#monthlyPerformanceChart"),
+    chartOptions
+);
+monthlyChart.render();
+
+
+});
+</script>
+
+
+
+
+
 
 <!-- Chart Configuration -->
 <script>
@@ -474,6 +578,6 @@
     };
 
     // Initialize chart
-    const ctx = document.getElementById('performanceChart').getContext('2d');
+    const ctx2 = document.getElementById('performanceChart').getContext('2d');
     const performanceChart = new Chart(ctx, config);
 </script>

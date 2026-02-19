@@ -576,3 +576,40 @@ Backend	Generate slugs + folder	project_slug, camera_slug
 FFmpeg	RTSP → HLS	.m3u8 + .ts segments
 Database	Save	hls_path = hls/<project_slug>/<camera_slug>.m3u8
 Frontend	Play	http://server.com/<hls_path>
+
+
+
+
+🔹 Booking Completed (Closed Won)
+SELECT COUNT(*) AS deals_closed,
+       SUM(agreement_value - IFNULL(discount_amount,0)) AS total_booking_value
+FROM lead_bookings
+WHERE sales_by_id = ?
+AND booking_status = 'completed'
+AND MONTH(booking_date) = ?
+AND YEAR(booking_date) = ?;
+
+
+deals_closed → number of bookings done this month
+
+total_booking_value → achieved value
+
+🔹 Site Visit Completed
+
+lead_follow_ups table অনুযায়ী:
+
+SELECT COUNT(*) AS visits_done
+FROM lead_follow_ups
+WHERE assigned_with = ?
+AND follow_up_type = 'visit'
+AND status = 'completed'
+AND MONTH(follow_up_date) = ?
+AND YEAR(follow_up_date) = ?;
+
+
+-------- -----------
+🧠 Difference Summary
+Option	Result
+ON DELETE CASCADE	child row delete
+ON DELETE SET NULL	child row থাকবে, id null হবে
+ON DELETE RESTRICT	delete করতে দেবে না

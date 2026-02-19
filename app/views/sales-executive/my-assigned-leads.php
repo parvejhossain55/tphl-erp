@@ -88,9 +88,6 @@
                                <i class="fa-light fa-file-arrow-up me-1"></i>
                                Reset
                            </a>
-
-
-
                            <a class="btn btn-primary btn-sm flex-grow-1 py-1"
                                href="<?= $GLOBALS['base_url'] ?>/create-lead">
                                All Follow Up Leads
@@ -126,7 +123,7 @@
                                    <th>Best Time to Contact</th>
                                    <th>city</th>
                                    <th class="">Last Follow Up Action</th>
-                                   <th class="text-center">Action</th>
+                                   <th class="text-center">Current Action</th>
                                </tr>
                            </thead>
                            <tbody class="table__body">
@@ -177,8 +174,8 @@
                                        </td>
 
                                        <td>
-                                           <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
-                                               class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
+                                           <a href="#"
+                                               class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between no-click" style=" pointer-events: none;cursor: not-allowed;">
                                                <?php if (!empty($bookingCount[$lead['id']])): ?>
                                                    <span>Booked </span>
                                                    <span class="followup-badge">
@@ -186,6 +183,7 @@
                                                    </span>
                                                <?php else: ?>
                                                    <span>Booking </span>
+                                                   <span class="followup-badge">0</span>
                                                <?php endif ?>
                                            </a>
                                        </td>
@@ -200,13 +198,12 @@
                                        <td><?= htmlspecialchars($lead['city'] ?? 'N/A') ?></td>
 
                                        <!-- Hidden Interest On -->
-                                
-
 
                                        <td>
 
-                                           <span class="bd-badge bg-primary fw-semibold fs-6">
-                                               <?= $lead['next_action'] ?? 'N/A'?>
+                                           <span class="bd-badge bg-primary fw-semibold ">
+                                               <?= ucfirst($lead['follow_up_type'] ?? '') ?: 'Not Follow' ?>
+                                               <!-- cfirst($lead['follow_up_type'] ?? '') ?: 'Not Follow' -->
                                            </span>
                                        </td>
                                        <td>

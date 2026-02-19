@@ -9,6 +9,8 @@ class LeadController extends Controller
     protected $leadBookedModel;
     protected $locationModel;
     protected $leadSourceModel;
+    protected $projectModel;
+    protected $followUpModel;
     public function __construct($db)
     {
         $this->db = $db;
@@ -18,6 +20,8 @@ class LeadController extends Controller
         $this->leadBookedModel = new BookingLead($this->db);
         $this->locationModel = new Location($this->db);
         $this->leadSourceModel = new LeadSource($this->db);
+        $this->projectModel = new Project($this->db);
+        $this->followUpModel = new FollowUp($this->db);
     }
     public function index()
     {
@@ -25,18 +29,47 @@ class LeadController extends Controller
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
         $owners = $this->userModel->getAll();
-        $leads = $this->leadModel->getAllWithFilter($year, $month);
-        $leadCounts = count($leads);
+
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
         $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
         $totalTodayFollowUps = array_sum($todayFollowUp);
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
+
+
+        $leads = $this->leadModel->getAllWithFilter($year, $month);
+        $leadCounts = count($leads);
+
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
         $message = "";
+        $prevPeriodLeads = $this->leadModel->getAllByDate(
+            $year ? ($month ? "$year-$month-01" : "$year-01-01") : null,
+            $year ? ($month ? date("Y-m-t", strtotime("$year-$month-01")) : "$year-12-31") : null
+        );
+        $prevCount = count($prevPeriodLeads);
 
+        if ($prevCount == 0) {
+            $leadsPercentChange = $leadCounts > 0 ? 100 : 0;
+        } else {
+            $leadsPercentChange = round((($leadCounts - $prevCount) / $prevCount) * 100, 2);
+        }
+
+
+
+
+
+        $totalBookingCount = $this->leadBookedModel->getTotalBookings();
+
+        $todayFollowUpCount = $this->followUpModel->getTodayFollowUpCountByLead();
+        $totalTodayFollowUps = array_sum($todayFollowUpCount);
+        $todayPendingFollowUpCount = $this->followUpModel->getTodayFollowUpPendingCount();
+        $totalTodayPendingFollowUps = array_sum($todayPendingFollowUpCount);
+
+        //  Conversion Rate
+        $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
+        $totalHotLeads = $this->leadModel->getTotalHotLeads();
         $this->view("sales-developments/leads/lead-lists", [
             "current_route" => "lead-lists",
             "page_title" => "Lead List",
@@ -49,31 +82,37 @@ class LeadController extends Controller
             "leadCounts" => $leadCounts,
             "totalTodayFollowUps" => $totalTodayFollowUps,
             "assignedUsers" => $assignedUsers,
+            "leadsPercentChange" => $leadsPercentChange,
+            "totalBookingCount" => $totalBookingCount,
+            "totalTodayPendingFollowUps" => $totalTodayPendingFollowUps,
+            "conversionRate" => $conversionRate,
+            "totalHotLeads" => $totalHotLeads,
 
         ]);
     }
 
-public function assignMultipleLeads()
-{
-    $userId = (int)($_POST['user_id'] ?? 0);
-    $leadIds = $_POST['lead_ids'] ?? '';
 
-    if (!$userId || !$leadIds) {
-        setError("Please select user and leads!") ;
+    public function assignMultipleLeads()
+    {
+        $userId = (int)($_POST['user_id'] ?? 0);
+        $leadIds = $_POST['lead_ids'] ?? '';
+
+        if (!$userId || !$leadIds) {
+            setError("Please select user and leads!");
+            header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
+            exit;
+        }
+
+        $ids = array_map('intval', explode(',', $leadIds));
+        $idsStr = implode(',', $ids);
+
+        $this->db->query("UPDATE leads SET assigned_id=$userId WHERE id IN ($idsStr)");
+
+        $userName = $this->db->query("SELECT full_name FROM users WHERE id=$userId")->fetch_assoc()['full_name'] ?? '';
+        setSuccess("Leads assigned successfully to $userName!");
         header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
         exit;
     }
-
-    $ids = array_map('intval', explode(',', $leadIds));
-    $idsStr = implode(',', $ids);
-
-    $this->db->query("UPDATE leads SET assigned_id=$userId WHERE id IN ($idsStr)");
-
-    $userName = $this->db->query("SELECT full_name FROM users WHERE id=$userId")->fetch_assoc()['full_name'] ?? '';
- setSuccess("Leads assigned successfully to $userName!") ;
-    header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
-    exit;
-}
 
 
 
@@ -111,7 +150,7 @@ public function assignMultipleLeads()
         $assignedUsers = $this->userModel->getAllRoleUser();
         $sources = $this->leadSource->getAll();
         $locations = $this->locationModel->getAll();
-
+        $projects = $this->projectModel->getAll();
         $this->view("sales-developments/leads/create-lead", [
             "current_route"   => "create-lead",
             "active"          => "create-lead",
@@ -120,6 +159,7 @@ public function assignMultipleLeads()
             "assignedUsers" => $assignedUsers,
             "sources" => $sources,
             "locations" => $locations,
+            "projects" => $projects,
 
         ]);
     }
@@ -160,7 +200,7 @@ public function assignMultipleLeads()
             'address' => $_POST['address'] ?? null,
             'pref_location_id' => $_POST['pref_location_id'] ?? null,
             'designation' => $_POST['designation'] ?? null,
-            'project_type' => $_POST['project_type'] ?? null,
+            'project_id' => $_POST['project_id'] ?? null,
             'interest_on' => $_POST['interest_on'] ?? null,
             'pref_flat_size' => $_POST['pref_flat_size'] ?? null,
             'communication_type' => $_POST['communication_type'] ?? null,
@@ -179,8 +219,8 @@ public function assignMultipleLeads()
 
             setSuccess("Lead created successfully!");
 
-            if ($loggedInRoleId === 5) {
-                 header("Location: {$GLOBALS['base_url']}/lead-lists");
+            if ($loggedInRoleId === 1 || $loggedInRoleId === 5 || $loggedInRoleId === 3 || $loggedInRoleId === 9) {
+                header("Location: {$GLOBALS['base_url']}/lead-lists");
             } else {
                 header("Location: {$GLOBALS['base_url']}/today-leads");
             }
@@ -309,8 +349,7 @@ public function assignMultipleLeads()
         $lastAction = $_POST['last_lead_action'] ?? null;
 
         // Allowed enum values (important for security)
-        $allowedActions = ['not_called', 'booked', 'called', 'visited','canceled'];
-
+        $allowedActions = ['new', 'booked', 'follow up', 'visited', 'cancel'];
         if (!$leadId || !in_array($lastAction, $allowedActions)) {
             setError("Invalid lead action selected.");
             header("Location: " . $_SERVER['HTTP_REFERER']);
@@ -398,38 +437,38 @@ public function assignMultipleLeads()
 
 
     public function storeSource()
-{
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
-    // Form data 
-    $name = $_POST['name'] ?? null;
-    $is_active = isset($_POST['is_active']) ? 1 : 0;
+        // Form data 
+        $name = $_POST['name'] ?? null;
+        $is_active = isset($_POST['is_active']) ? 1 : 0;
 
-    if (!$name) {
-        setError("Source name is required!");
+        if (!$name) {
+            setError("Source name is required!");
+            header("Location: {$GLOBALS['base_url']}/create-lead");
+            exit;
+        }
+
+        // Helper unique slug generate 
+        $slug = generateUniqueSlug($this->db, $name);
+
+        $data = [
+            'name' => $name,
+            'slug' => $slug,
+            'is_active' => $is_active
+        ];
+
+        // Model call
+        if ($this->leadSourceModel->create($data)) {
+            setSuccess("Lead source created successfully!");
+        } else {
+            setError("Failed to create lead source.");
+        }
+
         header("Location: {$GLOBALS['base_url']}/create-lead");
         exit;
     }
-
-    // Helper unique slug generate 
-    $slug = generateUniqueSlug($this->db, $name);
-
-    $data = [
-        'name' => $name,
-        'slug' => $slug,
-        'is_active' => $is_active
-    ];
-
-    // Model call
-    if ($this->leadSourceModel->create($data)) {
-        setSuccess("Lead source created successfully!");
-    } else {
-        setError( "Failed to create lead source.");
-    }
-
-    header("Location: {$GLOBALS['base_url']}/create-lead");
-    exit;
-}
     // Delete Employee
     public function delete()
     {

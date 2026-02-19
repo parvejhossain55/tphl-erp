@@ -70,8 +70,8 @@ $show_breadcrumb = false;
 
                                     <a class="btn btn-outline-theme-border"
                                         href="<?= $base_url ?>/user-profile/<?= $user['id'] ?>">View</a>
-                                    <a class="d-none btn btn-outline-theme-border"
-                                        href="<?= $base_url ?>/edit-user/<?= $user['id'] ?>">Edit</a>
+                                    <a class=" btn btn-outline-theme-border"
+                                        href="<?= $base_url ?>/set-sales-target/<?= $user['id'] ?>">Set Target</a>
                                     <button class="d-none removeBtnCust btn btn-outline-theme-border delete"
                                         data-id="<?= $user['id'] ?>"
                                         data-name="<?= $user['full_name'] ?>"
