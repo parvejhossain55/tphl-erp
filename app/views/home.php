@@ -4,15 +4,37 @@ $show_breadcrumb = false;
 ?>
 <div class="row mb-2">
     <div class="card__wrapper">
-        <div class="btn__group mb-3">
-            <a href="?period=daily" class="btn btn-sm <?= ($period ?? '') === 'daily' ? 'btn-primary' : 'btn-outline-secondary' ?>">Daily</a>
-            <a href="?period=weekly" class="btn btn-sm <?= ($period ?? '') === 'weekly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Weekly</a>
-            <a href="?period=monthly" class="btn btn-sm <?= ($period ?? '') === 'monthly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Monthly</a>
-            <a href="?period=yearly" class="btn btn-sm <?= ($period ?? '') === 'yearly' ? 'btn-primary' : 'btn-outline-secondary' ?>">Yearly</a>
-            <a href="<?= $GLOBALS['base_url'] ?>/home" class="btn btn-sm <?= empty($period) || $period === 'all_time' ? 'btn-primary' : 'btn-outline-secondary' ?>">All Over</a>
-        </div>
+        <div class="btn__group mb-3 d-flex flex-nowrap overflow-auto gap-2">
 
+            <a href="?period=daily"
+                class="btn btn-sm flex-shrink-0 <?= ($period ?? '') === 'daily' ? 'btn-primary' : 'btn-outline-secondary' ?>">
+                Daily
+            </a>
+
+            <a href="?period=weekly"
+                class="btn btn-sm flex-shrink-0 <?= ($period ?? '') === 'weekly' ? 'btn-primary' : 'btn-outline-secondary' ?>">
+                Weekly
+            </a>
+
+            <a href="?period=monthly"
+                class="btn btn-sm flex-shrink-0 <?= ($period ?? '') === 'monthly' ? 'btn-primary' : 'btn-outline-secondary' ?>">
+                Monthly
+            </a>
+
+            <a href="?period=yearly"
+                class="btn btn-sm flex-shrink-0 <?= ($period ?? '') === 'yearly' ? 'btn-primary' : 'btn-outline-secondary' ?>">
+                Yearly
+            </a>
+
+            <a href="<?= $GLOBALS['base_url'] ?>/home"
+                class="btn btn-sm flex-shrink-0 <?= empty($period) || $period === 'all_time' ? 'btn-primary' : 'btn-outline-secondary' ?>">
+                All Over
+            </a>
+
+        </div>
     </div>
+</div>
+
 
 
 </div>
@@ -150,7 +172,7 @@ $show_breadcrumb = false;
             <div class="d-flex align-items-center gap-10">
                 <div class="d-flex align-items-center gap-2 h-100">
                     <div class="card__icon icon-danger">
-                       <span><i class="fa-light fa-calendar-check"></i></span>
+                        <span><i class="fa-light fa-calendar-check"></i></span>
                     </div>
                     <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">EMI Payments</h6>
@@ -335,6 +357,138 @@ $show_breadcrumb = false;
     <!-- Payment Methods & Recent Bookings -->
     <div class="row ">
 
+        <div class="col-xl-6 col-lg-6 col-md-12 col-12 mt-2">
+            <div class="card__wrapper h-100">
+                <div class="card-header_title pt-3 border-bottom-0">
+                    <h6 class="mb-3">Latest Approval Requests</h6>
+                </div>
+
+
+                <div class="card__body">
+                    <div class="approval-scrollable" style="max-height: 500px; overflow-y: auto; padding: 1rem;">
+                        <?php if (!empty($pendingRequests)): ?>
+                            <?php foreach ($pendingRequests as $req): ?>
+                                <div class="border rounded p-3 mb-3 shadow-sm">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1"><?= htmlspecialchars($req['department']) ?> Department</h6>
+                                            <small class="text-muted d-block"><?= htmlspecialchars($req['title']) ?></small>
+                                            <small class="text-muted">Requested: <?= date('d M Y', strtotime($req['created_at'])) ?></small>
+                                        </div>
+                                        <span class="badge bg-warning text-dark"><?= ucfirst($req['status']) ?></span>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <?php if ($req['source_table'] === 'employee_leaves'):
+                                            $meta = json_decode($req['meta_data'], true);
+                                            $requested_days = $meta['requested_days'] ?? 0;
+                                        ?>
+                                            <strong>Requested Days:</strong> <?= $requested_days ?>
+                                        <?php elseif (!empty($req['request_amount'])): ?>
+                                            <strong>Requested Amount:</strong> ৳ <?= format_bdt($req['request_amount']) ?>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <?php renderApprovalContext($req); ?>
+
+
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <!-- Full Approve -->
+                                        <form method="POST" action="<?= $GLOBALS['base_url'] ?>/approve-request/<?= $req['id'] ?>" class="d-inline">
+                                            <button class="btn btn-sm btn-success">Full Approve</button>
+                                        </form>
+
+                                        <!-- Partial Approve (Modal) -->
+                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#partialApproveModal<?= $req['id'] ?>">Partial Approve</button>
+
+                                        <!-- Reject -->
+                                        <form method="POST" action="<?= $GLOBALS['base_url'] ?>/reject-request/<?= $req['id'] ?>" class="d-inline">
+                                            <button class="btn btn-sm btn-danger">Reject</button>
+                                        </form>
+
+                                        <!-- View Button -->
+                                      
+                                        
+                                    </div>
+
+                                </div>
+
+                                <!-- Partial Modal -->
+                                <div class="modal fade" id="partialApproveModal<?= $req['id'] ?>" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h6 class="modal-title">Partial Approval</h6>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/partial-approve-request/<?= $req['id'] ?>">
+                                                    <?php if ($req['source_table'] === 'employee_leaves'):
+                                                        $meta = json_decode($req['meta_data'], true);
+                                                        $requested_days = $meta['requested_days'] ?? 0;
+                                                    ?>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Requested Days</label>
+                                                            <input type="number" class="form-control" value="<?= $requested_days ?>" disabled>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Approve Days</label>
+                                                            <input type="number" class="form-control" name="approved_days" placeholder="Enter approved days" required max="<?= $requested_days ?>">
+                                                        </div>
+                                                    <?php else: ?>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Requested Amount</label>
+                                                            <input type="text" class="form-control" value="৳ <?= number_format($req['request_amount'], 2) ?>" disabled>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Approve Amount</label>
+                                                            <input type="number" class="form-control" name="approved_amount" placeholder="Enter approved amount" required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Note</label>
+                                                            <textarea class="form-control" name="approval_note" placeholder="Enter note here" rows="4" required></textarea>
+                                                        </div>
+
+                                                    <?php endif; ?>
+
+                                                    <div class="modal-footer">
+                                                        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button class="btn btn-success">Approve</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- view modal  -->
+                                <!-- View Context Modal -->
+                                <div class="modal fade" id="viewContextModal<?= $req['id'] ?>" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h6 class="modal-title">Request Details</h6>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <?php renderApprovalContext($req); ?>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <p class="text-muted">No pending requests</p>
+                        <?php endif; ?>
+                    </div>
+
+                </div>
+            </div>
+        </div>
 
         <!-- Recent Bookings (All Bookings) -->
         <div class="col-xl-6 col-lg-6 col-md-12 col-12 mt-2">
@@ -424,137 +578,6 @@ $show_breadcrumb = false;
         // echo '</pre>';
         ?>
 
-        <div class="col-xl-6 col-lg-6 col-md-12 col-12 mt-2">
-            <div class="card__wrapper h-100">
-                <div class="card-header_title pt-3 border-bottom-0">
-                    <h6 class="mb-3">Latest Approval Requests</h6>
-                </div>
-
-
-                   <div class="card__body">
-                    <div class="approval-scrollable" style="max-height: 500px; overflow-y: auto; padding: 1rem;">
-                        <?php if (!empty($pendingRequests)): ?>
-                            <?php foreach ($pendingRequests as $req): ?>
-                                <div class="border rounded p-3 mb-3 shadow-sm">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <div>
-                                            <h6 class="mb-1"><?= htmlspecialchars($req['department']) ?> Department</h6>
-                                            <small class="text-muted d-block"><?= htmlspecialchars($req['title']) ?></small>
-                                            <small class="text-muted">Requested: <?= date('d M Y', strtotime($req['created_at'])) ?></small>
-                                        </div>
-                                        <span class="badge bg-warning text-dark"><?= ucfirst($req['status']) ?></span>
-                                    </div>
-
-                                    <div class="mb-2">
-                                        <?php if ($req['source_table'] === 'employee_leaves'):
-                                            $meta = json_decode($req['meta_data'], true);
-                                            $requested_days = $meta['requested_days'] ?? 0;
-                                        ?>
-                                            <strong>Requested Days:</strong> <?= $requested_days ?>
-                                        <?php elseif (!empty($req['request_amount'])): ?>
-                                            <strong>Requested Amount:</strong> ৳ <?= format_bdt($req['request_amount']) ?>
-                                        <?php endif; ?>
-                                    </div>
-
-                                    <?php renderApprovalContext($req); ?>
-
-
-                                    <div class="d-flex gap-2 flex-wrap">
-                                        <!-- Full Approve -->
-                                        <form method="POST" action="<?= $GLOBALS['base_url'] ?>/approve-request/<?= $req['id'] ?>" class="d-inline">
-                                            <button class="btn btn-sm btn-success">Full Approve</button>
-                                        </form>
-
-                                        <!-- Partial Approve (Modal) -->
-                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#partialApproveModal<?= $req['id'] ?>">Partial Approve</button>
-
-                                        <!-- Reject -->
-                                        <form method="POST" action="<?= $GLOBALS['base_url'] ?>/reject-request/<?= $req['id'] ?>" class="d-inline">
-                                            <button class="btn btn-sm btn-danger">Reject</button>
-                                        </form>
-
-                                        <!-- View Button -->
-                                        <button class="btn btn-sm btn-secondary d-none" data-bs-toggle="modal" data-bs-target="#viewContextModal<?= $req['id'] ?>">View</button>
-                                    </div>
-
-                                </div>
-
-                                <!-- Partial Modal -->
-                                <div class="modal fade" id="partialApproveModal<?= $req['id'] ?>" tabindex="-1">
-                                    <div class="modal-dialog modal-dialog-centered">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h6 class="modal-title">Partial Approval</h6>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/partial-approve-request/<?= $req['id'] ?>">
-                                                    <?php if ($req['source_table'] === 'employee_leaves'):
-                                                        $meta = json_decode($req['meta_data'], true);
-                                                        $requested_days = $meta['requested_days'] ?? 0;
-                                                    ?>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Requested Days</label>
-                                                            <input type="number" class="form-control" value="<?= $requested_days ?>" disabled>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Approve Days</label>
-                                                            <input type="number" class="form-control" name="approved_days" placeholder="Enter approved days" required max="<?= $requested_days ?>">
-                                                        </div>
-                                                    <?php else: ?>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Requested Amount</label>
-                                                            <input type="text" class="form-control" value="৳ <?= number_format($req['request_amount'], 2) ?>" disabled>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Approve Amount</label>
-                                                            <input type="number" class="form-control" name="approved_amount" placeholder="Enter approved amount" required>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Note</label>
-                                                            <textarea class="form-control" name="approval_note" placeholder="Enter note here" rows="4" required></textarea>
-                                                        </div>
-
-                                                    <?php endif; ?>
-
-                                                    <div class="modal-footer">
-                                                        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                        <button class="btn btn-success">Approve</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- view modal  -->
-                                <!-- View Context Modal -->
-                                <div class="modal fade" id="viewContextModal<?= $req['id'] ?>" tabindex="-1">
-                                    <div class="modal-dialog modal-dialog-centered modal-lg">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h6 class="modal-title">Request Details</h6>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <?php renderApprovalContext($req); ?>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <p class="text-muted">No pending requests</p>
-                        <?php endif; ?>
-                    </div>
-
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -934,6 +957,21 @@ $show_breadcrumb = false;
 
         .card__wrapper.height-equal {
             min-height: auto;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .app__slide-wrapper {
+            min-height: 5px !important;
+        }
+
+        .btn__group {
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .btn__group::-webkit-scrollbar {
+            display: none;
         }
     }
 </style>

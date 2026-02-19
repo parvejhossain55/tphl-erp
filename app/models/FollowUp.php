@@ -31,37 +31,77 @@ class FollowUp extends Model
     }
 
     // Create a new follow-up
-    public function create($data)
-    {
-        $stmt = $this->db->prepare("
-            INSERT INTO lead_follow_ups 
-            (lead_id,project_id, flat_id, follow_up_date, follow_up_time, follow_up_type, status, discussion_note, next_follow_up_date, next_action, created_by,assigned_with)
-            VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
+public function create($data)
+{
+    $stmt = $this->db->prepare("
+        INSERT INTO lead_follow_ups 
+        (lead_id, project_id, flat_id, follow_up_date, follow_up_time, follow_up_type, status, discussion_note, next_follow_up_date, next_action, created_by, assigned_with)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    if (!$stmt) {
+        setError($this->db->error);
+        return false;
+    }
+
+    $flat_id = !empty($data['flat_id']) ? (int)$data['flat_id'] : null;
+
+    $stmt->bind_param(
+        "iiissssssssi",
+        $data['lead_id'],
+        $data['project_id'],
+        $flat_id,
+        $data['follow_up_date'],
+        $data['follow_up_time'],
+        $data['follow_up_type'],
+        $data['status'],
+        $data['discussion_note'],
+        $data['next_follow_up_date'],
+        $data['next_action'],
+        $data['created_by'],
+        $data['assigned_with']
+    );
+
+    if (!$stmt->execute()) {
+        return false;
+    }
+
+    /* ==============================
+        LEAD STATUS AUTO UPDATE
+    ============================== */
+
+    $leadAction = null;
+
+    // 1 Visit Completed
+    if ($data['follow_up_type'] === 'visit' && $data['status'] === 'completed') {
+        $leadAction = 'visited';
+    }
+
+    // 2 Any follow up pending (first time or not visit)
+    elseif ($data['status'] === 'pending') {
+        $leadAction = 'follow up';
+    }
+
+    // 3 Follow up canceled
+    elseif ($data['status'] === 'canceled') {
+        $leadAction = 'cancel';
+    }
+
+    // Update leads table if action determined
+    if ($leadAction !== null) {
+        $updateLead = $this->db->prepare("
+            UPDATE leads 
+            SET last_lead_action = ? 
+            WHERE id = ?
         ");
 
-        if (!$stmt) {
-            setError($this->db->error);
-            return false;
-        }
-        $flat_id = !empty($data['flat_id']) ? (int)$data['flat_id'] : null;
-        $stmt->bind_param(
-            "iiissssssssi",
-            $data['lead_id'],
-            $data['project_id'],
-            $flat_id,
-            $data['follow_up_date'],
-            $data['follow_up_time'],
-            $data['follow_up_type'],
-            $data['status'],
-            $data['discussion_note'],
-            $data['next_follow_up_date'],
-            $data['next_action'],
-            $data['created_by'],
-            $data['assigned_with'],
-        );
-
-        return $stmt->execute();
+        $updateLead->bind_param("si", $leadAction, $data['lead_id']);
+        $updateLead->execute();
     }
+
+    return true;
+}
+
 
 
 
@@ -211,7 +251,8 @@ class FollowUp extends Model
         return $data;
     }
 
-    public function getTodayFollowUpPendingCount(){
+    public function getTodayFollowUpPendingCount()
+    {
         $sql = "SELECT lf.lead_id, COUNT(*) AS follow_up_count
         FROM lead_follow_ups lf
         WHERE lf.deleted_at IS NULL
@@ -434,6 +475,4 @@ class FollowUp extends Model
         // Ensure we return array even if empty
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-
-    
 }
