@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 18, 2026 at 01:29 PM
+-- Generation Time: Feb 19, 2026 at 04:36 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -166,6 +166,7 @@ CREATE TABLE `camera_logs` (
 --
 -- Table structure for table `cashout_payments`
 --
+
 
 CREATE TABLE `cashout_payments` (
   `id` int(11) NOT NULL,
