@@ -5578,9 +5578,9 @@ img {
 /*----------------------------------------*/
 /*  SIDEBAR CSS START
 /*----------------------------------------*/
-.app__slide-wrapper {
+/* .app__slide-wrapper {
   min-height: 775px;
-}
+} */
 
 .page__body-wrapper {
   position: absolute;

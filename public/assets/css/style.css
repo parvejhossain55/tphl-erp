@@ -1016,10 +1016,6 @@ h4{
     gap: 0.5rem;
 }
 
-.btn-action:hover {
-    background-color: #16A34A;
-    color: white;
-}
 
 
 .action-btn {
@@ -1071,7 +1067,7 @@ gap: 0.5rem;
             border-radius: 12px;
             padding: 1.25rem;
             margin-bottom: 1rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: -1px -1px 7px 1px rgba(0, 0, 0, 0.1);
         }
 
         .lead-card-header {
@@ -1096,9 +1092,10 @@ gap: 0.5rem;
         .lead-info-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.75rem;
+            /* align-items: center; */
+            margin-top: 8px;
+            margin-bottom: 4px;
+            padding-bottom: 5px;
             border-bottom: 1px solid #F3F4F6;
         }
 
@@ -1109,15 +1106,15 @@ gap: 0.5rem;
         }
 
         .info-label {
-            font-size: 0.75rem;
-            color: var(--text-light);
+            font-size: 0.77rem;
+            color: #505155;
             text-transform: uppercase;
             font-weight: 600;
         }
 
         .info-value {
             font-size: 0.775rem;
-            color: var(--text-dark);
+            /* color: var(--text-dark); */
             font-weight: 500;
         }
 
@@ -1173,7 +1170,7 @@ gap: 0.5rem;
             }
         }
 
-        .no-border-table td,
+.no-border-table td,
 .no-border-table th {
     border: none !important;
 }

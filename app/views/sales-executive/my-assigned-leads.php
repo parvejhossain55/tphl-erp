@@ -1,441 +1,604 @@
-   <?php
-    $page_title = "My All Assigned Lead";
-
-    ?>
-
-   <div class="row">
-       <div class="card__wrapper">
-
-           <div class="col-12">
-               <h4 class="mb-0">All Assigned Leads</h4>
-           </div>
-       </div>
-
-       <form action="" method="get">
-           <div class="row  mb-3 align-items-end">
-
-               <?php
-                $currentYear = date('Y');
-                $startYear   = $currentYear - 10;
-                $selectedYear = $slectedYear ?? '';
-                ?>
-               <!-- Year Select -->
-               <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
-                   <div class="card__wrapper h-100">
-                       <div class="from__input-box">
-                           <select class="form-control" name="year">
-                               <option value="">Year Select</option>
-
-                               <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
-                                   <option
-                                       value="<?= $year ?>"
-                                       <?= $selectedYear == $year ? 'selected' : '' ?>>
-                                       <?= $year ?>
-                                   </option>
-                               <?php endfor; ?>
-
-                           </select>
-                       </div>
-                   </div>
-               </div>
-
-               <?php
-                $months = [
-                    1 => 'January',
-                    2 => 'February',
-                    3 => 'March',
-                    4 => 'April',
-                    5 => 'May',
-                    6 => 'June',
-                    7 => 'July',
-                    8 => 'August',
-                    9 => 'September',
-                    10 => 'October',
-                    11 => 'November',
-                    12 => 'December'
-                ];
-                $selectedMonth = $_GET['month'] ?? '';
-                ?>
-
-               <!-- Month Select -->
-               <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
-                   <div class="card__wrapper h-100">
-                       <div class="from__input-box">
-                           <select class="form-control" name="month">
-                               <option value="">Month Select</option>
-                               <?php foreach ($months as $id => $name): ?>
-
-                                   <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
-                                       <?= $name ?>
-                                   </option>
-                               <?php endforeach; ?>
-                           </select>
-
-                       </div>
-                   </div>
-               </div>
-
-               <!-- Buttons -->
-               <div class="col-xxl-4 col-xl-12 col-lg-12 col-md-12 col-12">
-                   <div class="card__wrapper h-100">
-                       <div class="d-flex flex-row gap-2 align-items-center p-0">
-                           <button type="submit" class="btn btn-secondary btn-sm flex-grow-1 py-1">
-                               Search
-                           </button>
-
-                           <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads"
-                               class="btn btn-success btn-sm py-1 flex-grow-1">
-                               <i class="fa-light fa-file-arrow-up me-1"></i>
-                               Reset
-                           </a>
-                           <a class="btn btn-primary btn-sm flex-grow-1 py-1"
-                               href="<?= $GLOBALS['base_url'] ?>/create-lead">
-                               All Follow Up Leads
-                           </a>
-                       </div>
-                   </div>
-               </div>
-           </div>
-       </form>
-
-       <div class="row">
-           <div class="col-xxl-12">
-               <div class="card__wrapper">
-                   <div class="table__wrapper table-responsive">
-                       <table class="table mb-20 multiple_tables">
-                           <thead>
-                               <tr class="table__title table__sort">
-
-
-                                   <th style="min-width:60px;">S/L</th> <!-- non-sticky first column -->
-                                   <th class="th_1">Client/Lead Name</th>
-
-                                   <!-- <th>Source Type</th> -->
-
-                                   <th>Company name</th>
-                                   <th>phone_number</th>
-                                   <th>Follow Up</th>
-                                   <th>Booking</th>
-                                   <th class="d-none">job title</th>
-                                   <th class="d-none">Interested Apartment Size</th>
-                                   <th class="d-none">Interset Floor for Shop</th>
-                                   <th class="d-none">Planning To Buy Time</th>
-                                   <th>Best Time to Contact</th>
-                                   <th>city</th>
-                                   <th class="">Last Follow Up Action</th>
-                                   <th class="text-center">Current Action</th>
-                               </tr>
-                           </thead>
-                           <tbody class="table__body">
-                               <?php foreach ($myAllleads as $key => $lead): ?>
-                                   <tr>
-                                       <!-- S/L -->
-                                       <td><?= $key + 1 ?></td>
-
-                                       <!-- Client / Lead Name -->
-                                       <td><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></td>
-
-                                       <!-- Company / Project -->
-                                       <td><?= htmlspecialchars($lead['company_name'] ?? 'N/A') ?></td>
-
-                                       <!-- Phone -->
-                                       <td><?= htmlspecialchars($lead['phone_number'] ?? 'N/A') ?></td>
-
-                                       <!-- Job Title -->
-                                       <td class="d-none"><?= htmlspecialchars($lead['job_title'] ?? 'N/A') ?></td>
-
-                                       <!-- Apartment Size -->
-                                       <td class="d-none">
-                                           <?= htmlspecialchars($lead['which_apartment_size_are_you_interested_in'] ?? $lead['pref_flat_size'] ?? 'N/A') ?>
-                                       </td>
-
-                                       <!-- Floor -->
-                                       <td class="d-none">
-                                           <?= htmlspecialchars($lead['which_floor_are_you_for_shop'] ?? 'N/A') ?>
-                                       </td>
-
-                                       <!-- Planning to Buy -->
-                                       <td class="d-none">
-                                           <?= htmlspecialchars($lead['when_are_you_planning_to_buy'] ?? 'N/A') ?>
-                                       </td>
-
-                                       <td>
-                                           <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
-                                               class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">
-
-                                               <span>Follow Up</span>
-
-                                               <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                                   <span class="followup-badge">
-                                                       <?= $followUpCounts[$lead['id']] ?>
-                                                   </span>
-                                               <?php endif; ?>
-                                           </a>
-                                       </td>
-
-                                       <td>
-                                           <a href="#"
-                                               class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between no-click" style=" pointer-events: none;cursor: not-allowed;">
-                                               <?php if (!empty($bookingCount[$lead['id']])): ?>
-                                                   <span>Booked </span>
-                                                   <span class="followup-badge">
-                                                       <?= $bookingCount[$lead['id']] ?>
-                                                   </span>
-                                               <?php else: ?>
-                                                   <span>Booking </span>
-                                                   <span class="followup-badge">0</span>
-                                               <?php endif ?>
-                                           </a>
-                                       </td>
-
-
-                                       <!-- Best Time to Contact -->
-                                       <td>
-                                           <?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? 'N/A') ?>
-                                       </td>
-
-                                       <!-- City -->
-                                       <td><?= htmlspecialchars($lead['city'] ?? 'N/A') ?></td>
-
-                                       <!-- Hidden Interest On -->
-
-                                       <td>
-
-                                           <span class="bd-badge bg-primary fw-semibold ">
-                                               <?= ucfirst($lead['follow_up_type'] ?? '') ?: 'Not Follow' ?>
-                                               <!-- cfirst($lead['follow_up_type'] ?? '') ?: 'Not Follow' -->
-                                           </span>
-                                       </td>
-                                       <td>
-                                           <!-- New Last Action Update Button -->
-                                           <form method="POST"
-                                               action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>"
-                                               class="m-0 p-0">
-
-                                               <select name="last_lead_action"
-                                                   class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
-                                                   onchange="this.form.submit()">
-
-                                                   <option value=""> Update action </option>
-                                                   <option value="not_called" <?= $lead['last_lead_action'] == 'not_called' ? 'selected' : '' ?>>
-                                                       Not Called
-                                                   </option>
-
-                                                   <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>
-                                                       Booked
-                                                   </option>
-
-                                                   <option value="called" <?= $lead['last_lead_action'] == 'called' ? 'selected' : '' ?>>
-                                                       Called
-                                                   </option>
-
-                                                   <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>
-                                                       Visited
-                                                   </option>
-                                                   <option value="canceled" <?= $lead['last_lead_action'] == 'canceled' ? 'selected' : '' ?>>
-                                                       Canceled
-                                                   </option>
-                                               </select>
-
-                                           </form>
-
-                                       </td>
-
-
-                                   </tr>
-                               <?php endforeach ?>
-                           </tbody>
-
-                       </table>
-                   </div>
-               </div>
-           </div>
-       </div>
-   </div>
-   <script>
-       document.querySelectorAll('.call-btn').forEach(btn => {
-           btn.addEventListener('click', function() {
-               let leadId = this.dataset.id;
-               let phone = this.dataset.phone;
-
-               // Mobile call
-               window.location.href = 'tel:' + phone;
-
-               // Update call status = called
-               fetch('<?= $GLOBALS['base_url'] ?>/update-call-status', {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/x-www-form-urlencoded'
-                   },
-                   body: 'lead_id=' + leadId + '&call_status=called'
-               });
-           });
-       });
-
-       // received or not received 
-       document.querySelectorAll('.call-status').forEach(select => {
-           select.addEventListener('change', function() {
-               fetch('<?= $base_url ?>/update-call-status', {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/x-www-form-urlencoded'
-                   },
-                   body: 'lead_id=' + this.dataset.id + '&call_status=' + this.value
-               });
-           });
-       });
-
-
-       document.querySelectorAll('.note-save-btn').forEach(btn => {
-           btn.addEventListener('click', function() {
-               const leadId = this.dataset.id;
-               const textarea = document.querySelector('.call-note[data-id="' + leadId + '"]');
-               saveNote(leadId, textarea.value, textarea);
-           });
-       });
-
-       document.querySelectorAll('.call-note').forEach(textarea => {
-           textarea.addEventListener('keydown', function(e) {
-               if (e.key === 'Enter' && !e.shiftKey) { // shift+enter for newline
-                   e.preventDefault(); // avoid new line
-                   saveNote(this.dataset.id, this.value, this);
-               }
-           });
-       });
-
-       function saveNote(leadId, note, el) {
-           fetch('<?= $base_url ?>/update-call-notes', {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/x-www-form-urlencoded'
-                   },
-                   body: 'lead_id=' + encodeURIComponent(leadId) + '&call_note=' + encodeURIComponent(note)
-               })
-               .then(res => res.text())
-               .then(() => {
-                   el.style.borderColor = '#198754'; // success hint
-                   setTimeout(() => el.style.borderColor = '#ddd', 800);
-               });
-       }
-   </script>
-   <style>
-       /* Note column width */
-       .note-cell {
-           min-width: 220px;
-           max-width: 260px;
-           position: relative;
-       }
-
-       /* Default small note */
-       .call-note {
-           width: 100%;
-           height: 32px;
-           resize: none;
-           overflow: hidden;
-           padding: 6px 8px;
-           font-size: 13px;
-           border-radius: 6px;
-           border: 1px solid #ced4da;
-           transition: all 0.25s ease;
-           cursor: pointer;
-           background-color: #f9f9f9;
-       }
-
-       /* Show text nicely */
-       .call-note:not(:focus) {
-           white-space: nowrap;
-           text-overflow: ellipsis;
-       }
-
-       /* On focus expand */
-       .call-note:focus {
-           position: absolute;
-           z-index: 999;
-           height: 140px;
-           width: 360px;
-           background: #fff;
-           box-shadow: 0 10px 30px rgba(0, 0, 0, .15);
-           cursor: text;
-       }
-
-       /* Optional: highlight when has content */
-       .call-note:not(:placeholder-shown) {
-           border-color: #0d6efd;
-           background: #f0f6ff;
-       }
-
-
-
-       /* status update   */
-       .call-status-cell {
-           min-width: 130px;
-       }
-
-       /* Base dropdown */
-       .call-status {
-           height: 32px;
-           padding: 0 28px 0 10px;
-           font-size: 12px;
-           font-weight: 600;
-           border-radius: 999px;
-           border: 1px solid #ddd;
-           background-color: #f8f9fa;
-           cursor: pointer;
-           transition: all .2s ease;
-       }
-
-       /* Hover */
-       .call-status:hover {
-           border-color: #0d6efd;
-       }
-
-       /* Focus */
-       .call-status:focus {
-           outline: none;
-           box-shadow: 0 0 0 2px rgba(13, 110, 253, .15);
-       }
-
-       /* Status colors */
-       .call-status[value="not_called"],
-       .call-status option[value="not_called"]:checked {
-           background-color: #f1f3f5;
-           color: #495057;
-       }
-
-       .call-status[value="called"],
-       .call-status option[value="called"]:checked {
-           background-color: #fff3cd;
-           color: #856404;
-       }
-
-       .call-status[value="received"],
-       .call-status option[value="received"]:checked {
-           background-color: #d1e7dd;
-           color: #0f5132;
-       }
-
-       .call-status[value="not_received"],
-       .call-status option[value="not_received"]:checked {
-           background-color: #f8d7da;
-           color: #842029;
-       }
-
-       .note-cell .note-wrapper {
-           display: flex;
-           gap: 5px;
-           /* textarea & button gap */
-           align-items: center;
-       }
-
-       .note-cell .call-note {
-           flex: 1;
-           /* textarea width auto adjust */
-           height: 32px;
-       }
-
-       .note-cell .note-save-btn {
-           height: 32px;
-           padding: 0 8px;
-           font-size: 12px;
-       }
-   </style>
+<!-- Breadcrumb -->
+<div class="container-fluid mt-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="<?= $GLOBALS['base_url'] ?>/my-dashboard" class="text-decoration-none">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Lead & Booking Management</li>
+        </ol>
+    </nav>
+</div>
+
+<!-- Stats Grid -->
+<div class="row  mb-4 align-items-stretch">
+    <!-- Desktop View: Filters and Table -->
+    <div class="desktop-only">
+        <!-- Filters -->
+        <div class="filters">
+            <form action="" method="get">
+                <div class="row g-2 align-items-center flex-wrap">
+
+                    <!-- Year Select -->
+                    <div class="col-auto col-sm-6 col-md-auto">
+                        <?php
+                        $currentYear = date('Y');
+                        $startYear   = $currentYear - 10;
+                        $selectedYear = $slectedYear ?? '';
+                        ?>
+                        <select class="form-control" name="year">
+                            <option value="">Year Select</option>
+                            <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
+                                <option value="<?= $year ?>" <?= $selectedYear == $year ? 'selected' : '' ?>><?= $year ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+
+                    <!-- Month Select -->
+                    <?php
+                    $months = [
+                        1 => 'January',
+                        2 => 'February',
+                        3 => 'March',
+                        4 => 'April',
+                        5 => 'May',
+                        6 => 'June',
+                        7 => 'July',
+                        8 => 'August',
+                        9 => 'September',
+                        10 => 'October',
+                        11 => 'November',
+                        12 => 'December'
+                    ];
+                    $selectedMonth = $_GET['month'] ?? '';
+                    ?>
+                    <div class="col-auto col-sm-6 col-md-auto">
+                        <select class="form-control" name="month">
+                            <option value="">Month Select</option>
+                            <?php foreach ($months as $id => $name): ?>
+                                <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>><?= $name ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <!-- Status Select -->
+                    <div class="col-auto col-sm-6 col-md-auto">
+                        <select class="form-select form-select-sm filter-select" name="last_action">
+                            <option value="">Status: All</option>
+                            <option value="new" <?= ($selectedAction ?? '') == 'new' ? 'selected' : '' ?>>New</option>
+                            <option value="booked" <?= ($selectedAction ?? '') == 'booked' ? 'selected' : '' ?>>Booked</option>
+                            <option value="follow up" <?= ($selectedAction ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
+                            <option value="visited" <?= ($selectedAction ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
+                            <option value="cancel" <?= ($selectedAction ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                        </select>
+                    </div>
+
+                    <!-- Search & Reset Buttons Next to Select -->
+                    <div class="col-auto d-flex align-items-center gap-2 flex-wrap">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm py-1">
+                            Search
+                        </button>
+                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm">
+                            Reset
+                        </a>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+
+        <!-- Table -->
+        <div class="col-xxl-12">
+            <div class="card__wrapper">
+                <div class="table__wrapper table-responsive">
+                    <table class="table no-border-table mb-20 multiple_tables">
+                        <thead>
+                            <tr class="table__title table__sort">
+                                <th>Lead Date</th>
+                                <th>Lead Name</th>
+                                <th>Phone</th>
+                                <th>Project Campaign</th>
+                                <th>Last Follow Up Status</th>
+                                <th>Change Status</th>
+                                <th>Next Follow-Up</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($myAllleads as $key => $lead): ?>
+                                <tr data-id="<?= $lead['id'] ?>">
+                                    <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
+                                    <td><strong><?= $lead['full_name'] ?? '' ?></strong></td>
+                                    <td><?= $lead['phone_number'] ?? $lead['phone']  ?>
+                                    </td>
+                                    <?php
+                                    $displayName = !empty($lead['campaign_name'])
+                                        ? $lead['campaign_name']
+                                        : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
+
+                                    $plainText = strip_tags($displayName);
+                                    ?>
+
+
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                            <span class="project-badge mb-0">
+                                                <i class="bi bi-building"></i>
+                                                <?= truncateText($displayName, 15) ?>
+                                            </span>
+
+                                            <?php if (mb_strlen($plainText) > 15): ?>
+                                                <button type="button"
+                                                    id="viewCampaignBtn<?= $lead['id'] ?>"
+                                                    class="btn btn-sm btn-outline-primary flex-shrink-0"
+                                                    data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#viewProjectCampaignName">
+                                                    View
+
+
+
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                    <td>
+
+                                        <span class="bd-badge bg-primary fw-semibold ">
+                                            <?= ucfirst($lead['follow_up_type'] ?? '') ?: 'Not Follow' ?>
+                                            <!-- cfirst($lead['follow_up_type'] ?? '') ?: 'Not Follow' -->
+                                        </span>
+                                    </td>
+                                    <!-- New Last Action Update Button -->
+                                    <td>
+
+                                        <form method="POST"
+                                            action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>"
+                                            class="m-0 p-0">
+
+                                            <select name="last_lead_action"
+                                                class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
+                                                onchange="this.form.submit()">
+
+                                                <option value=""> Update action </option>
+                                                <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>
+                                                    New
+                                                </option>
+
+                                                <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>
+                                                    Booked
+                                                </option>
+
+                                                <option value="follow up"
+                                                    <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>
+                                                    class="<?= $lead['last_lead_action'] == 'follow up' ? 'action-follow_up' : '' ?>">
+                                                    Follow Up
+                                                </option>
+
+
+                                                <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>
+                                                    Visited
+                                                </option>
+                                                <option value="cancel" <?= $lead['last_lead_action'] == 'cancel' ? 'selected' : '' ?>>
+                                                    Cancel
+                                                </option>
+
+                                            </select>
+
+                                        </form>
+                                    </td>
+                                    <!-- last_action_form  -->
+                                    <td>
+                                        <div><?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?></div>
+                                    </td>
+
+
+
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+
+                                            <!-- Follow Up -->
+                                            <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
+                                                class="btn btn-primary">
+
+                                                <span>Follow Up</span>
+
+                                                <?php if (!empty($followUpCounts[$lead['id']])): ?>
+                                                    <span class="action-badge">
+                                                        <?= $followUpCounts[$lead['id']] ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </a>
+
+                                            <!-- Booking -->
+                                            <a href="#"
+                                                class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between no-click" style=" pointer-events: none;cursor: not-allowed;">
+                                                <?php if (!empty($bookingCount[$lead['id']])): ?>
+                                                    <span>Booked </span>
+                                                    <span class="followup-badge">
+                                                        <?= $bookingCount[$lead['id']] ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span>Booking </span>
+                                                    <span class="followup-badge">0</span>
+                                                <?php endif ?>
+                                            </a>
+
+
+                                        </div>
+                                    </td>
+
+
+                                </tr>
+                            <?php endforeach; ?>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Mobile View: Filter Button and Cards -->
+    <div class="mobile-only">
+        <!-- Filter & Sort Button -->
+
+        <!-- Filter Toggle Button -->
+        <button class="filter-button w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#mobileFilterCollapse" aria-expanded="false" aria-controls="mobileFilterCollapse">
+            <i class="bi bi-funnel"></i> Filter & Sort
+        </button>
+
+        <!-- Collapsible Filter Section -->
+        <div class="collapse" id="mobileFilterCollapse">
+            <form action="" method="get" class="p-2 border rounded ">
+                <div class="d-flex flex-column gap-2">
+
+                    <!-- Year Select -->
+                    <?php
+                    $currentYear = date('Y');
+                    $startYear   = $currentYear - 10;
+                    $selectedYear = $slectedYear ?? '';
+                    ?>
+                    <select class="form-control form-select-sm" name="year">
+                        <option value="">Year Select</option>
+                        <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
+                            <option value="<?= $year ?>" <?= $selectedYear == $year ? 'selected' : '' ?>><?= $year ?></option>
+                        <?php endfor; ?>
+                    </select>
+
+                    <!-- Month Select -->
+                    <?php
+                    $months = [
+                        1 => 'January',
+                        2 => 'February',
+                        3 => 'March',
+                        4 => 'April',
+                        5 => 'May',
+                        6 => 'June',
+                        7 => 'July',
+                        8 => 'August',
+                        9 => 'September',
+                        10 => 'October',
+                        11 => 'November',
+                        12 => 'December'
+                    ];
+                    $selectedMonth = $_GET['month'] ?? '';
+                    ?>
+                    <select class="form-control form-select-sm" name="month">
+                        <option value="">Month Select</option>
+                        <?php foreach ($months as $id => $name): ?>
+                            <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>><?= $name ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <!-- Status Select -->
+                    <select class="form-select form-select-sm" name="last_action">
+                        <option value="">Status: All</option>
+                        <option value="new" <?= ($selectedAction ?? '') == 'new' ? 'selected' : '' ?>>New</option>
+                        <option value="booked" <?= ($selectedAction ?? '') == 'booked' ? 'selected' : '' ?>>Booked</option>
+                        <option value="follow up" <?= ($selectedAction ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
+                        <option value="visited" <?= ($selectedAction ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
+                        <option value="cancel" <?= ($selectedAction ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                    </select>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1">Search</button>
+                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm flex-grow-1">Reset</a>
+
+                    </div>
+
+                </div>
+            </form>
+        </div>
+        <?php foreach ($myAllleads as $key => $lead): ?>
+            <!-- Lead Card -->
+            <div class="lead-card">
+                <div class="lead-card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="lead-name"><?= $lead['full_name'] ?></div>
+                        <div class="lead-phone"><?= $lead['phone'] ?></div>
+                    </div>
+
+
+                </div>
+
+                <!-- Status -->
+                <div class="row">
+
+                    <div class="info-label ">Status</div>
+                </div>
+                <div class="lead-info-row">
+
+                    <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>" class="m-0 p-0">
+                        <select name="last_lead_action"
+                            class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
+                            onchange="this.form.submit()">
+
+                            <option value="">Update action</option>
+                            <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>New</option>
+                            <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>Booked</option>
+                            <option value="follow up" <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
+                            <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>Visited</option>
+                            <option value="cancel" <?= $lead['last_lead_action'] == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                        </select>
+                    </form>
+
+
+                    <!-- Follow Up & Booking Buttons (Condition Based) -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap text-end">
+                        <!-- Follow Up Button -->
+                        <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>" class="btn btn-primary d-flex align-items-center gap-1">
+                            <span>Follow Up</span>
+                            <?php if (!empty($followUpCounts[$lead['id']])): ?>
+                                <span class="action-badge"><?= $followUpCounts[$lead['id']] ?></span>
+                            <?php endif; ?>
+                        </a>
+
+                        <!-- Booking Button -->
+                        <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>" class="btn btn-secondary d-flex align-items-center gap-1">
+                            <span><?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?></span>
+                            <?php if (!empty($bookingCount[$lead['id']])): ?>
+                                <span class="action-badge"><?= $bookingCount[$lead['id']] ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </div>
+
+                </div>
+                <!-- Project Info -->
+
+                <div class="project-detail">
+                    <div class="info-label flex-shrink-0">Project</div>
+
+                    <div class="d-flex align-items-center gap-2 mt-2" style="min-width: 0;">
+
+                        <div class="lead-info-row d-flex justify-content-between align-items-center">
+                            <span class="project-badge mb-0">
+                                <i class="bi bi-building"></i>
+                                <?= truncateText($displayName, 15) ?>
+                            </span>
+
+                            <?php if (mb_strlen($plainText) > 15): ?>
+                                <button type="button"
+                                    id="viewCampaignBtn<?= $lead['id'] ?>"
+                                    class="btn btn-sm btn-outline-primary flex-shrink-0 w-auto px-1 py-0"
+                                    data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#viewProjectCampaignName"
+                                    title="View Project">View
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <!-- Next Follow-Up -->
+                <div class="d-flex align-items-center gap-2 mt-3">
+                    <div class="info-label flex-shrink-0">Next Follow-Up</div>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-2" style="font-size: 0.75rem;">
+                        <i class="bi bi-calendar2-check me-1"></i>
+                        <?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?>
+                    </span>
+                </div>
+                <!-- Agent Name -->
+                <div class="d-flex align-items-center gap-2 mt-3">
+                    <div class="info-label flex-shrink-0">Executive Name</div>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-2" style="font-size: 0.75rem;">
+                        <i class="bi bi-person me-1"></i>
+                        <?= $lead['agent_name'] ?? 'No Agent Assigned' ?>
+
+                    </span>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
+        <!-- FAB Button -->
+        <button class="fab-button d-none">
+            <i class="bi bi-plus-lg"></i>
+        </button>
+    </div>
+
+
+</div>
+
+<!-- CSV Import Modal -->
+<div class="modal fade" id="importCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Leads from CSV</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/leads-import-csv"
+                    method="post"
+                    enctype="multipart/form-data">
+
+                    <div class="from__input-box mb-20">
+                        <div class="form__input-title">
+                            <label>Upload CSV File <span>*</span></label>
+                        </div>
+                        <div class="form__input">
+                            <input type="file"
+                                name="csv_file"
+                                class="form-control"
+                                accept=".csv"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="submit__btn text-center">
+                        <button class="btn btn-primary">Import</button>
+                    </div>
+                </form>
+
+                <p class="mt-15 text-muted small">
+                    CSV header must match lead table columns.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- view full rule description -->
+<div id="viewProjectCampaignName" class="modal custom-modal fade">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Project Campaing Name</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <textarea id="view_campaign_id" class="form-control" rows="2" readonly></textarea>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<script>
+    const base_url = "<?= $GLOBALS['base_url'] ?>";
+    // Disable right-click context menu
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+    });
+
+    // Disable Ctrl+C, Ctrl+X, Ctrl+V
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey && e.key === 'c') ||
+            (e.ctrlKey && e.key === 'x') ||
+            (e.ctrlKey && e.key === 'v')) {
+            e.preventDefault();
+        }
+    });
+
+    // Optional: Disable drag
+    document.addEventListener('dragstart', function(e) {
+        e.preventDefault();
+    });
+
+
+    const form = document.querySelector('form');
+    const resetBtn = form.querySelector('button[type="reset"]');
+
+    resetBtn.addEventListener('click', function(e) {
+        e.preventDefault(); // avoid default reset
+        // Clear all inputs
+        form.querySelectorAll('input, select').forEach(function(el) {
+            if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
+            else el.value = ''; // input clear
+        });
+    });
+
+
+    // campaign full show
+</script>
+<!-- assigned user select  -->
+<script>
+    document.getElementById('assignUserBtn').addEventListener('click', function() {
+        const userId = document.getElementById('assignUserSelect').value;
+        const selectedLeads = [];
+
+        document.querySelectorAll('.selectedId:checked').forEach(cb => {
+            const tr = cb.closest('tr');
+            if (tr) selectedLeads.push(tr.dataset.id || tr.querySelector('.selectedId').dataset.id);
+        });
+
+        // If nothing selected, just return
+        if (!userId || selectedLeads.length === 0) {
+            return; // no alert
+        }
+
+        // Create a form dynamically and submit
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<?= $base_url ?>/assign-multiple-leads';
+
+        const inputUser = document.createElement('input');
+        inputUser.type = 'hidden';
+        inputUser.name = 'user_id';
+        inputUser.value = userId;
+        form.appendChild(inputUser);
+
+        const inputLeads = document.createElement('input');
+        inputLeads.type = 'hidden';
+        inputLeads.name = 'lead_ids';
+        inputLeads.value = selectedLeads.join(',');
+        form.appendChild(inputLeads);
+
+        document.body.appendChild(form);
+        form.submit();
+    });
+</script>
+
+
+<script>
+    const selectAll = document.getElementById('selectAllLeads');
+    const assignCard = document.getElementById('assignCard');
+
+    selectAll.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.selectedId');
+        checkboxes.forEach(cb => cb.checked = this.checked);
+
+        // Show the card if any checkbox is checked
+        if (this.checked) {
+            assignCard.style.display = 'flex';
+        } else {
+            // Optional: hide if none checked
+            const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
+            assignCard.style.display = anyChecked ? 'flex' : 'none';
+        }
+    });
+
+    // Individual checkbox toggle
+    document.querySelectorAll('.selectedId').forEach(cb => {
+        cb.addEventListener('change', function() {
+            // If any checkbox checked → show assign card
+            const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
+            assignCard.style.display = anyChecked ? 'flex' : 'none';
+
+            // Header checkbox logic
+            const allChecked = Array.from(document.querySelectorAll('.selectedId')).every(c => c.checked);
+            selectAll.checked = allChecked;
+        });
+    });
+</script>
+
+<script>
+    document.querySelectorAll('[id^="viewCampaignBtn"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            //From data-description  full text 
+            const description = this.getAttribute('data-description');
+            // textarea  set 
+            document.getElementById('view_campaign_id').value = description;
+        });
+    });
+</script>

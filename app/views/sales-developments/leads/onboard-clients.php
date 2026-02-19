@@ -9,7 +9,7 @@ $show_breadcrumb = true;
 
 <div class="row lead-select align-items-stretch">
 
-
+    <div class="desktop-only">
     <form action="" method="get">
         <div class="row  mb-3 align-items-end">
 
@@ -109,7 +109,7 @@ $show_breadcrumb = true;
                             <th>Unit/ Share</th>
                             <th>Share Price</th>
                             <th>Booking amount pay</th>
-                           
+
                             <th class="text-center ">Action</th>
                         </tr>
                     </thead>
@@ -118,24 +118,24 @@ $show_breadcrumb = true;
                         <?php foreach ($leads as $key => $lead): ?>
                             <tr>
                                 <td><?= $key + 1 ?></td>
-                                <td class=""><?= $lead['booking_pay_date'] ? formatDate($lead['booking_pay_date']): ''?></td>
+                                <td class=""><?= $lead['booking_pay_date'] ? formatDate($lead['booking_pay_date']) : '' ?></td>
                                 <td class="td_1"><?= $lead['full_name'] ?? '' ?></td>
                                 <td><?= $lead['phone'] ?? '' ?></td>
                                 <td><?= $lead['email'] ?? '' ?></td>
 
                                 <td>
-                                   <?= $lead['project_name'] ?>
+                                    <?= $lead['project_name'] ?>
                                 </td>
                                 <td>
-                                   <?= $lead['flat_name'] ?> - <span><?= $lead['sqft'] ?></span>
+                                    <?= $lead['flat_name'] ?> - <span><?= $lead['sqft'] ?></span>
                                 </td>
                                 <td>
-                                <?= $lead['price_value'] ?>
+                                    <?= $lead['price_value'] ?>
                                 </td>
                                 <td>
-                                <?= format_bdt($lead['amount'] )?>
+                                    <?= format_bdt($lead['amount']) ?>
                                 </td>
-                         
+
                                 <td class="">
                                     <div class="d-flex align-items-center justify-content-start gap-10">
 
@@ -143,9 +143,6 @@ $show_breadcrumb = true;
                                         <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['lead_id'] ?>" title="View Lead">
                                             <i class="fa-regular fa-eye"></i>
                                         </a>
-
-                                      
-
                                     </div>
                                 </td>
 
@@ -157,3 +154,92 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
+
+
+<div class="mobile-only">
+    <!-- Filter Toggle Button -->
+    <button class="filter-button w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#mobileFilterCollapse" aria-expanded="false" aria-controls="mobileFilterCollapse">
+        <i class="bi bi-funnel"></i> Filter & Sort
+    </button>
+
+    <!-- Collapsible Filter Section -->
+    <div class="collapse" id="mobileFilterCollapse">
+        <form action="" method="get" class="p-2 border rounded">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <!-- Year Select -->
+                <?php
+                $currentYear = date('Y');
+                $startYear = $currentYear - 10;
+                $selectedYear = $slectedYear ?? '';
+                ?>
+                <select class="form-select form-select-sm flex-grow-1" name="year">
+                    <option value="">Year</option>
+                    <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
+                        <option value="<?= $year ?>" <?= $selectedYear == $year ? 'selected' : '' ?>><?= $year ?></option>
+                    <?php endfor; ?>
+                </select>
+
+                <!-- Month Select -->
+                <?php
+                $months = [
+                    1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+                    5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+                    9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+                ];
+                $selectedMonth = $_GET['month'] ?? '';
+                ?>
+                <select class="form-select form-select-sm flex-grow-1" name="month">
+                    <option value="">Month</option>
+                    <?php foreach ($months as $id => $name): ?>
+                        <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>><?= $name ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2 flex-wrap w-100">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1">Search</button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm flex-grow-1">Reset</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <?php foreach ($leads as $key => $lead): ?>
+        <!-- Lead Card -->
+        <div class="lead-card">
+            <!-- Booking Date & Name -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <div class="lead-name fw-bold"><?= $lead['full_name'] ?? '-' ?></div>
+                    <div class="text-muted" style="font-size:0.85rem"><?= $lead['booking_pay_date'] ? formatDate($lead['booking_pay_date']) : '-' ?></div>
+                </div>
+            </div>
+
+            <!-- Personal Info -->
+            <div class="d-flex flex-wrap gap-2 mb-2">
+                <span class="d-flex align-items-center gap-1"><i class="bi bi-telephone"></i> <?= $lead['phone'] ?? '-' ?></span>
+                <span class="d-flex align-items-center gap-1"><i class="bi bi-envelope"></i> <?= $lead['email'] ?? '-' ?></span>
+            </div>
+
+            <!-- Project & Flat -->
+            <div class="d-flex flex-column gap-1 mb-2">
+                <span class="text-truncate"><i class="bi bi-building me-1"></i> <?= $lead['project_name'] ?? '-' ?></span>
+                <span class="text-truncate"><i class="bi bi-house me-1"></i> <?= $lead['flat_name'] ?? '-' ?> - <?= $lead['sqft'] ?? '' ?></span>
+            </div>
+
+            <!-- Flat Value & Booking Amount -->
+            <div class="d-flex flex-wrap gap-2 mb-1">
+                <span class="project-badge ">Flat Value: <?= format_bdt($lead['amount']) ?></span>
+                <span class="project-badge ">Booking Amount: <?= format_bdt($lead['amount']) ?></span>
+            </div>
+        </div>
+    <?php endforeach; ?>
+
+    <!-- FAB Button -->
+    <button class="fab-button d-none">
+        <i class="bi bi-plus-lg"></i>
+    </button>
+</div>
+
+</div>
+

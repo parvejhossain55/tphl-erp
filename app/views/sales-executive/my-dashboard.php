@@ -25,15 +25,15 @@
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     }
 
-.stat-card-icon {
-    width: 52px;
-    height: 53px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-}
+    .stat-card-icon {
+        width: 52px;
+        height: 53px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
 
     .stat-card-blue {
         background: linear-gradient(135deg, #1abc9c 0%, #198754 100%);
@@ -57,12 +57,12 @@
         margin: 0.5rem 0;
     }
 
-.stat-label {
-    font-size: 13px;
-    font-weight: 500;
-    text-transform: uppercase;
-    /* letter-spacing: 0.2px; */
-}
+    .stat-label {
+        font-size: 13px;
+        font-weight: 500;
+        text-transform: uppercase;
+        /* letter-spacing: 0.2px; */
+    }
 
     .chart-container {
         background: white;
@@ -103,234 +103,168 @@
 
     </div>
     <div class="row g-20 mb-4 align-items-stretch">
-        <!-- Today's Tasks -->
+        <!-- Pending Tasks -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">Pending Tasks</p>
-                            <h2 class="stat-value text-primary"><?= $pendingTasks ?></h2>
-                        </div>
-                        <div class="stat-card-icon stat-card-blue text-white">
-                            <i class="bi bi-check2-square"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-regular fa-clock me-1"></i> Pending Tasks</p>
+                        <h2 class="stat-value text-primary"><?= $pendingTasks ?></h2>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-clock"></i></span></div>
                 </div>
             </div>
         </div>
 
-        <!-- Today's Leads -->
+        <!-- Today Leads Assigned -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">Today Leads Assigned</p>
-                            <h2 class="stat-value text-success"><?= $todayLeadsCount ?? 0 ?></h2>
-                        </div>
-                        <div class="stat-card-icon stat-card-green text-white">
-                            <i class="bi bi-people"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-user-plus me-1"></i> Today Leads Assigned</p>
+                        <h2 class="stat-value text-success"><?= $todayLeadsCount ?? 0 ?></h2>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-user-plus"></i></span></div>
                 </div>
             </div>
         </div>
 
-        <!-- Today follow up  -->
+        <!-- Today FollowUp Due -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">Today FollowUp Due</p>
-                            <h2 class="stat-value text-info"><?= $todayFollowUp ?? 0 ?></h2>
-                        </div>
-                        <div class="stat-card-icon stat-card-green text-white">
-                            <i class="bi bi-credit-card"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-calendar-check me-1"></i> Today FollowUp Due</p>
+                        <h2 class="stat-value text-info"><?= $todayFollowUp ?? 0 ?></h2>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-calendar-check"></i></span></div>
                 </div>
             </div>
         </div>
 
-        <!-- overdue follow up  -->
+        <!-- Today Follow Up Complete -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">Today Follow Up Complete</p>
-                            <h2 class="stat-value text-info">
-                                <?= $todayFollowUpComplete ?? 0 ?>
-                                
-                            </h2>
-
-                        </div>
-                        <div class="stat-card-icon stat-card-purple text-white">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-check-circle me-1"></i> Today Follow Up Complete</p>
+                        <h2 class="stat-value text-info"><?= $todayFollowUpComplete ?? 0 ?></h2>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-check-circle"></i></span></div>
                 </div>
             </div>
         </div>
-
 
         <!-- My Total Sale -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">My Total Sale </p>
-                            <h2 class="stat-value text-info">
-                                <?= $myTotalShareSold['total_flats'] ?>
-                            </h2>
-
-                        </div>
-                        <div class="stat-card-icon stat-card-purple text-white">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-dollar-sign me-1"></i> My Total Sale</p>
+                        <h2 class="stat-value text-info"><?= $myTotalShareSold['total_flats'] ?></h2>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-dollar-sign"></i></span></div>
                 </div>
             </div>
         </div>
+
         <!-- Total Leads Assigned -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">Total Leads Assigned </p>
-                            <h2 class="stat-value text-info">
-                                <?= $getAllLeadsCount ?>
-                            </h2>
-
-                        </div>
-                        <div class="stat-card-icon stat-card-purple text-white">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-users me-1"></i> Total Leads Assigned</p>
+                        <h2 class="stat-value text-info"><?= $getAllLeadsCount ?></h2>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-users"></i></span></div>
                 </div>
             </div>
         </div>
 
-
-        <!--Monthly Visit Target -->
+        <!-- Monthly Site Visit Target -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">Monthly Site Visit Target</p>
-                            <h2 class="stat-value text-info">
-                                <?= $monthlySiteVisitTarget ?>
-                            </h2>
-
-                        </div>
-                        <div class="stat-card-icon stat-card-purple text-white">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-map-location-dot me-1"></i> Monthly Site Visit Target</p>
+                        <h2 class="stat-value text-info"><?= $monthlySiteVisitTarget ?></h2>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-map-location-dot"></i></span></div>
                 </div>
             </div>
         </div>
 
-        <!--Monthly Target -->
+        <!-- My Monthly Booking Target -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">My Monthly Booking Target</p>
-                            <h2 class="stat-value text-info">
-                                <?= $monthlyBookingTarget  ?>
-                            </h2>
-
-                        </div>
-                        <div class="stat-card-icon stat-card-purple text-white">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-file-invoice-dollar me-1"></i> My Monthly Booking Target</p>
+                        <h2 class="stat-value text-info"><?= $monthlyBookingTarget ?></h2>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-file-invoice-dollar"></i></span></div>
                 </div>
             </div>
         </div>
 
+        <!-- Monthly Visit Complete -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">Monthly Visit Complete <span class=" stat-value text-info ms-2"><?= $monthlyVisitComplete ?></span></p>
-                            <p class="stat-label mb-2">Monthly Target Visit Achievement  <span class=" stat-value text-info ms-2"><?= $visitAchievement ?> %</span></p>
-
-
-                        </div>
-                        <div class="stat-card-icon stat-card-purple text-white">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-calendar-check me-1"></i> Monthly Visit Complete
+                            <span class="stat-value text-info ms-2"><?= $monthlyVisitComplete ?></span>
+                        </p>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-percent me-1"></i> Monthly Target Visit Achievement
+                            <span class="stat-value text-info ms-2"><?= $visitAchievement ?>%</span>
+                        </p>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-calendar-check"></i></span></div>
                 </div>
             </div>
         </div>
+
+        <!-- Monthly Booking Target Complete -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2 "> Monthly Booking Target Complete</p>
-                            <h2 class="stat-value text-info">
-                                <?= $monthlyBookingComplete  ?>
-                            </h2>
-
-                        </div>
-                        <div class="stat-card-icon stat-card-purple text-white">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-check me-1"></i> Monthly Booking Target Complete</p>
+                        <h2 class="stat-value text-info"><?= $monthlyBookingComplete ?></h2>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-check"></i></span></div>
                 </div>
             </div>
         </div>
-        <!-- Total Leads Assigned -->
+
+        <!-- Deal Lost -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">Deal Lost </p>
-                            <h2 class="stat-value text-info">
-                                <?= $dealsLostAll ?>
-                            </h2>
-
-                        </div>
-                        <div class="stat-card-icon stat-card-purple text-white">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-xmark me-1"></i> Deal Lost</p>
+                        <h2 class="stat-value text-info"><?= $dealsLostAll ?></h2>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-xmark"></i></span></div>
                 </div>
             </div>
         </div>
-        <!-- Total Leads Assigned -->
+
+        <!-- Deal Win -->
         <div class="col-md-6 col-lg-4 col-xxl-3">
             <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="stat-label mb-2">Deal Win</p>
-                            <h2 class="stat-value text-info">
-                                <?= $dealsWinAll ?>
-                            </h2>
-
-                        </div>
-                        <div class="stat-card-icon stat-card-purple text-white">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-check-double me-1"></i> Deal Win</p>
+                        <h2 class="stat-value text-info"><?= $dealsWinAll ?></h2>
                     </div>
+                    <div class="card__icon"><span><i class="fa-solid fa-check-double"></i></span></div>
                 </div>
             </div>
         </div>
-
     </div>
+
+
 
     <!-- Performance Chart -->
     <div class="d-none row mt-4">
@@ -366,95 +300,103 @@
 <!-- ApexCharts JS -->
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function() {
 
-    const monthlyData = {
-        labels: [
-            'Site Visit Target',
-            'Booking Target',
-            'Visit Completed',
-            'Booking Completed',
-            'Visit %',
-            'Booking %',
-            'Deals Closed',
-            'Deals Won',
-            'Deals Lost'
-        ],
-        totals: [
-            <?= $monthlySiteVisitTarget ?? 0 ?>,
-            <?= $monthlyBookingTarget ?? 0 ?>,
-            <?= $monthlyVisitComplete ?? 0 ?>,
-            <?= $monthlyBookingComplete ?? 0 ?>,
-            <?= $visitAchievement ?? 0 ?>,
-            <?= $bookingAchievement ?? 0 ?>,
-            <?= $dealsClosed ?? 0 ?>,
-            <?= $dealsWon ?? 0 ?>,
-            <?= $dealsLost ?? 0 ?>
-        ]
-    };
+        const monthlyData = {
+            labels: [
+                'Site Visit Target',
+                'Booking Target',
+                'Visit Completed',
+                'Booking Completed',
+                'Visit %',
+                'Booking %',
+                'Deals Closed',
+                'Deals Won',
+                'Deals Lost'
+            ],
+            totals: [
+                <?= $monthlySiteVisitTarget ?? 0 ?>,
+                <?= $monthlyBookingTarget ?? 0 ?>,
+                <?= $monthlyVisitComplete ?? 0 ?>,
+                <?= $monthlyBookingComplete ?? 0 ?>,
+                <?= $visitAchievement ?? 0 ?>,
+                <?= $bookingAchievement ?? 0 ?>,
+                <?= $dealsClosed ?? 0 ?>,
+                <?= $dealsWon ?? 0 ?>,
+                <?= $dealsLost ?? 0 ?>
+            ]
+        };
 
-    const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#189441', '#808594', '#20c997', '#fd7e14'];
+        const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#189441', '#808594', '#20c997', '#fd7e14'];
 
-const chartOptions = {
-    chart: {
-        type: 'bar',
-        height: 350,
-        toolbar: { show: false }
-    },
-    series: [{
-        name: 'Performance',
-        data: monthlyData.totals
-    }],
-    plotOptions: {
-        bar: {
-            distributed: true,
-            borderRadius: 4,
-            columnWidth: '50%'
-        }
-    },
-    dataLabels: { enabled: true },
+        const chartOptions = {
+            chart: {
+                type: 'bar',
+                height: 350,
+                toolbar: {
+                    show: false
+                }
+            },
+            series: [{
+                name: 'Performance',
+                data: monthlyData.totals
+            }],
+            plotOptions: {
+                bar: {
+                    distributed: true,
+                    borderRadius: 4,
+                    columnWidth: '50%'
+                }
+            },
+            dataLabels: {
+                enabled: true
+            },
 
-    xaxis: {
-        categories: monthlyData.labels,
-        labels: {
-            rotate: -15,
-            style: {
-                colors: '#1a6e40',   // GREEN
-                fontSize: '12px',
-                fontWeight: 700
-            }
-        }
-    },
+            xaxis: {
+                categories: monthlyData.labels,
+                labels: {
+                    rotate: -15,
+                    style: {
+                        colors: '#1a6e40', // GREEN
+                        fontSize: '12px',
+                        fontWeight: 700
+                    }
+                }
+            },
 
-    yaxis: {
-        min: 0,
-        title: {
-            text: 'Count / %',
-            style: {
-                color: '#1a6e40'
-            }
-        },
-        labels: {
-            style: {
-                colors: '#1a6e40',  // GREEN
-                fontSize: '12px',
-                fontWeight: 700
-            }
-        }
-    },
+            yaxis: {
+                min: 0,
+                title: {
+                    text: 'Count / %',
+                    style: {
+                        color: '#1a6e40'
+                    }
+                },
+                labels: {
+                    style: {
+                        colors: '#1a6e40', // GREEN
+                        fontSize: '12px',
+                        fontWeight: 700
+                    }
+                }
+            },
 
-    tooltip: { y: { formatter: val => val } },
-    colors: colors
-};
+            tooltip: {
+                y: {
+                    formatter: val => val
+                }
+            },
+            colors: colors
+        };
 
-const monthlyChart = new ApexCharts(
-    document.querySelector("#monthlyPerformanceChart"),
-    chartOptions
-);
-monthlyChart.render();
+        const monthlyChart = new ApexCharts(
+            document.querySelector("#monthlyPerformanceChart"),
+            chartOptions
+        );
+        monthlyChart.render();
 
 
-});
+    });
 </script>
 
 

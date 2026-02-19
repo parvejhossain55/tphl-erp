@@ -92,7 +92,7 @@ class Lead extends Model
     }
 
 
-    public function getAllWithFilter($year = null, $month = null)
+    public function getAllWithFilter($year = null, $month = null,$lastAction = null)
     {
         $sql = "SELECT 
         l.*,
@@ -139,10 +139,18 @@ AND l.status = 'active'
             $types   .= "i";
         }
 
+        if (!empty($lastAction)) {
+    $sql .= " AND l.last_lead_action = ?";
+    $params[] = $lastAction;
+    $types   .= "s";
+}
+
+
         //  Only one ORDER BY at the end
         $sql .= " ORDER BY l.id DESC";
 
         $stmt = $this->db->prepare($sql);
+
 
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
@@ -155,6 +163,13 @@ AND l.status = 'active'
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+
+
+
+
+
+
+
     public function getTotalHotLeads()
     {
         $sql = $this->db->prepare("SELECT COUNT(*) AS total_hot FROM leads where lead_type = 'Hot' And deleted_at IS NULL AND status = 'active' AND last_lead_action != 'cancel'");
@@ -231,50 +246,60 @@ AND l.status = 'active'
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-    public function getAllMyLeads(int $userId, $year = null, $month = null)
-    {
-        $sql = "
-        SELECT leads.*, lf.next_action,lf.follow_up_type
-        FROM leads
-        LEFT JOIN (
-            SELECT t1.*
-            FROM lead_follow_ups t1
-            INNER JOIN (
-                SELECT lead_id, MAX(id) AS max_id
-                FROM lead_follow_ups
-                GROUP BY lead_id
-            ) t2 
-            ON t1.id = t2.max_id
-        ) lf ON lf.lead_id = leads.id
-        WHERE leads.assigned_id = ?
-    ";
+public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null)
+{
+    $sql = "SELECT leads.*, 
+                   lf.next_action,
+                   lf.follow_up_type,
+                   lf.next_follow_up_date,
+                   p.name AS project_name
+            FROM leads
+            LEFT JOIN (
+                SELECT t1.*
+                FROM lead_follow_ups t1
+                INNER JOIN (
+                    SELECT lead_id, MAX(id) AS max_id
+                    FROM lead_follow_ups
+                    GROUP BY lead_id
+                ) t2 
+                ON t1.id = t2.max_id
+            ) lf ON lf.lead_id = leads.id
+            LEFT JOIN projects AS p ON leads.project_id = p.id
+            WHERE leads.assigned_id = ?";
 
-        $params = [$userId];
-        $types  = "i";
+    $params = [$userId];
+    $types  = "i";
 
-        if (!empty($year)) {
-            $sql .= " AND YEAR(leads.created_at) = ?";
-            $params[] = (int)$year;
-            $types .= "i";
-        }
-
-        if (!empty($month)) {
-            $sql .= " AND MONTH(leads.created_at) = ?";
-            $params[] = (int)$month;
-            $types .= "i";
-        }
-
-        $sql .= " ORDER BY leads.id DESC";
-
-        $stmt = $this->db->prepare($sql);
-        if (!$stmt) return [];
-
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-
-        $result = $stmt->get_result();
-        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    if (!empty($year)) {
+        $sql .= " AND YEAR(leads.created_at) = ?";
+        $params[] = (int)$year;
+        $types .= "i";
     }
+
+    if (!empty($month)) {
+        $sql .= " AND MONTH(leads.created_at) = ?";
+        $params[] = (int)$month;
+        $types .= "i";
+    }
+
+    if (!empty($lastAction)) {
+        $sql .= " AND leads.last_lead_action = ?";
+        $params[] = $lastAction;
+        $types .= "s";
+    }
+
+    $sql .= " ORDER BY leads.id DESC";
+
+    $stmt = $this->db->prepare($sql);
+    if (!$stmt) return [];
+
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
 
 
 

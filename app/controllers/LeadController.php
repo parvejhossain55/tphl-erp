@@ -28,6 +28,8 @@ class LeadController extends Controller
         $assignedUsers = $this->userModel->getAllRoleUser();
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
+       $lastAction = $_GET['last_action'] ?? null;
+
         $owners = $this->userModel->getAll();
 
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
@@ -37,7 +39,7 @@ class LeadController extends Controller
         $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
 
 
-        $leads = $this->leadModel->getAllWithFilter($year, $month);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction);
         $leadCounts = count($leads);
 
         if (session_status() === PHP_SESSION_NONE) {
@@ -55,9 +57,6 @@ class LeadController extends Controller
         } else {
             $leadsPercentChange = round((($leadCounts - $prevCount) / $prevCount) * 100, 2);
         }
-
-
-
 
 
         $totalBookingCount = $this->leadBookedModel->getTotalBookings();
@@ -87,8 +86,7 @@ class LeadController extends Controller
             "totalTodayPendingFollowUps" => $totalTodayPendingFollowUps,
             "conversionRate" => $conversionRate,
             "totalHotLeads" => $totalHotLeads,
-
-        ]);
+            "selectedAction" => $lastAction,  ]);
     }
 
 
