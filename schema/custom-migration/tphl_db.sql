@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.2
+-- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: localhost:3306
--- Generation Time: Feb 14, 2026 at 04:54 PM
--- Server version: 10.11.15-MariaDB
--- PHP Version: 8.4.13
+-- Host: 127.0.0.1
+-- Generation Time: Feb 18, 2026 at 01:29 PM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `dvalleyb_tphl_db`
+-- Database: `tphl_db`
 --
 
 -- --------------------------------------------------------
@@ -123,7 +123,11 @@ INSERT INTO `cache` (`key`, `value`, `expiration`) VALUES
 ('tphl-erp-cache-356a192b7913b04c54574d18c28d46e6395428ab:timer', 'i:1770701568;', 1770701568),
 ('tphl-erp-cache-356a192b7913b04c54574d18c28d46e6395428ab', 'i:1;', 1770701568),
 ('tphl-erp-cache-6794961354c11716b810580e44dcd7f3136ca276:timer', 'i:1770706125;', 1770706125),
-('tphl-erp-cache-6794961354c11716b810580e44dcd7f3136ca276', 'i:3;', 1770706125);
+('tphl-erp-cache-6794961354c11716b810580e44dcd7f3136ca276', 'i:3;', 1770706125),
+('tphl-erp-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1771321914;', 1771321914),
+('tphl-erp-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:2;', 1771321914),
+('tphl-erp-cache-da4b9237bacccdf19c0760cab7aec4a8359010b0:timer', 'i:1771321984;', 1771321984),
+('tphl-erp-cache-da4b9237bacccdf19c0760cab7aec4a8359010b0', 'i:1;', 1771321984);
 
 -- --------------------------------------------------------
 
@@ -165,7 +169,7 @@ CREATE TABLE `camera_logs` (
 
 CREATE TABLE `cashout_payments` (
   `id` int(11) NOT NULL,
-  `cashout_request_id` int(11) NOT NULL,
+  `cashout_request_id` int(11) DEFAULT NULL,
   `office` varchar(200) DEFAULT NULL,
   `project_id` int(11) DEFAULT NULL,
   `amount` decimal(15,2) NOT NULL,
@@ -685,14 +689,14 @@ CREATE TABLE `leads` (
   `permanent_address` varchar(250) DEFAULT NULL,
   `pref_location_id` int(11) DEFAULT NULL,
   `designation` varchar(255) DEFAULT NULL,
-  `project_type` enum('ATI Society','ASHU Society') DEFAULT NULL,
+  `project_id` int(11) DEFAULT NULL,
   `pref_flat_size` varchar(250) DEFAULT NULL,
   `communication_type` enum('WA Messaging','WA Conversion') DEFAULT NULL,
   `tags` text DEFAULT NULL,
   `description` text DEFAULT NULL,
   `visibility` enum('public','private','selected') DEFAULT 'public',
   `status` enum('active','inactive') DEFAULT 'active',
-  `last_lead_action` enum('not_called','calling','called','visited') DEFAULT NULL,
+  `last_lead_action` enum('new','booked','follow up','visited','cancel') DEFAULT 'new',
   `deleted_at` datetime DEFAULT NULL,
   `lead_quality` enum('Not Interested','Prospect','Pending') DEFAULT 'Pending',
   `lead_image` varchar(250) DEFAULT NULL,
@@ -727,31 +731,32 @@ CREATE TABLE `leads` (
 -- Dumping data for table `leads`
 --
 
-INSERT INTO `leads` (`campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `id`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_type`, `pref_flat_size`, `communication_type`, `tags`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
-(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Hasin', NULL, NULL, NULL, 'not_called', NULL, NULL, 2, 'Hasin', 'Hot', 'Company X', 10000000.00, 'BDT', '01700000000', '0180000000', 'hasan@gmail.com', 1, 13, 'Dhaka', NULL, NULL, NULL, NULL, NULL, NULL, 'NID', NULL, 1, 'Project Manager', 'ATI Society', '345 sqf', 'WA Messaging', 'No nedd', 'fghyt uiy6we', 'public', 'active', NULL, NULL, 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-11 07:07:51', '2026-02-02 11:52:22', 'local', NULL, NULL, 0),
-(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Hasan', NULL, NULL, NULL, 'not_called', NULL, NULL, 4, 'Hasin2', 'Hot', 'Company X', 10000000.00, 'BDT', '01700000000', '0180000000', 'hasan@gmail.com', 1, 13, '0', NULL, NULL, NULL, NULL, NULL, NULL, 'NID', NULL, 1, 'Project Manager', 'ATI Society', '345 sqf', 'WA Messaging', 'No nedd', '', 'public', 'active', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-11 09:56:45', '2026-02-02 11:52:26', 'local', NULL, NULL, 0),
-(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'MH. Jony', NULL, NULL, NULL, 'not_called', NULL, NULL, 6, 'MH. Jony', 'Hot', 'Company X', NULL, 'BDT', '01700000000', '0180000000', 'hasan@gmail.com', 1, 12, 'Dhaka', NULL, NULL, NULL, NULL, NULL, NULL, 'NID', NULL, 1, 'Project Manager', 'ATI Society', '345 sqf', 'WA Messaging', 'No nedd', '', 'public', 'active', NULL, NULL, 'Not Interested', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-20 08:11:43', '2026-02-02 11:52:30', 'local', NULL, NULL, 0),
-(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Rana', NULL, NULL, NULL, 'not_called', NULL, NULL, 7, 'Rana', 'Cold', '', NULL, 'BDT', '01944667441', '01944667441', 'abcd@gmail.com', 1, 3, 'fasdf ', NULL, NULL, NULL, NULL, NULL, NULL, 'NID', NULL, 1, 'afd', 'ATI Society', '3a', 'WA Messaging', 'asdf', '', 'public', 'active', NULL, NULL, 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-28 11:18:31', '2026-02-02 11:52:33', 'local', NULL, NULL, 0),
-(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'ABDUL AZIZ', NULL, NULL, NULL, 'not_called', NULL, NULL, 8, 'ABDUL AZIZ', 'Hot', '', NULL, 'BDT', '+393295745292', '', 'azizabdulspid@gmail.com', 1, 15, '0', 'NURUL ISLAM', 'KULSUM BEGUM', '1998-01-28', 'ej0991174', NULL, NULL, 'NID', 'VILLAGE:DANNAPUR, WARD:06,DUTTAPARA,LAKSHIMIPUR SADAR,LAKSHIMPUR', NULL, 'JOB', 'ATI Society', '', 'WA Messaging', '', NULL, 'public', 'active', 'visited', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-31 11:47:12', '2026-02-02 11:54:24', 'local', NULL, NULL, 0),
-(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Rumman', NULL, NULL, NULL, 'not_called', NULL, NULL, 9, 'Rumman', 'Hot', NULL, NULL, 'BDT', '01743579987', NULL, 'aziz@gmail.com', 1, 12, 'Itali', 'NURUL ISLAM', 'KULSUM', '2025-12-23', '98233728', '????? ???????, ????? ?/?, ???????, ?????', '?????? ???????, ??????? ??, ??????????, ?????????? ???, ??????????', 'NID', 'Loxipur', 2, 'Job', 'ATI Society', '1230', 'WA Messaging', '', NULL, 'public', 'active', NULL, NULL, 'Prospect', 'leads_695632097012e.png', '?????? ????', '????? ?????', '?????? ????', '?????', 'Bangladeshi', 'Islam', 'EVA ALAM', 'KHURSHED', 'AYSHA ALAM', 'housewife', 'Wife', '2026-01-02', '12364743', '0187643875', '', '', 'Dhaka', 'leads_69563209746dc.jpg', 12, '2025-12-31 02:43:03', '2026-02-02 11:52:38', 'local', NULL, NULL, 0),
-(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Mr.X', NULL, NULL, NULL, 'not_called', NULL, NULL, 10, 'Mr.X', 'Hot', NULL, NULL, 'BDT', '0171212323', NULL, 'x2@gmail.com', 1, 3, 'Dhaka', 'Mr.Y', 'Mst.X', '1998-01-01', '1234345', '', '', 'NID', 'Dhaka', 1, 'Job', 'ASHU Society', '1250px', 'WA Messaging', 'No Notes', NULL, 'public', 'active', 'visited', NULL, 'Prospect', NULL, '', '', '', '', 'Bangladeshi', 'Islam', '', '', '', '', '', NULL, '', '', '', '', '', NULL, 12, '2026-01-12 11:12:01', '2026-02-02 11:52:44', 'local', NULL, NULL, 0),
-(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Taimul', NULL, NULL, NULL, 'not_called', NULL, NULL, 11, 'Taimur', 'Hot', NULL, NULL, 'BDT', '01790128473', '01790128473', 'test23@gmail.com', 1, 13, '0', 'Test Lead 2', 'Test Lead 2', '1990-01-03', '98233728', NULL, NULL, 'NID', 'Mohammadpur, Dhaka-1207', 1, 'Project Manager', 'ATI Society', '1230', 'WA Messaging', 'No Need', NULL, 'public', 'inactive', NULL, '2026-01-14 11:31:18', 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, '2026-01-14 11:14:59', '2026-02-02 11:52:51', 'local', NULL, NULL, 0),
-('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '4', '6-12_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Sohel Khan', 'propriter', 'beauty sportes and net company', 'p:+8801840990890', 'not_called', NULL, 'Dhaka', 12, NULL, NULL, NULL, NULL, 'BDT', '0171212323', NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-30 04:36:45', '2026-01-30 11:19:51', 'local', NULL, NULL, 0),
-('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '5', '6-12_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Jahirul Islam', 'job', 'xyz', 'p:+8801711949142', 'not_called', NULL, 'Dhaka', 13, NULL, NULL, NULL, NULL, 'BDT', '0171212345', NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-30 04:36:45', '2026-01-30 11:20:00', 'local', NULL, NULL, 0),
-('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '3100_sqft', '6', '6-12_months', 'yes!', 'evening_(5_pm_-_8_pm)', 'Soykot Islam Shihab', 'Owner', 'Amin Mistanno Vhander', 'p:+8801752697272', 'called', NULL, 'Uttarati', 14, NULL, NULL, NULL, NULL, 'BDT', '0171212089', NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-30 04:36:45', '2026-01-30 11:20:07', 'local', NULL, NULL, 0),
-('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '7', '3-6_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Mahfuzur Rahman', 'MD, MR Income Tax Consultancy Ltd', 'M R Income Tax Consultancy Ltd.', 'p:+8801916158171', 'not_called', NULL, 'Dhaka', 15, NULL, NULL, NULL, NULL, 'BDT', '0171212323', NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-30 04:36:45', '2026-01-30 11:20:09', 'local', NULL, NULL, 0),
-('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '8', '3-6_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Shahadat ', 'Business management', '72 mollertack, ashkona,dokhinkhan,dhaka', 'p:+8801781860471', 'not_called', NULL, 'Dhaka', 16, NULL, NULL, NULL, NULL, 'BDT', '0171212323', NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-30 04:36:45', '2026-01-30 11:20:15', 'local', NULL, NULL, 0),
-('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '1', '1-3_months', 'no!', 'evening_(5_pm_-_8_pm)', 'Raihan', 'a', 'a', 'p:+8801736936727', 'not_called', NULL, 'Dhaka', 17, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-01-31 12:42:01', 'local', NULL, NULL, 0),
-('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '2', '6–12_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Enam Pathan', 'owner', 'Jet Sports', 'p:+8801717221212', 'not_called', NULL, 'Jatramura', 18, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-01-31 12:42:01', 'local', NULL, NULL, 0),
-('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '3', '1-3_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Forhad Ali', 'AGM', 'Flamingo Ltd', 'p:+8801730440638', 'not_called', NULL, 'Dhaka', 19, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-01-31 12:42:01', 'local', NULL, NULL, 0),
-('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '4', '6–12_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Sohel Khan', 'propriter', 'beauty sportes and net company', 'p:+8801840990890', 'not_called', NULL, 'Dhaka', 20, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-01-31 12:42:01', 'local', NULL, NULL, 0),
-('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '5', '6–12_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Jahirul Islam', 'job', 'xyz', 'p:+8801711949142', 'not_called', NULL, 'Dhaka', 21, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-01-31 12:42:01', 'local', NULL, NULL, 0),
-('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '3100_sqft', '6', '6–12_months', 'yes!', 'evening_(5_pm_-_8_pm)', 'Soykot Islam Shihab', 'Owner', 'Amin Mistanno Vhander', 'p:+8801752697272', 'not_called', NULL, 'Uttarati', 22, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 19, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-01-31 12:47:13', 'local', NULL, NULL, 0),
+INSERT INTO `leads` (`campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `id`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Hasin', NULL, NULL, NULL, 'not_called', NULL, NULL, 2, 'Hasin', 'Hot', 'Company X', 10000000.00, 'BDT', '01700000000', '0180000000', 'hasan@gmail.com', 1, 13, 'Dhaka', NULL, NULL, NULL, NULL, NULL, NULL, 'NID', NULL, 1, 'Project Manager', 1, '345 sqf', 'WA Messaging', 'No nedd', 'fghyt uiy6we', 'public', 'active', NULL, NULL, 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-11 07:07:51', '2026-02-02 11:52:22', 'local', NULL, NULL, 0),
+(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Hasan', NULL, NULL, NULL, 'not_called', NULL, NULL, 4, 'Hasin2', 'Hot', 'Company X', 10000000.00, 'BDT', '01700000000', '0180000000', 'hasan@gmail.com', 1, 13, '0', NULL, NULL, NULL, NULL, NULL, NULL, 'NID', NULL, 1, 'Project Manager', 1, '345 sqf', 'WA Messaging', 'No nedd', '', 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-11 09:56:45', '2026-02-18 06:08:59', 'local', NULL, NULL, 0),
+(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'MH. Jony', NULL, NULL, NULL, 'not_called', NULL, NULL, 6, 'MH. Jony', 'Hot', 'Company X', NULL, 'BDT', '01700000000', '0180000000', 'hasan@gmail.com', 1, 12, 'Dhaka', NULL, NULL, NULL, NULL, NULL, NULL, 'NID', NULL, 1, 'Project Manager', 1, '345 sqf', 'WA Messaging', 'No nedd', '', 'public', 'active', 'booked', NULL, 'Not Interested', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-20 08:11:43', '2026-02-18 05:53:48', 'local', NULL, NULL, 0),
+(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Rana', NULL, NULL, NULL, 'not_called', NULL, NULL, 7, 'Rana', 'Cold', '', NULL, 'BDT', '01944667441', '01944667441', 'abcd@gmail.com', 1, 3, 'fasdf ', NULL, NULL, NULL, NULL, NULL, NULL, 'NID', NULL, 1, 'afd', 1, '3a', 'WA Messaging', 'asdf', '', 'public', 'active', 'new', NULL, 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-28 11:18:31', '2026-02-18 06:08:46', 'local', NULL, NULL, 0),
+(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'ABDUL AZIZ', NULL, NULL, NULL, 'not_called', NULL, NULL, 8, 'ABDUL AZIZ', 'Hot', '', NULL, 'BDT', '+393295745292', '', 'azizabdulspid@gmail.com', 1, 15, '0', 'NURUL ISLAM', 'KULSUM BEGUM', '1998-01-28', 'ej0991174', NULL, NULL, 'NID', 'VILLAGE:DANNAPUR, WARD:06,DUTTAPARA,LAKSHIMIPUR SADAR,LAKSHIMPUR', NULL, 'JOB', 1, '', 'WA Messaging', '', NULL, 'public', 'active', 'visited', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-31 11:47:12', '2026-02-02 11:54:24', 'local', NULL, NULL, 0),
+(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Rumman', NULL, NULL, NULL, 'not_called', NULL, NULL, 9, 'Rumman', 'Hot', NULL, NULL, 'BDT', '01743579987', NULL, 'aziz@gmail.com', 1, 12, 'Itali', 'NURUL ISLAM', 'KULSUM', '2025-12-23', '98233728', '????? ???????, ????? ?/?, ???????, ?????', '?????? ???????, ??????? ??, ??????????, ?????????? ???, ??????????', 'NID', 'Loxipur', 2, 'Job', 1, '1230', 'WA Messaging', '', NULL, 'public', 'active', NULL, NULL, 'Prospect', 'leads_695632097012e.png', '?????? ????', '????? ?????', '?????? ????', '?????', 'Bangladeshi', 'Islam', 'EVA ALAM', 'KHURSHED', 'AYSHA ALAM', 'housewife', 'Wife', '2026-01-02', '12364743', '0187643875', '', '', 'Dhaka', 'leads_69563209746dc.jpg', 12, '2025-12-31 02:43:03', '2026-02-02 11:52:38', 'local', NULL, NULL, 0),
+(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Mr.X', NULL, NULL, NULL, 'not_called', NULL, NULL, 10, 'Mr.X', 'Hot', NULL, NULL, 'BDT', '0171212323', NULL, 'x2@gmail.com', 1, 3, 'Dhaka', 'Mr.Y', 'Mst.X', '1998-01-01', '1234345', '', '', 'NID', 'Dhaka', 1, 'Job', 2, '1250px', 'WA Messaging', 'No Notes', NULL, 'public', 'active', 'visited', NULL, 'Prospect', NULL, '', '', '', '', 'Bangladeshi', 'Islam', '', '', '', '', '', NULL, '', '', '', '', '', NULL, 12, '2026-01-12 11:12:01', '2026-02-02 11:52:44', 'local', NULL, NULL, 0),
+(NULL, NULL, NULL, NULL, NULL, '0', NULL, 'Taimul', NULL, NULL, NULL, 'not_called', NULL, NULL, 11, 'Taimur', 'Hot', NULL, NULL, 'BDT', '01790128473', '01790128473', 'test23@gmail.com', 1, 13, '0', 'Test Lead 2', 'Test Lead 2', '1990-01-03', '98233728', NULL, NULL, 'NID', 'Mohammadpur, Dhaka-1207', 1, 'Project Manager', 1, '1230', 'WA Messaging', 'No Need', NULL, 'public', 'inactive', NULL, '2026-01-14 11:31:18', 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, '2026-01-14 11:14:59', '2026-02-02 11:52:51', 'local', NULL, NULL, 0),
+('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '4', '6-12_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Sohel Khan', 'propriter', 'beauty sportes and net company', 'p:+8801840990890', 'not_called', NULL, 'Dhaka', 12, NULL, NULL, NULL, NULL, 'BDT', '0171212323', NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, NULL, NULL, NULL, NULL, 'public', 'active', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-30 04:36:45', '2026-02-18 10:22:36', 'local', NULL, NULL, 0),
+('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '5', '6-12_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Jahirul Islam', 'job', 'xyz', 'p:+8801711949142', 'not_called', NULL, 'Dhaka', 13, NULL, NULL, NULL, NULL, 'BDT', '0171212345', NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, NULL, NULL, NULL, NULL, 'public', 'active', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-30 04:36:45', '2026-02-18 10:22:47', 'local', NULL, NULL, 0),
+('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '3100_sqft', '6', '6-12_months', 'yes!', 'evening_(5_pm_-_8_pm)', 'Soykot Islam Shihab', 'Owner', 'Amin Mistanno Vhander', 'p:+8801752697272', 'called', NULL, 'Uttarati', 14, NULL, NULL, NULL, NULL, 'BDT', '0171212089', NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, 'public', 'active', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-30 04:36:45', '2026-02-18 10:22:51', 'local', NULL, NULL, 0),
+('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '7', '3-6_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Mahfuzur Rahman', 'MD, MR Income Tax Consultancy Ltd', 'M R Income Tax Consultancy Ltd.', 'p:+8801916158171', 'not_called', NULL, 'Dhaka', 15, NULL, NULL, NULL, NULL, 'BDT', '0171212323', NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, NULL, 'public', 'active', 'cancel', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-30 04:36:45', '2026-02-18 10:22:55', 'local', NULL, NULL, 0),
+('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '8', '3-6_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Shahadat ', 'Business management', '72 mollertack, ashkona,dokhinkhan,dhaka', 'p:+8801781860471', 'not_called', NULL, 'Dhaka', 16, NULL, NULL, NULL, NULL, 'BDT', '0171212323', NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, 'public', '', 'booked', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-30 04:36:45', '2026-02-18 06:58:33', 'local', NULL, NULL, 0),
+('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '1', '1-3_months', 'no!', 'evening_(5_pm_-_8_pm)', 'Raihan', 'a', 'a', 'p:+8801736936727', 'not_called', NULL, 'Dhaka', 17, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-02-18 06:58:36', 'local', NULL, NULL, 0),
+('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '2', '6–12_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Enam Pathan', 'owner', 'Jet Sports', 'p:+8801717221212', 'not_called', NULL, 'Jatramura', 18, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 20, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-02-18 06:58:43', 'local', NULL, NULL, 0),
+('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '3', '1-3_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Forhad Ali', 'AGM', 'Flamingo Ltd', 'p:+8801730440638', 'not_called', NULL, 'Dhaka', 19, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 20, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-02-18 06:58:40', 'local', NULL, NULL, 0),
+('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '4', '6–12_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Sohel Khan', 'propriter', 'beauty sportes and net company', 'p:+8801840990890', 'not_called', NULL, 'Dhaka', 20, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 20, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-02-18 06:58:47', 'local', NULL, NULL, 0),
+('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '5', '6–12_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Jahirul Islam', 'job', 'xyz', 'p:+8801711949142', 'not_called', NULL, 'Dhaka', 21, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 20, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-02-18 06:58:50', 'local', NULL, NULL, 0),
+('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '3100_sqft', '6', '6–12_months', 'yes!', 'evening_(5_pm_-_8_pm)', 'Soykot Islam Shihab', 'Owner', 'Amin Mistanno Vhander', 'p:+8801752697272', 'not_called', NULL, 'Uttarati', 22, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 20, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-02-16 11:31:29', 'local', NULL, NULL, 0),
 ('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '7', '3–6_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Mahfuzur Rahman', 'MD, MR Income Tax Consultancy Ltd', 'M R Income Tax Consultancy Ltd.', 'p:+8801916158171', 'not_called', NULL, 'Dhaka', 23, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 19, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-01-31 12:47:13', 'local', NULL, NULL, 0),
 ('P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '8', '3–6_months', 'yes!', 'afternoon_(12_pm_-_5_pm)', 'Shariful Islam Sharif', 'Business management', '72 mollertack, ashkona,dokhinkhan,dhaka', 'p:+8801781860471', 'not_called', NULL, 'Dhaka', 24, NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 19, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', NULL, NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-31 12:42:01', '2026-01-31 12:47:13', 'local', NULL, NULL, 0),
-('', 'fb', '1500', '', '', '', '', 'Merin', 'business', '', '01790126554', 'not_called', NULL, 'Dhaka', 25, NULL, 'Hot', NULL, NULL, 'BDT', NULL, '01790126554', '', 1, 19, 'Mohammadpur, Dhaka-1207', 'Sadik', 'sadika', '2026-02-02', '', NULL, NULL, NULL, 'Mohammadpur, Dhaka-1207', NULL, '', 'ATI Society', '', 'WA Messaging', '', NULL, 'public', 'active', NULL, NULL, 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, '2026-02-02 11:54:44', '2026-02-02 11:54:44', 'local', NULL, NULL, 0),
-('', '', 'Ati Royal City', '3', '', '1', '', 'Lima Jahan', '', '', '01790128422', 'not_called', NULL, 'Dhaka', 26, NULL, 'Hot', NULL, NULL, 'BDT', NULL, '01790128422', 'lima3@gmail.com', 1, 19, 'Mohammadpur, Dhaka-1207', '', '', '1990-02-01', '', NULL, NULL, NULL, 'Mohammadpur, Dhaka-1207', NULL, '', 'ATI Society', '1500', 'WA Messaging', '', NULL, 'public', 'active', NULL, NULL, 'Not Interested', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, '2026-02-04 08:54:56', '2026-02-04 08:54:56', 'local', NULL, NULL, 0),
-('', '', '', '', '2026-02-13', '1', '', 'M Rahman', '', '', '01977666525', 'called', 'kotha hoyeche \n\n\n', '', 27, NULL, 'Hot', NULL, NULL, 'BDT', NULL, '', '', 0, 19, '', 'F Rahaman', 'M Rahman', '1995-02-02', '87654322334', NULL, NULL, NULL, '', NULL, '', 'ATI Society', '', 'WA Messaging', '', NULL, 'public', 'active', 'called', NULL, 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 17, '2026-02-04 09:21:36', '2026-02-04 09:34:48', 'local', NULL, NULL, 0);
+('', 'fb', '1500', '', '', '', '', 'Merin', 'business', '', '01790126554', 'not_called', NULL, 'Dhaka', 25, NULL, 'Hot', NULL, NULL, 'BDT', NULL, '01790126554', '', 1, 19, 'Mohammadpur, Dhaka-1207', 'Sadik', 'sadika', '2026-02-02', '', NULL, NULL, NULL, 'Mohammadpur, Dhaka-1207', NULL, '', 1, '', 'WA Messaging', '', NULL, 'public', 'active', 'new', NULL, 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, '2026-02-02 11:54:44', '2026-02-18 06:01:48', 'local', NULL, NULL, 0),
+('', '', 'Ati Royal City', '3', '', '1', '', 'Lima Jahan', '', '', '01790128422', 'not_called', NULL, 'Dhaka', 26, NULL, 'Hot', NULL, NULL, 'BDT', NULL, '01790128422', 'lima3@gmail.com', 1, 19, 'Mohammadpur, Dhaka-1207', '', '', '1990-02-01', '', NULL, NULL, NULL, 'Mohammadpur, Dhaka-1207', NULL, '', 1, '1500', 'WA Messaging', '', NULL, 'public', 'active', 'booked', NULL, 'Not Interested', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, '2026-02-04 08:54:56', '2026-02-18 06:03:01', 'local', NULL, NULL, 0),
+('', '', '', '', '2026-02-13', '1', '', 'M Rahman', '', '', '01977666525', 'called', 'kotha hoyeche \n\n\n', '', 27, NULL, 'Hot', NULL, NULL, 'BDT', NULL, '', '', 0, 19, '', 'F Rahaman', 'M Rahman', '1995-02-02', '87654322334', NULL, NULL, NULL, '', NULL, '', 1, '', 'WA Messaging', '', NULL, 'public', 'active', 'visited', NULL, 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 17, '2026-02-04 09:21:36', '2026-02-16 11:51:41', 'local', NULL, NULL, 0),
+('', '', '', 'ad', '2026-02-18', '1', 'evening', 'test lead', 'business', '', '01790128471', 'not_called', NULL, 'Dhaka', 28, NULL, 'Hot', NULL, NULL, 'BDT', NULL, '01790128471', '', 0, 19, 'Mohammadpur, Dhaka-1207', 'aziz', 'Mst.y', '0000-00-00', '', NULL, NULL, NULL, '', NULL, '', 3, '', 'WA Messaging', '', NULL, 'public', 'active', 'new', NULL, 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 12, '2026-02-18 06:46:19', '2026-02-18 06:46:19', 'local', NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -786,10 +791,10 @@ CREATE TABLE `lead_bookings` (
 INSERT INTO `lead_bookings` (`id`, `lead_id`, `project_id`, `flat_id`, `agreement_value`, `discount_amount`, `booking_date`, `booking_status`, `created_by`, `sales_by_id`, `deleted_at`, `created_at`, `updated_at`, `approval_status`, `approved_amount`, `service_fee_balance`, `landshare_status`) VALUES
 (1, 2, 2, 2, 2000000.00, 0, '2025-12-21', 'completed', 12, 19, NULL, '2025-12-21 10:13:37', '2025-12-21 10:13:37', 'not_required', NULL, NULL, 'active'),
 (2, 4, 1, 1, 3000000.00, 0, '2025-12-21', 'completed', 12, 19, NULL, '2025-12-21 11:25:54', '2025-12-21 11:25:54', 'not_required', NULL, NULL, 'active'),
-(5, 6, 2, 3, 2000000.00, 0, '2025-12-23', 'completed', 12, NULL, NULL, '2025-12-23 08:29:43', '2025-12-23 08:29:43', 'not_required', NULL, NULL, 'active'),
+(5, 6, 2, 3, 2000000.00, 0, '2025-12-23', 'completed', 12, 22, NULL, '2025-12-23 08:29:43', '2025-12-23 08:29:43', 'not_required', NULL, NULL, 'active'),
 (6, 8, 2, 4, 7000000.00, 0, '2025-12-31', 'completed', 12, NULL, NULL, '2025-12-31 11:51:30', '2025-12-31 11:51:30', 'not_required', NULL, NULL, 'active'),
-(7, 9, 3, 6, 8000000.00, 0, '2026-01-01', 'completed', 12, NULL, NULL, '2026-01-01 11:33:59', '2026-01-01 11:33:59', 'not_required', NULL, NULL, 'active'),
-(12, 10, 3, 6, 600000.00, 40000, '2026-01-27', 'booked', 12, NULL, NULL, '2026-01-27 10:55:45', '2026-01-27 10:55:45', 'approved', NULL, NULL, 'active'),
+(7, 9, 3, 6, 8000000.00, 0, '2026-01-01', 'completed', 12, 22, NULL, '2026-01-01 11:33:59', '2026-01-01 11:33:59', 'not_required', NULL, NULL, 'active'),
+(12, 10, 3, 6, 600000.00, 40000, '2026-01-27', 'booked', 12, 19, NULL, '2026-01-27 10:55:45', '2026-01-27 10:55:45', 'approved', NULL, NULL, 'active'),
 (13, 12, 3, 6, 400000.00, 10000, '2026-01-30', 'booked', 12, NULL, NULL, '2026-01-30 11:15:04', '2026-01-30 11:15:04', 'approved', NULL, NULL, 'active'),
 (14, 25, 3, 6, 300000.00, 10000, '2026-02-02', 'booked', 12, 19, NULL, '2026-02-02 11:57:33', '2026-02-02 11:57:33', 'approved', 10000.00, NULL, 'active'),
 (15, 26, 3, 6, 200000.00, 10000, '2026-02-04', 'booked', 12, 19, NULL, '2026-02-04 08:55:34', '2026-02-04 08:55:34', 'pending', NULL, NULL, 'active'),
@@ -810,7 +815,7 @@ CREATE TABLE `lead_follow_ups` (
   `follow_up_date` date NOT NULL,
   `follow_up_time` time DEFAULT NULL,
   `follow_up_type` enum('call','visit','meeting','whatsapp','email') NOT NULL,
-  `status` enum('pending','completed','missed') DEFAULT 'pending',
+  `status` enum('pending','completed','missed','canceled') DEFAULT 'pending',
   `discussion_note` text DEFAULT NULL,
   `next_follow_up_date` date DEFAULT NULL,
   `assigned_with` int(11) DEFAULT NULL,
@@ -826,16 +831,18 @@ CREATE TABLE `lead_follow_ups` (
 --
 
 INSERT INTO `lead_follow_ups` (`id`, `lead_id`, `project_id`, `flat_id`, `follow_up_date`, `follow_up_time`, `follow_up_type`, `status`, `discussion_note`, `next_follow_up_date`, `assigned_with`, `next_action`, `created_by`, `deleted_at`, `created_at`, `updated_at`) VALUES
-(1, 4, 1, 1, '2025-12-20', '16:10:00', 'visit', 'pending', 'hjysdfure', '2025-12-20', NULL, 'booking', 1, NULL, '2025-12-20 07:10:42', '2025-12-20 09:42:04'),
-(2, 6, 2, 2, '2025-12-19', '15:45:00', 'call', 'pending', '', '2025-12-18', NULL, 'site visit', 1, NULL, '2025-12-20 07:45:18', '2025-12-20 09:42:13'),
-(3, 6, 2, 2, '2025-12-20', '04:13:00', 'call', 'pending', '', '2025-12-20', NULL, 'site visit', 1, NULL, '2025-12-20 08:13:09', '2025-12-20 08:13:09'),
-(4, 2, NULL, 2, '2025-12-20', '17:24:00', 'visit', 'pending', '', '2025-12-20', NULL, 'booking', 1, NULL, '2025-12-20 11:24:43', '2025-12-20 11:24:43'),
-(5, 7, NULL, 6, '2025-12-28', '17:26:00', 'call', 'pending', 'No decision', '2026-01-28', NULL, 'call_back', 1, NULL, '2025-12-28 11:26:35', '2025-12-28 11:26:35'),
-(8, 10, 3, 6, '2026-01-13', '17:35:00', 'call', 'completed', '', '2026-01-14', NULL, 'site visit', 12, NULL, '2026-01-13 11:36:03', '2026-01-13 11:36:03'),
-(9, 11, 4, 8, '2026-01-13', '17:26:00', 'call', 'completed', 'no need', '2026-01-14', NULL, 'site visit', 12, '2026-01-14 11:33:12', '2026-01-14 11:26:54', '2026-01-14 11:33:12'),
-(10, 16, 2, 3, '2026-01-29', '13:01:00', 'call', 'completed', '', '2026-01-30', NULL, 'site visit', 17, NULL, '2026-01-30 05:01:22', '2026-01-30 05:01:22'),
-(11, 25, 3, 7, '2026-02-02', '17:56:00', 'call', 'completed', 'No', '2026-02-03', 19, 'booking', 12, NULL, '2026-02-02 11:56:40', '2026-02-02 11:56:40'),
-(12, 27, 3, 6, '2026-02-04', '15:22:00', 'call', 'completed', '', '2026-02-12', 19, 'site visit', 17, NULL, '2026-02-04 09:23:07', '2026-02-04 09:23:07');
+(1, 4, 1, 1, '2025-12-20', '16:10:00', 'visit', 'pending', 'hjysdfure', '2025-12-20', 24, 'booking', 1, NULL, '2025-12-20 07:10:42', '2026-02-16 06:28:14'),
+(2, 6, 2, 2, '2025-12-19', '15:45:00', 'call', 'pending', '', '2025-12-18', 22, 'site visit', 1, NULL, '2025-12-20 07:45:18', '2026-02-16 06:28:18'),
+(3, 6, 2, 2, '2025-12-20', '04:13:00', 'call', 'pending', '', '2025-12-20', 22, 'site visit', 1, NULL, '2025-12-20 08:13:09', '2026-02-16 06:28:22'),
+(4, 2, NULL, 2, '2025-12-20', '17:24:00', 'visit', 'pending', '', '2025-12-20', 20, 'booking', 1, NULL, '2025-12-20 11:24:43', '2026-02-16 06:28:26'),
+(5, 7, NULL, 6, '2025-12-28', '17:26:00', 'call', 'pending', 'No decision', '2026-01-28', 24, 'call_back', 1, NULL, '2025-12-28 11:26:35', '2026-02-16 06:28:31'),
+(8, 10, 3, 6, '2026-01-13', '17:35:00', 'call', 'completed', '', '2026-01-14', 20, 'site visit', 12, NULL, '2026-01-13 11:36:03', '2026-02-16 06:28:34'),
+(9, 11, 4, 8, '2026-01-13', '17:26:00', 'call', 'completed', 'no need', '2026-01-14', 19, 'site visit', 12, '2026-01-14 11:33:12', '2026-01-14 11:26:54', '2026-02-16 06:28:39'),
+(10, 16, 2, 3, '2026-01-29', '13:01:00', 'visit', 'canceled', '', '2026-01-30', 19, 'site visit', 17, NULL, '2026-01-30 05:01:22', '2026-02-16 07:41:31'),
+(11, 25, 3, 7, '2026-02-02', '17:56:00', 'visit', 'pending', 'No', '2026-02-16', 19, 'booking', 12, NULL, '2026-02-02 11:56:40', '2026-02-16 07:40:23'),
+(12, 27, 3, 6, '2026-02-04', '15:22:00', 'call', 'pending', '', '2026-02-12', 19, 'site visit', 17, NULL, '2026-02-16 09:23:07', '2026-02-16 11:56:49'),
+(13, 27, 2, 3, '2026-02-16', '13:55:00', 'visit', 'completed', 'test', '2026-02-18', 19, NULL, 19, NULL, '2026-02-16 07:56:13', '2026-02-18 09:52:55'),
+(14, 26, 3, 7, '2026-02-16', '17:28:00', 'call', 'pending', 'test', '2026-02-18', 19, 'call_back', 19, NULL, '2026-02-16 11:28:44', '2026-02-18 09:50:16');
 
 -- --------------------------------------------------------
 
@@ -1128,7 +1135,9 @@ CREATE TABLE `onboard_clients` (
 --
 
 INSERT INTO `onboard_clients` (`id`, `lead_booking_id`, `email`, `password`, `cameraLink1`, `cameraLink2`, `moneyReceiptLink`, `purchaseDetailsLink`, `created_by`, `created_at`, `updated_at`, `lead_id`, `project_id`, `flat_id`) VALUES
-(1, 1, 'hasin@gmail.com', '$2y$10$yPPTAALOTRK2lVuxbW9stuMqATKoRmY51D/R45Elq6DpcjpppIXwK', 'https://rtsp.me/embed/zkYhn9Hs/#', 'https://rtsp.me/embed/zkYhn9Hs/#', 'https://docs.google.com/spreadsheets/d/14JlevxCW0M3Y85_akQB6xPLvIB0WNmAEq0KIA_0rgB4/edit?gid=504284871#gid=504284871', 'https://drive.google.com/drive/folders/17UKM-WodSKGrYmyVMevJeq1LgqBFivKg', 12, '2026-02-03 10:55:30', '2026-02-08 10:18:39', 2, 2, 2);
+(1, 1, 'hasin@gmail.com', '$2y$10$yPPTAALOTRK2lVuxbW9stuMqATKoRmY51D/R45Elq6DpcjpppIXwK', 'https://rtsp.me/embed/zkYhn9Hs/#', 'https://rtsp.me/embed/zkYhn9Hs/#', 'https://docs.google.com/spreadsheets/d/14JlevxCW0M3Y85_akQB6xPLvIB0WNmAEq0KIA_0rgB4/edit?gid=504284871#gid=504284871', 'https://drive.google.com/drive/folders/17UKM-WodSKGrYmyVMevJeq1LgqBFivKg', 12, '2026-02-03 10:55:30', '2026-02-08 10:18:39', 2, 2, 2),
+(2, 2, 'hasan@gmail.com', '$2y$10$DtVGtYDnVLBqKCCMyEawN.IflTFB4B4JyTsrNVElWbxnGtL0ZUyfm', 'https://rtsp.me/embed/zkYhn9Hs/#', 'https://rtsp.me/embed/zkYhn9Hs/#', 'https://docs.google.com/spreadsheets/d/14JlevxCW0M3Y85_akQB6xPLvIB0WNmAEq0KIA_0rgB4/edit?gid=504284871#gid=504284871', 'https://drive.google.com/drive/folders/17UKM-WodSKGrYmyVMevJeq1LgqBFivKg', 12, '2026-02-17 09:51:43', '2026-02-17 09:51:43', 4, 1, 1),
+(3, 6, 'aziz2@gmail.com', '$2y$10$TG5LuCikyiBXJnhb4bJB8OP3Q2GnudQMTB.HzHIZEpIj3TJ3KSMIm', 'https://rtsp.me/embed/zkYhn9Hs/#', 'https://rtsp.me/embed/zkYhn9Hs/#', 'https://docs.google.com/spreadsheets/d/14JlevxCW0M3Y85_akQB6xPLvIB0WNmAEq0KIA_0rgB4/edit?gid=504284871#gid=504284871', 'https://drive.google.com/drive/folders/17UKM-WodSKGrYmyVMevJeq1LgqBFivKg', 12, '2026-02-17 10:05:47', '2026-02-17 10:05:47', 8, 2, 4);
 
 -- --------------------------------------------------------
 
@@ -1283,7 +1292,8 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (1, 'App\\Models\\OnboardClient', 1, 'onboard-client', '7e24226295485ceac5b2f5d81d02c236b5a160f988449891f39e42cdae87e72d', '[\"*\"]', '2026-02-08 04:28:21', NULL, '2026-02-08 04:20:34', '2026-02-08 04:28:21'),
 (2, 'App\\Models\\OnboardClient', 1, 'onboard-client', '903f420ab84ed7fefe35bb26f11ab0f683c3bcde22b8cbd787bf03e613fa8d98', '[\"*\"]', '2026-02-08 04:31:41', NULL, '2026-02-08 04:28:39', '2026-02-08 04:31:41'),
 (3, 'App\\Models\\OnboardClient', 1, 'onboard-client', '13aab24d14d21706763b5fa533c05d4a310b76acdcb2ac433578794223a04582', '[\"*\"]', '2026-02-08 04:39:06', NULL, '2026-02-08 04:36:40', '2026-02-08 04:39:06'),
-(4, 'App\\Models\\OnboardClient', 1, 'onboard-client', '4561e3242fb548617bc199392d02366d885d02efbdbdfd5a5df6288142b2f49d', '[\"*\"]', '2026-02-09 23:31:48', NULL, '2026-02-09 23:31:22', '2026-02-09 23:31:48');
+(4, 'App\\Models\\OnboardClient', 1, 'onboard-client', '4561e3242fb548617bc199392d02366d885d02efbdbdfd5a5df6288142b2f49d', '[\"*\"]', '2026-02-09 23:31:48', NULL, '2026-02-09 23:31:22', '2026-02-09 23:31:48'),
+(5, 'App\\Models\\OnboardClient', 2, 'onboard-client', 'ce3cafbff5660c8fea29fb233264fe87cc30a35e29ab0cabc50e629dcdb8ccb9', '[\"*\"]', '2026-02-17 03:52:04', NULL, '2026-02-17 03:51:52', '2026-02-17 03:52:04');
 
 -- --------------------------------------------------------
 
@@ -1466,6 +1476,33 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (140, 4, 8, '2026-02-08 12:01:42', '2026-02-08 12:01:42'),
 (141, 4, 13, '2026-02-08 12:01:42', '2026-02-08 12:01:42'),
 (142, 4, 16, '2026-02-08 12:01:42', '2026-02-08 12:01:42');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `sales_targets`
+--
+
+CREATE TABLE `sales_targets` (
+  `id` int(11) NOT NULL,
+  `sales_user_id` int(11) NOT NULL,
+  `month` date NOT NULL COMMENT 'Use first day of month e.g. 2026-02-01',
+  `site_visit_target` int(11) DEFAULT 0,
+  `booking_target` int(11) DEFAULT 0,
+  `booking_value_target` decimal(15,2) DEFAULT 0.00,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `sales_targets`
+--
+
+INSERT INTO `sales_targets` (`id`, `sales_user_id`, `month`, `site_visit_target`, `booking_target`, `booking_value_target`, `created_at`, `updated_at`) VALUES
+(1, 19, '2026-02-01', 15, 7, 0.00, '2026-02-16 05:19:24', '2026-02-17 07:04:54'),
+(2, 19, '2026-01-01', 25, 16, 0.00, '2026-02-16 06:17:32', '2026-02-17 04:17:52'),
+(3, 22, '2026-02-01', 17, 10, 0.00, '2026-02-17 06:45:09', '2026-02-17 06:45:09'),
+(5, 19, '2025-12-01', 7, 4, 0.00, '2026-02-17 07:06:27', '2026-02-17 07:06:27');
 
 -- --------------------------------------------------------
 
@@ -1662,8 +1699,8 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (16, NULL, 'Arif Hossain', 'accounts', '01345467766', 'accounts@gmail.com', 4, 'Dhaka', '36543547', 6, '$2y$10$r66n89lxUbvL5iAuweQHEOI4NOLUvIECrbvBxTVvNZzh2kqHN9wsq', 'users_695a187e0fe0c.png', '', '', '2026-02-04 16:05:12', NULL, '2026-01-04 01:36:30', '2026-02-04 10:05:12'),
 (17, NULL, 'Sajib Roy', 'sojib', '01734385489', 'sales@gmail.com', 12, 'Dhaka', '21343455', 5, '$2y$10$HV8.JJkD07AJL5sfcwJGsudHY2TqItZhS6PPYGBEFRpaKzmTlAtAG', 'users_695a19d4f324b.jpg', '', '', '2026-02-08 18:05:36', NULL, '2026-01-04 01:42:13', '2026-02-08 12:05:36'),
 (18, NULL, 'CED User', 'CED', '01784389326', 'ced@gmail.com', 13, 'Dhaka', '1232435', 7, '$2y$10$.jNcHQIkEuFalVSKO//OquGqF5eodD26IRLp7kcuVDY9oMeUd6HMq', 'users_695a436436fcd.png', 'https://business.facebook.com/', 'https://www.google.com/', '2026-02-05 18:58:51', NULL, '2026-01-04 04:39:32', '2026-02-05 12:58:51'),
-(19, NULL, 'Fahim', 'fahim', '01732879443', 'fahim@gmail.com', 8, 'Mohammadpur, Dhaka-1207', '', 8, '$2y$10$HzkI/.03ixwVuyk2uW79tOq6IvsHosydThBtWSTIJuofBNKj.KUly', NULL, '', '', '2026-02-14 14:16:57', 12, '2026-01-30 04:38:50', '2026-02-14 08:16:57'),
-(20, NULL, 'Roman', 'Roman', '01872364445', 'roman@gmail.com', 6, 'Mohammadpur, Dhaka-1207', '', 8, '$2y$10$BwNhEesxZZxeVNdlzCglGOYpe4s/coSVFzJluKH55Y8FTLk1eiQ1W', NULL, '', '', '2026-02-02 18:09:37', 12, '2026-01-30 04:39:44', '2026-02-02 12:09:37'),
+(19, NULL, 'Fahim', 'fahim', '01732879443', 'fahim@gmail.com', 8, 'Mohammadpur, Dhaka-1207', '', 8, '$2y$10$HzkI/.03ixwVuyk2uW79tOq6IvsHosydThBtWSTIJuofBNKj.KUly', NULL, '', '', '2026-02-16 17:31:40', 12, '2026-01-30 04:38:50', '2026-02-16 11:31:40'),
+(20, NULL, 'Roman', 'Roman', '01872364445', 'roman@gmail.com', 6, 'Mohammadpur, Dhaka-1207', '', 8, '$2y$10$BwNhEesxZZxeVNdlzCglGOYpe4s/coSVFzJluKH55Y8FTLk1eiQ1W', NULL, '', '', '2026-02-16 17:42:53', 12, '2026-01-30 04:39:44', '2026-02-16 11:42:53'),
 (22, NULL, 'Farhan', 'farhan', '01283984423', 'farhan@gmail.com', 6, 'Dhaka', '', 8, '$2y$10$Im6G1lWoiJ/6p0q8noZYP.38c.ISZFndyVk2.Sl9WuXkTn4bynAp6', NULL, '', '', '2026-01-31 18:42:40', 17, '2026-01-31 12:42:40', '2026-01-31 12:42:40'),
 (23, NULL, 'Rumin ', 'Rumin', '01876234444', 'sales-head@gmail.com', 12, 'Mohammadpur, Dhaka-1207', '', 9, '$2y$10$Jg8v5pepqBCk6YHvr7gQO.NoihRmf5kIpNilKd//fW5vlPmfxiR16', NULL, '', '', '2026-02-04 15:15:10', 12, '2026-02-01 12:08:14', '2026-02-04 09:15:10'),
 (24, 35, 'Himu', '', '03289547834', 'himu@gmail.com', 2, '', '', 8, '$2y$10$pNTZGjm1hI/toH8nAsbvYO5QczudAhCZbzzNcxCdQGNYOOMNLdtuG', NULL, '', '', '2026-02-13 22:55:30', 0, '2026-02-13 16:54:10', '2026-02-13 16:55:30');
@@ -1981,6 +2018,14 @@ ALTER TABLE `role_permissions`
   ADD KEY `role_id` (`role_id`,`permission_id`) USING BTREE;
 
 --
+-- Indexes for table `sales_targets`
+--
+ALTER TABLE `sales_targets`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_sales_month` (`sales_user_id`,`month`),
+  ADD KEY `idx_sales_month` (`sales_user_id`,`month`);
+
+--
 -- Indexes for table `site_settings`
 --
 ALTER TABLE `site_settings`
@@ -2151,7 +2196,7 @@ ALTER TABLE `head_notifications`
 -- AUTO_INCREMENT for table `leads`
 --
 ALTER TABLE `leads`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `lead_bookings`
@@ -2163,7 +2208,7 @@ ALTER TABLE `lead_bookings`
 -- AUTO_INCREMENT for table `lead_follow_ups`
 --
 ALTER TABLE `lead_follow_ups`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `lead_payments`
@@ -2223,7 +2268,7 @@ ALTER TABLE `notifications`
 -- AUTO_INCREMENT for table `onboard_clients`
 --
 ALTER TABLE `onboard_clients`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `payslips`
@@ -2253,7 +2298,7 @@ ALTER TABLE `permissions`
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `projects`
@@ -2278,6 +2323,12 @@ ALTER TABLE `roles`
 --
 ALTER TABLE `role_permissions`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=143;
+
+--
+-- AUTO_INCREMENT for table `sales_targets`
+--
+ALTER TABLE `sales_targets`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `site_settings`
@@ -2324,12 +2375,6 @@ ALTER TABLE `users`
 --
 ALTER TABLE `cameras`
   ADD CONSTRAINT `cameras_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL;
-
---
--- Constraints for table `cashout_payments`
---
-ALTER TABLE `cashout_payments`
-  ADD CONSTRAINT `fk_cashout_payments_request` FOREIGN KEY (`cashout_request_id`) REFERENCES `cashout_requests` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `cashout_requests`
@@ -2449,6 +2494,12 @@ ALTER TABLE `role_permissions`
   ADD CONSTRAINT `role_permissions_ibfk_2` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `sales_targets`
+--
+ALTER TABLE `sales_targets`
+  ADD CONSTRAINT `fk_sales_target_user` FOREIGN KEY (`sales_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `site_visits`
 --
 ALTER TABLE `site_visits`
@@ -2467,32 +2518,3 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-
-
---- 16/02/26
-CREATE TABLE sales_targets (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    
-    sales_user_id INT NOT NULL,
-    
-    month DATE NOT NULL COMMENT 'Use first day of month e.g. 2026-02-01',
-    
-    site_visit_target INT DEFAULT 0,
-    booking_target INT DEFAULT 0,
-    booking_value_target DECIMAL(15,2) DEFAULT 0.00,
-    
-    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    UNIQUE KEY unique_sales_month (sales_user_id, month),
-    
-    INDEX idx_sales_month (sales_user_id, month),
-    
-    CONSTRAINT fk_sales_target_user
-        FOREIGN KEY (sales_user_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- One's sales executive 
--- In one month has give one time set official target  tai month unique
