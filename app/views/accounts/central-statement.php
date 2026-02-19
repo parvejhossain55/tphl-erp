@@ -15,6 +15,9 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
         $statement_data['end_date']
     );
 }
+
+// cashout_payment_details passed from controller (grouped by date, only when category === 'cashout')
+$cashout_payment_details = $cashout_payment_details ?? [];
 ?>
 
 <style>
@@ -621,11 +624,16 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                                     <!-- For cashout/expense categories -->
                                     <th>Cash Out (৳)</th>
                                     <th>Amount (৳)</th>
+                                    <?php if ($category === 'cashout'): ?>
+                                    <th>Source / Purpose</th>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody class="table__body">
-                            <?php foreach ($statement_data['daily_data'] as $row): ?>
+                            <?php foreach ($statement_data['daily_data'] as $row):
+                                $rowDate = $row['date'] ?? '';
+                            ?>
                                 <tr>
                                     <td><?= htmlspecialchars($row['formatted_date'] ?? '') ?></td>
                                     <td><?= htmlspecialchars($row['day_name'] ?? '') ?></td>
@@ -682,6 +690,32 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                                         <!-- Show only cashout data -->
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
+                                        <?php if ($category === 'cashout'): ?>
+                                        <td>
+                                            <?php if (!empty($cashout_payment_details[$rowDate])): ?>
+                                                <?php foreach ($cashout_payment_details[$rowDate] as $payment): ?>
+                                                    <div style="font-size: 12px; margin-bottom: 4px; line-height: 1.6;">
+                                                        <span style="color: #555;"><?= htmlspecialchars($payment['purpose_paid_to'] ?? '—') ?></span>
+                                                        <?php if (!empty($payment['project_name'])): ?>
+                                                            <span style="color: #007bff; font-size: 11px;">(<?= htmlspecialchars($payment['project_name']) ?>)</span>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($payment['office'])): ?>
+                                                            <span style="color: #888; font-size: 11px;">· <?= htmlspecialchars($payment['office']) ?></span>
+                                                        <?php endif; ?>
+                                                        <span style="font-size: 11px; background: #eee; padding: 1px 5px; border-radius: 3px; margin-left: 4px;">
+                                                            <?= ucfirst($payment['payment_method'] ?? 'cash') ?>
+                                                        </span>
+                                                        <?php if (!empty($payment['transaction_ref'])): ?>
+                                                            <span style="color: #888; font-size: 11px;">· Ref: <?= htmlspecialchars($payment['transaction_ref']) ?></span>
+                                                        <?php endif; ?>
+                                                        <strong class="negative" style="margin-left: 4px;">৳<?= number_format($payment['amount'] ?? 0, 2) ?></strong>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <span style="color: #aaa; font-size: 12px;">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
@@ -746,11 +780,16 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                                     <!-- For cashout/expense categories -->
                                     <th>Cash Out (৳)</th>
                                     <th>Amount (৳)</th>
+                                    <?php if ($category === 'cashout'): ?>
+                                    <th>Source / Purpose</th>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody class="table__body">
-                            <?php foreach ($statement_data['monthly_data'] as $row): ?>
+                            <?php foreach ($statement_data['monthly_data'] as $row):
+                                $monthPrefix = ($row['year'] ?? '') . '-' . sprintf('%02d', $row['month_num'] ?? 0);
+                            ?>
                                 <tr>
                                     <td><?= htmlspecialchars($row['month']) ?></td>
 
@@ -807,6 +846,40 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
                                         <!-- Show only cashout data -->
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
+                                        <?php if ($category === 'cashout'): ?>
+                                        <td>
+                                            <?php
+                                            $hasAny = false;
+                                            foreach ($cashout_payment_details as $date => $payments):
+                                                if (!str_starts_with($date, $monthPrefix)) continue;
+                                                foreach ($payments as $payment):
+                                                    $hasAny = true;
+                                            ?>
+                                                <div style="font-size: 12px; margin-bottom: 4px; line-height: 1.6;">
+                                                    <span style="color: #888; font-size: 11px;"><?= htmlspecialchars($payment['payment_date'] ?? $date) ?></span>
+                                                    · <span style="color: #555;"><?= htmlspecialchars($payment['purpose_paid_to'] ?? '—') ?></span>
+                                                    <?php if (!empty($payment['project_name'])): ?>
+                                                        <span style="color: #007bff; font-size: 11px;">(<?= htmlspecialchars($payment['project_name']) ?>)</span>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($payment['office'])): ?>
+                                                        <span style="color: #888; font-size: 11px;">· <?= htmlspecialchars($payment['office']) ?></span>
+                                                    <?php endif; ?>
+                                                    <span style="font-size: 11px; background: #eee; padding: 1px 5px; border-radius: 3px; margin-left: 4px;">
+                                                        <?= ucfirst($payment['payment_method'] ?? 'cash') ?>
+                                                    </span>
+                                                    <?php if (!empty($payment['transaction_ref'])): ?>
+                                                        <span style="color: #888; font-size: 11px;">· Ref: <?= htmlspecialchars($payment['transaction_ref']) ?></span>
+                                                    <?php endif; ?>
+                                                    <strong class="negative" style="margin-left: 4px;">৳<?= number_format($payment['amount'] ?? 0, 2) ?></strong>
+                                                </div>
+                                            <?php
+                                                endforeach;
+                                            endforeach;
+                                            if (!$hasAny): ?>
+                                                <span style="color: #aaa; font-size: 12px;">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>

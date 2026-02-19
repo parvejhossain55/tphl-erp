@@ -868,7 +868,53 @@ private function getDailyBookingMoney($startDate, $endDate, $projectId = null)
         }
         return $data;
     }
+public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null)
+{
+    $query = "
+        SELECT 
+            DATE(cp.payment_date) as payment_date,
+            cp.amount,
+            cp.payment_method,
+            cp.transaction_ref,
+            cp.office,
+            cr.purpose_paid_to,
+            cr.description,
+            p.name as project_name,
+            u.full_name as created_by_name
+        FROM cashout_payments cp
+        LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+        LEFT JOIN projects p ON COALESCE(cr.project_id, cp.project_id) = p.id
+        LEFT JOIN users u ON cp.created_by = u.id
+        WHERE DATE(cp.payment_date) BETWEEN ? AND ?
+        AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
+    ";
 
+    if ($projectId) {
+        $query .= " AND (cr.project_id = ? OR cp.project_id = ?)";
+    }
+
+    $query .= " ORDER BY cp.payment_date ASC";
+
+    $stmt = $this->db->prepare($query);
+    if ($projectId) {
+        $stmt->bind_param("ssii", $startDate, $endDate, $projectId, $projectId);
+    } else {
+        $stmt->bind_param("ss", $startDate, $endDate);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $payments = [];
+    while ($row = $result->fetch_assoc()) {
+        $date = $row['payment_date'];
+        if (!isset($payments[$date])) {
+            $payments[$date] = [];
+        }
+        $payments[$date][] = $row;
+    }
+
+    return $payments;
+}
     /**
      * Helper: Get cashout data (management_cashout + cashout_request payments) with category filtering
      */

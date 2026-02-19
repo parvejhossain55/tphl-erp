@@ -116,13 +116,15 @@ $show_breadcrumb = true;
                                 value="<?= htmlspecialchars($_POST['transaction_ref'] ?? '') ?>">
                         </div>
 
-                        <!-- Attachment -->
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label">Attachment (Optional):</label>
-                            <input type="file" name="attachment" class="form-control" 
-                                accept=".doc,.docx,.pdf,.jpg,.jpeg,.png">
-                            <small class="text-muted">Max file size: 5MB. Allowed: DOC, DOCX, PDF, JPG, PNG</small>
-                        </div>
+                               <div class="col-md-12 mb-3">
+                                   <label class="form-label">Attachments (Optional):</label>
+                                   <input type="file" name="attachments[]" id="attachmentInput" class="form-control"
+                                    accept=".doc,.docx,.pdf,.jpg,.jpeg,.png" multiple>
+                                   <small class="text-muted">Max 5MB per file. Allowed: DOC, DOCX, PDF, JPG, PNG. You can select multiple files.</small>
+
+                                   <!-- File preview list -->
+                                   <ul id="filePreviewList" class="list-group mt-2" style="display:none;"></ul>
+                               </div>
 
                         <!-- Additional Information -->
                         <div class="col-md-12 mb-3">
@@ -156,34 +158,123 @@ $show_breadcrumb = true;
 </div>
 
 <script>
-// Optional: Add dynamic behavior if needed
-document.addEventListener('DOMContentLoaded', function() {
-    // Example: Show/hide additional fields based on payment method
+document.addEventListener('DOMContentLoaded', function () {
+
+    // Payment method → transaction ref placeholder
     const paymentMethodSelect = document.querySelector('select[name="payment_method"]');
     const transactionRefInput = document.querySelector('input[name="transaction_ref"]');
-    
+
     if (paymentMethodSelect && transactionRefInput) {
-        paymentMethodSelect.addEventListener('change', function() {
-            const selectedMethod = this.value;
-            
-            // Update placeholder based on payment method
-            switch(selectedMethod) {
-                case 'bank':
-                    transactionRefInput.placeholder = 'e.g., Bank Transaction ID, Account No.';
-                    break;
-                case 'cheque':
-                    transactionRefInput.placeholder = 'e.g., Cheque No.';
-                    break;
-                case 'online':
-                    transactionRefInput.placeholder = 'e.g., Payment Gateway Reference, Transaction ID';
-                    break;
-                default:
-                    transactionRefInput.placeholder = 'e.g., Invoice #, PO #, etc.';
+        paymentMethodSelect.addEventListener('change', function () {
+            const placeholders = {
+                bank:   'e.g., Bank Transaction ID, Account No.',
+                cheque: 'e.g., Cheque No.',
+                online: 'e.g., Payment Gateway Reference, Transaction ID',
+            };
+            transactionRefInput.placeholder = placeholders[this.value] || 'e.g., Invoice #, PO #, etc.';
+        });
+        paymentMethodSelect.dispatchEvent(new Event('change'));
+    }
+
+    // Multiple file preview — accumulates across selections
+    const attachmentInput = document.getElementById('attachmentInput');
+    const filePreviewList = document.getElementById('filePreviewList');
+    const MAX_SIZE_BYTES  = 5 * 1024 * 1024;
+    const ALLOWED_EXTS    = ['doc', 'docx', 'pdf', 'jpg', 'jpeg', 'png'];
+
+    // Master file list persisted across selections
+    let allFiles = new DataTransfer();
+
+    attachmentInput.addEventListener('change', function () {
+        // Merge newly selected files into allFiles, skip duplicates by name+size
+        Array.from(this.files).forEach(function (newFile) {
+            const isDuplicate = Array.from(allFiles.files).some(
+                f => f.name === newFile.name && f.size === newFile.size
+            );
+            if (!isDuplicate) {
+                allFiles.items.add(newFile);
             }
         });
-        
-        // Trigger change event on page load
-        paymentMethodSelect.dispatchEvent(new Event('change'));
+
+        // Assign merged list back to input
+        attachmentInput.files = allFiles.files;
+
+        renderPreview();
+    });
+
+    function renderPreview() {
+        filePreviewList.innerHTML = '';
+
+        if (!allFiles.files.length) {
+            filePreviewList.style.display = 'none';
+            return;
+        }
+
+        let hasError = false;
+
+        Array.from(allFiles.files).forEach(function (file, index) {
+            const ext  = file.name.split('.').pop().toLowerCase();
+            const size = (file.size / 1024 / 1024).toFixed(2);
+
+            const icon = ['jpg','jpeg','png'].includes(ext) ? 'fa-image'
+                       : ext === 'pdf'                      ? 'fa-file-pdf'
+                       :                                      'fa-file-word';
+
+            let errorMsg = '';
+            if (!ALLOWED_EXTS.includes(ext)) {
+                errorMsg = ' — <span class="text-danger">Invalid type</span>';
+                hasError = true;
+            } else if (file.size > MAX_SIZE_BYTES) {
+                errorMsg = ' — <span class="text-danger">Exceeds 5MB</span>';
+                hasError = true;
+            }
+
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center py-1 px-2';
+            li.dataset.index = index;
+            li.innerHTML = `
+                <span>
+                    <i class="fa-light ${icon} me-2 text-muted"></i>
+                    <strong>${file.name}</strong>${errorMsg}
+                </span>
+                <span class="d-flex align-items-center gap-2">
+                    <span class="badge bg-secondary">${size} MB</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 remove-file" data-index="${index}" title="Remove">
+                        <i class="fa-light fa-x m-0 p-2"></i>
+                    </button>
+                </span>`;
+            filePreviewList.appendChild(li);
+        });
+
+        filePreviewList.style.display = 'block';
+
+        // Remove button handler
+        filePreviewList.querySelectorAll('.remove-file').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const removeIndex = parseInt(this.dataset.index);
+                const updated = new DataTransfer();
+                Array.from(allFiles.files).forEach(function (f, i) {
+                    if (i !== removeIndex) updated.items.add(f);
+                });
+                allFiles = updated;
+                attachmentInput.files = allFiles.files;
+                renderPreview();
+            });
+        });
+
+        if (hasError) {
+            // Remove invalid files automatically
+            const cleaned = new DataTransfer();
+            Array.from(allFiles.files).forEach(function (file) {
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (ALLOWED_EXTS.includes(ext) && file.size <= MAX_SIZE_BYTES) {
+                    cleaned.items.add(file);
+                }
+            });
+            allFiles = cleaned;
+            attachmentInput.files = allFiles.files;
+            renderPreview();
+        }
     }
 });
 </script>

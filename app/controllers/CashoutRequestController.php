@@ -25,7 +25,7 @@ class CashoutRequestController extends Controller
         }
 
         $this->userId = $_SESSION['user']['id'] ?? null;
-        $this->userRole = isset($_SESSION['user']['role_id']) ? (int)$_SESSION['user']['role_id'] : null;
+        $this->userRole = isset($_SESSION['user']['role_id']) ? (int) $_SESSION['user']['role_id'] : null;
 
         if (!$this->userId) {
             setError("Please login first.");
@@ -76,7 +76,7 @@ class CashoutRequestController extends Controller
         $requests = $this->cashoutModel->getAllRequests($filters);
         $statistics = $this->cashoutModel->getStatistics();
         $projects = $this->cashoutModel->getAllProjects();
-        
+
         // Get all unique offices for filter dropdown
         $offices = $this->getUniqueOffices();
 
@@ -97,17 +97,15 @@ class CashoutRequestController extends Controller
     public function create()
     {
         $projects = $this->cashoutModel->getAllProjects();
-        
+
         // Define office options
         $officeOptions = [
             '' => 'Select Office (Optional)',
-            'Head Office' => 'Head Office',
-            'Regional Office' => 'Regional Office',
             'Site Office' => 'Site Office',
-            'Branch Office' => 'Branch Office',
+            'Site Office 2' => 'Site Office 2 (Ati)',
             'Corporate Office' => 'Corporate Office',
-            'Marketing Office' => 'Marketing Office',
-            'Sales Office' => 'Sales Office'
+            'Zonal Office ' => 'Zonal Office'
+
         ];
 
         $this->view("accounts/cashout/create-request", [
@@ -129,15 +127,28 @@ class CashoutRequestController extends Controller
         }
 
         // Handle file upload
-        $attachmentPath = null;
-        if (!empty($_FILES['attachment']['name'])) {
-            $uploadResult = $this->handleFileUpload($_FILES['attachment']);
-            if ($uploadResult['success']) {
-                $attachmentPath = $uploadResult['file_path'];
-            } else {
-                setError($uploadResult['message']);
-                header("Location: {$GLOBALS['base_url']}/create-cashout-request");
-                exit;
+// Handle multiple file uploads
+        $attachmentPaths = [];
+        if (!empty($_FILES['attachments']['name'][0])) {
+            foreach ($_FILES['attachments']['tmp_name'] as $index => $tmpName) {
+                if ($_FILES['attachments']['error'][$index] !== UPLOAD_ERR_OK)
+                    continue;
+
+                $file = [
+                    'name' => $_FILES['attachments']['name'][$index],
+                    'tmp_name' => $_FILES['attachments']['tmp_name'][$index],
+                    'size' => $_FILES['attachments']['size'][$index],
+                    'error' => $_FILES['attachments']['error'][$index],
+                ];
+
+                $uploadResult = $this->handleFileUpload($file);
+                if ($uploadResult['success']) {
+                    $attachmentPaths[] = $uploadResult['file_path'];
+                } else {
+                    setError($uploadResult['message']);
+                    header("Location: {$GLOBALS['base_url']}/create-cashout-request");
+                    exit;
+                }
             }
         }
 
@@ -148,9 +159,9 @@ class CashoutRequestController extends Controller
             'description' => trim($_POST['description'] ?? ''),
             'payment_method' => $_POST['payment_method'] ?? 'cash',
             'transaction_ref' => trim($_POST['transaction_ref'] ?? ''),
-            'attachment_path' => $attachmentPath,
-            'project_id' => !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null,
-            'office' => !empty($_POST['office']) ? trim($_POST['office']) : null
+            'attachment_path' => !empty($attachmentPaths) ? json_encode($attachmentPaths) : null,
+            'project_id' => !empty($_POST['project_id']) ? (int) $_POST['project_id'] : null,
+            'office' => !empty($_POST['office']) ? trim($_POST['office']) : null,
         ];
 
         // Validation
@@ -283,16 +294,16 @@ class CashoutRequestController extends Controller
         $sql = "SELECT cr.id FROM cashout_requests cr
                 LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
                 WHERE cr.status = 'pending' AND ar.status IN ('approved', 'partial', 'rejected')";
-        
+
         $result = $this->db->query($sql);
         $synced = 0;
-        
+
         while ($row = $result->fetch_assoc()) {
             if ($this->syncWithApprovalSystem($row['id'])) {
                 $synced++;
             }
         }
-        
+
         setSuccess("Successfully synced {$synced} requests with approval system.");
         header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
         exit;
@@ -335,7 +346,7 @@ class CashoutRequestController extends Controller
 
         if ($data['amount'] <= 0) {
             setError("Please enter a valid amount.");
-            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+         header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
             exit;
         }
 
@@ -361,7 +372,7 @@ class CashoutRequestController extends Controller
             setError($result['message']);
         }
 
-        header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+        header("Location: {$GLOBALS['base_url']}/cashout-requests?id=" . $requestId);
         exit;
     }
 
@@ -404,7 +415,7 @@ class CashoutRequestController extends Controller
             setError("Failed to approve request.");
         }
 
-        header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
+        header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
         exit;
     }
 
@@ -539,12 +550,12 @@ class CashoutRequestController extends Controller
     {
         $sql = "SELECT DISTINCT office FROM cashout_requests WHERE office IS NOT NULL AND office != '' ORDER BY office";
         $result = $this->db->query($sql);
-        
+
         $offices = [];
         while ($row = $result->fetch_assoc()) {
             $offices[] = $row['office'];
         }
-        
+
         return $offices;
     }
 
@@ -558,41 +569,40 @@ class CashoutRequestController extends Controller
     private function handleFileUpload($file)
     {
         $allowedTypes = ['doc', 'docx', 'pdf', 'jpg', 'jpeg', 'png'];
-        $maxSize = 5 * 1024 * 1024;
+        $maxSize = 5 * 1024 * 1024; // 5MB per file
 
-        $fileName = $file['name'];
-        $fileSize = $file['size'];
-        $fileTmp = $file['tmp_name'];
-        $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
         if (!in_array($fileExt, $allowedTypes)) {
-            return ['success' => false, 'message' => 'Only DOC, DOCX, PDF, JPG, PNG files are allowed.'];
+            return ['success' => false, 'message' => "File '{$file['name']}': only DOC, DOCX, PDF, JPG, PNG allowed."];
         }
 
-        if ($fileSize > $maxSize) {
-            return ['success' => false, 'message' => 'File size must be less than 5MB.'];
+        if ($file['size'] > $maxSize) {
+            return ['success' => false, 'message' => "File '{$file['name']}' exceeds 5MB limit."];
         }
 
         $newFileName = 'cashout_' . time() . '_' . uniqid() . '.' . $fileExt;
         $uploadPath = 'uploads/cashout/' . $newFileName;
-
         $fullPath = __DIR__ . '/../../public/' . $uploadPath;
+
         $dir = dirname($fullPath);
         if (!file_exists($dir)) {
             mkdir($dir, 0777, true);
         }
 
-        if (move_uploaded_file($fileTmp, $fullPath)) {
+        if (move_uploaded_file($file['tmp_name'], $fullPath)) {
             return ['success' => true, 'file_path' => $uploadPath];
-        } else {
-            return ['success' => false, 'message' => 'Failed to upload file.'];
         }
+
+        return ['success' => false, 'message' => "Failed to upload '{$file['name']}'."];
     }
 
     // Download attachment
     public function downloadAttachment()
     {
         $requestId = $_GET['id'] ?? null;
+        $fileIndex = isset($_GET['file']) ? (int) $_GET['file'] : 0;
+
         if (!$requestId) {
             setError("Request ID missing.");
             header("Location: {$GLOBALS['base_url']}/cashout-requests");
@@ -606,18 +616,25 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        $canDownload = false;
-        if ($this->isAdminUser() || $request['requested_by'] == $this->userId) {
-            $canDownload = true;
-        }
-
-        if (!$canDownload) {
-            setError("You are not authorized to download this attachment.");
+        if (!$this->isAdminUser() && $request['requested_by'] != $this->userId) {
+            setError("Unauthorized.");
             header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
             exit;
         }
 
-        $filePath = __DIR__ . '/../../public/' . $request['attachment_path'];
+        // Decode JSON array or fall back to legacy single string
+        $paths = json_decode($request['attachment_path'], true);
+        if (!is_array($paths)) {
+            $paths = [$request['attachment_path']];
+        }
+
+        if (!isset($paths[$fileIndex])) {
+            setError("File not found.");
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+            exit;
+        }
+
+        $filePath = __DIR__ . '/../../public/' . $paths[$fileIndex];
 
         if (file_exists($filePath)) {
             header('Content-Type: application/octet-stream');
@@ -625,11 +642,11 @@ class CashoutRequestController extends Controller
             header('Content-Length: ' . filesize($filePath));
             readfile($filePath);
             exit;
-        } else {
-            setError("File not found.");
-            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
-            exit;
         }
+
+        setError("File not found on server.");
+        header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+        exit;
     }
 
     // Export CSV
@@ -721,16 +738,16 @@ class CashoutRequestController extends Controller
         exit;
     }
     public function getAllProjects()
-{
-    $sql = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
-    $result = $this->db->query($sql);
-    
-    $projects = [];
-    while ($row = $result->fetch_assoc()) {
-        $projects[] = $row;
+    {
+        $sql = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
+        $result = $this->db->query($sql);
+
+        $projects = [];
+        while ($row = $result->fetch_assoc()) {
+            $projects[] = $row;
+        }
+
+        return $projects;
     }
-    
-    return $projects;
 }
-}
-?> 
+?>
