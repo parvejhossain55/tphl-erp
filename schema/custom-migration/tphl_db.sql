@@ -172,6 +172,7 @@ CREATE TABLE `cashout_payments` (
   `cashout_request_id` int(11) DEFAULT NULL,
   `office` varchar(200) DEFAULT NULL,
   `project_id` int(11) DEFAULT NULL,
+  `purpose_paid_to` varchar(255) DEFAULT NULL,
   `amount` decimal(15,2) NOT NULL,
   `payment_method` varchar(50) DEFAULT 'cash',
   `transaction_ref` varchar(100) DEFAULT NULL,
