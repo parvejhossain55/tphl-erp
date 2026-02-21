@@ -92,7 +92,7 @@ class Lead extends Model
     }
 
 
-    public function getAllWithFilter($year = null, $month = null,$lastAction = null)
+    public function getAllWithFilter($year = null, $month = null, $lastAction = null)
     {
         $sql = "SELECT 
         l.*,
@@ -140,10 +140,10 @@ AND l.status = 'active'
         }
 
         if (!empty($lastAction)) {
-    $sql .= " AND l.last_lead_action = ?";
-    $params[] = $lastAction;
-    $types   .= "s";
-}
+            $sql .= " AND l.last_lead_action = ?";
+            $params[] = $lastAction;
+            $types   .= "s";
+        }
 
 
         //  Only one ORDER BY at the end
@@ -246,9 +246,9 @@ AND l.status = 'active'
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null)
-{
-    $sql = "SELECT leads.*, 
+    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null)
+    {
+        $sql = "SELECT leads.*, 
                    lf.next_action,
                    lf.follow_up_type,
                    lf.next_follow_up_date,
@@ -267,38 +267,38 @@ public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAct
             LEFT JOIN projects AS p ON leads.project_id = p.id
             WHERE leads.assigned_id = ?";
 
-    $params = [$userId];
-    $types  = "i";
+        $params = [$userId];
+        $types  = "i";
 
-    if (!empty($year)) {
-        $sql .= " AND YEAR(leads.created_at) = ?";
-        $params[] = (int)$year;
-        $types .= "i";
+        if (!empty($year)) {
+            $sql .= " AND YEAR(leads.created_at) = ?";
+            $params[] = (int)$year;
+            $types .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(leads.created_at) = ?";
+            $params[] = (int)$month;
+            $types .= "i";
+        }
+
+        if (!empty($lastAction)) {
+            $sql .= " AND leads.last_lead_action = ?";
+            $params[] = $lastAction;
+            $types .= "s";
+        }
+
+        $sql .= " ORDER BY leads.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return [];
+
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-
-    if (!empty($month)) {
-        $sql .= " AND MONTH(leads.created_at) = ?";
-        $params[] = (int)$month;
-        $types .= "i";
-    }
-
-    if (!empty($lastAction)) {
-        $sql .= " AND leads.last_lead_action = ?";
-        $params[] = $lastAction;
-        $types .= "s";
-    }
-
-    $sql .= " ORDER BY leads.id DESC";
-
-    $stmt = $this->db->prepare($sql);
-    if (!$stmt) return [];
-
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
 
 
 
@@ -341,9 +341,7 @@ public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAct
         lead_quality,
         lead_type,
         company_name,
-        created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?)
-");
+        created_by ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?)");
 
         if (!$stmt) {
             setError("Prepare failed: " . $this->db->error);
@@ -365,7 +363,9 @@ public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAct
         $full_name = $data['full_name'] ?? null;
         $father_name = $data['father_name'] ?? null;
         $mother_name = $data['mother_name'] ?? null;
-        $dob = $data['dob'] ?? null;
+        $dob = isset($data['dob']) && trim($data['dob']) !== ''
+            ? $data['dob']
+            : null;
         $permanent_address = $data['permanent_address'] ?? null;
         $nid_or_passport = $data['nid_or_passport'] ?? null;
         $phone_number = $data['phone_number'] ?? null;

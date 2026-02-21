@@ -1,7 +1,6 @@
 <?php
-$page_title = "leads Page";
-$page = 'All Onboarding Clints';
-$addPage = 'Add Leads';
+$page_title = "All Access Onboard Clients";
+$page = 'All Access Onboard Clints';
 $addPage = true;
 $show_breadcrumb = true;
 ?>
@@ -102,17 +101,15 @@ $show_breadcrumb = true;
                         <tr class="table__title table__sort">
 
 
-                            <th style="min-width:60px;">S/L</th> <!-- non-sticky first column -->
-                            <th class="">Booking Confirm date</th>
+                            <th style="min-width:60px;">S/L</th>
                             <th class="th_1">Client Name</th>
                             <th>Phone</th>
                             <!-- <th>Alt Phone</th> -->
                             <th>Email</th>
                             <th>Project</th>
                             <th>Unit/ Share</th>
-                            <th>Share Price</th>
                             <th>Booking amount pay</th>
-                           
+
                             <th class="text-center ">Action</th>
                         </tr>
                     </thead>
@@ -121,36 +118,30 @@ $show_breadcrumb = true;
                         <?php foreach ($onboardAccessClients as $key => $client): ?>
                             <tr>
                                 <td><?= $key + 1 ?></td>
-                                <td class=""><?= $client['booking_pay_date'] ? formatDate($client['booking_pay_date']): ''?></td>
+
                                 <td class="td_1"><?= $client['client_name'] ?? '' ?></td>
                                 <td><?= $client['client_phone'] ?? '' ?></td>
                                 <td><?= $client['email'] ?? '' ?></td>
 
+                                <td><?= $client['project_names'] ?? '' ?></td>
                                 <td>
-                                   <?= $client['project_name'] ?>
+                                    <?= $client['flat_names'] ?? '' ?>
                                 </td>
-                                <td>
-                                   <?= $client['flat_name'] ?> - <span><?= $client['sqft'] ?></span>
-                                </td>
-                                <td>
-                                <?= $client['price_value'] ?>
-                                </td>
-                                <td>
-                                <?= format_bdt($client['amount'] )?>
-                                </td>
-                         
+
+                                <td><?= format_bdt($client['total_paid']) ?></td>
+
                                 <td class="">
                                     <div class="d-flex align-items-center justify-content-start gap-10">
 
                                         <!-- View Button (Existing) -->
-                                        <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $client['client_id'] ?>" title="View Lead">
+                                        <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $client['lead_id'] ?>" title="View Lead">
                                             <i class="fa-regular fa-eye"></i>
                                         </a>
-                                        <a class="table__icon edit" href="<?= $GLOBALS['base_url'] ?>/edit-onboard-client/<?= $client['id'] ?>" title="Edit Lead">
+                                        <a class="table__icon edit" href="<?= $GLOBALS['base_url'] ?>/edit-onboard-client/<?= $client['lead_id'] ?>" title="Edit Lead">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </a>
 
-                                      
+
 
                                     </div>
                                 </td>

@@ -122,12 +122,12 @@ $show_breadcrumb = true;
                     </select>
                 </div>
                 <!-- Front Road -->
-                <div class="col-xl-4 col-12">
+                <div class="col-xxl-4 col-md-6 col-12">
                     <label>Front Road</label>
                     <input type="text" name="front_road" class="form-control" placeholder="In Feet">
                 </div>
                 <!-- Apartment Count -->
-                <div class="col-xl-4 col-12">
+                <div class="col-xxl-4 col-md-6 col-12">
                     <label>Apartment Count</label>
                     <input type="number" name="apartment_count" class="form-control">
                 </div>
@@ -214,12 +214,12 @@ $show_breadcrumb = true;
                     <input type="file" name="image" class="form-control">
                 </div>
 
-                <div class="col-xl-3 col-6">
+                <div class="col-xxl-3 col-md-6 col-6">
                     <label>Image 2</label>
                     <input type="file" name="image2" class="form-control">
                 </div>
 
-                <div class="col-xl-3 col-6">
+                <div class="col-xxl-3 col-md-6 col-6">
                     <label>Image 3</label>
                     <input type="file" name="image3" class="form-control">
                 </div>

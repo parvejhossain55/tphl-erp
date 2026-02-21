@@ -32,8 +32,8 @@
                                  <td><?= !empty($followUp['follow_up_date']) ? date('d M, Y', strtotime($followUp['follow_up_date'])) : 'N/A' ?></td>
                                  <td><?= htmlspecialchars($followUp['lead_name']) ?></td>
                                  <td><?= htmlspecialchars($followUp['phone_number'] ?? $followUp['phone']) ?></td>
-                                 <td><?= htmlspecialchars($followUp['project_name']) ?></td>
-                                 <td><?= htmlspecialchars($followUp['flat_name']) ?></td>
+                                 <td><?= htmlspecialchars($followUp['project_name'] ?? 'N/A') ?></td>
+                                 <td><?= htmlspecialchars($followUp['flat_name'] ?? 'N/A') ?></td>
                                  <td><?= htmlspecialchars($followUp['discussion_note'] ?? 'N/A') ?></td>
                                  <td><?= htmlspecialchars($followUp['next_action'] ?? 'N/A') ?></td>
                                    <td><?= !empty($followUp['next_follow_up_date']) ? date('d M, Y', strtotime($followUp['next_follow_up_date'])) : 'N/A' ?></td>

@@ -39,9 +39,6 @@ $show_breadcrumb = true;
                             <th>Total Share</th>
                             <th>Unit Per Floor</th>
                             <th class="d-none">Type</th>
-                            <th>Front Road</th>
-                            <th>Plot Size</th>
-
                             <th>Brochure</th>
                             <th>Actions</th>
                         </tr>
@@ -58,8 +55,7 @@ $show_breadcrumb = true;
                                 <td><?= htmlspecialchars($project['total_share']) ?></td>
                                 <td><?= htmlspecialchars($project['unit_per_floor']) ?></td>
                                 <td class="d-none"><?= htmlspecialchars($project['types']) ?></td>
-                                <td><?= htmlspecialchars($project['front_road']) ?></td>
-                                <td><?= $project['plot_size'] ?? 'N/A' ?></td>
+                            
 
                                 <td>
                                     <?php if (!empty($project['brochure_link'])): ?>

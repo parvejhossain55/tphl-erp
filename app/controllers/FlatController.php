@@ -5,7 +5,6 @@ class FlatController extends Controller
     protected $db;
 
     protected $projectModel;
-    protected $unitModel;
     protected $flatModel;
 
     public function __construct($db)
@@ -13,7 +12,6 @@ class FlatController extends Controller
         $this->db = $db;
 
         $this->projectModel  = new Project($this->db);
-        $this->unitModel = new Unit($this->db);
         $this->flatModel = new FlatModel($this->db);
     }
 
@@ -65,7 +63,6 @@ class FlatController extends Controller
     public function create()
     {
         $projects   = $this->projectModel->getAll();
-        $units = $this->unitModel->getAll();
 
         //         $flatCounts = $this->flatModel->getFlatStatusCount();
 
@@ -75,8 +72,6 @@ class FlatController extends Controller
             "page_title"      => "Add Flat",
             "show_breadcrumb" => true,
             "projects"       => $projects,
-
-            "units"     => $units,
         ]);
     }
 

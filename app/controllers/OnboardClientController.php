@@ -15,6 +15,7 @@ class OnboardClientController extends Controller
         $this->onboardClient = new OnboardClient($this->db);
         $this->leadBookingModel = new BookingLead($this->db);
     }
+    
     public function index()
     {
         $assignedUsers = $this->userModel->getAllRoleUser();
@@ -30,10 +31,12 @@ class OnboardClientController extends Controller
 
         $this->view("sales-developments/accessOnboardClient/access-onboard-clients", [
             "current_route" => "onboard-access-client-lists",
-            "page_title" => "Lead List",
+            "page_title" => "Onboard Client List",
             "owners" => $owners,
             "onboardAccessClients" => $onboardAccessClients,
             "message" => $message,
+            "month" => $month,
+            "year" => $year,
 
             "assignedUsers" => $assignedUsers,
 
@@ -54,45 +57,49 @@ class OnboardClientController extends Controller
     }
 
     // Handle form submission
+    // Store onboard client
+
     public function store()
     {
-        $leadBookingId = $_POST['lead_booking_id'] ?? 0;
-        $email = $_POST['email'] ?? '';
-        $password = $_POST['password'] ?? '';
-        $created_by = $_SESSION['user']['id'] ?? null;
+        $leadId        = $_POST['lead_id'] ?? 0;
+        $email         = trim($_POST['email'] ?? '');
+        $password      = trim($_POST['password'] ?? '');
+        $created_by    = $_SESSION['user']['id'] ?? null;
 
-        // Optional links
+        if (empty($leadId) || empty($email) || empty($password)) {
+            setError("Required fields are missing");
+            header("Location: {$GLOBALS['base_url']}/onboard-access-client-lists");
+            exit;
+        }
+
         $links = [
-            'cameraLink1' => $_POST['cameraLink1'] ?? null,
-            'cameraLink2' => $_POST['cameraLink2'] ?? null,
-            'moneyReceiptLink' => $_POST['moneyReceiptLink'] ?? null,
+            'cameraLink1'        => $_POST['cameraLink1'] ?? null,
+            'cameraLink2'        => $_POST['cameraLink2'] ?? null,
+            'moneyReceiptLink'   => $_POST['moneyReceiptLink'] ?? null,
             'purchaseDetailsLink' => $_POST['purchaseDetailsLink'] ?? null
         ];
 
-        // Create onboard client
-        $newId = $this->onboardClient->create($leadBookingId, $email, $password, $links, $created_by);
+        $newId = $this->onboardClient->create( $leadId, $email, $password, $links, $created_by);
 
         if ($newId) {
-            setSuccess("Client access data created successfully");
+            setSuccess("Client login access created successfully");
         } else {
-            setError("Failed to create onboard client");
+            setError("Failed to create onboard client or client already onboarded");
         }
 
-        // Redirect back to onboard client list
         header("Location: {$GLOBALS['base_url']}/onboard-access-client-lists");
         exit;
     }
-
     // Controller
-public function getLeadBookingDetails($id = null)
-{
-    $leadBookingId = $id ?? $_GET['lead_booking_id'] ?? 0;
-    if (!$leadBookingId) {
-        echo json_encode(['success' => false]);
-        exit;
-    }
+    public function getLeadBookingDetails($id = null)
+    {
+        $leadBookingId = $id ?? $_GET['lead_booking_id'] ?? 0;
+        if (!$leadBookingId) {
+            echo json_encode(['success' => false]);
+            exit;
+        }
 
-    $sql = "SELECT lb.id, lb.project_id, lb.flat_id,
+        $sql = "SELECT lb.id, lb.project_id, lb.flat_id,
                    p.name AS project_name,
                    f.flat_name
             FROM lead_bookings lb
@@ -100,27 +107,22 @@ public function getLeadBookingDetails($id = null)
             LEFT JOIN flats f ON lb.flat_id = f.id
             WHERE lb.id = ?";
 
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param("i", $leadBookingId);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("i", $leadBookingId);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
 
-    header('Content-Type: application/json'); // Make sure browser parses as JSON
-    echo json_encode($result ? ['success' => true, 'data' => $result] : ['success' => false]);
-    exit;
-}
-
-
-
-
-
+        header('Content-Type: application/json'); // Make sure browser parses as JSON
+        echo json_encode($result ? ['success' => true, 'data' => $result] : ['success' => false]);
+        exit;
+    }
 
 
     public function edit($id)
     {
         $onboardClient = $this->onboardClient->find($id);
-        
-      
+
+
         // Pass user to view
         $this->view("sales-developments/accessOnboardClient/edit-access-onboard-client", [
             "current_route" => "edit-onboard-client",
@@ -148,31 +150,30 @@ public function getLeadBookingDetails($id = null)
     // }
 
 
-public function update($id)
-{
-    // Required: onboard client ID
+    public function update($id)
+    {
+        // Required: onboard client ID
 
 
-    // Collect form data
-    $data = [
-        'email'              => $_POST['email'] ?? '',
-        'password'           => $_POST['password'] ?? null, // optional
-        'cameraLink1'        => $_POST['cameraLink1'] ?? null,
-        'cameraLink2'        => $_POST['cameraLink2'] ?? null,
-        'moneyReceiptLink'   => $_POST['moneyReceiptLink'] ?? null,
-        'purchaseDetailsLink'=> $_POST['purchaseDetailsLink'] ?? null,
-    ];
+        // Collect form data
+        $data = [
+            'email'              => $_POST['email'] ?? '',
+            'password'           => $_POST['password'] ?? null, // optional
+            'cameraLink1'        => $_POST['cameraLink1'] ?? null,
+            'cameraLink2'        => $_POST['cameraLink2'] ?? null,
+            'moneyReceiptLink'   => $_POST['moneyReceiptLink'] ?? null,
+            'purchaseDetailsLink' => $_POST['purchaseDetailsLink'] ?? null,
+        ];
 
-    // Update using model
-    if ($this->onboardClient->update($id, $data)) {
-        setSuccess("Client details updated successfully");
-    } else {
-        setError("Failed to update client details");
+        // Update using model
+        if ($this->onboardClient->update($id, $data)) {
+            setSuccess("Client details updated successfully");
+        } else {
+            setError("Failed to update client details");
+        }
+
+        // Redirect back to list
+        header("Location: {$GLOBALS['base_url']}/onboard-access-client-lists");
+        exit;
     }
-
-    // Redirect back to list
-    header("Location: {$GLOBALS['base_url']}/onboard-access-client-lists");
-    exit;
-}
-
 }
