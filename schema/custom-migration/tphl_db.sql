@@ -479,8 +479,8 @@ CREATE TABLE `flats` (
 --
 
 INSERT INTO `flats` (`id`, `project_id`, `sqft`, `bhk`, `land_share_value`, `bedroom`, `bathroom`, `balcony`, `drawing_dining_kitchen`, `common_dining`, `floor_no`, `flat_name`, `facing_site`, `price_value`, `facilities`, `created_by`, `status`, `created_at`, `deleted_at`, `updated_at`, `is_booked`) VALUES
-(1, 1, 1200, 3, 1000000, 3, 2, 2, 1, 1, 1, 'Unit A1', 'north', 7000000.00, 'Gym', 3, 'available', '2026-02-19 17:17:08', NULL, '2026-02-19 17:17:08', 1),
-(2, 1, 1200, 2, 1200000, 2, 1, 1, 1, 1, 1, 'Unit B1', 'South', 5000000.00, '', 2, 'available', '2026-02-21 13:20:06', NULL, '2026-02-21 13:20:06', 1);
+(1, 1, 1200, 3, 1000000, 3, 2, 2, 1, 1, 1, 'Unit A1', 'north', 7000000.00, 'Gym', 3, 'available', '2026-02-19 17:17:08', NULL, '2026-02-19 17:17:08', 0),
+(2, 1, 1200, 2, 1200000, 2, 1, 1, 1, 1, 1, 'Unit B1', 'South', 5000000.00, '', 2, 'available', '2026-02-21 13:20:06', NULL, '2026-02-21 13:20:06', 0);
 
 -- --------------------------------------------------------
 
