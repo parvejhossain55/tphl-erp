@@ -31,17 +31,79 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
+
+
+
+ public function getAllOnboardClientBooking($year = null, $month = null)
+    {
+        $sql = "SELECT 
+                lb.*, 
+                l.full_name, 
+                l.id as lead_id,
+                l.phone,
+                l.email,
+                p.name AS project_name, 
+                f.flat_name AS flat_name, 
+                lp.payment_method ,
+                lp.amount,
+                lp.created_at As booking_pay_date,
+                u1.full_name AS created_by_name,
+                f.flat_name ,f.sqft,
+                f.price_value
+            FROM lead_bookings lb
+            LEFT JOIN leads l ON lb.lead_id = l.id
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            LEFT JOIN projects p ON f.project_id = p.id
+            LEFT JOIN users u1 ON lb.created_by = u1.id
+            LEFT JOIN  lead_payments AS lp ON lp.booking_id = lb.id
+            WHERE lb.deleted_at IS NULL
+             AND lb.booking_status = 'completed'
+             ";
+
+        $params = [];
+        $types  = "";
+        // 
+        if (!empty($year)) {
+            $sql .= " AND YEAR(l.created_at) = ?";
+            $params[] = (int)$year;
+            $types   .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(l.created_at) = ?";
+            $params[] = (int)$month;
+            $types   .= "i";
+        }
+
+        //  single ORDER BY at the end
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        if (!$stmt->execute()) {
+            return [];
+        }
+
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
 public function getAllOnboardClient($year = null, $month = null)
 {
-    $sql = "SELECT DISTINCT l.id AS lead_id, l.full_name, l.email, MIN(lb.id) AS lead_booking_id
+    $sql = "SELECT 
+                l.id AS lead_id, 
+                l.full_name, 
+                l.email, 
+                MIN(lb.id) AS lead_booking_id
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN onboard_clients oc ON oc.lead_id = lb.lead_id
             WHERE lb.deleted_at IS NULL
               AND lb.booking_status = 'completed'
-              AND oc.id IS NULL
-            GROUP BY l.id, l.full_name, l.email
-            ORDER BY l.full_name ASC";
+              AND oc.id IS NULL";
 
     $params = [];
     $types = "";
@@ -58,7 +120,11 @@ public function getAllOnboardClient($year = null, $month = null)
         $types .= "i";
     }
 
+    $sql .= " GROUP BY l.id, l.full_name, l.email
+              ORDER BY l.full_name ASC";
+
     $stmt = $this->db->prepare($sql);
+
     if (!empty($params)) {
         $stmt->bind_param($types, ...$params);
     }

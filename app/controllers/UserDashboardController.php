@@ -251,11 +251,12 @@ class UserDashboardController extends Controller
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
-    $lastAction = $_GET['last_action'] ?? null;
+        $lastAction = $_GET['last_action'] ?? null;
         $myAssignedClients = $this->leadModel
             ->getAllMyLeads($userId, $year, $month);
 
         $this->view('sales-executive/my-assigned-leads', [
+            'page_title' => 'My Assigned Leads',
             'myAllleads' => $myAssignedClients,
             'current_page' => 'my-all-assigned-leads',
             'bookingCount' => $bookingCount,

@@ -28,7 +28,7 @@
                                    <th>Company name</th>
                                    <th>phone_number</th>
                                    <th>Follow Up</th>
-                                   <th>Booking</th>
+                                   <th class="d-none">Booking</th>
                                    <th class="d-none">job title</th>
                                    <th class="d-none">Interested Apartment Size</th>
                                    <th class="d-none">Interset Floor for Shop</th>
@@ -51,7 +51,7 @@
                                        <td><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></td>
 
                                        <!-- Company / Project -->
-                                       <td><?= htmlspecialchars($lead['company_name'] ?? 'N/A') ?></td>
+                                       <td><?= htmlspecialchars(!empty($lead['company_name']) ? $lead['company_name'] : 'N/A') ?></td>
 
                                        <!-- Phone -->
                                        <td><?= htmlspecialchars($lead['phone_number'] ?? 'N/A') ?></td>
@@ -87,7 +87,7 @@
                                                <?php endif; ?>
                                            </a>
                                        </td>
-                                       <td>
+                                       <td class="d-none">
                                            <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
                                                class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
                                                <?php if (!empty($bookingCount[$lead['id']])): ?>

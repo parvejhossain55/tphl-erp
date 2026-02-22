@@ -118,7 +118,7 @@ class LeadController extends Controller
     {
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
-        $leads = $this->leadBookedModel->getAllOnboardClient($year, $month);
+        $leads = $this->leadBookedModel->getAllOnboardClientBooking($year, $month);
         $leadCounts = count($leads);
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
         $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
@@ -337,35 +337,58 @@ class LeadController extends Controller
         }
     }
 
-    public function updateLastleadAction($id)
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        $leadId     = (int) $id;
-        $lastAction = $_POST['last_lead_action'] ?? null;
-
-        // Allowed enum values (important for security)
-        $allowedActions = ['new', 'booked', 'follow up', 'visited', 'cancel'];
-        if (!$leadId || !in_array($lastAction, $allowedActions)) {
-            setError("Invalid lead action selected.");
-            header("Location: " . $_SERVER['HTTP_REFERER']);
-            exit;
-        }
-
-        try {
-            $this->leadModel->updateLastLeadAction($leadId, $lastAction);
-
-            setSuccess("Lead last action updated successfully!");
-            header("Location: " . $_SERVER['HTTP_REFERER']);
-            exit;
-        } catch (Exception $e) {
-            setError($e->getMessage());
-            header("Location: " . $_SERVER['HTTP_REFERER']);
-            exit;
-        }
+public function updateLastleadAction($id)
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
     }
+
+    $leadId     = (int) $id;
+    $lastAction = $_POST['last_lead_action'] ?? null;
+
+    // Allowed enum values (important for security)
+    $allowedActions = ['new', 'booked', 'follow up', 'visited', 'cancel'];
+
+    if (!$leadId || !in_array($lastAction, $allowedActions)) {
+        setError("Invalid lead action selected.");
+        header("Location: " . $_SERVER['HTTP_REFERER']);
+        exit;
+    }
+
+    // 🔒 Prevent update if already booked
+    $stmt = $this->db->prepare("SELECT last_lead_action FROM leads WHERE id = ? LIMIT 1");
+    $stmt->bind_param("i", $leadId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $lead = $result->fetch_assoc();
+
+    if (!$lead) {
+        setError("Lead not found.");
+        header("Location: " . $_SERVER['HTTP_REFERER']);
+        exit;
+    }
+
+    if ($lead['last_lead_action'] === 'booked') {
+        setError("Action cannot be changed because this lead is already booked.");
+        header("Location: " . $_SERVER['HTTP_REFERER']);
+        exit;
+    }
+
+    //  Update the lead action
+    try {
+        $stmtUpdate = $this->db->prepare("UPDATE leads SET last_lead_action = ? WHERE id = ?");
+        $stmtUpdate->bind_param("si", $lastAction, $leadId);
+        $stmtUpdate->execute();
+
+        setSuccess("Lead last action updated successfully!");
+        header("Location: " . $_SERVER['HTTP_REFERER']);
+        exit;
+    } catch (Exception $e) {
+        setError($e->getMessage());
+        header("Location: " . $_SERVER['HTTP_REFERER']);
+        exit;
+    }
+}
 
 
     public function importCsv()

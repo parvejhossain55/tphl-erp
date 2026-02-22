@@ -84,6 +84,8 @@
                 });
             });
         </script>
+
+
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <?php if (!empty($_SESSION['flash_success'])): ?>
             <script>
@@ -183,10 +185,6 @@
 
         <script>
             document.addEventListener("DOMContentLoaded", function() {
-
-
-
-
                 const labels = <?= json_encode($flatSalesLabels) ?>;
                 const series = <?= json_encode($flatSalesSeries) ?>;
 
@@ -340,7 +338,7 @@
         </script>
 
 
-
+ <!-- sales overview chart -->
 
         <script>
             document.addEventListener("DOMContentLoaded", function() {
@@ -461,7 +459,7 @@
         </script>
 
 
-   
+
 
         </body>
 

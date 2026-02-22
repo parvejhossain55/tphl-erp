@@ -28,7 +28,7 @@ $show_breadcrumb = false;
                 <div class="d-flex align-items-center justify-content-between gap-15">
                     <button type="submit" class="btn btn-secondary">Filters</button>
                     <a href="<?= $GLOBALS['base_url'] ?>/sales-team-view" class="btn btn-primary w-100">Reset</a>
-                    <a href="<?= $GLOBALS['base_url'] ?>/create-user" class="d-none btn btn-primary w-100">
+                    <a href="<?= $GLOBALS['base_url'] ?>/create-user" class=" btn btn-primary w-100">
                         Add Sales Users
                     </a>
                 </div>

@@ -17,7 +17,7 @@ $page = "create Lead"
                 </div>
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="leadName">Father Name <span class="text-danger">*</span></label>
+                        <label class="form__input-title" for="leadName">Father Name <span class="text-mute">optional</span></label>
                         <input class="form-control" name="father_name" id="father_name" type="text">
                     </div>
                 </div>

@@ -124,10 +124,18 @@
                         </a>
                     </li>
                     <!-- Executive Team  -->
+                     <!--target set-sales-target show here for sales executiive team  -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/sales-executive-teams" class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                             <span class="sidebar__menu-label">Sales Executive Team</span>
+                        </a>
+                    </li>
+
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="sidebar__menu-label">Contact Lists</span>
                         </a>
                     </li>
 

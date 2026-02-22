@@ -86,7 +86,7 @@ class UserController extends Controller
 
         if ((int)$loggedInRoleId === 5) {
             setSuccess("User Created successfully");
-            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            header("Location: {$GLOBALS['base_url']}/sales-executive-teams");
         } else {
              setSuccess("User Created successfully");
             header("Location: {$GLOBALS['base_url']}/user-lists");

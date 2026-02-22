@@ -336,7 +336,7 @@ $show_breadcrumb = false;
 
             <!-- Card Body -->
             <div class="card__content flex-grow-1 d-flex align-items-center">
-                <div id="pieChart" style="width:100%; height:260px;"></div>
+                <div id="pieChart1" style="width:100%; height:260px;"></div>
             </div>
 
         </div>
