@@ -87,13 +87,12 @@ class SalesDashboardController extends Controller
         }
 
         // MONTHLY SALES (Last 30 days)
-        $monthlySalesQuery = "
-    SELECT DATE(payment_date) AS date, SUM(amount) AS total
-    FROM lead_payments
-    WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    GROUP BY DATE(payment_date)
-    ORDER BY DATE(payment_date)
-";
+            $monthlySalesQuery = "
+        SELECT DATE(payment_date) AS date, SUM(amount) AS total
+        FROM lead_payments
+        WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY DATE(payment_date)
+        ORDER BY DATE(payment_date)";
         $monthlySalesResult = $this->db->query($monthlySalesQuery);
         $monthlySales = [];
         while ($row = $monthlySalesResult->fetch_assoc()) {
@@ -104,13 +103,11 @@ class SalesDashboardController extends Controller
         }
 
         // YEARLY SALES (Last 12 months)
-        $yearlySalesQuery = "
-    SELECT DATE_FORMAT(payment_date, '%Y-%m') AS month, SUM(amount) AS total
-    FROM lead_payments
-    WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
-    GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
-    ORDER BY DATE_FORMAT(payment_date, '%Y-%m')
-";
+        $yearlySalesQuery = "SELECT DATE_FORMAT(payment_date, '%Y-%m') AS month, SUM(amount) AS total
+        FROM lead_payments
+        WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+        GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
+        ORDER BY DATE_FORMAT(payment_date, '%Y-%m')";
         $yearlySalesResult = $this->db->query($yearlySalesQuery);
         $yearlySales = [];
         while ($row = $yearlySalesResult->fetch_assoc()) {
@@ -120,20 +117,20 @@ class SalesDashboardController extends Controller
             ];
         }
 
+        // project wise flat sales data
         $totalProjects = $this->projectModel->countProject();
 
 
 
 
-        $flatSalesQuery = "
-    SELECT p.name AS project_name, COUNT(lb.id) AS flat_sold
-    FROM lead_bookings lb
-    JOIN projects p ON p.id = lb.project_id
-    WHERE lb.booking_status = 'booked'
-    AND lb.deleted_at IS NULL
-    GROUP BY lb.project_id
-    ORDER BY flat_sold DESC
-";
+        $flatSalesQuery = "SELECT p.name AS project_name, COUNT(lb.id) AS flat_sold
+                            FROM lead_bookings lb
+                            JOIN projects p ON p.id = lb.project_id
+                            WHERE lb.booking_status = 'completed'
+                            AND lb.deleted_at IS NULL
+                            GROUP BY lb.project_id
+                            ORDER BY flat_sold DESC
+                        ";
 
         $result = $this->db->query($flatSalesQuery);
 
@@ -153,38 +150,38 @@ class SalesDashboardController extends Controller
         $yearlyData = $this->salesTargetModel->getExecutiveBookingStats('yearly');
         $fullData = $this->salesTargetModel->getExecutiveBookingStats('fullData');
 
-$allSalesTeams = $this->userModel->getSalesTeams();
-$executiveId = $_GET['executive'] ?? null;
-$month       = $_GET['month'] ?? null;
-$year        = $_GET['year'] ?? null;
+        $allSalesTeams = $this->userModel->getSalesTeams();
+        $executiveId = $_GET['executive'] ?? null;
+        $month       = $_GET['month'] ?? null;
+        $year        = $_GET['year'] ?? null;
 
-$singleData = [
-    'site_visit_target'   => 0,
-    'booking_target'      => 0,
-    'booking_value_target'=> 0,
-    'visit_completed'     => 0,
-    'booking_completed'   => 0,
-    'total_booking_money' => 0,
-    'total_flat_value'    => 0,
-];
+        $singleData = [
+            'site_visit_target'   => 0,
+            'booking_target'      => 0,
+            'booking_value_target'=> 0,
+            'visit_completed'     => 0,
+            'booking_completed'   => 0,
+            'total_booking_money' => 0,
+            'total_flat_value'    => 0,
+        ];
 
-$showCards = false;
-$errorMessage = '';
+        $showCards = false;
+        $errorMessage = '';
 
-if (!empty($executiveId)) {
-    if (empty($year)) {
-        // Employee selected but no year
-        $errorMessage = "Please select a Year first!";
-    } else {
-        // Employee + Year selected → fetch data
-        $data = $this->salesTargetModel->getExecutiveFullStats($executiveId, $month, $year);
+        if (!empty($executiveId)) {
+            if (empty($year)) {
+                // Employee selected but no year
+                $errorMessage = "Please select a Year first!";
+            } else {
+                // Employee + Year selected → fetch data
+                $data = $this->salesTargetModel->getExecutiveFullStats($executiveId, $month, $year);
 
-        if (!empty($data)) {
-            $singleData = $data[0];
-        }
+                if (!empty($data)) {
+                    $singleData = $data[0];
+                }
 
-        $showCards = true;
-    }
+                $showCards = true;
+            }
 }
 
 

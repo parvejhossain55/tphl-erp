@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 21, 2026 at 06:48 PM
+-- Generation Time: Feb 22, 2026 at 07:49 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -99,7 +99,11 @@ INSERT INTO `cache` (`key`, `value`, `expiration`) VALUES
 ('laravel-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:1;', 1771691443),
 ('laravel-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1771691443;', 1771691443),
 ('laravel-cache-77de68daecd823babbb58edb1c8e14d7106e83bb', 'i:1;', 1771695229),
-('laravel-cache-77de68daecd823babbb58edb1c8e14d7106e83bb:timer', 'i:1771695228;', 1771695229);
+('laravel-cache-77de68daecd823babbb58edb1c8e14d7106e83bb:timer', 'i:1771695228;', 1771695229),
+('tphl-erp-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:1;', 1771733365),
+('tphl-erp-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1771733365;', 1771733365),
+('tphl-erp-cache-77de68daecd823babbb58edb1c8e14d7106e83bb', 'i:1;', 1771731675),
+('tphl-erp-cache-77de68daecd823babbb58edb1c8e14d7106e83bb:timer', 'i:1771731675;', 1771731675);
 
 -- --------------------------------------------------------
 
@@ -264,6 +268,13 @@ CREATE TABLE `contacts` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `contacts`
+--
+
+INSERT INTO `contacts` (`id`, `name`, `email`, `phone`, `subject`, `message`, `contact_status`, `created_at`, `updated_at`) VALUES
+(1, 'Jubair Khan', 'khan@example.com', '+8801712345678', 'Property Inquiry', 'I am interested in your Gulshan apartment. Please contact me.', 'pending', '2026-02-21 22:08:25', '2026-02-22 04:15:00');
 
 -- --------------------------------------------------------
 
@@ -468,8 +479,8 @@ CREATE TABLE `flats` (
 --
 
 INSERT INTO `flats` (`id`, `project_id`, `sqft`, `bhk`, `land_share_value`, `bedroom`, `bathroom`, `balcony`, `drawing_dining_kitchen`, `common_dining`, `floor_no`, `flat_name`, `facing_site`, `price_value`, `facilities`, `created_by`, `status`, `created_at`, `deleted_at`, `updated_at`, `is_booked`) VALUES
-(1, 1, 1200, 3, 1000000, 3, 2, 2, 1, 1, 1, 'Unit A1', 'north', 7000000.00, 'Gym', 3, 'booked', '2026-02-19 17:17:08', NULL, '2026-02-19 17:17:08', 1),
-(2, 1, 1200, 2, 1200000, 2, 1, 1, 1, 1, 1, 'Unit B1', 'South', 5000000.00, '', 2, 'booked', '2026-02-21 13:20:06', NULL, '2026-02-21 13:20:06', 1);
+(1, 1, 1200, 3, 1000000, 3, 2, 2, 1, 1, 1, 'Unit A1', 'north', 7000000.00, 'Gym', 3, 'available', '2026-02-19 17:17:08', NULL, '2026-02-19 17:17:08', 1),
+(2, 1, 1200, 2, 1200000, 2, 1, 1, 1, 1, 1, 'Unit B1', 'South', 5000000.00, '', 2, 'available', '2026-02-21 13:20:06', NULL, '2026-02-21 13:20:06', 1);
 
 -- --------------------------------------------------------
 
@@ -585,13 +596,6 @@ CREATE TABLE `leads` (
   `has_pending_followup` tinyint(1) DEFAULT 0 COMMENT '1 = follow-up pending, 0 = no pending follow-up'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `leads`
---
-
-INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
-(1, '', '', '', '', '', '1', '', 'ABDUL AZIZ', 'Business', '', '0171110000', 'not_called', NULL, 'Dhaka', NULL, 'Hot', NULL, NULL, 'BDT', NULL, '01790120923', 'aziz@gmail.com', 0, 3, 'Dhaka', 'ABUL HASAN', 'NADIA', '2026-02-05', '12', NULL, NULL, NULL, 'Dhaka', NULL, '', 1, '1200 ', 'WA Messaging', 'NO', NULL, 'public', 'active', 'booked', NULL, 'Prospect', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 3, '2026-02-19 17:43:06', '2026-02-21 13:09:43', 'local', NULL, NULL, 0);
-
 -- --------------------------------------------------------
 
 --
@@ -618,14 +622,6 @@ CREATE TABLE `lead_bookings` (
   `landshare_status` enum('active','completed','cancelled') DEFAULT 'active'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `lead_bookings`
---
-
-INSERT INTO `lead_bookings` (`id`, `lead_id`, `project_id`, `flat_id`, `agreement_value`, `discount_amount`, `booking_date`, `booking_status`, `created_by`, `sales_by_id`, `deleted_at`, `created_at`, `updated_at`, `approval_status`, `approved_amount`, `service_fee_balance`, `landshare_status`) VALUES
-(1, 1, 1, 1, 700000.00, 20000, '2026-02-21', 'completed', 2, 3, NULL, '2026-02-21 13:05:42', '2026-02-21 13:05:42', 'partial', 10000.00, NULL, 'active'),
-(2, 1, 1, 2, 1000000.00, NULL, '2026-02-21', 'completed', 2, 3, NULL, '2026-02-21 13:23:57', '2026-02-21 13:23:57', 'not_required', NULL, NULL, 'active');
-
 -- --------------------------------------------------------
 
 --
@@ -650,13 +646,6 @@ CREATE TABLE `lead_follow_ups` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `lead_follow_ups`
---
-
-INSERT INTO `lead_follow_ups` (`id`, `lead_id`, `project_id`, `flat_id`, `follow_up_date`, `follow_up_time`, `follow_up_type`, `status`, `discussion_note`, `next_follow_up_date`, `assigned_with`, `next_action`, `created_by`, `deleted_at`, `created_at`, `updated_at`) VALUES
-(1, 1, 1, 1, '2026-02-20', '23:46:00', 'call', 'completed', '', '2026-02-19', 3, 'call_back', 3, NULL, '2026-02-19 17:47:10', '2026-02-21 13:09:43');
 
 -- --------------------------------------------------------
 
@@ -684,14 +673,6 @@ CREATE TABLE `lead_payments` (
   `created_by` int(10) UNSIGNED NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `lead_payments`
---
-
-INSERT INTO `lead_payments` (`id`, `booking_id`, `payment_type`, `amount`, `land_share_amount`, `payment_method`, `payment_status`, `payment_date`, `emi_no`, `total_emi_no`, `transaction_ref`, `bank_name`, `bank_account_no`, `cheque_no`, `service_fee`, `online_type`, `created_by`, `created_at`) VALUES
-(1, 1, 'booking_money', 700000.00, 0.00, 'bank', 'paid', '2026-02-21', NULL, 40, '782436', 'Dhaka Bank', '324896342', '', NULL, '', 2, '2026-02-21 13:09:43'),
-(2, 2, 'booking_money', 900000.00, 0.00, 'cash', 'paid', '2026-02-21', NULL, 36, '782436', '', '', '', NULL, '', 2, '2026-02-21 13:24:37');
 
 -- --------------------------------------------------------
 
@@ -873,13 +854,6 @@ CREATE TABLE `onboard_clients` (
   `flat_id` int(10) UNSIGNED DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `onboard_clients`
---
-
-INSERT INTO `onboard_clients` (`id`, `lead_booking_id`, `email`, `password`, `cameraLink1`, `cameraLink2`, `moneyReceiptLink`, `purchaseDetailsLink`, `created_by`, `created_at`, `updated_at`, `lead_id`, `project_id`, `flat_id`) VALUES
-(3, NULL, 'aziz@gmail.com', '$2y$10$jSLZ.MB5FvJ.i2PvcnHweeB4GLO6.reZlIaBl4xXTm8dB/lKTQuo.', 'ieryt', '12489', 'oiert', 'eruiwoy', 2, '2026-02-21 16:03:48', '2026-02-21 17:09:38', 1, NULL, NULL);
-
 -- --------------------------------------------------------
 
 --
@@ -1002,7 +976,8 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (3, 'App\\Models\\OnboardClient', 1, 'onboard-client', '13aab24d14d21706763b5fa533c05d4a310b76acdcb2ac433578794223a04582', '[\"*\"]', '2026-02-08 04:39:06', NULL, '2026-02-08 04:36:40', '2026-02-08 04:39:06'),
 (4, 'App\\Models\\OnboardClient', 1, 'onboard-client', '4561e3242fb548617bc199392d02366d885d02efbdbdfd5a5df6288142b2f49d', '[\"*\"]', '2026-02-09 23:31:48', NULL, '2026-02-09 23:31:22', '2026-02-09 23:31:48'),
 (5, 'App\\Models\\OnboardClient', 2, 'onboard-client', 'ce3cafbff5660c8fea29fb233264fe87cc30a35e29ab0cabc50e629dcdb8ccb9', '[\"*\"]', '2026-02-17 03:52:04', NULL, '2026-02-17 03:51:52', '2026-02-17 03:52:04'),
-(6, 'App\\Models\\OnboardClient', 3, 'onboard-client', 'e92286bbd37589f387f496582e3aacafb03063a89ae49f9143b5f62df1ab4d7c', '[\"*\"]', '2026-02-21 11:32:47', NULL, '2026-02-21 10:29:47', '2026-02-21 11:32:47');
+(6, 'App\\Models\\OnboardClient', 3, 'onboard-client', 'e92286bbd37589f387f496582e3aacafb03063a89ae49f9143b5f62df1ab4d7c', '[\"*\"]', '2026-02-21 11:32:47', NULL, '2026-02-21 10:29:47', '2026-02-21 11:32:47'),
+(7, 'App\\Models\\OnboardClient', 3, 'onboard-client', 'b23fc29f72107b0178d8fa4d62c3e20edb0f69d69a22585ae301885a174a21b6', '[\"*\"]', '2026-02-21 21:40:15', NULL, '2026-02-21 21:40:04', '2026-02-21 21:40:15');
 
 -- --------------------------------------------------------
 
@@ -1192,6 +1167,13 @@ CREATE TABLE `sales_targets` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `sales_targets`
+--
+
+INSERT INTO `sales_targets` (`id`, `sales_user_id`, `month`, `site_visit_target`, `booking_target`, `booking_value_target`, `created_at`, `updated_at`) VALUES
+(1, 3, '2026-02-01', 20, 10, 0.00, '2026-02-22 03:55:03', '2026-02-22 03:55:03');
+
 -- --------------------------------------------------------
 
 --
@@ -1332,9 +1314,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `email`, `designation_id`, `address`, `nid`, `role_id`, `password`, `photo`, `media_link1`, `media_link2`, `last_logout`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, NULL, 'Mehedi Hasan Jony', '', '01710000000', 'jony@gmail.com', 1, '0', '908927387', 3, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', '693e8e3dac751_1765707325.jpg', '', '', '2026-02-04 16:01:42', NULL, '2025-12-09 07:53:41', '2026-02-19 16:33:02'),
-(2, NULL, 'Farzana', 'Farzana', '01711111111', 'farz@gmail.com', 1, 'Dhaka', '12345678', 3, '$2y$10$E0Yhq.1IcOfIhUepelWIieBg7O9L6XhEKWNmRhD1v2rT0WRH5Q7T6', '693e4b6b1f340_1765690219.jpg', 'https://business.facebook.com/', 'https://www.linkedin.com/', '2026-02-21 23:25:35', NULL, '2025-12-14 05:30:19', '2026-02-21 17:25:35'),
-(3, 1, 'Fahim', '', '01734555783', 'fahim@gmail.com', 1, 'Dhaka', '23784', 8, '$2y$10$bVeGuKIQsTh4LriBgttyMekdBJ3lhcmZReK973MrsZY/v/k4WN3ny', NULL, '', '', '2026-02-19 23:56:08', 0, '2026-02-19 16:54:14', '2026-02-19 17:56:08');
+(1, NULL, 'Farzana', 'farzana', '01873244236', 'farz@gmail.com', 1, 'Dhaka', NULL, 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-02-22 12:47:08', NULL, '2026-02-22 06:47:08', '2026-02-22 06:47:08'),
+(2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-02-22 12:47:08', NULL, '2026-02-22 06:47:08', '2026-02-22 06:47:22');
 
 --
 -- Indexes for dumped tables
@@ -1762,7 +1743,7 @@ ALTER TABLE `company_bank_accounts`
 -- AUTO_INCREMENT for table `contacts`
 --
 ALTER TABLE `contacts`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `departments`
@@ -1828,25 +1809,25 @@ ALTER TABLE `head_notifications`
 -- AUTO_INCREMENT for table `leads`
 --
 ALTER TABLE `leads`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `lead_bookings`
 --
 ALTER TABLE `lead_bookings`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `lead_follow_ups`
 --
 ALTER TABLE `lead_follow_ups`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `lead_payments`
 --
 ALTER TABLE `lead_payments`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `lead_sources`
@@ -1900,7 +1881,7 @@ ALTER TABLE `notifications`
 -- AUTO_INCREMENT for table `onboard_clients`
 --
 ALTER TABLE `onboard_clients`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `payslips`
@@ -1930,7 +1911,7 @@ ALTER TABLE `permissions`
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `projects`
@@ -1960,7 +1941,7 @@ ALTER TABLE `role_permissions`
 -- AUTO_INCREMENT for table `sales_targets`
 --
 ALTER TABLE `sales_targets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `site_settings`
@@ -1990,7 +1971,7 @@ ALTER TABLE `tasks`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- Constraints for dumped tables

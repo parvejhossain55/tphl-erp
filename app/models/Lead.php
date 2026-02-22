@@ -116,11 +116,20 @@ class Lead extends Model
     ) lf ON lf.lead_id = l.id
 
     LEFT JOIN users AS u ON l.assigned_id = u.id
-    LEFT JOIN lead_bookings AS lb ON lb.lead_id = l.id
-    LEFT JOIN projects AS p ON lb.project_id = p.id
+   LEFT JOIN (
+    SELECT t1.*
+    FROM lead_bookings t1
+    INNER JOIN (
+        SELECT lead_id, MAX(id) AS max_id
+        FROM lead_bookings
+        GROUP BY lead_id
+    ) t2 
+    ON t1.id = t2.max_id
+) lb ON lb.lead_id = l.id
+
+LEFT JOIN projects AS p ON lb.project_id = p.id
 
   WHERE l.deleted_at IS NULL
-AND l.status = 'active'
 
     ";
 
@@ -165,11 +174,6 @@ AND l.status = 'active'
     }
 
 
-
-
-
-
-
     public function getTotalHotLeads()
     {
         $sql = $this->db->prepare("SELECT COUNT(*) AS total_hot FROM leads where lead_type = 'Hot' And deleted_at IS NULL AND status = 'active' AND last_lead_action != 'cancel'");
@@ -177,9 +181,6 @@ AND l.status = 'active'
         $result = $sql->get_result()->fetch_assoc();
         return $result['total_hot'] ?? 0;
     }
-
-
-
     public function getVisitedLeadCount($period = null)
     {
         $sqlQuery = "

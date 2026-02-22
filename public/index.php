@@ -308,7 +308,10 @@ $routes = [
     "sales-team-head-dashboard" => ["controller" => "SalesHeadDashboardController", "method" => "index"],
     "sales-team-view" => ["controller" => "SalesHeadDashboardController", "method" => "salesTeamView"],
     "sales-report" => ["controller" => "SalesHeadDashboardController", "method" => "salesReport"],
-    // "inventory-lists" => ["controller" => "ProjectInventoryController", "method" => "index"],
+
+    // // conatct 
+        "contact-lists" => ["controller" => "ContactController", "method" => "index"],
+        "contacts/update-status" => ["controller" => "ContactController", "method" => "updateStatus"],
 
     // ==========END SALES & BUISENESS======//
 

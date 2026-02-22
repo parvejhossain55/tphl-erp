@@ -58,20 +58,7 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
-
-                    <!-- Status Select -->
-                    <div class="col-auto col-sm-6 col-md-auto">
-                        <select class="form-select form-select-sm filter-select" name="last_action">
-                            <option value="">Status: All</option>
-                            <option value="new" <?= ($selectedAction ?? '') == 'new' ? 'selected' : '' ?>>New</option>
-                            <option value="booked" <?= ($selectedAction ?? '') == 'booked' ? 'selected' : '' ?>>Booked</option>
-                            <option value="follow up" <?= ($selectedAction ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
-                            <option value="visited" <?= ($selectedAction ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
-                            <option value="cancel" <?= ($selectedAction ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
-                        </select>
-                    </div>
-
-                    <!-- Search & Reset Buttons Next to Select -->
+                   <!-- Search & Reset Buttons Next to Select -->
                     <div class="col-auto d-flex align-items-center gap-2 flex-wrap">
                         <button type="submit" class="btn btn-outline-secondary btn-sm py-1">
                             Search
@@ -96,8 +83,9 @@
                                 <th>Lead Name</th>
                                 <th>Phone</th>
                                 <th>Project Campaign</th>
+                                
                                 <th>Last Follow Up Status</th>
-                                <th>Change Status</th>
+                                <th>Change CLient Status</th>
                                 <th>Next Follow-Up</th>
                                 <th>Action</th>
                             </tr>
@@ -380,7 +368,7 @@
                             <?php if (mb_strlen($plainText) > 15): ?>
                                 <button type="button"
                                     id="viewCampaignBtn<?= $lead['id'] ?>"
-                                    class="btn btn-sm btn-outline-primary flex-shrink-0 w-auto px-1 py-0"
+                                    class="btn btn-sm btn-outline-primary  ms-3 w-auto px-1 py-0"
                                     data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
                                     data-bs-toggle="modal"
                                     data-bs-target="#viewProjectCampaignName"
@@ -398,15 +386,7 @@
                         <?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?>
                     </span>
                 </div>
-                <!-- Agent Name -->
-                <div class="d-flex align-items-center gap-2 mt-3">
-                    <div class="info-label flex-shrink-0">Executive Name</div>
-                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-2" style="font-size: 0.75rem;">
-                        <i class="bi bi-person me-1"></i>
-                        <?= $lead['agent_name'] ?? 'No Agent Assigned' ?>
-
-                    </span>
-                </div>
+              
             </div>
         <?php endforeach; ?>
 
