@@ -20,25 +20,17 @@ $show_breadcrumb = true;
 
                     <!-- Lead Booking Select -->
                     <div class="col-lg-6 col-12 mb-3">
-                        <label for="lead_booking_id">Select Lead Booking <span>*</span></label>
-                        <select class="form-control" name="lead_booking_id" id="lead_booking_id">
+                        <label for="lead_id">Select Booking CLient <span>*</span></label>
+                        <select class="form-control" name="lead_id" id="lead_id">
                             <option value="">Select Client</option>
-                            <?php foreach ($onboardClients as $client): ?>
-                                <option value="<?= $client['id'] ?>"><?= $client['full_name'] ?> (<?= $client['booking_pay_date'] ?>)</option>
+                            <?php foreach ($onboardClients as $lead): ?>
+                                <option value="<?= $lead['lead_id'] ?>" data-booking="<?= $lead['lead_booking_id'] ?>">
+                                    <?= $lead['full_name'] ?> | <?= $lead['email'] ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
-                    </div>
 
-                    <!-- Project Name -->
-                    <div class="col-lg-6 col-12 mb-3">
-                        <label for="project_name">Project</label>
-                        <input type="text" class="form-control" id="project_name" readonly>
-                    </div>
-
-                    <!-- Flat Name -->
-                    <div class="col-lg-6 mb-3">
-                        <label for="flat_name">Flat</label>
-                        <input type="text" class="form-control" id="flat_name" readonly>
+                        <input type="hidden" name="lead_booking_id" id="lead_booking_id" value="">
                     </div>
 
                     <!-- Email -->
@@ -46,6 +38,7 @@ $show_breadcrumb = true;
                         <label for="email">Email <span>*</span></label>
                         <input class="form-control" name="email" id="email" type="email">
                     </div>
+
                     <!-- Password -->
                     <div class="col-lg-6 mb-3">
                         <label for="password">Password <span>*</span></label>
@@ -88,25 +81,8 @@ $show_breadcrumb = true;
 </div>
 
 <script>
-    document.getElementById('lead_booking_id').addEventListener('change', function() {
-        const leadBookingId = this.value;
-        if (!leadBookingId) {
-            document.getElementById('project_name').value = '';
-            document.getElementById('flat_name').value = '';
-            return;
-        }
-
-        fetch(`<?= $GLOBALS['base_url'] ?>/get-lead-booking-details/${leadBookingId}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('project_name').value = data.data.project_name;
-                    document.getElementById('flat_name').value = data.data.flat_name;
-                } else {
-                    document.getElementById('project_name').value = '';
-                    document.getElementById('flat_name').value = '';
-                }
-            }).catch(err => console.error(err));
-
-    });
+document.getElementById('lead_id').addEventListener('change', function() {
+    const bookingId = this.selectedOptions[0].dataset.booking;
+    document.getElementById('lead_booking_id').value = bookingId;
+});
 </script>

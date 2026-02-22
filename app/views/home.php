@@ -446,7 +446,7 @@ $show_breadcrumb = false;
                                                         </div>
                                                         <div class="mb-3">
                                                             <label class="form-label">Note</label>
-                                                            <textarea class="form-control" name="approval_note" placeholder="Enter note here" rows="4" required></textarea>
+                                                            <textarea class="form-control" name="approval_note" placeholder="Enter note here" rows="4" ></textarea>
                                                         </div>
 
                                                     <?php endif; ?>

@@ -548,19 +548,19 @@ function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug
 
 function addCameraWithHls($db, $project_id, $project_name, $camera_name, $rtsp_url, $status = 'active', $hlsBase = __DIR__ . '/hls', $ffmpegPath = 'C:/ffmpeg/bin/ffmpeg.exe')
 {
-    // 1️⃣ Generate slugs
+    // 1 Generate slugs
     $project_slug = strtolower(trim(preg_replace('/[^\w]+/', '_', $project_name)));
     $camera_slug  = strtolower(trim(preg_replace('/[^\w]+/', '_', $camera_name)));
 
-    // 2️⃣ Insert camera into DB WITHOUT hls_path
+    // 2 Insert camera into DB WITHOUT hls_path
     $stmt = $db->prepare("INSERT INTO cameras (project_id, camera_name, camera_slug, rtsp_url, status) VALUES (?, ?, ?, ?, ?)");
     $stmt->bind_param("issss", $project_id, $camera_name, $camera_slug, $rtsp_url, $status);
     $stmt->execute();
 
-    // ✅ mysqli এর জন্য last inserted ID
+    // mysqli এর জন্য last inserted ID
     $camera_id = $db->insert_id;
 
-    // 3️⃣ Prepare HLS folder
+    // 3 Prepare HLS folder
     $projectDir = rtrim($hlsBase, '/') . '/' . $project_slug;
     if (!is_dir($projectDir)) mkdir($projectDir, 0777, true);
 

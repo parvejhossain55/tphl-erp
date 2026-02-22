@@ -371,36 +371,44 @@ public function getExecutiveFullStats($executiveId = null, $month = null, $year 
     $visitCondition   = implode(" AND ", $visitWhere);
     $targetCondition  = implode(" AND ", $targetWhere);
 
-    $sql = " SELECT 
-            u.id,
-            u.full_name,
-            IFNULL(SUM(st.site_visit_target),0) AS site_visit_target,
-            IFNULL(SUM(st.booking_target),0) AS booking_target,
-            IFNULL(v.visit_completed,0) AS visit_completed,
-            IFNULL(b.booking_completed,0) AS booking_completed,
-            IFNULL(b.total_booking_money,0) AS total_booking_money,
-            IFNULL(b.total_flat_value,0) AS total_flat_value
-        FROM users u
-        LEFT JOIN sales_targets st
-            ON st.sales_user_id = u.id AND $targetCondition
-        LEFT JOIN (
-            SELECT assigned_with, COUNT(*) AS visit_completed
-            FROM lead_follow_ups lf
-            WHERE $visitCondition
-            GROUP BY assigned_with
-        ) v ON v.assigned_with = u.id
-        LEFT JOIN (
-            SELECT sales_by_id, COUNT(*) AS booking_completed,
-                SUM(agreement_value - IFNULL(discount_amount,0)) AS total_booking_money,
-                SUM(f.price_value) AS total_flat_value
-            FROM lead_bookings lb
-            LEFT JOIN flats f ON f.id = lb.flat_id
-            WHERE $bookingCondition
-            GROUP BY sales_by_id
-        ) b ON b.sales_by_id = u.id
-        WHERE u.id = " . (int)$executiveId . "
-        GROUP BY u.id
-    ";
+ $sql = " SELECT 
+        u.id,
+        u.full_name,
+        IFNULL(SUM(st.site_visit_target),0) AS site_visit_target,
+        IFNULL(SUM(st.booking_target),0) AS booking_target,
+        IFNULL(v.visit_completed,0) AS visit_completed,
+        IFNULL(b.booking_completed,0) AS booking_completed,
+        IFNULL(b.total_booking_money,0) AS total_booking_money,
+        IFNULL(b.total_flat_value,0) AS total_flat_value
+    FROM users u
+    LEFT JOIN sales_targets st
+        ON st.sales_user_id = u.id AND $targetCondition
+    LEFT JOIN (
+        SELECT assigned_with, COUNT(*) AS visit_completed
+        FROM lead_follow_ups lf
+        WHERE $visitCondition
+        GROUP BY assigned_with
+    ) v ON v.assigned_with = u.id
+    LEFT JOIN (
+        SELECT sales_by_id, COUNT(*) AS booking_completed,
+            SUM(agreement_value - IFNULL(discount_amount,0)) AS total_booking_money,
+            SUM(f.price_value) AS total_flat_value
+        FROM lead_bookings lb
+        LEFT JOIN flats f ON f.id = lb.flat_id
+        WHERE $bookingCondition
+        GROUP BY sales_by_id
+    ) b ON b.sales_by_id = u.id
+    WHERE u.id = " . (int)$executiveId . "
+    GROUP BY 
+        u.id,
+        u.full_name,
+        v.visit_completed,
+        b.booking_completed,
+        b.total_booking_money,
+        b.total_flat_value
+";
+
+
 
     $result = $this->db->query($sql);
     return $result->fetch_all(MYSQLI_ASSOC);

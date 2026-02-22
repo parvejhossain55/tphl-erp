@@ -9,12 +9,18 @@ class Camera extends Model
         $this->db = $db;
     }
 
-    public function getAll(){
-        $stmt = $this->db->prepare("SELECT * FROM cameras");
-        $stmt->execute();
-        $result = $stmt->get_result();
-        return $result->fetch_assoc(MYSQLI_ASSOC);
+ public function getAll() {
+    $stmt = $this->db->prepare("SELECT * FROM cameras");
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $cameras = [];
+    while ($row = $result->fetch_assoc()) {  // argument na pathao
+        $cameras[] = $row;
     }
+
+    return $cameras;
+}
     // Get all Blogs with paginate
  
 

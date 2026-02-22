@@ -9,47 +9,45 @@ class OnboardClient extends Model
         return parent::__construct($db);
     }
 
-public function getAll($period = null)
-{
-    $sql = "SELECT oc.*, 
-                   p.name AS project_name,
-                   f.flat_name,
-                   f.sqft,
-                   f.price_value,
-                   lb.booking_status,
-                   lb.agreement_value,
+    public function getAll($period = null)
+    {
+        $sql = "SELECT oc.lead_id,
                    l.full_name AS client_name,
                    l.phone AS client_phone,
-                   l.id as client_id,
-                   lp.amount,
-                   lp.created_at AS booking_pay_date
+                   oc.email,
+                   GROUP_CONCAT(DISTINCT p.name SEPARATOR ', ') AS project_names,
+                   GROUP_CONCAT(DISTINCT CONCAT(f.flat_name, ' (', f.sqft, ' sqft)') SEPARATOR ', ') AS flat_names,
+                   SUM(lp.amount) AS total_paid
             FROM onboard_clients AS oc
-            LEFT JOIN lead_bookings AS lb ON oc.lead_booking_id = lb.id
-            LEFT JOIN leads AS l ON lb.lead_id = l.id
-            LEFT JOIN projects AS p ON oc.project_id = p.id
-            LEFT JOIN flats AS f ON oc.flat_id = f.id
+            LEFT JOIN lead_bookings AS lb ON lb.lead_id = oc.lead_id
+            LEFT JOIN leads AS l ON l.id = oc.lead_id
+            LEFT JOIN projects AS p ON lb.project_id = p.id
+            LEFT JOIN flats AS f ON lb.flat_id = f.id
             LEFT JOIN lead_payments AS lp ON lp.booking_id = lb.id
-            WHERE 1 = 1"; // always true for easier AND conditions
+            WHERE 1=1";
 
-    $params = [];
-    $types  = "";
+        $params = [];
+        $types  = "";
 
-    if ($period && isset($period['from']) && isset($period['to'])) {
-        $sql .= " AND oc.created_at BETWEEN ? AND ?";
-        $params[] = $period['from'];
-        $params[] = $period['to'];
-        $types .= "ss";
+        if ($period && isset($period['from']) && isset($period['to'])) {
+            $sql .= " AND oc.created_at BETWEEN ? AND ?";
+            $params[] = $period['from'];
+            $params[] = $period['to'];
+            $types .= "ss";
+        }
+
+        $sql .= " GROUP BY oc.lead_id, oc.email, l.full_name, l.phone
+              ORDER BY l.full_name ASC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-
-    $stmt = $this->db->prepare($sql);
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-
-    $stmt->execute();
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
 
 
     /**
@@ -59,53 +57,50 @@ public function getAll($period = null)
      * @param string $password
      * @param array $links Optional camera/money/purchase links
      */
-    public function create($leadBookingId, $email, $password, $links = [], $created_by = null)
+    // Create onboard client
+    public function create($leadId, $email, $password, $links = [], $created_by = null)
     {
-        // Fetch lead_id and project_id from lead_bookings
-        $sqlBooking = "SELECT lead_id, project_id,flat_id FROM lead_bookings WHERE id = ?";
-        $stmtBooking = $this->db->prepare($sqlBooking);
-        $stmtBooking->bind_param("i", $leadBookingId);
-        $stmtBooking->execute();
-        $resultBooking = $stmtBooking->get_result();
-        $bookingData = $resultBooking->fetch_assoc();
+        if (!$leadId) return false;
 
-        $leadId = $bookingData['lead_id'] ?? null;
-        $projectId = $bookingData['project_id'] ?? null;
-        $flatId = $bookingData['flat_id'] ?? null;
+        // Check if lead already has login
+        $checkSql = "SELECT id FROM onboard_clients WHERE lead_id = ?";
+        $checkStmt = $this->db->prepare($checkSql);
+        $checkStmt->bind_param("i", $leadId);
+        $checkStmt->execute();
+        $exists = $checkStmt->get_result()->fetch_assoc();
+        if ($exists) return $exists['id'];
 
-        $cameraLink1 = $links['cameraLink1'] ?? null;
-        $cameraLink2 = $links['cameraLink2'] ?? null;
-        $moneyReceiptLink = $links['moneyReceiptLink'] ?? null;
+        // Links
+        $cameraLink1        = $links['cameraLink1'] ?? null;
+        $cameraLink2        = $links['cameraLink2'] ?? null;
+        $moneyReceiptLink   = $links['moneyReceiptLink'] ?? null;
         $purchaseDetailsLink = $links['purchaseDetailsLink'] ?? null;
 
-        $sql = "INSERT INTO onboard_clients 
-            (lead_booking_id, lead_id, project_id, email, password, cameraLink1, cameraLink2, moneyReceiptLink, purchaseDetailsLink, created_by,flat_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)";
+        // Insert login
+        $sql = "INSERT INTO onboard_clients
+        ( lead_id, email, password, cameraLink1, cameraLink2, moneyReceiptLink, purchaseDetailsLink, created_by)
+        VALUES (?,  ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->db->prepare($sql);
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
         $stmt->bind_param(
-            "iiissssssii",
-            $leadBookingId,
+            "issssssi",
             $leadId,
-            $projectId,
             $email,
             $hashedPassword,
             $cameraLink1,
             $cameraLink2,
             $moneyReceiptLink,
             $purchaseDetailsLink,
-            $created_by,
-            $flatId
+            $created_by
         );
 
-        if ($stmt->execute()) {
-            return $this->db->insert_id;
-        } else {
-            return false;
-        }
+        return $stmt->execute() ? $this->db->insert_id : false;
     }
+
+    // Fetch unique leads from bookings
+
     public function find($id)
     {
 
@@ -124,37 +119,37 @@ public function getAll($period = null)
     /**
      * Update lead
      */
-public function update($id, $data)
-{
-    $email = $data['email'] ?? '';
-    $password = $data['password'] ?? null;
-    $cameraLink1 = $data['cameraLink1'] ?? null;
-    $cameraLink2 = $data['cameraLink2'] ?? null;
-    $moneyReceiptLink = $data['moneyReceiptLink'] ?? null;
-    $purchaseDetailsLink = $data['purchaseDetailsLink'] ?? null;
+    public function update($id, $data)
+    {
+        $email = $data['email'] ?? '';
+        $password = $data['password'] ?? null;
+        $cameraLink1 = $data['cameraLink1'] ?? null;
+        $cameraLink2 = $data['cameraLink2'] ?? null;
+        $moneyReceiptLink = $data['moneyReceiptLink'] ?? null;
+        $purchaseDetailsLink = $data['purchaseDetailsLink'] ?? null;
 
-    if ($password) {
-        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        $sql = "UPDATE onboard_clients 
+        if ($password) {
+            $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+            $sql = "UPDATE onboard_clients 
                 SET email = ?, password = ?, cameraLink1 = ?, cameraLink2 = ?, moneyReceiptLink = ?, purchaseDetailsLink = ?
                 WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("ssssssi", $email, $hashedPassword, $cameraLink1, $cameraLink2, $moneyReceiptLink, $purchaseDetailsLink, $id);
-    } else {
-        // Do not update password if blank
-        $sql = "UPDATE onboard_clients 
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("ssssssi", $email, $hashedPassword, $cameraLink1, $cameraLink2, $moneyReceiptLink, $purchaseDetailsLink, $id);
+        } else {
+            // Do not update password if blank
+            $sql = "UPDATE onboard_clients 
                 SET email = ?, cameraLink1 = ?, cameraLink2 = ?, moneyReceiptLink = ?, purchaseDetailsLink = ?
                 WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("sssssi", $email, $cameraLink1, $cameraLink2, $moneyReceiptLink, $purchaseDetailsLink, $id);
-    }
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("sssssi", $email, $cameraLink1, $cameraLink2, $moneyReceiptLink, $purchaseDetailsLink, $id);
+        }
 
-    if ($stmt->execute()) {
-        return true;
-    } else {
-        return false;
+        if ($stmt->execute()) {
+            return true;
+        } else {
+            return false;
+        }
     }
-}
 
 
     public function countLeadsByMonth($year, $month)

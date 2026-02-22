@@ -16,13 +16,12 @@ class BookingLead extends Model
         $sql = "SELECT lb.*, 
        l.full_name, 
        p.name AS project_name, 
-       u2.name AS flat_name, 
+       f.flat_name AS flat_name, 
        u1.full_name AS created_by_name,
        lb.booking_date as booking_pay_date
 FROM lead_bookings lb
 LEFT JOIN leads l ON lb.lead_id = l.id
 LEFT JOIN flats f ON lb.flat_id = f.id
-LEFT JOIN units u2 ON f.unit_id = u2.id
 LEFT JOIN projects p ON f.project_id = p.id
 LEFT JOIN users u1 ON lb.created_by = u1.id
 WHERE lb.deleted_at IS NULL
@@ -32,63 +31,42 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getAllOnboardClient($year = null, $month = null)
-    {
-        $sql = "SELECT 
-                lb.*, 
-                l.full_name, 
-                l.id as lead_id,
-                l.phone,
-                l.email,
-                p.name AS project_name, 
-                u2.name AS flat_name, 
-                lp.payment_method ,
-                lp.amount,
-                lp.created_at As booking_pay_date,
-                u1.full_name AS created_by_name,
-                f.flat_name ,f.sqft,
-                f.price_value
+public function getAllOnboardClient($year = null, $month = null)
+{
+    $sql = "SELECT DISTINCT l.id AS lead_id, l.full_name, l.email, MIN(lb.id) AS lead_booking_id
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
-            LEFT JOIN flats f ON lb.flat_id = f.id
-            LEFT JOIN units u2 ON f.unit_id = u2.id
-            LEFT JOIN projects p ON f.project_id = p.id
-            LEFT JOIN users u1 ON lb.created_by = u1.id
-            LEFT JOIN  lead_payments AS lp ON lp.booking_id = lb.id
+            LEFT JOIN onboard_clients oc ON oc.lead_id = lb.lead_id
             WHERE lb.deleted_at IS NULL
-             AND lb.booking_status = 'completed'
-             ";
+              AND lb.booking_status = 'completed'
+              AND oc.id IS NULL
+            GROUP BY l.id, l.full_name, l.email
+            ORDER BY l.full_name ASC";
 
-        $params = [];
-        $types  = "";
-        // 
-        if (!empty($year)) {
-            $sql .= " AND YEAR(l.created_at) = ?";
-            $params[] = (int)$year;
-            $types   .= "i";
-        }
+    $params = [];
+    $types = "";
 
-        if (!empty($month)) {
-            $sql .= " AND MONTH(l.created_at) = ?";
-            $params[] = (int)$month;
-            $types   .= "i";
-        }
-
-        //  single ORDER BY at the end
-
-        $stmt = $this->db->prepare($sql);
-
-        if (!empty($params)) {
-            $stmt->bind_param($types, ...$params);
-        }
-
-        if (!$stmt->execute()) {
-            return [];
-        }
-
-        $result = $stmt->get_result();
-        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    if (!empty($year)) {
+        $sql .= " AND YEAR(l.created_at) = ?";
+        $params[] = (int)$year;
+        $types .= "i";
     }
+
+    if (!empty($month)) {
+        $sql .= " AND MONTH(l.created_at) = ?";
+        $params[] = (int)$month;
+        $types .= "i";
+    }
+
+    $stmt = $this->db->prepare($sql);
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
 
 
 
@@ -101,7 +79,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             l.phone,
             l.email,
             p.name AS project_name, 
-            u2.name AS flat_name, 
+            f.flat_name AS flat_name, 
             lp.payment_method,
             lp.amount,
             lp.created_at AS booking_pay_date,
@@ -112,7 +90,6 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         FROM lead_bookings lb
         LEFT JOIN leads l ON lb.lead_id = l.id
         LEFT JOIN flats f ON lb.flat_id = f.id
-        LEFT JOIN units u2 ON f.unit_id = u2.id
         LEFT JOIN projects p ON f.project_id = p.id
         LEFT JOIN users u1 ON lb.created_by = u1.id
         LEFT JOIN lead_payments lp ON lp.booking_id = lb.id
@@ -156,7 +133,6 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 l.phone,
                 l.email,
                 p.name AS project_name, 
-                u2.name AS flat_name, 
                 lp.payment_method,
                 lp.amount,
                 lp.created_at AS booking_pay_date,
@@ -167,7 +143,6 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN flats f ON lb.flat_id = f.id
-            LEFT JOIN units u2 ON f.unit_id = u2.id
             LEFT JOIN projects p ON f.project_id = p.id
             LEFT JOIN users u1 ON lb.created_by = u1.id
             LEFT JOIN lead_payments lp ON lp.booking_id = lb.id
@@ -240,7 +215,6 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
     public function create($data)
     {
-        // 1 discount_amount
         $discountAmount = isset($data['discount_amount']) && $data['discount_amount'] !== ''
             ? (float) $data['discount_amount']
             : null;
@@ -421,11 +395,10 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                f.floor_no, 
                f.price_value,
                f.sqft,
-               u.name AS unit_name
+               f.flat_name AS unit_name
         FROM lead_bookings lb
         LEFT JOIN leads l ON lb.lead_id = l.id
         LEFT JOIN flats f ON lb.flat_id = f.id
-        LEFT JOIN units u ON f.unit_id = u.id
         LEFT JOIN projects p ON lb.project_id = p.id
         WHERE lb.id = ?
         LIMIT 1
@@ -630,7 +603,4 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             'total_flats' => (int) ($row['total_flats'] ?? 0),
         ];
     }
-
-
-    
 }

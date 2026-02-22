@@ -16,18 +16,14 @@ class FlatModel extends Model
         $sql = "
         SELECT 
             f.*,
-            p.name AS project_name,
-            u.name AS unit_name
+            p.name AS project_name
         FROM flats AS f
         LEFT JOIN projects AS p ON f.project_id = p.id
-        LEFT JOIN units AS u ON f.unit_id = u.id
         WHERE f.deleted_at IS NULL
     ";
 
         $params = [];
         $types  = "";
-
-        // 🔍 Search by flat name or sqft
         if (!empty($search)) {
             $sql .= " AND (f.flat_name LIKE ? OR f.sqft LIKE ?)";
             $params[] = "%$search%";
@@ -35,7 +31,6 @@ class FlatModel extends Model
             $types   .= "ss";
         }
 
-        //  Project wise filter
         if (!empty($project_id)) {
             $sql .= " AND f.project_id = ?";
             $params[] = $project_id;
@@ -74,12 +69,12 @@ class FlatModel extends Model
         ];
     }
 
-    public function getTotalFlats(){
+    public function getTotalFlats()
+    {
         $sql = $this->db->prepare("SELECT COUNT(*) AS total FROM flats WHERE deleted_at IS NULL");
         $sql->execute();
         $result = $sql->get_result()->fetch_assoc();
         return $result['total'];
-
     }
     /* =========================
        Create Project
@@ -136,22 +131,20 @@ class FlatModel extends Model
     /* =========================
        Find Project (Edit)
     ========================== */
-public function find($id)
-{
-    $stmt = $this->db->prepare("
+    public function find($id)
+    {
+        $stmt = $this->db->prepare("
         SELECT 
             f.*, 
             p.name AS project_name, 
-            u.name AS unit_name  
         FROM flats AS f 
         LEFT JOIN projects AS p ON f.project_id = p.id
-        LEFT JOIN units AS u ON f.unit_id = u.id
         WHERE f.id = ?
     ");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_assoc();
-}
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
 
     /**
      * Update lead
@@ -272,7 +265,4 @@ public function find($id)
             throw $e;
         }
     }
-
-
-
 }

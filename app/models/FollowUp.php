@@ -16,12 +16,11 @@ class FollowUp extends Model
         $sql = "SELECT fu.*, 
                l.full_name, 
                p.name AS project_name, 
-               u2.name AS flat_name, 
+               f.flat_name AS flat_name, 
                u1.full_name AS created_by_name
         FROM lead_follow_ups fu
         LEFT JOIN leads l ON fu.lead_id = l.id
         LEFT JOIN flats f ON fu.flat_id = f.id
-        LEFT JOIN units u2 ON f.unit_id = u2.id
         LEFT JOIN projects p ON f.project_id = p.id
         LEFT JOIN users u1 ON fu.created_by = u1.id
          WHERE fu.deleted_at IS NULL
@@ -113,7 +112,7 @@ public function create($data)
                 fu.*, 
                 l.full_name,
                 p.name AS project_name,
-                u1.name AS unit_name,
+                f.flat_name AS unit_name,
                 u.full_name AS created_by_name
             FROM lead_follow_ups fu
             LEFT JOIN leads l 
@@ -122,8 +121,6 @@ public function create($data)
                 ON fu.project_id = p.id
             LEFT JOIN flats f 
                 ON fu.flat_id = f.id
-            LEFT JOIN units u1 
-                ON f.unit_id = u1.id
             LEFT JOIN users u 
                 ON fu.created_by = u.id
             WHERE fu.id = ?
@@ -188,7 +185,6 @@ public function create($data)
         LEFT JOIN leads l ON f.lead_id = l.id
         LEFT JOIN projects p ON f.project_id = p.id
         LEFT JOIN flats fl ON f.flat_id = fl.id
-        LEFT JOIN units u ON fl.unit_id = u.id
         LEFT JOIN users usr ON f.created_by = usr.id
         LEFT JOIN users ur ON f.assigned_with = ur.id
         WHERE f.deleted_at IS NULL
@@ -297,7 +293,6 @@ public function create($data)
     LEFT JOIN leads l ON f.lead_id = l.id
     LEFT JOIN projects p ON f.project_id = p.id
     LEFT JOIN flats fl ON f.flat_id = fl.id
-    LEFT JOIN units u ON fl.unit_id = u.id
     LEFT JOIN users usr ON f.created_by = usr.id
     LEFT JOIN employees emp ON f.assigned_with = emp.id
     WHERE DATE(f.next_follow_up_date) = '$today'
@@ -340,7 +335,6 @@ public function create($data)
         LEFT JOIN leads l ON f.lead_id = l.id
         LEFT JOIN projects p ON f.project_id = p.id
         LEFT JOIN flats fl ON f.flat_id = fl.id
-        LEFT JOIN units u ON fl.unit_id = u.id
         LEFT JOIN users creator ON f.created_by = creator.id
         LEFT JOIN users assignee ON f.assigned_with = assignee.id
         WHERE DATE(f.next_follow_up_date) = '{$today}'

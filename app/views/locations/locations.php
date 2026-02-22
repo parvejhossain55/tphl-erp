@@ -22,13 +22,15 @@ $show_breadcrumb = false;
                 <table class="table mb-20 multiple_tables">
                     <thead>
                         <tr class="table__title table__sort">
+                            <th>S/L</th>
                             <th>Location Name</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody class="table__body">
-                        <?php foreach ($locations as $location): ?>
+                        <?php foreach ($locations as $key =>$location): ?>
                             <tr>
+                                 <td><?= $key + 1 ?></td>
                                 <td><?= htmlspecialchars($location['name'] ?? '') ?></td>
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-2">

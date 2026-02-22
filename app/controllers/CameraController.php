@@ -14,10 +14,12 @@ class CameraController extends Controller
     public function index()
     {
 
+        $cameras = $this->cameraModel->getAll();
         $this->view("/cameras/camera-lists", [
 
             "current_route"   => "camera-lists",
             "page_title"      => "Camera List",
+            "cameras" => $cameras,
 
         ]);
 

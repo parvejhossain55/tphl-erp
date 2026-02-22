@@ -177,11 +177,10 @@ class PaymentLeadBooking extends Model
     public function getByLead($lead_id)
     {
         $stmt = $this->db->prepare("
-        SELECT o.*, p.name AS project_name, f.floor_no, f.sqft, u.name AS unit_name
+        SELECT o.*, p.name AS project_name, f.floor_no, f.sqft, f.flat_name AS unit_name
         FROM lead_payments o
         LEFT JOIN projects p ON o.project_id = p.id
         LEFT JOIN flats f ON o.flat_id = f.id
-        LEFT JOIN units u ON f.unit_id = u.id
         WHERE o.lead_id = ?
     ");
         $stmt->bind_param("i", $lead_id);
@@ -236,7 +235,6 @@ class PaymentLeadBooking extends Model
             f.floor_no,
             f.sqft,
             f.price_value,
-            u.name AS unit_name,
 
             cr.full_name AS created_by_name
 
@@ -253,9 +251,6 @@ class PaymentLeadBooking extends Model
 
         INNER JOIN flats f 
             ON f.id = lb.flat_id
-
-        INNER JOIN units u 
-            ON u.id = f.unit_id
 
         LEFT JOIN users cr 
             ON cr.id = lp.created_by
