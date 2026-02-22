@@ -160,10 +160,10 @@
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-dollar-sign me-1"></i> My Total Sale</p>
+                        <p class="stat-label mb-2"><i class="fa-solid fa-bangladeshi-taka-sign me-1"></i> My Total Sale</p>
                         <h2 class="stat-value text-info"><?= $myTotalShareSold['total_flats'] ?></h2>
                     </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-dollar-sign"></i></span></div>
+                    <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
                 </div>
             </div>
         </div>

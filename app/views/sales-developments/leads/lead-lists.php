@@ -229,7 +229,15 @@ $show_breadcrumb = true;
                                     </td>
                                     <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
                                     <td><strong><?= $lead['full_name'] ?? '' ?></strong></td>
-                                    <td><?= $lead['phone_number'] ?? $lead['phone']  ?>
+                                    <td>
+                                        <?php
+                                        $phone = $lead['phone_number'] ?? $lead['phone'];
+                                        $phone = preg_replace('/[^0-9]/', '', $phone); // clean number
+                                        ?>
+
+                                        <a href="https://wa.me/<?= $phone ?>" target="_blank">
+                                            <?= $phone ?>
+                                        </a>
                                     </td>
                                     <?php
                                     $displayName = !empty($lead['campaign_name'])
@@ -750,60 +758,60 @@ $show_breadcrumb = true;
     });
 </script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {
 
-    const assignCardMobile = document.getElementById('assignCardMobile');
-    const assignBtnMobile = document.getElementById('assignUserBtnMobile');
-    const userSelectMobile = document.getElementById('assignUserSelectMobile');
+        const assignCardMobile = document.getElementById('assignCardMobile');
+        const assignBtnMobile = document.getElementById('assignUserBtnMobile');
+        const userSelectMobile = document.getElementById('assignUserSelectMobile');
 
-    // Toggle mobile assign card visibility
-    function toggleMobileAssignCard() {
-        const anyChecked = Array.from(document.querySelectorAll('.selectedIdMobile')).some(cb => cb.checked);
-        assignCardMobile.style.display = anyChecked ? 'flex' : 'none';
-    }
-
-    // Listen for checkbox changes
-    document.querySelectorAll('.selectedIdMobile').forEach(cb => {
-        cb.addEventListener('change', toggleMobileAssignCard);
-    });
-
-    // Assign Leads button click
-    assignBtnMobile.addEventListener('click', function() {
-        const selectedLeads = Array.from(document.querySelectorAll('.selectedIdMobile:checked'))
-                                  .map(cb => cb.dataset.id);
-
-        const userId = userSelectMobile.value;
-
-        if (!userId || selectedLeads.length === 0) {
-            alert('Select leads and a user to assign.');
-            return;
+        // Toggle mobile assign card visibility
+        function toggleMobileAssignCard() {
+            const anyChecked = Array.from(document.querySelectorAll('.selectedIdMobile')).some(cb => cb.checked);
+            assignCardMobile.style.display = anyChecked ? 'flex' : 'none';
         }
 
-        // Create form dynamically to submit POST
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '<?= $base_url ?>/assign-multiple-leads';
+        // Listen for checkbox changes
+        document.querySelectorAll('.selectedIdMobile').forEach(cb => {
+            cb.addEventListener('change', toggleMobileAssignCard);
+        });
 
-        const inputUser = document.createElement('input');
-        inputUser.type = 'hidden';
-        inputUser.name = 'user_id';
-        inputUser.value = userId;
-        form.appendChild(inputUser);
+        // Assign Leads button click
+        assignBtnMobile.addEventListener('click', function() {
+            const selectedLeads = Array.from(document.querySelectorAll('.selectedIdMobile:checked'))
+                .map(cb => cb.dataset.id);
 
-        const inputLeads = document.createElement('input');
-        inputLeads.type = 'hidden';
-        inputLeads.name = 'lead_ids';
-        inputLeads.value = selectedLeads.join(',');
-        form.appendChild(inputLeads);
+            const userId = userSelectMobile.value;
 
-        document.body.appendChild(form);
-        form.submit();
+            if (!userId || selectedLeads.length === 0) {
+                alert('Select leads and a user to assign.');
+                return;
+            }
 
-        // Optional: reset checkboxes & hide assign card
-        document.querySelectorAll('.selectedIdMobile').forEach(cb => cb.checked = false);
-        toggleMobileAssignCard();
+            // Create form dynamically to submit POST
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '<?= $base_url ?>/assign-multiple-leads';
+
+            const inputUser = document.createElement('input');
+            inputUser.type = 'hidden';
+            inputUser.name = 'user_id';
+            inputUser.value = userId;
+            form.appendChild(inputUser);
+
+            const inputLeads = document.createElement('input');
+            inputLeads.type = 'hidden';
+            inputLeads.name = 'lead_ids';
+            inputLeads.value = selectedLeads.join(',');
+            form.appendChild(inputLeads);
+
+            document.body.appendChild(form);
+            form.submit();
+
+            // Optional: reset checkboxes & hide assign card
+            document.querySelectorAll('.selectedIdMobile').forEach(cb => cb.checked = false);
+            toggleMobileAssignCard();
+        });
     });
-});
 </script>
 
 

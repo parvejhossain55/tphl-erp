@@ -46,7 +46,7 @@ class SalesDashboardController extends Controller
         $followUpsDue = $todayLeads;
 
         //  Onboarded Clients
-        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'booked' AND lead_bookings.deleted_at IS NULL";
+        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'completed' AND lead_bookings.deleted_at IS NULL";
         $onboardedResult = $this->db->query($onboardedQuery);
         $onboardedClients = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
 

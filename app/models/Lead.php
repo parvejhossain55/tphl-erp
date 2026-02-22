@@ -19,7 +19,6 @@ class Lead extends Model
             u.full_name AS agent_name
         FROM leads AS l
         LEFT JOIN users AS u ON l.assigned_id = u.id
-        WHERE l.status = 'active'
         AND l.deleted_at IS NULL
     ";
 

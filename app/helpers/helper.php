@@ -236,6 +236,9 @@ function redirectByRole()
         case 8: // Accounts
             $url = "{$GLOBALS['base_url']}/my-dashboard";
             break;
+        case 9: // Accounts
+            $url = "{$GLOBALS['base_url']}/sales-dashboard";
+            break;
 
         default:
             $url = "{$GLOBALS['base_url']}/admin-login";

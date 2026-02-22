@@ -54,23 +54,23 @@ public function getAll() {
 
 public function create($data)
 {
-    // Module name দিয়ে photo upload
-   
-
     $stmt = $this->db->prepare(
         "INSERT INTO departments
-        (name, status,created_by)
-        VALUES (?, ?,?)"
+        (name, status, created_by)
+        VALUES (?, ?, ?)"
     );
 
+    if (!$stmt) {
+        die("Prepare failed: " . $this->db->error);
+    }
 
-$stmt->bind_param(
-    "si",
-    $data['name'],
-    $data['status'],
-    $data['created_by']
-    
-);
+    $stmt->bind_param(
+        "sii",
+        $data['name'],
+        $data['status'],
+        $data['created_by']
+    );
+
     if ($stmt->execute()) {
         return true;
     } else {
@@ -83,11 +83,13 @@ $stmt->bind_param(
 
  // Update role name + permissions
 public function update($data)
-
-
 {
-    // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE departments SET name = ?, status = ?,created_by = ?, WHERE id = ?");
+    $stmt = $this->db->prepare(
+        "UPDATE departments 
+        SET name = ?, status = ?, created_by = ?
+        WHERE id = ?"
+    );
+
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;
@@ -95,10 +97,10 @@ public function update($data)
 
     $stmt->bind_param(
         "siii",
-        $data['name'],    
-        $data['status'],  
-        $data['created_by'],  
-        $data['id']       
+        $data['name'],
+        $data['status'],
+        $data['created_by'],
+        $data['id']
     );
 
     if (!$stmt->execute()) {
