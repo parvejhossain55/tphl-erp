@@ -62,41 +62,66 @@ class UserController extends Controller
     }
 
     // Handle form submission
- public function store()
-{
-    $data = [
-        'full_name'        => $_POST['full_name'] ?? '',
-        'user_name'        => $_POST['user_name'] ?? '',
-        'phone'            => $_POST['phone'] ?? '',
-        'email'            => $_POST['email'] ?? '',
-        'designation_id'   => $_POST['designation_id'] ?? '',
-        'address'          => $_POST['address'] ?? '',
-        'nid'              => $_POST['nid'] ?? '',
-        'role_id'          => $_POST['role_id'] ?? 0,
-        'password'         => $_POST['password'] ?? '',
-        'media_link1'      => $_POST['media_link1'] ?? '',
-        'media_link2'      => $_POST['media_link2'] ?? '',
-        'created_by'       => $_SESSION['user']['id'] ?? null,
-    ];
+    public function store()
+    {
+        $data = [
+            'full_name'        => trim($_POST['full_name'] ?? ''),
+            'user_name'        => trim($_POST['user_name'] ?? ''),
+            'phone'            => trim($_POST['phone'] ?? ''),
+            'email'            => trim($_POST['email'] ?? ''),
+            'designation_id'   => $_POST['designation_id'] ?? '',
+            'address'          => trim($_POST['address'] ?? ''),
+            'nid'              => trim($_POST['nid'] ?? ''),
+            'role_id'          => $_POST['role_id'] ?? 0,
+            'password'         => $_POST['password'] ?? '',
+            'media_link1'      => $_POST['media_link1'] ?? '',
+            'media_link2'      => $_POST['media_link2'] ?? '',
+            'created_by'       => $_SESSION['user']['id'] ?? null,
+        ];
 
-    if ($this->userModel->create($data)) {
-
-        // Logged-in user role
-        $loggedInRoleId = $_SESSION['user']['role_id'] ?? 0;
-
-        if ((int)$loggedInRoleId === 5) {
-            setSuccess("User Created successfully");
-            header("Location: {$GLOBALS['base_url']}/sales-executive-teams");
-        } else {
-             setSuccess("User Created successfully");
-            header("Location: {$GLOBALS['base_url']}/user-lists");
+        // ===== VALIDATION =====
+        if (empty($data['full_name'])) {
+            setError("Full Name is required");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
         }
 
-        exit;
-    } else {
-         setError("Failed to create user");
+        if (empty($data['email'])) {
+            setError("Email is required");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            setError("Invalid email format");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        if (empty($data['password'])) {
+            setError("Password is required");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        if ($this->userModel->create($data)) {
+
+            // Logged-in user role
+            $loggedInRoleId = $_SESSION['user']['role_id'] ?? 0;
+
+            if ((int)$loggedInRoleId === 5) {
+                setSuccess("User Created successfully");
+                header("Location: {$GLOBALS['base_url']}/sales-executive-teams");
+            } else {
+                setSuccess("User Created successfully");
+                header("Location: {$GLOBALS['base_url']}/user-lists");
+            }
+
+            exit;
+        } else {
+            setError("Failed to create user");
+        }
     }
-}
 
 
 
@@ -140,38 +165,71 @@ class UserController extends Controller
     }
 
 
-public function update($id)
-{
-    $data = [
-        'full_name'    => $_POST['full_name'] ?? '',
-        'user_name'    => $_POST['user_name'] ?? '',
-        'phone'        => $_POST['phone'] ?? '',
-        'email'        => $_POST['email'] ?? '',
-        'designation_id'=> $_POST['designation_id'] ?? '',
-        'address'      => $_POST['address'] ?? '',
-        'nid'          => $_POST['nid'] ?? '',
-        'role_id'      => $_POST['role_id'] ?? 0,
-        'password'     => $_POST['password'] ?? '',
-        'media_link1'  => $_POST['media_link1'] ?? '',
-        'media_link2'  => $_POST['media_link2'] ?? '',
-        'created_by'      => $_SESSION['user']['id'] ?? null,
-        // 'photo' will be handled inside model
-    ];
+    public function update($id)
+    {
+        $data = [
+            'full_name'      => trim($_POST['full_name'] ?? ''),
+            'user_name'      => trim($_POST['user_name'] ?? ''),
+            'phone'          => trim($_POST['phone'] ?? ''),
+            'email'          => trim($_POST['email'] ?? ''),
+            'designation_id' => $_POST['designation_id'] ?? '',
+            'address'        => trim($_POST['address'] ?? ''),
+            'nid'            => trim($_POST['nid'] ?? ''),
+            'role_id'        => $_POST['role_id'] ?? 0,
+            'password'       => $_POST['password'] ?? '',
+            'media_link1'    => $_POST['media_link1'] ?? '',
+            'media_link2'    => $_POST['media_link2'] ?? '',
+            'created_by'     => $_SESSION['user']['id'] ?? null,
+            'employee_id'    => $_POST['employee_id'] ?? null,
+        ];
 
-   try {
-    if ($this->userModel->update($data, $id)) {
-        setSuccess('User updated successfully');
-        header("Location: {$GLOBALS['base_url']}/user-lists");
-        exit;
+        // ===== VALIDATION =====
+        $errors = [];
+
+        if (empty($data['full_name'])) {
+            $errors[] = "Full Name is required";
+        }
+
+        if (empty($data['email'])) {
+            $errors[] = "Email is required";
+        } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors[] = "Invalid email format";
+        }
+
+        if (!empty($errors)) {
+            setError(implode('<br>', $errors));
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        // ===== PASSWORD LOGIC =====
+        if (empty($data['password'])) {
+            unset($data['password']);
+        }
+
+        // ===== UPDATE =====
+        try {
+
+            if ($this->userModel->update($data, $id)) {
+
+                setSuccess('User updated successfully');
+                header("Location: {$GLOBALS['base_url']}/user-lists");
+                exit;
+            } else {
+                setError('Failed to update user');
+                header("Location: {$GLOBALS['base_url']}/edit-user/{$id}");
+                exit;
+            }
+        } catch (\Throwable $th) {
+
+            setError('Failed to update user');
+            error_log('User update error: ' . $th->__toString());
+            header("Location: {$GLOBALS['base_url']}/edit-user/{$id}");
+            exit;
+        }
     }
-} catch (\Throwable $th) {
-    setError('Failed to update user: ' . $th->getMessage());
-    error_log('User update error: ' . $th->__toString());
-}
 
-}
-
-  public function delete()
+    public function delete()
     {
         $id = $_POST['id'] ?? 0;
         if ($id && $this->userModel->delete($id)) {
@@ -182,5 +240,4 @@ public function update($id)
             setError("Failed To delete User");
         }
     }
-
 }

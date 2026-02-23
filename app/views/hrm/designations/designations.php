@@ -14,7 +14,7 @@ $show_breadcrumb = true;
     </button>
 </div>
 <div class="row">
-    
+
 </div>
 
 
@@ -33,11 +33,11 @@ $show_breadcrumb = true;
                         </tr>
                     </thead>
                     <tbody class="table__body">
-                        <?php if(!empty($designations)): ?>
+                        <?php if (!empty($designations)): ?>
                             <?php foreach ($designations as $desg): ?>
                                 <tr>
-                                    <td class="table__designation"><?= htmlspecialchars($desg['designation_name']) ?></td>
-                                    <td class="table__department"><?= htmlspecialchars($desg['department_name']) ?></td>
+                                    <td class="table__designation"><?= htmlspecialchars($desg['designation_name'] ?? 'N/A') ?></td>
+                                    <td class="table__department"><?= htmlspecialchars($desg['department_name'] ?? 'N/A') ?></td>
                                     <td class="table__icon-box">
                                         <div class="d-flex align-items-center justify-content-start gap-10">
                                             <button type="button"
@@ -71,6 +71,9 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
+
+
+
 <div class="row my-3">
     <h5>Department Wise All Designations</h5>
 </div>
@@ -108,7 +111,7 @@ $show_breadcrumb = true;
                         <p class="mb-0 text-muted">There are currently no designations available to display.</p>
                     </div>
                 </div>
-           </div>
+            </div>
         </div>
     <?php endif; ?>
 </div>
@@ -148,7 +151,7 @@ $show_breadcrumb = true;
                                         </div>
                                         <div class="form__input">
                                             <select class="form-control" name="department_id">
-
+                                                <option value="">Select Department </option>
                                                 <?php foreach ($departments as $dept): ?>
 
                                                     <option value="<?= $dept['id'] ?>"><?= $dept['name'] ?></option>

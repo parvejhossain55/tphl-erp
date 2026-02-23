@@ -8,22 +8,30 @@
         </div>
 
     </div>
-<?php
-// year & month from GET or current
-$filterYear  = $_GET['year']  ?? date('Y');
-$filterMonth = $_GET['month'] ?? date('n');
+    <?php
+    // year & month from GET or current
+    $filterYear  = $_GET['year']  ?? date('Y');
+    $filterMonth = $_GET['month'] ?? date('n');
 
-// month name array
-$months = [
-    1 => 'January', 2 => 'February', 3 => 'March',
-    4 => 'April',   5 => 'May',      6 => 'June',
-    7 => 'July',    8 => 'August',   9 => 'September',
-    10 => 'October',11 => 'November',12 => 'December'
-];
+    // month name array
+    $months = [
+        1 => 'January',
+        2 => 'February',
+        3 => 'March',
+        4 => 'April',
+        5 => 'May',
+        6 => 'June',
+        7 => 'July',
+        8 => 'August',
+        9 => 'September',
+        10 => 'October',
+        11 => 'November',
+        12 => 'December'
+    ];
 
-// final label text
-$filterLabel = $months[(int)$filterMonth] . ' ' . $filterYear;
-?>
+    // final label text
+    $filterLabel = $months[(int)$filterMonth] . ' ' . $filterYear;
+    ?>
 
     <form method="get" class="row g-2 mb-3">
 
@@ -207,7 +215,7 @@ $filterLabel = $months[(int)$filterMonth] . ' ' . $filterYear;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Overdue Tasks</h6>
                         <h4 class="card__title text-break text-success mb-10"><?= $overdueTasks ?? 0 ?></h4>
-                        
+
                     </div>
                 </div>
             </div>
@@ -321,41 +329,143 @@ $filterLabel = $months[(int)$filterMonth] . ' ' . $filterYear;
     </div>
 
     <!-- PENDING LEAVE REQUESTS -->
-    <div class="row g-20 mb-4 d-none">
+    <div class="row g-20 mb-4 ">
         <div class="col-xl-12">
-            <div class="card__wrapper">
-                <h6 class="card__sub-title mb-15">Pending Leave Requests</h6>
-                <ul class="list-group">
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>Meera Iyer</strong><br>
-                            <small>Sick Leave • 2 days</small>
-                        </div>
-                        <div>
-                            <button class="btn btn-sm btn-success me-1">Approve</button>
-                            <button class="btn btn-sm btn-danger">Reject</button>
-                        </div>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>Vikram Singh</strong><br>
-                            <small>Casual Leave • 1 day</small>
-                        </div>
-                        <div>
-                            <button class="btn btn-sm btn-success me-1">Approved</button>
-                        </div>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>Priya Menon</strong><br>
-                            <small>Annual Leave • 5 days</small>
-                        </div>
-                        <div>
-                            <button class="btn btn-sm btn-success me-1">Approve</button>
-                            <button class="btn btn-sm btn-danger">Reject</button>
-                        </div>
-                    </li>
-                </ul>
+     
+            <div class="card__body">
+                <div class="approval-scrollable" style="max-height: 500px; overflow-y:auto; padding:1rem;">
+
+                    <?php if (!empty($pendingRequests)): ?>
+                        <?php foreach ($pendingRequests as $req): ?>
+
+                            <div class="border rounded p-3 mb-3 shadow-sm">
+
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="mb-1"><?= htmlspecialchars($req['department']) ?> Department</h6>
+                                        <small class="text-muted d-block"><?= htmlspecialchars($req['title']) ?></small>
+                                        <small class="text-muted">
+                                            Requested: <?= date('d M Y', strtotime($req['created_at'])) ?>
+                                        </small>
+                                    </div>
+
+                                    <span class="badge bg-warning text-dark">
+                                        <?= ucfirst($req['status']) ?>
+                                    </span>
+                                </div>
+
+                                <!-- Leave Meta -->
+                                <div class="mb-2">
+                                    <?php if ($req['source_table'] === 'employee_leaves'): ?>
+                                        <?php
+                                        $meta = json_decode($req['meta_data'], true);
+                                        $requested_days = $meta['requested_days'] ?? 0;
+                                        ?>
+                                        <strong>Requested Days:</strong> <?= $requested_days ?>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php renderApprovalContext($req); ?>
+
+                                <!-- Buttons -->
+                                <div class="d-flex gap-2 flex-wrap">
+
+                                    <!-- Full Approve -->
+                                    <form method="POST"
+                                        action="<?= $GLOBALS['base_url'] ?>/approve-request/<?= $req['id'] ?>">
+                                        <button class="btn btn-sm btn-success">
+                                            Full Approve
+                                        </button>
+                                    </form>
+
+                                    <!-- Partial -->
+                                    <button class="btn btn-sm btn-primary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#partialApproveModal<?= $req['id'] ?>">
+                                        Partial Approve
+                                    </button>
+
+                                    <!-- Reject -->
+                                    <form method="POST"
+                                        action="<?= $GLOBALS['base_url'] ?>/reject-request/<?= $req['id'] ?>">
+                                        <button class="btn btn-sm btn-danger">
+                                            Reject
+                                        </button>
+                                    </form>
+
+                                </div>
+
+                            </div>
+
+                            <!-- ================= Partial Modal ================= -->
+                            <div class="modal fade"
+                                id="partialApproveModal<?= $req['id'] ?>"
+                                tabindex="-1">
+
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+
+                                        <div class="modal-header">
+                                            <h6 class="modal-title">Partial Approval</h6>
+                                            <button type="button"
+                                                class="btn-close"
+                                                data-bs-dismiss="modal"></button>
+                                        </div>
+
+                                        <div class="modal-body">
+
+                                            <form method="POST"
+                                                action="<?= $GLOBALS['base_url'] ?>/partial-approve-request/<?= $req['id'] ?>">
+
+                                                <?php if ($req['source_table'] === 'employee_leaves'): ?>
+                                                    <?php
+                                                    $meta = json_decode($req['meta_data'], true);
+                                                    $requested_days = $meta['requested_days'] ?? 0;
+                                                    ?>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Requested Days</label>
+                                                        <input type="number"
+                                                            class="form-control"
+                                                            value="<?= $requested_days ?>"
+                                                            disabled>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Approve Days</label>
+                                                        <input type="number"
+                                                            class="form-control"
+                                                            name="approved_days"
+                                                            required
+                                                            max="<?= $requested_days ?>">
+                                                    </div>
+                                                <?php endif; ?>
+
+                                                <div class="modal-footer">
+                                                    <button class="btn btn-secondary"
+                                                        data-bs-dismiss="modal">
+                                                        Cancel
+                                                    </button>
+
+                                                    <button class="btn btn-success">
+                                                        Approve
+                                                    </button>
+                                                </div>
+
+                                            </form>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        <?php endforeach; ?>
+
+                    <?php else: ?>
+                        <p class="text-muted">No pending requests</p>
+                    <?php endif; ?>
+
+                </div>
             </div>
         </div>
     </div>

@@ -65,9 +65,6 @@ $show_breadcrumb = true;
 
     <!-- Desktop View: Filters and Table -->
     <div class="desktop-only">
-
-
-
         <!-- Filters -->
         <div class="filters">
             <form action="" method="get">
@@ -169,9 +166,8 @@ $show_breadcrumb = true;
                 style="display:none; border-radius:12px;">
 
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <label for="assignUserSelect" class="fw-bold mb-0" style="white-space: nowrap;">
-                        Assign Selected Leads to:
-                    </label>
+
+                    <label class="fw-bold mb-0">Assign Selected Leads to:</label>
 
                     <select id="assignUserSelect"
                         class="form-select form-select-sm"
@@ -184,6 +180,13 @@ $show_breadcrumb = true;
                         <?php endforeach ?>
                     </select>
 
+                    <!--  NEW DATE INPUT -->
+                    <input type="date"
+                        id="assignedDate"
+                        class="form-control form-control-sm"
+                        style="width:auto;"
+                        value="<?= date('Y-m-d') ?>">
+
                     <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
                         <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
                     </button>
@@ -193,8 +196,8 @@ $show_breadcrumb = true;
                         style="display:none;">
                         Leads assigned successfully!
                     </span>
-                </div>
 
+                </div>
             </div>
         </div>
 
@@ -312,7 +315,11 @@ $show_breadcrumb = true;
                                     </td>
                                     <!-- last_action_form  -->
                                     <td>
-                                        <div><?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?></div>
+                                        <div>
+                                            <?= !empty($lead['next_follow_up_date']) && $lead['next_follow_up_date'] !== '0000-00-00'
+                                                ? formatDate($lead['next_follow_up_date'])
+                                                : 'No Schedule' ?>
+                                        </div>
                                     </td>
 
                                     <td><?= $lead['agent_name'] ?? 'No Agent Assigned' ?></td>
@@ -472,9 +479,14 @@ $show_breadcrumb = true;
         </div>
 
         <!-- Mobile Assign Card (sticky bottom) -->
-        <div class="mobile-only" id="assignCardMobile" style="display:none; position:sticky; bottom:0; z-index:1000; background:#fff; padding:10px; border-top:1px solid #ccc; border-radius:8px;">
-            <div class="d-flex align-items-center gap-2 flex-wrap justify-content-between">
-                <select id="assignUserSelectMobile" class="form-select form-select-sm" style="min-width:150px; flex:1;">
+        <div class="mobile-only" id="assignCardMobile"
+            style="display:none; position:sticky; bottom:0; z-index:1000; background:#fff; padding:10px; border-top:1px solid #ccc;">
+
+            <div class="d-flex flex-column gap-2">
+
+                <!-- User Select -->
+                <select id="assignUserSelectMobile"
+                    class="form-select form-select-sm">
                     <option value="">Select User</option>
                     <?php foreach ($assignedUsers as $user): ?>
                         <option value="<?= $user['id'] ?>">
@@ -483,11 +495,24 @@ $show_breadcrumb = true;
                     <?php endforeach ?>
                 </select>
 
-                <button id="assignUserBtnMobile" class="btn btn-primary btn-sm px-3">
+                <!-- ✅ Assigned Date -->
+                <input type="date"
+                    id="assignedDateMobile"
+                    class="form-control form-control-sm"
+                    value="<?= date('Y-m-d') ?>">
+
+                <!-- Button -->
+                <button id="assignUserBtnMobile"
+                    class="btn btn-primary btn-sm w-100">
                     <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
                 </button>
 
-                <span id="assignFeedbackMobile" class="text-success fw-bold" style="display:none;">Leads assigned!</span>
+                <span id="assignFeedbackMobile"
+                    class="text-success fw-bold text-center"
+                    style="display:none;">
+                    Leads assigned!
+                </span>
+
             </div>
         </div>
 
@@ -720,23 +745,23 @@ $show_breadcrumb = true;
 
     // campaign full show
 </script>
-<!-- assigned user select  -->
+<!--desktop assigned user select  -->
 <script>
     document.getElementById('assignUserBtn').addEventListener('click', function() {
+
         const userId = document.getElementById('assignUserSelect').value;
+        const assignedDate = document.getElementById('assignedDate').value;
         const selectedLeads = [];
 
         document.querySelectorAll('.selectedId:checked').forEach(cb => {
             const tr = cb.closest('tr');
-            if (tr) selectedLeads.push(tr.dataset.id || tr.querySelector('.selectedId').dataset.id);
+            if (tr) selectedLeads.push(tr.dataset.id || cb.dataset.id);
         });
 
-        // If nothing selected, just return
         if (!userId || selectedLeads.length === 0) {
-            return; // no alert
+            return;
         }
 
-        // Create a form dynamically and submit
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= $base_url ?>/assign-multiple-leads';
@@ -753,41 +778,51 @@ $show_breadcrumb = true;
         inputLeads.value = selectedLeads.join(',');
         form.appendChild(inputLeads);
 
+        //  SEND DATE
+        const inputDate = document.createElement('input');
+        inputDate.type = 'hidden';
+        inputDate.name = 'assigned_date';
+        inputDate.value = assignedDate;
+        form.appendChild(inputDate);
+
         document.body.appendChild(form);
         form.submit();
     });
 </script>
+
+<!-- assigned for mobile  -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
 
         const assignCardMobile = document.getElementById('assignCardMobile');
         const assignBtnMobile = document.getElementById('assignUserBtnMobile');
         const userSelectMobile = document.getElementById('assignUserSelectMobile');
+        const assignedDateMobile = document.getElementById('assignedDateMobile');
 
-        // Toggle mobile assign card visibility
         function toggleMobileAssignCard() {
-            const anyChecked = Array.from(document.querySelectorAll('.selectedIdMobile')).some(cb => cb.checked);
-            assignCardMobile.style.display = anyChecked ? 'flex' : 'none';
+            const anyChecked = Array.from(document.querySelectorAll('.selectedIdMobile'))
+                .some(cb => cb.checked);
+            assignCardMobile.style.display = anyChecked ? 'block' : 'none';
         }
 
-        // Listen for checkbox changes
         document.querySelectorAll('.selectedIdMobile').forEach(cb => {
             cb.addEventListener('change', toggleMobileAssignCard);
         });
 
-        // Assign Leads button click
         assignBtnMobile.addEventListener('click', function() {
-            const selectedLeads = Array.from(document.querySelectorAll('.selectedIdMobile:checked'))
-                .map(cb => cb.dataset.id);
+
+            const selectedLeads = Array.from(
+                document.querySelectorAll('.selectedIdMobile:checked')
+            ).map(cb => cb.dataset.id);
 
             const userId = userSelectMobile.value;
+            const assignedDate = assignedDateMobile.value;
 
             if (!userId || selectedLeads.length === 0) {
                 alert('Select leads and a user to assign.');
                 return;
             }
 
-            // Create form dynamically to submit POST
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '<?= $base_url ?>/assign-multiple-leads';
@@ -804,12 +839,15 @@ $show_breadcrumb = true;
             inputLeads.value = selectedLeads.join(',');
             form.appendChild(inputLeads);
 
+            //  SEND DATE
+            const inputDate = document.createElement('input');
+            inputDate.type = 'hidden';
+            inputDate.name = 'assigned_date';
+            inputDate.value = assignedDate;
+            form.appendChild(inputDate);
+
             document.body.appendChild(form);
             form.submit();
-
-            // Optional: reset checkboxes & hide assign card
-            document.querySelectorAll('.selectedIdMobile').forEach(cb => cb.checked = false);
-            toggleMobileAssignCard();
         });
     });
 </script>

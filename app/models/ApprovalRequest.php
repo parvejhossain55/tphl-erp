@@ -173,9 +173,8 @@ class ApprovalRequest extends Model
             }
 
             // Universal requested date fallback
-$details['requested_on'] = $details['requested_on']
-    ?? $approval['created_at'];
-
+            $details['requested_on'] = $details['requested_on']
+                ?? $approval['created_at'];
         }
 
         /* =====================
@@ -195,21 +194,21 @@ $details['requested_on'] = $details['requested_on']
         /* =====================
        HR → LEAVE
        ===================== */
- if ($approval['request_type'] === 'leave') {
+        if ($approval['request_type'] === 'leave') {
 
-    if (!empty($meta['user_id'])) {
-        $details['employee'] = $this->getUserById((int)$meta['user_id']);
-    }
+            if (!empty($meta['user_id'])) {
+                $details['employee'] = $this->getUserById((int)$meta['user_id']);
+            }
 
-    if (!empty($approval['source_id'])) {
-        $leave = $this->getLeaveDetails((int)$approval['source_id']);
+            if (!empty($approval['source_id'])) {
+                $leave = $this->getLeaveDetails((int)$approval['source_id']);
 
-        if ($leave) {
-            $details['leave'] = $leave;
-            $details['requested_on'] = $leave['created_at'];
+                if ($leave) {
+                    $details['leave'] = $leave;
+                    $details['requested_on'] = $leave['created_at'];
+                }
+            }
         }
-    }
-}
 
 
         /* =====================
@@ -241,22 +240,31 @@ $details['requested_on'] = $details['requested_on']
             return [];
         }
 
-        $placeholders = implode(',', array_fill(0, count($roles), '?'));
+        $conditions = [];
+        $params = [];
+        $types = '';
+
+        foreach ($roles as $role) {
+            $conditions[] = "FIND_IN_SET(?, LOWER(approve_role))";
+            $params[] = $role;
+            $types .= 's';
+        }
+
         $limit = (int)$limit;
 
-        $sql = "SELECT * FROM {$this->table}
-            WHERE status = 'pending'
-            AND LOWER(approve_role) IN ($placeholders)
+        $sql = "SELECT *
+            FROM {$this->table}
+            WHERE status='pending'
+            AND (" . implode(' OR ', $conditions) . ")
             ORDER BY created_at DESC
             LIMIT $limit";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param(str_repeat('s', count($roles)), ...$roles);
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
 
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        //  THIS PART WAS MISSING
         foreach ($rows as &$row) {
             $row['context'] = $this->resolveApprovalDetails($row);
         }

@@ -226,7 +226,7 @@ function redirectByRole()
             break;
 
         case 6: // Accounts
-            $url = "{$GLOBALS['base_url']}/account-dashboard";
+            $url = "{$GLOBALS['base_url']}/accounts-dashboard";
             break;
 
 
@@ -313,10 +313,10 @@ function db()
     return $db->conn; // return mysqli connection
 }
 
- function getFollowUpCount(int $userId, string $type = 'today'): int
+function getFollowUpCount(int $userId, string $type = 'today'): int
 {
     $userId = (int) $userId;
-   $db = $GLOBALS['db'];
+    $db = $GLOBALS['db'];
     if ($type === 'today') {
         // Only today
         $sql = "
@@ -573,10 +573,10 @@ function addCameraWithHls($db, $project_id, $project_name, $camera_name, $rtsp_u
 
     // 5️⃣ Run FFmpeg to generate HLS (background)
     $cmd = "\"$ffmpegPath\" -rtsp_transport tcp -i " . escapeshellarg($rtsp_url) . " "
-         . "-c:v copy -c:a aac "
-         . "-f hls -hls_time 2 -hls_list_size 6 "
-         . "-hls_flags delete_segments+append_list+independent_segments "
-         . escapeshellarg($hlsPath) . " > NUL 2>&1 &";
+        . "-c:v copy -c:a aac "
+        . "-f hls -hls_time 2 -hls_list_size 6 "
+        . "-hls_flags delete_segments+append_list+independent_segments "
+        . escapeshellarg($hlsPath) . " > NUL 2>&1 &";
 
     exec($cmd);
 
@@ -717,8 +717,8 @@ function truncateText($text, $limit = 50)
 
 function formatDate($date)
 {
-    if (!$date || $date === '0000-00-00') {
-        return '';
+    if (!$date || $date === '0000-00-00' || strtotime($date) === false) {
+        return ''; // or "No Schedule" directly
     }
     return date('d F, Y', strtotime($date));
 }
@@ -977,7 +977,3 @@ function renderApprovalContext(array $req)
 
 <?php
 }
-
-
-
-

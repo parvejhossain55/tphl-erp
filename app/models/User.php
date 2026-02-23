@@ -356,6 +356,7 @@ class User extends Model
         $stmt = $this->db->prepare("
         SELECT 
             u.*,
+            u.employee_id as user_employee_id,
             e.id AS employee_id,
             e.photo AS employee_photo,
             d.name AS designation_name
@@ -397,6 +398,7 @@ class User extends Model
         $media_link1    = $data['media_link1'] ?? '';
         $media_link2    = $data['media_link2'] ?? '';
         $created_by     = (int)($data['created_by'] ?? 0);
+        $employee_id    = (int)($data['employee_id'] ?? 0);
 
         // Use COALESCE in SQL to avoid overwriting with NULL
         $stmt = $this->db->prepare(
@@ -414,7 +416,8 @@ class User extends Model
             photo = COALESCE(?, photo),
             media_link1 = ?,
             media_link2 = ?,
-            created_by = ?
+            created_by = ?,
+            employee_id = ?
         WHERE id = ?"
         );
 
@@ -427,7 +430,7 @@ class User extends Model
         $ph  = $photo ?: null;
 
         if (!$stmt->bind_param(
-            "sissississssssi",
+            "sissississssssii",
             $full_name,
             $employee_id,
             $phone,
@@ -442,6 +445,7 @@ class User extends Model
             $media_link1,
             $media_link2,
             $created_by,
+            $employee_id,
             $id
         )) {
             throw new \Exception("User update bind_param failed: " . $stmt->error);

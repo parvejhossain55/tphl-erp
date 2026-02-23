@@ -27,6 +27,7 @@ $show_breadcrumb = true;
                             <h6 class="text-muted mb-5"><?= $user['department_name'] ?? '' ?></h6>
                             <span class="d-block text-muted mb-5"><?= $user['designation_name'] ?? '' ?></span>
                             <h6 class="small user-id text-black mb-5">user ID : MD-0<?= $user['id'] ?></h6>
+                            <h6 class="small user-id text-black mb-5">Employee ID : EMP-0<?= $user['user_employee_id'] ?></h6>
                             
                         </div>
                     </div>

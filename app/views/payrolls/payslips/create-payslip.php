@@ -13,7 +13,7 @@
                               <div class="col-md-7">
                                   <div class="invoice__logo mb-10">
                                       <img class="light-logo" src="<?= getImage('settings', getSetting('white_logo')); ?>" alt="payslip logo">
-                                      <img class=" dark-logo" src="<?= getImage('settings', getSetting('dark_logo')); ?>" alt="payslip logo">
+                                      <img class="dark-logo" src="<?= getImage('settings', getSetting('dark_logo')); ?>" alt="payslip logo">
                                   </div>
                                   <p class="mb-5"><?= getSetting('website_address') ?></p>
                                   <p class="mb-5"><?= getSetting('address') ?></p>
@@ -173,7 +173,7 @@
 
                       <input type="hidden" name="payslip_payload" id="payslipPayload">
 
-                      <div class="text-end mt-4">
+                      <div class="text-center my-4">
                           <button type="submit" class="btn btn-primary">Save Payslip</button>
                       </div>
                   </form>

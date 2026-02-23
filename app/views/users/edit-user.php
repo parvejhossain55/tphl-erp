@@ -61,10 +61,6 @@ $show_breadcrumb = true;
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
-
-
-
                     <!-- Address -->
                     <div class="col-lg-6 mb-3">
                         <label for="address">Address <span>*</span></label>
@@ -79,31 +75,32 @@ $show_breadcrumb = true;
 
                     <!-- NID / Passport -->
                     <div class="col-lg-6 mb-3">
-                        <label for="nid">Password<span class="text-danger ps-2">*Must be re-type Password</span></label>
-                        <input class="form-control" name="password" id="password" type="password" value="<?= htmlspecialchars($user['password']) ?>" required>
+                        <label for="nid">Password<span class="text-danger ps-2">*If Update Type Password Else Blank</span></label>
+                        <!-- <input class="form-control" name="password" id="password" type="password" value="<= htmlspecialchars($user['password']) ?>" required> -->
+                        <input class="form-control"
+                            name="password"
+                            type="password"
+                            placeholder="Leave blank to keep current password">
+                    </div>
+                    <!-- Email -->
+                    <div class="col-lg-6 mb-3">
+                        <label for="employee_id">Employee ID <span>Optional</span></label>
+                        <input class="form-control" name="employee_id" id="employee_id" type="text" value="<?= $user['user_employee_id'] ?? '-' ?>">
                     </div>
 
                     <!-- Photo -->
-                    <div class="col-lg-6 mb-3">
-                        <label for="photo">USer Photo (300px*300px)</label>
+                    <div class="col-lg-12 col-12 mb-3">
+                        <label for="photo">User Photo (300px*300px)</label>
                         <input class="form-control" type="file" name="photo" id="photo">
-
-
                         <img src="<?= getUserProfileImage($user) ?>" width="100" class="mt-2">
                     </div>
 
                     <div class="col-12 text-center mt-3">
                         <button class="btn btn-primary">Update User</button>
                     </div>
-
-
-
                     <!-- Media Links -->
-
-
                 </div>
             </div>
-
-
+        </form>
     </div>
-    </div>
+</div>

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 22, 2026 at 07:49 AM
+-- Generation Time: Feb 23, 2026 at 09:17 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -48,13 +48,6 @@ CREATE TABLE `approval_requests` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `approval_note` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `approval_requests`
---
-
-INSERT INTO `approval_requests` (`id`, `department`, `request_type`, `title`, `source_table`, `source_id`, `request_amount`, `approved_amount`, `requested_days`, `approved_days`, `approved_by`, `approved_at`, `status`, `requested_by`, `approve_role`, `meta_data`, `created_at`, `updated_at`, `approval_note`) VALUES
-(1, 'Sales', 'discount', 'Lead Booking Discount Approval', 'lead_bookings', 1, 20000.00, 10000.00, NULL, NULL, 2, '2026-02-21 13:07:05', 'partial', 2, 'management', '{\"lead_id\":\"1\",\"flat_id\":\"1\"}', '2026-02-21 13:05:42', '2026-02-21 13:07:05', '');
 
 -- --------------------------------------------------------
 
@@ -251,6 +244,13 @@ CREATE TABLE `company_bank_accounts` (
   `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `company_bank_accounts`
+--
+
+INSERT INTO `company_bank_accounts` (`id`, `bank_name`, `account_name`, `account_number`, `is_default`, `status`, `created_by`, `created_at`) VALUES
+(1, 'City Bank,Shaymoli', 'TPHL', '11221334', 0, 'active', 1, '2026-02-23 14:13:36');
+
 -- --------------------------------------------------------
 
 --
@@ -296,7 +296,9 @@ CREATE TABLE `departments` (
 --
 
 INSERT INTO `departments` (`id`, `name`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
-(15, 'Business Development', 1, 2, '2026-02-19 16:17:29', '2026-02-19 16:17:29');
+(15, 'Business Development', 1, 2, '2026-02-19 16:17:29', '2026-02-19 16:17:29'),
+(16, 'Human Resources', 1, 1, '2026-02-23 05:42:59', '2026-02-23 05:42:59'),
+(17, 'Finance & Accounts', 1, 4, '2026-02-23 06:06:59', '2026-02-23 06:06:59');
 
 -- --------------------------------------------------------
 
@@ -318,7 +320,9 @@ CREATE TABLE `designations` (
 --
 
 INSERT INTO `designations` (`id`, `name`, `department_id`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'Project Manager', 1, 2, '2025-12-07 11:26:14', '2026-02-19 16:17:54');
+(1, 'Project Manager', 15, 2, '2025-12-07 11:26:14', '2026-02-23 06:07:55'),
+(2, 'HR Admin', 16, NULL, '2026-02-23 05:43:43', '2026-02-23 05:43:43'),
+(3, 'Accounts Head', 17, NULL, '2026-02-23 06:07:14', '2026-02-23 06:07:14');
 
 -- --------------------------------------------------------
 
@@ -547,6 +551,7 @@ CREATE TABLE `leads` (
   `email` varchar(150) DEFAULT NULL,
   `source_type_id` int(11) DEFAULT NULL,
   `assigned_id` int(11) DEFAULT NULL,
+  `assigned_at` datetime DEFAULT NULL,
   `address` varchar(255) DEFAULT NULL,
   `father_name` varchar(100) DEFAULT NULL,
   `mother_name` varchar(100) DEFAULT NULL,
@@ -595,6 +600,20 @@ CREATE TABLE `leads` (
   `preferred_contact_time` enum('morning','afternoon','evening','night') DEFAULT NULL,
   `has_pending_followup` tinyint(1) DEFAULT 0 COMMENT '1 = follow-up pending, 0 = no pending follow-up'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `leads`
+--
+
+INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(1, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', NULL, '1', NULL, NULL, 'evening_(5_pm_-_8_pm)', 'Raihan', 'a', 'a', 'p:+8801736936727', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-22 09:48:11', 'local', NULL, NULL, 0),
+(2, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '2', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Enam Pathan', 'owner', 'Jet Sports', 'p:+8801717221212', 'not_called', NULL, 'Jatramura', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'inactive', 'new', '2026-02-23 04:39:20', 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-23 05:15:34', 'local', NULL, NULL, 0),
+(3, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1450_sqft', '3', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Forhad Ali', 'AGM', 'Flamingo Ltd', 'p:+8801730440638', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-23 05:15:39', 'local', NULL, NULL, 0),
+(4, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1250_sqft', '4', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Sohel Khan', 'propriter', 'beauty sportes and net company', 'p:+8801840990890', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-23 05:15:50', 'local', NULL, NULL, 0),
+(5, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '5', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Jahirul Islam', 'job', 'xyz', 'p:+8801711949142', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:15:53', 'local', NULL, NULL, 0),
+(6, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1350_sqft', '6', NULL, NULL, 'evening_(5_pm_-_8_pm)', 'Soykot Islam Shihab', 'Owner', 'Amin Mistanno Vhander', 'p:+8801752697272', 'not_called', NULL, 'Uttarati', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:15:59', 'local', NULL, NULL, 0),
+(7, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '7', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Mahfuzur Rahman', 'MD, MR Income Tax Consultancy Ltd', 'M R Income Tax Consultancy Ltd.', 'p:+8801916158171', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:16:17', 'local', NULL, NULL, 0),
+(8, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', NULL, '8', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Shariful Islam Sharif', 'Business management', '72 mollertack, ashkona,dokhinkhan,dhaka', 'p:+8801781860471', 'called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:36:49', 'local', NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -646,6 +665,13 @@ CREATE TABLE `lead_follow_ups` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `lead_follow_ups`
+--
+
+INSERT INTO `lead_follow_ups` (`id`, `lead_id`, `project_id`, `flat_id`, `follow_up_date`, `follow_up_time`, `follow_up_type`, `status`, `discussion_note`, `next_follow_up_date`, `assigned_with`, `next_action`, `created_by`, `deleted_at`, `created_at`, `updated_at`) VALUES
+(1, 8, 1, 1, '2026-02-22', '11:36:00', 'call', 'pending', 'Test', '2026-02-23', 3, NULL, 3, NULL, '2026-02-23 05:36:49', '2026-02-23 05:38:52');
 
 -- --------------------------------------------------------
 
@@ -706,6 +732,14 @@ CREATE TABLE `leave_types` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `leave_types`
+--
+
+INSERT INTO `leave_types` (`id`, `name`, `total_days`, `is_paid`, `is_active`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'Medical Leave', 20, 1, 1, 4, '2026-02-23 07:02:09', '2026-02-23 07:02:09'),
+(2, 'Sick Leave', 12, 1, 1, 4, '2026-02-23 07:02:30', '2026-02-23 07:02:30');
 
 -- --------------------------------------------------------
 
@@ -892,6 +926,15 @@ CREATE TABLE `payslip_details` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
+--
+-- Dumping data for table `payslip_details`
+--
+
+INSERT INTO `payslip_details` (`id`, `payslip_id`, `payslip_item_id`, `amount`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, 2000.00, NULL, '2026-02-23 08:11:48', '2026-02-23 08:11:48'),
+(2, 1, 2, 1000.00, NULL, '2026-02-23 08:11:48', '2026-02-23 08:11:48'),
+(3, 1, 3, 1000.00, NULL, '2026-02-23 08:11:48', '2026-02-23 08:11:48');
+
 -- --------------------------------------------------------
 
 --
@@ -906,6 +949,15 @@ CREATE TABLE `payslip_items` (
   `created_by` int(11) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `payslip_items`
+--
+
+INSERT INTO `payslip_items` (`id`, `name`, `type`, `description`, `created_by`, `created_at`) VALUES
+(1, 'House Rent Allowance', 'earning', NULL, 4, '2026-02-23 13:58:58'),
+(2, 'Medical  Allowance', 'earning', NULL, 4, '2026-02-23 14:04:36'),
+(3, 'Unpaid Leave', 'deduction', NULL, 4, '2026-02-23 14:05:02');
 
 -- --------------------------------------------------------
 
@@ -1121,7 +1173,6 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (40, 4, 8, '0000-00-00 00:00:00', '2026-02-19 16:13:53'),
 (41, 4, 13, '0000-00-00 00:00:00', '2026-02-19 16:13:53'),
 (43, 4, 16, '0000-00-00 00:00:00', '2026-02-19 16:13:53'),
-(44, 8, 15, '2026-02-19 17:54:55', '2026-02-19 17:54:55'),
 (45, 1, 10, '2026-02-21 17:25:08', '2026-02-21 17:25:08'),
 (46, 1, 3, '2026-02-21 17:25:08', '2026-02-21 17:25:08'),
 (47, 1, 1, '2026-02-21 17:25:08', '2026-02-21 17:25:08'),
@@ -1148,7 +1199,9 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (68, 3, 7, '2026-02-21 17:25:21', '2026-02-21 17:25:21'),
 (69, 3, 4, '2026-02-21 17:25:21', '2026-02-21 17:25:21'),
 (70, 3, 13, '2026-02-21 17:25:21', '2026-02-21 17:25:21'),
-(71, 3, 2, '2026-02-21 17:25:21', '2026-02-21 17:25:21');
+(71, 3, 2, '2026-02-21 17:25:21', '2026-02-21 17:25:21'),
+(72, 8, 15, '2026-02-23 07:40:38', '2026-02-23 07:40:38'),
+(73, 8, 20, '2026-02-23 07:40:38', '2026-02-23 07:40:38');
 
 -- --------------------------------------------------------
 
@@ -1212,7 +1265,7 @@ CREATE TABLE `site_settings` (
 --
 
 INSERT INTO `site_settings` (`id`, `website_title`, `website_url`, `footer_text`, `white_logo`, `dark_logo`, `phone`, `alt_phone`, `email`, `alt_email`, `address`, `copyright`, `facebook_link`, `messenger_link`, `instagram_link`, `tiktok_link`, `x_link`, `youtube_link`, `header_code`, `body_code`, `client_declaration`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'The Premium Home Limited', NULL, 'fxdgrdgth', '6948f14a9fb8c_1766388042.png', 'settings_69662931a55a4.png', '+8801958253300', '+8801958253300', 'info@thepremiumhomes.com', NULL, 'Dhaka', 'ï¿½ 2025 The Premium Homes Ltd. All rights reserved.', 'uidysfb re', 'kuysret87', 'uidsfyter', 'dsilfu67rt', 'iureyt87e', 'ids7rt89', '', '', 'I hereby declare that I have applied for the purchase of the above-mentioned flat under the terms and conditions set by the developer. I confirm that all the information provided in this document is true, correct, and complete to the best of my knowledge and belief.\r\n\r\nI further agree that I have carefully read, understood, and accepted all the terms and conditions, rules, and regulations related to the purchase of the said flat. I undertake to abide by all decisions, policies, and future regulations imposed by the developer in connection with this property.\r\n\r\nI also acknowledge that any false information or violation of the agreed terms may result in cancellation of the booking in accordance with the developerï¿½s policy.', 12, '2025-12-15 12:14:07', '2026-01-13 11:14:57');
+(1, 'The Premium Home Limited', NULL, 'fxdgrdgth', '6948f14a9fb8c_1766388042.png', 'settings_699c0cd0c3306.png', '+8801958253300', '+8801958253300', 'info@thepremiumhomes.com', NULL, 'Dhaka', 'ï¿½ 2025 The Premium Homes Ltd. All rights reserved.', 'uidysfb re', 'kuysret87', 'uidsfyter', 'dsilfu67rt', 'iureyt87e', 'ids7rt89', '', '', 'I hereby declare that I have applied for the purchase of the above-mentioned flat under the terms and conditions set by the developer. I confirm that all the information provided in this document is true, correct, and complete to the best of my knowledge and belief.\r\n\r\nI further agree that I have carefully read, understood, and accepted all the terms and conditions, rules, and regulations related to the purchase of the said flat. I undertake to abide by all decisions, policies, and future regulations imposed by the developer in connection with this property.\r\n\r\nI also acknowledge that any false information or violation of the agreed terms may result in cancellation of the booking in accordance with the developerï¿½s policy.', 1, '2025-12-15 12:14:07', '2026-02-23 08:16:16');
 
 -- --------------------------------------------------------
 
@@ -1314,8 +1367,11 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `email`, `designation_id`, `address`, `nid`, `role_id`, `password`, `photo`, `media_link1`, `media_link2`, `last_logout`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, NULL, 'Farzana', 'farzana', '01873244236', 'farz@gmail.com', 1, 'Dhaka', NULL, 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-02-22 12:47:08', NULL, '2026-02-22 06:47:08', '2026-02-22 06:47:08'),
-(2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-02-22 12:47:08', NULL, '2026-02-22 06:47:08', '2026-02-22 06:47:22');
+(1, NULL, 'Farzana', 'farzana', '01873244236', 'farz@gmail.com', 1, 'Dhaka', NULL, 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-02-23 13:31:43', NULL, '2026-02-22 06:47:08', '2026-02-23 07:31:43'),
+(2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-02-23 11:39:50', NULL, '2026-02-22 06:47:08', '2026-02-23 05:39:50'),
+(3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 1, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-02-23 13:55:43', 4, '2026-02-23 03:24:25', '2026-02-23 07:55:43'),
+(4, NULL, 'Mr. Joshim', 'Mr. Joshim', '01762013007', 'hr@gmail.com', 2, 'Dhaka', '1289234', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, 'aiosdiau', '', '2026-02-23 13:40:13', 1, '2026-02-23 05:44:19', '2026-02-23 07:40:13'),
+(5, NULL, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 2, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, 'https://business.facebook.com/', '', '2026-02-23 12:11:06', 4, '2026-02-23 06:11:06', '2026-02-23 06:11:06');
 
 --
 -- Indexes for dumped tables
@@ -1689,7 +1745,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `approval_requests`
 --
 ALTER TABLE `approval_requests`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `blogs`
@@ -1737,7 +1793,7 @@ ALTER TABLE `communities`
 -- AUTO_INCREMENT for table `company_bank_accounts`
 --
 ALTER TABLE `company_bank_accounts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `contacts`
@@ -1749,13 +1805,13 @@ ALTER TABLE `contacts`
 -- AUTO_INCREMENT for table `departments`
 --
 ALTER TABLE `departments`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `designations`
 --
 ALTER TABLE `designations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `emi_schedules`
@@ -1809,7 +1865,7 @@ ALTER TABLE `head_notifications`
 -- AUTO_INCREMENT for table `leads`
 --
 ALTER TABLE `leads`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `lead_bookings`
@@ -1821,7 +1877,7 @@ ALTER TABLE `lead_bookings`
 -- AUTO_INCREMENT for table `lead_follow_ups`
 --
 ALTER TABLE `lead_follow_ups`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `lead_payments`
@@ -1839,7 +1895,7 @@ ALTER TABLE `lead_sources`
 -- AUTO_INCREMENT for table `leave_types`
 --
 ALTER TABLE `leave_types`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `locations`
@@ -1893,13 +1949,13 @@ ALTER TABLE `payslips`
 -- AUTO_INCREMENT for table `payslip_details`
 --
 ALTER TABLE `payslip_details`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `payslip_items`
 --
 ALTER TABLE `payslip_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `permissions`
@@ -1935,7 +1991,7 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `role_permissions`
 --
 ALTER TABLE `role_permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=72;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=74;
 
 --
 -- AUTO_INCREMENT for table `sales_targets`
@@ -1971,7 +2027,7 @@ ALTER TABLE `tasks`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- Constraints for dumped tables

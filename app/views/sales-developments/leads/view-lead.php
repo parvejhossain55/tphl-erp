@@ -224,69 +224,69 @@ $page = "View Lead";
             width: 55%;
             font-size: 14px;
         }
-          .lead-header-card {
-        padding: 1.25rem;
-        border-radius: 12px;
-    }
 
-    .lead-avatar {
-        width: 70px;
-        height: 70px;
-    }
+        .lead-header-card {
+            padding: 1.25rem;
+            border-radius: 12px;
+        }
 
-    .lead-name-section {
-        margin-left: 0;
-    }
+        .lead-avatar {
+            width: 70px;
+            height: 70px;
+        }
 
-    .lead-name-section h2 {
-        font-size: 1.1rem;
-        line-height: 1.3;
-    }
+        .lead-name-section {
+            margin-left: 0;
+        }
 
-    .lead-name-section p {
-        font-size: 0.85rem;
-    }
+        .lead-name-section h2 {
+            font-size: 1.1rem;
+            line-height: 1.3;
+        }
 
-    .badge-container {
-        gap: 0.5rem;
-        margin-top: 0.75rem;
-    }
+        .lead-name-section p {
+            font-size: 0.85rem;
+        }
 
-    .custom-badge {
-        font-size: 0.75rem;
-        padding: 0.4rem 0.75rem;
-    }
+        .badge-container {
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
 
-    .action-buttons {
-        width: 100%;
-        display: flex;
-        gap: 0.5rem;
-    }
+        .custom-badge {
+            font-size: 0.75rem;
+            padding: 0.4rem 0.75rem;
+        }
 
-    .action-buttons a {
-        flex: 1;
-        font-size: 0.8rem;
-        padding: 0.5rem;
-        text-align: center;
-    }
+        .action-buttons {
+            width: 100%;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-buttons a {
+            flex: 1;
+            font-size: 0.8rem;
+            padding: 0.5rem;
+            text-align: center;
+        }
+
         .info-label {
-        display: contents;
+            display: contents;
 
-        font-weight: 500;
-        font-size: 0.8rem;
-        
+            font-weight: 500;
+            font-size: 0.8rem;
+
+        }
+
+        .info-value {
+            margin-left: 10px;
+        }
+
+        .followup-title {
+            font-size: 17px;
+        }
     }
-    .info-value{
-        margin-left: 10px;
-    }
-    .followup-title{
-        font-size: 17px;
-    }
-    }
-
-
-
-
 </style>
 
 <div class="lead-view-container">
@@ -465,15 +465,15 @@ $page = "View Lead";
                     <div class="info-card-body">
                         <div class="info-row">
                             <div class="info-label"><i class="fa-light fa-city me-2"></i>Project</div>
-                            <div class="info-value"><?= htmlspecialchars($leadData['project_type'] ?? 'N/A') ?></div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['campaign_name'] ?? 'project_name') ?></div>
                         </div>
                         <div class="info-row">
                             <div class="info-label"><i class="fa-light fa-map-marker-alt me-2"></i>Preferred Location</div>
-                            <div class="info-value"><?= htmlspecialchars($leadData['pref_location_id'] ?: '-') ?></div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['location_name'] ?: '-') ?></div>
                         </div>
                         <div class="info-row">
                             <div class="info-label"><i class="fa-light fa-ruler-combined me-2"></i>Preferred Size</div>
-                            <div class="info-value"><?= htmlspecialchars($leadData['pref_flat_size'] ?: '-') ?></div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['which_apartment_size_are_you_interested_in'] ?: '-') ?></div>
                         </div>
                     </div>
                 </div>

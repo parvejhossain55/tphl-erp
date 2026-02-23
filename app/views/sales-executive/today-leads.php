@@ -12,150 +12,312 @@
        </div>
 
        <div class="row">
-           <div class="col-xxl-12">
-               <div class="card__wrapper">
-                   <div class="table__wrapper table-responsive">
-                       <table class="table mb-20 multiple_tables">
-                           <thead>
-                               <tr class="table__title table__sort">
+           <div class="desktop-only">
+               <div class="col-xxl-12">
+                   <div class="card__wrapper">
+                       <div class="table__wrapper table-responsive">
+                           <table class="table mb-20 multiple_tables">
+                               <thead>
+                                   <tr class="table__title table__sort">
 
 
-                                   <th style="min-width:60px;">S/L</th> <!-- non-sticky first column -->
-                                   <th class="th_1">Client/Lead Name</th>
+                                       <th style="min-width:60px;">S/L</th> <!-- non-sticky first column -->
+                                       <th class="th_1">Client/Lead Name</th>
 
-                                   <!-- <th>Source Type</th> -->
+                                       <!-- <th>Source Type</th> -->
 
-                                   <th>Company name</th>
-                                   <th>phone_number</th>
-                                   <th>Follow Up</th>
-                                   <th class="d-none">Booking</th>
-                                   <th class="d-none">job title</th>
-                                   <th class="d-none">Interested Apartment Size</th>
-                                   <th class="d-none">Interset Floor for Shop</th>
-                                   <th class="d-none">Planning To Buy Time</th>
-                                   <th>Best Time to Contact</th>
-                                   <th>city</th>
-                                   <th class="d-none">Interest On</th>
-                                   <th class="text-center">Status</th>
-                                   <th class="text-center">Action</th>
-                                   <th class="text-center">Note</th>
-                               </tr>
-                           </thead>
-                           <tbody class="table__body">
-                               <?php foreach ($todayLeads as $key => $lead): ?>
-                                   <tr>
-                                       <!-- S/L -->
-                                       <td><?= $key + 1 ?></td>
-
-                                       <!-- Client / Lead Name -->
-                                       <td><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></td>
-
-                                       <!-- Company / Project -->
-                                       <td><?= htmlspecialchars(!empty($lead['company_name']) ? $lead['company_name'] : 'N/A') ?></td>
-
-                                       <!-- Phone -->
-                                       <td><?= htmlspecialchars($lead['phone_number'] ?? 'N/A') ?></td>
-
-                                       <!-- Job Title -->
-                                       <td class="d-none"><?= htmlspecialchars($lead['job_title'] ?? 'N/A') ?></td>
-
-                                       <!-- Apartment Size -->
-                                       <td class="d-none">
-                                           <?= htmlspecialchars($lead['which_apartment_size_are_you_interested_in'] ?? $lead['pref_flat_size'] ?? 'N/A') ?>
-                                       </td>
-
-                                       <!-- Floor -->
-                                       <td class="d-none">
-                                           <?= htmlspecialchars($lead['which_floor_are_you_for_shop'] ?? 'N/A') ?>
-                                       </td>
-
-                                       <!-- Planning to Buy -->
-                                       <td class="d-none">
-                                           <?= htmlspecialchars($lead['when_are_you_planning_to_buy'] ?? 'N/A') ?>
-                                       </td>
-
-                                       <td>
-                                           <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
-                                               class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">
-
-                                               <span>Follow Up</span>
-
-                                               <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                                   <span class="followup-badge">
-                                                       <?= $followUpCounts[$lead['id']] ?>
-                                                   </span>
-                                               <?php endif; ?>
-                                           </a>
-                                       </td>
-                                       <td class="d-none">
-                                           <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
-                                               class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
-                                               <?php if (!empty($bookingCount[$lead['id']])): ?>
-                                                   <span>Booked </span>
-                                                   <span class="followup-badge">
-                                                       <?= $bookingCount[$lead['id']] ?>
-                                                   </span>
-                                               <?php else: ?>
-                                                   <span>Booking </span>
-                                               <?php endif ?>
-                                           </a>
-                                       </td>
-
-
-                                       <!-- Best Time to Contact -->
-                                       <td>
-                                           <?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? 'N/A') ?>
-                                       </td>
-
-                                       <!-- City -->
-                                       <td><?= htmlspecialchars($lead['city'] ?? 'N/A') ?></td>
-
-                                       <!-- Hidden Interest On -->
-                                       <td class="d-none"><?= htmlspecialchars($lead['interest_on'] ?? '') ?></td>
-
-                                       <!-- Action -->
-                                       <td>
-                                           <button
-                                               class="btn btn-sm btn-success call-btn"
-                                               data-id="<?= $lead['id'] ?>"
-                                               data-phone="<?= $lead['phone_number'] ?>">
-                                               <?= $lead['call_status'] ?>
-                                           </button>
-                                       </td>
-                                       <td class="call-status-cell">
-                                           <select
-                                               class="call-status"
-                                               data-id="<?= $lead['id'] ?>">
-                                               <option value="not_called" <?= $lead['call_status'] == 'not_called' ? 'selected' : '' ?>>Not Called</option>
-                                               <option value="called" <?= $lead['call_status'] == 'called' ? 'selected' : '' ?>>Called</option>
-                                               <option value="received" <?= $lead['call_status'] == 'received' ? 'selected' : '' ?>>Received</option>
-                                               <option value="not_received" <?= $lead['call_status'] == 'not_received' ? 'selected' : '' ?>>Not Received</option>
-                                           </select>
-                                       </td>
-
-
-                                       <td class="note-cell">
-                                           <div class="note-wrapper">
-                                               <textarea
-                                                   class="call-note"
-                                                   data-id="<?= $lead['id'] ?>"
-                                                   placeholder="Click to add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
-                                               <button type="button" class="btn btn-sm btn-success note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
-                                           </div>
-                                       </td>
-
-
-
+                                       <th>Project name</th>
+                                       <th>phone_number</th>
+                                       <th>Follow Up</th>
+                                       <th class="d-none">Booking</th>
+                                       <th class="d-none">job title</th>
+                                       <th class="d-none">Interested Apartment Size</th>
+                                       <th class="d-none">Interset Floor for Shop</th>
+                                       <th>Best Time to Contact</th>
+                                       <th class="text-center">Communicate Type</th>
+                                       <th class="text-center">Note</th>
+                                       <th class="text-center">Show</th>
                                    </tr>
-                               <?php endforeach ?>
-                           </tbody>
+                               </thead>
+                               <tbody class="table__body">
+                                   <?php foreach ($todayLeads as $key => $lead): ?>
+                                       <tr>
+                                           <!-- S/L -->
+                                           <td><?= $key + 1 ?></td>
 
-                       </table>
+                                           <!-- Client / Lead Name -->
+                                           <td><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></td>
+
+                                           <?php
+                                            $displayName = !empty($lead['campaign_name'])
+                                                ? $lead['campaign_name']
+                                                : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
+
+                                            $plainText = strip_tags($displayName);
+                                            ?>
+
+
+                                           <td>
+                                               <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                                   <span class="project-badge mb-0">
+                                                       <i class="bi bi-building"></i>
+                                                       <?= truncateText($displayName, 15) ?>
+                                                   </span>
+
+                                                   <?php if (mb_strlen($plainText) > 15): ?>
+                                                       <button type="button"
+                                                           id="viewCampaignBtn<?= $lead['id'] ?>"
+                                                           class="btn btn-sm btn-outline-primary flex-shrink-0"
+                                                           data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
+                                                           data-bs-toggle="modal"
+                                                           data-bs-target="#viewProjectCampaignName">
+                                                           View
+
+
+
+                                                       </button>
+                                                   <?php endif; ?>
+                                               </div>
+                                           </td>
+
+                                           <!-- Phone -->
+                                           <td>
+                                               <?php if (!empty($lead['phone_number'])):
+                                                    $phone = preg_replace('/[^0-9+]/', '', $lead['phone_number']);
+                                                ?>
+                                                   <a href="tel:<?= $phone ?>" class="text-decoration-none">
+                                                       <?= htmlspecialchars($phone) ?>
+                                                   </a>
+                                               <?php else: ?>
+                                                   N/A
+                                               <?php endif; ?>
+                                           </td>
+
+                                           <!-- Job Title -->
+                                           <td class="d-none"><?= htmlspecialchars($lead['job_title'] ?? 'N/A') ?></td>
+
+                                           <!-- Apartment Size -->
+                                           <td class="d-none">
+                                               <?= htmlspecialchars($lead['which_apartment_size_are_you_interested_in'] ?? $lead['pref_flat_size'] ?? 'N/A') ?>
+                                           </td>
+
+                                           <!-- Floor -->
+                                           <td class="d-none">
+                                               <?= htmlspecialchars($lead['which_floor_are_you_for_shop'] ?? 'N/A') ?>
+                                           </td>
+
+                                           <td>
+                                               <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
+                                                   class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">
+
+                                                   <span>Follow Up</span>
+
+                                                   <?php if (!empty($followUpCounts[$lead['id']])): ?>
+                                                       <span class="followup-badge">
+                                                           <?= $followUpCounts[$lead['id']] ?>
+                                                       </span>
+                                                   <?php endif; ?>
+                                               </a>
+                                           </td>
+                                           <td class="d-none">
+                                               <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
+                                                   class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
+                                                   <?php if (!empty($bookingCount[$lead['id']])): ?>
+                                                       <span>Booked </span>
+                                                       <span class="followup-badge">
+                                                           <?= $bookingCount[$lead['id']] ?>
+                                                       </span>
+                                                   <?php else: ?>
+                                                       <span>Booking </span>
+                                                   <?php endif ?>
+                                               </a>
+                                           </td>
+
+
+                                           <!-- Best Time to Contact -->
+                                           <td>
+                                               <?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? 'N/A') ?>
+                                           </td>
+
+                                           <!-- Action -->
+                                           
+                                           <td class="call-status-cell">
+                                               <select
+                                                   class="call-status"
+                                                   data-id="<?= $lead['id'] ?>">
+                                                   <option value="not_called" <?= $lead['call_status'] == 'not_called' ? 'selected' : '' ?>>Not Called</option>
+                                                   <option value="called" <?= $lead['call_status'] == 'called' ? 'selected' : '' ?>>Called</option>
+                                                   <option value="received" <?= $lead['call_status'] == 'received' ? 'selected' : '' ?>>Received</option>
+                                                   <option value="not_received" <?= $lead['call_status'] == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+                                               </select>
+                                           </td>
+
+
+                                           <td class="note-cell">
+                                               <div class="note-wrapper">
+                                                   <textarea
+                                                       class="call-note"
+                                                       data-id="<?= $lead['id'] ?>"
+                                                       placeholder="Click to add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
+                                                   <button type="button" class="btn btn-sm btn-success note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
+                                               </div>
+                                           </td>
+                                           <td>
+                                             <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>"
+                                            title="View Transaction History"> <i class="fa-regular fa-eye"></i>
+                                        </a>
+                                           </td>
+
+
+
+                                       </tr>
+                                   <?php endforeach ?>
+                               </tbody>
+
+                           </table>
+                       </div>
                    </div>
+               </div>
+           </div>
+
+
+  
+       </div>
+         <div class="mobile-only">
+               <?php foreach ($todayLeads as $key => $lead): ?>
+                   <?php
+                    $displayName = !empty($lead['campaign_name'])
+                        ? $lead['campaign_name']
+                        : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
+                    $plainText = strip_tags($displayName);
+
+                    // Clean phone for call link
+                    $phone = !empty($lead['phone_number']) ? preg_replace('/[^0-9+]/', '', $lead['phone_number']) : '';
+                    ?>
+                   <div class="lead-card mb-3 p-2 border rounded" data-id="<?= $lead['id'] ?>">
+                       <!-- Header: Lead Name + Phone -->
+                       <div class="d-flex justify-content-between align-items-center">
+                           <div class="">
+                               <input type="checkbox" class="selectedIdMobile me-2 d-none" data-id="<?= $lead['id'] ?>">
+                               <span class="lead-name fw-bold"><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></span>
+                           </div>
+                           <div>
+                               <?php if ($phone): ?>
+                                   <a href="tel:<?= $phone ?>" class="text-decoration-none fw-bold me-2"><?= htmlspecialchars($phone) ?></a>
+                                   <a href="https://wa.me/<?= $phone ?>" target="_blank" class="text-success">
+                                       <i class="bi bi-whatsapp"></i>
+                                   </a>
+                               <?php else: ?>
+                                   N/A
+                               <?php endif; ?>
+                           </div>
+                       </div>
+
+                       <!-- Status -->
+                       <div class="mt-2">
+                           <label class="d-block mb-1">Call Status</label>
+                           <select class="call-status w-100" data-id="<?= $lead['id'] ?>">
+                               <option value="not_called" <?= $lead['call_status'] == 'not_called' ? 'selected' : '' ?>>Not Called</option>
+                               <option value="called" <?= $lead['call_status'] == 'called' ? 'selected' : '' ?>>Called</option>
+                               <option value="received" <?= $lead['call_status'] == 'received' ? 'selected' : '' ?>>Received</option>
+                               <option value="not_received" <?= $lead['call_status'] == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+                           </select>
+                       </div>
+
+                       <!-- Follow Up & Booking -->
+                       <div class="d-flex gap-2 flex-wrap mt-2">
+                           <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>" class="btn btn-primary btn-sm flex-grow-1 d-flex justify-content-between align-items-center">
+                               <span>Follow Up</span>
+                               <?php if (!empty($followUpCounts[$lead['id']])): ?>
+                                   <span class="badge bg-secondary"><?= $followUpCounts[$lead['id']] ?></span>
+                               <?php endif; ?>
+                           </a>
+
+                       
+                       </div>
+
+                       <!-- Project Info -->
+                           <div class="project-detail mt-2">
+                               <div class="info-label flex-shrink-0">Project</div>
+                               <div class="d-flex align-items-center gap-2 mt-1">
+                                   <span class="project-badge mb-0">
+                                       <i class="bi bi-building"></i>
+                                       <?= truncateText($displayName, 15) ?>
+                                   </span>
+                                   <?php if (mb_strlen($plainText) > 15): ?>
+                                       <button type="button"
+                                           id="viewCampaignBtn<?= $lead['id'] ?>"
+                                           class="btn btn-sm btn-outline-primary ms-3 w-auto px-1 py-0"
+                                           data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
+                                           data-bs-toggle="modal"
+                                           data-bs-target="#viewProjectCampaignName"
+                                           title="View Project">View
+                                       </button>
+                                   <?php endif; ?>
+                               </div>
+                           </div>
+
+                       <!-- Next Follow-Up -->
+                       <div class="mt-2">
+                           <label class="d-block mb-1">Next Follow-Up</label>
+                           <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1">
+                               <i class="bi bi-calendar2-check me-1"></i>
+                               <?= !empty($lead['next_follow_up_date']) && $lead['next_follow_up_date'] !== '0000-00-00'
+                                    ? formatDate($lead['next_follow_up_date'])
+                                    : 'No Schedule' ?>
+                           </span>
+                       </div>
+
+                       <!-- Best Time to Contact -->
+                       <div class="mt-2">
+                           <label class="d-block mb-1">Best Time to Contact</label>
+                           <span><?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? 'N/A') ?></span>
+                       </div>
+
+
+
+                       <!-- Notes -->
+                       <div class="mt-2">
+                           <label class="d-block mb-1">Notes</label>
+                           <textarea class="form-control call-note" data-id="<?= $lead['id'] ?>" placeholder="Add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
+                           <button type="button" class="btn btn-sm btn-success mt-1 note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
+                       </div>
+                   </div>
+               <?php endforeach; ?>
+           </div>
+
+
+       <!-- view full rule description -->
+       <div id="viewProjectCampaignName" class="modal custom-modal fade">
+           <div class="modal-dialog modal-dialog-centered modal-lg">
+               <div class="modal-content">
+
+                   <div class="modal-header">
+                       <h5 class="modal-title">Project Campaing Name</h5>
+                       <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                           <i class="fa-solid fa-xmark-large"></i>
+                       </button>
+                   </div>
+
+                   <div class="modal-body">
+                       <textarea id="view_campaign_id" class="form-control" rows="2" readonly></textarea>
+
+                   </div>
+
                </div>
            </div>
        </div>
    </div>
+   <script>
+       document.querySelectorAll('[id^="viewCampaignBtn"]').forEach(function(btn) {
+           btn.addEventListener('click', function() {
+               //From data-description  full text 
+               const description = this.getAttribute('data-description');
+               // textarea  set 
+               document.getElementById('view_campaign_id').value = description;
+           });
+       });
+   </script>
    <script>
        document.querySelectorAll('.call-btn').forEach(btn => {
            btn.addEventListener('click', function() {

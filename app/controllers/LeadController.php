@@ -28,7 +28,7 @@ class LeadController extends Controller
         $assignedUsers = $this->userModel->getAllRoleUser();
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
-       $lastAction = $_GET['last_action'] ?? null;
+        $lastAction = $_GET['last_action'] ?? null;
 
         $owners = $this->userModel->getAll();
 
@@ -86,14 +86,17 @@ class LeadController extends Controller
             "totalTodayPendingFollowUps" => $totalTodayPendingFollowUps,
             "conversionRate" => $conversionRate,
             "totalHotLeads" => $totalHotLeads,
-            "selectedAction" => $lastAction,  ]);
+            "selectedAction" => $lastAction,
+        ]);
     }
 
 
     public function assignMultipleLeads()
     {
-        $userId = (int)($_POST['user_id'] ?? 0);
-        $leadIds = $_POST['lead_ids'] ?? '';
+        $userId      = (int)($_POST['user_id'] ?? 0);
+        $leadIds     = $_POST['lead_ids'] ?? '';
+        $assignedDate = $_POST['assigned_date'] ?? date('Y-m-d');
+        $assignedBy   = $_SESSION['user']['id'] ?? 0;
 
         if (!$userId || !$leadIds) {
             setError("Please select user and leads!");
@@ -101,12 +104,36 @@ class LeadController extends Controller
             exit;
         }
 
-        $ids = array_map('intval', explode(',', $leadIds));
+        // Clean IDs
+        $ids = array_filter(array_map('intval', explode(',', $leadIds)));
+
+        if (empty($ids)) {
+            setError("Invalid lead selection!");
+            header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
+            exit;
+        }
+
         $idsStr = implode(',', $ids);
 
-        $this->db->query("UPDATE leads SET assigned_id=$userId WHERE id IN ($idsStr)");
+        // Final assigned datetime
+        $assignedAt = $assignedDate . ' ' . date('H:i:s');
 
-        $userName = $this->db->query("SELECT full_name FROM users WHERE id=$userId")->fetch_assoc()['full_name'] ?? '';
+        //  Update with assigned_at + assigned_by
+        $sql = "
+        UPDATE leads 
+        SET 
+            assigned_id = $userId,
+            assigned_at = '$assignedAt',
+            created_by = $assignedBy
+        WHERE id IN ($idsStr)
+    ";
+
+        $this->db->query($sql);
+
+        // Get user name
+        $result = $this->db->query("SELECT full_name FROM users WHERE id=$userId");
+        $userName = $result ? ($result->fetch_assoc()['full_name'] ?? '') : '';
+
         setSuccess("Leads assigned successfully to $userName!");
         header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
         exit;
@@ -337,58 +364,58 @@ class LeadController extends Controller
         }
     }
 
-public function updateLastleadAction($id)
-{
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+    public function updateLastleadAction($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $leadId     = (int) $id;
+        $lastAction = $_POST['last_lead_action'] ?? null;
+
+        // Allowed enum values (important for security)
+        $allowedActions = ['new', 'booked', 'follow up', 'visited', 'cancel'];
+
+        if (!$leadId || !in_array($lastAction, $allowedActions)) {
+            setError("Invalid lead action selected.");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        // 🔒 Prevent update if already booked
+        $stmt = $this->db->prepare("SELECT last_lead_action FROM leads WHERE id = ? LIMIT 1");
+        $stmt->bind_param("i", $leadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $lead = $result->fetch_assoc();
+
+        if (!$lead) {
+            setError("Lead not found.");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        if ($lead['last_lead_action'] === 'booked') {
+            setError("Action cannot be changed because this lead is already booked.");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        //  Update the lead action
+        try {
+            $stmtUpdate = $this->db->prepare("UPDATE leads SET last_lead_action = ? WHERE id = ?");
+            $stmtUpdate->bind_param("si", $lastAction, $leadId);
+            $stmtUpdate->execute();
+
+            setSuccess("Lead last action updated successfully!");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        } catch (Exception $e) {
+            setError($e->getMessage());
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
     }
-
-    $leadId     = (int) $id;
-    $lastAction = $_POST['last_lead_action'] ?? null;
-
-    // Allowed enum values (important for security)
-    $allowedActions = ['new', 'booked', 'follow up', 'visited', 'cancel'];
-
-    if (!$leadId || !in_array($lastAction, $allowedActions)) {
-        setError("Invalid lead action selected.");
-        header("Location: " . $_SERVER['HTTP_REFERER']);
-        exit;
-    }
-
-    // 🔒 Prevent update if already booked
-    $stmt = $this->db->prepare("SELECT last_lead_action FROM leads WHERE id = ? LIMIT 1");
-    $stmt->bind_param("i", $leadId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $lead = $result->fetch_assoc();
-
-    if (!$lead) {
-        setError("Lead not found.");
-        header("Location: " . $_SERVER['HTTP_REFERER']);
-        exit;
-    }
-
-    if ($lead['last_lead_action'] === 'booked') {
-        setError("Action cannot be changed because this lead is already booked.");
-        header("Location: " . $_SERVER['HTTP_REFERER']);
-        exit;
-    }
-
-    //  Update the lead action
-    try {
-        $stmtUpdate = $this->db->prepare("UPDATE leads SET last_lead_action = ? WHERE id = ?");
-        $stmtUpdate->bind_param("si", $lastAction, $leadId);
-        $stmtUpdate->execute();
-
-        setSuccess("Lead last action updated successfully!");
-        header("Location: " . $_SERVER['HTTP_REFERER']);
-        exit;
-    } catch (Exception $e) {
-        setError($e->getMessage());
-        header("Location: " . $_SERVER['HTTP_REFERER']);
-        exit;
-    }
-}
 
 
     public function importCsv()

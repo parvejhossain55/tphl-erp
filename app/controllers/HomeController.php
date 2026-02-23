@@ -124,34 +124,28 @@ class HomeController extends Controller
         }
 
 
-
-
-
-
-
-
         // if you have project filter
 
-$viewType = $_GET['view'] ?? 'cashin';
-$period   = $_GET['period'] ?? 'all_time'; // default to 'all_time'
-$projectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+        $viewType = $_GET['view'] ?? 'cashin';
+        $period   = $_GET['period'] ?? 'all_time'; // default to 'all_time'
+        $projectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : null;
 
-if ($viewType === 'cashin') {
-    $statistics = $this->dashboardModel->getCashInStatistics($period, $projectId);
-    $statistics['by_payment_method'] = $this->dashboardModel->getCashInByPaymentMethod($period, $projectId);
-    $recentTransactions = $this->dashboardModel->getRecentCashInTransactions(10, $period, $projectId);
-    $monthlyData = $this->dashboardModel->getMonthlyCashInData(6, $period, $projectId);
-    $weeklyData = $this->dashboardModel->getWeeklyTransactionData('cashin', $period, $projectId);
-    $yearlyData = $this->dashboardModel->getYearlyTransactionData('cashin', 3, $period, $projectId);
-} else {
-    $statistics = $this->dashboardModel->getCashOutStatistics($period, $projectId);
-    $recentTransactions = $this->dashboardModel->getRecentCashOutTransactions(10, $period, $projectId);
-    $monthlyData = $this->dashboardModel->getMonthlyCashOutData(6, $period, $projectId);
-    $weeklyData = $this->dashboardModel->getWeeklyTransactionData('cashout', $period, $projectId);
-    $yearlyData = $this->dashboardModel->getYearlyTransactionData('cashout', 3, $period, $projectId);
-}
+        if ($viewType === 'cashin') {
+            $statistics = $this->dashboardModel->getCashInStatistics($period, $projectId);
+            $statistics['by_payment_method'] = $this->dashboardModel->getCashInByPaymentMethod($period, $projectId);
+            $recentTransactions = $this->dashboardModel->getRecentCashInTransactions(10, $period, $projectId);
+            $monthlyData = $this->dashboardModel->getMonthlyCashInData(6, $period, $projectId);
+            $weeklyData = $this->dashboardModel->getWeeklyTransactionData('cashin', $period, $projectId);
+            $yearlyData = $this->dashboardModel->getYearlyTransactionData('cashin', 3, $period, $projectId);
+        } else {
+            $statistics = $this->dashboardModel->getCashOutStatistics($period, $projectId);
+            $recentTransactions = $this->dashboardModel->getRecentCashOutTransactions(10, $period, $projectId);
+            $monthlyData = $this->dashboardModel->getMonthlyCashOutData(6, $period, $projectId);
+            $weeklyData = $this->dashboardModel->getWeeklyTransactionData('cashout', $period, $projectId);
+            $yearlyData = $this->dashboardModel->getYearlyTransactionData('cashout', 3, $period, $projectId);
+        }
         // Get combined overview statistics (always shown)
-       $overviewStats = $this->dashboardModel->getOverviewStatistics($period, $projectId);
+        $overviewStats = $this->dashboardModel->getOverviewStatistics($period, $projectId);
 
 
 
@@ -240,7 +234,6 @@ if ($viewType === 'cashin') {
         //    $pendingRequests = $this->approvalModel->getPending(10); // latest 10
         $sessionRole = $_SESSION['user']['role_name'] ?? 'management';
 
-        // Role mapping: DB তে কোন session role কে কোন DB approve_role দিয়ে দেখাবো
         $roleMap = [
             'super admin' => ['management'],
             'admin'       => ['management'],

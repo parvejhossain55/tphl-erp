@@ -21,7 +21,7 @@ class UserDashboardController extends Controller
         $this->bookingModel = new BookingLead($this->db);
     }
 
-    public function index()
+    public function todayLead()
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -55,6 +55,8 @@ class UserDashboardController extends Controller
 
         ]);
     }
+
+    
     public function dashboard()
     {
         if (session_status() === PHP_SESSION_NONE) {

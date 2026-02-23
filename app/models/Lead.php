@@ -215,21 +215,55 @@ LEFT JOIN projects AS p ON lb.project_id = p.id
         return (int)($result['total_visited'] ?? 0);
     }
 
+
+    // public function getTodayLeadsByUser(int $userId)
+    // {
+    //     $userId = (int) $userId;
+
+    //     $sql = "
+    //         SELECT *
+    //         FROM leads
+    //         WHERE assigned_id = {$userId}
+    //           AND deleted_at IS NULL
+    //           AND (
+    //                 (
+    //                     created_at >= CURDATE()
+    //                     AND created_at < CURDATE() + INTERVAL 1 DAY
+    //                 )
+    //                 OR
+    //                 (
+    //                     assigned_at >= CURDATE()
+    //                     AND assigned_at < CURDATE() + INTERVAL 1 DAY
+    //                 )
+    //               )
+    //         ORDER BY id DESC
+    //     ";
+
+    //     return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+    // }
+
     public function getTodayLeadsByUser(int $userId)
     {
         $userId = (int) $userId;
 
         $sql = "
-        SELECT *
-        FROM leads
-        WHERE assigned_id = {$userId}
-          AND created_at >= CURDATE()
-          AND created_at < CURDATE() + INTERVAL 1 DAY
-          AND deleted_at IS NULL
-        ORDER BY id DESC
+        SELECT 
+            l.*,
+            p.name AS project_name
+        FROM leads AS l
+        LEFT JOIN projects AS p ON l.project_id = p.id
+        WHERE l.assigned_id = {$userId}
+          AND l.deleted_at IS NULL
+          AND (
+                (l.created_at >= CURDATE() AND l.created_at < CURDATE() + INTERVAL 1 DAY)
+                OR
+                (l.assigned_at IS NOT NULL AND l.assigned_at >= CURDATE() AND l.assigned_at < CURDATE() + INTERVAL 1 DAY)
+              )
+        ORDER BY l.id DESC
     ";
 
-        return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+        $result = $this->db->query($sql);
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
     public function getAllLeadsByUser(int $userId)
     {
@@ -445,8 +479,10 @@ LEFT JOIN projects AS p ON lb.project_id = p.id
         $stmt = $this->db->prepare(
             "SELECT 
             leads.*,
+            p.name AS project_name,
             s.name AS source_name,
             u.full_name AS user_name,
+            l.name AS location_name,
             COUNT(f.id) AS follow_up_count
 
         FROM leads
@@ -456,7 +492,8 @@ LEFT JOIN projects AS p ON lb.project_id = p.id
             ON leads.id = f.lead_id
         LEFT JOIN users u 
             ON leads.assigned_id = u.id
-
+                    LEFT JOIN projects AS p ON leads.project_id = p.id
+                    LEFT JOIN locations AS l ON leads.pref_location_id = l.id
         WHERE leads.id = ?
         GROUP BY leads.id"
         );

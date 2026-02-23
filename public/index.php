@@ -2,15 +2,17 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
+// error_reporting(E_ALL);
+// ini_set('display_errors', 0);
 
-mysqli_report(MYSQLI_REPORT_OFF);
+// mysqli_report(MYSQLI_REPORT_OFF);
+
+// for producttion error hide 
 require_once("../app/helpers/helper.php");
 require_once __DIR__ . '/../vendor/autoload.php';
 // Enable debug
-// error_reporting(E_ALL);
-// ini_set('display_errors', 1);
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 $root = dirname(__DIR__);
 $GLOBALS['base_url'] = '/TPHL-ERP';
@@ -71,7 +73,7 @@ $routes = [
     "update-user/(\d+)"          => ["controller" => "UserController", "method" => "update"],
     "delete-user"          => ["controller" => "UserController", "method" => "delete"],
     "my-dashboard"          => ["controller" => "UserDashboardController", "method" => "dashboard"],
-    "today-leads"          => ["controller" => "UserDashboardController", "method" => "index"],
+    "today-leads"          => ["controller" => "UserDashboardController", "method" => "todayLead"],
     "update-call-status"          => ["controller" => "UserDashboardController", "method" => "updateCallStatus"],
     "update-call-notes"          => ["controller" => "UserDashboardController", "method" => "updateCallNote"],
     "today-follow-up"          => ["controller" => "UserDashboardController", "method" => "todayFollowUp"],
