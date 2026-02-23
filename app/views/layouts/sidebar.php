@@ -498,6 +498,12 @@
                             <span class="sidebar__menu-label">Central Statement</span>
                         </a>
                     </li>
+                    <li class="slide <?= isActive('projects-cashout', $current_route) ?>">
+                        <a href="<?= $base_url ?>/projects-cashout" class="sidebar__menu-item <?= isActive('projects-cashout', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-book"></i></div>
+                            <span class="sidebar__menu-label">Projects Cashout</span>
+                        </a>
+                    </li>
 
 
                     <!-- ===================== -->

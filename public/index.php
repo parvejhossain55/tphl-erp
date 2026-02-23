@@ -426,6 +426,7 @@ $routes = [
     'delete-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "deleteTransaction"],
     'get-cashout-transaction-details' => ["controller" => "AccountManagementCashoutController", "method" => "getTransactionDetails"],
     'export-management-cash-out' => ["controller" => "AccountManagementCashoutController", "method" => "exportTransactions"],
+    'projects-cashout' => ["controller" => "ProjectCashoutController", "method" => "index"],
 
 
     // ==================== MANAGEMENT CATEGORIES ROUTES ====================
