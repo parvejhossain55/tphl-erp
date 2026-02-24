@@ -71,7 +71,6 @@ $show_breadcrumb = true;
                             <th>Email</th>
                             <th>Assigned Agent</th>
                             <th>Designation</th>
-                            <th>Total Agreement Value</th>
                             <th>Total Paid</th>
                             <th>Last Payment Date</th>
                             <th>Action</th>
@@ -88,7 +87,7 @@ $show_breadcrumb = true;
                                     <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['designation'] ?? 'N/A') ?></td>
 
-                                    <td>৳<?= number_format($client['total_agreement_value'] ?? 0, 2) ?></td>
+                                  
                                     <td>৳<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
                                     <td>
                                         <?= $client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment' ?>

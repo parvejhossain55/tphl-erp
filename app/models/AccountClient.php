@@ -15,63 +15,42 @@ class AccountClient extends Model
     public function getAllClients()
     {
         $sql = $this->db->prepare("
-            SELECT
-                l.id AS lead_id,
-                lb.id AS booking_id,
-                l.full_name AS client_name,
-                l.phone,
-                l.email,
-                l.designation,
-                u.full_name AS agent_name,
-                p.name AS project_name,
-                p.types AS project_type,
-                f.flat_name AS unit_name,
-                f.sqft AS flat_size,
-                f.floor_no AS flat_floor_no,
-                f.price_value AS total_price,
-                f.land_share_value AS total_land_share,
-                COALESCE(
-                (SELECT SUM(lp.amount) 
-                 FROM lead_payments lp 
-                 WHERE lp.booking_id = lb.id 
-                 AND lp.payment_type = 'booking_money'
-                 AND lp.payment_status = 'paid'), 
-                0 ) as booking_money,
-                lb.discount_amount,
-                COALESCE(
-                    (SELECT SUM(lp.amount) 
-                     FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
-                    0
-                ) AS total_paid,
-                COALESCE(
-                    (SELECT SUM(lp.land_share_amount) 
-                     FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
-                    0
-                ) AS total_land_share_paid,
-                (
-                    SELECT MAX(lp.payment_date)
-                    FROM lead_payments lp
-                    WHERE lp.booking_id = lb.id
-                    AND lp.payment_status = 'paid'
-                ) AS last_payment_date
-            FROM leads l
-            LEFT JOIN lead_bookings lb 
-                ON lb.lead_id = l.id
-                AND lb.booking_status != 'cancelled'
-            LEFT JOIN projects p 
-                ON p.id = lb.project_id
-            LEFT JOIN flats f 
-                ON f.id = lb.flat_id
-            LEFT JOIN users u 
-                ON u.id = l.assigned_id
-            WHERE lb.id IS NOT NULL
-            GROUP BY lb.id
-            ORDER BY l.full_name
-        ");
+        SELECT
+            l.id AS lead_id,
+            l.full_name AS client_name,
+            l.phone,
+            l.email,
+            l.designation,
+            u.full_name AS agent_name,
+            COUNT(lb.id) AS total_bookings,
+            SUM(lb.agreement_value) AS total_agreement_value,
+            COALESCE(
+                (SELECT SUM(lp.amount)
+                 FROM lead_payments lp
+                 INNER JOIN lead_bookings lb2 ON lb2.id = lp.booking_id
+                 WHERE lb2.lead_id = l.id
+                 AND lp.payment_status = 'paid'),
+                0
+            ) AS total_paid,
+            (
+                SELECT MAX(lp.payment_date)
+                FROM lead_payments lp
+                INNER JOIN lead_bookings lb2 ON lb2.id = lp.booking_id
+                WHERE lb2.lead_id = l.id
+                AND lp.payment_status = 'paid'
+            ) AS last_payment_date
+        FROM leads l
+        INNER JOIN lead_bookings lb ON lb.lead_id = l.id
+        LEFT JOIN users u ON u.id = l.assigned_id
+        WHERE lb.booking_status != 'cancelled'
+        GROUP BY l.id
+        ORDER BY l.full_name
+    ");
+
+        if (!$sql) {
+            error_log("getAllClients prepare failed: " . $this->db->error);
+            return [];
+        }
 
         $sql->execute();
         $result = $sql->get_result();
@@ -134,8 +113,15 @@ class AccountClient extends Model
         FROM lead_bookings lb
         LEFT JOIN projects p ON lb.project_id = p.id
         LEFT JOIN flats f ON lb.flat_id = f.id
-        WHERE lb.lead_id = ?
-        ORDER BY lb.booking_date DESC
+ WHERE lb.lead_id = ?
+AND (
+    SELECT COUNT(*) 
+    FROM lead_payments lp 
+    WHERE lp.booking_id = lb.id 
+    AND lp.payment_type = 'booking_money'
+    AND lp.payment_status = 'paid'
+) > 0
+ORDER BY lb.booking_date DESC
     ");
 
         $sql->bind_param("i", $leadId);
@@ -331,24 +317,24 @@ class AccountClient extends Model
 
         if ($clientDetails) {
             // Cast all amounts to float for calculations
-            $totalPrice = (float)$clientDetails['total_price'];
-            $totalLandShare = (float)$clientDetails['total_land_share'];
-            $bookingMoney = (float)$clientDetails['booking_money'];
-            $discountAmount = (float)$clientDetails['discount_amount'];
+            $totalPrice = (float) $clientDetails['total_price'];
+            $totalLandShare = (float) $clientDetails['total_land_share'];
+            $bookingMoney = (float) $clientDetails['booking_money'];
+            $discountAmount = (float) $clientDetails['discount_amount'];
 
             // Paid amounts
-            $totalPaid = (float)$clientDetails['total_paid'];
-            $bookingMoneyPaid = (float)$clientDetails['booking_money_paid'];
-            $additionalLandSharePaid = (float)$clientDetails['additional_land_share_paid'];
-            $registrationPaid = (float)$clientDetails['registration_paid'];
-            $emiPaid = (float)$clientDetails['emi_paid'];
-            $totalServiceFee = (float)$clientDetails['total_service_fee'];
+            $totalPaid = (float) $clientDetails['total_paid'];
+            $bookingMoneyPaid = (float) $clientDetails['booking_money_paid'];
+            $additionalLandSharePaid = (float) $clientDetails['additional_land_share_paid'];
+            $registrationPaid = (float) $clientDetails['registration_paid'];
+            $emiPaid = (float) $clientDetails['emi_paid'];
+            $totalServiceFee = (float) $clientDetails['total_service_fee'];
 
             // CORRECT: Total land share paid = booking money + additional land share payments
             $totalLandSharePaid = $bookingMoney + $additionalLandSharePaid;
 
             // CORRECT: Remaining land share = total land share - (booking money + additional land share + discount)
-            $remainingLandShare =  $totalLandShare - ($totalLandSharePaid + $discountAmount);
+            $remainingLandShare = $totalLandShare - ($totalLandSharePaid + $discountAmount);
 
             // CORRECT: Construction fee = total price - (total land share + registration)
             $constructionFee = $totalPrice - ($totalLandShare + $registrationPaid);
@@ -407,7 +393,7 @@ class AccountClient extends Model
         $totalEmiStmt->execute();
         $totalEmiResult = $totalEmiStmt->get_result();
         $totalEmiRow = $totalEmiResult ? $totalEmiResult->fetch_assoc() : null;
-        $totalEmi = $totalEmiRow && $totalEmiRow['total_emi_no'] ? (int)$totalEmiRow['total_emi_no'] : 0;
+        $totalEmi = $totalEmiRow && $totalEmiRow['total_emi_no'] ? (int) $totalEmiRow['total_emi_no'] : 0;
 
         $stats = [
             'total_emi' => $totalEmi,
@@ -433,7 +419,7 @@ class AccountClient extends Model
         $paidEmiNumbers = [];
         if ($paidEmiResult) {
             while ($row = $paidEmiResult->fetch_assoc()) {
-                $paidEmiNumbers[] = (int)$row['emi_no'];
+                $paidEmiNumbers[] = (int) $row['emi_no'];
             }
         }
 
@@ -569,9 +555,9 @@ class AccountClient extends Model
                 throw new Exception("Missing required transaction data");
             }
 
-            $bookingId = (int)$transactionData['booking_id'];
+            $bookingId = (int) $transactionData['booking_id'];
             $paymentType = $transactionData['payment_type'];
-            $amount = (float)$transactionData['amount'];
+            $amount = (float) $transactionData['amount'];
             $landShareAmount = 0;
             $serviceFee = 0;
 
@@ -698,7 +684,7 @@ class AccountClient extends Model
         ");
 
         $status = 'paid';
-        $dueEmiAmount = isset($emiScheduleData['due_emi_amount']) ? (float)$emiScheduleData['due_emi_amount'] : 0;
+        $dueEmiAmount = isset($emiScheduleData['due_emi_amount']) ? (float) $emiScheduleData['due_emi_amount'] : 0;
         $dueDate = isset($emiScheduleData['due_date']) ? $emiScheduleData['due_date'] : date('Y-m-d');
 
         $emiStmt->bind_param(
@@ -960,16 +946,16 @@ class AccountClient extends Model
         $this->db->begin_transaction();
 
         try {
-            $paymentId = (int)$transactionData['payment_id'];
+            $paymentId = (int) $transactionData['payment_id'];
 
             $oldTransaction = $this->getTransactionById($paymentId);
             if (!$oldTransaction) {
                 throw new Exception("Transaction not found");
             }
 
-            $bookingId = (int)$oldTransaction['booking_id'];
+            $bookingId = (int) $oldTransaction['booking_id'];
             $newPaymentType = $transactionData['payment_type'];
-            $newAmount = (float)$transactionData['amount'];
+            $newAmount = (float) $transactionData['amount'];
 
             $summary = $this->getPaymentSummaryByBookingId($bookingId);
 
@@ -978,7 +964,7 @@ class AccountClient extends Model
 
             if ($newPaymentType === 'land_share') {
                 $oldAmount = $oldTransaction['payment_type'] === 'land_share' ?
-                    (float)$oldTransaction['amount'] : 0;
+                    (float) $oldTransaction['amount'] : 0;
 
                 $effectiveAmountChange = $newAmount - $oldAmount;
                 $remainingAfterChange = $summary['remaining_land_share'] - $effectiveAmountChange;
@@ -1062,7 +1048,7 @@ class AccountClient extends Model
         $existing = $checkStmt->get_result()->fetch_assoc();
 
         $status = 'paid';
-        $dueEmiAmount = isset($emiScheduleData['due_emi_amount']) ? (float)$emiScheduleData['due_emi_amount'] : 0;
+        $dueEmiAmount = isset($emiScheduleData['due_emi_amount']) ? (float) $emiScheduleData['due_emi_amount'] : 0;
         $dueDate = isset($emiScheduleData['due_date']) ? $emiScheduleData['due_date'] : date('Y-m-d');
 
         if ($existing) {
@@ -1283,10 +1269,10 @@ class AccountClient extends Model
             $landShareAmount = 0;
 
             if ($transactionData['payment_type'] === 'emi') {
-                $emiAmount = (float)$transactionData['amount'];
+                $emiAmount = (float) $transactionData['amount'];
                 $serviceFee = $emiAmount * 0.10;
             } elseif ($transactionData['payment_type'] === 'land_share') {
-                $landShareAmount = (float)$transactionData['amount'];
+                $landShareAmount = (float) $transactionData['amount'];
 
                 $clientDetails = $this->getClientByBookingId($transactionData['booking_id']);
                 $remainingLandShare = $clientDetails['remaining_land_share'];
@@ -1412,7 +1398,7 @@ class AccountClient extends Model
                 throw new Exception("Transaction not found");
             }
 
-            $finalAmount = (float)$transactionData['amount'];
+            $finalAmount = (float) $transactionData['amount'];
             $finalServiceFee = 0;
             $landShareAmount = 0;
 
