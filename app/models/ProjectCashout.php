@@ -89,48 +89,48 @@ class ProjectCashout extends Model
      * Fixed to be compatible with ONLY_FULL_GROUP_BY.
      */
     private function getDailyData($dateFrom, $dateTo, $project_id)
-    {
-        $sql = "SELECT
-                    DATE(cp.payment_date)                     AS date,
-                    DATE_FORMAT(DATE(cp.payment_date), '%d %b %Y')  AS formatted_date,
-                    DAYNAME(DATE(cp.payment_date))                   AS day_name,
-                    SUM(cp.amount)                             AS total_amount,
-                    COUNT(cp.id)                               AS transaction_count
-                FROM {$this->table} cp
-                WHERE cp.payment_date BETWEEN ? AND ?
-                AND cp.project_id IS NOT NULL
-        ";
+{
+    $sql = "SELECT
+                DATE(cp.payment_date)                     AS date,
+                DATE_FORMAT(DATE(cp.payment_date), '%d %b %Y')  AS formatted_date,
+                DAYNAME(DATE(cp.payment_date))                   AS day_name,
+                SUM(cp.amount)                             AS total_amount,
+                COUNT(cp.id)                               AS transaction_count
+            FROM {$this->table} cp
+            WHERE cp.payment_date BETWEEN ? AND ?
+            AND cp.project_id IS NOT NULL
+    ";
 
-        if ($project_id) {
-            $sql .= " AND cp.project_id = ?";
-        }
-
-        $sql .= " GROUP BY DATE(cp.payment_date) ORDER BY DATE(cp.payment_date) ASC";
-
-        $stmt = $this->db->prepare($sql);
-
-        if ($project_id) {
-            $stmt->bind_param("ssi", $dateFrom, $dateTo, $project_id);
-        } else {
-            $stmt->bind_param("ss", $dateFrom, $dateTo);
-        }
-
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $rows    = [];
-        $running = 0;
-        while ($row = $result->fetch_assoc()) {
-            $running       += (float)$row['total_amount'];
-            $row['running'] = $running;
-            $rows[]         = $row;
-        }
-
-        $stmt->close();
-        return $rows;
+    if ($project_id) {
+        $sql .= " AND cp.project_id = ?";
     }
 
-    /**
+    $sql .= " GROUP BY DATE(cp.payment_date) ORDER BY DATE(cp.payment_date) ASC";
+
+    $stmt = $this->db->prepare($sql);
+
+    if ($project_id) {
+        $stmt->bind_param("ssi", $dateFrom, $dateTo, $project_id);
+    } else {
+        $stmt->bind_param("ss", $dateFrom, $dateTo);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $rows    = [];
+    $running = 0;
+    while ($row = $result->fetch_assoc()) {
+        $running       += (float)$row['total_amount'];
+        $row['running'] = $running;
+        $rows[]         = $row;
+    }
+
+    $stmt->close();
+    return $rows;
+}
+
+         /**
      * Get monthly aggregated cashout data.
      * Fixed to be compatible with ONLY_FULL_GROUP_BY.
      */
