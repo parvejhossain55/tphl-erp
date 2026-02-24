@@ -3,104 +3,89 @@ $page_title = "CED Dashboard";
 $page = 'CED Dashboard';
 $show_breadcrumb = true;
 
-// Initialize calculation variables
-$activeAgreements = 0;
-$emiOnTrack = 0;
-$overduePayments = 0;
-$monthlyCollection = 0;
-$totalAgreementValue = 0;
-$totalCollected = 0;
-$totalOutstanding = 0;
-$pendingPayments = 0;
+// ── Use variables exactly as passed by CedView() controller ──────────────────
+// $clients       = getAllClients()
+// $paymentStats  = getPaymentStatistics()
 
-$currentMonth = date('Y-m');
+// ── Aggregate from $clients ───────────────────────────────────────────────────
+$totalAgreementValue  = 0;
+$totalCollected       = 0;
+$totalOutstanding     = 0;
+$overduePayments      = 0;
+$monthlyCollection    = 0;
+$currentMonth         = date('Y-m');
 
-// Chart data arrays
-$monthlyChartLabels = [];
-$monthlyCollectionData = [];
-$monthlyOutstandingData = [];
-$weeklyCollectionData = [0, 0, 0, 0, 0, 0, 0];
-$paymentStatusData = [0, 0, 0, 0]; // [On Track, Pending, Overdue, Completed]
+// Payment status pie: [On Track, Pending, Overdue, Completed]
+$paymentStatusData = [0, 0, 0, 0];
 
-// Calculate statistics from clients data
+// Monthly chart skeleton — last 6 months
+$monthlyChartLabels    = [];
+$monthlyCollectionMap  = [];
+$monthlyOutstandingMap = [];
+$weeklyCollectionData  = [0, 0, 0, 0, 0, 0, 0];
+
+for ($i = 5; $i >= 0; $i--) {
+    $mk = date('Y-m', strtotime("-$i months"));
+    $monthlyChartLabels[]       = date('M Y', strtotime($mk . '-01'));
+    $monthlyCollectionMap[$mk]  = 0;
+    $monthlyOutstandingMap[$mk] = 0;
+}
+
 if (!empty($clients)) {
-    // Initialize monthly data for last 6 months
-    for ($i = 5; $i >= 0; $i--) {
-        $monthDate = date('Y-m', strtotime("-$i months"));
-        $monthlyChartLabels[] = date('M Y', strtotime($monthDate . '-01'));
-        $monthlyCollectionData[$monthDate] = 0;
-        $monthlyOutstandingData[$monthDate] = 0;
-    }
-
     foreach ($clients as $client) {
-        $agreementValue = (float)($client['total_agreement_value'] ?? 0);
-        $totalPaid = (float)($client['total_paid'] ?? 0);
-        $outstanding = $agreementValue - $totalPaid;
+        $price       = (float)($client['total_price'] ?? 0);
+        $paid        = (float)($client['total_paid']  ?? 0);
+        $outstanding = max(0, $price - $paid);
+        $payPct      = $price > 0 ? ($paid / $price) * 100 : 0;
 
-        $totalAgreementValue += $agreementValue;
-        $totalCollected += $totalPaid;
-        $totalOutstanding += $outstanding;
+        $totalAgreementValue += $price;
+        $totalCollected      += $paid;
+        $totalOutstanding    += $outstanding;
 
-        // Count active agreements (those with outstanding balance)
-        if ($outstanding > 0) {
-            $activeAgreements++;
-        }
+        if ($payPct >= 100)                        { $paymentStatusData[3]++; }
+        elseif ($payPct >= 50)                     { $paymentStatusData[0]++; }
+        elseif ($payPct < 25 && $outstanding > 0)  { $paymentStatusData[1]++; }
 
-        // Count EMI on track (paid more than 50% and have recent payment)
-        $paymentPercentage = $agreementValue > 0 ? ($totalPaid / $agreementValue) * 100 : 0;
-        if ($paymentPercentage >= 50 && $paymentPercentage < 100) {
-            $emiOnTrack++;
-            $paymentStatusData[0]++; // On Track
-        } elseif ($paymentPercentage >= 100) {
-            $paymentStatusData[3]++; // Completed
-        }
-
-        // Count pending payments (less than 25% paid)
-        if ($paymentPercentage < 25 && $outstanding > 0) {
-            $pendingPayments++;
-            $paymentStatusData[1]++; // Pending
-        }
-
-        // Check if last payment was this month
         if (!empty($client['last_payment_date'])) {
-            $lastPaymentMonth = date('Y-m', strtotime($client['last_payment_date']));
-            if ($lastPaymentMonth == $currentMonth) {
-                $monthlyCollection += ($totalPaid * 0.1); // Approximation
-            }
+            $lpDate    = $client['last_payment_date'];
+            $lpMonth   = date('Y-m', strtotime($lpDate));
+            $daysSince = (strtotime(date('Y-m-d')) - strtotime($lpDate)) / 86400;
 
-            // Populate monthly data
-            if (isset($monthlyCollectionData[$lastPaymentMonth])) {
-                $monthlyCollectionData[$lastPaymentMonth] += ($totalPaid * 0.1);
-                $monthlyOutstandingData[$lastPaymentMonth] = $totalOutstanding;
+            if ($lpMonth === $currentMonth) {
+                $monthlyCollection += $paid * 0.1;
             }
-
-            // Weekly data (last 7 days)
-            $daysSincePayment = (strtotime(date('Y-m-d')) - strtotime($client['last_payment_date'])) / (60 * 60 * 24);
-            if ($daysSincePayment <= 7) {
-                $dayOfWeek = 6 - floor($daysSincePayment);
-                if ($dayOfWeek >= 0 && $dayOfWeek <= 6) {
-                    $weeklyCollectionData[$dayOfWeek] += ($totalPaid * 0.1);
-                }
+            if (isset($monthlyCollectionMap[$lpMonth])) {
+                $monthlyCollectionMap[$lpMonth]  += $paid * 0.1;
+                $monthlyOutstandingMap[$lpMonth]  = $totalOutstanding;
             }
-        }
-
-        // Count overdue (no payment in last 60 days and outstanding balance)
-        if (!empty($client['last_payment_date'])) {
-            $daysSincePayment = (strtotime(date('Y-m-d')) - strtotime($client['last_payment_date'])) / (60 * 60 * 24);
-            if ($daysSincePayment > 60 && $outstanding > 0) {
+            if ($daysSince <= 7) {
+                $idx = max(0, min(6, 6 - (int)floor($daysSince)));
+                $weeklyCollectionData[$idx] += $paid * 0.1;
+            }
+            if ($daysSince > 60 && $outstanding > 0) {
                 $overduePayments++;
-                $paymentStatusData[2]++; // Overdue
+                $paymentStatusData[2]++;
             }
         } elseif ($outstanding > 0) {
             $overduePayments++;
-            $paymentStatusData[2]++; // Overdue
+            $paymentStatusData[2]++;
         }
     }
 }
 
-// Convert monthly data to arrays
-$monthlyCollectionDataArray = array_values($monthlyCollectionData);
-$monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
+$collectionRate          = $totalAgreementValue > 0 ? ($totalCollected / $totalAgreementValue) * 100 : 0;
+$monthlyCollectionArray  = array_values($monthlyCollectionMap);
+$monthlyOutstandingArray = array_values($monthlyOutstandingMap);
+
+// ── Status badge map (NO function — avoids "Cannot redeclare" fatal error) ───
+$statusBadgeMap = [
+    'pending'        => '<span class="bd-badge bg-warning">Pending</span>',
+    'approved'       => '<span class="bd-badge bg-success">Approved</span>',
+    'rejected'       => '<span class="bd-badge bg-danger">Rejected</span>',
+    'partially_paid' => '<span class="bd-badge bg-info">Partially Paid</span>',
+    'fully_paid'     => '<span class="bd-badge bg-success">Fully Paid</span>',
+    'paid'           => '<span class="bd-badge bg-success">Paid</span>',
+];
 ?>
 
 <style>
@@ -117,18 +102,18 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
         font-size: 16px;
     }
 
-    .card__title {
-        font-size: 1.25rem;
-    }
+    .card__title { font-size: 1.25rem; }
+    .height-equal { height: 100%; padding-bottom: 0; }
+    .payment-method-chart { margin-top: 58px; }
+    .chart-container { position: relative; height: 350px; }
 
-    .height-equal {
-        height: 100%;
-        padding-bottom: 0;
-    }
-
-    .chart-container {
-        position: relative;
-        height: 350px;
+    .period-badge {
+        font-size: 12px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: #e9ecef;
+        color: #6c757d;
+        font-weight: 600;
     }
 
     .no-data-placeholder {
@@ -140,102 +125,38 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
         color: #6c757d;
     }
 
-    .no-data-placeholder i {
-        font-size: 48px;
-        margin-bottom: 15px;
-        opacity: 0.5;
-    }
-
-    .client-name-cell {
-        font-weight: 600;
-        color: #212529;
-    }
+    .no-data-placeholder i { font-size: 48px; margin-bottom: 15px; opacity: 0.5; }
 
     .table__icon {
-        width: 32px;
-        height: 32px;
+        width: 32px; height: 32px;
         border-radius: 6px;
         display: inline-flex;
-        align-items: center;
-        justify-content: center;
+        align-items: center; justify-content: center;
         border: 1px solid #dee2e6;
         background: #fff;
         color: #6c757d;
         cursor: pointer;
         transition: all 0.2s ease;
+        text-decoration: none;
     }
-
     .table__icon:hover {
         border-color: var(--clr-theme-primary);
         background: var(--clr-theme-primary);
         color: #fff;
     }
 
-    .progress {
-        background-color: #e9ecef;
-        border-radius: 4px;
-        overflow: hidden;
+    @media (max-width: 975px) {
+        .card__title { font-size: 1rem; }
     }
-
-    .bd-badge {
-        padding: 5px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        display: inline-block;
-    }
-
-    .bg-success {
-        background-color: #d4edda !important;
-        color: #155724 !important;
-    }
-
-    .bg-info {
-        background-color: #d1ecf1 !important;
-        color: #0c5460 !important;
-    }
-
-    .bg-warning {
-        background-color: #fff3cd !important;
-        color: #856404 !important;
-    }
-
-    .bg-danger {
-        background-color: #f8d7da !important;
-        color: #721c24 !important;
-    }
-
-    .bg-secondary {
-        background-color: #e2e3e5 !important;
-        color: #383d41 !important;
-    }
-
     @media (max-width: 768px) {
-        .card__title {
-            font-size: 1.25rem;
-        }
-
-        .table__wrapper {
-            overflow-x: auto;
-        }
-    }
-
-    @media (max-width: 575px) {
-        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
-            font-size: 12px;
-            padding: 6px 8px;
-        }
-
-        .dataTables_wrapper .dataTables_paginate .paginate_button {
-            font-size: 12px;
-            padding: 6px 16px;
-        }
+        .btn { font-size: 14px; padding: 6px 24px; }
     }
 </style>
 
 <div class="row">
-    <!-- Statistics Cards Row 1 -->
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+
+    <!-- ══ STAT CARDS ══ -->
+    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -251,14 +172,14 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
                     <span><i class="fa-light fa-badge-check"></i></span>
                 </div>
                 <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Full Payment Completion</h6>
+                    <h6 class="card__sub-title mb-10">Full Payment Completed</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
                         <h4 class="card__title"><?= $paymentStats['full_payment_completed'] ?? 0 ?></h4>
                     </div>
@@ -267,11 +188,11 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
-                    <span><i class="fa-sharp fa-regular fa-check"></i></span>
+                    <span><i class="fa-light fa-check-circle"></i></span>
                 </div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Approved Bookings</h6>
@@ -283,11 +204,7 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
         </div>
     </div>
 
-
-
-
-
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -296,16 +213,14 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Collected</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($totalCollected ?? 0, 0) ?></h4>
+                        <h4 class="card__title">৳<?= number_format($totalCollected, 0) ?></h4>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-
-
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -314,9 +229,6 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Collection Rate</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <?php
-                        $collectionRate = $totalAgreementValue > 0 ? ($totalCollected / $totalAgreementValue) * 100 : 0;
-                        ?>
                         <h4 class="card__title"><?= number_format($collectionRate, 1) ?>%</h4>
                     </div>
                 </div>
@@ -324,9 +236,7 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
         </div>
     </div>
 
-
-
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
@@ -342,101 +252,137 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
         </div>
     </div>
 
-    <div class="col-lg-12">
-        <!-- Charts Section -->
-        <div class="col-12  mb-3">
-            <div class="card__wrapper height-equal">
-                <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-50">
-                    <h5 class="card__heading-title">Collection & Outstanding Overview</h5>
-                    <div class="card__tab">
-                        <ul class="nav nav-pills" id="pills-tab" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="pills-bar-year-tab" data-bs-toggle="pill"
-                                    data-bs-target="#pills-bar-year" type="button" role="tab"
-                                    aria-controls="pills-bar-year" aria-selected="true">6M</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="pills-bar-week-tab"
-                                    data-bs-toggle="pill" data-bs-target="#pills-bar-week" type="button"
-                                    role="tab" aria-controls="pills-bar-week"
-                                    aria-selected="false">1W</button>
-                            </li>
-                        </ul>
-                    </div>
+    <!-- ══ MAIN CHART — 8 cols, same as accounts ══ -->
+    <div class="col-xxl-8 col-xl-12 col-lg-12 mb-3">
+        <div class="card__wrapper height-equal">
+            <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-50">
+                <h5 class="card__heading-title">Collection & Outstanding Overview</h5>
+                <div class="card__tab">
+                    <ul class="nav nav-pills" id="pills-tab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="pills-bar-year-tab" data-bs-toggle="pill"
+                                data-bs-target="#pills-bar-year" type="button" role="tab"
+                                aria-controls="pills-bar-year" aria-selected="false">6M</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="pills-bar-week-tab"
+                                data-bs-toggle="pill" data-bs-target="#pills-bar-week" type="button"
+                                role="tab" aria-controls="pills-bar-week" aria-selected="true">1W</button>
+                        </li>
+                    </ul>
                 </div>
-                <div class="card__content">
-                    <div class="tab-content" id="pills-tabContent">
-                        <div class="tab-pane fade" id="pills-bar-year" role="tabpanel"
-                            aria-labelledby="pills-bar-year-tab">
-                            <div class="chart-container">
-                                <canvas id="collectionChartMonthly" class="card__title"></canvas>
-                            </div>
+            </div>
+            <div class="card__content">
+                <div class="tab-content" id="pills-tabContent">
+                    <div class="tab-pane fade" id="pills-bar-year" role="tabpanel"
+                        aria-labelledby="pills-bar-year-tab">
+                        <div class="chart-container">
+                            <canvas id="collectionChartMonthly"></canvas>
                         </div>
-                        <div class="tab-pane fade show active" id="pills-bar-week" role="tabpanel"
-                            aria-labelledby="pills-bar-week-tab">
-                            <div class="chart-container">
-                                <canvas id="collectionChartWeek" class="card__title"></canvas>
-                            </div>
+                    </div>
+                    <div class="tab-pane fade show active" id="pills-bar-week" role="tabpanel"
+                        aria-labelledby="pills-bar-week-tab">
+                        <div class="chart-container">
+                            <canvas id="collectionChartWeek"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
-
     </div>
 
-    <!-- Clients Information Table -->
+    <!-- ══ PAYMENT STATUS PIE — 4 cols, same as accounts payment methods ══ -->
+    <div class="col-xxl-4 col-xl-6 col-lg-12 mb-3">
+        <div class="card__wrapper height-equal">
+            <div class="card__title-wrap d-flex align-items-center justify-content-between mb-20">
+                <h5 class="card__heading-title">Payment Status</h5>
+                <span class="period-badge">All Clients</span>
+            </div>
+            <div class="payment-method-chart card__content">
+                <div class="chart-container">
+                    <?php if (array_sum($paymentStatusData) > 0): ?>
+                        <canvas id="paymentStatusChart"></canvas>
+                    <?php else: ?>
+                        <div class="no-data-placeholder">
+                            <i class="fa-light fa-chart-pie"></i>
+                            <p>No payment data available</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ CLIENTS TABLE ══ -->
     <div class="col-xxl-12">
         <div class="card__wrapper">
-            <div class="d-flex justify-content-between mb-20">
-                <h4>Clients Information</h4>
-                <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view" class="bd-btn bd-btn-primary">
-                    <div class="btn btn-primary">
-                        View all
-                        <i class="fa-solid fa-arrow-right ms-2"></i>
-                    </div>
+            <div class="card__header d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="card__title mb-0">Clients Information</h5>
+                    <small class="text-muted">All active clients</small>
+                </div>
+                <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view" class="btn btn-sm btn-primary">
+                    View All <i class="fa-light fa-arrow-right ms-2"></i>
                 </a>
             </div>
 
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables" id="clientsTable">
+                <table class="table mb-20 multiple_tables">
                     <thead>
                         <tr class="table__title table__sort">
                             <th>Client Name</th>
-                            <th>Company</th>
                             <th>Phone</th>
-                            <th>Email</th>
-                            <th>Assigned Agent</th>
-                            <th>Designation</th>
-                            <th>Total Agreement Value</th>
+                            <th>Project</th>
+                            <th>Unit / Floor</th>
+                            <th>Agent</th>
+                            <th>Total Price</th>
                             <th>Total Paid</th>
-                            <th>Last Payment Date</th>
-
+                            <th>Last Payment</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody class="table__body">
                         <?php if (!empty($clients)): ?>
                             <?php foreach ($clients as $client): ?>
                                 <tr>
-                                    <td><?= htmlspecialchars($client['client_name']) ?></td>
-                                    <td><?= htmlspecialchars($client['company'] ?? 'N/A') ?></td>
+                                    <td class="fw-semibold"><?= htmlspecialchars($client['client_name'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['phone'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['email'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($client['project_name'] ?? 'N/A') ?></td>
+                                    <td>
+                                        <?php if (!empty($client['unit_name']) || !empty($client['flat_floor_no'])): ?>
+                                            UNIT <?= htmlspecialchars($client['unit_name'] ?? '') ?> - FL <?= htmlspecialchars($client['flat_floor_no'] ?? 'N/A') ?>
+                                        <?php else: ?>
+                                            N/A
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['designation'] ?? 'N/A') ?></td>
-                                    <td>৳<?= number_format($client['total_agreement_value'] ?? 0, 2) ?></td>
+                                    <td>৳<?= number_format($client['total_price'] ?? 0, 2) ?></td>
                                     <td>৳<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
                                     <td>
-                                        <?= $client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment' ?>
+                                        <?php if (!empty($client['last_payment_date'])): ?>
+                                            <?= date('d M, Y', strtotime($client['last_payment_date'])) ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">No Payment</span>
+                                        <?php endif; ?>
                                     </td>
-
+                                    <td>
+                                        <a class="table__icon"
+                                            href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/<?= $client['booking_id'] ?>"
+                                            title="View History">
+                                            <i class="fa-regular fa-eye"></i>
+                                        </a>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr>
-                                <td colspan="10" class="text-center">No clients found</td>
-                            </tr>
+                            <!-- <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="fa-light fa-users fa-2x mb-3 d-block"></i>
+                                        No clients found
+                                    </div>
+                                </td>
+                            </tr> -->
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -446,106 +392,38 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
 
 </div>
 
-<!-- Projects Modal -->
-<div class="modal fade" id="projectsModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Land Shares - <span id="modal_client_name"></span></h5>
-                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
-                    <i class="fa-solid fa-xmark-large"></i>
-                </button>
-            </div>
-
-            <div class="modal-body">
-                <div id="projects_loading" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-2">Loading land shares...</p>
-                </div>
-
-                <div id="projects_content" style="display: none;">
-                    <div class="table__wrapper table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr class="table__title">
-                                    <th>Project Name</th>
-                                    <th>Unit - Floor</th>
-                                    <th>Flat Size</th>
-                                    <th>Total Price</th>
-                                    <th>Agreement Value</th>
-                                    <th>Total Paid</th>
-                                    <th>Service Fee</th>
-                                    <th>Booking Status</th>
-                                    <th>Land Share Status</th>
-                                    <th>Last Payment</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="projects_table_body">
-                                <!-- Dynamic content will be loaded here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div id="projects_error" class="alert alert-danger" style="display: none;">
-                    <i class="fa-solid fa-exclamation-triangle"></i>
-                    <span id="error_message"></span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
 <script>
-    let projectsModal;
-
     document.addEventListener('DOMContentLoaded', function() {
-        projectsModal = new bootstrap.Modal(document.getElementById('projectsModal'));
 
-        // Chart data from PHP
-        const monthlyLabels = <?= json_encode($monthlyChartLabels) ?>;
-        const monthlyCollectionData = <?= json_encode($monthlyCollectionDataArray) ?>;
-        const monthlyOutstandingData = <?= json_encode($monthlyOutstandingDataArray) ?>;
-        const weeklyCollectionData = <?= json_encode($weeklyCollectionData) ?>;
-        const paymentStatusData = <?= json_encode($paymentStatusData) ?>;
+        // ── PHP → JS ──────────────────────────────────────────────────────────
+        const monthlyLabels      = <?= json_encode($monthlyChartLabels) ?>;
+        const monthlyCollection  = <?= json_encode($monthlyCollectionArray) ?>;
+        const monthlyOutstanding = <?= json_encode($monthlyOutstandingArray) ?>;
+        const weeklyCollection   = <?= json_encode($weeklyCollectionData) ?>;
+        const paymentStatusData  = <?= json_encode($paymentStatusData) ?>;
 
-        // Currency formatter
         const formatCurrency = (value) => '৳' + value.toLocaleString();
 
-        // Modern chart color palette
         const colors = {
-            primary: '#6366f1',
-            success: '#10b981',
-            danger: '#ef4444',
-            warning: '#f59e0b',
-            info: '#06b6d4',
-            purple: '#a855f7',
-            pink: '#ec4899',
-            doughnut: [
-                '#10b981', // On Track - Green
-                '#f59e0b', // Pending - Yellow
-                '#ef4444', // Overdue - Red
-                '#06b6d4' // Completed - Cyan
-            ]
+            primary:  '#6366f1',
+            success:  '#10b981',
+            danger:   '#ef4444',
+            warning:  '#f59e0b',
+            info:     '#06b6d4',
+            doughnut: ['#10b981', '#f59e0b', '#ef4444', '#06b6d4']
         };
 
-        /* ==========================
-            WEEKLY CHART (Animated Area Chart)
-        ========================== */
+        /* ── 1W LINE CHART (same as accounts) ────────────────────────────── */
         const ctxWeek = document.getElementById('collectionChartWeek');
         if (ctxWeek) {
-            const collectionChartWeek = new Chart(ctxWeek.getContext('2d'), {
+            new Chart(ctxWeek.getContext('2d'), {
                 type: 'line',
                 data: {
                     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
                     datasets: [{
                         label: 'Collection',
-                        data: weeklyCollectionData,
+                        data: weeklyCollection,
                         borderColor: colors.success,
                         backgroundColor: colors.success + '15',
                         fill: true,
@@ -561,25 +439,12 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    animation: {
-                        duration: 2000,
-                        easing: 'easeOutQuart'
-                    },
+                    interaction: { mode: 'index', intersect: false },
+                    animation: { duration: 2000, easing: 'easeOutQuart' },
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 20,
-                                font: {
-                                    size: 13,
-                                    weight: '500'
-                                }
-                            }
+                            labels: { usePointStyle: true, padding: 20, font: { size: 13, weight: '500' } }
                         },
                         tooltip: {
                             backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -595,48 +460,31 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
                     scales: {
                         y: {
                             beginAtZero: true,
-                            border: {
-                                display: false
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)',
-                                drawTicks: false
-                            },
-                            ticks: {
-                                padding: 10,
-                                callback: function(value) {
-                                    return formatCurrency(value);
-                                }
-                            }
+                            border: { display: false },
+                            grid: { color: 'rgba(0, 0, 0, 0.05)', drawTicks: false },
+                            ticks: { padding: 10, callback: function(value) { return formatCurrency(value); } }
                         },
                         x: {
-                            border: {
-                                display: false
-                            },
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                padding: 10
-                            }
+                            border: { display: false },
+                            grid: { display: false },
+                            ticks: { padding: 10 }
                         }
                     }
                 }
             });
         }
 
-        /* ==========================
-            MONTHLY CHART (Bar Chart with Collection & Outstanding)
-        ========================== */
+        /* ── 6M BAR CHART (same as accounts 1M tab) ──────────────────────── */
         const ctxMonth = document.getElementById('collectionChartMonthly');
         if (ctxMonth) {
-            const collectionChartMonthly = new Chart(ctxMonth.getContext('2d'), {
+            new Chart(ctxMonth.getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: monthlyLabels,
-                    datasets: [{
+                    datasets: [
+                        {
                             label: 'Collection',
-                            data: monthlyCollectionData,
+                            data: monthlyCollection,
                             backgroundColor: colors.success,
                             borderRadius: 8,
                             borderSkipped: false,
@@ -645,7 +493,7 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
                         },
                         {
                             label: 'Outstanding',
-                            data: monthlyOutstandingData,
+                            data: monthlyOutstanding,
                             backgroundColor: colors.danger,
                             borderRadius: 8,
                             borderSkipped: false,
@@ -657,24 +505,11 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animations: {
-                        y: {
-                            duration: 1500,
-                            from: 0,
-                            easing: 'easeOutBounce'
-                        }
-                    },
+                    animations: { y: { duration: 1500, from: 0, easing: 'easeOutBounce' } },
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 20,
-                                font: {
-                                    size: 13,
-                                    weight: '500'
-                                }
-                            }
+                            labels: { usePointStyle: true, padding: 20, font: { size: 13, weight: '500' } }
                         },
                         tooltip: {
                             backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -690,42 +525,24 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
                     scales: {
                         y: {
                             beginAtZero: true,
-                            border: {
-                                display: false
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)',
-                                drawTicks: false
-                            },
-                            ticks: {
-                                padding: 10,
-                                callback: function(value) {
-                                    return formatCurrency(value);
-                                }
-                            }
+                            border: { display: false },
+                            grid: { color: 'rgba(0, 0, 0, 0.05)', drawTicks: false },
+                            ticks: { padding: 10, callback: function(value) { return formatCurrency(value); } }
                         },
                         x: {
-                            border: {
-                                display: false
-                            },
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                padding: 10
-                            }
+                            border: { display: false },
+                            grid: { display: false },
+                            ticks: { padding: 10 }
                         }
                     }
                 }
             });
         }
 
-        /* ==========================
-            PAYMENT STATUS CHART (Animated Pie Chart)
-        ========================== */
-        const ctxPayment = document.getElementById('paymentStatusChart');
-        if (ctxPayment) {
-            const paymentStatusChart = new Chart(ctxPayment.getContext('2d'), {
+        /* ── PAYMENT STATUS PIE (same as accounts payment methods pie) ────── */
+        const ctxPie = document.getElementById('paymentStatusChart');
+        if (ctxPie) {
+            new Chart(ctxPie.getContext('2d'), {
                 type: 'pie',
                 data: {
                     labels: ['On Track', 'Pending', 'Overdue', 'Completed'],
@@ -748,14 +565,7 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 15,
-                                font: {
-                                    size: 12
-                                },
-                                color: '#6b7280'
-                            }
+                            labels: { usePointStyle: true, padding: 15, font: { size: 12 }, color: '#6b7280' }
                         },
                         tooltip: {
                             backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -776,147 +586,4 @@ $monthlyOutstandingDataArray = array_values($monthlyOutstandingData);
             });
         }
     });
-
-    function openProjectsModal(leadId, clientName) {
-        console.log('Opening modal for lead ID:', leadId);
-
-        document.getElementById('modal_client_name').textContent = clientName;
-
-        // Reset modal state
-        document.getElementById('projects_loading').style.display = 'block';
-        document.getElementById('projects_content').style.display = 'none';
-        document.getElementById('projects_error').style.display = 'none';
-
-        projectsModal.show();
-
-        const url = '<?= $GLOBALS['base_url'] ?>/get-client-lands?lead_id=' + leadId;
-
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-                return response.text();
-            })
-            .then(text => {
-                try {
-                    const data = JSON.parse(text);
-
-                    if (data.success) {
-                        if (data.lands && data.lands.length > 0) {
-                            displayProjects(data.lands);
-                        } else {
-                            showError('No land shares found for this client');
-                        }
-                    } else {
-                        showError(data.message || 'Failed to load land shares');
-                    }
-                } catch (e) {
-                    console.error('JSON parse error:', e);
-                    showError('Invalid response from server');
-                }
-            })
-            .catch(error => {
-                console.error('Fetch error:', error);
-                showError('Failed to load land shares: ' + error.message);
-            });
-    }
-
-    function displayProjects(lands) {
-        const tbody = document.getElementById('projects_table_body');
-        tbody.innerHTML = '';
-
-        lands.forEach(land => {
-            const row = document.createElement('tr');
-
-            const bookingStatusClass = getStatusClass(land.booking_status);
-            const landshareStatusClass = getStatusClass(land.landshare_status);
-
-            row.innerHTML = `
-            <td>${escapeHtml(land.project_name)}</td>
-            <td>${escapeHtml(land.unit_name)} - Floor ${escapeHtml(land.flat_no)}</td>
-            <td>${Number(land.flat_size).toLocaleString('en-BD')} sqft</td>
-            <td>৳${Number(land.total_price).toLocaleString('en-BD', {minimumFractionDigits: 2})}</td>
-            <td>৳${Number(land.agreement_value).toLocaleString('en-BD', {minimumFractionDigits: 2})}</td>
-            <td>৳${Number(land.total_paid || 0).toLocaleString('en-BD', {minimumFractionDigits: 2})}</td>
-            <td>
-                <div>
-                    <strong>Fee:</strong> ৳${Number(land.total_service_fee || 0).toLocaleString('en-BD', {minimumFractionDigits: 2})}
-                </div>
-                <div class="text-muted small">
-                    <strong>Balance:</strong> ৳${Number(land.service_fee_balance || 0).toLocaleString('en-BD', {minimumFractionDigits: 2})}
-                </div>
-            </td>
-            <td>
-                <span class="bd-badge ${bookingStatusClass}">
-                    ${escapeHtml(land.booking_status || 'N/A')}
-                </span>
-            </td>
-            <td>
-                <span class="bd-badge ${landshareStatusClass}">
-                    ${escapeHtml(land.landshare_status || 'N/A')}
-                </span>
-            </td>
-            <td>
-                ${land.last_payment_date ? formatDate(land.last_payment_date) : 'No Payment'}
-            </td>
-            <td>
-                <a class="table__icon download"
-                    href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/${land.booking_id}"
-                    title="View Transaction History">
-                    <i class="fa-regular fa-eye"></i>
-                </a>
-            </td>
-        `;
-
-            tbody.appendChild(row);
-        });
-
-        document.getElementById('projects_loading').style.display = 'none';
-        document.getElementById('projects_content').style.display = 'block';
-    }
-
-    function showError(message) {
-        document.getElementById('error_message').textContent = message;
-        document.getElementById('projects_loading').style.display = 'none';
-        document.getElementById('projects_error').style.display = 'block';
-    }
-
-    function getStatusClass(status) {
-        if (!status) return 'bg-secondary';
-
-        status = status.toLowerCase();
-
-        if (status === 'booked' || status === 'active' || status === 'approved' || status === 'paid') {
-            return 'bg-success';
-        } else if (status === 'pending') {
-            return 'bg-warning';
-        } else if (status === 'cancelled' || status === 'rejected') {
-            return 'bg-danger';
-        } else {
-            return 'bg-info';
-        }
-    }
-
-    function formatDate(dateString) {
-        const date = new Date(dateString);
-        const options = {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        };
-        return date.toLocaleDateString('en-GB', options);
-    }
-
-    function escapeHtml(text) {
-        if (!text) return '';
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return text.toString().replace(/[&<>"']/g, m => map[m]);
-    }
 </script>
