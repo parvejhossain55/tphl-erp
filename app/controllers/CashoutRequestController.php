@@ -65,31 +65,29 @@ class CashoutRequestController extends Controller
         }
 
         $filters = [
-            'status' => $_GET['status'] ?? null,
-            'user_id' => $_GET['user_id'] ?? null,
+            'status'     => $_GET['status'] ?? null,
+            'user_id'    => $_GET['user_id'] ?? null,
             'project_id' => $_GET['project_id'] ?? null,
-            'office' => $_GET['office'] ?? null,
+            'office'     => $_GET['office'] ?? null,
             'start_date' => $_GET['start_date'] ?? null,
-            'end_date' => $_GET['end_date'] ?? null
+            'end_date'   => $_GET['end_date'] ?? null
         ];
 
-        $requests = $this->cashoutModel->getAllRequests($filters);
+        $requests   = $this->cashoutModel->getAllRequests($filters);
         $statistics = $this->cashoutModel->getStatistics();
-        $projects = $this->cashoutModel->getAllProjects();
-
-        // Get all unique offices for filter dropdown
-        $offices = $this->getUniqueOffices();
+        $projects   = $this->cashoutModel->getAllProjects();
+        $offices    = $this->getUniqueOffices();
 
         $this->view("accounts/cashout/admin-request-list", [
             "current_route" => "admin-cashout-requests",
-            "page_title" => "Cashout Requests Management",
-            "requests" => $requests,
-            "statistics" => $statistics,
-            "projects" => $projects,
-            "offices" => $offices,
-            "filters" => $filters,
-            "isAdmin" => true,
-            "userRole" => $this->userRole
+            "page_title"    => "Cashout Requests Management",
+            "requests"      => $requests,
+            "statistics"    => $statistics,
+            "projects"      => $projects,
+            "offices"       => $offices,
+            "filters"       => $filters,
+            "isAdmin"       => true,
+            "userRole"      => $this->userRole
         ]);
     }
 
@@ -98,21 +96,19 @@ class CashoutRequestController extends Controller
     {
         $projects = $this->cashoutModel->getAllProjects();
 
-        // Define office options
         $officeOptions = [
-            '' => 'Select Office (Optional)',
-            'Site Office' => 'Site Office',
-            'Site Office 2' => 'Site Office 2 (Ati)',
+            ''               => 'Select Office (Optional)',
+            'Site Office'    => 'Site Office',
+            'Site Office 2'  => 'Site Office 2 (Ati)',
             'Corporate Office' => 'Corporate Office',
-            'Zonal Office ' => 'Zonal Office'
-
+            'Zonal Office '  => 'Zonal Office'
         ];
 
         $this->view("accounts/cashout/create-request", [
             "current_route" => "create-cashout-request",
-            "page_title" => "Request Cashout",
-            "isAdmin" => $this->isAdminUser(),
-            "projects" => $projects,
+            "page_title"    => "Request Cashout",
+            "isAdmin"       => $this->isAdminUser(),
+            "projects"      => $projects,
             "officeOptions" => $officeOptions
         ]);
     }
@@ -126,8 +122,7 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        // Handle file upload
-// Handle multiple file uploads
+        // Handle multiple file uploads
         $attachmentPaths = [];
         if (!empty($_FILES['attachments']['name'][0])) {
             foreach ($_FILES['attachments']['tmp_name'] as $index => $tmpName) {
@@ -135,10 +130,10 @@ class CashoutRequestController extends Controller
                     continue;
 
                 $file = [
-                    'name' => $_FILES['attachments']['name'][$index],
+                    'name'     => $_FILES['attachments']['name'][$index],
                     'tmp_name' => $_FILES['attachments']['tmp_name'][$index],
-                    'size' => $_FILES['attachments']['size'][$index],
-                    'error' => $_FILES['attachments']['error'][$index],
+                    'size'     => $_FILES['attachments']['size'][$index],
+                    'error'    => $_FILES['attachments']['error'][$index],
                 ];
 
                 $uploadResult = $this->handleFileUpload($file);
@@ -153,25 +148,23 @@ class CashoutRequestController extends Controller
         }
 
         $data = [
-            'requested_by' => $this->userId,
+            'requested_by'   => $this->userId,
             'purpose_paid_to' => trim($_POST['purpose_paid_to'] ?? ''),
-            'amount' => $_POST['amount'] ?? 0,
-            'description' => trim($_POST['description'] ?? ''),
+            'amount'         => $_POST['amount'] ?? 0,
+            'description'    => trim($_POST['description'] ?? ''),
             'payment_method' => $_POST['payment_method'] ?? 'cash',
             'transaction_ref' => trim($_POST['transaction_ref'] ?? ''),
             'attachment_path' => !empty($attachmentPaths) ? json_encode($attachmentPaths) : null,
-            'project_id' => !empty($_POST['project_id']) ? (int) $_POST['project_id'] : null,
-            'office' => !empty($_POST['office']) ? trim($_POST['office']) : null,
+            'project_id'     => !empty($_POST['project_id']) ? (int) $_POST['project_id'] : null,
+            'office'         => !empty($_POST['office']) ? trim($_POST['office']) : null,
         ];
 
-        // Validation
         if (empty($data['purpose_paid_to']) || $data['amount'] <= 0) {
             setError("Please fill all required fields correctly.");
             header("Location: {$GLOBALS['base_url']}/create-cashout-request");
             exit;
         }
 
-        // Create request - ALWAYS goes to pending
         $result = $this->cashoutModel->createRequest($data);
 
         if ($result['success']) {
@@ -184,7 +177,7 @@ class CashoutRequestController extends Controller
         exit;
     }
 
-    // View single request - FIXED: Proper ID handling
+    // View single request
     public function show()
     {
         $id = $_GET['id'] ?? null;
@@ -194,7 +187,6 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        // Sync with approval system before displaying
         $this->syncWithApprovalSystem($id);
 
         $request = $this->cashoutModel->getRequestById($id);
@@ -204,7 +196,7 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        // Authorization check
+        // Authorization check — admin users AND the request owner can view
         $canView = false;
         if ($this->isAdminUser()) {
             $canView = true;
@@ -218,23 +210,22 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        $payments = $this->paymentModel->getPaymentsByRequest($id);
-        $totalPaid = $this->paymentModel->getTotalPaid($id);
-        $isAdmin = $this->isAdminUser();
-
-        // Get approval details
+        $payments       = $this->paymentModel->getPaymentsByRequest($id);
+        $totalPaid      = $this->paymentModel->getTotalPaid($id);
+        $isAdmin        = $this->isAdminUser();
         $approvalRequest = $this->cashoutModel->getApprovalRequest($id);
 
         $this->view("accounts/cashout/view-request", [
-            "current_route" => "view-cashout-request",
-            "page_title" => "Cashout Request Details",
-            "request" => $request,
-            "payments" => $payments,
-            "total_paid" => $totalPaid,
+            "current_route"    => "view-cashout-request",
+            "page_title"       => "Cashout Request Details",
+            "request"          => $request,
+            "payments"         => $payments,
+            "total_paid"       => $totalPaid,
             "approval_request" => $approvalRequest,
-            "isAdmin" => $isAdmin,
-            "userRole" => $this->userRole,
-            "userId" => $this->userId
+            "isAdmin"          => $isAdmin,
+             "canApproveOrReject"   => $this->canApproveOrReject(), 
+            "userRole"         => $this->userRole,
+            "userId"           => $this->userId
         ]);
     }
 
@@ -254,31 +245,29 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        // Sync with approval system before displaying
         $this->syncWithApprovalSystem($id);
 
         $request = $this->cashoutModel->getRequestById($id);
-
         if (!$request) {
             setError("Request not found.");
             header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
             exit;
         }
 
-        $payments = $this->paymentModel->getPaymentsByRequest($id);
-        $totalPaid = $this->paymentModel->getTotalPaid($id);
+        $payments        = $this->paymentModel->getPaymentsByRequest($id);
+        $totalPaid       = $this->paymentModel->getTotalPaid($id);
         $approvalRequest = $this->cashoutModel->getApprovalRequest($id);
 
         $this->view("accounts/cashout/admin-view-request", [
-            "current_route" => "admin-view-cashout-request",
-            "page_title" => "Admin - Cashout Request Details",
-            "request" => $request,
-            "payments" => $payments,
-            "total_paid" => $totalPaid,
+            "current_route"    => "admin-view-cashout-request",
+            "page_title"       => "Admin - Cashout Request Details",
+            "request"          => $request,
+            "payments"         => $payments,
+            "total_paid"       => $totalPaid,
             "approval_request" => $approvalRequest,
-            "isAdmin" => true,
-            "userRole" => $this->userRole,
-            "userId" => $this->userId
+            "isAdmin"          => true,
+            "userRole"         => $this->userRole,
+            "userId"           => $this->userId
         ]);
     }
 
@@ -290,7 +279,6 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        // Get all cashout requests with pending approval status
         $sql = "SELECT cr.id FROM cashout_requests cr
                 LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
                 WHERE cr.status = 'pending' AND ar.status IN ('approved', 'partial', 'rejected')";
@@ -309,10 +297,10 @@ class CashoutRequestController extends Controller
         exit;
     }
 
-    // Add payment
+    // Add payment — roles 1, 3 (full admin) and 6, 10 (accounts, payment only)
     public function addPayment()
     {
-        if (!$this->isAdminUser()) {
+        if (!$this->canAddPayment()) {
             setError("You are not authorized to perform this action.");
             header("Location: {$GLOBALS['base_url']}/cashout-requests");
             exit;
@@ -333,34 +321,32 @@ class CashoutRequestController extends Controller
 
         $data = [
             'cashout_request_id' => $requestId,
-            'amount' => $_POST['amount'] ?? 0,
-            'payment_method' => $_POST['payment_method'] ?? 'cash',
-            'transaction_ref' => trim($_POST['transaction_ref'] ?? ''),
-            'payment_date' => $_POST['payment_date'] ?? date('Y-m-d'),
-            'bank_name' => $_POST['bank_name'] ?? null,
-            'bank_account_no' => $_POST['bank_account_no'] ?? null,
-            'cheque_no' => $_POST['cheque_no'] ?? null,
-            'online_type' => $_POST['online_type'] ?? null,
-            'created_by' => $this->userId
+            'amount'             => $_POST['amount'] ?? 0,
+            'payment_method'     => $_POST['payment_method'] ?? 'cash',
+            'transaction_ref'    => trim($_POST['transaction_ref'] ?? ''),
+            'payment_date'       => $_POST['payment_date'] ?? date('Y-m-d'),
+            'bank_name'          => $_POST['bank_name'] ?? null,
+            'bank_account_no'    => $_POST['bank_account_no'] ?? null,
+            'cheque_no'          => $_POST['cheque_no'] ?? null,
+            'online_type'        => $_POST['online_type'] ?? null,
+            'created_by'         => $this->userId
         ];
 
         if ($data['amount'] <= 0) {
             setError("Please enter a valid amount.");
-         header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
             exit;
         }
 
         $result = $this->paymentModel->addPayment($data);
 
         if ($result['success']) {
-            // Update due amount
-            $request = $this->cashoutModel->getRequestById($requestId);
+            $request   = $this->cashoutModel->getRequestById($requestId);
             $totalPaid = $this->paymentModel->getTotalPaid($requestId);
             $dueAmount = ($request['approved_amount'] ?? $request['amount']) - $totalPaid;
 
             $this->cashoutModel->updateDueAmount($requestId, $dueAmount);
 
-            // Update status
             if ($dueAmount <= 0) {
                 $this->cashoutModel->updateStatus($requestId, 'fully_paid', $this->userId);
             } else {
@@ -376,10 +362,10 @@ class CashoutRequestController extends Controller
         exit;
     }
 
-    // Approve request
+    // Approve request — roles 1 and 3 only
     public function approve()
     {
-        if (!in_array($this->userRole, [1, 3, 4, 6])) { // Admin, Super Admin, HR, Accounts
+        if (!$this->canApproveOrReject()) {
             setError("Access Denied: Only authorized approvers can approve requests.");
             header("Location: {$GLOBALS['base_url']}/cashout-requests");
             exit;
@@ -399,14 +385,12 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        // Check if request is pending
         if (!in_array($request['display_status'], ['pending'])) {
             setError("This request cannot be approved. Current status: " . ucfirst(str_replace('_', ' ', $request['display_status'])));
             header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
             exit;
         }
 
-        // Approve the request
         $result = $this->cashoutModel->updateStatus($requestId, 'approved', $this->userId);
 
         if ($result) {
@@ -419,60 +403,17 @@ class CashoutRequestController extends Controller
         exit;
     }
 
-    // Sync with approval system
-    private function syncWithApprovalSystem($cashoutId)
-    {
-        // Get approval request details
-        $approvalRequest = $this->cashoutModel->getApprovalRequest($cashoutId);
-
-        if ($approvalRequest && in_array($approvalRequest['status'], ['approved', 'partial', 'rejected'])) {
-            // Update cashout request with approval details
-            $cashoutData = [
-                'status' => $approvalRequest['status'] == 'partial' ? 'approved' : $approvalRequest['status'],
-                'approved_amount' => $approvalRequest['approved_amount'] ?? null,
-                'approval_note' => $approvalRequest['approval_note'] ?? null,
-                'approved_by' => $approvalRequest['approved_by'] ?? null,
-                'approved_at' => $approvalRequest['approved_at'] ?? null
-            ];
-
-            // Update cashout request
-            $sql = "UPDATE cashout_requests SET 
-                status = ?,
-                approved_amount = ?,
-                approval_note = ?,
-                approved_by = ?,
-                approved_at = ?
-                WHERE id = ?";
-
-            $stmt = $this->db->prepare($sql);
-            $status = $cashoutData['status'] == 'partial' ? 'approved' : $cashoutData['status'];
-            $stmt->bind_param(
-                "sssisi",
-                $status,
-                $cashoutData['approved_amount'],
-                $cashoutData['approval_note'],
-                $cashoutData['approved_by'],
-                $cashoutData['approved_at'],
-                $cashoutId
-            );
-
-            return $stmt->execute();
-        }
-
-        return false;
-    }
-
-    // Reject request
+    // Reject request — roles 1 and 3 only
     public function reject()
     {
-        if (!in_array($this->userRole, [1, 3, 4, 6])) {
+        if (!$this->canApproveOrReject()) {
             setError("You are not authorized to reject requests.");
             header("Location: {$GLOBALS['base_url']}/cashout-requests");
             exit;
         }
 
         $requestId = $_POST['id'] ?? null;
-        $reason = trim($_POST['rejection_reason'] ?? '');
+        $reason    = trim($_POST['rejection_reason'] ?? '');
 
         if (!$requestId) {
             setError("Request ID missing.");
@@ -498,6 +439,46 @@ class CashoutRequestController extends Controller
         exit;
     }
 
+    // Sync with approval system
+    private function syncWithApprovalSystem($cashoutId)
+    {
+        $approvalRequest = $this->cashoutModel->getApprovalRequest($cashoutId);
+
+        if ($approvalRequest && in_array($approvalRequest['status'], ['approved', 'partial', 'rejected'])) {
+            $cashoutData = [
+                'status'        => $approvalRequest['status'] == 'partial' ? 'approved' : $approvalRequest['status'],
+                'approved_amount' => $approvalRequest['approved_amount'] ?? null,
+                'approval_note' => $approvalRequest['approval_note'] ?? null,
+                'approved_by'   => $approvalRequest['approved_by'] ?? null,
+                'approved_at'   => $approvalRequest['approved_at'] ?? null
+            ];
+
+            $sql = "UPDATE cashout_requests SET 
+                status = ?,
+                approved_amount = ?,
+                approval_note = ?,
+                approved_by = ?,
+                approved_at = ?
+                WHERE id = ?";
+
+            $stmt   = $this->db->prepare($sql);
+            $status = $cashoutData['status'] == 'partial' ? 'approved' : $cashoutData['status'];
+            $stmt->bind_param(
+                "sssisi",
+                $status,
+                $cashoutData['approved_amount'],
+                $cashoutData['approval_note'],
+                $cashoutData['approved_by'],
+                $cashoutData['approved_at'],
+                $cashoutId
+            );
+
+            return $stmt->execute();
+        }
+
+        return false;
+    }
+
     // Delete request
     public function delete()
     {
@@ -515,7 +496,7 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        $canDelete = false;
+        $canDelete   = false;
         $redirectUrl = $this->isAdminUser() ? "/admin-cashout-requests" : "/cashout-requests";
 
         // Super Admin can delete any request
@@ -548,7 +529,7 @@ class CashoutRequestController extends Controller
     // Helper method to get unique offices for filter
     private function getUniqueOffices()
     {
-        $sql = "SELECT DISTINCT office FROM cashout_requests WHERE office IS NOT NULL AND office != '' ORDER BY office";
+        $sql    = "SELECT DISTINCT office FROM cashout_requests WHERE office IS NOT NULL AND office != '' ORDER BY office";
         $result = $this->db->query($sql);
 
         $offices = [];
@@ -559,17 +540,42 @@ class CashoutRequestController extends Controller
         return $offices;
     }
 
-    // Helper methods
+    // -------------------------------------------------------
+    // Role helper methods
+    // -------------------------------------------------------
+
+    /**
+     * Full admin access: roles 1 (Admin) and 3 (Super Admin).
+     * Also includes roles 6 and 10 for viewing admin pages
+     * and adding payments.
+     */
     private function isAdminUser()
     {
-        $adminRoles = [1, 3, 4, 5, 6];
-        return in_array($this->userRole, $adminRoles);
+        return in_array($this->userRole, [1, 3, 6, 10]);
     }
+
+    /**
+     * Only roles 1 and 3 may approve or reject requests.
+     */
+    private function canApproveOrReject()
+    {
+        return in_array($this->userRole, [1, 3]);
+    }
+
+    /**
+     * Roles 1, 3, 6, and 10 may add payments.
+     */
+    private function canAddPayment()
+    {
+        return in_array($this->userRole, [1, 3, 6, 10]);
+    }
+
+    // -------------------------------------------------------
 
     private function handleFileUpload($file)
     {
         $allowedTypes = ['doc', 'docx', 'pdf', 'jpg', 'jpeg', 'png'];
-        $maxSize = 5 * 1024 * 1024; // 5MB per file
+        $maxSize      = 5 * 1024 * 1024; // 5MB per file
 
         $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
@@ -582,8 +588,8 @@ class CashoutRequestController extends Controller
         }
 
         $newFileName = 'cashout_' . time() . '_' . uniqid() . '.' . $fileExt;
-        $uploadPath = 'uploads/cashout/' . $newFileName;
-        $fullPath = __DIR__ . '/../../public/' . $uploadPath;
+        $uploadPath  = 'uploads/cashout/' . $newFileName;
+        $fullPath    = __DIR__ . '/../../public/' . $uploadPath;
 
         $dir = dirname($fullPath);
         if (!file_exists($dir)) {
@@ -622,7 +628,6 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        // Decode JSON array or fall back to legacy single string
         $paths = json_decode($request['attachment_path'], true);
         if (!is_array($paths)) {
             $paths = [$request['attachment_path']];
@@ -659,9 +664,9 @@ class CashoutRequestController extends Controller
         }
 
         $filters = [
-            'status' => $_GET['status'] ?? null,
+            'status'     => $_GET['status'] ?? null,
             'start_date' => $_GET['start_date'] ?? null,
-            'end_date' => $_GET['end_date'] ?? null
+            'end_date'   => $_GET['end_date'] ?? null
         ];
 
         $requests = $this->cashoutModel->getAllRequests($filters);
@@ -672,23 +677,10 @@ class CashoutRequestController extends Controller
         $output = fopen('php://output', 'w');
 
         fputcsv($output, [
-            'ID',
-            'Requester',
-            'Project',
-            'Office',
-            'Purpose/Paid To',
-            'Amount',
-            'Approved Amount',
-            'Due Amount',
-            'Description',
-            'Payment Method',
-            'Transaction Ref',
-            'Status',
-            'Approval Status',
-            'Approved By',
-            'Rejected By',
-            'Rejection Reason',
-            'Created At'
+            'ID', 'Requester', 'Project', 'Office', 'Purpose/Paid To',
+            'Amount', 'Approved Amount', 'Due Amount', 'Description',
+            'Payment Method', 'Transaction Ref', 'Status', 'Approval Status',
+            'Approved By', 'Rejected By', 'Rejection Reason', 'Created At'
         ]);
 
         foreach ($requests as $request) {
@@ -717,7 +709,7 @@ class CashoutRequestController extends Controller
         exit;
     }
 
-    // NEW: Sync all requests with approval system (one-time fix)
+    // Sync all requests with approval system
     public function syncAllRequests()
     {
         if (!$this->isAdminUser()) {
@@ -737,9 +729,10 @@ class CashoutRequestController extends Controller
         header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
         exit;
     }
+
     public function getAllProjects()
     {
-        $sql = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
+        $sql    = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
         $result = $this->db->query($sql);
 
         $projects = [];

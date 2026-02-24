@@ -105,9 +105,9 @@ $show_breadcrumb = true;
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr>
+                            <!-- <tr>
                                 <td colspan="11" class="text-center">No clients found</td>
-                            </tr>
+                            </tr> -->
                         <?php endif; ?>
                     </tbody>
                 </table>
