@@ -324,7 +324,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                     $showFullyPaid = $request['due_amount'] <= 0;
                                     ?>
 
-                                    <?php if ($showApproveReject): ?>
+                                    <?php if ($showApproveReject && $canApproveOrReject): ?>
                                         <!-- Show approve/reject buttons only if pending and not already approved from homepage -->
                                         <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST"
                                             class="mb-2">
@@ -494,7 +494,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
 </div>
 
 <!-- Reject Modal -->
-<?php if ($isAdmin && $displayStatus == 'pending' && !$isAlreadyApproved): ?>
+<?php if ($isAdmin && $canApproveOrReject && $displayStatus == 'pending' && !$isAlreadyApproved): ?>
     <div class="modal fade" id="rejectModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
