@@ -168,14 +168,14 @@ $show_breadcrumb = true;
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <tr>
+                                <!-- <tr>
                                     <td colspan="7" class="text-center py-4">
                                         <div class="text-muted">
                                             <i class="fa-light fa-users-gear fa-2x mb-3"></i><br>
                                             No roles found
                                         </div>
                                     </td>
-                                </tr>
+                                </tr> -->
                             <?php endif; ?>
                         </tbody>
                     </table>

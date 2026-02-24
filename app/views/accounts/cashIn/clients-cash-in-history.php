@@ -326,6 +326,7 @@ $show_breadcrumb = true;
                                 <th>Payment Type</th>
                                 <th>Details</th>
                                 <th>Amount</th>
+                                <th>Due Amount</th> 
                                 <th>Land Share</th>
                                 <th>Service Fee</th>
                                 <th>Status</th>
@@ -343,6 +344,14 @@ $show_breadcrumb = true;
                                     </td>
                                     <td><?php echo $transaction['payment_details']; ?></td>
                                     <td>৳<?php echo number_format($transaction['amount'], 2); ?></td>
+                                    <!-- ADD THIS -->
+                                     <td>
+                                         <?php if (!empty($transaction['due_emi_amount']) && $transaction['due_emi_amount'] > 0): ?>
+                                             ৳<?php echo number_format($transaction['due_emi_amount'], 2); ?>
+                                         <?php else: ?>
+                                             <span class="text-muted">-</span>
+                                         <?php endif; ?>
+                                     </td>
                                     <td>
                                         <?php if ($transaction['land_share_amount'] > 0): ?>
                                             ৳<?php echo number_format($transaction['land_share_amount'], 2); ?>
@@ -403,7 +412,7 @@ $show_breadcrumb = true;
     </div>
 
     <script>
-        // ✅ FIXED: Changed from $clientDetails['id'] to $clientDetails['booking_id']
+        //  FIXED: Changed from $clientDetails['id'] to $clientDetails['booking_id']
         function deleteTransaction(transactionId) {
             if (confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
                 let currentBookingId = <?= $clientDetails['booking_id'] ?? 'null' ?>;

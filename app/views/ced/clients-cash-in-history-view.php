@@ -1,11 +1,347 @@
 <?php
-$page_title = "Clients Cash in History";
+$page_title = "Clients Cash in";
 $page = 'Clients';
 $addPage = 'add transaction';
 $addPage = true;
 $show_breadcrumb = true;
 ?>
-<style>
+
+<div class="row">
+
+    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+        <div class="card__wrapper">
+            <div class="d-flex align-items-center gap-sm">
+                <div class="card__icon">
+                    <span><i class="fa-light fa-users"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-10">Total Clients</h6>
+                    <div class="d-flex flex-wrap align-items-end gap-10">
+                        <h4 class="card__title"><?= $paymentStats['total_clients'] ?? 0 ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+        <div class="card__wrapper">
+            <div class="d-flex align-items-center gap-sm">
+                <div class="card__icon">
+                    <span><i class="fa-light fa-badge-check"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-10">Full Payment Completion</h6>
+                    <div class="d-flex flex-wrap align-items-end gap-10">
+                        <h4 class="card__title"><?= $paymentStats['full_payment_completed'] ?? 0 ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+        <div class="card__wrapper">
+            <div class="d-flex align-items-center gap-sm">
+                <div class="card__icon">
+                    <span><i class="fa-sharp fa-regular fa-check"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-10">Approved Bookings</h6>
+                    <div class="d-flex flex-wrap align-items-end gap-10">
+                        <h4 class="card__title"><?= $paymentStats['approved_bookings'] ?? 0 ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="col-xxl-12">
+        <div class="card__wrapper">
+            <div class="d-flex justify-content-between mb-20">
+                <h4>Clients Information</h4>
+            </div>
+ 
+            <div class="table__wrapper table-responsive">
+                <table class="table mb-20 multiple_tables">
+                    <thead>
+                        <tr class="table__title table__sort">
+                            <th>Client Name</th>
+                            <th>Company</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Assigned Agent</th>
+                            <th>Designation</th>
+                            <th>Total Agreement Value</th>
+                            <th>Total Paid</th>
+                            <th>Last Payment Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="table__body">
+                        <?php if (!empty($clients)): ?>
+                            <?php foreach ($clients as $client): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($client['client_name']) ?></td>
+                                    <td><?= htmlspecialchars($client['company'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($client['phone'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($client['email'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($client['designation'] ?? 'N/A') ?></td>
+
+                                    <td>৳<?= number_format($client['total_agreement_value'] ?? 0, 2) ?></td>
+                                    <td>৳<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
+                                    <td>
+                                        <?= $client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment' ?>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center justify-content-start gap-10">
+                                            <button class="table__icon download"
+                                                onclick="openProjectsModal(<?= $client['lead_id'] ?>, '<?= htmlspecialchars($client['client_name'], ENT_QUOTES) ?>')"
+                                                title="View Projects">
+                                                <i class="fa-regular fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <!-- <tr>
+                                <td colspan="11" class="text-center">No clients found</td>
+                            </tr> -->
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Projects Modal -->
+<div class="modal fade" id="projectsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Land Shares - <span id="modal_client_name"></span></h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div id="projects_loading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading land shares...</p>
+                </div>
+
+                <div id="projects_content" style="display: none;">
+                    <div class="table__wrapper table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr class="table__title">
+                                    <th>Project Name</th>
+                                
+                                    <th>Unit - Floor</th>
+                                    <th>Flat Size</th>
+                                    <th>Total Price</th>
+                                    <th>Agreement Value</th>
+                                    <th>Total Paid</th>
+                                    <th>Service Fee</th>
+                                    <th>Booking Status</th>
+                                    <th>Land Share Status</th>
+                                    <th>Last Payment</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projects_table_body">
+                                <!-- Dynamic content will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="projects_error" class="alert alert-danger" style="display: none;">
+                    <i class="fa-solid fa-exclamation-triangle"></i>
+                    <span id="error_message"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let projectsModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    projectsModal = new bootstrap.Modal(document.getElementById('projectsModal'));
+});
+
+function openProjectsModal(leadId, clientName) {
+    console.log('Opening modal for lead ID:', leadId);
+    console.log('Client name:', clientName);
+    
+    // Set client name
+    document.getElementById('modal_client_name').textContent = clientName;
+    
+    // Reset modal state
+    document.getElementById('projects_loading').style.display = 'block';
+    document.getElementById('projects_content').style.display = 'none';
+    document.getElementById('projects_error').style.display = 'none';
+    
+    // Show modal
+    projectsModal.show();
+    
+    // Construct URL
+    const url = '<?= $GLOBALS['base_url'] ?>/get-client-lands?lead_id=' + leadId;
+    console.log('Fetching from URL:', url);
+    
+    // Fetch projects
+    fetch(url)
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response ok:', response.ok);
+            
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.status);
+            }
+            
+            return response.text(); // First get as text to see what we're getting
+        })
+        .then(text => {
+            console.log('Response text:', text);
+            
+            // Try to parse as JSON
+            try {
+                const data = JSON.parse(text);
+                console.log('Parsed data:', data);
+                
+                if (data.success) {
+                    if (data.lands && data.lands.length > 0) {
+                        displayProjects(data.lands);
+                    } else {
+                        showError('No land shares found for this client');
+                    }
+                } else {
+                    showError(data.message || 'Failed to load land shares');
+                }
+            } catch (e) {
+                console.error('JSON parse error:', e);
+                console.error('Response was:', text);
+                showError('Invalid response from server. Please check console for details.');
+            }
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+            showError('Failed to load land shares: ' + error.message);
+        });
+}
+
+function displayProjects(lands) {
+    console.log('Displaying projects:', lands);
+    
+    const tbody = document.getElementById('projects_table_body');
+    tbody.innerHTML = '';
+    
+    lands.forEach(land => {
+        const row = document.createElement('tr');
+        
+        // Calculate due amount
+        const dueAmount = (parseFloat(land.total_price) || 0) - (parseFloat(land.total_paid) || 0);
+        
+        // Determine status classes
+        const bookingStatusClass = getStatusClass(land.booking_status);
+        const landshareStatusClass = getStatusClass(land.landshare_status);
+        
+        row.innerHTML = `
+            <td>${escapeHtml(land.project_name)}</td>
+            <td>${escapeHtml(land.unit_name)} - Floor ${escapeHtml(land.flat_no)}</td>
+            <td>${Number(land.flat_size).toLocaleString('en-BD')} sqft</td>
+            <td>৳${Number(land.total_price).toLocaleString('en-BD', {minimumFractionDigits: 2})}</td>
+            <td>৳${Number(land.agreement_value).toLocaleString('en-BD', {minimumFractionDigits: 2})}</td>
+            <td>৳${Number(land.total_paid || 0).toLocaleString('en-BD', {minimumFractionDigits: 2})}</td>
+            <td>
+                <div>
+                    <strong>Fee:</strong> ৳${Number(land.total_service_fee || 0).toLocaleString('en-BD', {minimumFractionDigits: 2})}
+                </div>
+                <div class="text-muted small">
+                    <strong>Balance:</strong> ৳${Number(land.service_fee_balance || 0).toLocaleString('en-BD', {minimumFractionDigits: 2})}
+                </div>
+            </td>
+            <td>
+                <span class="bd-badge ${bookingStatusClass}">
+                    ${escapeHtml(land.booking_status || 'N/A')}
+                </span>
+            </td>
+            <td>
+                <span class="bd-badge ${landshareStatusClass}">
+                    ${escapeHtml(land.landshare_status || 'N/A')}
+                </span>
+            </td>
+            <td>
+                ${land.last_payment_date ? formatDate(land.last_payment_date) : 'No Payment'}
+            </td>
+            <td>
+                <a class="table__icon download"
+                    href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history/${land.booking_id}"
+                    title="View Transaction History">
+                    <i class="fa-regular fa-eye"></i>
+                </a>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+    
+    // Show content, hide loading
+    document.getElementById('projects_loading').style.display = 'none';
+    document.getElementById('projects_content').style.display = 'block';
+}
+
+function showError(message) {
+    document.getElementById('error_message').textContent = message;
+    document.getElementById('projects_loading').style.display = 'none';
+    document.getElementById('projects_error').style.display = 'block';
+}
+
+function getStatusClass(status) {
+    if (!status) return 'bg-secondary';
+    
+    status = status.toLowerCase();
+    
+    if (status === 'booked' || status === 'active' || status === 'approved' || status === 'paid') {
+        return 'bg-success';
+    } else if (status === 'pending') {
+        return 'bg-warning';
+    } else if (status === 'cancelled' || status === 'rejected') {
+        return 'bg-danger';
+    } else {
+        return 'bg-info';
+    }
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const options = { day: '2-digit', month: 'short', year: 'numeric' };
+    return date.toLocaleDateString('en-GB', options);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.toString().replace(/[&<>"']/g, m => map[m]);
+}
+</script>
+
+
+  <style>
     .card__icon span {
         color: var(--clr-theme-primary);
         background: rgba(108, 95, 252, 0.1);
@@ -23,474 +359,94 @@ $show_breadcrumb = true;
         font-size: 1.25rem;
     }
 
-    
-@media (max-width: 975px) {
-    .card__wrapper .card__body h3{
-        font-size: 1.3rem;
-    }
-    .card__title {
-    font-size: 1rem;
-}
-    }
-
-    @media (max-width: 768px) { 
-            .btn {
-    font-size: 14px;
-    padding: 6px 24px;
-}
-    }
-    @media (min-width: 575px) {
-.position{
-    justify-content: end !important;
-}
-    }
     @media (max-width: 575px) {
+        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
 
-    }
-    @media (max-width: 480px) {
-    .btn {
-    font-size: 16px;
-    padding: 6px 21px;
-}
-.position{
-    justify-content: start !important;
-}
-    }
-    @media (max-width: 400px) {
-.btn {
-    font-size: 14px;
-    padding: 6px 14px;
-}
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            font-size: 12px;
+            padding: 6px 16px;
+        }
     }
 
+    /* Modal styles */
+    .modal-lg {
+        max-width: 900px;
+    }
+
+    .land-item {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 12px;
+        transition: all 0.3s;
+        background-color: #fff;
+    }
+
+    .land-item:hover {
+        background-color: #f8f9fa;
+        border-color: var(--clr-theme-primary);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .land-status {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .status-active {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .status-completed {
+        background-color: #cce5ff;
+        color: #004085;
+    }
+
+    .status-cancelled {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    .land-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .land-detail-item {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .land-detail-item strong {
+        color: #333;
+        display: block;
+        margin-bottom: 2px;
+        font-size: 12px;
+    }
+
+    .loading-spinner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+    }
+
+    .loading-spinner i {
+        font-size: 36px;
+        margin-bottom: 10px;
+    }
 </style>
-<div class="row">
-    <!-- Client Header Section -->
-    <div class="col-xxl-12 mb-4">
-        
-        <div class="card__wrapper">
-            <div class="card__body">
-                <h3 class="mb-2">
-                    <i class="fa-light fa-user-circle me-2"></i>
-                    <?= htmlspecialchars($clientDetails['client_name'] ?? 'N/A') ?>
-                </h3>
-                <div class="d-flex flex-wrap gap-3">
-                    <span class="text-muted">
-                        <i class="fa-light fa-building mx-2"></i>
-                        <strong>Project:</strong> <?= htmlspecialchars($clientDetails['project_name'] ?? 'N/A') ?>
-                    </span>
-                    <span class="text-muted">
-                        <i class="fa-light fa-home mx-2"></i>
-                        <strong>Flat:</strong> UNIT <?= htmlspecialchars($clientDetails['unit_name'] ?? '') ?> - FLOOR <?= htmlspecialchars($clientDetails['flat_no'] ?? 'N/A') ?>
-                    </span>
-                    <span class="text-muted">
-                        <i class="fa-light fa-phone mx-2"></i>
-                        <strong>Phone:</strong> <?= htmlspecialchars($clientDetails['phone'] ?? 'N/A') ?>
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Summary Cards -->
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-money-bill"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Price</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['total_price'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-hand-holding-usd"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Booking Money</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['booking_money'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-file-certificate"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Registration Money</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['registration_money'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-building"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Construction Fee</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['construction_fee'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-money-check-dollar"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Construction Fee Paid</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['construction_fee_paid'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-money-check-dollar"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Remaining Construction Fee</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['remaining_construction_fee'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-calculator"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Average EMI Amount</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['avg_emi_amount'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon">
-                <span><i class="fa-light fa-list-ol"></i></span>
-            </div>
-            <div class="card__title-wrap">
-                <h6 class="card__sub-title mb-10">Total EMI </h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title"><?= $paymentSummary['total_emi'] ?? 0 ?></h4>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-check-circle"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Completed EMI</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentSummary['completed_emi'] ?? 0 ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-clock"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Pending EMI</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentSummary['pending_emi'] ?? 0 ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-calendar-check"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Last Payment</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">
-                            <?php if ($paymentSummary['last_payment_date']): ?>
-                                <?= date('d M, Y', strtotime($paymentSummary['last_payment_date'])) ?>
-                            <?php else: ?>
-                                N/A
-                            <?php endif; ?>
-                        </h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Transaction History Table -->
-    <div class="col-xxl-12">
-        <div class="card__wrapper">
-            <div class="card__header">
-                <h5 class="card__title">Transaction History</h5>
-            </div>
-    <div class="col-xxl-12 mb-4">
-
-            <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables">
-                    <thead>
-                        <tr class="table__title table__sort">
-                            <th>Date</th>
-                            <th>Installment</th>
-                            <th>Type</th>
-                            <th>Paid Amount</th>
-                            <th>Status</th>
-                            <th>Method</th>
-                            <th>Payment Details</th>
-                        </tr>
-                    </thead>
-                    <tbody class="table__body">
-                        <?php if (!empty($transactions)): ?>
-                            <?php foreach ($transactions as $transaction): ?>
-                                <tr>
-                                    <td>
-                                        <?php 
-                                        if (isset($transaction['payment_date'])) {
-                                            echo date('d M, Y', strtotime($transaction['payment_date']));
-                                        } elseif (isset($transaction['booking_date'])) {
-                                            echo date('d M, Y', strtotime($transaction['booking_date']));
-                                        } else {
-                                            echo 'N/A';
-                                        }
-                                        ?>
-                                    </td>
-                                    <td>
-                                        <?php if ($transaction['payment_type'] === 'emi'): ?>
-                                            <span class="bd-badge bg-primary">
-                                                <?= $transaction['installment_label'] ?? 'EMI' ?>
-                                            </span>
-                                        <?php elseif ($transaction['payment_type'] === 'booking_money'): ?>
-                                            <span class="bd-badge bg-secondary">
-                                                BOOKING
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="bd-badge bg-info">
-                                                <?= ucfirst(str_replace('_', ' ', $transaction['payment_type'])) ?>
-                                            </span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <?= strtoupper(str_replace('_', ' ', $transaction['payment_type'])) ?>
-                                    </td>
-                                    <td>
-                                        <strong>৳<?= number_format($transaction['amount'] ?? 0, 2) ?></strong>
-                                    </td>
-                                    <td>
-                                        <?php if (($transaction['payment_status'] ?? 'paid') == 'paid'): ?>
-                                            <span class="bd-badge bg-success">Paid</span>
-                                        <?php elseif (($transaction['payment_status'] ?? '') == 'pending'): ?>
-                                            <span class="bd-badge bg-warning">Pending</span>
-                                        <?php else: ?>
-                                            <span class="bd-badge bg-danger">Failed</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <span class="bd-badge bg-light text-dark">
-                                            <?= ucfirst($transaction['payment_method'] ?? 'agreement') ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <small>
-                                            <?php if (($transaction['payment_method'] ?? '') === 'bank'): ?>
-                                                <?= $transaction['bank_name'] ? htmlspecialchars($transaction['bank_name']) : '' ?>
-                                                <?= $transaction['bank_account_no'] ? ' (' . htmlspecialchars($transaction['bank_account_no']) . ')' : '' ?>
-                                            <?php elseif (($transaction['payment_method'] ?? '') === 'cheque'): ?>
-                                                Cheque No: <?= $transaction['cheque_no'] ? htmlspecialchars($transaction['cheque_no']) : 'N/A' ?>
-                                                <?= $transaction['bank_name'] ? ' - ' . htmlspecialchars($transaction['bank_name']) : '' ?>
-                                            <?php elseif (($transaction['payment_method'] ?? '') === 'online'): ?>
-                                                <?= $transaction['online_type'] ? htmlspecialchars($transaction['online_type']) : 'Online' ?>
-                                            <?php elseif (($transaction['payment_method'] ?? '') === 'agreement'): ?>
-                                                Booking Agreement
-                                            <?php else: ?>
-                                                Cash Payment
-                                            <?php endif; ?>
-                                        </small>
-                                    </td>
 
 
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="8" class="text-center py-4">
-                                    <div class="text-muted">
-                                        <i class="fa-light fa-receipt fa-2x mb-3"></i><br>
-                                        No transactions found
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- View Transaction Modal -->
-<div class="modal fade" id="viewTransactionModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Transaction Details</h5>
-                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
-                    <i class="fa-solid fa-xmark-large"></i>
-                </button>
-            </div>
-            <div class="modal-body" id="transactionDetails">
-                <!-- Details will be loaded here via AJAX -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    function editTransaction(transactionId) {
-        // This is now handled by the link
-    }
-
-    function deleteTransaction(transactionId, bookingId) {
-        if (confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
-            let currentBookingId = <?= $clientDetails['id'] ?? 'null' ?>;
-            
-            if (currentBookingId) {
-                window.location.href = '<?= $GLOBALS['base_url'] ?>/delete-transaction?payment_id=' + transactionId + '&booking_id=' + currentBookingId;
-            } else {
-                alert('Cannot delete: Missing booking information');
-            }
-        }
-    }
-
-    function viewTransaction(transactionId) {
-        fetch('<?= $GLOBALS['base_url'] ?>/get-transaction/' + transactionId)
-            .then(response => response.json())
-            .then(data => {
-                if (data) {
-                    let detailsHtml = `
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Client:</strong> ${data.client_name}</p>
-                            <p><strong>Project:</strong> ${data.project_name}</p>
-                            <p><strong>Flat No:</strong> ${data.flat_no}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Date:</strong> ${new Date(data.payment_date).toLocaleDateString()}</p>
-                            <p><strong>Status:</strong> <span class="badge ${data.payment_status === 'paid' ? 'bg-success' : data.payment_status === 'pending' ? 'bg-warning' : 'bg-danger'}">${data.payment_status.toUpperCase()}</span></p>
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Payment Type:</strong> ${data.payment_type.toUpperCase().replace('_', ' ')}</p>
-                            <p><strong>Amount:</strong> ৳${parseFloat(data.amount).toLocaleString('en-BD', {minimumFractionDigits: 2})}</p>
-                            <p><strong>Method:</strong> ${data.payment_method.toUpperCase()}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Reference:</strong> ${data.transaction_ref || 'N/A'}</p>
-                            <p><strong>Created By:</strong> ${data.created_by_name || 'N/A'}</p>
-                            <p><strong>Created At:</strong> ${new Date(data.created_at).toLocaleString()}</p>
-                        </div>
-                    </div>`;
-
-                    if (data.payment_type === 'emi') {
-                        detailsHtml += `
-                        <hr>
-                        <div class="row">
-                            <div class="col-md-12">
-                                <h6>EMI Details</h6>
-                                <p><strong>Installment:</strong> ${data.emi_no} of ${data.emi_total}</p>
-                            </div>
-                        </div>`;
-                    }
-
-                    if (data.bank_name || data.bank_account_no || data.cheque_no || data.online_type) {
-                        detailsHtml += `
-                        <hr>
-                        <div class="row">
-                            <div class="col-md-12">
-                                <h6>Payment Method Details</h6>
-                                ${data.bank_name ? `<p><strong>Bank:</strong> ${data.bank_name}</p>` : ''}
-                                ${data.bank_account_no ? `<p><strong>Account No:</strong> ${data.bank_account_no}</p>` : ''}
-                                ${data.cheque_no ? `<p><strong>Cheque No:</strong> ${data.cheque_no}</p>` : ''}
-                                ${data.online_type ? `<p><strong>Online Type:</strong> ${data.online_type}</p>` : ''}
-                            </div>
-                        </div>`;
-                    }
-
-                    document.getElementById('transactionDetails').innerHTML = detailsHtml;
-                    var modal = new bootstrap.Modal(document.getElementById('viewTransactionModal'));
-                    modal.show();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while loading transaction details.');
-            });
-    }
-
-    function deleteBookingMoney(bookingId) {
-        if (confirm('Are you sure you want to delete this booking? This will delete ALL related transactions and cannot be undone.')) {
-            window.location.href = '<?= $GLOBALS['base_url'] ?>/delete-booking-money?booking_id=' + bookingId;
-        }
-    }
-</script>
+ 
+  
