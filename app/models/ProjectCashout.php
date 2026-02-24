@@ -84,12 +84,16 @@ class ProjectCashout extends Model
         return [$from, $to, $label];
     }
 
+    /**
+     * Get daily aggregated cashout data.
+     * Fixed to be compatible with ONLY_FULL_GROUP_BY.
+     */
     private function getDailyData($dateFrom, $dateTo, $project_id)
     {
         $sql = "SELECT
                     DATE(cp.payment_date)                     AS date,
-                    DATE_FORMAT(cp.payment_date, '%d %b %Y')  AS formatted_date,
-                    DAYNAME(cp.payment_date)                   AS day_name,
+                    DATE_FORMAT(DATE(cp.payment_date), '%d %b %Y')  AS formatted_date,
+                    DAYNAME(DATE(cp.payment_date))                   AS day_name,
                     SUM(cp.amount)                             AS total_amount,
                     COUNT(cp.id)                               AS transaction_count
                 FROM {$this->table} cp
@@ -126,12 +130,22 @@ class ProjectCashout extends Model
         return $rows;
     }
 
+    /**
+     * Get monthly aggregated cashout data.
+     * Fixed to be compatible with ONLY_FULL_GROUP_BY.
+     */
     private function getMonthlyData($dateFrom, $dateTo, $project_id)
     {
         $sql = "SELECT
                     YEAR(cp.payment_date)                  AS year,
                     MONTH(cp.payment_date)                 AS month_num,
-                    DATE_FORMAT(cp.payment_date, '%M %Y')  AS month,
+                    DATE_FORMAT(
+                        STR_TO_DATE(
+                            CONCAT(YEAR(cp.payment_date), '-', MONTH(cp.payment_date), '-01'),
+                            '%Y-%m-%d'
+                        ),
+                        '%M %Y'
+                    )                                       AS month,
                     SUM(cp.amount)                          AS total_amount,
                     COUNT(cp.id)                            AS transaction_count
                 FROM {$this->table} cp
@@ -248,4 +262,3 @@ class ProjectCashout extends Model
         return $grouped;
     }
 }
-?>
