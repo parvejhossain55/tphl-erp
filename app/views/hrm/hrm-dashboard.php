@@ -104,7 +104,8 @@
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-user-check"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Present Today</h6>
+                        <h6 class="card__sub-title mb-10"> 
+                            Today Present</h6>
                         <h4 class="card__title text-break text-success mb-10"><?= $presentCount ?? '' ?></h4>
                         <small><?= $persentPresents ?>% attendance</small>
                     </div>
@@ -146,6 +147,7 @@
                 </div>
             </div>
         </div>
+
         <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
@@ -157,8 +159,6 @@
                 </div>
             </div>
         </div>
-
-
 
         <!-- Today Assigned Tasks -->
         <div class="d-none col-xxl-4 col-xl-3 col-md-6 col-sm-12 col-12">

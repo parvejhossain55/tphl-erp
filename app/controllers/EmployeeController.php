@@ -98,7 +98,7 @@ class EmployeeController extends Controller
         //  Employee data (NO employee_id here)
         $employeeData = [
             'full_name'       => trim($_POST['full_name'] ?? ''),
-            'username'        => trim($_POST['userName'] ?? ''),
+            'username'        => trim($_POST['username'] ?? ''),
             'email'           => trim($_POST['email'] ?? ''),
             'father_name'     => trim($_POST['father_name'] ?? ''),
             'phone'           => trim($_POST['phone'] ?? ''),
