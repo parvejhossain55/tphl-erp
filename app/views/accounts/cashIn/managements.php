@@ -298,14 +298,14 @@ $show_breadcrumb = true;
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <tr>
+                                <!-- <tr>
                                     <td colspan="13" class="text-center py-4">
                                         <div class="text-muted">
                                             <i class="fa-light fa-receipt fa-2x mb-3"></i><br>
                                             No transactions found
                                         </div>
                                     </td>
-                                </tr>
+                                </tr> -->
                             <?php endif; ?>
                         </tbody>
                     </table>
