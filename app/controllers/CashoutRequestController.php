@@ -379,7 +379,7 @@ class CashoutRequestController extends Controller
     // Approve request
     public function approve()
     {
-        if (!in_array($this->userRole, [1, 3, 4, 6])) { // Admin, Super Admin, HR, Accounts
+        if (!in_array($this->userRole, [1, 3])) { // Admin, Super Admin, HR, Accounts
             setError("Access Denied: Only authorized approvers can approve requests.");
             header("Location: {$GLOBALS['base_url']}/cashout-requests");
             exit;
@@ -562,7 +562,7 @@ class CashoutRequestController extends Controller
     // Helper methods
     private function isAdminUser()
     {
-        $adminRoles = [1, 3, 4, 5, 6];
+        $adminRoles = [1, 3];
         return in_array($this->userRole, $adminRoles);
     }
 
