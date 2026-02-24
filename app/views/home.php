@@ -1,6 +1,36 @@
 <?php
 $page_title = "Home Dashboard";
 $show_breadcrumb = false;
+$chartLabels = $chartLabels ?? [];
+$chartData = $chartData ?? [];
+
+// If no chart data passed, try to generate from monthlyData
+if (empty($chartLabels) && !empty($monthlyData)) {
+    foreach ($monthlyData as $data) {
+        $chartLabels[] = date('M Y', strtotime($data['month'] . '-01'));
+        $chartData[] = floatval($data['total']);
+    }
+}
+
+// Payment method data
+$paymentMethodLabels = ['Cash', 'Bank', 'Cheque', 'Online'];
+$paymentMethodData = [];
+if (isset($statistics['by_payment_method'])) {
+    $paymentMethodData = [
+        $statistics['by_payment_method']['cash'] ?? 0,
+        $statistics['by_payment_method']['bank'] ?? 0,
+        $statistics['by_payment_method']['cheque'] ?? 0,
+        $statistics['by_payment_method']['online'] ?? 0
+    ];
+} else {
+    $paymentMethodData = [0, 0, 0, 0];
+}
+
+// Check if we have any data to show
+$hasTransactions = !empty($recentTransactions);
+
+
+
 ?>
 <div class="row mb-2">
     <div class="card__wrapper">
@@ -260,18 +290,17 @@ $show_breadcrumb = false;
 
     <!--Accounts Charts Section -->
 
-
+<div class="d-none align-items-center gap-2">
+                        <label class="mb-0 fw-bold">View:</label>
+                        <select id="viewTypeSelector" class="form-select" style="width: auto; min-width: 150px;">
+                            <option value="cashin" <?= $viewType === 'cashin' ? 'selected' : '' ?>>Cash In</option>
+                            <option value="cashout" <?= $viewType === 'cashout' ? 'selected' : '' ?>>Cash Out</option>
+                        </select>
+                    </div>
     <div class="col-xxl-6 col-xl-12 col-lg-12 mb-3">
         <div class="card__wrapper height-equal">
             <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-50">
-                <h5 class="card__heading-title">Accounts Overview</h5>
-                <div class="d-none d-flex align-items-center gap-2">
-                    <label class="mb-0 fw-bold">View:</label>
-                    <select id="viewTypeSelector" class="form-select" style="width: auto; min-width: 150px;">
-                        <option value="cashin" <?= $viewType === 'cashin' ? 'selected' : '' ?>>Cash In</option>
-                        <option value="cashout" <?= $viewType === 'cashout' ? 'selected' : '' ?>>Cash Out</option>
-                    </select>
-                </div>
+                <h5 class="card__heading-title">Transaction Overview</h5>
                 <div class="card__tab">
                     <ul class="nav nav-pills" id="pills-tab" role="tablist">
                         <li class="nav-item" role="presentation">
@@ -298,13 +327,27 @@ $show_breadcrumb = false;
                     <div class="tab-pane fade" id="pills-bar-year" role="tabpanel"
                         aria-labelledby="pills-bar-year-tab">
                         <div class="chart-container">
-                            <canvas id="transactionChartYearly" class="card__title"></canvas>
+                            <?php if (!empty($chartLabels)): ?>
+                                <canvas id="transactionChartYearly" class="card__title"></canvas>
+                            <?php else: ?>
+                                <div class="no-data-placeholder">
+                                    <i class="fa-light fa-chart-line"></i>
+                                    <p>No yearly data available</p>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="tab-pane fade" id="pills-bar-month" role="tabpanel"
                         aria-labelledby="pills-bar-month-tab">
                         <div class="chart-container">
-                            <canvas id="transactionChartMonthly" class="card__title"></canvas>
+                            <?php if (!empty($chartLabels)): ?>
+                                <canvas id="transactionChartMonthly" class="card__title"></canvas>
+                            <?php else: ?>
+                                <div class="no-data-placeholder">
+                                    <i class="fa-light fa-chart-line"></i>
+                                    <p>No monthly data available</p>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="tab-pane fade show active" id="pills-bar-week" role="tabpanel"
@@ -319,29 +362,7 @@ $show_breadcrumb = false;
     </div>
 
 </div>
-<!-- project wise  -->
-<div class="d-none col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
-    <div class="card-bg card-border mb-20 h-100">
-        <div class="card__wrapper style_two h-100 d-flex flex-column">
 
-            <!-- Card Header -->
-            <div class="card__title-wrap d-flex align-items-center justify-content-between">
-                <h5 class="card__heading-title">Project wise Flat Sale</h5>
-                <div class="dropdown">
-                    <button>
-                        <i class="fa-regular fa-ellipsis-vertical"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Card Body -->
-            <div class="card__content flex-grow-1 d-flex align-items-center">
-                <div id="pieChart1" style="width:100%; height:260px;"></div>
-            </div>
-
-        </div>
-    </div>
-</div>
 
 <!-- project wise flat sale  -->
 
@@ -407,8 +428,8 @@ $show_breadcrumb = false;
                                         </form>
 
                                         <!-- View Button -->
-                                      
-                                        
+
+
                                     </div>
 
                                 </div>
@@ -446,7 +467,7 @@ $show_breadcrumb = false;
                                                         </div>
                                                         <div class="mb-3">
                                                             <label class="form-label">Note</label>
-                                                            <textarea class="form-control" name="approval_note" placeholder="Enter note here" rows="4" ></textarea>
+                                                            <textarea class="form-control" name="approval_note" placeholder="Enter note here" rows="4"></textarea>
                                                         </div>
 
                                                     <?php endif; ?>
@@ -583,23 +604,39 @@ $show_breadcrumb = false;
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const viewTypeSelector = document.getElementById('viewTypeSelector');
+        const periodButtons = document.querySelectorAll('.btn__group .btn');
 
+        // View type change handler
         viewTypeSelector.addEventListener('change', function() {
-            window.location.href = '<?= $GLOBALS['base_url'] ?>/dashboard?view=' + this.value;
+            const url = new URL(window.location.href);
+            url.searchParams.set('view', this.value);
+            window.location.href = url.toString();
         });
 
-        const dynamicChartLabels = <?= json_encode($chartLabels ?? []) ?>;
-        const dynamicChartData = <?= json_encode($chartData ?? []) ?>;
+        // Period button active state
+        periodButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                const url = new URL(this.href);
+                url.searchParams.set('view', '<?= $viewType ?>');
+                this.href = url.toString();
+            });
+        });
+
+        // Chart data from PHP
+        const dynamicChartLabels = <?= json_encode($chartLabels) ?>;
+        const dynamicChartData = <?= json_encode($chartData) ?>;
+        const paymentMethodLabels = <?= json_encode($paymentMethodLabels) ?>;
+        const paymentMethodData = <?= json_encode($paymentMethodData) ?>;
 
         // Currency formatter
         const formatCurrency = (value) => '৳' + value.toLocaleString();
 
-        // Modern chart color palette with NEW doughnut colors
+        // Modern chart color palette
         const colors = {
             primary: '#6366f1',
             success: '#10b981',
@@ -608,292 +645,344 @@ $show_breadcrumb = false;
             info: '#06b6d4',
             purple: '#a855f7',
             pink: '#ec4899',
-            // New doughnut chart colors (modern gradient palette)
             doughnut: [
-                '#8b5cf6', // Vibrant Purple
-                '#f02345ff', // Bright Blue
-                '#10b981', // Emerald Green
-                '#f59e0b', // Amber Orange
-                '#ef4444', // Red
-                '#ec4899' // Pink
+                '#8b5cf6',
+                '#f02345ff',
+                '#10b981',
+                '#f59e0b',
+                '#ef4444',
+                '#ec4899'
             ]
         };
 
         /* ==========================
             WEEKLY CHART (Animated Area Chart)
         ========================== */
-        const ctxWeek = document.getElementById('transactionChartWeek').getContext('2d');
-        const transactionChartWeek = new Chart(ctxWeek, {
-            type: 'line',
-            data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                datasets: [{
-                        label: 'Cash In',
-                        data: [31000, 40000, 28000, 51000, 42000, 82000, 56000],
-                        borderColor: colors.success,
-                        backgroundColor: colors.success + '15',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 3,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        pointHoverBackgroundColor: colors.success,
-                        pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 2
+        const ctxWeek = document.getElementById('transactionChartWeek');
+        if (ctxWeek) {
+            const transactionChartWeek = new Chart(ctxWeek.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                            label: 'Cash In',
+                            data: <?= json_encode($weeklyCashInData) ?>,
+                            borderColor: colors.success,
+                            backgroundColor: colors.success + '15',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            pointHoverBackgroundColor: colors.success,
+                            pointHoverBorderColor: '#fff',
+                            pointHoverBorderWidth: 2
+                        },
+                        {
+                            label: 'Cash Out',
+                            data: <?= json_encode($weeklyCashOutData) ?>,
+                            borderColor: colors.danger,
+                            backgroundColor: colors.danger + '15',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            pointHoverBackgroundColor: colors.danger,
+                            pointHoverBorderColor: '#fff',
+                            pointHoverBorderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
                     },
-                    {
-                        label: 'Cash Out',
-                        data: [11000, 32000, 45000, 32000, 34000, 52000, 41000],
-                        borderColor: colors.danger,
-                        backgroundColor: colors.danger + '15',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 3,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        pointHoverBackgroundColor: colors.danger,
-                        pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 2
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                // ADD ANIMATION HERE
-                animation: {
-                    duration: 2000,
-                    easing: 'easeOutQuart',
-                    onComplete: function() {
-                        // Animation complete
-                    }
-                },
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 20,
-                            font: {
-                                size: 13,
-                                weight: '500'
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeOutQuart'
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    size: 13,
+                                    weight: '500'
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                                }
                             }
                         }
                     },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawTicks: false
+                            },
+                            ticks: {
+                                padding: 10,
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
                             }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        border: {
-                            display: false
                         },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)',
-                            drawTicks: false
-                        },
-                        ticks: {
-                            padding: 10,
-                            callback: function(value) {
-                                return formatCurrency(value);
+                        x: {
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                padding: 10
                             }
-                        }
-                    },
-                    x: {
-                        border: {
-                            display: false
-                        },
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            padding: 10
                         }
                     }
                 }
-            }
-        });
+            });
+        }
 
         /* ==========================
             MONTHLY CHART (Animated Bar Chart)
         ========================== */
-        const ctxMonth = document.getElementById('transactionChartMonthly').getContext('2d');
-        const monthlyLabels = dynamicChartLabels.length ? dynamicChartLabels : ['Jan', 'Feb', 'Mar', 'Apr'];
-        const monthlyData = dynamicChartData.length ? dynamicChartData : [120000, 155000, 142000, 168000];
-        const monthlyColor = '<?= $viewType === "cashin" ? "#6366f1" : "#ef4444" ?>';
+        const ctxMonth = document.getElementById('transactionChartMonthly');
+        if (ctxMonth) {
+            const monthlyLabels = dynamicChartLabels.length ? dynamicChartLabels : ['Jan', 'Feb', 'Mar', 'Apr'];
+            const monthlyData = dynamicChartData.length ? dynamicChartData : [120000, 155000, 142000, 168000];
+            const monthlyColor = '<?= $viewType === "cashin" ? "#6366f1" : "#ef4444" ?>';
 
-        const transactionChartMonthly = new Chart(ctxMonth, {
-            type: 'bar',
-            data: {
-                labels: monthlyLabels,
-                datasets: [{
-                    label: '<?= ucfirst($viewType) ?>',
-                    data: monthlyData,
-                    backgroundColor: monthlyColor,
-                    borderRadius: 8,
-                    borderSkipped: false,
-                    barThickness: 35,
-                    maxBarThickness: 40
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                // ADD ANIMATION HERE
-                animations: {
-                    y: {
-                        duration: 1500,
-                        from: 0,
-                        easing: 'easeOutBounce'
-                    }
+            const transactionChartMonthly = new Chart(ctxMonth.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: monthlyLabels,
+                    datasets: [{
+                        label: '<?= ucfirst($viewType) ?>',
+                        data: monthlyData,
+                        backgroundColor: monthlyColor,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        barThickness: 35,
+                        maxBarThickness: 40
+                    }]
                 },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(context) {
-                                return formatCurrency(context.parsed.y);
-                            }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animations: {
+                        y: {
+                            duration: 1500,
+                            from: 0,
+                            easing: 'easeOutBounce'
                         }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        border: {
+                    },
+                    plugins: {
+                        legend: {
                             display: false
                         },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)',
-                            drawTicks: false
-                        },
-                        ticks: {
-                            padding: 10,
-                            callback: function(value) {
-                                return formatCurrency(value);
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    return formatCurrency(context.parsed.y);
+                                }
                             }
                         }
                     },
-                    x: {
-                        border: {
-                            display: false
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawTicks: false
+                            },
+                            ticks: {
+                                padding: 10,
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
                         },
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            padding: 10
+                        x: {
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                padding: 10
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
 
         /* ==========================
             YEARLY CHART (Animated Line Chart)
         ========================== */
-        const ctxYear = document.getElementById('transactionChartYearly').getContext('2d');
-        const yearlyLabels = dynamicChartLabels.length ? dynamicChartLabels : ['2023', '2024', '2025'];
-        const yearlyData = dynamicChartData.length ? dynamicChartData : [1250000, 1420000, 1380000];
-        const yearlyColor = '<?= $viewType === "cashin" ? "#6366f1" : "#ef4444" ?>';
+        const ctxYear = document.getElementById('transactionChartYearly');
+        if (ctxYear) {
+            const yearlyLabels = dynamicChartLabels.length ? dynamicChartLabels : ['2023', '2024', '2025'];
+            const yearlyData = dynamicChartData.length ? dynamicChartData : [1250000, 1420000, 1380000];
+            const yearlyColor = '<?= $viewType === "cashin" ? "#6366f1" : "#ef4444" ?>';
 
-        const transactionChartYearly = new Chart(ctxYear, {
-            type: 'line',
-            data: {
-                labels: yearlyLabels,
-                datasets: [{
-                    label: '<?= ucfirst($viewType) ?>',
-                    data: yearlyData,
-                    borderColor: yearlyColor,
-                    backgroundColor: yearlyColor + '15',
-                    fill: true,
-                    tension: 0.4,
-                    borderWidth: 3,
-                    pointRadius: 6,
-                    pointBackgroundColor: yearlyColor,
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 3,
-                    pointHoverRadius: 8,
-                    pointHoverBackgroundColor: yearlyColor,
-                    pointHoverBorderColor: '#fff',
-                    pointHoverBorderWidth: 3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                // ADD ANIMATION HERE
-                animation: {
-                    duration: 2000,
-                    easing: 'easeOutQuart',
-                    onComplete: function() {
-                        // Animation complete
-                    }
+            const transactionChartYearly = new Chart(ctxYear.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: yearlyLabels,
+                    datasets: [{
+                        label: '<?= ucfirst($viewType) ?>',
+                        data: yearlyData,
+                        borderColor: yearlyColor,
+                        backgroundColor: yearlyColor + '15',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 6,
+                        pointBackgroundColor: yearlyColor,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 3,
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: yearlyColor,
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 3
+                    }]
                 },
-                plugins: {
-                    legend: {
-                        display: false
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeOutQuart'
                     },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(context) {
-                                return formatCurrency(context.parsed.y);
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        border: {
+                    plugins: {
+                        legend: {
                             display: false
                         },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)',
-                            drawTicks: false
-                        },
-                        ticks: {
-                            padding: 10,
-                            callback: function(value) {
-                                return formatCurrency(value);
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    return formatCurrency(context.parsed.y);
+                                }
                             }
                         }
                     },
-                    x: {
-                        border: {
-                            display: false
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawTicks: false
+                            },
+                            ticks: {
+                                padding: 10,
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
                         },
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            padding: 10
+                        x: {
+                            border: {
+                                display: false
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                padding: 10
+                            }
                         }
                     }
                 }
-            }
-        })
+            });
+        }
+
+        /* ==========================
+            PAYMENT METHODS CHART (Animated Pie Chart)
+        ========================== */
+        const ctxPayment = document.getElementById('paymentMethodsChart');
+        if (ctxPayment) {
+            const paymentMethodsChart = new Chart(ctxPayment.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: paymentMethodLabels,
+                    datasets: [{
+                        data: paymentMethodData,
+                        backgroundColor: colors.doughnut,
+                        hoverBorderWidth: 5,
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animations: {
+                        animateRotate: true,
+                        animateScale: true,
+                        duration: 2000,
+                        easing: 'easeOutQuart'
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                },
+                                color: '#6b7280'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return label + ': ' + formatCurrency(value) + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
     });
 </script>
 

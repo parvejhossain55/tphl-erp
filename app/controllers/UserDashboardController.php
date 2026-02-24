@@ -43,20 +43,18 @@ class UserDashboardController extends Controller
         $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
 
         $myAllLeads = $this->leadModel->getAllMyLeads($loggedUserId);
-
+        $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $this->view("sales-executive/today-leads", [
             "current_route" => "today-leads",
             "page_title"    => "Leads Today Assign",
             "todayLeads"    => $todayLeads,
-
+            "followUpCounts" => $followUpCounts,
             "bookingCount"    => $bookingCount,
             "todayFollowUp"    => $todayFollowUp,
-
-
         ]);
     }
 
-    
+
     public function dashboard()
     {
         if (session_status() === PHP_SESSION_NONE) {

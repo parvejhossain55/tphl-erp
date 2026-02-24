@@ -59,6 +59,10 @@ $show_breadcrumb = true;
                                 <div class="fw-bold me-2" style="min-width:130px;">Employee Status:</div>
                                 <div class="bd-badge bg-primary"><?= $employee['employee_status'] ?></div>
                             </li>
+                            <li class="d-flex mb-2">
+                                <div class="fw-bold me-2" style="min-width:130px;">Workplace:</div>
+                                <div class="text"><?= $employee['workplace'] ?? '' ?></div>
+                            </li>
                         </ul>
                     </div>
 

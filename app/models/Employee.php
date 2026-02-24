@@ -109,18 +109,18 @@ class Employee extends Model
         $result = $this->db->query($sql);
         return (int)$result->fetch_assoc()['total'];
     }
-public function getNextEmployeeCode()
-{
-    $result = $this->db->query("SELECT AUTO_INCREMENT 
-                                FROM INFORMATION_SCHEMA.TABLES 
-                                WHERE TABLE_SCHEMA = DATABASE() 
-                                AND TABLE_NAME = 'employees'");
+    public function getNextEmployeeCode()
+    {
+        $result = $this->db->query("SELECT AUTO_INCREMENT 
+                                    FROM INFORMATION_SCHEMA.TABLES 
+                                    WHERE TABLE_SCHEMA = DATABASE() 
+                                    AND TABLE_NAME = 'employees'");
 
-    $row = $result->fetch_assoc();
-    $nextId = $row['AUTO_INCREMENT'];
+        $row = $result->fetch_assoc();
+        $nextId = $row['AUTO_INCREMENT'];
 
-    return 'EMP-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
-}
+        return 'EMP-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+    }
 
 
     public function countAll($search = '', $department_id = 'employeePhoto')
@@ -171,8 +171,8 @@ public function getNextEmployeeCode()
             account_holder_name, account_number, bank_name, branch_name,
             social_media1, social_media2, social_media3,
             photo, make_user, password, created_by,
-            employee_type, employee_status
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            employee_type, employee_status,workplace
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         $tempEmployeeId = '';
@@ -184,7 +184,7 @@ public function getNextEmployeeCode()
             : '';
 
         $stmt->bind_param(
-            "ssdssssssssssiissssssssssisiss",
+            "ssdssssssssssiissssssssssisisss",
             $tempEmployeeId,
             $data['full_name'],
             $data['basic_salary'],
@@ -214,7 +214,8 @@ public function getNextEmployeeCode()
             $password,
             $data['created_by'],
             $data['employee_type'],
-            $data['employee_status']
+            $data['employee_status'],
+            $data['workplace']
         );
 
         if (!$stmt->execute()) {
