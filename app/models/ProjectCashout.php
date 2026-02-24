@@ -88,24 +88,31 @@ class ProjectCashout extends Model
      * Get daily aggregated cashout data.
      * Fixed to be compatible with ONLY_FULL_GROUP_BY.
      */
-    private function getDailyData($dateFrom, $dateTo, $project_id)
+private function getDailyData($dateFrom, $dateTo, $project_id)
 {
     $sql = "SELECT
-                DATE(cp.payment_date)                     AS date,
-                DATE_FORMAT(DATE(cp.payment_date), '%d %b %Y')  AS formatted_date,
-                DAYNAME(DATE(cp.payment_date))                   AS day_name,
-                SUM(cp.amount)                             AS total_amount,
-                COUNT(cp.id)                               AS transaction_count
-            FROM {$this->table} cp
-            WHERE cp.payment_date BETWEEN ? AND ?
-            AND cp.project_id IS NOT NULL
+                grp.date,
+                DATE_FORMAT(grp.date, '%d %b %Y')  AS formatted_date,
+                DAYNAME(grp.date)                   AS day_name,
+                grp.total_amount,
+                grp.transaction_count
+            FROM (
+                SELECT
+                    DATE(cp.payment_date)  AS date,
+                    SUM(cp.amount)         AS total_amount,
+                    COUNT(cp.id)           AS transaction_count
+                FROM {$this->table} cp
+                WHERE cp.payment_date BETWEEN ? AND ?
+                AND cp.project_id IS NOT NULL
     ";
 
     if ($project_id) {
         $sql .= " AND cp.project_id = ?";
     }
 
-    $sql .= " GROUP BY DATE(cp.payment_date) ORDER BY DATE(cp.payment_date) ASC";
+    $sql .= "   GROUP BY DATE(cp.payment_date)
+            ) grp
+            ORDER BY grp.date ASC";
 
     $stmt = $this->db->prepare($sql);
 
