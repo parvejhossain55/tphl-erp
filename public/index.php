@@ -436,6 +436,9 @@ $routes = [
     'update-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "updateCategory"],
     'delete-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "deleteCategory"],
     'toggle-category-status' => ["controller" => "AccountManagementCategoryController", "method" => "toggleCategoryStatus"],
+    'add-management-role' => ["controller" => "AccountManagementController", "method" => "addRole"],
+'update-management-role' => ["controller" => "AccountManagementController", "method" => "updateRole"],
+'delete-management-role' => ["controller" => "AccountManagementController", "method" => "deleteRole"],
 
     //===================Customer Experience Department====================
     'clients-cashin-view' => ["controller" => "AccountClientController", "method" => "indexView"],
