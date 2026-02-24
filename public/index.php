@@ -48,14 +48,14 @@ $db = $database->conn;
 
 // Routes (regex for ID)
 $routes = [
-    ""                 => ["controller" => "LoginController", "method" => "index"],
-    "admin-login"           => ["controller" => "LoginController", "method" => "index"],
-    "home"                 => ["controller" => "HomeController", "method" => "index"],
-    "approve-request/(\d+)"                 => ["controller" => "HomeController", "method" => "approveFull"],
-    "partial-approve-request/(\d+)"                 => ["controller" => "HomeController", "method" => "approvePartial"],
-    "reject-request/(\d+)"                 => ["controller" => "HomeController", "method" => "reject"],
-    "show-request/(\d+)"                 => ["controller" => "HomeController", "method" => "show"],
-    "logout"             => ["controller" => "LoginController", "method" => "logout"],
+    "" => ["controller" => "LoginController", "method" => "index"],
+    "admin-login" => ["controller" => "LoginController", "method" => "index"],
+    "home" => ["controller" => "HomeController", "method" => "index"],
+    "approve-request/(\d+)" => ["controller" => "HomeController", "method" => "approveFull"],
+    "partial-approve-request/(\d+)" => ["controller" => "HomeController", "method" => "approvePartial"],
+    "reject-request/(\d+)" => ["controller" => "HomeController", "method" => "reject"],
+    "show-request/(\d+)" => ["controller" => "HomeController", "method" => "show"],
+    "logout" => ["controller" => "LoginController", "method" => "logout"],
 
     // Approval Request Controller
     // Approval Requests
@@ -65,37 +65,37 @@ $routes = [
 
 
     // users
-    "user-lists"           => ["controller" => "UserController", "method" => "index"],
-    "create-user"          => ["controller" => "UserController", "method" => "create"],
-    "store-user"          => ["controller" => "UserController", "method" => "store"],
-    "edit-user/(\d+)"          => ["controller" => "UserController", "method" => "edit"],
-    "user-profile/(\d+)"          => ["controller" => "UserController", "method" => "show"],
-    "update-user/(\d+)"          => ["controller" => "UserController", "method" => "update"],
-    "delete-user"          => ["controller" => "UserController", "method" => "delete"],
-    "my-dashboard"          => ["controller" => "UserDashboardController", "method" => "dashboard"],
-    "today-leads"          => ["controller" => "UserDashboardController", "method" => "todayLead"],
-    "update-call-status"          => ["controller" => "UserDashboardController", "method" => "updateCallStatus"],
-    "update-call-notes"          => ["controller" => "UserDashboardController", "method" => "updateCallNote"],
-    "today-follow-up"          => ["controller" => "UserDashboardController", "method" => "todayFollowUp"],
-    "upcoming-follow-up"          => ["controller" => "UserDashboardController", "method" => "myUpcomingFollowLeads"],
-    "my-onboarding-projects"          => ["controller" => "UserDashboardController", "method" => "myOnboardProject"],
-    "my-all-assigned-leads"          => ["controller" => "UserDashboardController", "method" => "myAssignedLeads"],
-    "follow-up/update-status-note"          => ["controller" => "UserDashboardController", "method" => "updateFollowUpStatusNote"],
-    "overdue-next-followup"          => ["controller" => "UserDashboardController", "method" => "updateFollowUpStatusNote"],
+    "user-lists" => ["controller" => "UserController", "method" => "index"],
+    "create-user" => ["controller" => "UserController", "method" => "create"],
+    "store-user" => ["controller" => "UserController", "method" => "store"],
+    "edit-user/(\d+)" => ["controller" => "UserController", "method" => "edit"],
+    "user-profile/(\d+)" => ["controller" => "UserController", "method" => "show"],
+    "update-user/(\d+)" => ["controller" => "UserController", "method" => "update"],
+    "delete-user" => ["controller" => "UserController", "method" => "delete"],
+    "my-dashboard" => ["controller" => "UserDashboardController", "method" => "dashboard"],
+    "today-leads" => ["controller" => "UserDashboardController", "method" => "todayLead"],
+    "update-call-status" => ["controller" => "UserDashboardController", "method" => "updateCallStatus"],
+    "update-call-notes" => ["controller" => "UserDashboardController", "method" => "updateCallNote"],
+    "today-follow-up" => ["controller" => "UserDashboardController", "method" => "todayFollowUp"],
+    "upcoming-follow-up" => ["controller" => "UserDashboardController", "method" => "myUpcomingFollowLeads"],
+    "my-onboarding-projects" => ["controller" => "UserDashboardController", "method" => "myOnboardProject"],
+    "my-all-assigned-leads" => ["controller" => "UserDashboardController", "method" => "myAssignedLeads"],
+    "follow-up/update-status-note" => ["controller" => "UserDashboardController", "method" => "updateFollowUpStatusNote"],
+    "overdue-next-followup" => ["controller" => "UserDashboardController", "method" => "updateFollowUpStatusNote"],
 
 
-    "customer-lists"       => ["controller" => "CustomerController", "method" => "index"],
-    "create-customer"      => ["controller" => "CustomerController", "method" => "create"],
+    "customer-lists" => ["controller" => "CustomerController", "method" => "index"],
+    "create-customer" => ["controller" => "CustomerController", "method" => "create"],
     // permission
-    "role-permissions"          => ["controller" => "RolePermissionController", "method" => "index"],
-    "permissions"    => ["controller" => "RolePermissionController", "method" => "permission"],
-    "store-permission"     => ["controller" => "RolePermissionController", "method" => "store"],
-    "update-permission"     => ["controller" => "RolePermissionController", "method" => "update"],
-    "delete-permission"     => ["controller" => "RolePermissionController", "method" => "delete"],
+    "role-permissions" => ["controller" => "RolePermissionController", "method" => "index"],
+    "permissions" => ["controller" => "RolePermissionController", "method" => "permission"],
+    "store-permission" => ["controller" => "RolePermissionController", "method" => "store"],
+    "update-permission" => ["controller" => "RolePermissionController", "method" => "update"],
+    "delete-permission" => ["controller" => "RolePermissionController", "method" => "delete"],
     // Roles
-    "store-role"           => ["controller" => "RoleController", "method" => "store"],
-    "get-role"      => ["controller" => "RoleController", "method" => "edit"],
-    "update-role"   => ["controller" => "RoleController", "method" => "update"],
+    "store-role" => ["controller" => "RoleController", "method" => "store"],
+    "get-role" => ["controller" => "RoleController", "method" => "edit"],
+    "update-role" => ["controller" => "RoleController", "method" => "update"],
     //================== hrm ========================
 
     "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
@@ -145,8 +145,8 @@ $routes = [
     "edit-attendance/(\d+)" => ["controller" => "EmpAttendanceController", "method" => "edit"],
     "update-attendance/(\d+)" => ["controller" => "EmpAttendanceController", "method" => "update"],
     "delete-attendance" => ["controller" => "EmpAttendanceController", "method" => "delete"],
-    "download-excel"       => ["controller" => "EmpAttendanceController", "method" => "downloadExcel"],
-    "download-pdf"         => ["controller" => "EmpAttendanceController", "method" => "downloadPDF"],
+    "download-excel" => ["controller" => "EmpAttendanceController", "method" => "downloadExcel"],
+    "download-pdf" => ["controller" => "EmpAttendanceController", "method" => "downloadPDF"],
 
 
     // Employee Leave Controller
@@ -316,8 +316,8 @@ $routes = [
     "sales-report" => ["controller" => "SalesHeadDashboardController", "method" => "salesReport"],
 
     // // conatct 
-        "contact-lists" => ["controller" => "ContactController", "method" => "index"],
-        "contacts/update-status" => ["controller" => "ContactController", "method" => "updateStatus"],
+    "contact-lists" => ["controller" => "ContactController", "method" => "index"],
+    "contacts/update-status" => ["controller" => "ContactController", "method" => "updateStatus"],
 
     // ==========END SALES & BUISENESS======//
 
@@ -437,8 +437,8 @@ $routes = [
     'delete-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "deleteCategory"],
     'toggle-category-status' => ["controller" => "AccountManagementCategoryController", "method" => "toggleCategoryStatus"],
     'add-management-role' => ["controller" => "AccountManagementController", "method" => "addRole"],
-'update-management-role' => ["controller" => "AccountManagementController", "method" => "updateRole"],
-'delete-management-role' => ["controller" => "AccountManagementController", "method" => "deleteRole"],
+    'update-management-role' => ["controller" => "AccountManagementController", "method" => "updateRole"],
+    'delete-management-role' => ["controller" => "AccountManagementController", "method" => "deleteRole"],
 
     //===================Customer Experience Department====================
     'clients-cashin-view' => ["controller" => "AccountClientController", "method" => "indexView"],

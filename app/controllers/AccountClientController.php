@@ -140,7 +140,7 @@ public function indexTwo($bookingId = null)
         }
 
         $this->view("ced/clients-cashin-view", [
-            "current_route" => "clients-cash-in-view",
+            "current_route" => "clients-cashin-view",
             "page_title" => "Clients Management - Cash In View",
             "clients" => $clients,
             "paymentStats" => $paymentStats

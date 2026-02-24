@@ -60,7 +60,7 @@ $show_breadcrumb = true;
             <div class="d-flex justify-content-between mb-20">
                 <h4>Clients Information</h4>
             </div>
- 
+
             <div class="table__wrapper table-responsive">
                 <table class="table mb-20 multiple_tables">
                     <thead>
@@ -142,7 +142,7 @@ $show_breadcrumb = true;
                             <thead>
                                 <tr class="table__title">
                                     <th>Project Name</th>
-                                
+
                                     <th>Unit - Floor</th>
                                     <th>Flat Size</th>
                                     <th>Total Price</th>
@@ -172,101 +172,101 @@ $show_breadcrumb = true;
 </div>
 
 <script>
-let projectsModal;
+    let projectsModal;
 
-document.addEventListener('DOMContentLoaded', function() {
-    projectsModal = new bootstrap.Modal(document.getElementById('projectsModal'));
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        projectsModal = new bootstrap.Modal(document.getElementById('projectsModal'));
+    });
 
-function openProjectsModal(leadId, clientName) {
-    console.log('Opening modal for lead ID:', leadId);
-    console.log('Client name:', clientName);
-    
-    // Set client name
-    document.getElementById('modal_client_name').textContent = clientName;
-    
-    // Reset modal state
-    document.getElementById('projects_loading').style.display = 'block';
-    document.getElementById('projects_content').style.display = 'none';
-    document.getElementById('projects_error').style.display = 'none';
-    
-    // Show modal
-    projectsModal.show();
-    
-    // Construct URL
-    const url = '<?= $GLOBALS['base_url'] ?>/get-client-lands?lead_id=' + leadId;
-    console.log('Fetching from URL:', url);
-    
-    // Fetch projects
-    fetch(url)
-        .then(response => {
-            console.log('Response status:', response.status);
-            console.log('Response ok:', response.ok);
-            
-            if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.status);
-            }
-            
-            return response.text(); // First get as text to see what we're getting
-        })
-        .then(text => {
-            console.log('Response text:', text);
-            
-            // Try to parse as JSON
-            try {
-                const data = JSON.parse(text);
-                console.log('Parsed data:', data);
-                
-                if (data.success) {
-                    if (data.lands && data.lands.length > 0) {
-                        displayProjects(data.lands);
-                    } else {
-                        showError('No land shares found for this client');
-                    }
-                } else {
-                    showError(data.message || 'Failed to load land shares');
+    function openProjectsModal(leadId, clientName) {
+        console.log('Opening modal for lead ID:', leadId);
+        console.log('Client name:', clientName);
+
+        // Set client name
+        document.getElementById('modal_client_name').textContent = clientName;
+
+        // Reset modal state
+        document.getElementById('projects_loading').style.display = 'block';
+        document.getElementById('projects_content').style.display = 'none';
+        document.getElementById('projects_error').style.display = 'none';
+
+        // Show modal
+        projectsModal.show();
+
+        // Construct URL
+        const url = '<?= $GLOBALS['base_url'] ?>/get-client-lands?lead_id=' + leadId;
+        console.log('Fetching from URL:', url);
+
+        // Fetch projects
+        fetch(url)
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
                 }
-            } catch (e) {
-                console.error('JSON parse error:', e);
-                console.error('Response was:', text);
-                showError('Invalid response from server. Please check console for details.');
-            }
-        })
-        .catch(error => {
-            console.error('Fetch error:', error);
-            showError('Failed to load land shares: ' + error.message);
-        });
-}
 
-function displayProjects(lands) {
-    console.log('Displaying projects:', lands);
-    
-    const tbody = document.getElementById('projects_table_body');
-    tbody.innerHTML = '';
-    
-    lands.forEach(land => {
-        const row = document.createElement('tr');
-        
-        // Calculate due amount
-        const dueAmount = (parseFloat(land.total_price) || 0) - (parseFloat(land.total_paid) || 0);
-        
-        // Determine status classes
-        const bookingStatusClass = getStatusClass(land.booking_status);
-        const landshareStatusClass = getStatusClass(land.landshare_status);
-        
-        row.innerHTML = `
+                return response.text(); // First get as text to see what we're getting
+            })
+            .then(text => {
+                console.log('Response text:', text);
+
+                // Try to parse as JSON
+                try {
+                    const data = JSON.parse(text);
+                    console.log('Parsed data:', data);
+
+                    if (data.success) {
+                        if (data.lands && data.lands.length > 0) {
+                            displayProjects(data.lands);
+                        } else {
+                            showError('No land shares found for this client');
+                        }
+                    } else {
+                        showError(data.message || 'Failed to load land shares');
+                    }
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                    console.error('Response was:', text);
+                    showError('Invalid response from server. Please check console for details.');
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                showError('Failed to load land shares: ' + error.message);
+            });
+    }
+
+    function displayProjects(lands) {
+        console.log('Displaying projects:', lands);
+
+        const tbody = document.getElementById('projects_table_body');
+        tbody.innerHTML = '';
+
+        lands.forEach(land => {
+            const row = document.createElement('tr');
+
+            // Calculate due amount
+            const dueAmount = (parseFloat(land.total_price) || 0) - (parseFloat(land.total_paid) || 0);
+
+            // Determine status classes
+            const bookingStatusClass = getStatusClass(land.booking_status);
+            const landshareStatusClass = getStatusClass(land.landshare_status);
+
+            row.innerHTML = `
             <td>${escapeHtml(land.project_name)}</td>
             <td>${escapeHtml(land.unit_name)} - Floor ${escapeHtml(land.flat_no)}</td>
             <td>${Number(land.flat_size).toLocaleString('en-BD')} sqft</td>
-            <td>৳${Number(land.total_price).toLocaleString('en-BD', {minimumFractionDigits: 2})}</td>
-            <td>৳${Number(land.agreement_value).toLocaleString('en-BD', {minimumFractionDigits: 2})}</td>
-            <td>৳${Number(land.total_paid || 0).toLocaleString('en-BD', {minimumFractionDigits: 2})}</td>
+            <td>৳${Number(land.total_price).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
+            <td>৳${Number(land.agreement_value).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
+            <td>৳${Number(land.total_paid || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
             <td>
                 <div>
-                    <strong>Fee:</strong> ৳${Number(land.total_service_fee || 0).toLocaleString('en-BD', {minimumFractionDigits: 2})}
+                    <strong>Fee:</strong> ৳${Number(land.total_service_fee || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}
                 </div>
                 <div class="text-muted small">
-                    <strong>Balance:</strong> ৳${Number(land.service_fee_balance || 0).toLocaleString('en-BD', {minimumFractionDigits: 2})}
+                    <strong>Balance:</strong> ৳${Number(land.service_fee_balance || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}
                 </div>
             </td>
             <td>
@@ -290,58 +290,58 @@ function displayProjects(lands) {
                 </a>
             </td>
         `;
-        
-        tbody.appendChild(row);
-    });
-    
-    // Show content, hide loading
-    document.getElementById('projects_loading').style.display = 'none';
-    document.getElementById('projects_content').style.display = 'block';
-}
 
-function showError(message) {
-    document.getElementById('error_message').textContent = message;
-    document.getElementById('projects_loading').style.display = 'none';
-    document.getElementById('projects_error').style.display = 'block';
-}
+            tbody.appendChild(row);
+        });
 
-function getStatusClass(status) {
-    if (!status) return 'bg-secondary';
-    
-    status = status.toLowerCase();
-    
-    if (status === 'booked' || status === 'active' || status === 'approved' || status === 'paid') {
-        return 'bg-success';
-    } else if (status === 'pending') {
-        return 'bg-warning';
-    } else if (status === 'cancelled' || status === 'rejected') {
-        return 'bg-danger';
-    } else {
-        return 'bg-info';
+        // Show content, hide loading
+        document.getElementById('projects_loading').style.display = 'none';
+        document.getElementById('projects_content').style.display = 'block';
     }
-}
 
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    const options = { day: '2-digit', month: 'short', year: 'numeric' };
-    return date.toLocaleDateString('en-GB', options);
-}
+    function showError(message) {
+        document.getElementById('error_message').textContent = message;
+        document.getElementById('projects_loading').style.display = 'none';
+        document.getElementById('projects_error').style.display = 'block';
+    }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.toString().replace(/[&<>"']/g, m => map[m]);
-}
+    function getStatusClass(status) {
+        if (!status) return 'bg-secondary';
+
+        status = status.toLowerCase();
+
+        if (status === 'booked' || status === 'active' || status === 'approved' || status === 'paid') {
+            return 'bg-success';
+        } else if (status === 'pending') {
+            return 'bg-warning';
+        } else if (status === 'cancelled' || status === 'rejected') {
+            return 'bg-danger';
+        } else {
+            return 'bg-info';
+        }
+    }
+
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        const options = { day: '2-digit', month: 'short', year: 'numeric' };
+        return date.toLocaleDateString('en-GB', options);
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.toString().replace(/[&<>"']/g, m => map[m]);
+    }
 </script>
 
 
-  <style>
+<style>
     .card__icon span {
         color: var(--clr-theme-primary);
         background: rgba(108, 95, 252, 0.1);
@@ -446,7 +446,3 @@ function escapeHtml(text) {
         margin-bottom: 10px;
     }
 </style>
-
-
- 
-  
