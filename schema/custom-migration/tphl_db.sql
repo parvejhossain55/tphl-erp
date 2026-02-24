@@ -367,6 +367,7 @@ CREATE TABLE `employees` (
   `department_id` int(10) UNSIGNED NOT NULL,
   `designation_id` int(10) UNSIGNED DEFAULT NULL,
   `dob` date DEFAULT NULL,
+  `workplace` varchar(255) DEFAULT NULL,
   `joining_date` date DEFAULT NULL,
   `basic_salary` float DEFAULT NULL,
   `account_holder_name` varchar(100) DEFAULT NULL,

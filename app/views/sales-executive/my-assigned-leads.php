@@ -85,7 +85,7 @@
                                 <th>Project Campaign</th>
                                 
                                 <th>Last Follow Up Status</th>
-                                <th>Change CLient Status</th>
+                                <th>Change Client Action</th>
                                 <th>Next Follow-Up</th>
                                 <th>Action</th>
                             </tr>

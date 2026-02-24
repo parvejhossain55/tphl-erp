@@ -359,10 +359,12 @@ class User extends Model
             u.employee_id as user_employee_id,
             e.id AS employee_id,
             e.photo AS employee_photo,
-            d.name AS designation_name
+            d.name AS designation_name,
+            r.name AS role_name
         FROM users u
         LEFT JOIN employees e ON e.user_id = u.id
         LEFT JOIN designations d ON d.id = u.designation_id
+        LEFT JOIN roles r ON u.role_id = r.id
         WHERE u.id = ?
         LIMIT 1
     ");

@@ -106,6 +106,7 @@ class EmployeeController extends Controller
             'qualification'   => trim($_POST['qualification'] ?? ''),
             'basic_salary'    => trim($_POST['basic_salary'] ?? ''),
             'experience'      => trim($_POST['experience'] ?? ''),
+            'workplace'       => trim($_POST['workplace'] ?? ''),
             'nid'             => trim($_POST['nid'] ?? ''),
             'address'         => trim($_POST['address'] ?? ''),
             'pass_num'        => trim($_POST['pass_num'] ?? ''),

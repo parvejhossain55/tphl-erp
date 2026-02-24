@@ -148,13 +148,22 @@ class HomeController extends Controller
         $overviewStats = $this->dashboardModel->getOverviewStatistics($period, $projectId);
 
 
-
-        //end accounts
-
+        // Weekly data for charts
+        $weeklyCashInData = $weeklyData ?? [0, 0, 0, 0, 0, 0, 0];
+        $weeklyCashOutData = $weeklyData ?? [0, 0, 0, 0, 0, 0, 0];
 
         $period = $_GET['period'] ?? null;
         $totalFlatsBooking = $this->bookingModel->getTotalBookings($period);
+        // Prepare chart data
+        $chartLabels = [];
+        $chartData = [];
 
+        if (!empty($monthlyData)) {
+            foreach ($monthlyData as $data) {
+                $chartLabels[] = date('M Y', strtotime($data['month'] . '-01'));
+                $chartData[] = floatval($data['total']);
+            }
+        }
 
 
         // chart value get 
@@ -272,7 +281,13 @@ class HomeController extends Controller
             "totalVisitedCount" => $totalVisitedCount,
             "bookingData" => $bookingData,
             "period" => $period,
+            "chartLabels" => $chartLabels,
+            "chartData" => $chartData,
+            "weeklyCashInData" => $weeklyCashInData,
+            "weeklyCashOutData" => $weeklyCashOutData,
+
             'pendingRequests' => $pendingRequests //
+
         ]);
         //   print_r($pendingRequests);
 

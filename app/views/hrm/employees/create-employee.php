@@ -199,7 +199,7 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
-                                     <label for="account_holder_name">Account Holder Name <span>*</span></label>
+                                     <label for="account_holder_name">Account Holder Name <span class="text-muted">Optional</span></label>
                                  </div>
                                  <div class="form__input">
                                      <input class="form-control" name="account_holder_name" id="account_holder_name" type="text">
@@ -209,7 +209,7 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
-                                     <label for="account_number">Account Number <span>*</span></label>
+                                     <label for="account_number">Account Number <span class="text-muted">optional</span></label>
                                  </div>
                                  <div class="form__input">
                                      <input class="form-control" name="account_number" id="account_number" type="text">
@@ -219,7 +219,7 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
-                                     <label for="bank_name">Bank Name <span>*</span></label>
+                                     <label for="bank_name">Bank Name <span class="text-muted">Optional</span></label>
                                  </div>
                                  <div class="form__input">
                                      <input class="form-control" name="bank_name" id="bank_name" type="text">
@@ -229,10 +229,10 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
-                                     <label for="branchname">Branch Name <span>*</span></label>
+                                     <label for="branchname">Branch Name <span class="text-muted">optional</span></label>
                                  </div>
                                  <div class="form__input">
-                                     <input class="form-control" name="branch_name" id="branch_name" type="text" required>
+                                     <input class="form-control" name="branch_name" id="branch_name" type="text" >
 
                                  </div>
                              </div>
@@ -243,7 +243,7 @@
                                      <label for="basic_salary">Basic Salary<span>*</span></label>
                                  </div>
                                  <div class="form__input">
-                                     <input class="form-control" name="basic_salary" id="basic_salary" type="number">
+                                     <input class="form-control" name="basic_salary" id="basic_salary" type="number" required>
                                  </div>
                              </div>
                          </div>
@@ -262,7 +262,7 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
-                                     <label for="social_media1">Social Media Link 1 <span>*</span></label>
+                                     <label for="social_media1">Social Media Link 1 <span class="text-muted"> Optional</span></label>
                                  </div>
                                  <div class="form__input">
                                      <input class="form-control" name="social_media1" id="social_media1" type="text">
@@ -272,7 +272,7 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
-                                     <label for="social_media2">Social Media Link 2 <span>*</span></label>
+                                     <label for="social_media2">Social Media Link 2 <span class="text-muted">Optional</span></label>
                                  </div>
                                  <div class="form__input">
                                      <input class="form-control" name="social_media2" id="social_media2" type="text">
@@ -281,8 +281,8 @@
                          </div>
                          <div class="col-lg-6">
                              <div class="from__input-box">
-                                 <label class="form__input-title" for="employee_type">Employee Type</label>
-                                 <select name="employee_type" id="employee_type" class="form-select">
+                                 <label class="form__input-title" for="employee_type">Employee Type <span class="">*</span></label>
+                                 <select name="employee_type" id="employee_type" class="form-select" required>
                                      <option value="">Select</option>
                                      <option value="permanent">Permanent</option>
                                      <option value="contract">Contract</option>
@@ -292,8 +292,8 @@
                          </div>
                          <div class="col-lg-6">
                              <div class="from__input-box">
-                                 <label class="form__input-title" for="employeeStatus">Employee Status</label>
-                                 <select name="employee_status" id="employeeStatus" class="form-select">
+                                 <label class="form__input-title" for="employeeStatus">Employee Status <span class="">*</span></label>
+                                 <select name="employee_status" id="employeeStatus" class="form-select" required>
                                      <option value="">Select</option>
                                      <option value="active">Active</option>
                                      <option value="inactive">Inactive</option>
@@ -312,6 +312,16 @@
                                  </div>
                                  <div class="form__input">
                                      <input class="form-control" id="photo" type="file" name="photo">
+                                 </div>
+                             </div>
+                         </div>
+                             <div class="col-lg-6">
+                             <div class="from__input-box">
+                                 <div class="form__input-title">
+                                     <label for="workplace">Workplace <span class="text-muted">Optional</span></label>
+                                 </div>
+                                 <div class="form__input">
+                                     <input class="form-control" name="workplace" id="workplace" type="text">
                                  </div>
                              </div>
                          </div>
