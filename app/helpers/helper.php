@@ -231,7 +231,7 @@ function redirectByRole()
 
 
         case 7: // Client Cash In
-            $url = "{$GLOBALS['base_url']}/clients-cashin-view";
+            $url = "{$GLOBALS['base_url']}/ced-dashboard";
             break;
         case 8: // Accounts
             $url = "{$GLOBALS['base_url']}/my-dashboard";
