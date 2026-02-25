@@ -164,7 +164,16 @@ private function getMonthlyData($dateFrom, $dateTo, $project_id)
         $sql .= " AND cp.project_id = ?";
     }
 
-    $sql .= " GROUP BY YEAR(cp.payment_date), MONTH(cp.payment_date)
+    $sql .= " GROUP BY 
+                YEAR(cp.payment_date), 
+                MONTH(cp.payment_date),
+                DATE_FORMAT(
+                    DATE(CONCAT(
+                        YEAR(cp.payment_date), '-',
+                        LPAD(MONTH(cp.payment_date), 2, '0'), '-01'
+                    )),
+                    '%M %Y'
+                )  -- Added the month expression to GROUP BY
               ORDER BY YEAR(cp.payment_date) ASC, MONTH(cp.payment_date) ASC";
 
     $stmt = $this->db->prepare($sql);
