@@ -308,11 +308,11 @@ $show_breadcrumb = true;
                 <h5 class="card__title">Transaction History</h5>
             </div>
             <div class="col-xxl-12 mb-4">
-                <div class="mt-3 d-flex gap-2 position ">
+                <!-- <div class="mt-3 d-flex gap-2 position ">
                     <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
-                </div>
+                </div> -->
                 <div class="table__wrapper table-responsive">
                     <table class="table table-hover">
                         <thead>
@@ -325,7 +325,6 @@ $show_breadcrumb = true;
                                 <th>Land Share</th>
                                 <th>Service Fee</th>
                                 <th>Status</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -365,37 +364,6 @@ $show_breadcrumb = true;
                                         <span class="badge <?php echo $transaction['status_class']; ?>">
                                             <?php echo $transaction['status_text']; ?>
                                         </span>
-                                    </td>
-                                    <td>
-                                        
-                                        <div class="d-flex align-items-center justify-content-start gap-10">
-                                            <?php if (!empty($transaction['id']) && strpos($transaction['id'], 'booking-') === false): ?>
-                                                <!-- INVOICE BUTTON -->
-                                                <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $transaction['id'] ?>"
-                                                    class="table__icon invoice"
-                                                    style="color: #fff; background-color: #6c5ffc;"
-                                                    title="View Invoice"
-                                                    target="_blank">
-                                                    <i class="fa-light fa-file-invoice"></i>
-                                                </a>
-                                                <!-- EDIT BUTTON -->
-                                                <!-- <a href="<?= $GLOBALS['base_url'] ?>/edit-client-cash-in/<?= $transaction['id'] ?>"
-                                                    class="table__icon edit"
-                                                    title="Edit">
-                                                    <i class="fa-sharp fa-light fa-pen"></i>
-                                                </a> -->
-                                                <!-- DELETE BUTTON - FIXED
-                                                <a href="#" class="removeBtn table__icon delete"
-                                                    onclick="deleteTransaction(<?= $transaction['id'] ?>); return false;"
-                                                    title="Delete">
-                                                    <i class="fa-regular fa-trash"></i>
-                                                </a> -->
-                                            <?php else: ?>
-                                                <span class="table__icon disabled" title="System Generated">
-                                                    <i class="fa-regular fa-lock"></i>
-                                                </span>
-                                            <?php endif; ?>
-                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
