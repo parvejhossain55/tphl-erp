@@ -9,7 +9,7 @@ $current_server = 3;
 ///////////////////////////////////////////////
 // Local Development Server
 
-if ($current_server == 3) {
+if ($current_server == 1) {
     return [
         "db_host" => "localhost",
         "db_user" => "root",
