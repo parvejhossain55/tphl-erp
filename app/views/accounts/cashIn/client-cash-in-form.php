@@ -20,25 +20,28 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="card__header mb-30">
-                <h3 class="card__title">Add Transaction for Client: <?= htmlspecialchars($clientDetails['client_name'] ?? '') ?></h3>
+                <h3 class="card__title">Add Transaction for Client:
+                    <?= htmlspecialchars($clientDetails['client_name'] ?? '') ?></h3>
             </div>
 
             <div class="card__body">
 
                 <!-- Land Share Status Alert -->
                 <?php if ($remainingLandShare <= 0): ?>
-                <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
-                    <strong>Land Share Completed!</strong> All land share payments have been made. You can now add construction fee/EMI payments.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+                    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+                        <strong>Land Share Completed!</strong> All land share payments have been made. You can now add
+                        construction fee/EMI payments.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 <?php endif; ?>
 
                 <!-- Registration Required Alert -->
                 <?php if (!$isRegistrationPaid): ?>
-                <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
-                    <strong>Registration Required!</strong> Registration payment must be completed before adding EMI payments.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+                    <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+                        <strong>Registration Required!</strong> Registration payment must be completed before adding EMI
+                        payments.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 <?php endif; ?>
 
                 <!-- Transaction Form -->
@@ -51,63 +54,54 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                             <label class="form-label">Payment Type: <span class="text-danger">*</span></label>
                             <select name="payment_type" class="form-control" id="paymentType" required>
                                 <option value="">-- Select Payment Type --</option>
-                                
+
                                 <!-- Registration - Always available -->
                                 <option value="registration" data-details="false">
                                     Registration
                                 </option>
-                                
+
                                 <!-- Land Share - Only if not completed -->
                                 <?php if (!$isLandShareCompleted): ?>
-                                <option value="land_share" data-details="false">
-                                    Land Share <?php echo $remainingLandShare > 0 ? '(Remaining: ৳' . number_format($remainingLandShare, 2) . ')' : ''; ?>
-                                </option>
+                                    <option value="land_share" data-details="false">
+                                        Land Share
+                                        <?php echo $remainingLandShare > 0 ? '(Remaining: ৳' . number_format($remainingLandShare, 2) . ')' : ''; ?>
+                                    </option>
                                 <?php else: ?>
-                                <option value="land_share" disabled>
-                                    Land Share (Completed)
-                                </option>
+                                    <option value="land_share" disabled>
+                                        Land Share (Completed)
+                                    </option>
                                 <?php endif; ?>
-                                
+
                                 <!-- EMI - Only if registration is paid AND land share is completed -->
                                 <?php if ($isRegistrationPaid && $isLandShareCompleted): ?>
-                                <option value="emi" data-details="true">
-                                    EMI (Construction Fee)
-                                </option>
+                                    <option value="emi" data-details="true">
+                                        EMI (Construction Fee)
+                                    </option>
                                 <?php else: ?>
-                                <option value="emi" disabled>
-                                    EMI (Requires: Registration Paid<?php echo !$isLandShareCompleted ? ' + Land Share Completed' : ''; ?>)
-                                </option>
-                                <?php endif; ?>
-                                
-                                <!-- Construction Fee - Alternative to EMI -->
-                                <?php if ($isRegistrationPaid && $isLandShareCompleted): ?>
-                                <option value="construction_fee" data-details="false">
-                                    Construction Fee
-                                </option>
-                                <?php else: ?>
-                                <option value="construction_fee" disabled>
-                                    Construction Fee (Requires: Registration Paid + Land Share Completed)
-                                </option>
+                                    <option value="emi" disabled>
+                                        EMI (Requires: Registration
+                                        Paid<?php echo !$isLandShareCompleted ? ' + Land Share Completed' : ''; ?>)
+                                    </option>
                                 <?php endif; ?>
                             </select>
-                            
+
                             <!-- Help text with status -->
                             <small class="text-muted mt-2 d-block">
                                 <?php if (!$isRegistrationPaid): ?>
-                                <span class="text-warning">
-                                    <i class="fa-light fa-exclamation-triangle"></i>
-                                    Registration must be paid first
-                                </span>
+                                    <span class="text-warning">
+                                        <i class="fa-light fa-exclamation-triangle"></i>
+                                        Registration must be paid first
+                                    </span>
                                 <?php elseif (!$isLandShareCompleted): ?>
-                                <span class="text-warning">
-                                    <i class="fa-light fa-exclamation-triangle"></i>
-                                    Remaining Land Share: ৳<?= number_format($remainingLandShare, 2) ?>
-                                </span>
+                                    <span class="text-warning">
+                                        <i class="fa-light fa-exclamation-triangle"></i>
+                                        Remaining Land Share: ৳<?= number_format($remainingLandShare, 2) ?>
+                                    </span>
                                 <?php else: ?>
-                                <span class="text-success">
-                                    <i class="fa-light fa-circle-check"></i>
-                                    Ready for construction fee payments
-                                </span>
+                                    <span class="text-success">
+                                        <i class="fa-light fa-circle-check"></i>
+                                        Ready for construction fee payments
+                                    </span>
                                 <?php endif; ?>
                             </small>
                         </div>
@@ -116,7 +110,8 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                         <div class="col-md-6">
                             <div class="from__input-box">
                                 <label class="form__input-title">Paid Amount <span>*</span></label>
-                                <input type="number" name="amount" id="amount" class="form-control" step="0.01" min="0.01" required>
+                                <input type="number" name="amount" id="amount" class="form-control" step="0.01"
+                                    min="0.01" required>
                                 <small id="amountHelp" class="text-muted"></small>
                             </div>
                         </div>
@@ -125,7 +120,8 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                         <div class="col-md-12 emi-fields" style="display: none;">
                             <div class="from__input-box">
                                 <label class="form__input-title">Due Amount</label>
-                                <input type="number" name="due_emi_amount" id="dueEmiAmount" class="form-control" step="0.01" min="0" placeholder="Enter due amount for this EMI">
+                                <input type="number" name="due_emi_amount" id="dueEmiAmount" class="form-control"
+                                    step="0.01" min="0" placeholder="Enter due amount for this EMI">
                                 <small class="text-muted">This will be added to EMI schedule (optional)</small>
                             </div>
                         </div>
@@ -147,7 +143,8 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                         <div class="col-md-6">
                             <div class="from__input-box">
                                 <label class="form__input-title">Payment Date <span>*</span></label>
-                                <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                                <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>"
+                                    required>
                             </div>
                         </div>
 
@@ -162,7 +159,8 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                         <div class="col-md-6 bank-fields" style="display: none;">
                             <div class="from__input-box">
                                 <label class="form__input-title">Bank Account No. <span>*</span></label>
-                                <input type="text" name="bank_account_no" class="form-control" placeholder="Account Number">
+                                <input type="text" name="bank_account_no" class="form-control"
+                                    placeholder="Account Number">
                             </div>
                         </div>
 
@@ -192,7 +190,8 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                         <div class="col-md-6">
                             <div class="from__input-box">
                                 <label class="form__input-title">Transaction Reference</label>
-                                <input type="text" name="transaction_ref" class="form-control" placeholder="Transaction ID/Reference">
+                                <input type="text" name="transaction_ref" class="form-control"
+                                    placeholder="Transaction ID/Reference">
                             </div>
                         </div>
 
@@ -215,7 +214,8 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                                 <button type="submit" class="btn btn-primary me-3">
                                     <i class="fa-solid fa-save me-2"></i>Save Transaction
                                 </button>
-                                <a href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history?booking_id=<?= $bookingId ?>" class="btn btn-secondary">
+                                <a href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history?booking_id=<?= $bookingId ?>"
+                                    class="btn btn-secondary">
                                     <i class="fa-solid fa-times me-2"></i>Cancel
                                 </a>
                             </div>
@@ -228,7 +228,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const paymentType = document.getElementById('paymentType');
         const paymentMethod = document.getElementById('paymentMethod');
         const dueEmiAmountField = document.getElementById('dueEmiAmount');
@@ -252,10 +252,10 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
             let maxAmount = null;
             let minAmount = 0.01;
 
-            switch(paymentTypeValue) {
+            switch (paymentTypeValue) {
                 case 'land_share':
                     if (remainingLandShare > 0) {
-                        helpText = 'Maximum: ৳' + remainingLandShare.toLocaleString('en-IN', {minimumFractionDigits: 2});
+                        helpText = 'Maximum: ৳' + remainingLandShare.toLocaleString('en-IN', { minimumFractionDigits: 2 });
                         maxAmount = remainingLandShare;
                         amountField.setAttribute('max', maxAmount);
                     } else {
@@ -263,30 +263,30 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                         amountField.setAttribute('disabled', 'disabled');
                     }
                     break;
-                    
+
                 case 'emi':
                     helpText = 'EMI amount (10% service fee will be calculated)';
                     break;
-                    
+
                 case 'registration':
                     helpText = 'Registration fee amount';
                     break;
-                    
+
                 case 'construction_fee':
                     helpText = 'Construction fee payment';
                     break;
-                    
+
                 default:
                     helpText = 'Enter payment amount';
             }
 
             amountHelp.textContent = helpText;
-            
+
             // Enable field if it was disabled
             if (paymentTypeValue !== 'land_share' || remainingLandShare > 0) {
                 amountField.removeAttribute('disabled');
             }
-            
+
             // Remove any previous validation messages
             amountField.classList.remove('is-invalid');
             const invalidFeedback = amountField.nextElementSibling;
@@ -329,7 +329,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
 
         // Show/hide EMI fields when payment type changes
         if (paymentType) {
-            paymentType.addEventListener('change', function() {
+            paymentType.addEventListener('change', function () {
                 const isEMI = this.value === 'emi';
 
                 if (isEMI) {
@@ -343,7 +343,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
 
                 // Update amount field help text
                 updateAmountField();
-                
+
                 // Control partially paid status when payment type changes
                 controlPartiallyPaidStatus();
             });
@@ -351,24 +351,24 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
 
         // Validate amount on input
         if (amountField) {
-            amountField.addEventListener('input', function() {
+            amountField.addEventListener('input', function () {
                 const paymentTypeValue = paymentType.value;
                 const amount = parseFloat(this.value) || 0;
-                
+
                 if (paymentTypeValue === 'land_share') {
                     if (amount > remainingLandShare) {
                         this.classList.add('is-invalid');
                         const errorMsg = document.createElement('div');
                         errorMsg.className = 'invalid-feedback';
-                        errorMsg.textContent = 'Amount cannot exceed remaining land share (৳' + 
-                                               remainingLandShare.toLocaleString('en-IN', {minimumFractionDigits: 2}) + ')';
-                        
+                        errorMsg.textContent = 'Amount cannot exceed remaining land share (৳' +
+                            remainingLandShare.toLocaleString('en-IN', { minimumFractionDigits: 2 }) + ')';
+
                         // Remove previous error message
                         const existingError = this.nextElementSibling;
                         if (existingError && existingError.classList.contains('invalid-feedback')) {
                             existingError.remove();
                         }
-                        
+
                         // Insert after input field
                         this.parentNode.insertBefore(errorMsg, this.nextElementSibling);
                     } else {
@@ -384,18 +384,18 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
 
         // Listen to due amount field changes
         if (dueEmiAmountField) {
-            dueEmiAmountField.addEventListener('input', function() {
+            dueEmiAmountField.addEventListener('input', function () {
                 controlPartiallyPaidStatus();
             });
 
-            dueEmiAmountField.addEventListener('change', function() {
+            dueEmiAmountField.addEventListener('change', function () {
                 controlPartiallyPaidStatus();
             });
         }
 
         // Show/hide payment method specific fields
         if (paymentMethod) {
-            paymentMethod.addEventListener('change', function() {
+            paymentMethod.addEventListener('change', function () {
                 const method = this.value;
 
                 // Hide all fields first
@@ -435,7 +435,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
         // Form validation
         const transactionForm = document.getElementById('transactionForm');
         if (transactionForm) {
-            transactionForm.addEventListener('submit', function(e) {
+            transactionForm.addEventListener('submit', function (e) {
                 const paymentTypeValue = paymentType.value;
                 const amount = parseFloat(amountField?.value) || 0;
                 const dueAmount = parseFloat(dueEmiAmountField?.value) || 0;
@@ -455,15 +455,15 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                         alert('Land share payment is already completed!');
                         return false;
                     }
-                    
+
                     if (amount > remainingLandShare) {
                         e.preventDefault();
-                        alert('Land share amount cannot exceed remaining: ৳' + 
-                              remainingLandShare.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+                        alert('Land share amount cannot exceed remaining: ৳' +
+                            remainingLandShare.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
                         amountField.focus();
                         return false;
                     }
-                    
+
                     if (amount <= 0) {
                         e.preventDefault();
                         alert('Please enter a valid land share amount.');
@@ -508,7 +508,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
         // Initialize on page load
         updateAmountField();
         controlPartiallyPaidStatus();
-        
+
         // Trigger payment method change to set initial state
         if (paymentMethod) {
             paymentMethod.dispatchEvent(new Event('change'));
@@ -531,26 +531,26 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
             padding: 6px 12px;
         }
     }
-    
+
     /* Styling for disabled options */
     select option:disabled {
         color: #999;
         background-color: #f8f9fa;
     }
-    
+
     /* Alert styling */
     .alert {
         border-radius: 10px;
         border: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
-    
+
     /* Form validation */
     .is-invalid {
         border-color: #dc3545;
         box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
     }
-    
+
     .invalid-feedback {
         display: block;
         margin-top: 5px;
