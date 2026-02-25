@@ -305,7 +305,7 @@ $show_breadcrumb = true;
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="card__header">
-                <h5 class="card__title">Transaction History</h5>
+                <h5 class="card__title mb-2">Transaction History</h5>
             </div>
             <div class="col-xxl-12 mb-4">
                 <!-- <div class="mt-3 d-flex gap-2 position ">
