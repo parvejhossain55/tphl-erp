@@ -26,28 +26,28 @@ class ProjectCashout extends Model
     public function getCashoutData($filters = [])
     {
         $period_type = $filters['period_type'] ?? 'monthly';
-        $year        = $filters['year']        ?? date('Y');
-        $month       = $filters['month']       ?? date('m');
-        $project_id  = $filters['project_id']  ?? '';
-        $start_date  = $filters['start_date']  ?? '';
-        $end_date    = $filters['end_date']    ?? '';
+        $year = $filters['year'] ?? date('Y');
+        $month = $filters['month'] ?? date('m');
+        $project_id = $filters['project_id'] ?? '';
+        $start_date = $filters['start_date'] ?? '';
+        $end_date = $filters['end_date'] ?? '';
 
         [$dateFrom, $dateTo, $label] = $this->resolveDateRange($period_type, $year, $month, $start_date, $end_date);
 
-        $data            = ($period_type === 'yearly')
-                           ? $this->getMonthlyData($dateFrom, $dateTo, $project_id)
-                           : $this->getDailyData($dateFrom, $dateTo, $project_id);
-        $overall         = $this->getOverallStats($dateFrom, $dateTo, $project_id);
+        $data = ($period_type === 'yearly')
+            ? $this->getMonthlyData($dateFrom, $dateTo, $project_id)
+            : $this->getDailyData($dateFrom, $dateTo, $project_id);
+        $overall = $this->getOverallStats($dateFrom, $dateTo, $project_id);
         $payment_details = $this->getPaymentDetails($dateFrom, $dateTo, $project_id);
 
         return [
-            'data'            => $data,
-            'period_type'     => $period_type,
-            'overall'         => $overall,
+            'data' => $data,
+            'period_type' => $period_type,
+            'overall' => $overall,
             'payment_details' => $payment_details,
-            'label'           => $label,
-            'start_date'      => $dateFrom,
-            'end_date'        => $dateTo,
+            'label' => $label,
+            'start_date' => $dateFrom,
+            'end_date' => $dateTo,
         ];
     }
 
@@ -55,29 +55,29 @@ class ProjectCashout extends Model
     {
         switch ($period_type) {
             case 'monthly':
-                $from  = "{$year}-{$month}-01";
-                $to    = date('Y-m-t', strtotime($from));
+                $from = "{$year}-{$month}-01";
+                $to = date('Y-m-t', strtotime($from));
                 $label = date('F Y', strtotime($from));
                 break;
             case '6months':
                 $endTs = strtotime("{$year}-{$month}-01");
-                $to    = date('Y-m-t', $endTs);
-                $from  = date('Y-m-01', strtotime('-5 months', $endTs));
+                $to = date('Y-m-t', $endTs);
+                $from = date('Y-m-01', strtotime('-5 months', $endTs));
                 $label = date('M Y', strtotime($from)) . ' – ' . date('M Y', strtotime($to));
                 break;
             case 'yearly':
-                $from  = "{$year}-01-01";
-                $to    = "{$year}-12-31";
+                $from = "{$year}-01-01";
+                $to = "{$year}-12-31";
                 $label = "Year {$year}";
                 break;
             case 'custom':
-                $from  = $start_date ?: date('Y-m-01');
-                $to    = $end_date   ?: date('Y-m-d');
+                $from = $start_date ?: date('Y-m-01');
+                $to = $end_date ?: date('Y-m-d');
                 $label = date('d M Y', strtotime($from)) . ' – ' . date('d M Y', strtotime($to));
                 break;
             default:
-                $from  = date('Y-m-01');
-                $to    = date('Y-m-d');
+                $from = date('Y-m-01');
+                $to = date('Y-m-d');
                 $label = date('F Y');
         }
 
@@ -88,9 +88,9 @@ class ProjectCashout extends Model
      * Get daily aggregated cashout data.
      * Fixed to be compatible with ONLY_FULL_GROUP_BY.
      */
-private function getDailyData($dateFrom, $dateTo, $project_id)
-{
-    $sql = "SELECT
+    private function getDailyData($dateFrom, $dateTo, $project_id)
+    {
+        $sql = "SELECT
                 grp.date,
                 DATE_FORMAT(grp.date, '%d %b %Y')  AS formatted_date,
                 DAYNAME(grp.date)                   AS day_name,
@@ -106,38 +106,38 @@ private function getDailyData($dateFrom, $dateTo, $project_id)
                 AND cp.project_id IS NOT NULL
     ";
 
-    if ($project_id) {
-        $sql .= " AND cp.project_id = ?";
-    }
+        if ($project_id) {
+            $sql .= " AND cp.project_id = ?";
+        }
 
-    $sql .= "   GROUP BY DATE(cp.payment_date)
+        $sql .= "   GROUP BY DATE(cp.payment_date)
             ) grp
             ORDER BY grp.date ASC";
 
-    $stmt = $this->db->prepare($sql);
+        $stmt = $this->db->prepare($sql);
 
-    if ($project_id) {
-        $stmt->bind_param("ssi", $dateFrom, $dateTo, $project_id);
-    } else {
-        $stmt->bind_param("ss", $dateFrom, $dateTo);
+        if ($project_id) {
+            $stmt->bind_param("ssi", $dateFrom, $dateTo, $project_id);
+        } else {
+            $stmt->bind_param("ss", $dateFrom, $dateTo);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $rows = [];
+        $running = 0;
+        while ($row = $result->fetch_assoc()) {
+            $running += (float) $row['total_amount'];
+            $row['running'] = $running;
+            $rows[] = $row;
+        }
+
+        $stmt->close();
+        return $rows;
     }
 
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $rows    = [];
-    $running = 0;
-    while ($row = $result->fetch_assoc()) {
-        $running       += (float)$row['total_amount'];
-        $row['running'] = $running;
-        $rows[]         = $row;
-    }
-
-    $stmt->close();
-    return $rows;
-}
-
-         /**
+    /**
      * Get monthly aggregated cashout data.
      * Fixed to be compatible with ONLY_FULL_GROUP_BY.
      */
@@ -147,12 +147,12 @@ private function getDailyData($dateFrom, $dateTo, $project_id)
                     YEAR(cp.payment_date)                  AS year,
                     MONTH(cp.payment_date)                 AS month_num,
                     DATE_FORMAT(
-                        STR_TO_DATE(
-                            CONCAT(YEAR(cp.payment_date), '-', MONTH(cp.payment_date), '-01'),
-                            '%Y-%m-%d'
-                        ),
+                        DATE(CONCAT(
+                            YEAR(cp.payment_date), '-',
+                            LPAD(MONTH(cp.payment_date), 2, '0'), '-01'
+                        )),
                         '%M %Y'
-                    )                                       AS month,
+                    )                                        AS month,                                      AS month,
                     SUM(cp.amount)                          AS total_amount,
                     COUNT(cp.id)                            AS transaction_count
                 FROM {$this->table} cp
@@ -178,12 +178,12 @@ private function getDailyData($dateFrom, $dateTo, $project_id)
         $stmt->execute();
         $result = $stmt->get_result();
 
-        $rows    = [];
+        $rows = [];
         $running = 0;
         while ($row = $result->fetch_assoc()) {
-            $running       += (float)$row['total_amount'];
+            $running += (float) $row['total_amount'];
             $row['running'] = $running;
-            $rows[]         = $row;
+            $rows[] = $row;
         }
 
         $stmt->close();
@@ -217,7 +217,7 @@ private function getDailyData($dateFrom, $dateTo, $project_id)
 
         $stmt->execute();
         $result = $stmt->get_result();
-        $stats  = $result->fetch_assoc();
+        $stats = $result->fetch_assoc();
         $stmt->close();
 
         return $stats ?: [];
