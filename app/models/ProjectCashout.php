@@ -141,54 +141,54 @@ class ProjectCashout extends Model
      * Get monthly aggregated cashout data.
      * Fixed to be compatible with ONLY_FULL_GROUP_BY.
      */
-    private function getMonthlyData($dateFrom, $dateTo, $project_id)
-    {
-        $sql = "SELECT
-                    YEAR(cp.payment_date)                  AS year,
-                    MONTH(cp.payment_date)                 AS month_num,
-                    DATE_FORMAT(
-                        DATE(CONCAT(
-                            YEAR(cp.payment_date), '-',
-                            LPAD(MONTH(cp.payment_date), 2, '0'), '-01'
-                        )),
-                        '%M %Y'
-                    )                                        AS month,                                      AS month,
-                    SUM(cp.amount)                          AS total_amount,
-                    COUNT(cp.id)                            AS transaction_count
-                FROM {$this->table} cp
-                WHERE cp.payment_date BETWEEN ? AND ?
-                AND cp.project_id IS NOT NULL
-        ";
+private function getMonthlyData($dateFrom, $dateTo, $project_id)
+{
+    $sql = "SELECT
+                YEAR(cp.payment_date)   AS year,
+                MONTH(cp.payment_date)  AS month_num,
+                DATE_FORMAT(
+                    DATE(CONCAT(
+                        YEAR(cp.payment_date), '-',
+                        LPAD(MONTH(cp.payment_date), 2, '0'), '-01'
+                    )),
+                    '%M %Y'
+                )                       AS month,
+                SUM(cp.amount)          AS total_amount,
+                COUNT(cp.id)            AS transaction_count
+            FROM {$this->table} cp
+            WHERE cp.payment_date BETWEEN ? AND ?
+            AND cp.project_id IS NOT NULL
+    ";
 
-        if ($project_id) {
-            $sql .= " AND cp.project_id = ?";
-        }
-
-        $sql .= " GROUP BY YEAR(cp.payment_date), MONTH(cp.payment_date)
-                  ORDER BY YEAR(cp.payment_date) ASC, MONTH(cp.payment_date) ASC";
-
-        $stmt = $this->db->prepare($sql);
-
-        if ($project_id) {
-            $stmt->bind_param("ssi", $dateFrom, $dateTo, $project_id);
-        } else {
-            $stmt->bind_param("ss", $dateFrom, $dateTo);
-        }
-
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $rows = [];
-        $running = 0;
-        while ($row = $result->fetch_assoc()) {
-            $running += (float) $row['total_amount'];
-            $row['running'] = $running;
-            $rows[] = $row;
-        }
-
-        $stmt->close();
-        return $rows;
+    if ($project_id) {
+        $sql .= " AND cp.project_id = ?";
     }
+
+    $sql .= " GROUP BY YEAR(cp.payment_date), MONTH(cp.payment_date)
+              ORDER BY YEAR(cp.payment_date) ASC, MONTH(cp.payment_date) ASC";
+
+    $stmt = $this->db->prepare($sql);
+
+    if ($project_id) {
+        $stmt->bind_param("ssi", $dateFrom, $dateTo, $project_id);
+    } else {
+        $stmt->bind_param("ss", $dateFrom, $dateTo);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $rows    = [];
+    $running = 0;
+    while ($row = $result->fetch_assoc()) {
+        $running       += (float) $row['total_amount'];
+        $row['running'] = $running;
+        $rows[]         = $row;
+    }
+
+    $stmt->close();
+    return $rows;
+}
 
     private function getOverallStats($dateFrom, $dateTo, $project_id)
     {
