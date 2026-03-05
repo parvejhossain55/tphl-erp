@@ -124,7 +124,7 @@
                         </a>
                     </li>
                     <!-- Executive Team  -->
-                     <!--target set-sales-target show here for sales executiive team  -->
+                    <!--target set-sales-target show here for sales executiive team  -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/sales-executive-teams" class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
@@ -142,8 +142,70 @@
 
                 <?php endif; ?>
                 <!--End Sales Manager CATEGORY -->
+                <?php if (hasPermission("whatsapp panel")): ?>
+                       <!--Sales CATEGORY -->
+                    <p>WhatsApp System</p>
+                  
 
+                    <!-- sales Dashboard -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/whatsapp-dashboard" class="sidebar__menu-item <?= isActive('whatsapp-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="slide">
+                        <a href="<?= $base_url ?>/task-dashboard" class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="bi bi-people-fill"></i></div>
+                            <span class="sidebar__menu-label">Contact</span>
+                        </a>
+                    </li>
+                    <!-- Location -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/location-lists" class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="bi bi-megaphone-fill"></i></div>
+                            <span class="sidebar__menu-label">Campaign</span>
+                        </a>
+                    </li>
 
+                    <!-- Community -->
+                    <li class="slide">
+                        <a href="<?= $base_url ?>/community-lists" class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
+                            <span class="sidebar__menu-label">Device</span>
+                        </a>
+                    </li>
+
+       
+                    <!-- Executive Team  -->
+                    <!--target set-sales-target show here for sales executiive team  -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/sales-executive-teams" class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="sidebar__menu-label"> Team</span>
+                        </a>
+                    </li>
+
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="bi bi-file-earmark-text-fill"></i></div>
+                            <span class="sidebar__menu-label">Reports</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="sidebar__menu-label">Safety Controll</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="sidebar__menu-label">Notification</span>
+                        </a>
+                    </li>
+
+                <?php endif; ?>
 
                 <!-- Camera Manage -->
                 <?php if (hasPermission("Camera Manage")):  ?>
@@ -182,14 +244,14 @@
 
                 <?php
                 // Ensure $db is initialized
-                $db = db(); // call your db() function that returns mysqli connection
+                // $db = db(); // call your db() function that returns mysqli connection
 
                 // user id
                 $userId = $_SESSION['user']['id'] ?? 0;
 
                 // call the global helper function
                 $todayCount = getFollowUpCount($userId, 'today');
-                
+
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
                 <!-- for sales executive  -->
@@ -212,13 +274,13 @@
                                 <span class="sidebar__menu-label">Task Dashbaord</span>
                             </a>
                         </li>
-                        
+
 
                         <li class="slide">
                             <a href="<?= $base_url ?>/create-lead" class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">Add Lead</a>
                         </li>
                         <li class="slide">
-                            <a href="<?= $base_url ?>/today-follow-up" class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today Follow Up  <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
+                            <a href="<?= $base_url ?>/today-follow-up" class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today Follow Up <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/upcoming-follow-up" class="sidebar__menu-item <?= isActive('overdue-next-followup', $current_route) ?>"> Upcoming Follow Up<span class="ms-2 badge bg-warning"><?= $upcomingCount ?></span></a>
