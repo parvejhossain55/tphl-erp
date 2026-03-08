@@ -144,7 +144,7 @@
                 <!--End Sales Manager CATEGORY -->
                 <?php if (hasPermission("whatsapp panel")): ?>
                     <!--Sales CATEGORY -->
-                   
+
                     <div class="card-title ms-4 fs-6 fw-semibold mb-2">Whatsapp System</div>
                     <!-- sales Dashboard -->
                     <li class="slide ">
@@ -166,7 +166,12 @@
                             <span class="sidebar__menu-label">Campaign</span>
                         </a>
                     </li>
-
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/report-campaign" class="sidebar__menu-item <?= isActive('report-campaign', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="bi bi-file-earmark-text-fill"></i></div>
+                            <span class="sidebar__menu-label">Reports</span>
+                        </a>
+                    </li>
                     <!-- Community -->
                     <li class="slide">
                         <a href="<?= $base_url ?>/community-lists" class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
@@ -185,12 +190,7 @@
                         </a>
                     </li>
 
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/report-campaign" class="sidebar__menu-item <?= isActive('report-campaign', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="bi bi-file-earmark-text-fill"></i></div>
-                            <span class="sidebar__menu-label">Reports</span>
-                        </a>
-                    </li>
+
                     <li class="slide ">
                         <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>

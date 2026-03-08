@@ -146,88 +146,89 @@
         </div>
 
         <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3 ">
-            <div class="card-bg card-border mb-20 h-100">
-                <div class="card__wrapper style_two h-100 d-flex flex-column">
-
-                    <div class="chart-card h-100">
-                        <div class="card-title">Team Activity</div>
-                        <div class="card-sub mb-3">Member performance today</div>
-
-                        <div class="team-member">
-                            <div class="member-avatar" style="background:rgba(37,211,102,0.15);color:var(--wa-green);">
-                                RS
-                                <span class="online-dot dot-green"></span>
-                            </div>
-                            <div>
-                                <div class="member-name">Rahul Sharma</div>
-                                <div class="member-role">Marketing Manager</div>
-                                <div class="progress-bar-custom" style="width:130px;">
-                                    <div class="progress-fill" style="width:100%"></div>
-                                </div>
-                            </div>
-                            <div class="member-msgs">
-                                <div class="msg-count">450</div>
-                                <div class="msg-label">messages</div>
-                            </div>
-                        </div>
-
-                        <div class="team-member">
-                            <div class="member-avatar" style="background:rgba(96,165,250,0.15);color:#60a5fa;">
-                                PP
-                                <span class="online-dot dot-green"></span>
-                            </div>
-                            <div>
-                                <div class="member-name">Priya Patel</div>
-                                <div class="member-role">Executive</div>
-                                <div class="progress-bar-custom" style="width:130px;">
-                                    <div class="progress-fill" style="width:71%;background:#60a5fa;"></div>
-                                </div>
-                            </div>
-                            <div class="member-msgs">
-                                <div class="msg-count">320</div>
-                                <div class="msg-label">messages</div>
-                            </div>
-                        </div>
-
-                        <div class="team-member">
-                            <div class="member-avatar" style="background:rgba(244,185,66,0.15);color:var(--yellow);">
-                                AK
-                                <span class="online-dot dot-yellow"></span>
-                            </div>
-                            <div>
-                                <div class="member-name">Amit Kumar</div>
-                                <div class="member-role">Executive</div>
-                                <div class="progress-bar-custom" style="width:130px;">
-                                    <div class="progress-fill" style="width:40%;background:var(--yellow);"></div>
-                                </div>
-                            </div>
-                            <div class="member-msgs">
-                                <div class="msg-count">180</div>
-                                <div class="msg-label">messages</div>
-                            </div>
-                        </div>
-
-                        <div class="team-member">
-                            <div class="member-avatar" style="background:rgba(192,132,252,0.15);color:#c084fc;">
-                                NS
-                                <span class="online-dot dot-gray"></span>
-                            </div>
-                            <div>
-                                <div class="member-name">Neha Singh</div>
-                                <div class="member-role">Executive</div>
-                                <div class="progress-bar-custom" style="width:130px;">
-                                    <div class="progress-fill" style="width:21%;background:#c084fc;"></div>
-                                </div>
-                            </div>
-                            <div class="member-msgs">
-                                <div class="msg-count">95</div>
-                                <div class="msg-label">messages</div>
-                            </div>
-                        </div>
-
+                <div class=" card__wrapper shadow-sm mb-4">
+                    <div class="card-header  border-bottom">
+                        <h5 class="card-title mb-0">Team Activity</h5>
+                        <small class="text-muted">Member performance today</small>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">Member</th>
+                                    <th scope="col">Role</th>
+                                    <th scope="col" class="text-end">Messages</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="position-relative">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">RS</div>
+                                                <span class="position-absolute bottom-0 end-0 rounded-circle border border-white bg-success" style="width: 10px; height: 10px;"></span>
+                                            </div>
+                                            <span class="fw-medium">Rahul Sharma</span>
+                                        </div>
+                                    </td>
+                                    <td>Marketing Manager</td>
+                                    <td class="text-end">
+                                        <div class="fw-semibold">450</div>
+                                        <small class="text-muted">messages</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="position-relative">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">PP</div>
+                                                <span class="position-absolute bottom-0 end-0 rounded-circle border border-white bg-success" style="width: 10px; height: 10px;"></span>
+                                            </div>
+                                            <span class="fw-medium">Priya Patel</span>
+                                        </div>
+                                    </td>
+                                    <td>Executive</td>
+                                    <td class="text-end">
+                                        <div class="fw-semibold">320</div>
+                                        <small class="text-muted">messages</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="position-relative">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">AK</div>
+                                                <span class="position-absolute bottom-0 end-0 rounded-circle border border-white bg-warning" style="width: 10px; height: 10px;"></span>
+                                            </div>
+                                            <span class="fw-medium">Amit Kumar</span>
+                                        </div>
+                                    </td>
+                                    <td>Executive</td>
+                                    <td class="text-end">
+                                        <div class="fw-semibold">180</div>
+                                        <small class="text-muted">messages</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="position-relative">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">NS</div>
+                                                <span class="position-absolute bottom-0 end-0 rounded-circle border border-white bg-secondary" style="width: 10px; height: 10px;"></span>
+                                            </div>
+                                            <span class="fw-medium">Neha Singh</span>
+                                        </div>
+                                    </td>
+                                    <td>Executive</td>
+                                    <td class="text-end">
+                                        <div class="fw-semibold">95</div>
+                                        <small class="text-muted">messages</small>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-            </div>
         </div>
 
         <!-- project wise flat sale  -->
