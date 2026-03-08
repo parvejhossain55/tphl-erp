@@ -316,8 +316,8 @@ $routes = [
     "sales-report" => ["controller" => "SalesHeadDashboardController", "method" => "salesReport"],
 
     // // conatct 
-        "contact-lists" => ["controller" => "ContactController", "method" => "index"],
-        "contacts/update-status" => ["controller" => "ContactController", "method" => "updateStatus"],
+    "contact-lists" => ["controller" => "ContactController", "method" => "index"],
+    "contacts/update-status" => ["controller" => "ContactController", "method" => "updateStatus"],
 
     // ==========END SALES & BUISENESS======//
 
@@ -350,7 +350,10 @@ $routes = [
     //===== AI ChatBox Generate====//
     "ai-chatbox" => ["controller" => "Ai\\ChatController", "method" => "handleMessage"],
     // =========== Whatsapp marketing ============
- "whatsapp-dashboard" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "dashboard"],
+    "whatsapp-dashboard" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "dashboard"],
+    "contacts-whatsapp" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "contactLeads"],
+    "campaign-contacts" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "campaigns"],
+    "report-campaign" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "reports"],
     //Rafi Start  Accounts
     // ==================== ACCOUNTS====================
     'dashboard' => ["controller" => "DashboardController", "method" => "index"],
@@ -437,8 +440,8 @@ $routes = [
     'delete-management-category' => ["controller" => "AccountManagementCategoryController", "method" => "deleteCategory"],
     'toggle-category-status' => ["controller" => "AccountManagementCategoryController", "method" => "toggleCategoryStatus"],
     'add-management-role' => ["controller" => "AccountManagementController", "method" => "addRole"],
-'update-management-role' => ["controller" => "AccountManagementController", "method" => "updateRole"],
-'delete-management-role' => ["controller" => "AccountManagementController", "method" => "deleteRole"],
+    'update-management-role' => ["controller" => "AccountManagementController", "method" => "updateRole"],
+    'delete-management-role' => ["controller" => "AccountManagementController", "method" => "deleteRole"],
 
     //===================Customer Experience Department====================
     'clients-cashin-view' => ["controller" => "AccountClientController", "method" => "indexView"],

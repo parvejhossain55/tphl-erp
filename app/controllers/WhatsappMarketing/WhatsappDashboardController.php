@@ -27,4 +27,34 @@ class WhatsappDashboardController extends Controller
             "current_route"   => "whatsapp-dashboard",]);
         
         }
+    public function contactLeads()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+   
+        return $this->view('whatsapp_marketing/contacts-whatsapp',[
+            "current_route"   => "contacts-whatsapp",]);
+        
+        }
+    public function campaigns()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+   
+        return $this->view('whatsapp_marketing/campaign-contacts',[
+            "current_route"   => "campaign-contacts",]);
+        
+        }
+    public function reports()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+   
+        return $this->view('whatsapp_marketing/reports-campaign',[
+            "current_route"   => "report-campaign",]);
+        
+        }
 }

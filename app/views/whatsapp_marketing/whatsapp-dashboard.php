@@ -1,6 +1,3 @@
-
-
-
 <!-- MAIN -->
 <div class="app__slide-wrapper">
     <!-- STAT CARDS -->
@@ -128,10 +125,9 @@
         </div>
     </div>
     <!-- sales overview  -->
-    <div class="row g-20">
-        <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
+    <div class="row align-items-stretch">
+        <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3 ">
             <div class="card__wrapper height-equal">
-                <div class="card__wrapper">
 
                 <div class="chart-card h-100">
                     <div class="d-flex align-items-start justify-content-between mb-4">
@@ -147,191 +143,195 @@
                     <canvas id="performanceChart" height="100"></canvas>
                 </div>
             </div>
-            </div>
         </div>
 
-        <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
+        <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3 ">
             <div class="card-bg card-border mb-20 h-100">
                 <div class="card__wrapper style_two h-100 d-flex flex-column">
 
-                   <div class="chart-card h-100">
-                    <div class="card-title">Team Activity</div>
-                    <div class="card-sub mb-3">Member performance today</div>
+                    <div class="chart-card h-100">
+                        <div class="card-title">Team Activity</div>
+                        <div class="card-sub mb-3">Member performance today</div>
 
-                    <div class="team-member">
-                        <div class="member-avatar" style="background:rgba(37,211,102,0.15);color:var(--wa-green);">
-                            RS
-                            <span class="online-dot dot-green"></span>
-                        </div>
-                        <div>
-                            <div class="member-name">Rahul Sharma</div>
-                            <div class="member-role">Marketing Manager</div>
-                            <div class="progress-bar-custom" style="width:130px;">
-                                <div class="progress-fill" style="width:100%"></div>
+                        <div class="team-member">
+                            <div class="member-avatar" style="background:rgba(37,211,102,0.15);color:var(--wa-green);">
+                                RS
+                                <span class="online-dot dot-green"></span>
+                            </div>
+                            <div>
+                                <div class="member-name">Rahul Sharma</div>
+                                <div class="member-role">Marketing Manager</div>
+                                <div class="progress-bar-custom" style="width:130px;">
+                                    <div class="progress-fill" style="width:100%"></div>
+                                </div>
+                            </div>
+                            <div class="member-msgs">
+                                <div class="msg-count">450</div>
+                                <div class="msg-label">messages</div>
                             </div>
                         </div>
-                        <div class="member-msgs">
-                            <div class="msg-count">450</div>
-                            <div class="msg-label">messages</div>
-                        </div>
-                    </div>
 
-                    <div class="team-member">
-                        <div class="member-avatar" style="background:rgba(96,165,250,0.15);color:#60a5fa;">
-                            PP
-                            <span class="online-dot dot-green"></span>
-                        </div>
-                        <div>
-                            <div class="member-name">Priya Patel</div>
-                            <div class="member-role">Executive</div>
-                            <div class="progress-bar-custom" style="width:130px;">
-                                <div class="progress-fill" style="width:71%;background:#60a5fa;"></div>
+                        <div class="team-member">
+                            <div class="member-avatar" style="background:rgba(96,165,250,0.15);color:#60a5fa;">
+                                PP
+                                <span class="online-dot dot-green"></span>
+                            </div>
+                            <div>
+                                <div class="member-name">Priya Patel</div>
+                                <div class="member-role">Executive</div>
+                                <div class="progress-bar-custom" style="width:130px;">
+                                    <div class="progress-fill" style="width:71%;background:#60a5fa;"></div>
+                                </div>
+                            </div>
+                            <div class="member-msgs">
+                                <div class="msg-count">320</div>
+                                <div class="msg-label">messages</div>
                             </div>
                         </div>
-                        <div class="member-msgs">
-                            <div class="msg-count">320</div>
-                            <div class="msg-label">messages</div>
-                        </div>
-                    </div>
 
-                    <div class="team-member">
-                        <div class="member-avatar" style="background:rgba(244,185,66,0.15);color:var(--yellow);">
-                            AK
-                            <span class="online-dot dot-yellow"></span>
-                        </div>
-                        <div>
-                            <div class="member-name">Amit Kumar</div>
-                            <div class="member-role">Executive</div>
-                            <div class="progress-bar-custom" style="width:130px;">
-                                <div class="progress-fill" style="width:40%;background:var(--yellow);"></div>
+                        <div class="team-member">
+                            <div class="member-avatar" style="background:rgba(244,185,66,0.15);color:var(--yellow);">
+                                AK
+                                <span class="online-dot dot-yellow"></span>
+                            </div>
+                            <div>
+                                <div class="member-name">Amit Kumar</div>
+                                <div class="member-role">Executive</div>
+                                <div class="progress-bar-custom" style="width:130px;">
+                                    <div class="progress-fill" style="width:40%;background:var(--yellow);"></div>
+                                </div>
+                            </div>
+                            <div class="member-msgs">
+                                <div class="msg-count">180</div>
+                                <div class="msg-label">messages</div>
                             </div>
                         </div>
-                        <div class="member-msgs">
-                            <div class="msg-count">180</div>
-                            <div class="msg-label">messages</div>
-                        </div>
-                    </div>
 
-                    <div class="team-member">
-                        <div class="member-avatar" style="background:rgba(192,132,252,0.15);color:#c084fc;">
-                            NS
-                            <span class="online-dot dot-gray"></span>
-                        </div>
-                        <div>
-                            <div class="member-name">Neha Singh</div>
-                            <div class="member-role">Executive</div>
-                            <div class="progress-bar-custom" style="width:130px;">
-                                <div class="progress-fill" style="width:21%;background:#c084fc;"></div>
+                        <div class="team-member">
+                            <div class="member-avatar" style="background:rgba(192,132,252,0.15);color:#c084fc;">
+                                NS
+                                <span class="online-dot dot-gray"></span>
+                            </div>
+                            <div>
+                                <div class="member-name">Neha Singh</div>
+                                <div class="member-role">Executive</div>
+                                <div class="progress-bar-custom" style="width:130px;">
+                                    <div class="progress-fill" style="width:21%;background:#c084fc;"></div>
+                                </div>
+                            </div>
+                            <div class="member-msgs">
+                                <div class="msg-count">95</div>
+                                <div class="msg-label">messages</div>
                             </div>
                         </div>
-                        <div class="member-msgs">
-                            <div class="msg-count">95</div>
-                            <div class="msg-label">messages</div>
-                        </div>
-                    </div>
 
-                </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- project wise flat sale  -->
-    </div>
-    <!-- CHART + TEAM -->
-  
-    <div class="row">
+
+        <!-- CHART + TEAM -->
 
         <!-- CAMPAIGNS TABLE -->
-        <div class="campaigns-card card__wrapper">
-            <div class="d-flex align-items-center justify-content-between mb-4">
-                <div>
-                    <div class="card-title">Recent Campaigns</div>
-                    <div class="card-sub">Your latest marketing campaigns</div>
+        <div class="col-12 mt-3">
+            <div class="card__wrapper">
+                <div class="card__header d-flex justify-content-between align-items-center mb-3">
+
+                    <div>
+                        <div class="card-title">Recent Campaigns</div>
+                        <div class="card-sub">Your latest marketing campaigns</div>
+                    </div>
+                    <button class="btn-new" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);">
+                        View All <i class="bi bi-arrow-right"></i>
+                    </button>
+
                 </div>
-                <button class="btn-new" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);">
-                    View All <i class="bi bi-arrow-right"></i>
-                </button>
+
+                <div class="table__wrapper table-responsive">
+                    <table class="table mb-20">
+                        <thead>
+                            <tr>
+                                <th>Campaign</th>
+                                <th>Status</th>
+                                <th style="text-align:right;">Sent</th>
+                                <th style="text-align:right;">Delivered</th>
+                                <th style="text-align:right;">Failed</th>
+                                <th style="text-align:right;">Date</th>
+                                <th style="text-align:center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div class="campaign-name">Project Launch - Marina Heights</div>
+                                    <div class="campaign-date">Real Estate Promo</div>
+                                </td>
+                                <td><span class="badge-status badge-completed">Completed</span></td>
+                                <td style="text-align:right;" class="num-default">1,250</td>
+                                <td style="text-align:right;" class="num-green">1,180</td>
+                                <td style="text-align:right;" class="num-red">70</td>
+                                <td style="text-align:right;" class="campaign-date">15/01/2024</td>
+                                <td style="text-align:center;">
+                                    <i class="bi bi-eye" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
+                                    <i class="bi bi-graph-up" style="color:var(--muted);cursor:pointer;"></i>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="campaign-name">Offer Reminder - Q1 Sale</div>
+                                    <div class="campaign-date">Retail Promotion</div>
+                                </td>
+                                <td><span class="badge-status badge-active">Active</span></td>
+                                <td style="text-align:right;" class="num-default">850</td>
+                                <td style="text-align:right;" class="num-green">820</td>
+                                <td style="text-align:right;" class="num-red">30</td>
+                                <td style="text-align:right;" class="campaign-date">16/01/2024</td>
+                                <td style="text-align:center;">
+                                    <i class="bi bi-eye" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
+                                    <i class="bi bi-pause-circle" style="color:var(--muted);cursor:pointer;"></i>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="campaign-name">New Year Flash Sale</div>
+                                    <div class="campaign-date">E-commerce</div>
+                                </td>
+                                <td><span class="badge-status badge-paused">Paused</span></td>
+                                <td style="text-align:right;" class="num-default">2,100</td>
+                                <td style="text-align:right;" class="num-green">1,990</td>
+                                <td style="text-align:right;" class="num-red">110</td>
+                                <td style="text-align:right;" class="campaign-date">01/01/2024</td>
+                                <td style="text-align:center;">
+                                    <i class="bi bi-eye" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
+                                    <i class="bi bi-play-circle" style="color:var(--muted);cursor:pointer;"></i>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="campaign-name">Welcome Series - New Users</div>
+                                    <div class="campaign-date">Onboarding</div>
+                                </td>
+                                <td><span class="badge-status badge-draft">Draft</span></td>
+                                <td style="text-align:right;" class="num-default">—</td>
+                                <td style="text-align:right;" class="num-default">—</td>
+                                <td style="text-align:right;" class="num-default">—</td>
+                                <td style="text-align:right;" class="campaign-date">18/01/2024</td>
+                                <td style="text-align:center;">
+                                    <i class="bi bi-pencil" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
+                                    <i class="bi bi-send" style="color:var(--muted);cursor:pointer;"></i>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-    
-            <table class="table-custom">
-                <thead>
-                    <tr>
-                        <th>Campaign</th>
-                        <th>Status</th>
-                        <th style="text-align:right;">Sent</th>
-                        <th style="text-align:right;">Delivered</th>
-                        <th style="text-align:right;">Failed</th>
-                        <th style="text-align:right;">Date</th>
-                        <th style="text-align:center;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <div class="campaign-name">Project Launch - Marina Heights</div>
-                            <div class="campaign-date">Real Estate Promo</div>
-                        </td>
-                        <td><span class="badge-status badge-completed">Completed</span></td>
-                        <td style="text-align:right;" class="num-default">1,250</td>
-                        <td style="text-align:right;" class="num-green">1,180</td>
-                        <td style="text-align:right;" class="num-red">70</td>
-                        <td style="text-align:right;" class="campaign-date">15/01/2024</td>
-                        <td style="text-align:center;">
-                            <i class="bi bi-eye" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
-                            <i class="bi bi-graph-up" style="color:var(--muted);cursor:pointer;"></i>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <div class="campaign-name">Offer Reminder - Q1 Sale</div>
-                            <div class="campaign-date">Retail Promotion</div>
-                        </td>
-                        <td><span class="badge-status badge-active">Active</span></td>
-                        <td style="text-align:right;" class="num-default">850</td>
-                        <td style="text-align:right;" class="num-green">820</td>
-                        <td style="text-align:right;" class="num-red">30</td>
-                        <td style="text-align:right;" class="campaign-date">16/01/2024</td>
-                        <td style="text-align:center;">
-                            <i class="bi bi-eye" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
-                            <i class="bi bi-pause-circle" style="color:var(--muted);cursor:pointer;"></i>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <div class="campaign-name">New Year Flash Sale</div>
-                            <div class="campaign-date">E-commerce</div>
-                        </td>
-                        <td><span class="badge-status badge-paused">Paused</span></td>
-                        <td style="text-align:right;" class="num-default">2,100</td>
-                        <td style="text-align:right;" class="num-green">1,990</td>
-                        <td style="text-align:right;" class="num-red">110</td>
-                        <td style="text-align:right;" class="campaign-date">01/01/2024</td>
-                        <td style="text-align:center;">
-                            <i class="bi bi-eye" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
-                            <i class="bi bi-play-circle" style="color:var(--muted);cursor:pointer;"></i>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <div class="campaign-name">Welcome Series - New Users</div>
-                            <div class="campaign-date">Onboarding</div>
-                        </td>
-                        <td><span class="badge-status badge-draft">Draft</span></td>
-                        <td style="text-align:right;" class="num-default">—</td>
-                        <td style="text-align:right;" class="num-default">—</td>
-                        <td style="text-align:right;" class="num-default">—</td>
-                        <td style="text-align:right;" class="campaign-date">18/01/2024</td>
-                        <td style="text-align:center;">
-                            <i class="bi bi-pencil" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
-                            <i class="bi bi-send" style="color:var(--muted);cursor:pointer;"></i>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
+
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</div>
 <script>
     const ctx = document.getElementById('performanceChart').getContext('2d');
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

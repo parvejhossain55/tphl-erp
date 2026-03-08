@@ -143,10 +143,9 @@
                 <?php endif; ?>
                 <!--End Sales Manager CATEGORY -->
                 <?php if (hasPermission("whatsapp panel")): ?>
-                       <!--Sales CATEGORY -->
-                    <p>WhatsApp System</p>
-                  
-
+                    <!--Sales CATEGORY -->
+                   
+                    <div class="card-title ms-4 fs-6 fw-semibold mb-2">Whatsapp System</div>
                     <!-- sales Dashboard -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/whatsapp-dashboard" class="sidebar__menu-item <?= isActive('whatsapp-dashboard', $current_route) ?>">
@@ -155,14 +154,14 @@
                         </a>
                     </li>
                     <li class="slide">
-                        <a href="<?= $base_url ?>/task-dashboard" class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+                        <a href="<?= $base_url ?>/contacts-whatsapp" class="sidebar__menu-item  <?= isActive('contacts-whatsapp', $current_route) ?>">
                             <div class="side-menu__icon"><i class="bi bi-people-fill"></i></div>
                             <span class="sidebar__menu-label">Contact</span>
                         </a>
                     </li>
                     <!-- Location -->
                     <li class="slide ">
-                        <a href="<?= $base_url ?>/location-lists" class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
+                        <a href="<?= $base_url ?>/campaign-contacts" class="sidebar__menu-item <?= isActive('campaign-contacts', $current_route) ?>">
                             <div class="side-menu__icon"><i class="bi bi-megaphone-fill"></i></div>
                             <span class="sidebar__menu-label">Campaign</span>
                         </a>
@@ -176,7 +175,7 @@
                         </a>
                     </li>
 
-       
+
                     <!-- Executive Team  -->
                     <!--target set-sales-target show here for sales executiive team  -->
                     <li class="slide ">
@@ -187,7 +186,7 @@
                     </li>
 
                     <li class="slide ">
-                        <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
+                        <a href="<?= $base_url ?>/report-campaign" class="sidebar__menu-item <?= isActive('report-campaign', $current_route) ?>">
                             <div class="side-menu__icon"><i class="bi bi-file-earmark-text-fill"></i></div>
                             <span class="sidebar__menu-label">Reports</span>
                         </a>
