@@ -43,7 +43,7 @@ class WhatsappDashboardController extends Controller
             session_start();
         }
    
-        return $this->view('whatsapp_marketing/campaign-contacts',[
+        return $this->view('whatsapp_marketing/campaign-whatsapp',[
             "current_route"   => "campaign-contacts",]);
         
         }

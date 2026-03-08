@@ -65,17 +65,17 @@ $show_breadcrumb = true;
 
                     <!-- Search Button -->
                     <div class="col-sm-2 col-md-3 col-lg-2">
-                 
+
                         <button type="submit" class="btn btn-primary py-2">
-                                <i class="fa-light fa-search me-2"></i> Search
-                            </button>
+                            <i class="fa-light fa-search me-2"></i> Search
+                        </button>
                     </div>
 
                     <!-- Action Buttons -->
                     <div class="col-auto ms-auto d-flex gap-2 flex-wrap">
 
-                         <button type="button" class="btn btn-outline-secondary btn-sm" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
-                            Export 
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
+                            Export
                         </button>
 
                         <!-- Import CSV button outside form submit -->
@@ -98,10 +98,7 @@ $show_breadcrumb = true;
                     <table class="table no-border-table mb-20 multiple_tables">
                         <thead>
                             <tr class="table__title table__sort">
-                                <th style="min-width:60px;">
-                                    <input type="checkbox" id="selectAllLeads" title="Select All">
-                                    S/L
-                                </th>
+                          
                                 <th> Name</th>
                                 <th>Phone</th>
                                 <th>Email</th>
@@ -113,10 +110,7 @@ $show_breadcrumb = true;
                         </thead>
                         <tbody>
                             <tr data-id="8" class="odd">
-                                <td class="sorting_1">
-                                    <input type="checkbox" class="me-2 selectedId" data-id="8">
-                                    1
-                                </td>
+                                
                                 <td><strong>Shariful Islam Sharif</strong></td>
                                 <td>
 
@@ -134,7 +128,7 @@ $show_breadcrumb = true;
                                 <!-- last_action_form  -->
                                 <td>
                                     <div>
-                                        23 February, 2026 </div>
+                                       Website </div>
                                 </td>
                                 <td>
 
@@ -143,6 +137,9 @@ $show_breadcrumb = true;
                                         <select name="last_lead_action" class="form-select form-select-sm last-action-select action-follow up" onchange="this.form.submit()">
 
                                             <option value=""> Update action </option>
+                                            <!-- Buyer
+                                                Premium,
+                                                Investor,leads,client -->
                                             <option value="new">
                                                 New
                                             </option>

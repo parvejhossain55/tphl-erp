@@ -1,0 +1,265 @@
+WhatsApp Campaign Full Flow for Real Estate ERP
+Step 1: Leads Generation
+
+Leads generate hobe through your existing ERP system:
+
+Manual entry / Form submission / Import CSV / Existing clients
+
+Leads table (leads) already ache.
+
+Lead info must include at least:
+
+full_name, phone_number → WhatsApp contact
+
+lead_type / target_group → segmentation
+
+status → active, hot, cold, etc.
+
+Optional: location, preferred apartment, budget, etc.
+
+⚡ Key: Leads table is your primary source of contacts. No separate WhatsApp contacts table needed.
+
+Step 2: Create WhatsApp Campaign
+
+Admin opens Create Campaign modal.
+
+Fill in:
+
+Campaign Name (e.g., "Marina Heights Launch")
+
+Target Group (Buyers / Investors / Premium / All leads)
+
+Message Type (Text, Image, PDF, Button/CTA)
+
+Message Content
+
+Schedule Date/Time
+
+Device (Auto Select or Manual)
+
+Save campaign in table: whatsapp_campaigns
+
+Status = Scheduled / Active by default
+
+Step 3: Map Leads to Campaign
+
+After campaign creation, automatically select leads from leads table that match target group and active status.
+
+Insert into whatsapp_campaign_contacts:
+
+campaign_id, lead_id, delivery_status='pending'
+
+Now each lead is mapped to campaign with delivery status pending.
+
+Step 4: Send Messages (Automated or Manual)
+Option A: Cron Job / Scheduler
+
+PHP script (MVC controller) runs every X minutes:
+
+Fetch campaigns where status='Active' OR scheduled time <= now
+
+Fetch pending leads from whatsapp_campaign_contacts
+
+Call WhatsApp API (Twilio/WATI/360dialog) for each lead
+
+Update delivery_status:
+
+'sent' if API call success
+
+'failed' if API call failed
+
+Optional: mark campaign Completed when all leads sent
+
+Option B: Manual Send
+
+Admin clicks "Start Now" on campaign card
+
+Same process as cron job, just triggered manually
+
+Step 5: Track Delivery & Responses
+
+For each lead:
+
+delivery_status → updated in whatsapp_campaign_contacts
+
+Optional: response → store replies from WhatsApp API webhook
+
+Calculate stats for dashboard cards:
+
+Sent = COUNT(*) campaign_contacts
+Delivered = COUNT(*) where delivery_status='delivered'
+Success % = delivered / sent * 100
+
+Update card UI with real-time stats.
+
+Step 6: Dashboard Display
+
+Analytics cards:
+
+Total Campaigns
+
+Active
+
+Scheduled
+
+Avg Success %
+
+Campaign cards:
+
+Campaign Name + Target Group
+
+Status badge
+
+Sent / Delivered / Success %
+
+Scheduled date (if scheduled)
+
+Buttons: Start / Pause / Report
+
+Card layout is already in your design; data fetched live from DB.
+
+Step 7: Campaign Reports
+
+Admin clicks Report button on card
+
+Show detailed table for campaign:
+
+Lead Name / Phone / Delivery Status / Response
+
+Optionally export CSV / Excel
+
+Use data for follow-ups, marketing insights, lead scoring
+
+Step 8: Follow-Up Campaigns
+
+Repeat process for new campaigns or ongoing campaigns
+
+Use previous campaign stats to segment hot leads, e.g., send "Site Visit Invitation" only to delivered leads
+
+Step 9: Optional Automation Enhancements
+
+Webhook for live response capture
+
+Update response column immediately when lead replies
+
+Retry Failed Messages
+
+Script to retry leads with delivery_status='failed'
+
+Device Management
+
+Use multiple WhatsApp devices for load balancing
+
+Scheduled Campaign Queue
+
+Cron automatically starts campaigns at schedule_time
+
+✅ Summary Flow Diagram
+Leads Table
+   ↓ (Filter by target group)
+Create Campaign (Modal Form)
+   ↓ (Insert)
+whatsapp_campaigns + whatsapp_campaign_contacts
+   ↓ (Scheduler / Manual Send)
+Send WhatsApp Messages → Update delivery_status
+   ↓
+Dashboard Cards (Sent, Delivered, Success %)
+   ↓
+Reports / Follow-ups
+
+Farzana, jodi tumi chai, ami eta next step e ready-to-use MVC + MySQLi full WhatsApp campaign flow create kore dite pari jeita:
+
+Leads select korbe target group diye
+
+Campaign create hobe
+
+Messages automatically send hobe cron job diye
+
+Dashboard cards live stats update korbe
+
+Tumi chai ami eta ready kore dichi?
+=========================================== 
+WhatsApp API er kaj
+
+WhatsApp API holo ekta programmatic interface jeita diye tumi:
+
+Send messages automatically
+
+Text, image, PDF, button, CTA
+
+On-demand (manual) or scheduled (cron job)
+
+Receive messages / responses
+
+Leads jokhon reply kore, webhook diye tumi backend e capture korte paro
+
+Example: Lead “Interested” bolle automatically lead status update kora
+
+Track delivery status
+
+Message delivered or failed → API provide kore status
+
+Tumhar whatsapp_campaign_contacts.delivery_status e update kora jabe
+
+Example: pending → sent → delivered → success/failed
+
+Generate campaign reports
+
+Delivered / success % / failed count automatically calculate kora
+
+Admin dashboard live stats e show kora
+
+Workflow with API
+
+Campaign Creation → Save campaign info in whatsapp_campaigns
+
+Lead Mapping → Insert leads in whatsapp_campaign_contacts
+
+Send Messages (API Call)
+
+Loop over pending leads:
+    Call WhatsApp API with lead phone number & campaign message
+    Update delivery_status ('sent', 'failed')
+
+Receive Responses (Webhook)
+
+Leads reply → API webhook hits your endpoint → update response column
+
+Update Stats
+
+Sent = total rows in campaign_contacts
+
+Delivered = delivery_status='delivered'
+
+Success % = delivered / sent * 100
+
+Dashboard
+
+Campaign cards show real-time stats from DB
+
+Admin can click Report to see detailed lead-level info
+
+Example Using Twilio WhatsApp API (simplest)
+function sendWhatsapp($phone, $message) {
+    $url = "https://api.twilio.com/2010-04-01/Accounts/YOUR_SID/Messages.json";
+    $data = [
+        'From' => 'whatsapp:+14155238886',
+        'To'   => 'whatsapp:' . $phone,
+        'Body' => $message
+    ];
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+    curl_setopt($ch, CURLOPT_USERPWD, 'YOUR_SID:YOUR_AUTH_TOKEN');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    return json_decode($response, true);
+}
+
+Response e sid thakle message sent hoyeche → update DB delivery_status = sent
+
+Delivery status webhook diye automatically update kora jete pare

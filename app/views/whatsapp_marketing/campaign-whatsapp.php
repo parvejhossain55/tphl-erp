@@ -57,9 +57,6 @@ $show_breadcrumb = true;
     </button>
 
 </div>
-
-
-
 <div class="row mb-4">
 
     <div class="col-12 col-md-6 col-lg-3 col-xl-3">
@@ -92,7 +89,6 @@ $show_breadcrumb = true;
     </div>
 
 </div>
-
 
 <div class="row align-items-stretch ">
 
@@ -346,20 +342,8 @@ $show_breadcrumb = true;
 </div>
 
 </div>
-<!-- Campaign Name
-Enter campaign name
-Target Group
-Select group
-Message Type
-Select type
-Message Content
-Hi {Name}, your exclusive property offer is ready...
-Use {Name}, {Phone} for personalization
 
-Schedule
-mm/dd/yyyy --:-- --
-Device
-Select device -->
+
 
 <div id="addNewCampaign" class="modal custom-modal fade" role="dialog">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
@@ -387,15 +371,13 @@ Select device -->
                             <div class="col-lg-6 col-12">
                                 <div class="from__input-box">
                                     <div class="form__input-title">
-                                        <label for="designation">Target Group <span>*</span></label>
+                                        <label for="designation">Target Project <span>*</span></label>
                                     </div>
                                     <div class="form__input">
                                         <select class="form-control" name="department_id">
-                                            <option value="">Select target</option>
-                                            <option value="">Buyers</option>
-                                            <option value="">Investors</option>
-                                            <option value="">Leads </option>
-                                            <option value="">Premium</option>
+                                            <option value="">Select Project</option>
+                                            <option value="">Project 1</option>
+                                            <option value="">Project 2</option>
                                         </select>
                                     </div>
                                 </div>
@@ -456,6 +438,3 @@ Select device -->
         </div>
     </div>
 </div>
-
-<!-- New Designation Modal Start -->
-<
