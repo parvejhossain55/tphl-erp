@@ -349,8 +349,11 @@ $routes = [
 
     //===== AI ChatBox Generate====//
     "ai-chatbox" => ["controller" => "Ai\\ChatController", "method" => "handleMessage"],
-
-
+    // =========== Whatsapp marketing ============
+    "whatsapp-dashboard" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "dashboard"],
+    "contacts-whatsapp" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "contactLeads"],
+    "campaign-contacts" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "campaigns"],
+    "report-campaign" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "reports"],
     //Rafi Start  Accounts
     // ==================== ACCOUNTS====================
     'dashboard' => ["controller" => "DashboardController", "method" => "index"],
