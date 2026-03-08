@@ -296,9 +296,9 @@ CREATE TABLE `departments` (
 --
 
 INSERT INTO `departments` (`id`, `name`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
-(15, 'Business Development', 1, 2, '2026-02-19 16:17:29', '2026-02-19 16:17:29'),
-(16, 'Human Resources', 1, 1, '2026-02-23 05:42:59', '2026-02-23 05:42:59'),
-(17, 'Finance & Accounts', 1, 4, '2026-02-23 06:06:59', '2026-02-23 06:06:59');
+(1, 'Business Development', 1, 2, '2026-02-19 16:17:29', '2026-02-19 16:17:29'),
+(2, 'Human Resources', 1, 1, '2026-02-23 05:42:59', '2026-02-23 05:42:59'),
+(3, 'Finance & Accounts', 1, 4, '2026-02-23 06:06:59', '2026-02-23 06:06:59');
 
 -- --------------------------------------------------------
 
@@ -320,9 +320,10 @@ CREATE TABLE `designations` (
 --
 
 INSERT INTO `designations` (`id`, `name`, `department_id`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'Project Manager', 15, 2, '2025-12-07 11:26:14', '2026-02-23 06:07:55'),
-(2, 'HR Admin', 16, NULL, '2026-02-23 05:43:43', '2026-02-23 05:43:43'),
-(3, 'Accounts Head', 17, NULL, '2026-02-23 06:07:14', '2026-02-23 06:07:14');
+(1, 'Project Manager', 1, 2, '2025-12-07 11:26:14', '2026-02-23 06:07:55'),
+(2, 'HR Admin', 2, NULL, '2026-02-23 05:43:43', '2026-02-23 05:43:43'),
+(3, 'Accounts Head', 3, NULL, '2026-02-23 06:07:14', '2026-02-23 06:07:14');
+(4, 'Sales Executive', 3, NULL, '2026-02-23 06:07:14', '2026-02-23 06:07:14');
 
 -- --------------------------------------------------------
 
@@ -1128,7 +1129,6 @@ CREATE TABLE `roles` (
 --
 -- Dumping data for table `roles`
 --
-
 INSERT INTO `roles` (`id`, `name`, `created_by`, `created_at`, `updated_at`) VALUES
 (1, 'Admin', NULL, '2025-12-06 04:14:57', '2025-12-06 04:14:57'),
 (2, 'Employee', NULL, '2025-12-06 08:25:53', '2025-12-06 08:25:53'),
@@ -1138,7 +1138,9 @@ INSERT INTO `roles` (`id`, `name`, `created_by`, `created_at`, `updated_at`) VAL
 (6, 'Accounts ', NULL, '2026-01-04 01:15:42', '2026-01-04 01:15:42'),
 (7, 'Clients Experiment', NULL, '2026-01-04 04:34:42', '2026-01-04 04:34:42'),
 (8, 'Sales Executive', NULL, '2026-01-30 04:37:41', '2026-01-30 04:37:41'),
-(9, 'Sales Team Head', NULL, '2026-02-01 12:06:29', '2026-02-01 12:06:29');
+(9, 'Sales Team Head', NULL, '2026-02-01 12:06:29', '2026-02-01 12:06:29'),
+(10, 'Accounts Head', NULL, '2026-02-24 05:19:26', '2026-02-24 05:19:26'),
+(11, 'Marketing Lead', NULL, '2026-03-05 08:10:08', '2026-03-05 08:10:08');
 
 -- --------------------------------------------------------
 
@@ -1368,11 +1370,13 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `email`, `designation_id`, `address`, `nid`, `role_id`, `password`, `photo`, `media_link1`, `media_link2`, `last_logout`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, NULL, 'Farzana', 'farzana', '01873244236', 'farz@gmail.com', 1, 'Dhaka', NULL, 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-02-23 13:31:43', NULL, '2026-02-22 06:47:08', '2026-02-23 07:31:43'),
+(1, NULL, 'Farzana', 'farzana', '01873244236', 'farz@gmail.com', 1, 'Dhaka', NULL, 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-03-05 14:12:34', NULL, '2026-02-22 06:47:08', '2026-03-05 08:12:34'),
 (2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-02-23 11:39:50', NULL, '2026-02-22 06:47:08', '2026-02-23 05:39:50'),
-(3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 1, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-02-23 13:55:43', 4, '2026-02-23 03:24:25', '2026-02-23 07:55:43'),
-(4, NULL, 'Mr. Joshim', 'Mr. Joshim', '01762013007', 'hr@gmail.com', 2, 'Dhaka', '1289234', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, 'aiosdiau', '', '2026-02-23 13:40:13', 1, '2026-02-23 05:44:19', '2026-02-23 07:40:13'),
-(5, NULL, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 2, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, 'https://business.facebook.com/', '', '2026-02-23 12:11:06', 4, '2026-02-23 06:11:06', '2026-02-23 06:11:06');
+(3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 1, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-02-24 11:09:41', 4, '2026-02-23 03:24:25', '2026-02-24 05:09:41'),
+(4, 1, 'Mr. Joshim', 'Mr. Joshim', '01762013007', 'hr@gmail.com', 2, 'Dhaka', '1289234', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, '', '', '2026-02-24 11:31:24', 4, '2026-02-23 05:44:19', '2026-02-24 05:31:24'),
+(5, 0, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 3, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, '', '', '2026-02-23 12:11:06', 4, '2026-02-23 06:11:06', '2026-02-23 09:11:44'),
+(6, NULL, 'Cleint Overview', 'CED', '01298347434', 'ced@gmail.com', 4, 'Dhaka', '', 7, '$2y$10$HS7cpDVkohrFN39yxfWwCeVM5TQ9qjbEEYP3k8lwZjQkphNKF65me', NULL, '', '', '2026-02-24 10:16:39', 1, '2026-02-24 03:47:00', '2026-02-24 04:16:39'),
+(7, NULL, 'Rimi', 'Rimi', '01723745324', 'rimi@gmail.com', 1, 'dhaka', '23143245', 11, '$2y$10$0Q8rZkzw0IwFdGW24zUGX.M350th/ZpEYRPSr9xhA5PRz.D4tPg2a', NULL, '', '', '2026-03-05 14:36:27', 1, '2026-03-05 08:11:47', '2026-03-05 08:36:27');
 
 --
 -- Indexes for dumped tables
@@ -1986,7 +1990,7 @@ ALTER TABLE `property_reviews`
 -- AUTO_INCREMENT for table `roles`
 --
 ALTER TABLE `roles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `role_permissions`
@@ -2028,7 +2032,7 @@ ALTER TABLE `tasks`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- Constraints for dumped tables
