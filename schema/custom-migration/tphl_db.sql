@@ -1129,6 +1129,7 @@ CREATE TABLE `roles` (
 --
 -- Dumping data for table `roles`
 --
+
 INSERT INTO `roles` (`id`, `name`, `created_by`, `created_at`, `updated_at`) VALUES
 (1, 'Admin', NULL, '2025-12-06 04:14:57', '2025-12-06 04:14:57'),
 (2, 'Employee', NULL, '2025-12-06 08:25:53', '2025-12-06 08:25:53'),
@@ -1139,8 +1140,8 @@ INSERT INTO `roles` (`id`, `name`, `created_by`, `created_at`, `updated_at`) VAL
 (7, 'Clients Experiment', NULL, '2026-01-04 04:34:42', '2026-01-04 04:34:42'),
 (8, 'Sales Executive', NULL, '2026-01-30 04:37:41', '2026-01-30 04:37:41'),
 (9, 'Sales Team Head', NULL, '2026-02-01 12:06:29', '2026-02-01 12:06:29'),
-(10, 'Accounts Head', NULL, '2026-02-24 05:19:26', '2026-02-24 05:19:26'),
-(11, 'Marketing Lead', NULL, '2026-03-05 08:10:08', '2026-03-05 08:10:08');
+(10, 'Accounts Head', NULL, '2026-02-01 12:06:29', '2026-02-01 12:06:29'),
+(11, 'Marketing Lead', NULL, '2026-02-01 12:06:29', '2026-02-01 12:06:29'),
 
 -- --------------------------------------------------------
 
@@ -2032,7 +2033,7 @@ ALTER TABLE `tasks`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- Constraints for dumped tables
