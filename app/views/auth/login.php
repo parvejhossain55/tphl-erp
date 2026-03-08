@@ -98,22 +98,13 @@
                             <button class="btn btn-primary w-100" type="submit">Sign in</button>
                         </div>
                     </form>
-                    <p class="text-center">
+                    <p class="text-center my-3">
 
-                        <span>New on our platform?</span>
-                        <a href="?page=admin-registration">
-                            <span>Create an account</span>
-                        </a>
+                        <span>      Please sign-in to your account and start the adventure</span>
+                    
                     </p>
-                    <div class="divider mb-10 text-center">
-                        <div class="divider-text">or</div>
-                    </div>
-                    <div class="common-social">
-                        <a href="javascript:;"><i class="fa-brands fa-facebook-f"></i></a>
-                        <a href="javascript:;"><i class="fa-brands fa-x-twitter"></i></a>
-                        <a href="javascript:;"><i class="fa-brands fa-linkedin-in"></i></a>
-                        <a href="javascript:;"><i class="fa-brands fa-youtube"></i></a>
-                    </div>
+                    
+                 
                 </div>
             </div>
         </div>
