@@ -28,10 +28,9 @@ Campaign er main concept: tumi kake message pathabe, kobe pathabe, r ki message 
 Campaign Table Example:
 CREATE TABLE whatsapp_campaigns (
     id INT AUTO_INCREMENT PRIMARY KEY,
-
     name VARCHAR(255) NOT NULL, ---Marina Heights Launch
-    target_project_id int NULL,        
-    message_type ENUM('text','image','pdf','button') DEFAULT 'text',
+    target_project_id INT NULL,        
+    message_type ENUM('text','image','pdf','button','brocure') DEFAULT 'text',
     message_content TEXT NOT NULL,
     schedule_time DATETIME NOT NULL,
     device VARCHAR(50) DEFAULT 'Auto Select',
@@ -39,6 +38,132 @@ CREATE TABLE whatsapp_campaigns (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+===========//========
+CREATE TABLE whatsapp_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    campaign_id INT NOT NULL,         -- Linked campaign
+    lead_id INT NOT NULL,             -- Linked lead
+   status ENUM('pending','sent','delivered','failed') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (campaign_id) REFERENCES whatsapp_campaigns(id),
+    FOREIGN KEY (lead_id) REFERENCES leads(id)
+);
+
+
+Workflow with this table
+
+Campaign create → project_id select
+
+Cron job / API trigger selects leads by project_id
+
+Each lead → insert a row in whatsapp_messages (default sent_status = 0)
+
+Send WhatsApp API message → sent_status = 1 update
+
+WhatsApp webhook → delivered_status = 1 update
+
+Lead reply / click → success_status = 1 update
+
+Dashboard queries aggregate stats from this table → populate card
+
+💡 Summary:
+
+Without this table, tumhar dashboard always 0 / placeholders dikhabe.
+
+With this table, real-time sent / delivered / success % fetch possible.
+
+Ekta campaign = multiple leads, tai per-lead row lagbe.
+
+Jodi chao ami tomake ready MVC + MySQLi snippet diye dichi, jeita:
+
+Campaign create
+
+Leads select automatically
+
+Insert into whatsapp_messages
+
+Send via WhatsApp API
+
+Update sent/delivered/success
+
+Dashboard live card update
+
+Update sent_status
+public function markSent($campaign_id, $lead_id)
+{
+    $sql = "UPDATE whatsapp_messages 
+            SET sent_status = 1, updated_at = NOW()
+            WHERE campaign_id = ? AND lead_id = ?";
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("ii", $campaign_id, $lead_id);
+    $stmt->execute();
+    $stmt->close();
+}
+Update delivered_status (from WhatsApp webhook)
+public function markDelivered($campaign_id, $lead_id)
+{
+    $sql = "UPDATE whatsapp_messages 
+            SET delivered_status = 1, updated_at = NOW()
+            WHERE campaign_id = ? AND lead_id = ?";
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("ii", $campaign_id, $lead_id);
+    $stmt->execute();
+    $stmt->close();
+}
+Update success_status (lead replied / CTA clicked)
+public function markSuccess($campaign_id, $lead_id)
+{
+    $sql = UPDATE whatsapp_messages 
+            SET success_status = 1, updated_at = NOW()
+            WHERE campaign_id = ? AND lead_id = ?";
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("ii", $campaign_id, $lead_id);
+    $stmt->execute();
+    $stmt->close();
+}
+2️⃣ Flow Summary
+
+Campaign create → leads select → insert into whatsapp_messages (default all 0)
+
+Send message → call markSent()
+
+Webhook callback → call markDelivered()
+
+Lead action (reply/CTA) → call markSuccess()
+
+Dashboard query aggregates these columns → live stats
+Pros:
+
+Automation friendly → WhatsApp API webhook call korle direct update hobe without user intervention.
+
+Sent / Delivered / Success update automatic hobe, manual click lagbe na.
+
+Clean separation: campaign page view, stats update backend.
+
+Cons:
+
+Extra endpoint / page create korte hobe.
+
+Implementation Idea:
+
+update-message-status.php endpoint
+
+API / cron / webhook call → update whatsapp_messages table
+
+Campaign page dashboard auto fetch latest stats
+
+POST /update-message-status
+Body:
+{
+  "campaign_id": 12,
+  "lead_id": 55,
+  "status_type": "sent" | "delivered" | "success"
+}
+============//=============
+
+
+
 
 Each campaign linked to contacts:
 name → Campaign name (e.g., "March Promotion")

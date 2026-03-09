@@ -352,8 +352,11 @@ $routes = [
     // =========== Whatsapp marketing ============
     "whatsapp-dashboard" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "dashboard"],
     "contacts-whatsapp" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "contactLeads"],
-    "campaign-contacts" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "campaigns"],
     "report-campaign" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "reports"],
+
+    //==== Whatsapp campaign route==========
+    "campaign-contacts" => ["controller" => "WhatsappMarketing\\WhatsappCampaignController", "method" => "index"],
+    "store-campaign" => ["controller" => "WhatsappMarketing\\WhatsappCampaignController", "method" => "store"],
     //Rafi Start  Accounts
     // ==================== ACCOUNTS====================
     'dashboard' => ["controller" => "DashboardController", "method" => "index"],

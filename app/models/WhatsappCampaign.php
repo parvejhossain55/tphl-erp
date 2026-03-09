@@ -1,155 +1,195 @@
-
 <?php
-class WhatsappCampaign {
+class WhatsappCampaign
+{
     protected $db;
 
-    public function __construct($db) {
+    public function __construct($db)
+    {
         $this->db = $db;
     }
 
-    // Create new campaign
-    public function createCampaign($data) {
+    // Get all campaigns with stats
+public function getAllWithStats()
+{
+    $sql = "SELECT wc.*, p.name AS project_name,
+
+        COUNT(wm.id) AS total_messages,
+
+        SUM(CASE WHEN wm.status='sent' THEN 1 ELSE 0 END) AS sent_count,
+
+        SUM(CASE WHEN wm.status='delivered' THEN 1 ELSE 0 END) AS delivered_count,
+
+        IFNULL(
+            ROUND(
+                SUM(CASE WHEN wm.status='delivered' THEN 1 ELSE 0 END) 
+                / NULLIF(COUNT(wm.id),0) * 100
+            ,2)
+        ,0) AS success_percent
+
+    FROM whatsapp_campaigns wc
+
+    LEFT JOIN projects p 
+        ON wc.target_project_id = p.id
+
+    LEFT JOIN whatsapp_messages wm 
+        ON wm.campaign_id = wc.id
+
+    WHERE p.deleted_at IS NULL
+
+    GROUP BY wc.id
+
+    ORDER BY wc.id DESC";
+
+    $res = $this->db->query($sql);
+    return $res->fetch_all(MYSQLI_ASSOC);
+}
+
+    // Create campaign
+    public function create($data)
+    {
         $sql = "INSERT INTO whatsapp_campaigns 
-                (name, target_group, project_id, message_type, message_content, schedule_time, device, status, created_at) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', NOW())";
+                (name,target_project_id,message_type,message_content,schedule_time,device,status,created_at) 
+                VALUES (?,?,?,?,?,?,'scheduled',NOW())";
 
         $stmt = $this->db->prepare($sql);
+
         $stmt->bind_param(
-            "ssissss",
+            "sissss",
             $data['name'],
-            $data['target_group'],
-            $data['project_id'],
+            $data['target_project_id'],
             $data['message_type'],
             $data['message_content'],
             $data['schedule_time'],
             $data['device']
         );
-        $stmt->execute();
 
+        $stmt->execute();
         return $this->db->insert_id;
     }
 
-    // Map leads to campaign based on project
-    public function mapLeadsToCampaign($campaign_id, $project_id, $target_group) {
-        // Insert matching leads into campaign contacts
-        $sql = "INSERT INTO whatsapp_campaign_contacts (campaign_id, lead_id, delivery_status, created_at)
-                SELECT ?, id, 'pending', NOW() FROM leads
-                WHERE project_id = ? AND lead_type = ?";
+    // Cron: get scheduled campaigns
+    public function getScheduledCampaigns()
+    {
+        $sql = "SELECT * FROM whatsapp_campaigns 
+                WHERE schedule_time <= NOW() 
+                AND status IN ('scheduled','active')";
+
+        $res = $this->db->query($sql);
+        return $res->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // Create message queue
+    public function createQueue($campaign)
+    {
+        $sql = "SELECT id FROM leads WHERE project_id=?";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iis", $campaign_id, $project_id, $target_group);
+        $stmt->bind_param("i", $campaign['target_project_id']);
         $stmt->execute();
 
-        // Optional: update leads.target_project
-        $sql2 = "UPDATE leads SET target_project = ? WHERE project_id = ?";
-        $stmt2 = $this->db->prepare($sql2);
-        $stmt2->bind_param("ii", $project_id, $project_id);
-        $stmt2->execute();
+        $result = $stmt->get_result();
+
+        while ($lead = $result->fetch_assoc()) {
+
+            // duplicate check
+            $check = $this->db->prepare("
+                SELECT id FROM whatsapp_messages 
+                WHERE campaign_id=? AND lead_id=?
+            ");
+
+            $check->bind_param("ii", $campaign['id'], $lead['id']);
+            $check->execute();
+
+            if ($check->get_result()->num_rows == 0) {
+
+                $insert = $this->db->prepare("
+                    INSERT INTO whatsapp_messages 
+                    (campaign_id,lead_id,status,created_at) 
+                    VALUES (?,?, 'pending',NOW())
+                ");
+
+                $insert->bind_param("ii", $campaign['id'], $lead['id']);
+                $insert->execute();
+            }
+        }
     }
 
-    // Get all campaigns
-    public function getAllCampaigns() {
-        $sql = "SELECT c.*, p.name AS project_name,
-                       (SELECT COUNT(*) FROM whatsapp_campaign_contacts cc WHERE cc.campaign_id = c.id) AS total_leads,
-                       (SELECT COUNT(*) FROM whatsapp_campaign_contacts cc WHERE cc.campaign_id = c.id AND delivery_status='delivered') AS delivered_count
-                FROM whatsapp_campaigns c
-                LEFT JOIN projects p ON p.id = c.project_id
-                ORDER BY c.created_at DESC";
+    // Get pending messages
+    public function getPendingMessages($campaign_id)
+    {
+        $sql = "SELECT * FROM whatsapp_messages 
+                WHERE campaign_id=? AND status='pending'
+                LIMIT 50";
 
-        $result = $this->db->query($sql);
-        return $result->fetch_all(MYSQLI_ASSOC);
-    }
-
-    // Get campaign stats (sent, delivered, success %)
-    public function getCampaignStats($campaign_id) {
-        $sql = "SELECT 
-                    COUNT(*) AS total,
-                    SUM(CASE WHEN delivery_status='sent' THEN 1 ELSE 0 END) AS sent,
-                    SUM(CASE WHEN delivery_status='delivered' THEN 1 ELSE 0 END) AS delivered,
-                    ROUND(SUM(CASE WHEN delivery_status='delivered' THEN 1 ELSE 0 END)/COUNT(*)*100,2) AS success_rate
-                FROM whatsapp_campaign_contacts
-                WHERE campaign_id=?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("i", $campaign_id);
         $stmt->execute();
-        $result = $stmt->get_result();
-        return $result->fetch_assoc();
-    }
 
-    // Get dead leads (no reply after X days)
-    public function getDeadLeads($campaign_id, $days=30) {
-        $sql = "SELECT l.id, l.full_name, l.phone_number
-                FROM whatsapp_campaign_contacts cc
-                JOIN leads l ON l.id = cc.lead_id
-                WHERE cc.campaign_id=? 
-                  AND cc.response IS NULL
-                  AND cc.created_at <= DATE_SUB(NOW(), INTERVAL ? DAY)";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("ii", $campaign_id, $days);
-        $stmt->execute();
         $result = $stmt->get_result();
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    // Update delivery status
-    public function updateDeliveryStatus($contact_id, $status) {
-        $sql = "UPDATE whatsapp_campaign_contacts SET delivery_status=? WHERE id=?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("si", $status, $contact_id);
-        $stmt->execute();
-    }
+    // Mark message sent
+public function markSent($campaign_id, $lead_id)
+{
+    // 1️⃣ Update the individual message
+    $stmt = $this->db->prepare("
+        UPDATE whatsapp_messages 
+        SET status='sent', updated_at=NOW()
+        WHERE campaign_id=? AND lead_id=?
+    ");
+    $stmt->bind_param("ii", $campaign_id, $lead_id);
+    $stmt->execute();
+    $stmt->close();
 
-    // Update lead response from API webhook
-    public function updateLeadResponse($contact_id, $response) {
-        $sql = "UPDATE whatsapp_campaign_contacts SET response=? WHERE id=?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("si", $response, $contact_id);
-        $stmt->execute();
+    // 2 Check if any pending messages remain for this campaign
+    $pendingMessages = $this->getPendingMessages($campaign_id);
+
+    // 3 If none remain, update campaign status to Active
+    if (count($pendingMessages) === 0) {
+        $stmt2 = $this->db->prepare("
+            UPDATE whatsapp_campaigns 
+            SET status='Active', updated_at=NOW()
+            WHERE id=?
+        ");
+        $stmt2->bind_param("i", $campaign_id);
+        $stmt2->execute();
+        $stmt2->close();
     }
-     public function getAllWithStats()
+}
+    // Mark delivered (webhook)
+public function markDelivered($campaign_id, $lead_id)
+{
+    $stmt = $this->db->prepare("
+        UPDATE whatsapp_messages 
+        SET delivered_status = 1, updated_at = NOW()
+        WHERE campaign_id = ? AND lead_id = ?
+    ");
+    $stmt->bind_param("ii", $campaign_id, $lead_id);
+    $stmt->execute();
+    $stmt->close();
+}
+
+public function markSuccess($campaign_id, $lead_id)
+{
+    $stmt = $this->db->prepare("
+        UPDATE whatsapp_messages 
+        SET success_status = 1, updated_at = NOW()
+        WHERE campaign_id = ? AND lead_id = ?
+    ");
+    $stmt->bind_param("ii", $campaign_id, $lead_id);
+    $stmt->execute();
+    $stmt->close();
+}
+    // Mark failed
+    public function markFailed($campaign_id,$lead_id)
     {
         $stmt = $this->db->prepare("
-            SELECT 
-                c.id,
-                c.name,
-                c.target_group,
-                c.status,
-                c.schedule_time,
-                c.device,
-                COUNT(cc.lead_id) AS total_sent,
-                SUM(cc.delivery_status='delivered') AS delivered_count,
-                ROUND((SUM(cc.delivery_status='delivered')/COUNT(cc.lead_id))*100, 2) AS success_rate
-            FROM whatsapp_campaigns c
-            LEFT JOIN whatsapp_campaign_contacts cc ON cc.campaign_id = c.id
-            GROUP BY c.id
-            ORDER BY c.schedule_time DESC
+            UPDATE whatsapp_messages 
+            SET status='failed',updated_at=NOW()
+            WHERE campaign_id=? AND lead_id=?
         ");
+
+        $stmt->bind_param("ii",$campaign_id,$lead_id);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $data = $result->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $data;
-    }
-
-    // Optional: count totals for analytics cards
-    public function getAnalyticsSummary()
-    {
-        $summary = [];
-
-        $summary['total'] = $this->db->query("SELECT COUNT(*) FROM whatsapp_campaigns")->fetch_row()[0];
-        $summary['active'] = $this->db->query("SELECT COUNT(*) FROM whatsapp_campaigns WHERE status='Active'")->fetch_row()[0];
-        $summary['scheduled'] = $this->db->query("SELECT COUNT(*) FROM whatsapp_campaigns WHERE status='Scheduled'")->fetch_row()[0];
-        $summary['avg_success_rate'] = $this->db->query("
-            SELECT ROUND(AVG(delivered_count/total_sent)*100,2) 
-            FROM (
-                SELECT COUNT(cc.lead_id) AS total_sent,
-                       SUM(cc.delivery_status='delivered') AS delivered_count
-                FROM whatsapp_campaigns c
-                LEFT JOIN whatsapp_campaign_contacts cc ON cc.campaign_id = c.id
-                GROUP BY c.id
-            ) t
-        ")->fetch_row()[0];
-
-        return $summary;
     }
 }
