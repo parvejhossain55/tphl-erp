@@ -365,12 +365,59 @@ CREATE TABLE whatsapp_messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     campaign_id INT NOT NULL,       -- Linked campaign
     lead_id INT UNSIGNED NULL,          -- Linked lead
-    sent_status TINYINT(1) DEFAULT 0,       -- 1 = sent
-    delivered_status TINYINT(1) DEFAULT 0,  -- 1 = delivered
-    success_status TINYINT(1) DEFAULT 0,    -- 1 = lead replied / CTA clicked
+    status ENUM('send','pending','deliverd','failed') DEFAULT 'pending',
+   
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (campaign_id) REFERENCES whatsapp_campaigns(id),
     FOREIGN KEY (lead_id) REFERENCES leads(id)
 );
 =========================
+
+
+Sending Messages (Cron Job / Worker)
+
+Cron job or worker regularly getScheduledCampaigns() call kore.
+
+Pending messages (getPendingMessages()) fetch hoy (limit 50 at a time for batching).
+
+Prottek message send korar por markSent() call hoy.
+
+Ekhane message status sent hoy.
+
+Jei campaign er sob pending message send hoye gese, campaign status Active hoy.
+
+Flow:
+
+pending → sent
+4️⃣ Delivery Tracking (Webhook)
+
+WhatsApp API webhook call kore jokhon message receiver e pounche.
+
+markDelivered() call hoy, jehetu delivered_status = 1 set hoy.
+
+Eta database e recorded hoy, success calculation er jonno use kora hoy.
+
+Flow:
+
+sent → delivered
+5️⃣ Success / Read Tracking
+
+markSuccess() call hoy jokhon message successfully received & read / confirmed.
+
+Ei info dashboard e show kore “Success Rate” and delivery stats.
+
+Flow:
+
+delivered → success
+
+
+Suggestion for your real estate WhatsApp campaign:
+
+markSent() → message sent to WhatsApp server
+
+markDelivered() → webhook confirm message reached receiver → status = delivered
+
+markFailed() → webhook or cron detect failed → status = failed
+
+markSuccess() → optionally, read confirmation or business logic → set success_status = 1

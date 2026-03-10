@@ -58,7 +58,7 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
-                   <!-- Search & Reset Buttons Next to Select -->
+                    <!-- Search & Reset Buttons Next to Select -->
                     <div class="col-auto d-flex align-items-center gap-2 flex-wrap">
                         <button type="submit" class="btn btn-outline-secondary btn-sm py-1">
                             Search
@@ -83,8 +83,8 @@
                                 <th>Lead Name</th>
                                 <th>Phone</th>
                                 <th>Project Campaign</th>
-                                
-                                <th>Last Follow Up Status</th>
+
+                                <th>Last Follow Up Project</th>
                                 <th>Change Client Action</th>
                                 <th>Next Follow-Up</th>
                                 <th>Action</th>
@@ -130,10 +130,17 @@
                                     </td>
                                     <td>
 
-                                        <span class="bd-badge bg-primary fw-semibold ">
-                                            <?= ucfirst($lead['follow_up_type'] ?? '') ?: 'Not Follow' ?>
-                                            <!-- cfirst($lead['follow_up_type'] ?? '') ?: 'Not Follow' -->
-                                        </span>
+                                        <?php if (!empty($lead['project_name'])): ?>
+                                            <span class="bd-badge bg-primary fw-semibold">
+                                                <?= htmlspecialchars($lead['project_name']) ?>,
+                                                <strong class="ms-2">Flat:</strong>
+                                                <span><?= !empty($lead['flat_name']) ? htmlspecialchars($lead['flat_name']) : 'N/A' ?></span>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="bd-badge bg-secondary fw-semibold">
+                                                No Follow Data
+                                            </span>
+                                        <?php endif; ?>
                                     </td>
                                     <!-- New Last Action Update Button -->
                                     <td>
@@ -355,7 +362,7 @@
                 <!-- Project Info -->
 
                 <div class="project-detail">
-                    <div class="info-label flex-shrink-0">Project</div>
+                    <div class="info-label flex-shrink-0">Project/Follow Up Project</div>
 
                     <div class="d-flex align-items-center gap-2 mt-2" style="min-width: 0;">
 
@@ -375,6 +382,18 @@
                                     title="View Project">View
                                 </button>
                             <?php endif; ?>
+
+                            <?php if (!empty($lead['project_name'])): ?>
+                                <span class="ms-3 fw-semibold">
+                                    <?= htmlspecialchars($lead['project_name']) ?>, 
+                                    <strong class="ms-2">Flat:</strong>
+                                    <span><?= !empty($lead['flat_name']) ? htmlspecialchars($lead['flat_name']) : 'N/A' ?></span>
+                                </span>
+                            <?php else: ?>
+                                <span class="fw-semibold ms-3">
+                                    No Follow Data
+                                </span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -386,7 +405,7 @@
                         <?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?>
                     </span>
                 </div>
-              
+
             </div>
         <?php endforeach; ?>
 

@@ -52,44 +52,53 @@ $show_breadcrumb = true;
     <div class="desktop-only">
         <!-- Filters -->
         <div class="filters">
-            <form action="" method="get">
-                <div class="row g-2 align-items-center flex-wrap">
+            <div class="row g-2 align-items-center">
 
-                    <!-- Search Contact -->
-                    <div class="col-sm-8 col-md-6 col-lg-4">
-                        <input
-                            class="custom-search-input"
-                            type="search"
-                            placeholder="Search Contact...">
+                <form action="" method="get" class="col d-flex align-items-center gap-2 flex-wrap">
+
+                    <!-- Project Select -->
+                    <div style="min-width:220px;">
+                        <select class="form-control" name="project_id">
+                            <option value="">Select Project</option>
+                            <?php foreach ($projects as $project): ?>
+                                <option value="<?= $project['id'] ?>"
+                                    <?= $selectedProject == $project['id'] ? 'selected' : '' ?>>
+                                    <?= $project['name'] ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
                     </div>
 
-                    <!-- Search Button -->
-                    <div class="col-sm-2 col-md-3 col-lg-2">
+                    <!-- Search -->
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-light fa-search me-1"></i> Search
+                    </button>
 
-                        <button type="submit" class="btn btn-primary py-2">
-                            <i class="fa-light fa-search me-2"></i> Search
-                        </button>
-                    </div>
+                    <!-- Reset -->
+                    <a href="<?= $GLOBALS['base_url'] ?>/contacts-whatsapp" class="btn btn-success">
+                        Reset
+                    </a>
 
-                    <!-- Action Buttons -->
-                    <div class="col-auto ms-auto d-flex gap-2 flex-wrap">
+                </form>
 
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
-                            Export
-                        </button>
+                <!-- Right Side Buttons -->
+                <div class="col-auto ms-auto d-flex gap-2 flex-wrap">
 
-                        <!-- Import CSV button outside form submit -->
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
-                            Import CSV
-                        </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#importCsvModal">
+                        Export
+                    </button>
 
-                        <a href="/create-lead" class="btn btn-primary btn-sm">
-                            <i class="bi bi-plus-lg"></i> Add Lead
-                        </a>
-                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#importCsvModal">
+                        Import CSV
+                    </button>
+
+                    <a href="<?= $GLOBALS['base_url'] ?>/create-lead" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-lg"></i> Add Lead
+                    </a>
 
                 </div>
-            </form>
+
+            </div>
         </div>
         <!-- Table -->
         <div class="col-xxl-12">
@@ -98,109 +107,140 @@ $show_breadcrumb = true;
                     <table class="table no-border-table mb-20 multiple_tables">
                         <thead>
                             <tr class="table__title table__sort">
-                          
-                                <th> Name</th>
+                                <th>Name</th>
                                 <th>Phone</th>
-                                <th>Email</th>
                                 <th>Location</th>
                                 <th>Source</th>
-                                <th>Tags</th>
+                                <th>Current Status</th>
+                                <th>Message Campaign Update</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
+
                         <tbody>
-                            <tr data-id="8" class="odd">
-                                
-                                <td><strong>Shariful Islam Sharif</strong></td>
-                                <td>
+                            <?php foreach ($contactLeads as $lead): ?>
+                                <tr data-id="<?= $lead['id'] ?>">
 
-                                    <a href="https://wa.me/8801781860471" target="_blank">
-                                        8801781860471 </a>
-                                </td>
+                                    <!-- Name -->
+                                    <td>
+                                        <strong><?= htmlspecialchars($lead['full_name'] ?? '') ?></strong>
+                                    </td>
 
+                                    <!-- Phone -->
+                                    <td>
+                                        <?php if (!empty($lead['phone_number'])): ?>
+                                            <a href="https://wa.me/<?= $lead['phone_number'] ?>" target="_blank">
+                                                <?= $lead['phone_number'] ?>
+                                            </a>
+                                        <?php endif; ?>
+                                    </td>
 
-                                <td> sharif@gmail.com </td>
-                                <td> Dhaka </td>
+                                    <!-- Location -->
+                                    <td><?= htmlspecialchars($lead['location_name'] ?? 'No Loaction Add') ?></td>
 
-                                <!-- last_action_form  -->
-                                <!-- New Last Action Update Button -->
-
-                                <!-- last_action_form  -->
-                                <td>
-                                    <div>
-                                       Website </div>
-                                </td>
-                                <td>
-
-                                    <form method="POST" action="/TPHL-ERP/update-last_leadAction/8" class="m-0 p-0">
-
-                                        <select name="last_lead_action" class="form-select form-select-sm last-action-select action-follow up" onchange="this.form.submit()">
-
-                                            <option value=""> Update action </option>
-                                            <!-- Buyer
-                                                Premium,
-                                                Investor,leads,client -->
-                                            <option value="new">
-                                                New
-                                            </option>
-
-                                            <option value="booked">
-                                                Booked
-                                            </option>
-
-                                            <option value="follow up" selected="" class="action-follow_up">
-                                                Follow Up
-                                            </option>
+                                    <!-- Source -->
+                                    <td><?= htmlspecialchars($lead['source'] ?? 'No Source') ?></td>
 
 
-                                            <option value="visited">
-                                                Visited
-                                            </option>
-                                            <option value="cancel">
-                                                Cancel
-                                            </option>
+                                    <!-- Lead Status -->
+                                    <td>
+                                        <form method="POST"
+                                            action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>"
+                                            class="m-0 p-0">
 
-                                        </select>
+                                            <select name="last_lead_action"
+                                                class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
+                                                onchange="this.form.submit()">
 
-                                    </form>
-                                </td>
+                                                <option value="">Update action</option>
 
-                                <td>
-                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                <option value="new" <?= ($lead['last_lead_action'] ?? '') == 'new' ? 'selected' : '' ?>>New</option>
+
+                                                <option value="booked" <?= ($lead['last_lead_action'] ?? '') == 'booked' ? 'selected' : '' ?>>Booked</option>
+
+                                                <option value="follow_up" <?= ($lead['last_lead_action'] ?? '') == 'follow_up' ? 'selected' : '' ?>>Follow Up</option>
+
+                                                <option value="visited" <?= ($lead['last_lead_action'] ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
+
+                                                <option value="cancel" <?= ($lead['last_lead_action'] ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+
+                                            </select>
+
+                                        </form>
+                                    </td>
 
 
-                                        <!-- 3 Dot Dropdown -->
-                                        <div class="dropdown">
-                                            <button class="action-dot-btn" type="button" data-bs-toggle="dropdown">
-                                                <i class="bi bi-three-dots-vertical"></i>
-                                            </button>
+                                    <!-- Campaign Status -->
+                                    <td>
+                                        <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-campaignAction/<?= $lead['id'] ?>" class="m-0 p-0">
 
-                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
-                                                <li>
-                                                    <a class="dropdown__item" href="/TPHL-ERP/edit-lead/8">
-                                                        <i class="bi bi-pencil-square me-2 text-primary"></i> Edit
-                                                    </a>
-                                                </li>
+                                            <input type="hidden" name="lead_id" value="<?= $lead['id'] ?>">
 
-                                                <li>
-                                                    <a class="dropdown__item" href="/TPHL-ERP/view-lead/8">
-                                                        <i class="bi bi-eye me-2 text-success"></i> View
-                                                    </a>
-                                                </li>
+                                            <select name="campaign_status"
+                                                class="form-select form-select-sm"
+                                                onchange="this.form.submit()">
 
-                                                <li>
-                                                    <buton class="dropdown__item text-danger removeBtnCust" data-name="Shariful Islam Sharif" data-action="lead-delete" data-id="8">
-                                                        <i class="bi bi-trash me-2"></i> Delete
-                                                    </buton>
-                                                </li>
-                                            </ul>
+                                                <option value="1" <?= ($lead['campaign_status'] ?? 0) == 1 ? 'selected' : '' ?>>
+                                                    Message Campaign
+                                                </option>
+
+                                                <option value="0" <?= ($lead['campaign_status'] ?? 0) == 0 ? 'selected' : '' ?>>
+                                                    No Campaign
+                                                </option>
+
+                                            </select>
+
+                                        </form>
+                                    </td>
+
+
+                                    <!-- Action -->
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+
+                                            <div class="dropdown">
+
+                                                <button class="action-dot-btn" type="button" data-bs-toggle="dropdown">
+                                                    <i class="bi bi-three-dots-vertical"></i>
+                                                </button>
+
+                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+
+                                                    <li>
+                                                        <a class="dropdown__item"
+                                                            href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>">
+                                                            <i class="bi bi-pencil-square me-2 text-primary"></i>
+                                                            Edit
+                                                        </a>
+                                                    </li>
+
+                                                    <li>
+                                                        <a class="dropdown__item"
+                                                            href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>">
+                                                            <i class="bi bi-eye me-2 text-success"></i>
+                                                            View
+                                                        </a>
+                                                    </li>
+
+                                                    <li>
+                                                        <button class="dropdown__item text-danger removeBtnCust"
+                                                            data-name="<?= htmlspecialchars($lead['full_name']) ?>"
+                                                            data-action="lead-delete"
+                                                            data-id="<?= $lead['id'] ?>">
+                                                            <i class="bi bi-trash me-2"></i>
+                                                            Delete
+                                                        </button>
+                                                    </li>
+
+                                                </ul>
+
+                                            </div>
+
                                         </div>
+                                    </td>
 
-                                    </div>
-                                </td>
-
-
-                            </tr>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
@@ -327,12 +367,16 @@ $show_breadcrumb = true;
             <!-- Status -->
             <div class="info-label mt-2">Tag</div>
             <div class="lead-info-row">
-                <form method="POST" action="/update-last_leadAction/" class="m-0 p-0">
+                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>" class="m-0 p-0">
                     <select name="last_lead_action"
-                        class="form-select form-select-sm last-action-select "
+                        class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
                         onchange="this.form.submit()">
                         <option value="">Update action</option>
-                        <option value="">New</option>
+                        <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>New</option>
+                        <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>Booked</option>
+                        <option value="follow up" <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
+                        <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>Visited</option>
+                        <option value="cancel" <?= $lead['last_lead_action'] == 'cancel' ? 'selected' : '' ?>>Cancel</option>
                     </select>
                 </form>
 

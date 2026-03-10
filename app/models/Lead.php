@@ -173,6 +173,52 @@ LEFT JOIN projects AS p ON lb.project_id = p.id
     }
 
 
+
+    public function getAllLeadsWithProjectContact($project_id = null, $search = null)
+    {
+        $sql = "SELECT 
+                l.*,
+                p.name AS project_name,
+                loc.name As location_name,
+                ls.name AS source
+            FROM leads AS l
+            LEFT JOIN projects AS p 
+                ON l.project_id = p.id
+            LEFT JOIN locations AS loc
+                ON l.pref_location_id = loc.id
+            LEFT JOIN lead_sources AS ls
+                ON l.source_type_id = ls.id
+            WHERE l.deleted_at IS NULL";
+
+        $params = [];
+        $types  = "";
+
+        // filter by project_id
+        if ($project_id) {
+            $sql .= " AND l.project_id = ?";
+            $params[] = $project_id;
+            $types .= "i";
+        }
+
+        // search by project name
+        if ($search) {
+            $sql .= " AND p.name LIKE ?";
+            $params[] = "%" . $search . "%";
+            $types .= "s";
+        }
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
     public function getTotalHotLeads()
     {
         $sql = $this->db->prepare("SELECT COUNT(*) AS total_hot FROM leads where lead_type = 'Hot' And deleted_at IS NULL AND status = 'active' AND last_lead_action != 'cancel'");
@@ -216,32 +262,6 @@ LEFT JOIN projects AS p ON lb.project_id = p.id
     }
 
 
-    // public function getTodayLeadsByUser(int $userId)
-    // {
-    //     $userId = (int) $userId;
-
-    //     $sql = "
-    //         SELECT *
-    //         FROM leads
-    //         WHERE assigned_id = {$userId}
-    //           AND deleted_at IS NULL
-    //           AND (
-    //                 (
-    //                     created_at >= CURDATE()
-    //                     AND created_at < CURDATE() + INTERVAL 1 DAY
-    //                 )
-    //                 OR
-    //                 (
-    //                     assigned_at >= CURDATE()
-    //                     AND assigned_at < CURDATE() + INTERVAL 1 DAY
-    //                 )
-    //               )
-    //         ORDER BY id DESC
-    //     ";
-
-    //     return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
-    // }
-
     public function getTodayLeadsByUser(int $userId)
     {
         $userId = (int) $userId;
@@ -283,23 +303,25 @@ LEFT JOIN projects AS p ON lb.project_id = p.id
     public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null)
     {
         $sql = "SELECT leads.*, 
-                   lf.next_action,
-                   lf.follow_up_type,
-                   lf.next_follow_up_date,
-                   p.name AS project_name
-            FROM leads
-            LEFT JOIN (
-                SELECT t1.*
-                FROM lead_follow_ups t1
-                INNER JOIN (
-                    SELECT lead_id, MAX(id) AS max_id
-                    FROM lead_follow_ups
-                    GROUP BY lead_id
-                ) t2 
-                ON t1.id = t2.max_id
-            ) lf ON lf.lead_id = leads.id
-            LEFT JOIN projects AS p ON leads.project_id = p.id
-            WHERE leads.assigned_id = ?";
+        lf.next_action,
+        lf.follow_up_type,
+        p.name AS project_name,
+        f.flat_name,
+        lf.next_follow_up_date
+    FROM leads
+    LEFT JOIN (
+        SELECT t1.*
+        FROM lead_follow_ups t1
+        INNER JOIN (
+            SELECT lead_id, MAX(id) AS max_id
+            FROM lead_follow_ups
+            GROUP BY lead_id
+        ) t2 
+        ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
+    ) lf ON lf.lead_id = leads.id
+    LEFT JOIN projects AS p ON lf.project_id = p.id
+    LEFT JOIN flats AS f ON lf.flat_id = f.id
+    WHERE leads.assigned_id = ?";
 
         $params = [$userId];
         $types  = "i";

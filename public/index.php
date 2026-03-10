@@ -176,6 +176,7 @@ $routes = [
     "onboarding-clients" => ["controller" => "LeadController", "method" => "showOnboardClient"],
     "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
     "update-last_leadAction/(\d+)" => ["controller" => "LeadController", "method" => "updateLastleadAction"],
+
     "lead-delete" => ["controller" => "LeadController", "method" => "delete"],
     "assign-multiple-leads" => ["controller" => "LeadController", "method" => "assignMultipleLeads"],
 
@@ -351,6 +352,7 @@ $routes = [
     "ai-chatbox" => ["controller" => "Ai\\ChatController", "method" => "handleMessage"],
     // =========== Whatsapp marketing ============
     "whatsapp-dashboard" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "dashboard"],
+    "update-campaignAction/(\d+)" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "updateCampaignAction"],
     "contacts-whatsapp" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "contactLeads"],
     "report-campaign" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "reports"],
 

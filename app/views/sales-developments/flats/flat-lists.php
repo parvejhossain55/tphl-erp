@@ -28,7 +28,7 @@ $show_breadcrumb = false;
         <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
             <div class="card__wrapper">
                 <div class="search-box">
-                    <input type="text" class="form-control" name="q" id="employeeName"
+                    <input type="text" class="form-control" name="q" id="flatName"
                         placeholder="Flat/Unit/Sqft "
                         value="<?= htmlspecialchars($searchTerm ?? '') ?>">
                 </div>

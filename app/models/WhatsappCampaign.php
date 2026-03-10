@@ -9,9 +9,9 @@ class WhatsappCampaign
     }
 
     // Get all campaigns with stats
-public function getAllWithStats()
-{
-    $sql = "SELECT wc.*, p.name AS project_name,
+    public function getAllWithStats()
+    {
+        $sql = "SELECT wc.*, p.name AS project_name,
 
         COUNT(wm.id) AS total_messages,
 
@@ -40,9 +40,9 @@ public function getAllWithStats()
 
     ORDER BY wc.id DESC";
 
-    $res = $this->db->query($sql);
-    return $res->fetch_all(MYSQLI_ASSOC);
-}
+        $res = $this->db->query($sql);
+        return $res->fetch_all(MYSQLI_ASSOC);
+    }
 
     // Create campaign
     public function create($data)
@@ -129,39 +129,39 @@ public function getAllWithStats()
     }
 
     // Mark message sent
-public function markSent($campaign_id, $lead_id)
-{
-    // 1️⃣ Update the individual message
-    $stmt = $this->db->prepare("
+    public function markSent($campaign_id, $lead_id)
+    {
+        // 1 Update the individual message
+        $stmt = $this->db->prepare("
         UPDATE whatsapp_messages 
         SET status='sent', updated_at=NOW()
         WHERE campaign_id=? AND lead_id=?
     ");
-    $stmt->bind_param("ii", $campaign_id, $lead_id);
-    $stmt->execute();
-    $stmt->close();
+        $stmt->bind_param("ii", $campaign_id, $lead_id);
+        $stmt->execute();
+        $stmt->close();
 
-    // 2 Check if any pending messages remain for this campaign
-    $pendingMessages = $this->getPendingMessages($campaign_id);
+        // 2 Check if any pending messages remain for this campaign
+        $pendingMessages = $this->getPendingMessages($campaign_id);
 
-    // 3 If none remain, update campaign status to Active
-    if (count($pendingMessages) === 0) {
-        $stmt2 = $this->db->prepare("
+        // 3 If none remain, update campaign status to Active
+        if (count($pendingMessages) === 0) {
+            $stmt2 = $this->db->prepare("
             UPDATE whatsapp_campaigns 
             SET status='Active', updated_at=NOW()
             WHERE id=?
         ");
-        $stmt2->bind_param("i", $campaign_id);
-        $stmt2->execute();
-        $stmt2->close();
+            $stmt2->bind_param("i", $campaign_id);
+            $stmt2->execute();
+            $stmt2->close();
+        }
     }
-}
     // Mark delivered (webhook)
-public function markDelivered($campaign_id, $lead_id)
+ public function markDelivered($campaign_id, $lead_id)
 {
     $stmt = $this->db->prepare("
         UPDATE whatsapp_messages 
-        SET delivered_status = 1, updated_at = NOW()
+        SET status='delivered', updated_at=NOW()
         WHERE campaign_id = ? AND lead_id = ?
     ");
     $stmt->bind_param("ii", $campaign_id, $lead_id);
@@ -169,19 +169,19 @@ public function markDelivered($campaign_id, $lead_id)
     $stmt->close();
 }
 
-public function markSuccess($campaign_id, $lead_id)
-{
-    $stmt = $this->db->prepare("
+    public function markSuccess($campaign_id, $lead_id)
+    {
+        $stmt = $this->db->prepare("
         UPDATE whatsapp_messages 
         SET success_status = 1, updated_at = NOW()
         WHERE campaign_id = ? AND lead_id = ?
     ");
-    $stmt->bind_param("ii", $campaign_id, $lead_id);
-    $stmt->execute();
-    $stmt->close();
-}
+        $stmt->bind_param("ii", $campaign_id, $lead_id);
+        $stmt->execute();
+        $stmt->close();
+    }
     // Mark failed
-    public function markFailed($campaign_id,$lead_id)
+    public function markFailed($campaign_id, $lead_id)
     {
         $stmt = $this->db->prepare("
             UPDATE whatsapp_messages 
@@ -189,7 +189,7 @@ public function markSuccess($campaign_id, $lead_id)
             WHERE campaign_id=? AND lead_id=?
         ");
 
-        $stmt->bind_param("ii",$campaign_id,$lead_id);
+        $stmt->bind_param("ii", $campaign_id, $lead_id);
         $stmt->execute();
     }
 }

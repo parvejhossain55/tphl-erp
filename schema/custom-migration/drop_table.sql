@@ -48,4 +48,5 @@ DROP TABLE IF EXISTS site_visits;
 DROP TABLE IF EXISTS sliders;
 DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS users;
-
+DROP TABLE IF EXISTS whatsapp_campaigns;
+DROP TABLE IF EXISTS whatsapp_messages;
