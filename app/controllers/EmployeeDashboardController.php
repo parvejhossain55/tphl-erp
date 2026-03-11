@@ -24,11 +24,23 @@ class EmployeeDashboardController extends Controller
             return;
         }
 
+        // 1 Get logged-in user
         $loggedUserId = (int) $_SESSION['user']['id'];
 
-        // 1️⃣ Employee info
-        $stmt = $this->db->prepare("SELECT * FROM employees WHERE user_id = ? LIMIT 1");
+        // 2 Get user record from users table
+        $stmt = $this->db->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
         $stmt->bind_param("i", $loggedUserId);
+        $stmt->execute();
+        $user = $stmt->get_result()->fetch_assoc();
+        if (!$user) {
+            echo "User not found";
+            return;
+        }
+
+        // 3 Get employee data using employee_id from users table
+        $employeeId = (int) $user['employee_id'];
+        $stmt = $this->db->prepare("SELECT * FROM employees WHERE id = ? LIMIT 1");
+        $stmt->bind_param("i", $employeeId);
         $stmt->execute();
         $employee = $stmt->get_result()->fetch_assoc();
         if (!$employee) {
@@ -36,24 +48,22 @@ class EmployeeDashboardController extends Controller
             return;
         }
 
-        $employeeId = (int)$employee['id'];
-
-        // 2️⃣ Notifications
+        // 4 Notifications
         $notifications = $this->employeeModel->taskNotification();
 
-        // 3️⃣ Pending tasks for this employee
+        // 5 Pending tasks for this employee
         $stmt = $this->db->prepare("
-        SELECT t.*
-        FROM tasks t
-        WHERE t.user_id = ?
-          AND t.status != 'completed'   -- only incomplete tasks
-        ORDER BY t.deadline ASC
-    ");
+    SELECT t.*
+    FROM tasks t
+    WHERE t.user_id = ?
+      AND t.status != 'completed'
+    ORDER BY t.deadline ASC
+");
         $stmt->bind_param("i", $employeeId);
         $stmt->execute();
         $pendingTasks = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // 4️⃣ Pass all data to view
+        // 6 Pass data to view
         $this->view("employee-dashboard/emp-dashboard", [
             "current_route" => "employee-dashboard",
             "page_title"    => "Employee Dashboard",
@@ -85,11 +95,6 @@ class EmployeeDashboardController extends Controller
         }
     }
 
-
-
-
-
-
     public function updateTaskProgress()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -110,5 +115,21 @@ class EmployeeDashboardController extends Controller
         } else {
             echo "<h3 style='color:red'>Failed to update progress</h3>";
         }
+    }
+
+    public function myAttendance(){
+        $this->view('employee-modules/my-attendance',[
+            'current_route' => 'my-attendance'
+        ]);
+    }
+    public function myLeaves(){
+        $this->view('employee-modules/my-leaves',[
+            'current_route' => 'my-leaves'
+        ]);
+    }
+    public function myProfile(){
+        $this->view('employee-modules/my-profile',[
+            'current_route' => 'my-leaves'
+        ]);
     }
 }

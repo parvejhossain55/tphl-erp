@@ -134,6 +134,9 @@ $routes = [
 
     //employee dashboard
     "employee-dashboard" => ["controller" => "EmployeeDashboardController", "method" => "index"],
+    "my-attendance" => ["controller" => "EmployeeDashboardController", "method" => "myAttendance"],
+    "my-leaves" => ["controller" => "EmployeeDashboardController", "method" => "myLeaves"],
+    "my-profile" => ["controller" => "EmployeeDashboardController", "method" => "myProfile"],
     "update-task-status-employee" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
     "update-task-progress-employee" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 

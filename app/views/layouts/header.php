@@ -39,6 +39,7 @@
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/plugins/nano.min.css">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/main.css">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/style.css">
+    <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/employee-dashboard.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 

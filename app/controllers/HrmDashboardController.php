@@ -32,8 +32,10 @@ class HrmDashboardController extends Controller
         $totalEmployees = $this->employeeModel->getTotalCount();
         $presentCount = $todaySummary['Present'];
         $absentCount  = $todaySummary['Absent'];
+        $lateCount  = $todaySummary['Late'];
         $persentPresents = $totalEmployees ? round(($presentCount / $totalEmployees) * 100, 1) : 0;
         $persentAbsents = $totalEmployees ? round(($absentCount / $totalEmployees) * 100, 1) : 0;
+        $latePercent = $totalEmployees ? round(($lateCount / $totalEmployees) * 100,1) : 0 ;
         // $halfDayCount = $todaySummary['Half-Day'];
         // $onLeaveCount = $todaySummary['On Leave'];
         // $holidayCount = $todaySummary['Holiday'];
@@ -84,6 +86,8 @@ class HrmDashboardController extends Controller
         $sessionRole = $_SESSION['user']['role_name'] ?? 'management';
         $roles = $roleMap[strtolower($sessionRole)] ?? [strtolower($sessionRole)];
         $pendingRequests = $this->approvalModel->getPendingForRole($roles, 10);
+
+        $birthdays = $this->employeeModel->birthdayNotification();
    
         $this->view("hrm/hrm-dashboard", [
             "current_route"   => "hrm-dashboard",
@@ -107,10 +111,13 @@ class HrmDashboardController extends Controller
             'attendances' => $attendances,
             'presentCount' => $presentCount,
             'absentCount' => $absentCount,
+            'lateCount' => $lateCount,
+            'latePercent' => $latePercent,
             'persentPresents' => $persentPresents,
             'persentAbsents' => $persentAbsents,
             'totalDeparttment' => $totalDeparttment,
             'pendingRequests' => $pendingRequests,
+            'birthdays' => $birthdays,
         ]);
 
         if (session_status() === PHP_SESSION_NONE) {

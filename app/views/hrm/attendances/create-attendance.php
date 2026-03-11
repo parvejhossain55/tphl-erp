@@ -44,7 +44,7 @@ $show_breadcrumb = true;
                                                 <label for="punch">Today Employee Status <span>*</span></label>
                                             </div>
                                             <div class="form__input">
-                                                <select class="form-control" name="today_status" required>
+                                                <select class="form-control" name="today_status" required id="today_status">
                                                     <option value="">-- Select Status --</option>
                                                     <option value="Present">Present</option>
                                                     <option value="Absent">Absent</option>
@@ -77,7 +77,7 @@ $show_breadcrumb = true;
                                                 <label for="punched_at">Punched In <span>*</span></label>
                                             </div>
                                             <div class="form__input">
-                                                <input class="form-control" name="punch_in_time" id="punched_in" type="time">
+                                                <input class="form-control" name="punch_in_time" id="punched_in" type="time" id="punched_in">
                                             </div>
                                         </div>
                                     </div>
@@ -88,7 +88,7 @@ $show_breadcrumb = true;
                                                 <label for="punched_out">Punched Out <span>*</span></label>
                                             </div>
                                             <div class="form__input">
-                                                <input class="form-control" name="punch_out_time" id="punched_out" type="time">
+                                                <input class="form-control" name="punch_out_time" id="punched_out" type="time" id="punched_out">
                                             </div>
                                         </div>
                                     </div>
@@ -115,3 +115,31 @@ $show_breadcrumb = true;
     </div>
 
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const status = document.getElementById("today_status");
+    const punchIn = document.getElementById("punched_in");
+    const punchOut = document.getElementById("punched_out");
+
+    status.addEventListener("change", function () {
+
+        if (this.value === "Absent") {
+
+            punchIn.value = "";
+            punchOut.value = "";
+
+            punchIn.disabled = true;
+            punchOut.disabled = true;
+
+        } else {
+
+            punchIn.disabled = false;
+            punchOut.disabled = false;
+
+        }
+
+    });
+
+});
+</script>

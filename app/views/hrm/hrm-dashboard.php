@@ -8,6 +8,27 @@
         </div>
 
     </div>
+    <?php if (!empty($birthdays)): ?>
+        <div class="birthday-notification-wrapper">
+            <?php foreach ($birthdays as $b): ?>
+                <div class="birthday-card">
+                    <div class="cake-icon">
+                        <div class="flame"></div>
+                        
+                    </div>
+                    <div class="birthday-content">
+                        <span class="birthday-label">Birthday Today</span>
+                        <span class="birthday-name"><?= htmlspecialchars($b['full_name']) ?></span>
+                    </div>
+                    <div class="confetti-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+
+    <?php endif; ?>
     <?php
     // year & month from GET or current
     $filterYear  = $_GET['year']  ?? date('Y');
@@ -104,7 +125,7 @@
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-user-check"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10"> 
+                        <h6 class="card__sub-title mb-10">
                             Today Present</h6>
                         <h4 class="card__title text-break text-success mb-10"><?= $presentCount ?? '' ?></h4>
                         <small><?= $persentPresents ?>% attendance</small>
@@ -112,6 +133,7 @@
                 </div>
             </div>
         </div>
+
 
         <div class=" col-xxl-3 col-xl-6 col-md-6 col-sm-12">
             <div class="card__wrapper">
@@ -129,8 +151,30 @@
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-bed"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Departments</h6>
-                        <h4 class="card__title text-break text-success mb-10"><?= $totalDeparttment ?></h4>
+                        <h6 class="card__sub-title mb-10">Today Absent %</h6>
+                        <h4 class="card__title text-break text-success mb-10"><?= $persentAbsents ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class=" col-xxl-3 col-xl-6 col-md-6 col-sm-12">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon"><span><i class="fa-regular fa-clock"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Today Late</h6>
+                        <h4 class="card__title text-break text-success mb-10"><?= $lateCount ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class=" col-xxl-3 col-xl-6 col-md-6 col-sm-12">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon"><span><i class="fa-regular fa-clock"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Today Late</h6>
+                        <h4 class="card__title text-break text-success mb-10"><?= $latePercent ?></h4>
                     </div>
                 </div>
             </div>
@@ -331,7 +375,7 @@
     <!-- PENDING LEAVE REQUESTS -->
     <div class="row g-20 mb-4 ">
         <div class="col-xl-12">
-     
+
             <div class="card__body">
                 <div class="approval-scrollable" style="max-height: 500px; overflow-y:auto; padding:1rem;">
 
