@@ -10,24 +10,26 @@
     </div>
     <?php if (!empty($birthdays)): ?>
         <div class="birthday-notification-wrapper">
-            <?php foreach ($birthdays as $b): ?>
-                <div class="birthday-card">
-                    <div class="cake-icon">
-                        <div class="flame"></div>
-                        
-                    </div>
-                    <div class="birthday-content">
-                        <span class="birthday-label">Birthday Today</span>
-                        <span class="birthday-name"><?= htmlspecialchars($b['full_name']) ?></span>
-                    </div>
-                    <div class="confetti-dots">
-                        <span></span><span></span><span></span>
-                    </div>
+            <div class="birthday-card">
+                <div class="cake-icon">
+                    <div class="flame"></div>
                 </div>
-            <?php endforeach; ?>
+                <div class="birthday-content">
+                    <span class="birthday-label">Birthday Today</span>
+                    <ul class="birthday-names">
+                        <?php foreach ($birthdays as $b): ?>
+                            <li class="birthday-name">
+                                <?= htmlspecialchars($b['full_name']) ?>
+                                Department: <span><?= htmlspecialchars($b['dept_name']) ?>
+                                </span></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <div class="confetti-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
         </div>
-
-
     <?php endif; ?>
     <?php
     // year & month from GET or current
@@ -322,9 +324,6 @@
     </div>
 
     <div class="row">
-
-
-
         <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
             <div class="card__wrapper height-equal">
                 <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-25">
@@ -371,6 +370,134 @@
             </div>
         </div>
     </div>
+
+
+<div  id="calendar-container">
+
+
+    <div class="row mb-4 align-items-strech">
+        <?php
+        $month = isset($_GET['month']) ? (int)$_GET['month'] : date('m');
+        $year  = isset($_GET['year']) ? (int)$_GET['year'] : date('Y');
+        ?>
+        <!-- ══ CALENDAR ══ -->
+        <div class="col-lg-7 mb-3 mb-lg-0 d-flex">
+            <div class="card__wrapper">
+    
+                <!-- Header -->
+             <div class="cal-header">
+        <div class="cal-title"><?= $monthName ?> <?= $year ?></div>
+    
+        <div class="cal-nav">
+            <button class="cal-btn cal-nav-btn" data-dir="prev">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+    
+            <button class="cal-btn cal-today"
+                style="font-size:.65rem;font-weight:700;width:auto;padding:0 10px;">
+                Today
+            </button>
+    
+            <button class="cal-btn cal-nav-btn" data-dir="next">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+    
+                <div class="cal-grid">
+    
+                    <!-- Day labels -->
+                    <?php foreach (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $dayLabel): ?>
+                        <div class="cal-day-label"><?= $dayLabel ?></div>
+                    <?php endforeach; ?>
+    
+                    <!-- Empty cells before month starts -->
+                    <?php for ($i = 0; $i < $firstDayOfWeek; $i++): ?>
+                        <div class="cal-cell other-month"></div>
+                    <?php endfor; ?>
+    
+                    <!-- Days of the month -->
+                    <?php for ($day = 1; $day <= $daysInMonth; $day++):
+                        $dateStr = sprintf("%04d-%02d-%02d", $year, $month, $day);
+                        $classes = "cal-cell";
+    
+                        // Mark today
+                        if ($dateStr == $today) $classes .= " today";
+    
+                        // Weekly holiday = Friday
+                        $weekDay = date('w', strtotime($dateStr)); // 0=Sun .. 5=Fri
+                        if ($weekDay == 5) $classes .= " weekend";
+    
+                        // Government holidays
+                        if (isset($holidays[$day])) $classes .= " holiday";
+                    ?>
+                        <div class="<?= $classes ?>" title="<?= $holidays[$day] ?? '' ?>"><?= $day ?></div>
+                    <?php endfor; ?>
+    
+                    <!-- Fill remaining cells to complete last week -->
+                    <?php
+                    $totalCells = $firstDayOfWeek + $daysInMonth;
+                    $remaining = 7 - ($totalCells % 7);
+                    if ($remaining < 7) {
+                        for ($i = 0; $i < $remaining; $i++): ?>
+                            <div class="cal-cell other-month"></div>
+                    <?php endfor;
+                    }
+                    ?>
+                </div><!-- /cal-grid -->
+    
+                <!-- Legend -->
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:var(--today-bg)"></div>Today
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:var(--holiday)"></div>Government Holiday
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:var(--weekend)"></div>Weekly Holiday
+                    </div>
+                </div>
+    
+            </div>
+        </div><!-- /col-lg-7 -->
+    
+        <!-- ══ HOLIDAY LIST ══ -->
+        <div class="col-lg-5 d-flex">
+            <div class="card__wrapper">
+    
+                <div class="section-title-holiday">
+                    Government Holidays in 2026 <span><?= $holidayCount ?></span>
+                </div>
+    
+                <ul class="holiday-list">
+                    <?php foreach ($holidaysResult as $h):
+                        $day = date('d', strtotime($h['holiday_date']));
+                        $monthShort = date('M', strtotime($h['holiday_date']));
+                    ?>
+                        <li class="holiday-item">
+                            <div class="holiday-date-box">
+                                <div class="day"><?= $day ?></div>
+                                <div class="month"><?= $monthShort ?></div>
+                            </div>
+                            <div class="holiday-info">
+                                <strong><?= htmlspecialchars($h['title']) ?></strong>
+                                <?php if (!empty($h['description'])): ?>
+                                    <small><?= htmlspecialchars($h['description']) ?></small>
+                                <?php endif; ?>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul><!-- /holiday-list -->
+    
+            </div>
+        </div><!-- /col-lg-5 -->
+    
+    </div><!-- /row -->
+</div>
+
+
+
 
     <!-- PENDING LEAVE REQUESTS -->
     <div class="row g-20 mb-4 ">
@@ -708,4 +835,54 @@
             });
         });
     });
+</script>
+
+<script>
+   $(document).on("click", ".cal-nav-btn", function(){
+    alert();
+
+    let header = $(".cal-header");
+
+    let month = parseInt(header.data("month"));
+    let year  = parseInt(header.data("year"));
+
+    let dir = $(this).data("dir");
+
+    if(dir === "prev"){
+        month--;
+        if(month < 1){
+            month = 12;
+            year--;
+        }
+    }
+
+    if(dir === "next"){
+        month++;
+        if(month > 12){
+            month = 1;
+            year++;
+        }
+    }
+
+    loadCalendar(month, year);
+
+});
+
+function loadCalendar(month,year){
+
+    $.ajax({
+        url: "<?= $GLOBALS['base_url'] ?>calendar-load",
+        type: "GET",
+        data: {
+            month: month,
+            year: year
+        },
+        success: function(res){
+            $("#calendar-container").html(res);
+            console.log("info".res);
+            
+        }
+    });
+
+}
 </script>

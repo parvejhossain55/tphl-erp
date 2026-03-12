@@ -21,26 +21,6 @@
 
   
 
-    /* ── SIDEBAR ── */
-    .sidebar {
-        width: 230px;
-        min-height: 100vh;
-        background: var(--surface);
-        border-right: 1px solid var(--border);
-        position: fixed;
-        top: 0;
-        left: 0;
-        display: flex;
-        flex-direction: column;
-        z-index: 100;
-        transition: transform .3s;
-    }
-
-    .sidebar-brand {
-        padding: 28px 24px 20px;
-        border-bottom: 1px solid var(--border);
-    }
-
     .brand-logo {
         width: 38px;
         height: 38px;
@@ -684,20 +664,20 @@
             }
 
             .birthday-label {
-                font-size: 10px;
-                font-weight: 600;
+               font-size: 15px;
+                font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 0.8px;
-                color: #ff8f00;
+                color: #f95503;
             }
 
             .birthday-name {
-                font-size: 13.5px;
-                font-weight: 600;
-                color: #37260a;
+               font-size: 14px;
+                color: #686464;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                font-weight: 600;
             }
 
             .confetti-dots {
@@ -726,3 +706,9 @@
                 background: #ffcc02;
                 opacity: 0.5;
             }
+
+
+
+
+
+

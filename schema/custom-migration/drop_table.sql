@@ -20,6 +20,7 @@ DROP TABLE IF EXISTS emp_attendances;
 DROP TABLE IF EXISTS flats;
 DROP TABLE IF EXISTS flat_purchase_rules;
 DROP TABLE IF EXISTS head_notifications;
+DROP TABLE IF EXISTS holidays;
 DROP TABLE IF EXISTS leads;
 DROP TABLE IF EXISTS lead_bookings;
 DROP TABLE IF EXISTS lead_follow_ups;
@@ -50,3 +51,4 @@ DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS whatsapp_campaigns;
 DROP TABLE IF EXISTS whatsapp_messages;
+

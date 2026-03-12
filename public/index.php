@@ -99,6 +99,7 @@ $routes = [
     //================== hrm ========================
 
     "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
+   "calendar-load" => ["controller" => "HrmDashboardController", "method" => "calenderLoad"],
     // Tasks
 
     'task-lists' => ["controller" => "TaskController", "method" => "index"],
@@ -162,7 +163,7 @@ $routes = [
     "store-self-leave-request" => ["controller" => "LeaveController", "method" => "store"],
     "create-self-leave-request" => ["controller" => "LeaveController", "method" => "createSelf"],
     "remaining-days-self" => ["controller" => "LeaveController", "method" => "remainingDaysSelf"],
-    // "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
+    "holiday-lists" => ["controller" => "HolidayController", "method" => "index"],
     // "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
 

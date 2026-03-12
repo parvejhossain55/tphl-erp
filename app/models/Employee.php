@@ -474,9 +474,10 @@ class Employee extends Model
 
     public function birthdayNotification()
 {
-    $stmt = $this->db->prepare("
-        SELECT id, full_name, dob
-        FROM employees
+    $stmt = $this->db->prepare(" SELECT e.id, e.full_name, e.dob, d.name AS designation_name, dep.name as dept_name
+        FROM employees e
+        LEFT JOIN designations d ON e.designation_id = d.id
+        LEFT JOIN departments dep ON e.department_id = dep.id
         WHERE DATE_FORMAT(dob, '%m-%d') = DATE_FORMAT(CURDATE(), '%m-%d')
     ");
     $stmt->execute();
