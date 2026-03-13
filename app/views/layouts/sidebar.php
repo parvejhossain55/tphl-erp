@@ -143,9 +143,48 @@
                 <?php endif; ?>
                 <!--End Sales Manager CATEGORY -->
                 <?php if (hasPermission("whatsapp panel")): ?>
+<<<<<<< HEAD
                        <!--Sales CATEGORY -->
                     <p>WhatsApp System</p>
                   
+=======
+                    <!--Sales CATEGORY -->
+
+                    <div class="card-title ms-4 fs-6 fw-semibold mb-2">Whatsapp System</div>
+                    <!-- sales Dashboard -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/whatsapp-dashboard" class="sidebar__menu-item <?= isActive('whatsapp-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="slide">
+                        <a href="<?= $base_url ?>/contacts-whatsapp" class="sidebar__menu-item  <?= isActive('contacts-whatsapp', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="bi bi-people-fill"></i></div>
+                            <span class="sidebar__menu-label">Contact</span>
+                        </a>
+                    </li>
+                    <!-- Location -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/campaign-contacts" class="sidebar__menu-item <?= isActive('campaign-contacts', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="bi bi-megaphone-fill"></i></div>
+                            <span class="sidebar__menu-label">Campaign</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/report-campaign" class="sidebar__menu-item <?= isActive('report-campaign', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="bi bi-file-earmark-text-fill"></i></div>
+                            <span class="sidebar__menu-label">Reports</span>
+                        </a>
+                    </li>
+                    <!-- Community -->
+                    <li class="slide d-none">
+                        <a href="<?= $base_url ?>/community-lists" class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
+                            <span class="sidebar__menu-label">Device</span>
+                        </a>
+                    </li>
+>>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
 
                     <!-- sales Dashboard -->
                     <li class="slide ">
@@ -168,6 +207,7 @@
                         </a>
                     </li>
 
+<<<<<<< HEAD
                     <!-- Community -->
                     <li class="slide">
                         <a href="<?= $base_url ?>/community-lists" class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
@@ -180,12 +220,18 @@
                     <!-- Executive Team  -->
                     <!--target set-sales-target show here for sales executiive team  -->
                     <li class="slide ">
+=======
+                    <!-- Executive Team  -->
+                    <!--target set-sales-target show here for sales executiive team  -->
+                    <li class="slide d-none">
+>>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
                         <a href="<?= $base_url ?>/sales-executive-teams" class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                             <span class="sidebar__menu-label"> Team</span>
                         </a>
                     </li>
 
+<<<<<<< HEAD
                     <li class="slide ">
                         <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="bi bi-file-earmark-text-fill"></i></div>
@@ -193,12 +239,20 @@
                         </a>
                     </li>
                     <li class="slide ">
+=======
+
+                    <li class="slide d-none">
+>>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
                         <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                             <span class="sidebar__menu-label">Safety Controll</span>
                         </a>
                     </li>
+<<<<<<< HEAD
                     <li class="slide ">
+=======
+                    <li class="slide d-none">
+>>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
                         <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                             <span class="sidebar__menu-label">Notification</span>
@@ -368,9 +422,6 @@
                 <?php endif; ?>
                 <!--End For Sales Team Head  -->
 
-
-
-
                 <!--HRM CATEGORY -->
                 <?php if (hasPermission("Hr Manage")):  ?>
                     <li class="sidebar__menu-category">
@@ -412,6 +463,13 @@
                         <a href="<?= $base_url ?>/designations" class="sidebar__menu-item <?= isActive('designations', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
                             <span class="sidebar__menu-label">Designation Lists</span>
+                        </a>
+                    </li>
+                    <!-- designation -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/holiday-lists" class="sidebar__menu-item <?= isActive('holiday-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                            <span class="sidebar__menu-label">Holiday Manage</span>
                         </a>
                     </li>
                     <li class="slide has-sub <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
@@ -494,6 +552,35 @@
 
                 <!--End HRM CATEGORY -->
 
+
+                <?php if (hasPermission("My Attendance")) : ?>
+                    <!-- Sales Dashboard -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/employee-dashboard" class="sidebar__menu-item <?= isActive('employee-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">My Dashboard</span>
+                        </a>
+                        <a href="<?= $base_url ?>/my-profile" class="sidebar__menu-item <?= isActive('my-profile', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fas fa-user"></i></div>
+                            <span class="sidebar__menu-label">My Profile</span>
+                        </a>
+                        <a href="<?= $base_url ?>/my-attendance" class="sidebar__menu-item <?= isActive('my-attendance', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                            <span class="sidebar__menu-label">My Attendance</span>
+                        </a>
+                        <a href="<?= $base_url ?>/my-leaves" class="sidebar__menu-item <?= isActive('my-leaves', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                            <span class="sidebar__menu-label">My Leaves </span>
+                        </a>
+                          <li class="slide">
+                        <a href="<?= $base_url ?>/task-dashboard" class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
+                            <span class="sidebar__menu-label">Task Dashbaord</span>
+                        </a>
+                    </li>
+                    </li>
+
+                <?php endif;  ?>
 
 
                 <!--Start CED  -->

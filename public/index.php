@@ -99,6 +99,7 @@ $routes = [
     //================== hrm ========================
 
     "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
+   "calendar-load" => ["controller" => "HrmDashboardController", "method" => "calenderLoad"],
     // Tasks
 
     'task-lists' => ["controller" => "TaskController", "method" => "index"],
@@ -134,6 +135,9 @@ $routes = [
 
     //employee dashboard
     "employee-dashboard" => ["controller" => "EmployeeDashboardController", "method" => "index"],
+    "my-attendance" => ["controller" => "EmployeeDashboardController", "method" => "myAttendance"],
+    "my-leaves" => ["controller" => "EmployeeDashboardController", "method" => "myLeaves"],
+    "my-profile" => ["controller" => "EmployeeDashboardController", "method" => "myProfile"],
     "update-task-status-employee" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
     "update-task-progress-employee" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
@@ -159,7 +163,7 @@ $routes = [
     "store-self-leave-request" => ["controller" => "LeaveController", "method" => "store"],
     "create-self-leave-request" => ["controller" => "LeaveController", "method" => "createSelf"],
     "remaining-days-self" => ["controller" => "LeaveController", "method" => "remainingDaysSelf"],
-    // "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
+    "holiday-lists" => ["controller" => "HolidayController", "method" => "index"],
     // "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
 
@@ -176,6 +180,7 @@ $routes = [
     "onboarding-clients" => ["controller" => "LeadController", "method" => "showOnboardClient"],
     "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
     "update-last_leadAction/(\d+)" => ["controller" => "LeadController", "method" => "updateLastleadAction"],
+
     "lead-delete" => ["controller" => "LeadController", "method" => "delete"],
     "assign-multiple-leads" => ["controller" => "LeadController", "method" => "assignMultipleLeads"],
 
@@ -350,7 +355,18 @@ $routes = [
     //===== AI ChatBox Generate====//
     "ai-chatbox" => ["controller" => "Ai\\ChatController", "method" => "handleMessage"],
     // =========== Whatsapp marketing ============
+<<<<<<< HEAD
  "whatsapp-dashboard" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "dashboard"],
+=======
+    "whatsapp-dashboard" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "dashboard"],
+    "update-campaignAction/(\d+)" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "updateCampaignAction"],
+    "contacts-whatsapp" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "contactLeads"],
+    "report-campaign" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "reports"],
+
+    //==== Whatsapp campaign route==========
+    "campaign-contacts" => ["controller" => "WhatsappMarketing\\WhatsappCampaignController", "method" => "index"],
+    "store-campaign" => ["controller" => "WhatsappMarketing\\WhatsappCampaignController", "method" => "store"],
+>>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
     //Rafi Start  Accounts
     // ==================== ACCOUNTS====================
     'dashboard' => ["controller" => "DashboardController", "method" => "index"],

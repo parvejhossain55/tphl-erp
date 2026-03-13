@@ -6,6 +6,7 @@ class HrmDashboardController extends Controller
     protected $employeeModel;
     protected $departmetModel;
     protected $taskModel;
+    protected $holidayModel;
     protected $payslipModel;
     protected $approvalModel;
     protected $EmpAttendanceModel;
@@ -18,6 +19,7 @@ class HrmDashboardController extends Controller
         $this->departmetModel = new Designation($this->db);
         $this->EmpAttendanceModel = new EmpAttentendance($this->db);
         $this->taskModel = new Task($this->db);
+        $this->holidayModel = new Holiday($this->db);
         $this->approvalModel = new ApprovalRequest($this->db);
         $this->payslipModel = new Payslip($this->db);
         $this->leaveModel = new EmployeeLeave($this->db);
@@ -32,8 +34,10 @@ class HrmDashboardController extends Controller
         $totalEmployees = $this->employeeModel->getTotalCount();
         $presentCount = $todaySummary['Present'];
         $absentCount  = $todaySummary['Absent'];
+        $lateCount  = $todaySummary['Late'];
         $persentPresents = $totalEmployees ? round(($presentCount / $totalEmployees) * 100, 1) : 0;
         $persentAbsents = $totalEmployees ? round(($absentCount / $totalEmployees) * 100, 1) : 0;
+        $latePercent = $totalEmployees ? round(($lateCount / $totalEmployees) * 100, 1) : 0;
         // $halfDayCount = $todaySummary['Half-Day'];
         // $onLeaveCount = $todaySummary['On Leave'];
         // $holidayCount = $todaySummary['Holiday'];
@@ -84,7 +88,60 @@ class HrmDashboardController extends Controller
         $sessionRole = $_SESSION['user']['role_name'] ?? 'management';
         $roles = $roleMap[strtolower($sessionRole)] ?? [strtolower($sessionRole)];
         $pendingRequests = $this->approvalModel->getPendingForRole($roles, 10);
-   
+
+        $birthdays = $this->employeeModel->birthdayNotification();
+
+
+        // holiday function for calender
+
+        $month = $_GET['month'] ?? date('m');
+        $year = date('Y'); // current year, or you can make it dynamic
+
+        $stmt = $this->db->prepare("SELECT * FROM holidays ORDER BY holiday_date ASC");
+        $stmt->execute();
+        $allHolidays = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+
+
+        // Fetch holidays for the selected month & year
+        $stmt = $this->db->prepare("SELECT * FROM holidays WHERE MONTH(holiday_date)=? AND YEAR(holiday_date)=?");
+        $stmt->bind_param("ii", $month, $year);
+        $stmt->execute();
+        $holidaysResult = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Map holidays for quick lookup by day
+        $holidays = [];
+        foreach ($holidaysResult as $h) {
+            $day = (int) date('d', strtotime($h['holiday_date']));
+            $holidays[$day] = $h['title'];
+        }
+
+        // Month info
+        $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+        $firstDayOfWeek = date('w', strtotime("$year-$month-01")); // 0=Sun .. 6=Sat
+        $today = date('Y-m-d'); // for marking today
+
+        $prevMonth = $month - 1;
+        $prevYear = $year;
+        if ($prevMonth < 1) {
+            $prevMonth = 12;
+            $prevYear--;
+        }
+
+        $nextMonth = $month + 1;
+        $nextYear = $year;
+        if ($nextMonth > 12) {
+            $nextMonth = 1;
+            $nextYear++;
+        }
+
+
+
+        $holidayCount = $this->holidayModel->holidayCount();
+        // For month name in header
+        $monthName = date('F', strtotime("$year-$month-01"));
+
+
         $this->view("hrm/hrm-dashboard", [
             "current_route"   => "hrm-dashboard",
             "page_title"      => "HRM Dashboard",
@@ -107,19 +164,33 @@ class HrmDashboardController extends Controller
             'attendances' => $attendances,
             'presentCount' => $presentCount,
             'absentCount' => $absentCount,
+            'lateCount' => $lateCount,
+            'latePercent' => $latePercent,
             'persentPresents' => $persentPresents,
             'persentAbsents' => $persentAbsents,
             'totalDeparttment' => $totalDeparttment,
             'pendingRequests' => $pendingRequests,
+            'birthdays' => $birthdays,
+            'daysInMonth' => $daysInMonth,
+            'firstDayOfWeek' => $firstDayOfWeek,
+            'today' => $today,
+            'monthName' => $monthName,
+            'year' => $year,
+            'month' => $month,
+            'holidaysResult' => $allHolidays,
+            'holidays' => $holidays,
+            'holidayCount' => $holidayCount,
+
         ]);
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
     }
+    
 
 
-        public function approveFull($id)
+    public function approveFull($id)
     {
         $this->db->begin_transaction();
 
@@ -153,7 +224,6 @@ class HrmDashboardController extends Controller
             die($e->getMessage());
         }
     }
-
 
     // Partial approve
     public function approvePartial($id)
@@ -214,8 +284,6 @@ class HrmDashboardController extends Controller
             die($e->getMessage());
         }
     }
-
-
     private function deductLeaveBalance(array $leave, int $approved_days)
     {
         // 1 Lock row

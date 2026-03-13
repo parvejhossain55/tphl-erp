@@ -599,22 +599,23 @@ CREATE TABLE `leads` (
   `residency_type` enum('local','expatriate') DEFAULT 'local',
   `country` varchar(200) DEFAULT NULL,
   `preferred_contact_time` enum('morning','afternoon','evening','night') DEFAULT NULL,
-  `has_pending_followup` tinyint(1) DEFAULT 0 COMMENT '1 = follow-up pending, 0 = no pending follow-up'
+  `is_booked` tinyint(1) DEFAULT 0 COMMENT '1 = booked, 0 = no booking',
+  `is_send_message` tinyint(1) DEFAULT 0 ,
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `leads`
 --
 
-INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
-(1, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', NULL, '1', NULL, NULL, 'evening_(5_pm_-_8_pm)', 'Raihan', 'a', 'a', 'p:+8801736936727', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-22 09:48:11', 'local', NULL, NULL, 0),
-(2, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '2', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Enam Pathan', 'owner', 'Jet Sports', 'p:+8801717221212', 'not_called', NULL, 'Jatramura', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'inactive', 'new', '2026-02-23 04:39:20', 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-23 05:15:34', 'local', NULL, NULL, 0),
-(3, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1450_sqft', '3', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Forhad Ali', 'AGM', 'Flamingo Ltd', 'p:+8801730440638', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-23 05:15:39', 'local', NULL, NULL, 0),
-(4, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1250_sqft', '4', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Sohel Khan', 'propriter', 'beauty sportes and net company', 'p:+8801840990890', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-23 05:15:50', 'local', NULL, NULL, 0),
-(5, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '5', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Jahirul Islam', 'job', 'xyz', 'p:+8801711949142', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:15:53', 'local', NULL, NULL, 0),
-(6, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1350_sqft', '6', NULL, NULL, 'evening_(5_pm_-_8_pm)', 'Soykot Islam Shihab', 'Owner', 'Amin Mistanno Vhander', 'p:+8801752697272', 'not_called', NULL, 'Uttarati', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:15:59', 'local', NULL, NULL, 0),
-(7, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '7', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Mahfuzur Rahman', 'MD, MR Income Tax Consultancy Ltd', 'M R Income Tax Consultancy Ltd.', 'p:+8801916158171', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:16:17', 'local', NULL, NULL, 0),
-(8, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', NULL, '8', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Shariful Islam Sharif', 'Business management', '72 mollertack, ashkona,dokhinkhan,dhaka', 'p:+8801781860471', 'called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:36:49', 'local', NULL, NULL, 0);
+INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `country`, `preferred_contact_time`, `is_booked`,`is_send_message`) VALUES
+(1, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', NULL, '1', NULL, NULL, 'evening_(5_pm_-_8_pm)', 'Raihan', 'a', 'a', 'p:+8801736936727', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-22 09:48:11', 'local', NULL, NULL, 0,0),
+(2, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '2', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Enam Pathan', 'owner', 'Jet Sports', 'p:+8801717221212', 'not_called', NULL, 'Jatramura', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'inactive', 'new', '2026-02-23 04:39:20', 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-23 05:15:34', 'local', NULL, NULL, 0,0),
+(3, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1450_sqft', '3', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Forhad Ali', 'AGM', 'Flamingo Ltd', 'p:+8801730440638', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-23 05:15:39', 'local', NULL, NULL, 0,0),
+(4, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1250_sqft', '4', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Sohel Khan', 'propriter', 'beauty sportes and net company', 'p:+8801840990890', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-22 09:48:11', '2026-02-23 05:15:50', 'local', NULL, NULL, 0,0),
+(5, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '5', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Jahirul Islam', 'job', 'xyz', 'p:+8801711949142', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:15:53', 'local', NULL, NULL, 0,0),
+(6, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1350_sqft', '6', NULL, NULL, 'evening_(5_pm_-_8_pm)', 'Soykot Islam Shihab', 'Owner', 'Amin Mistanno Vhander', 'p:+8801752697272', 'not_called', NULL, 'Uttarati', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:15:59', 'local', NULL, NULL, 0,0),
+(7, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', '1550_sqft', '7', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Mahfuzur Rahman', 'MD, MR Income Tax Consultancy Ltd', 'M R Income Tax Consultancy Ltd.', 'p:+8801916158171', 'not_called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:16:17', 'local', NULL, NULL, 0,0),
+(8, 'P. Homes ll Velinor Leads ll per day 10$ Ongoing ll Nov 03, 2025', 'fb', NULL, '8', NULL, NULL, 'afternoon_(12_pm_-_5_pm)', 'Shariful Islam Sharif', 'Business management', '72 mollertack, ashkona,dokhinkhan,dhaka', 'p:+8801781860471', 'called', NULL, 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 3, '2026-02-23 05:22:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', '', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-02-22 09:48:11', '2026-02-23 05:36:49', 'local', NULL, NULL, 0,0);
 
 -- --------------------------------------------------------
 
@@ -1368,15 +1369,49 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `email`, `designation_id`, `address`, `nid`, `role_id`, `password`, `photo`, `media_link1`, `media_link2`, `last_logout`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, NULL, 'Farzana', 'farzana', '01873244236', 'farz@gmail.com', 1, 'Dhaka', NULL, 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-02-23 13:31:43', NULL, '2026-02-22 06:47:08', '2026-02-23 07:31:43'),
+(1, NULL, 'Farzana', 'farzana', '01873244236', 'farz@gmail.com', 1, 'Dhaka', NULL, 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-03-05 14:12:34', NULL, '2026-02-22 06:47:08', '2026-03-05 08:12:34'),
 (2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-02-23 11:39:50', NULL, '2026-02-22 06:47:08', '2026-02-23 05:39:50'),
-(3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 1, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-02-23 13:55:43', 4, '2026-02-23 03:24:25', '2026-02-23 07:55:43'),
-(4, NULL, 'Mr. Joshim', 'Mr. Joshim', '01762013007', 'hr@gmail.com', 2, 'Dhaka', '1289234', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, 'aiosdiau', '', '2026-02-23 13:40:13', 1, '2026-02-23 05:44:19', '2026-02-23 07:40:13'),
-(5, NULL, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 2, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, 'https://business.facebook.com/', '', '2026-02-23 12:11:06', 4, '2026-02-23 06:11:06', '2026-02-23 06:11:06');
+(3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 1, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-02-24 11:09:41', 4, '2026-02-23 03:24:25', '2026-02-24 05:09:41'),
+(4, 1, 'Mr. Joshim', 'Mr. Joshim', '01762013007', 'hr@gmail.com', 2, 'Dhaka', '1289234', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, '', '', '2026-02-24 11:31:24', 4, '2026-02-23 05:44:19', '2026-02-24 05:31:24'),
+(5, 0, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 3, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, '', '', '2026-02-23 12:11:06', 3, '2026-02-23 06:11:06', '2026-02-23 09:11:44'),
+(6, NULL, 'Cleint Overview', 'CED', '01298347434', 'ced@gmail.com', 3, 'Dhaka', '', 7, '$2y$10$HS7cpDVkohrFN39yxfWwCeVM5TQ9qjbEEYP3k8lwZjQkphNKF65me', NULL, '', '', '2026-02-24 10:16:39', 1, '2026-02-24 03:47:00', '2026-02-24 04:16:39'),
+(7, NULL, 'Rimi', 'Rimi', '01723745324', 'rimi@gmail.com', 1, 'dhaka', '23143245', 7, '$2y$10$0Q8rZkzw0IwFdGW24zUGX.M350th/ZpEYRPSr9xhA5PRz.D4tPg2a', NULL, '', '', '2026-03-05 14:36:27', 1, '2026-03-05 08:11:47', '2026-03-05 08:36:27');
 
+
+
+
+CREATE TABLE `whatsapp_campaigns` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `target_project_id` int(11) DEFAULT NULL,
+  `message_type` enum('text','image','pdf','button','brocure') DEFAULT 'text',
+  `message_content` text NOT NULL,
+  `schedule_time` datetime NOT NULL,
+  `device` varchar(50) DEFAULT 'Auto Select',
+  `status` enum('Active','Scheduled','Paused','Completed','Failed') DEFAULT 'Scheduled',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `whatsapp_messages` (
+  `id` int(11) NOT NULL,
+  `campaign_id` int(11) NOT NULL,
+  `lead_id` int(10) UNSIGNED DEFAULT NULL,
+  `status` enum('pending','sent','delivered','failed') DEFAULT 'pending'
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 --
 -- Indexes for dumped tables
 --
+
+CREATE TABLE holidays (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    holiday_date DATE NOT NULL,
+    `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+    `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+);
 
 --
 -- Indexes for table `approval_requests`
@@ -2033,7 +2068,36 @@ ALTER TABLE `users`
 --
 -- Constraints for dumped tables
 --
+ALTER TABLE `whatsapp_campaigns`
+  ADD PRIMARY KEY (`id`);
 
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `whatsapp_campaigns`
+--
+ALTER TABLE `whatsapp_campaigns`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+COMMIT;
+
+
+
+ALTER TABLE `whatsapp_messages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `campaign_id` (`campaign_id`),
+  ADD KEY `lead_id` (`lead_id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `whatsapp_messages`
+--
+ALTER TABLE `whatsapp_messages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 --
 -- Constraints for table `cameras`
 --

@@ -425,6 +425,7 @@ class Employee extends Model
         //  Get employee ID
         $stmt = $this->db->prepare("SELECT id FROM employees WHERE user_id = ? LIMIT 1");
         $stmt->bind_param("i", $loggedUserId);
+        
         $stmt->execute();
         $emp = $stmt->get_result()->fetch_assoc();
         if (!$emp) return [];
@@ -469,4 +470,18 @@ class Employee extends Model
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+
+
+    public function birthdayNotification()
+{
+    $stmt = $this->db->prepare(" SELECT e.id, e.full_name, e.dob, d.name AS designation_name, dep.name as dept_name
+        FROM employees e
+        LEFT JOIN designations d ON e.designation_id = d.id
+        LEFT JOIN departments dep ON e.department_id = dep.id
+        WHERE DATE_FORMAT(dob, '%m-%d') = DATE_FORMAT(CURDATE(), '%m-%d')
+    ");
+    $stmt->execute();
+
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 }

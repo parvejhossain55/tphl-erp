@@ -1,6 +1,9 @@
+<<<<<<< HEAD
 
 
 
+=======
+>>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
 <!-- MAIN -->
 <div class="app__slide-wrapper">
     <!-- STAT CARDS -->
@@ -128,10 +131,16 @@
         </div>
     </div>
     <!-- sales overview  -->
+<<<<<<< HEAD
     <div class="row g-20">
         <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
             <div class="card__wrapper height-equal">
                 <div class="card__wrapper">
+=======
+    <div class="row align-items-stretch">
+        <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3 ">
+            <div class="card__wrapper height-equal">
+>>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
 
                 <div class="chart-card h-100">
                     <div class="d-flex align-items-start justify-content-between mb-4">
@@ -147,6 +156,7 @@
                     <canvas id="performanceChart" height="100"></canvas>
                 </div>
             </div>
+<<<<<<< HEAD
             </div>
         </div>
 
@@ -332,6 +342,198 @@
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+=======
+        </div>
+
+        <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3 ">
+                <div class=" card__wrapper shadow-sm mb-4">
+                    <div class="card-header  border-bottom">
+                        <h5 class="card-title mb-0">Team Activity</h5>
+                        <small class="text-muted">Member performance today</small>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">Member</th>
+                                    <th scope="col">Role</th>
+                                    <th scope="col" class="text-end">Messages</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="position-relative">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">RS</div>
+                                                <span class="position-absolute bottom-0 end-0 rounded-circle border border-white bg-success" style="width: 10px; height: 10px;"></span>
+                                            </div>
+                                            <span class="fw-medium">Rahul Sharma</span>
+                                        </div>
+                                    </td>
+                                    <td>Marketing Manager</td>
+                                    <td class="text-end">
+                                        <div class="fw-semibold">450</div>
+                                        <small class="text-muted">messages</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="position-relative">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">PP</div>
+                                                <span class="position-absolute bottom-0 end-0 rounded-circle border border-white bg-success" style="width: 10px; height: 10px;"></span>
+                                            </div>
+                                            <span class="fw-medium">Priya Patel</span>
+                                        </div>
+                                    </td>
+                                    <td>Executive</td>
+                                    <td class="text-end">
+                                        <div class="fw-semibold">320</div>
+                                        <small class="text-muted">messages</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="position-relative">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">AK</div>
+                                                <span class="position-absolute bottom-0 end-0 rounded-circle border border-white bg-warning" style="width: 10px; height: 10px;"></span>
+                                            </div>
+                                            <span class="fw-medium">Amit Kumar</span>
+                                        </div>
+                                    </td>
+                                    <td>Executive</td>
+                                    <td class="text-end">
+                                        <div class="fw-semibold">180</div>
+                                        <small class="text-muted">messages</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="position-relative">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">NS</div>
+                                                <span class="position-absolute bottom-0 end-0 rounded-circle border border-white bg-secondary" style="width: 10px; height: 10px;"></span>
+                                            </div>
+                                            <span class="fw-medium">Neha Singh</span>
+                                        </div>
+                                    </td>
+                                    <td>Executive</td>
+                                    <td class="text-end">
+                                        <div class="fw-semibold">95</div>
+                                        <small class="text-muted">messages</small>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+        </div>
+
+        <!-- project wise flat sale  -->
+
+        <!-- CHART + TEAM -->
+
+        <!-- CAMPAIGNS TABLE -->
+        <div class="col-12 mt-3">
+            <div class="card__wrapper">
+                <div class="card__header d-flex justify-content-between align-items-center mb-3">
+
+                    <div>
+                        <div class="card-title">Recent Campaigns</div>
+                        <div class="card-sub">Your latest marketing campaigns</div>
+                    </div>
+                    <button class="btn-new" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);">
+                        View All <i class="bi bi-arrow-right"></i>
+                    </button>
+
+                </div>
+
+                <div class="table__wrapper table-responsive">
+                    <table class="table mb-20">
+                        <thead>
+                            <tr>
+                                <th>Campaign</th>
+                                <th>Status</th>
+                                <th style="text-align:right;">Sent</th>
+                                <th style="text-align:right;">Delivered</th>
+                                <th style="text-align:right;">Failed</th>
+                                <th style="text-align:right;">Date</th>
+                                <th style="text-align:center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div class="campaign-name">Project Launch - Marina Heights</div>
+                                    <div class="campaign-date">Real Estate Promo</div>
+                                </td>
+                                <td><span class="badge-status badge-completed">Completed</span></td>
+                                <td style="text-align:right;" class="num-default">1,250</td>
+                                <td style="text-align:right;" class="num-green">1,180</td>
+                                <td style="text-align:right;" class="num-red">70</td>
+                                <td style="text-align:right;" class="campaign-date">15/01/2024</td>
+                                <td style="text-align:center;">
+                                    <i class="bi bi-eye" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
+                                    <i class="bi bi-graph-up" style="color:var(--muted);cursor:pointer;"></i>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="campaign-name">Offer Reminder - Q1 Sale</div>
+                                    <div class="campaign-date">Retail Promotion</div>
+                                </td>
+                                <td><span class="badge-status badge-active">Active</span></td>
+                                <td style="text-align:right;" class="num-default">850</td>
+                                <td style="text-align:right;" class="num-green">820</td>
+                                <td style="text-align:right;" class="num-red">30</td>
+                                <td style="text-align:right;" class="campaign-date">16/01/2024</td>
+                                <td style="text-align:center;">
+                                    <i class="bi bi-eye" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
+                                    <i class="bi bi-pause-circle" style="color:var(--muted);cursor:pointer;"></i>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="campaign-name">New Year Flash Sale</div>
+                                    <div class="campaign-date">E-commerce</div>
+                                </td>
+                                <td><span class="badge-status badge-paused">Paused</span></td>
+                                <td style="text-align:right;" class="num-default">2,100</td>
+                                <td style="text-align:right;" class="num-green">1,990</td>
+                                <td style="text-align:right;" class="num-red">110</td>
+                                <td style="text-align:right;" class="campaign-date">01/01/2024</td>
+                                <td style="text-align:center;">
+                                    <i class="bi bi-eye" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
+                                    <i class="bi bi-play-circle" style="color:var(--muted);cursor:pointer;"></i>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="campaign-name">Welcome Series - New Users</div>
+                                    <div class="campaign-date">Onboarding</div>
+                                </td>
+                                <td><span class="badge-status badge-draft">Draft</span></td>
+                                <td style="text-align:right;" class="num-default">—</td>
+                                <td style="text-align:right;" class="num-default">—</td>
+                                <td style="text-align:right;" class="num-default">—</td>
+                                <td style="text-align:right;" class="campaign-date">18/01/2024</td>
+                                <td style="text-align:center;">
+                                    <i class="bi bi-pencil" style="color:var(--muted);cursor:pointer;margin-right:10px;"></i>
+                                    <i class="bi bi-send" style="color:var(--muted);cursor:pointer;"></i>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+</div>
+>>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
 <script>
     const ctx = document.getElementById('performanceChart').getContext('2d');
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
