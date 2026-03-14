@@ -15,7 +15,6 @@
      .cal-title {
          font-size: 1.1rem;
          font-weight: 800;
-         color: #1a1f36;
      }
 
      .cal-nav {
@@ -69,7 +68,7 @@
          border-radius: 8px;
          font-size: .82rem;
          font-weight: 500;
-         color: #1a1f36;
+         /* color: #1a1f36; */
          position: relative;
      }
 
@@ -131,7 +130,7 @@
      .section-title-holiday {
          font-weight: 800;
          font-size: 1rem;
-         color: #1a1f36;
+         /* color: #1a1f36; */
          margin-bottom: 18px;
          display: flex;
          align-items: center;
@@ -194,7 +193,7 @@
      .holiday-info strong {
          font-size: .87rem;
          display: block;
-         color: #1a1f36;
+         /* color: #1a1f36; */
      }
 
      .holiday-info small {

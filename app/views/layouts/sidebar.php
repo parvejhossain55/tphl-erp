@@ -143,11 +143,6 @@
                 <?php endif; ?>
                 <!--End Sales Manager CATEGORY -->
                 <?php if (hasPermission("whatsapp panel")): ?>
-<<<<<<< HEAD
-                       <!--Sales CATEGORY -->
-                    <p>WhatsApp System</p>
-                  
-=======
                     <!--Sales CATEGORY -->
 
                     <div class="card-title ms-4 fs-6 fw-semibold mb-2">Whatsapp System</div>
@@ -184,75 +179,25 @@
                             <span class="sidebar__menu-label">Device</span>
                         </a>
                     </li>
->>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
 
-                    <!-- sales Dashboard -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/whatsapp-dashboard" class="sidebar__menu-item <?= isActive('whatsapp-dashboard', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
-                            <span class="sidebar__menu-label">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="slide">
-                        <a href="<?= $base_url ?>/task-dashboard" class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="bi bi-people-fill"></i></div>
-                            <span class="sidebar__menu-label">Contact</span>
-                        </a>
-                    </li>
-                    <!-- Location -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/location-lists" class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="bi bi-megaphone-fill"></i></div>
-                            <span class="sidebar__menu-label">Campaign</span>
-                        </a>
-                    </li>
 
-<<<<<<< HEAD
-                    <!-- Community -->
-                    <li class="slide">
-                        <a href="<?= $base_url ?>/community-lists" class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
-                            <span class="sidebar__menu-label">Device</span>
-                        </a>
-                    </li>
-
-       
-                    <!-- Executive Team  -->
-                    <!--target set-sales-target show here for sales executiive team  -->
-                    <li class="slide ">
-=======
                     <!-- Executive Team  -->
                     <!--target set-sales-target show here for sales executiive team  -->
                     <li class="slide d-none">
->>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
                         <a href="<?= $base_url ?>/sales-executive-teams" class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                             <span class="sidebar__menu-label"> Team</span>
                         </a>
                     </li>
 
-<<<<<<< HEAD
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="bi bi-file-earmark-text-fill"></i></div>
-                            <span class="sidebar__menu-label">Reports</span>
-                        </a>
-                    </li>
-                    <li class="slide ">
-=======
 
                     <li class="slide d-none">
->>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
                         <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                             <span class="sidebar__menu-label">Safety Controll</span>
                         </a>
                     </li>
-<<<<<<< HEAD
-                    <li class="slide ">
-=======
                     <li class="slide d-none">
->>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
                         <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                             <span class="sidebar__menu-label">Notification</span>

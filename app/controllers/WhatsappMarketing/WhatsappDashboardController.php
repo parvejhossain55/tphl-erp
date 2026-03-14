@@ -1,8 +1,4 @@
 <?php
-<<<<<<< HEAD
-namespace WhatsappMarketing;
-use Controller;
-=======
 
 namespace WhatsappMarketing;
 
@@ -11,7 +7,6 @@ use Exception;
 use Lead;
 use Project;
 
->>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
 class WhatsappDashboardController extends Controller
 {
     protected $db;
@@ -19,22 +14,14 @@ class WhatsappDashboardController extends Controller
     protected $taskModel;
     protected $followUpModel;
     protected $bookingModel;
-<<<<<<< HEAD
-    protected $userModel;
-=======
     protected $projectModel;
->>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
     protected $salesTargetModel;
 
     public function __construct($db)
     {
         $this->db = $db;
-<<<<<<< HEAD
-       
-=======
         $this->leadModel = new Lead($db);
         $this->projectModel = new Project($db);
->>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
     }
 
     public function dashboard()
@@ -42,13 +29,6 @@ class WhatsappDashboardController extends Controller
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-<<<<<<< HEAD
-   
-        return $this->view('whatsapp_marketing/whatsapp-dashboard',[
-            "current_route"   => "whatsapp-dashboard",]);
-        
-        }
-=======
 
         return $this->view('whatsapp_marketing/whatsapp-dashboard', [
             "current_route"   => "whatsapp-dashboard",
@@ -137,5 +117,4 @@ class WhatsappDashboardController extends Controller
             "current_route"   => "report-campaign",
         ]);
     }
->>>>>>> 0bae39f2c2b98536dd73f392610ac427874b8ca5
 }
