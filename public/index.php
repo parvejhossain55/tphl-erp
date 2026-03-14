@@ -99,7 +99,7 @@ $routes = [
     //================== hrm ========================
 
     "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
-   "calendar-load" => ["controller" => "HrmDashboardController", "method" => "calenderLoad"],
+    "calendar-load" => ["controller" => "HrmDashboardController", "method" => "calenderLoad"],
     // Tasks
 
     'task-lists' => ["controller" => "TaskController", "method" => "index"],
@@ -151,7 +151,7 @@ $routes = [
     "delete-attendance" => ["controller" => "EmpAttendanceController", "method" => "delete"],
     "download-excel" => ["controller" => "EmpAttendanceController", "method" => "downloadExcel"],
     "download-pdf" => ["controller" => "EmpAttendanceController", "method" => "downloadPDF"],
-
+    "mobile-punch" => ["controller" => "EmpAttendanceController", "method" => "createMobilePuch"],
 
     // Employee Leave Controller
     "leave-lists" => ["controller" => "LeaveController", "method" => "index"],

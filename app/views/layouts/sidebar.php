@@ -446,6 +446,31 @@
                             <li class="slide <?= isActive('leave-lists', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists">Employee Leave Request</a>
                             </li>
+
+                        </ul>
+                    </li>
+                    <li class="slide has-sub <?= isActive(['leave-types', 'leave-lists'], $current_route) ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['leave-types', 'leave-lists'], $current_route) ? 'active' : '' ?>">
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                            <span class="sidebar__menu-label">Report</span>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide <?= isActive('leave-types', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('leave-types', $current_route) ?>" href="<?= $base_url ?>/leave-types">Daily Attendance Report</a>
+                            </li>
+                            <li class="slide <?= isActive('leave-types', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('leave-types', $current_route) ?>" href="<?= $base_url ?>/leave-types">Leave Report</a>
+                            </li>
+                            <li class="slide <?= isActive('leave-lists', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists">Absend Report</a>
+                            </li>
+                            <li class="slide <?= isActive('leave-lists', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists"> Daily Late Report</a>
+                            </li>
+                            <li class="slide <?= isActive('leave-lists', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists"> Mobile Punch Report</a>
+                            </li>
                         </ul>
                     </li>
                 <?php endif; ?>
@@ -517,7 +542,7 @@
                             <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                             <span class="sidebar__menu-label">My Leaves </span>
                         </a>
-                          <li class="slide">
+                    <li class="slide">
                         <a href="<?= $base_url ?>/task-dashboard" class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
                             <span class="sidebar__menu-label">Task Dashbaord</span>
@@ -726,6 +751,13 @@
 
                 <?php endif; ?>
                 <!-- FOR Task Manage  -->
+                <li class="slide <?= isActive('mobile-punch', $current_route) ?>">
+                    <a href="<?= $base_url ?>/mobile-punch" class="sidebar__menu-item <?= isActive('mobile-punch', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-book"></i></div>
+                        <span class="sidebar__menu-label">Mobile Punch</span>
+                    </a>
+                </li>
+
 
 
                 <!-- Others-->

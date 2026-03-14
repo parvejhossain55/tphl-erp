@@ -289,6 +289,31 @@ class EmpAttendanceController extends Controller
     }
 
 
+    public function createMobilePuch(){
+  
+           if (!isset($_SESSION['user']['employee_id'])) {
+            setError("Unauthorized");
+            header("Location: {$GLOBALS['base_url']}/admin-login");
+            exit;
+        }
+
+
+        $employee_id = (int)$_SESSION['user']['employee_id'];
+
+        if ($employee_id <= 0) {
+            setError("Employee ID not found");
+            header("Location: {$GLOBALS['base_url']}/admin-login");
+            exit;
+        }
+
+    
+
+        $this->view("hrm/mobile-punch/mobile-punch", [
+            "current_route" => 'mobile-punch',
+            "page_title"    => "Punch Add"
+        ]);
+    }
+
 
 
 
