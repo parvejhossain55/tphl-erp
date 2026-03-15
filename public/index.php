@@ -170,6 +170,12 @@ $routes = [
     "create-self-leave-request" => ["controller" => "LeaveController", "method" => "createSelf"],
     "remaining-days-self" => ["controller" => "LeaveController", "method" => "remainingDaysSelf"],
     "holiday-lists" => ["controller" => "HolidayController", "method" => "index"],
+    
+    // Day Off Controller
+    "day-off" => ["controller" => "DayOffController", "method" => "dayOffManage"],
+    "get-employee-days-off/(\d+)" => ["controller" => "DayOffController", "method" => "getEmployeeDaysOff"],
+    "update-day-off" => ["controller" => "DayOffController", "method" => "updateDayOff"],
+    
     // "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
 

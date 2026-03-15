@@ -417,6 +417,13 @@
                             <span class="sidebar__menu-label">Holiday Manage</span>
                         </a>
                     </li>
+                    <!-- designation -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/day-off" class="sidebar__menu-item <?= isActive('day-off', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                            <span class="sidebar__menu-label">Day Off Manage</span>
+                        </a>
+                    </li>
                     <li class="slide has-sub <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['create-attendance', 'attendance-list'], $current_route) ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
