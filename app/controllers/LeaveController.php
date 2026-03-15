@@ -184,7 +184,7 @@ class LeaveController extends Controller
         }
 
         /**
-         * 🔐 Backend Remaining Leave Validation
+         *  Backend Remaining Leave Validation
          */
         $stmt = $this->db->prepare("SELECT is_paid FROM leave_types WHERE id = ?");
         $stmt->bind_param("i", $leave_type_id);
@@ -260,9 +260,6 @@ class LeaveController extends Controller
 
         exit;
     }
-
-
-
 
 
     public function remainingDaysSelf()

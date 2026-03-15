@@ -1,72 +1,48 @@
 <div class="row">
     <div class="card__wrapper">
 
-        <form method="POST" action="<?= $GLOBALS['base_url'] ?>/store-employee-leave">
-
-                <div class="row gy-20">
-            <!-- Punch -->
-            <div class="col-lg-6 col-6">
-                <div class="from__input-box">
-                    <div class="form__input-title">
-                        <label for="punch">Today Employee Status <span>*</span></label>
-                    </div>
-                    <div class="form__input">
-                        <select class="form-control" name="today_status" required id="today_status">
-                            <option value="">-- Select Status --</option>
-                            <option value="Present">Present</option>
-                            <option value="Absent">Absent</option>
-                            <option value="Late">Late</option>
-                            <option value="Half-Day">Half-Day</option>
-                            <option value="On Leave">On Leave</option>
-                            <option value="Holiday">Holiday</option>
-                            <option value="Day Off">Day Off</option>
-                        </select>
-                    </div>
+        <form method="POST" action="<?= $GLOBALS['base_url'] ?>/store-self-mobile-punch">
+            <div class="row gy-20">
+                <!-- Today Status -->
+                <div class="col-lg-6 col-6">
+                    <label>Today Employee Status <span>*</span></label>
+                    <select class="form-control" name="today_status" required>
+                        <option value="">-- Select Status --</option>
+                        <option value="Present">Present</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Late">Late</option>
+                        <option value="Half-Day">Half-Day</option>
+                        <option value="On Leave">On Leave</option>
+                        <option value="Holiday">Holiday</option>
+                        <option value="Day Off">Day Off</option>
+                    </select>
                 </div>
-            </div>
 
-            <!-- Date -->
-            <div class="col-lg-6 col-6">
-                <div class="from__input-box">
-                    <div class="form__input-title">
-                        <label for="date">Date <span>*</span></label>
-                    </div>
-                    <div class="form__input">
-                        <input class="form-control" name="attendance_date" id="date" type="date">
-                    </div>
+                <!-- Date -->
+                <div class="col-lg-6 col-6">
+                    <label>Date <span>*</span></label>
+                    <input class="form-control" name="attendance_date" type="date" required>
                 </div>
-            </div>
 
-            <!-- Punched In -->
-            <div class="col-lg-6 col-6">
-                <div class="from__input-box">
-                    <div class="form__input-title">
-                        <label for="punched_at">Punched In <span>*</span></label>
-                    </div>
-                    <div class="form__input">
-                        <input class="form-control" name="punch_in_time" id="punched_in" type="time" id="punched_in">
-                    </div>
+                <!-- Punch In -->
+                <div class="col-lg-6 col-6">
+                    <label>Punched In</label>
+                    <input class="form-control" name="punch_in_time" type="time">
                 </div>
-            </div>
-            <!-- Punched Out -->
-            <div class="col-lg-6 col-6">
-                <div class="from__input-box">
-                    <div class="form__input-title">
-                        <label for="punched_out">Punched Out <span>*</span></label>
-                    </div>
-                    <div class="form__input">
-                        <input class="form-control" name="punch_out_time" id="punched_out" type="time" id="punched_out">
-                    </div>
-                </div>
-            </div>
 
-            <!-- Submit Button -->
-            <div class="submit__btn text-center mb-20">
-                <button class="btn btn-primary">Submit</button>
-                <a href="<?= $GLOBALS['base_url'] ?>/attendance-list"
-                    class="btn btn-outline-secondary px-4 ms-sm-auto">
-                    <i class="fas fa-arrow-left"></i> Back
-                </a>
+                <!-- Punch Out -->
+                <div class="col-lg-6 col-6">
+                    <label>Punched Out</label>
+                    <input class="form-control" name="punch_out_time" type="time">
+                </div>
+
+                <!-- Submit -->
+                <div class="col-12 text-center">
+                    <button class="btn btn-primary">Submit</button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/attendance-list" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                </div>
             </div>
         </form>
     </div>
@@ -76,44 +52,47 @@
 
     <table class="table table-bordered table-striped">
         <tr class="table__title">
-            <th>Leave Type</th>
-            <th>Leave Duration</th>
-            <th>Days</th>
-            <th>Reason</th>
+            <th>Data</th>
+            <th>Punch In </th>
+            <th>Punch Out</th>
             <th>Status</th>
-            <th>Applied At</th>
         </tr>
         </thead>
         <tbody>
 
-      
 
+
+            <?php if (!empty($myAttendances)): ?>
+                <?php foreach ($myAttendances as $attendance): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($attendance['attendance_date']) ?></td>
+                        <td>
+                            <?php
+                            if (!empty($attendance['punch_in_time'])) {
+                                echo date("h:i A", strtotime($attendance['punch_in_time']));
+                            } else {
+                                echo '-';
+                            }
+                            ?>
+                        </td>
+                        <td>
+                            <?php
+                            if (!empty($attendance['punch_out_time'])) {
+                                echo date("h:i A", strtotime($attendance['punch_out_time']));
+                            } else {
+                                echo '-';
+                            }
+                            ?>
+                        </td>
+                        <td><?= htmlspecialchars($attendance['today_status']) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
                 <tr>
-                    <td></td>
-
-                    <td class="table__leave-duration"></td>
-                    <td class="table__leave-days"></td>
-                    <td class="table__leave-approved">
-                      
-                    </td>
-                   
-                    <td>
-                        <!-- <php
-                        $status = $leave['approval_status'];
-                        $badge = match ($status) {
-                            'approved' => 'success',
-                            'partial'  => 'warning',
-                            'rejected' => 'danger',
-                            default    => 'secondary'
-                        };
-                        >
-                        <span class="bd-badge bg-<= $badge ?>">
-                            <= ucfirst($status) ?>
-                        </span> -->
-                    </td>
-                    <!-- <td>< date('d M Y', strtotime($leave['created_at'])) ?></td> -->
+                    <td colspan="4" class="text-center">No attendance found for <?= htmlspecialchars($selectedDate) ?></td>
                 </tr>
-          
+            <?php endif; ?>
+
         </tbody>
     </table>
 </div>

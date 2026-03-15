@@ -456,8 +456,8 @@
                             <span class="sidebar__menu-label">Report</span>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide <?= isActive('leave-types', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('leave-types', $current_route) ?>" href="<?= $base_url ?>/leave-types">Daily Attendance Report</a>
+                            <li class="slide <?= isActive('daily-attendance-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('daily-attendance-report', $current_route) ?>" href="<?= $base_url ?>/daily-attendance-report">Daily Attendance Report</a>
                             </li>
                             <li class="slide <?= isActive('leave-types', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('leave-types', $current_route) ?>" href="<?= $base_url ?>/leave-types">Leave Report</a>

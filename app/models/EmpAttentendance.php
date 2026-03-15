@@ -311,4 +311,60 @@ class EmpAttentendance extends Model
 
         return $result;
     }
+
+    public function myAttendance($date)
+    {
+        // Check if employee is logged in
+        if (!isset($_SESSION['user']['employee_id'])) {
+            return []; // or throw an error / redirect if you prefer
+        }
+
+        $employee_id = (int)$_SESSION['user']['employee_id'];
+
+        $sql = "SELECT 
+                a.*, 
+                e.full_name AS employee_name,
+                dept.name AS department_name
+            FROM emp_attendances a
+            LEFT JOIN employees e ON a.employee_id = e.id
+            LEFT JOIN designations d ON e.designation_id = d.id
+            LEFT JOIN departments dept ON d.department_id = dept.id
+            WHERE a.attendance_date = ?
+              AND a.employee_id = ?
+              AND a.deleted_at IS NULL
+            ORDER BY e.full_name ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("si", $date, $employee_id);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+
+
+    public function getDailyReport($date)
+    {
+        $sql = "
+        SELECT 
+            dept.id AS department_id,
+            dept.name AS department_name,
+            COUNT(emp.id) AS total_employee,
+            SUM(CASE WHEN a.today_status = 'Present' THEN 1 ELSE 0 END) AS present_count,
+            SUM(CASE WHEN a.today_status = 'Late' OR TIME(a.punch_in_time) > '09:00:00' THEN 1 ELSE 0 END) AS late_count,
+            SUM(CASE WHEN a.today_status = 'Absent' OR a.punch_in_time IS NULL THEN 1 ELSE 0 END) AS absent_count,
+            SUM(CASE WHEN a.today_status = 'On Leave' THEN 1 ELSE 0 END) AS leave_count,
+            SUM(CASE WHEN DAYOFWEEK(a.attendance_date) = 6 THEN 1 ELSE 0 END) AS day_off_count
+        FROM employees emp
+        LEFT JOIN departments dept ON emp.department_id = dept.id
+        LEFT JOIN emp_attendances a ON a.employee_id = emp.id AND a.attendance_date = ?
+        GROUP BY dept.id, dept.name
+        ORDER BY dept.name ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("s", $date);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
 }

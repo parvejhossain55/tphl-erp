@@ -152,6 +152,12 @@ $routes = [
     "download-excel" => ["controller" => "EmpAttendanceController", "method" => "downloadExcel"],
     "download-pdf" => ["controller" => "EmpAttendanceController", "method" => "downloadPDF"],
     "mobile-punch" => ["controller" => "EmpAttendanceController", "method" => "createMobilePuch"],
+    "store-self-mobile-punch" => ["controller" => "EmpAttendanceController", "method" => "storeMobilePunch"],
+
+    // Report
+    "daily-attendance-report" => ["controller" => "AttendanceReportController", "method" => "attendanceReport"],
+    "export-daily-report" => ["controller" => "AttendanceReportController", "method" => "exportDailyReport"],
+    "export-daily-report-pdf" => ["controller" => "AttendanceReportController", "method" => "exportDailyReportPDF"],
 
     // Employee Leave Controller
     "leave-lists" => ["controller" => "LeaveController", "method" => "index"],
