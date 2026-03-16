@@ -472,8 +472,8 @@
                             <li class="slide <?= isActive('leave-lists', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists">Absend Report</a>
                             </li>
-                            <li class="slide <?= isActive('leave-lists', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists"> Daily Late Report</a>
+                            <li class="slide <?= isActive('daily-late-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('daily-late-report', $current_route) ?>" href="<?= $base_url ?>/daily-late-report"> Daily Late Report</a>
                             </li>
                             <li class="slide <?= isActive('leave-lists', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists"> Mobile Punch Report</a>

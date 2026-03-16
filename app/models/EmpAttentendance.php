@@ -184,7 +184,7 @@ class EmpAttentendance extends Model
 
         SUM(CASE 
             WHEN a.today_status = 'Late' 
-            OR TIME(a.punch_in_time) > '09:00:00' 
+            OR TIME(a.punch_in_time) > '09:10:00' 
         THEN 1 ELSE 0 END) AS late_count,
 
         SUM(CASE 
@@ -379,7 +379,7 @@ public function getDailyReport($date)
 
         SUM(CASE 
             WHEN a.today_status = 'Late' 
-            OR TIME(a.punch_in_time) > '09:00:00' 
+            OR TIME(a.punch_in_time) > '09:10:00' 
         THEN 1 ELSE 0 END) AS late_count,
 
         SUM(CASE 
@@ -417,4 +417,34 @@ public function getDailyReport($date)
 
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
+public function getDailyLateReport($date)
+{
+    $sql = "
+    SELECT 
+        emp.id AS emp_id,
+        emp.full_name AS emp_name,
+        des.name AS designation_name,
+        dep.name AS dept_name,
+        emp.workplace AS workplace,
+        a.today_status,
+        TIME(a.punch_in_time) AS punch_in_time
+    FROM employees emp
+    LEFT JOIN departments dep 
+        ON emp.department_id = dep.id
+    LEFT JOIN designations des 
+        ON emp.designation_id = des.id
+    LEFT JOIN emp_attendances a 
+        ON a.employee_id = emp.id 
+        AND a.attendance_date = ?
+    ORDER BY dep.name ASC, emp.full_name ASC
+    ";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("s", $date);
+    $stmt->execute();
+
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+
 }

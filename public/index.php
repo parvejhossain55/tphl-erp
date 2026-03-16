@@ -154,10 +154,14 @@ $routes = [
     "mobile-punch" => ["controller" => "EmpAttendanceController", "method" => "createMobilePuch"],
     "store-self-mobile-punch" => ["controller" => "EmpAttendanceController", "method" => "storeMobilePunch"],
 
-    // Report
+    //==== Report
     "daily-attendance-report" => ["controller" => "AttendanceReportController", "method" => "attendanceReport"],
     "export-daily-report" => ["controller" => "AttendanceReportController", "method" => "exportDailyReport"],
     "export-daily-report-pdf" => ["controller" => "AttendanceReportController", "method" => "exportDailyReportPDF"],
+
+    // late report 
+     "daily-late-report" => ["controller" => "LateReportController", "method" => "lateReport"],
+    //=== End Report
 
     // Employee Leave Controller
     "leave-lists" => ["controller" => "LeaveController", "method" => "index"],
