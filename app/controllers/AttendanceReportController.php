@@ -25,15 +25,21 @@ class AttendanceReportController extends Controller
 
         // Get selected date, default to today
         $date = $_GET['date'] ?? date('Y-m-d');
-
+        $employeeCount = $this->employeeModel->getTotalCount();
         // Fetch department-wise daily report
         $reportData = $this->EmpAttendanceModel->getDailyReport($date);
+        // today summary
+        $todaySummary = $this->EmpAttendanceModel->getTodaySummary($date);
+
 
         // Pass date to view as $reportDate
         return $this->view('hrm/reports/daily-attendance-report', [
             'current_route' => 'daily-attendance-report',
+            'page_title' => 'Daily attendance report',
             'reportData' => $reportData,
-            'reportDate' => $date  // <-- this fixes the undefined variable error
+            'reportDate' => $date,
+            'employeeCount' => $employeeCount,
+            'todaySummary' => $todaySummary,
         ]);
     }
 
@@ -43,22 +49,33 @@ class AttendanceReportController extends Controller
         $date = $_GET['date'] ?? date('Y-m-d');
         $reportData = $this->EmpAttendanceModel->getDailyReport($date);
 
-        header('Content-Type: text/csv');
+        // Excel headers
+        header('Content-Type: text/csv; charset=UTF-8');
         header('Content-Disposition: attachment; filename="daily_attendance_' . $date . '.csv"');
 
+        // UTF-8 BOM for Excel
+        echo "\xEF\xBB\xBF";
+
         $output = fopen('php://output', 'w');
+
+        // Column headers
         fputcsv($output, ['Department', 'Total Employee', 'Present', 'Late', 'Absent', 'Leave', 'Day Off', 'Attendance %']);
 
         foreach ($reportData as $row) {
-            $attendancePercent = ($row['present_count'] + $row['late_count'] + $row['day_off_count']) / $row['total_employee'] * 100;
+            $total = $row['total_employee'] ?? 0;
+            $present = $row['present_count'] ?? 0;
+
+            // Attendance % same as page → Present / Total
+            $attendancePercent = ($total > 0) ? ($present / $total) * 100 : 0;
+
             fputcsv($output, [
                 $row['department_name'],
-                $row['total_employee'],
-                $row['present_count'],
-                $row['late_count'],
-                $row['absent_count'],
-                $row['leave_count'],
-                $row['day_off_count'],
+                $total,
+                $present,
+                $row['late_count'] ?? 0,
+                $row['absent_count'] ?? 0,
+                $row['leave_count'] ?? 0,
+                $row['day_off_count'] ?? 0,
                 number_format($attendancePercent, 2) . '%'
             ]);
         }

@@ -317,6 +317,7 @@ class EmpAttendanceController extends Controller
             "current_route" => 'mobile-punch',
             "page_title"    => "Punch Add",
             "myAttendances"    =>$myAttendances,
+            "selectedDate"    =>$selectedDate,
         ]);
     }
 

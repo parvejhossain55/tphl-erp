@@ -69,7 +69,7 @@ $show_breadcrumb = true;
                         </div>
 
                         <div class="col-12 mt-4">
-                            <button type="submit" class="btn btn-primary" id="saveBtn" disabled>Save Days Off</button>
+                            <button type="submit" class="btn btn-secondary" id="saveBtn" disabled>Save Days Off</button>
                         </div>
                     </div>
                 </form>

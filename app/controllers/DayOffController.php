@@ -78,4 +78,8 @@ class DayOffController extends Controller
             exit;
         }
     }
+
+    // public function delete(){
+
+    // }
 }

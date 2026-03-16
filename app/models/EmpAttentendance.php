@@ -168,42 +168,63 @@ class EmpAttentendance extends Model
 
 
 
-    public function getTodaySummary($date = null)
-    {
-        // Default: today
-        $date = $date ?? date('Y-m-d');
+   public function getTodaySummary($date = null)
+{
+    $date = $date ?? date('Y-m-d');
 
-        $sql = "SELECT 
-                today_status,
-                COUNT(*) AS total
-            FROM emp_attendances
-            WHERE attendance_date = ?
-            GROUP BY today_status";
+    $sql = "
+    SELECT 
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("s", $date);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        COUNT(emp.id) AS total_employee,
 
-        $summary = [
-            'Present'   => 0,
-            'Absent'    => 0,
-            'Half-Day'  => 0,
-            'On Leave'  => 0,
-            'Holiday'   => 0,
-            'Day Off'   => 0,
-            'Late'      => 0
-        ];
+        SUM(CASE 
+            WHEN a.today_status = 'Present' THEN 1 
+            ELSE 0 
+        END) AS present_count,
 
-        while ($row = $result->fetch_assoc()) {
-            $summary[$row['today_status']] = (int)$row['total'];
-        }
+        SUM(CASE 
+            WHEN a.today_status = 'Late' 
+            OR TIME(a.punch_in_time) > '09:00:00' 
+        THEN 1 ELSE 0 END) AS late_count,
 
-        // Total employees today
-        $summary['Total'] = array_sum($summary);
+        SUM(CASE 
+            WHEN a.today_status = 'Absent' 
+            OR a.punch_in_time IS NULL 
+        THEN 1 ELSE 0 END) AS absent_count,
 
-        return $summary;
-    }
+        SUM(CASE 
+            WHEN a.today_status = 'On Leave' 
+        THEN 1 ELSE 0 END) AS leave_count,
+
+        SUM(CASE 
+            WHEN wdo.day_off_name = DAYNAME(?) 
+        THEN 1 ELSE 0 END) AS day_off_count
+
+    FROM employees emp
+
+    LEFT JOIN emp_attendances a 
+        ON a.employee_id = emp.id 
+        AND a.attendance_date = ?
+
+    LEFT JOIN emp_weekly_day_off wdo
+        ON wdo.employee_id = emp.id
+    ";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("ss", $date, $date);
+    $stmt->execute();
+
+    $result = $stmt->get_result()->fetch_assoc();
+
+    return [
+        'Total'   => $result['total_employee'] ?? 0,
+        'Present' => $result['present_count'] ?? 0,
+        'Late'    => $result['late_count'] ?? 0,
+        'Absent'  => $result['absent_count'] ?? 0,
+        'On Leave'=> $result['leave_count'] ?? 0,
+        'Day Off' => $result['day_off_count'] ?? 0
+    ];
+}
     public function getTodayAttendanceSummary($date = null)
     {
         // Default: today
@@ -343,28 +364,57 @@ class EmpAttentendance extends Model
 
 
 
-    public function getDailyReport($date)
-    {
-        $sql = "
-        SELECT 
-            dept.id AS department_id,
-            dept.name AS department_name,
-            COUNT(emp.id) AS total_employee,
-            SUM(CASE WHEN a.today_status = 'Present' THEN 1 ELSE 0 END) AS present_count,
-            SUM(CASE WHEN a.today_status = 'Late' OR TIME(a.punch_in_time) > '09:00:00' THEN 1 ELSE 0 END) AS late_count,
-            SUM(CASE WHEN a.today_status = 'Absent' OR a.punch_in_time IS NULL THEN 1 ELSE 0 END) AS absent_count,
-            SUM(CASE WHEN a.today_status = 'On Leave' THEN 1 ELSE 0 END) AS leave_count,
-            SUM(CASE WHEN DAYOFWEEK(a.attendance_date) = 6 THEN 1 ELSE 0 END) AS day_off_count
-        FROM employees emp
-        LEFT JOIN departments dept ON emp.department_id = dept.id
-        LEFT JOIN emp_attendances a ON a.employee_id = emp.id AND a.attendance_date = ?
-        GROUP BY dept.id, dept.name
-        ORDER BY dept.name ASC
-        ";
+public function getDailyReport($date)
+{
+    $sql = "
+    SELECT 
+        dept.id AS department_id,
+        dept.name AS department_name,
+        COUNT(emp.id) AS total_employee,
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("s", $date);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    }
+        SUM(CASE 
+            WHEN a.today_status = 'Present' THEN 1 
+            ELSE 0 
+        END) AS present_count,
+
+        SUM(CASE 
+            WHEN a.today_status = 'Late' 
+            OR TIME(a.punch_in_time) > '09:00:00' 
+        THEN 1 ELSE 0 END) AS late_count,
+
+        SUM(CASE 
+            WHEN a.today_status = 'Absent' 
+            OR a.punch_in_time IS NULL 
+        THEN 1 ELSE 0 END) AS absent_count,
+
+        SUM(CASE 
+            WHEN a.today_status = 'On Leave' 
+        THEN 1 ELSE 0 END) AS leave_count,
+
+        SUM(CASE 
+            WHEN wdo.day_off_name = DAYNAME(?) 
+        THEN 1 ELSE 0 END) AS day_off_count
+
+    FROM employees emp
+
+    LEFT JOIN departments dept 
+        ON emp.department_id = dept.id
+
+    LEFT JOIN emp_attendances a 
+        ON a.employee_id = emp.id 
+        AND a.attendance_date = ?
+
+    LEFT JOIN emp_weekly_day_off wdo
+        ON wdo.employee_id = emp.id
+
+    GROUP BY dept.id, dept.name
+    ORDER BY dept.name ASC
+    ";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("ss", $date, $date);
+    $stmt->execute();
+
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 }

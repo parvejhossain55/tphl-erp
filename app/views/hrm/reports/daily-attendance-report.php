@@ -61,13 +61,13 @@
 
     .report-meta .date-badge {
         display: inline-block;
-        background: #161b22;
-        border: 1px solid var(--border);
+        /* background: #161b22; */
+        border: 2px solid #36b914;
         border-radius: 8px;
         padding: .35rem .85rem;
         font-family: 'DM Mono', monospace;
         font-size: .8rem;
-        color: var(--accent);
+        color: #127616;
         letter-spacing: .04em;
     }
 
@@ -101,7 +101,7 @@
         border-radius: 14px 14px 0 0;
     }
 
-   
+
 
     .stat-label {
         font-size: .7rem;
@@ -412,19 +412,17 @@
                 <p>Human Resource Management System</p>
             </div>
         </div>
-        <div class="report-meta">
+
+        <div class="report-meta d-flex gap-2">
             <div class="date-badge mb-2">
                 &nbsp;<?= date('l, d F Y') ?>
             </div>
-            <div class="report-meta d-flex gap-2">
-                <div><a href="<?= $GLOBALS['base_url'] ?>/export-daily-report?date=<?= htmlspecialchars($reportDate) ?>" class="btn btn-success">
-                        Export CSV
-                    </a></div>
-                <div><a href="<?= $GLOBALS['base_url'] ?>/export-daily-report-pdf?date=<?= htmlspecialchars($reportDate ?? date('Y-m-d')) ?>" class="btn btn-danger">
-                        Export PDF
-                    </a></div>
-
-            </div>
+            <div><a href="<?= $GLOBALS['base_url'] ?>/export-daily-report?date=<?= htmlspecialchars($reportDate) ?>" class="btn btn-success">
+                    Export CSV
+                </a></div>
+            <div><a href="<?= $GLOBALS['base_url'] ?>/export-daily-report-pdf?date=<?= htmlspecialchars($reportDate ?? date('Y-m-d')) ?>" class="btn btn-danger">
+                    Export PDF
+                </a></div>
         </div>
     </div>
 
@@ -433,57 +431,45 @@
         <div class="col-6 col-md-4 col-lg-2">
             <div class="card__wrapper stat-card total">
                 <div class="stat-label">Total Employee</div>
-                <div class="stat-value">80</div>
+                <div class="stat-value"><?= $employeeCount ?? 0 ?></div>
                 <div class="stat-sub">Active headcount</div>
             </div>
         </div>
         <div class="col-6 col-md-4 col-lg-2">
             <div class="card__wrapper stat-card present">
                 <div class="stat-label">Present</div>
-                <div class="stat-value">58</div>
+                <div class="stat-value"><?= $todaySummary['Present'] ?></div>
                 <div class="stat-sub">On time today</div>
             </div>
         </div>
         <div class="col-6 col-md-4 col-lg-2">
             <div class="card__wrapper stat-card late">
                 <div class="stat-label">Late</div>
-                <div class="stat-value">12</div>
+                <div class="stat-value"><?= $todaySummary['Late'] ?></div>
                 <div class="stat-sub">After 9:10 AM</div>
             </div>
         </div>
         <div class="col-6 col-md-4 col-lg-2">
             <div class="card__wrapper stat-card absent">
                 <div class="stat-label">Absent</div>
-                <div class="stat-value">5</div>
-                <div class="stat-sub">Unapproved</div>
+                <div class="stat-value"><?= $todaySummary['Absent'] ?></div>
             </div>
         </div>
         <div class="col-6 col-md-4 col-lg-2">
             <div class="card__wrapper stat-card leave">
                 <div class="stat-label">On Leave</div>
-                <div class="stat-value">3</div>
-                <div class="stat-sub">Approved leave</div>
+                <div class="stat-value"><?= $todaySummary['On Leave'] ?></div>
             </div>
         </div>
         <div class="col-6 col-md-4 col-lg-2">
-            <div class="card__wrapper stat-card dayoff">
-                <svg class="ring-svg" width="110" height="110" viewBox="0 0 100 100">
-                    <defs>
-                        <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stop-color="#3fb950" />
-                            <stop offset="100%" stop-color="#58a6ff" />
-                        </linearGradient>
-                    </defs>
-                    <circle class="ring-track" cx="50" cy="50" r="45" />
-                    <circle class="ring-fill" cx="50" cy="50" r="45" />
-                    <text x="50" y="48" class="ring-label"  font-family="Sora" font-size="13" font-weight="800">87.5%</text>
-                    <text x="50" y="62" class="ring-label"  font-family="Sora" font-size="7">Attendance</text>
-                </svg>
+            <div class="card__wrapper stat-card leave">
+                <div class="stat-label">Day Off</div>
+                <div class="stat-value"><?= $todaySummary['Day Off'] ?></div>
             </div>
         </div>
     </div>
 
-    <!-- ── Employee Table ── -->
+    <!--  Employee Table ── -->
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
