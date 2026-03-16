@@ -1412,6 +1412,13 @@ CREATE TABLE holidays (
     `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
     `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 );
+CREATE TABLE `emp_weekly_day_off` (
+  `id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL,
+  `day_off_name` varchar(100) NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Indexes for table `approval_requests`

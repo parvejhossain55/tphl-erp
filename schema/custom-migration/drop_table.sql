@@ -51,4 +51,5 @@ DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS whatsapp_campaigns;
 DROP TABLE IF EXISTS whatsapp_messages;
+DROP TABLE IF EXISTS emp_weekly_day_off;
 

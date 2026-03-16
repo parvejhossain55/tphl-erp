@@ -466,17 +466,38 @@
                             <li class="slide <?= isActive('daily-attendance-report', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('daily-attendance-report', $current_route) ?>" href="<?= $base_url ?>/daily-attendance-report">Daily Attendance Report</a>
                             </li>
-                            <li class="slide <?= isActive('leave-types', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('leave-types', $current_route) ?>" href="<?= $base_url ?>/leave-types">Leave Report</a>
+                            <li class="slide <?= isActive('leave-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('leave-report', $current_route) ?>" href="<?= $base_url ?>/leave-report">Leave Report</a>
                             </li>
-                            <li class="slide <?= isActive('leave-lists', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists">Absend Report</a>
+                            <li class="slide <?= isActive('absent-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('absent-report', $current_route) ?>" href="<?= $base_url ?>/absent-report">Absent Report</a>
                             </li>
                             <li class="slide <?= isActive('daily-late-report', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('daily-late-report', $current_route) ?>" href="<?= $base_url ?>/daily-late-report"> Daily Late Report</a>
                             </li>
-                            <li class="slide <?= isActive('leave-lists', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists"> Mobile Punch Report</a>
+                            <li class="slide <?= isActive('mobile-punch-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('mobile-punch-report', $current_route) ?>" href="<?= $base_url ?>/mobile-punch-report"> Mobile Punch Report</a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <li class="slide has-sub <?= isActive(['job-card-report', 'hrm-daily-report', 'hrm-monthly-report', 'dept-wise-report'], $current_route) ?>">
+                        <a href="javascript:void(0)" class="dropdown-toggle side-menu__item <?= isActive(['job-card-report', 'hrm-daily-report', 'hrm-monthly-report', 'dept-wise-report'], $current_route) ?>">
+                            <span class="side-menu__icon"><i class="fa fa-folder-open text-primary"></i></span>
+                            <span class="side-menu__label">All Report</span><i class="angle fe fe-chevron-right"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide <?= isActive('job-card-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('job-card-report', $current_route) ?>" href="<?= $base_url ?>/job-card-report">Attendance (Job Card)</a>
+                            </li>
+                            <li class="slide <?= isActive('hrm-daily-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('hrm-daily-report', $current_route) ?>" href="<?= $base_url ?>/hrm-daily-report">Daily Report</a>
+                            </li>
+                            <li class="slide <?= isActive('hrm-monthly-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('hrm-monthly-report', $current_route) ?>" href="<?= $base_url ?>/hrm-monthly-report">Monthly Report</a>
+                            </li>
+                            <li class="slide <?= isActive('dept-wise-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('dept-wise-report', $current_route) ?>" href="<?= $base_url ?>/dept-wise-report"> Department Wise</a>
                             </li>
                         </ul>
                     </li>

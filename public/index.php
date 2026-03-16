@@ -161,6 +161,42 @@ $routes = [
 
     // late report 
      "daily-late-report" => ["controller" => "LateReportController", "method" => "lateReport"],
+     "export-late-report" => ["controller" => "LateReportController", "method" => "exportLateReport"],
+     "export-late-report-pdf" => ["controller" => "LateReportController", "method" => "exportLateReportPDF"],
+
+    // leave report 
+     "leave-report" => ["controller" => "LeaveReportController", "method" => "leaveReport"],
+     "export-leave-report" => ["controller" => "LeaveReportController", "method" => "exportLeaveReport"],
+     "export-leave-report-pdf" => ["controller" => "LeaveReportController", "method" => "exportLeaveReportPDF"],
+
+    // absent report 
+     "absent-report" => ["controller" => "AbsentReportController", "method" => "absentReport"],
+     "export-absent-report" => ["controller" => "AbsentReportController", "method" => "exportAbsentReport"],
+     "export-absent-report-pdf" => ["controller" => "AbsentReportController", "method" => "exportAbsentReportPDF"],
+
+    // mobile punch report 
+     "mobile-punch-report" => ["controller" => "MobilePunchReportController", "method" => "mobilePunchReport"],
+     "export-mobile-punch-report" => ["controller" => "MobilePunchReportController", "method" => "exportMobilePunchReport"],
+     "export-mobile-punch-report-pdf" => ["controller" => "MobilePunchReportController", "method" => "exportMobilePunchReportPDF"],
+
+    // === ALL REPORTS MODULE ===
+    "job-card-report" => ["controller" => "JobCardReportController", "method" => "index"],
+    "export-job-card-csv" => ["controller" => "JobCardReportController", "method" => "exportCSV"],
+    "export-job-card-pdf" => ["controller" => "JobCardReportController", "method" => "exportPDF"],
+
+    "hrm-daily-report" => ["controller" => "HrmDailyReportController", "method" => "index"],
+    "export-hrm-daily-csv" => ["controller" => "HrmDailyReportController", "method" => "exportCSV"],
+    "export-hrm-daily-pdf" => ["controller" => "HrmDailyReportController", "method" => "exportPDF"],
+
+    "hrm-monthly-report" => ["controller" => "HrmMonthlyReportController", "method" => "index"],
+    "export-hrm-monthly-csv" => ["controller" => "HrmMonthlyReportController", "method" => "exportCSV"],
+    "export-hrm-monthly-pdf" => ["controller" => "HrmMonthlyReportController", "method" => "exportPDF"],
+
+    "dept-wise-report" => ["controller" => "HrmDepartmentReportController", "method" => "index"],
+    "export-hrm-dept-csv" => ["controller" => "HrmDepartmentReportController", "method" => "exportCSV"],
+    "export-hrm-dept-pdf" => ["controller" => "HrmDepartmentReportController", "method" => "exportPDF"],
+
+
     //=== End Report
 
     // Employee Leave Controller

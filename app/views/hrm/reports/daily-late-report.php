@@ -13,12 +13,16 @@
             <div class="date-badge mb-2">
                 &nbsp;<?= date('l, d F Y') ?>
             </div>
-            <div><a href="<?= $GLOBALS['base_url'] ?>/export-daily-report?date=<?= htmlspecialchars($reportDate) ?>" class="btn btn-success">
+            <div>
+                <a href="<?= $GLOBALS['base_url'] ?>/export-late-report?date=<?= htmlspecialchars($reportDate ?? date('Y-m-d')) ?>" class="btn btn-success">
                     Export CSV
-                </a></div>
-            <div><a href="<?= $GLOBALS['base_url'] ?>/export-daily-report-pdf?date=<?= htmlspecialchars($reportDate ?? date('Y-m-d')) ?>" class="btn btn-danger">
+                </a>
+            </div>
+            <div>
+                <a href="<?= $GLOBALS['base_url'] ?>/export-late-report-pdf?date=<?= htmlspecialchars($reportDate ?? date('Y-m-d')) ?>" class="btn btn-danger">
                     Export PDF
-                </a></div>
+                </a>
+            </div>
         </div>
     </div>
 
