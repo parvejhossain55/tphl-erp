@@ -92,35 +92,68 @@ class HrmDashboardController extends Controller
         $birthdays = $this->employeeModel->birthdayNotification();
 
 
-        // holiday function for calender
+        // ================= HOLIDAY CALENDAR LOGIC =================
 
-        $month = $_GET['month'] ?? date('m');
-        $year = date('Y'); // current year, or you can make it dynamic
+        // Get month & year
+        $month = isset($_GET['month']) ? (int)$_GET['month'] : date('m');
+        $year  = isset($_GET['year']) ? (int)$_GET['year'] : date('Y');
 
-        $stmt = $this->db->prepare("SELECT * FROM holidays ORDER BY holiday_date ASC");
+        // Month start & end
+        $startOfMonth = "$year-$month-01";
+        $endOfMonth   = date("Y-m-t", strtotime($startOfMonth));
+
+        // 🔥 Get ALL holidays (for right list)
+        $stmt = $this->db->prepare("
+    SELECT * FROM holidays 
+    ORDER BY start_date ASC
+");
         $stmt->execute();
         $allHolidays = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
 
-
-        // Fetch holidays for the selected month & year
-        $stmt = $this->db->prepare("SELECT * FROM holidays WHERE MONTH(holiday_date)=? AND YEAR(holiday_date)=?");
-        $stmt->bind_param("ii", $month, $year);
+        // 🔥 Get ONLY holidays that overlap current month
+        $stmt = $this->db->prepare("
+    SELECT * FROM holidays 
+    WHERE start_date <= ? 
+    AND end_date >= ?
+    ORDER BY start_date ASC
+");
+        $stmt->bind_param("ss", $endOfMonth, $startOfMonth);
         $stmt->execute();
         $holidaysResult = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // Map holidays for quick lookup by day
+
+        //  Map holidays by day (range support)
         $holidays = [];
+
         foreach ($holidaysResult as $h) {
-            $day = (int) date('d', strtotime($h['holiday_date']));
-            $holidays[$day] = $h['title'];
+
+            $start = strtotime($h['start_date']);
+            $end   = strtotime($h['end_date']);
+
+            for ($date = $start; $date <= $end; $date += 86400) {
+
+                $currentDate = date('Y-m-d', $date);
+
+                // only current month
+                if (date('m', $date) == $month && date('Y', $date) == $year) {
+
+                    $day = (int)date('d', $date);
+
+                    // support multiple holidays same day
+                    $holidays[$day][] = $h['title'];
+                }
+            }
         }
 
-        // Month info
-        $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
-        $firstDayOfWeek = date('w', strtotime("$year-$month-01")); // 0=Sun .. 6=Sat
-        $today = date('Y-m-d'); // for marking today
 
+        // ================= CALENDAR INFO =================
+
+        $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+        $firstDayOfWeek = date('w', strtotime("$year-$month-01"));
+        $today = date('Y-m-d');
+
+        // prev/next month
         $prevMonth = $month - 1;
         $prevYear = $year;
         if ($prevMonth < 1) {
@@ -135,12 +168,11 @@ class HrmDashboardController extends Controller
             $nextYear++;
         }
 
+        // holiday count (month base)
+        $holidayCount = $this->holidayModel->holidayCount($year, $month);
 
-
-        $holidayCount = $this->holidayModel->holidayCount();
-        // For month name in header
-        $monthName = date('F', strtotime("$year-$month-01"));
-
+        // Month name
+        $monthName = date('F', strtotime($startOfMonth));
 
         $this->view("hrm/hrm-dashboard", [
             "current_route"   => "hrm-dashboard",
@@ -187,7 +219,7 @@ class HrmDashboardController extends Controller
             session_start();
         }
     }
-    
+
 
 
     public function approveFull($id)

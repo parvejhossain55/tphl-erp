@@ -412,26 +412,26 @@
                         <?php endforeach; ?>
 
                         <!-- Empty cells before month starts -->
-                        <?php for ($i = 0; $i < $firstDayOfWeek; $i++): ?>
-                            <div class="cal-cell other-month"></div>
-                        <?php endfor; ?>
-
-                        <!-- Days of the month -->
                         <?php for ($day = 1; $day <= $daysInMonth; $day++):
                             $dateStr = sprintf("%04d-%02d-%02d", $year, $month, $day);
                             $classes = "cal-cell";
 
-                            // Mark today
+                            // today
                             if ($dateStr == $today) $classes .= " today";
 
-                            // Weekly holiday = Friday
-                            $weekDay = date('w', strtotime($dateStr)); // 0=Sun .. 5=Fri
+                            // friday weekly off
+                            $weekDay = date('w', strtotime($dateStr));
                             if ($weekDay == 5) $classes .= " weekend";
 
-                            // Government holidays
+                            // holiday
                             if (isset($holidays[$day])) $classes .= " holiday";
+
+                            // tooltip
+                            $title = isset($holidays[$day]) ? implode(', ', $holidays[$day]) : '';
                         ?>
-                            <div class="<?= $classes ?>" title="<?= $holidays[$day] ?? '' ?>"><?= $day ?></div>
+                            <div class="<?= $classes ?>" title="<?= $title ?>">
+                                <?= $day ?>
+                            </div>
                         <?php endfor; ?>
 
                         <!-- Fill remaining cells to complete last week -->
@@ -455,7 +455,7 @@
                             <div class="legend-dot" style="background:var(--holiday)"></div>Government Holiday
                         </div>
                         <div class="legend-item">
-                            <div class="legend-dot" style="background:var(--weekend)"></div>Weekly Holiday
+                            <div class="legend-dot" style="background:#d5593c"></div>Weekly Holiday
                         </div>
                     </div>
 
@@ -472,21 +472,45 @@
 
                     <ul class="holiday-list">
                         <?php foreach ($holidaysResult as $h):
-                            $day = date('d', strtotime($h['holiday_date']));
-                            $monthShort = date('M', strtotime($h['holiday_date']));
+
+                            $start = strtotime($h['start_date']);
+                            $end   = strtotime($h['end_date']);
+
+                            $startDay = date('d', $start);
+                            $endDay   = date('d', $end);
+
+                            $startMonth = date('M', $start);
+                            $endMonth   = date('M', $end);
                         ?>
+
                             <li class="holiday-item">
                                 <div class="holiday-date-box">
-                                    <div class="day"><?= $day ?></div>
-                                    <div class="month"><?= $monthShort ?></div>
+                                    <div class="day">
+                                        <?php if ($startDay == $endDay && $startMonth == $endMonth): ?>
+                                            <?= $startDay ?>
+                                        <?php else: ?>
+                                            <?= $startDay ?> - <?= $endDay ?>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <div class="month">
+                                        <?php if ($startMonth == $endMonth): ?>
+                                            <?= $startMonth ?>
+                                        <?php else: ?>
+                                            <?= $startMonth ?> - <?= $endMonth ?>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
+
                                 <div class="holiday-info">
                                     <strong><?= htmlspecialchars($h['title']) ?></strong>
+
                                     <?php if (!empty($h['description'])): ?>
                                         <small><?= htmlspecialchars($h['description']) ?></small>
                                     <?php endif; ?>
                                 </div>
                             </li>
+
                         <?php endforeach; ?>
                     </ul><!-- /holiday-list -->
 

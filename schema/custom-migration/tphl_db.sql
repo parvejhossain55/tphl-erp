@@ -1420,6 +1420,24 @@ CREATE TABLE `emp_weekly_day_off` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+
+
+
+
+CREATE TABLE employee_tasks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT UNSIGNED NOT NULL,
+    work_date DATE NOT NULL,
+    task_description TEXT NOT NULL,
+    hours_spent DECIMAL(4,2) NOT NULL DEFAULT 0,
+    status ENUM('Pending','In Progress','Done') DEFAULT 'Pending',
+    remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (employee_id) REFERENCES employees(id)
+);
+
 --
 -- Indexes for table `approval_requests`
 --

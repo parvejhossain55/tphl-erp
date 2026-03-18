@@ -88,7 +88,7 @@
      }
 
      .cal-cell.weekend {
-         color: var(--weekend);
+         color: #d5593c;
      }
 
      /* red dot under holiday */

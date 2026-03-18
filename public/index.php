@@ -209,7 +209,12 @@ $routes = [
     "store-self-leave-request" => ["controller" => "LeaveController", "method" => "store"],
     "create-self-leave-request" => ["controller" => "LeaveController", "method" => "createSelf"],
     "remaining-days-self" => ["controller" => "LeaveController", "method" => "remainingDaysSelf"],
+
+    // holiday controller
     "holiday-lists" => ["controller" => "HolidayController", "method" => "index"],
+    "store-holiday" => ["controller" => "HolidayController", "method" => "store"],
+    "update-holiday" => ["controller" => "HolidayController", "method" => "update"],
+    "delete-holiday" => ["controller" => "HolidayController", "method" => "delete"],
     
     // Day Off Controller
     "day-off" => ["controller" => "DayOffController", "method" => "dayOffManage"],

@@ -14,37 +14,37 @@ $show_breadcrumb = true;
 <div class="content">
 
   <!-- STAT CARDS -->
-  <div class="row  mb-4">
+  <div class="row mb-4">
     <div class="col-6 col-xl-3">
-      <div class="stat-card">
-        <div class="stat-icon" style="background:#fff0f3"><i class="fas fa-flag" style="color:var(--accent)"></i></div>
-        <div class="value">২২</div>
-        <div class="label">মোট ছুটির দিন (২০২৫)</div>
-        <div class="change up"><i class="fas fa-arrow-up me-1"></i>গত বছরের চেয়ে ২ বেশি</div>
+      <div class="stat-card card__wrapper">
+        <div class="card__icon"><i class="fas fa-flag" style="color:var(--accent)"></i></div>
+        <div class="value"><?= $totalYearHoliday ?></div>
+        <div class="label">Total Holidays (<?= date('Y') ?>)</div>
+
       </div>
     </div>
     <div class="col-6 col-xl-3">
-      <div class="stat-card">
-        <div class="stat-icon" style="background:#f0f9ff"><i class="fas fa-calendar-check" style="color:#3b82f6"></i></div>
-        <div class="value">৫</div>
-        <div class="label">এই মাসের ছুটি</div>
-        <div class="change down"><i class="fas fa-arrow-down me-1"></i>গত মাসের চেয়ে কম</div>
+      <div class="stat-card card__wrapper">
+        <div class="card__icon"><i class="fas fa-calendar-check" style="color:#3b82f6"></i></div>
+        <div class="value"><?= $thisMonthHoliday ?></div>
+        <div class="label">This Month Holidays</div>
+
       </div>
     </div>
     <div class="col-6 col-xl-3">
-      <div class="stat-card">
-        <div class="stat-icon" style="background:#f0fdf4"><i class="fas fa-sun" style="color:#10b981"></i></div>
-        <div class="value">৫২</div>
-        <div class="label">সাপ্তাহিক ছুটি (শুক্র)</div>
-        <div class="change up"><i class="fas fa-check me-1"></i>সারা বছর</div>
+      <div class="stat-card card__wrapper">
+        <div class="card__icon"><i class="fas fa-sun" style="color:#10b981"></i></div>
+        <div class="value"><?= $weeklyHolidayCount ?></div>
+        <div class="label">Weekly Off</div>
+        <div class="change up"><i class="fas fa-check me-1"></i>Total Year</div>
       </div>
     </div>
     <div class="col-6 col-xl-3">
-      <div class="stat-card">
-        <div class="stat-icon" style="background:#fffbeb"><i class="fas fa-mosque" style="color:#f59e0b"></i></div>
-        <div class="value">৩</div>
-        <div class="label">আসন্ন ছুটি</div>
-        <div class="change up"><i class="fas fa-clock me-1"></i>পরবর্তী ৩০ দিনে</div>
+      <div class="stat-card card__wrapper">
+        <div class="card__icon"><i class="fas fa-mosque" style="color:#f59e0b"></i></div>
+        <div class="value"><?= $upcomingHolidayCount ?></div>
+        <div class="label">Upcoming Holidays</div>
+        <div class="change up"><i class="fas fa-clock me-1"></i>Next 30 Days</div>
       </div>
     </div>
   </div>
@@ -61,109 +61,54 @@ $show_breadcrumb = true;
                   <th>Date</th>
                   <th>Day</th>
                   <th>Holiday Name</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody class="table__body">
-                <tr>
-                  <td class="table__date">1 January 2024</td>
-                  <td class="table__day">Tuesday</td>
-                  <td class="table__name">New Years Day</td>
-                </tr>
-                <tr>
-                  <td class="table__date">14 February 2024</td>
-                  <td class="table__day">Thursday</td>
-                  <td class="table__name">Valentines Day</td>
-                </tr>
-                <tr>
-                  <td class="table__date">17 March 2024</td>
-                  <td class="table__day">Sunday</td>
-                  <td class="table__name">St. Patricks Day</td>
-                </tr>
-                <tr>
-                  <td class="table__date">12 April 2024</td>
-                  <td class="table__day">Friday</td>
-                  <td class="table__name">Easter Sunday</td>
-                </tr>
-                <tr>
-                  <td class="table__date">1 May 2024</td>
-                  <td class="table__day">Wednesday</td>
-                  <td class="table__name">International WorkersDay</td>
-                </tr>
-                <tr>
-                  <td class="table__date">6 May 2024</td>
-                  <td class="table__day">Monday</td>
-                  <td class="table__name">Ramadan Begins</td>
-                </tr>
-                <tr>
-                  <td class="table__date">12 June 2024</td>
-                  <td class="table__day">Wednesday</td>
-                  <td class="table__name">World Day Against Child Labor</td>
-                </tr>
-                <tr>
-                  <td class="table__date">21 June 2024</td>
-                  <td class="table__day">Friday</td>
-                  <td class="table__name">International Day of Yoga</td>
-                </tr>
-                <tr>
-                  <td class="table__date">4 July 2024</td>
-                  <td class="table__day">Thursday</td>
-                  <td class="table__name">Independence Day (United States)</td>
-                </tr>
-                <tr>
-                  <td class="table__date">14 August 2024</td>
-                  <td class="table__day">Wednesday</td>
-                  <td class="table__name">Palestine Independence Day</td>
-                </tr>
-                <tr>
-                  <td class="table__date">15 August 2024</td>
-                  <td class="table__day">Thursday</td>
-                  <td class="table__name">Zealandia Independence Day</td>
-                </tr>
-                <tr>
-                  <td class="table__date">1 September 2024</td>
-                  <td class="table__day">Sunday</td>
-                  <td class="table__name">Islamic New Year</td>
-                </tr>
-                <tr>
-                  <td class="table__date">21 September 2024</td>
-                  <td class="table__day">Saturday</td>
-                  <td class="table__name">International Day of Peace</td>
-                </tr>
-                <tr>
-                  <td class="table__date">1 October 2024</td>
-                  <td class="table__day">Tuesday</td>
-                  <td class="table__name">International Day of Older Persons</td>
-                </tr>
-                <tr>
-                  <td class="table__date">24 October 2024</td>
-                  <td class="table__day">Thursday</td>
-                  <td class="table__name">United Nations Day</td>
-                </tr>
-                <tr>
-                  <td class="table__date">31 October 2024</td>
-                  <td class="table__day">Thursday</td>
-                  <td class="table__name">Halloween</td>
-                </tr>
-                <tr>
-                  <td class="table__date">9 November 2024</td>
-                  <td class="table__day">Saturday</td>
-                  <td class="table__name">World Freedom Day</td>
-                </tr>
-                <tr>
-                  <td class="table__date">20 November 2024</td>
-                  <td class="table__day">Wednesday</td>
-                  <td class="table__name">Universal Childrens Day</td>
-                </tr>
-                <tr>
-                  <td class="table__date">1 December 2024</td>
-                  <td class="table__day">Sunday</td>
-                  <td class="table__name">World AIDS Day</td>
-                </tr>
-                <tr>
-                  <td class="table__date">10 December 2024</td>
-                  <td class="table__day">Tuesday</td>
-                  <td class="table__name">Human Rights Day</td>
-                </tr>
+                <?php foreach ($holidays as $h):
+                  $start = strtotime($h['start_date']);
+                  $end   = strtotime($h['end_date']);
+                  $title = htmlspecialchars($h['title']);
+
+                  for ($d = $start; $d <= $end; $d += 86400):
+                    $dateStr = date('Y-m-d', $d);
+                    $dayName = date('l', $d);
+                    $dateDisplay = date('j F Y', $d);
+                ?>
+                    <tr>
+                      <td class="table__date"><?= $dateDisplay ?></td>
+                      <td class="table__day"><?= $dayName ?></td>
+                      <td class="table__name"><?= $title ?></td>
+                      <td>
+                        <div class="d-flex align-items-center gap-10">
+
+                          <!-- Edit Button -->
+
+                          <button type="button" class="table__icon edit"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editHolidayModal"
+                            data-id="<?= $h['id'] ?>"
+                            data-title="<?= htmlspecialchars($h['title']) ?>"
+                            data-start-date="<?= $h['start_date'] ?>"
+                            data-end-date="<?= $h['end_date'] ?>">
+                            <i class="fa-sharp fa-light fa-pen"></i>
+                          </button>
+
+                          <!-- Delete Button -->
+
+                          <button class="removeBtnCust table__icon delete"
+                            data-id="<?= $h['id'] ?>"
+                            data-name="<?= htmlspecialchars($h['title']) ?>"
+                            data-action="delete-holiday">
+                            <i class="fa-regular fa-trash"></i>
+                          </button>
+
+                        </div>
+                      </td>
+                    </tr>
+
+                <?php endfor;
+                endforeach; ?>
               </tbody>
             </table>
           </div>
@@ -172,7 +117,7 @@ $show_breadcrumb = true;
     </div>
   </div>
 
-  <!-- new Leave modal start -->
+  <!-- new Holiday modal start -->
   <div id="addNewHolidays" class="modal custom-modal fade" role="dialog">
     <div class="modal-dialog modal-dialog-centered modal-md" role="document">
       <div class="modal-content">
@@ -182,38 +127,121 @@ $show_breadcrumb = true;
               class="fa-solid fa-xmark-large"></i></button>
         </div>
         <div class="modal-body">
-          <form action="#">
+          <form action="<?= $GLOBALS['base_url'] ?>/store-holiday" method="POST">
+
             <div class="row gy-20">
-              <div class="col-xl-12">
-                <div class="card__wrapper mb-20">
-                  <div class="row gy-20">
-                    <div class="col-md-12">
-                      <div class="from__input-box">
-                        <div class="form__input-title">
-                          <label class="form-check-label" for="dateDuration">Holiday Date</label>
-                        </div>
-                        <div class="form__input">
-                          <input name="fromDate" class="form-control" id="dateDuration" type="text" required>
-                        </div>
-                      </div>
-                    </div>
-               
-                    <div class="col-md-12">
-                      <div class="from__input-box">
-                        <div class="form__input-title">
-                          <label>Holiday Name <span>*</span></label>
-                        </div>
-                        <div class="form__input">
-                          <textarea class="form-control" name="name" required></textarea>
-                        </div>
-                      </div>
-                    </div>
+
+              <!-- FROM DATE -->
+              <div class="col-md-12">
+                <div class="from__input-box">
+                  <div class="form__input-title">
+                    <label>From Date</label>
+                  </div>
+                  <div class="form__input">
+                    <input type="date" name="start_date" class="form-control" required>
                   </div>
                 </div>
               </div>
+
+              <!-- TO DATE -->
+              <div class="col-md-12">
+                <div class="from__input-box">
+                  <div class="form__input-title">
+                    <label>To Date</label>
+                  </div>
+                  <div class="form__input">
+                    <input type="date" name="end_date" class="form-control" required>
+                  </div>
+                </div>
+              </div>
+
+              <!-- HOLIDAY NAME -->
+              <div class="col-md-12">
+                <div class="from__input-box">
+                  <div class="form__input-title">
+                    <label>Holiday Name</label>
+                  </div>
+                  <div class="form__input">
+                    <input type="text" name="title" class="form-control" required>
+                  </div>
+                </div>
+              </div>
+
+
+
             </div>
-            <div class="submit__btn text-center">
-              <button class="btn btn-primary">Submit</button>
+
+            <div class="submit__btn text-center mt-3">
+              <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- new Holiday modal start -->
+
+  <!-- Edit Holiday modal start -->
+  <div id="editHolidayModal" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">New Holidays</h5>
+          <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close"><i
+              class="fa-solid fa-xmark-large"></i></button>
+        </div>
+        <div class="modal-body">
+          <form action="<?= $GLOBALS['base_url'] ?>/update-holiday" method="POST">
+            <input type="hidden" name="id" id="edit_holiday_id">
+
+            <div class="row gy-20">
+
+              <!-- FROM DATE -->
+              <div class="col-md-12">
+                <div class="from__input-box">
+                  <div class="form__input-title"><label>From Date</label></div>
+                  <div class="form__input">
+                    <input type="date" name="start_date" id="edit_start_date" class="form-control" required>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TO DATE -->
+              <div class="col-md-12">
+                <div class="from__input-box">
+                  <div class="form__input-title"><label>To Date</label></div>
+                  <div class="form__input">
+                    <input type="date" name="end_date" id="edit_end_date" class="form-control" required>
+                  </div>
+                </div>
+              </div>
+
+              <!-- HOLIDAY NAME -->
+              <div class="col-md-12">
+                <div class="from__input-box">
+                  <div class="form__input-title"><label>Holiday Name</label></div>
+                  <div class="form__input">
+                    <input type="text" name="title" id="edit_title" class="form-control" required>
+                  </div>
+                </div>
+              </div>
+
+              <!-- DESCRIPTION -->
+              <div class="col-md-12">
+                <div class="from__input-box">
+                  <div class="form__input-title"><label>Description (optional)</label></div>
+                  <div class="form__input">
+                    <textarea name="description" id="edit_description" class="form-control"></textarea>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="submit__btn text-center mt-3">
+              <button type="submit" class="btn btn-primary">Update</button>
             </div>
           </form>
         </div>
@@ -221,7 +249,29 @@ $show_breadcrumb = true;
     </div>
   </div>
 
-  <!-- new Leave modal end -->
+  <!-- edit Holiday modal end -->
 
 
 </div><!-- /content -->
+<script>
+  const base_url = "<?= $GLOBALS['base_url'] ?>"; // PHP outputs the correct base URL
+  document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById('editHolidayModal');
+
+    modal.addEventListener('show.bs.modal', function(event) {
+      const button = event.relatedTarget;
+
+      const id = button.getAttribute('data-id');
+      const title = button.getAttribute('data-title');
+      const start = button.getAttribute('data-start-date');
+      const end = button.getAttribute('data-end-date');
+      const desc = button.getAttribute('data-description') ?? '';
+
+      document.getElementById('edit_holiday_id').value = id;
+      document.getElementById('edit_title').value = title;
+      document.getElementById('edit_start_date').value = start;
+      document.getElementById('edit_end_date').value = end;
+      document.getElementById('edit_description').value = desc;
+    });
+  });
+</script>
