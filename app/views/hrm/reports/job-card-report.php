@@ -6,7 +6,7 @@
         <div class="brand">
             <div class="brand-text">
                 <h1>Attendance (Job Card)</h1>
-                <p>Human Resource Management System</p>
+                <p>Employees Attendance Report</p>
             </div>
         </div>
 

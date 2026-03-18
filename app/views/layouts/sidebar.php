@@ -481,10 +481,11 @@
                         </ul>
                     </li>
 
-                    <li class="slide has-sub <?= isActive(['job-card-report', 'hrm-daily-report', 'hrm-monthly-report', 'dept-wise-report'], $current_route) ?>">
-                        <a href="javascript:void(0)" class="dropdown-toggle side-menu__item <?= isActive(['job-card-report', 'hrm-daily-report', 'hrm-monthly-report', 'dept-wise-report'], $current_route) ?>">
-                            <span class="side-menu__icon"><i class="fa fa-folder-open text-primary"></i></span>
-                            <span class="side-menu__label">All Report</span><i class="angle fe fe-chevron-right"></i>
+                    <li class="slide has-sub <?= isActive(['leave-types', 'leave-lists'], $current_route) ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['leave-types', 'leave-lists'], $current_route) ? 'active' : '' ?>">
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                            <span class="sidebar__menu-label">All Report</span>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide <?= isActive('job-card-report', $current_route) ?>">
