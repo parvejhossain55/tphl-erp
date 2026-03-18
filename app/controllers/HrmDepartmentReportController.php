@@ -7,11 +7,13 @@ class HrmDepartmentReportController extends Controller
 {
     protected $db;
     protected $departmentModel;
+    protected $empTaskModel;
 
     public function __construct($db)
     {
         $this->db = $db;
         $this->departmentModel = new Department($this->db);
+        $this->empTaskModel = new EmployeeTask($this->db);
     }
 
     public function index()
@@ -205,4 +207,55 @@ class HrmDepartmentReportController extends Controller
 
         $pdf->Output("Department_Wise_Report_$date.pdf", 'I');
     }
+
+
+
+public function departmentKPIReport() {
+
+    $department_id = $_GET['department_id'] ?? null;
+    $employee_id   = $_GET['employee_id'] ?? null;
+    $status        = $_GET['status'] ?? null;
+    $date_from     = $_GET['date_from'] ?? null;
+    $date_to       = $_GET['date_to'] ?? null;
+    $month         = $_GET['month'] ?? date('Y-m');
+
+    $reportData = $this->empTaskModel->getDepartmentKPI(
+        $department_id,
+        $employee_id,
+        $status,
+        $date_from,
+        $date_to,
+        $month
+    );
+
+    // dropdown data
+    $departments = $this->empTaskModel->getAllDepartments();
+    $employees   = $this->empTaskModel->getAllEmployees();
+
+    return $this->view('hrm/reports/department-kpi', [
+        'reportData'   => $reportData,
+        'currentMonth' => $month,
+        'departments'  => $departments,
+        'employees'    => $employees,
+        'filters'      => $_GET
+    ]);
+}
+public function getTaskData()
+{
+    $department_id = $_GET['department_id'] ?? null;
+    $employee_id   = $_GET['employee_id'] ?? null;
+    $status        = $_GET['status'] ?? null;
+    $date_from     = $_GET['date_from'] ?? null;
+    $date_to       = $_GET['date_to'] ?? null;
+
+    $data = $this->empTaskModel->getFilteredTasks(
+        $department_id,
+        $employee_id,
+        $status,
+        $date_from,
+        $date_to
+    );
+
+    echo json_encode($data);
+}
 }

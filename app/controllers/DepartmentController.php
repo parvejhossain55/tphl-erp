@@ -4,10 +4,12 @@ class DepartmentController extends Controller
     protected $db;
     protected $deparmentModel;
     protected $roleModel;
+    protected $empTaskModel;
     public function __construct($db)
     {
         $this->db = $db;
         $this->deparmentModel = new Department($this->db);
+        $this->empTaskModel = new EmployeeTask($this->db);
     }
     public function index()
     {
@@ -87,4 +89,6 @@ class DepartmentController extends Controller
             echo "<h3 style='color:red'>Failed to delete department</h3>";
         }
     }
+
+
 }

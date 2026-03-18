@@ -195,6 +195,7 @@ $routes = [
     "dept-wise-report" => ["controller" => "HrmDepartmentReportController", "method" => "index"],
     "export-hrm-dept-csv" => ["controller" => "HrmDepartmentReportController", "method" => "exportCSV"],
     "export-hrm-dept-pdf" => ["controller" => "HrmDepartmentReportController", "method" => "exportPDF"],
+    "department-kpi" => ["controller" => "HrmDepartmentReportController", "method" => "departmentKPIReport"],
 
 
     //=== End Report
@@ -225,6 +226,12 @@ $routes = [
 
 
     //==================END hrm ========================
+
+
+
+    // ============ employee task sheets
+     "store-update-task" => ["controller" => "EmployeeTaskController", "method" => "save"],
+     "task-sheets" => ["controller" => "EmployeeTaskController", "method" => "index"],
     // leads
     "lead-lists" => ["controller" => "LeadController", "method" => "index"],
     "create-lead" => ["controller" => "LeadController", "method" => "create"],

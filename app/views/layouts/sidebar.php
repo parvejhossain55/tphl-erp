@@ -488,6 +488,9 @@
                             <span class="sidebar__menu-label">All Report</span>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide <?= isActive('department-kpi', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('department-kpi', $current_route) ?>" href="<?= $base_url ?>/department-kpi">Performance Report</a>
+                            </li>
                             <li class="slide <?= isActive('job-card-report', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('job-card-report', $current_route) ?>" href="<?= $base_url ?>/job-card-report">Attendance (Job Card)</a>
                             </li>
@@ -500,6 +503,7 @@
                             <li class="slide <?= isActive('dept-wise-report', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('dept-wise-report', $current_route) ?>" href="<?= $base_url ?>/dept-wise-report"> Department Wise</a>
                             </li>
+
                         </ul>
                     </li>
                 <?php endif; ?>
@@ -526,6 +530,7 @@
                         </a>
                     </li>
                 <?php endif; ?>
+
                 <?php if (hasPermission("User Manage")):  ?>
                     <li class="slide has-sub <?= isActive(['create-user', 'user-lists'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['create-user', 'user-lists'], $current_route) ? 'active' : '' ?>">
@@ -550,6 +555,7 @@
                 <?php endif; ?>
 
                 <!--End HRM CATEGORY -->
+
 
 
                 <?php if (hasPermission("My Attendance")) : ?>
@@ -701,6 +707,7 @@
 
 
 
+
                 <!--ROle & Permission -->
                 <?php if (hasPermission("role & permission")):  ?>
                     <li class="sidebar__menu-category">
@@ -760,7 +767,12 @@
                 <?php endif ?>
 
                 <!-- FOR Task Manage  -->
-
+                <li class="slide ">
+                    <a href="<?= $base_url ?>/task-sheets" class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                        <span class="sidebar__menu-label">My Task Sheets</span>
+                    </a>
+                </li>
                 <?php if (hasPermission("task manage")):  ?>
                     <li class="slide has-sub <?= isActive(['create-task', 'task-lists'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['create-task', 'task-lists'], $current_route) ? 'menu-open active' : '' ?>">
