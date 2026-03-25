@@ -349,6 +349,7 @@ CREATE TABLE `emi_schedules` (
 -- Table structure for table `employees`
 --
 
+
 CREATE TABLE `employees` (
   `id` int(10) UNSIGNED NOT NULL,
   `user_id` int(11) DEFAULT NULL,
@@ -367,10 +368,12 @@ CREATE TABLE `employees` (
   `department_id` int(10) UNSIGNED NOT NULL,
   `designation_id` int(10) UNSIGNED DEFAULT NULL,
   `dob` date DEFAULT NULL,
+  `workplace` varchar(255) DEFAULT NULL,
   `joining_date` date DEFAULT NULL,
   `basic_salary` float DEFAULT NULL,
   `account_holder_name` varchar(100) DEFAULT NULL,
   `account_number` varchar(50) DEFAULT NULL,
+  
   `make_user` int(11) DEFAULT 0,
   `password` varchar(255) NOT NULL,
   `bank_name` varchar(100) DEFAULT NULL,
@@ -381,6 +384,7 @@ CREATE TABLE `employees` (
   `photo` varchar(255) DEFAULT NULL,
   `employee_type` enum('permanent','contract','director') DEFAULT NULL,
   `employee_status` enum('active','inactive','resigned','terminated','on_leave') DEFAULT 'active',
+  `responsibilities` TEXT DEFAULT NULL, -- dynamic per-employee responsibilities
   `created_by` int(11) DEFAULT NULL,
   `deleted_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -392,7 +396,7 @@ CREATE TABLE `employees` (
 --
 
 INSERT INTO `employees` (`id`, `user_id`, `full_name`, `employee_id`, `username`, `email`, `father_name`, `phone`, `emergency_contact`, `qualification`, `experience`, `address`, `pass_num`, `nid`, `department_id`, `designation_id`, `dob`, `joining_date`, `basic_salary`, `account_holder_name`, `account_number`, `make_user`, `password`, `bank_name`, `branch_name`, `social_media1`, `social_media2`, `social_media3`, `photo`, `employee_type`, `employee_status`, `created_by`, `deleted_at`, `created_at`, `updated_at`) VALUES
-(1, NULL, 'Fahim', 'EMP-00001', '', 'fahim@gmail.com', 'Forhad', '01734555783', '01734555783', 'BBA', '', 'Dhaka', '', '23784', 15, 1, '1998-02-04', '2026-01-01', 30000, 'Fahim', '7523423478', 1, '$2y$10$JphYkjE9NT3MdD93lmgv7uZ2uu4nWUubfKZHjdFvqN6rq6KTk8UIC', 'City Bank', 'Shaymoli', '', '', '', '', 'permanent', 'active', 3, NULL, '2026-02-19 16:54:13', '2026-02-19 16:54:13');
+(1, NULL, 'Fahim', 'EMP-00001', '', 'fahim@gmail.com', 'Forhad', '01734555783', '01734555783', 'BBA', '', 'Dhaka', '', '23784', 15, 1, '1998-02-04', '2026-01-01', 30000, 'Fahim', '7523423478', 1, '$2y$10$JphYkjE9NT3MdD93lmgv7uZ2uu4nWUubfKZHjdFvqN6rq6KTk8UIC', 'City Bank', 'Shaymoli', '', '', '', '', 'permanent', 'active',NULL, 3, NULL, '2026-02-19 16:54:13', '2026-02-19 16:54:13');
 
 -- --------------------------------------------------------
 
