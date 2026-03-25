@@ -1,875 +1,620 @@
-        <?php
-        $page_title = "Employee Dashboard ";
-        ?>
-
-        <style>
-            .empty-state {
-                text-align: center;
-                padding: 27px 20px;
-                background: linear-gradient(135deg, #66eae1 0%, #137a0e 100%);
-                border-radius: 10px;
-                color: white;
-                margin-top: 20px;
-            }
-
-            .empty-state-icon {
-                font-size: 4rem;
-                margin-bottom: 20px;
-                opacity: 0.9;
-            }
-
-            .empty-state h4 {
-                font-weight: 700;
-                margin-bottom: 10px;
-                color: white;
-            }
-
-            .empty-state p {
-                color: rgba(255, 255, 255, 0.8);
-                margin: 0;
-            }
-
-            .tasks-container {
-                animation: fadeIn 0.5s ease-in;
-            }
-
-            @keyframes fadeIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                }
-
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            .animate-slide-in {
-                animation: slideIn 0.4s ease-out;
-            }
-
-            @keyframes slideIn {
-                from {
-                    opacity: 0;
-                    transform: translateX(-20px);
-                }
-
-                to {
-                    opacity: 1;
-                    transform: translateX(0);
-                }
-            }
-
-            .task-card {
-                background: transparent;
-                border-radius: 12px;
-                padding: 20px;
-                border: 1px solid #e2e8f0;
-                transition: all 0.3s ease;
-                position: relative;
-                overflow: hidden;
-            }
-
-            .task-card::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 4px;
-                height: 100%;
-                background: linear-gradient(180deg, #4facfe 0%, #00f2fe 100%);
-            }
-
-            .task-card:hover {
-                border-color: #cbd5e1;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            }
-
-            .card-pending::before {
-                background: linear-gradient(180deg, #f093fb 0%, #f5576c 100%);
-            }
-
-            .card-progress::before {
-                background: linear-gradient(180deg, #4facfe 0%, #00f2fe 100%);
-            }
-
-            .card-completed::before {
-                background: linear-gradient(180deg, #43e97b 0%, #38f9d7 100%);
-            }
-
-            .task-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 16px;
-                gap: 15px;
-            }
-
-            .task-title-wrapper {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                flex: 1;
-            }
-
-            .task-title {
-                font-size: 1.1rem;
-                font-weight: 600;
-                color: #696d72;
-                margin: 0;
-                line-height: 1.4;
-            }
-
-            .task-icon {
-                color: #64748b;
-                font-size: 1.3rem;
-                flex-shrink: 0;
-            }
-
-            .badge {
-                padding: 6px 16px;
-                border-radius: 20px;
-                font-size: 0.75rem;
-                font-weight: 600;
-                letter-spacing: 0.3px;
-                white-space: nowrap;
-                flex-shrink: 0;
-            }
-
-            .badge-pending {
-                background: linear-gradient(135deg, #fff4e6 0%, #ffe4e6 100%);
-                color: #dc2626;
-                border: 1px solid #fecaca;
-            }
-
-            .badge-progress {
-                background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
-                color: #2563eb;
-                border: 1px solid #bfdbfe;
-            }
-
-            .badge-completed {
-                background: linear-gradient(135deg, #d1fae5 0%, #dcfce7 100%);
-                color: #16a34a;
-                border: 1px solid #bbf7d0;
-            }
-
-            .assigned-info {
-                background: #f8fafc;
-                padding: 10px 14px;
-                border-radius: 8px;
-                border: 1px solid #e2e8f0;
-                display: inline-flex;
-                align-items: center;
-                gap: 10px;
-                margin-bottom: 16px;
-            }
-
-            .avatar-circle {
-                width: 36px;
-                height: 36px;
-                border-radius: 50%;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-size: 1rem;
-                flex-shrink: 0;
-            }
-
-            .assigned-text {
-                line-height: 1.3;
-            }
-
-            .assigned-text small {
-                display: block;
-                font-size: 0.7rem;
-                color: #64748b;
-                margin-bottom: 2px;
-            }
-
-            .assigned-text strong {
-                font-size: 0.85rem;
-                color: #1e293b;
-            }
-
-            .task-description {
-                background: #fffbeb;
-                padding: 12px 14px;
-                border-radius: 8px;
-                border-left: 3px solid #fbbf24;
-                color: #92400e;
-                line-height: 1.6;
-                font-size: 0.9rem;
-                margin-bottom: 16px;
-            }
-
-            .date-section {
-                display: flex;
-                gap: 12px;
-                margin-bottom: 16px;
-            }
-
-            .date-box {
-                flex: 1;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                padding: 10px 12px;
-                border-radius: 8px;
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                transition: all 0.2s;
-            }
-
-            .date-box:hover {
-                background: #f1f5f9;
-                border-color: #cbd5e1;
-            }
-
-            .date-box i {
-                font-size: 1.2rem;
-                color: #64748b;
-                flex-shrink: 0;
-            }
-
-            .date-content {
-                line-height: 1.3;
-            }
-
-            .date-content small {
-                display: block;
-                font-size: 0.7rem;
-                color: #64748b;
-                margin-bottom: 2px;
-            }
-
-            .date-content strong {
-                font-size: 0.85rem;
-                color: #1e293b;
-            }
-
-            .date-deadline .date-content strong {
-                color: #dc2626 !important;
-            }
-
-            .progress-section {
-                background: #f8fafc;
-                padding: 14px;
-                border-radius: 8px;
-                margin-bottom: 16px;
-            }
-
-            .progress-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 10px;
-            }
-
-            .progress-label {
-                font-size: 0.8rem;
-                font-weight: 600;
-                color: #64748b;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
-
-            .progress-percentage {
-                font-weight: 700;
-                font-size: 1rem;
-                color: #2563eb;
-            }
-
-            .custom-progress {
-                height: 10px;
-                background: #e2e8f0;
-                border-radius: 20px;
-                overflow: hidden;
-                position: relative;
-            }
-
-            .custom-progress-bar {
-                height: 100%;
-                border-radius: 20px;
-                transition: width 0.6s ease;
-                position: relative;
-                overflow: hidden;
-            }
-
-            .custom-progress-bar::after {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                bottom: 0;
-                right: 0;
-                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-                animation: shimmer 2s infinite;
-            }
-
-            @keyframes shimmer {
-                0% {
-                    transform: translateX(-100%);
-                }
-
-                100% {
-                    transform: translateX(100%);
-                }
-            }
-
-            .progress-bar-pending {
-                background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
-            }
-
-            .progress-bar-in-progress {
-                background: linear-gradient(90deg, #35db96 0%, #00f2fe 100%);
-            }
-
-            .progress-bar-completed {
-                background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
-            }
-
-            .action-form {
-                margin-top: 0;
-            }
-
-            .btn-accept {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                font-weight: 600;
-                font-size: 0.9rem;
-                border-radius: 8px;
-                transition: all 0.3s;
-            }
-
-            .btn-accept:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-                color: white;
-            }
-
-            .input-group {
-                border-radius: 8px;
-                overflow: hidden;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            }
-
-            .input-group-text {
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-right: none;
-                color: #64748b;
-                padding: 0 12px;
-            }
-
-            .input-group .form-control {
-                border: 1px solid #e2e8f0;
-                border-left: none;
-                border-right: none;
-                padding: 10px 14px;
-                font-size: 0.9rem;
-            }
-
-            .input-group .form-control:focus {
-                border-color: #4facfe;
-                box-shadow: none;
-                z-index: 2;
-            }
-
-            .btn-update {
-                background: linear-gradient(135deg, #39c568 0%, #00f2fe 100%);
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                font-weight: 600;
-                font-size: 0.9rem;
-                transition: all 0.3s;
-            }
-
-            .btn-update:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
-                color: white;
-            }
-
-            .collapse-toggle {
-                background: none;
-                border: none;
-                color: #64748b;
-                padding: 4px;
-                cursor: pointer;
-                transition: all 0.3s;
-                border-radius: 4px;
-            }
-
-            .collapse-toggle:hover {
-                background: #f1f5f9;
-                color: #1e293b;
-            }
-
-            .collapse-toggle i {
-                transition: transform 0.3s;
-            }
-
-            .collapse-toggle[aria-expanded="true"] i {
-                transform: rotate(180deg);
-            }
-
-            /* Responsive */
-            @media (max-width: 768px) {
-                .task-card {
-                    padding: 16px;
-                }
-
-                .task-header {
-                    flex-direction: column;
-                    align-items: flex-start;
-                }
-
-                .task-title {
-                    font-size: 1rem;
-                }
-
-                .date-section {
-                    flex-direction: column;
-                }
-
-                .badge {
-                    align-self: flex-start;
-                }
-            }
-        </style>
-
-        <!-- Task Notification Section -->
-        <?php if (!empty($pendingTasks)): ?>
-            <div class="tasks-container">
-                <div class="row g-3">
-                    <?php foreach ($pendingTasks as $task): ?>
-                        <?php
-                        // Determine status and styling
-                        $status = 'pending';
-                        $statusBadge = '<span class="badge badge-pending"><i class="bi bi-clock-history me-1"></i>Pending</span>';
-                        $cardGradient = 'card-pending';
-
-                        if ($task['employee_accept'] == 1) {
-                            if ($task['progress'] >= 100) {
-                                $status = 'completed';
-                                $statusBadge = '<span class="badge badge-completed"><i class="bi bi-check-circle-fill me-1"></i>Completed</span>';
-                                $cardGradient = 'card-completed';
-                            } else {
-                                $status = 'in-progress';
-                                $statusBadge = '<span class="badge badge-progress"><i class="bi bi-arrow-repeat me-1"></i>In Progress</span>';
-                                $cardGradient = 'card-progress';
-                            }
-                        }
-                        ?>
-
-                        <div class="col-12">
-                            <div class="task-card <?= $cardGradient ?> animate-slide-in">
-                                <!-- Task Header: Title and Status in Same Row -->
-                                <div class="task-header">
-                                    <div class="task-title-wrapper">
-                                        <i class="bi bi-clipboard-check task-icon"></i>
-                                        <h5 class="task-title"><?= htmlspecialchars($task['title']) ?></h5>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <?= $statusBadge ?>
-                                        <button class="collapse-toggle" type="button" data-bs-toggle="collapse"
-                                            data-bs-target="#task-<?= $task['id'] ?>" aria-expanded="true">
-                                            <i class="bi bi-chevron-down fs-5"></i>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Collapsible Content -->
-                                <div class="collapse show" id="task-<?= $task['id'] ?>">
-                                    <!-- Assigned By -->
-                                    <div class="col-xxl-12 col-xl-12 col-lg-12 col-md-12 col-sm-12">
-                                        <div class="card__wrapper">
-                                            <div class="d-flex align-items-center gap-sm">
-                                                <div class="card__icon">
-                                                    <span><i class="fa-sharp fa-regular fa-gear"></i></span>
-                                                </div>
-                                                <div class="card__title-wrap">
-                                                    <h6 class="card__sub-title mb-10">Task Assigned</h6>
-                                                    <div class="d-flex flex-wrap align-items-end gap-10 mt-3">
-                                                        <div class="avatar-circle mt-2">
-
-                                                        </div>
-                                                        <strong>Assigned by:</strong>
-                                                        <p class="ms-2 fw-semibold"><?= htmlspecialchars($task['assigned_by_name'] ?? 'System') ?></p>
-
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <h5 class="task-title mb-2">Task Description</h5>
-                                    <!-- Description -->
-                                    <?php if (!empty($task['description'])): ?>
-                                        <div class="task-description fw-semibold">
-                                            <?= $task['description'] ?>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <!-- Date Info -->
-                                    <div class="date-section">
-                                        <div class="date-box date-start">
-                                            <i class="bi bi-calendar-check"></i>
-                                            <div class="date-content">
-                                                <small class="fw-bold fs-5">Start Date</small>
-                                                <strong><?= !empty($task['start_date']) ? date('d M, Y', strtotime($task['start_date'])) : 'N/A' ?></strong>
-                                            </div>
-                                        </div>
-                                        <div class="date-box date-deadline">
-                                            <i class="bi bi-calendar-x"></i>
-                                            <div class="date-content">
-                                                <small class="fw-bold fs-5">Deadline</small>
-                                                <strong><?= !empty($task['deadline']) ? date('d M, Y', strtotime($task['deadline'])) : 'N/A' ?></strong>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Progress Bar -->
-                                    <div class="progress-section">
-                                        <div class="progress-header">
-                                            <span class="progress-label">Progress</span>
-                                            <span class="progress-percentage"><?= $task['progress'] ?>%</span>
-                                        </div>
-                                        <div class="custom-progress">
-                                            <div class="custom-progress-bar progress-bar-<?= $status ?>"
-                                                style="width: <?= $task['progress'] ?>%;"
-                                                data-progress="<?= $task['progress'] ?>">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Action Form -->
-                                    <form action="<?= $GLOBALS['base_url'] ?>/<?= $task['employee_accept'] == 0 ? 'update-task-status' : 'update-task-progress' ?>"
-                                        method="POST" class="action-form">
-                                        <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
-
-                                        <?php if ($task['employee_accept'] == 0): ?>
-                                            <!-- Accept Button -->
-                                            <button type="submit" name="accept" class="btn btn-accept w-100">
-                                                <i class="bi bi-hand-thumbs-up me-2"></i>
-                                                Accept Task
-                                            </button>
-                                        <?php else: ?>
-                                            <!-- Update Progress -->
-                                            <div class="input-group">
-                                                <span class="input-group-text">
-                                                    <i class="bi bi-percent"></i>
-                                                </span>
-                                                <input type="number"
-                                                    name="progress"
-                                                    min="<?= $task['progress'] ?>"
-                                                    max="100"
-                                                    value="<?= $task['progress'] ?>"
-                                                    class="form-control"
-                                                    placeholder="Enter progress percentage">
-                                                <button type="submit" class="btn btn-update">
-                                                    <i class="bi bi-arrow-clockwise me-2"></i>
-                                                    Update
-                                                </button>
-                                            </div>
-                                        <?php endif; ?>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-        <?php else: ?>
-            <div class="empty-state">
-                <div class="empty-state-icon">
-                    <i class="bi bi-clipboard-check"></i>
-                </div>
-                <h4>No Pending Tasks</h4>
-                <p class="text-muted">You're all caught up! No tasks assigned at the moment.</p>
-            </div>
-        <?php endif; ?>
-
-        <!-- App side area start -->
-        <div class="app__slide-wrapper">
-            <div class="row">
-                <!-- Notifications -->
-                <?php if (!empty($notifications)): ?>
-                    <div class="row gy-3 mt-3">
-                        <?php foreach ($notifications as $note): ?>
-                            <div class="col-md-12">
-                                <div class="employee-alert-box">
-                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                        <div class="d-flex align-items-start gap-2">
-                                            <i class="icon-thumbs-up mt-1"></i>
-                                            <div>
-                                                <strong class="d-block"><?= htmlspecialchars($note['message'] ?? '') ?></strong>
-                                                <strong class="d-block">Assigned by: <?= htmlspecialchars($note['assigned_by_name'] ?? 'System') ?></strong>
-                                                <div class="row d-flex justify-content-between">
-                                                    <span class="text-dark">Start Task:</span>
-                                                    <?= !empty($note['start_date']) ? date('d F, Y', strtotime($note['start_date'])) : 'N/A' ?>
-
-                                                    <span class="text-dark">Deadline:</span>
-                                                    <?= !empty($note['deadline']) ? date('d F, Y', strtotime($note['deadline'])) : 'N/A' ?>
-
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button class="btn-close" type="button" data-bs-dismiss="alert" aria-label="Close"></button>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="alert alert-info mt-2">No new notifications</div>
-                <?php endif; ?>
-
-                <div class="col-md-12">
-                    <div class="employee-alert-box">
-                        <div class="col-xl-12">
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                <i class="icon-thumbs-down"></i>
-                                <p>Your loan request <strong><b>hasn't been approved</b></strong> Please reach out to HR for
-                                    further assistance.</p>
-                                <button class="btn-close" type="button" data-bs-dismiss="alert" aria-label="Close" title=""></button>
-                            </div>
-                        </div>
+<!-- ════ MAIN CONTENT ════ -->
+<div class="app__slide-wrapper">
+
+
+    <div class="section-header">
+        <div class="section-title">Good morning, Raihan </div>
+        <div class="section-sub">Here's your monthly summary for December 2025</div>
+    </div>
+
+    <!-- ATTENDANCE STATS -->
+    <div class="row align-items-stretch">
+        <div class="col-xxl-3 col-xl-3 col-12">
+            <div class="card__wrapper stat-card">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon"><span class="chip badge-present"><i class="bi bi-arrow-up"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Present Days</h6>
+                        <h4 class="card__title text-break text-success mb-10">22</h4>
                     </div>
                 </div>
-            </div>
-            <div class="row g-20">
-                <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-sm-6">
-                    <div class="card__wrapper">
-                        <div class="d-flex align-items-center gap-sm">
-                            <div class="card__icon">
-                                <span><i class="fa-sharp fa-regular fa-gear"></i></span>
-                            </div>
-                            <div class="card__title-wrap">
-                                <h6 class="card__sub-title mb-10">Task Assigned</h6>
-                                <div class="d-flex flex-wrap align-items-end gap-10">
-                                    <h4 class="card__title">313</h4>
-                                    <span class="card__desc style_two"><span class="price-increase"><i
-                                                class="fa-light fa-arrow-up"></i> +5.15%</span> Than Last Month</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-sm-6">
-                    <div class="card__wrapper">
-                        <div class="d-flex align-items-center gap-sm">
-                            <div class="card__icon">
-                                <span><i class="fa-light fa-badge-check"></i></span>
-                            </div>
-                            <div class="card__title-wrap">
-                                <h6 class="card__sub-title mb-10">Available Leaves</h6>
-                                <div class="d-flex flex-wrap align-items-end gap-10">
-                                    <h3 class="card__title">150</h3>
-                                    <span class="card__desc style_two"><span class="price-decrease"><i
-                                                class="fa-light fa-arrow-down"></i> +5.5%</span> Than Last Month</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xxl-4 col-xl-12 col-lg-12">
-                    <div class="card__thumb employee-bg d-flex align-items-center mb-20" data-background="assets/images/bg/personal.png">
-                        <div class="card__thumb-content">
-                            <span class="card__thumb-subtitle">Welcome Back</span>
-                            <h1 class="card__thumb-title mb-20">Thomas<span class="text-warning"> Edison</span></h1>
-                            <div class="card__thumb-btn">
-                                <a class="btn btn-white rounded-pill" href="#">Explore Now</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card__wrapper">
-                        <div class="card__title-wrap d-flex align-items-center justify-content-between mb-20">
-                            <h5 class="card__heading-title">Mark Attendance</h5>
-                            <div class="card__dropdown">
-                                <div class="dropdown">
-                                    <button>
-                                        <i class="fa-regular fa-ellipsis-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-list">
-                                        <a class="dropdown__item" href="javascript:void(0)">Action</a>
-                                        <a class="dropdown__item" href="javascript:void(0)">More Action</a>
-                                        <a class="dropdown__item" href="javascript:void(0)">Another Action</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <p class="text-muted">Office Time: 09:00AM to 06:00PM</p>
-                        <div class="d-flex align-items-center gap-15">
-                            <div class="">
-                                <form action="#">
-                                    <button type="submit" value="0" name="in" id="clock_in" class="btn btn-primary">Clock
-                                        In</button>
-                                </form>
-                            </div>
-                            <div class="">
-                                <button type="submit" id="clock_out" class="btn btn-danger">Clock Out</button>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-                <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
-                    <div class="card__wrapper mb-20">
-                        <div class="card__title-wrap d-flex align-items-center justify-content-between mb-20">
-                            <h5 class="card__heading-title">Attendance & Leaves</h5>
-                            <div class="card__dropdown">
-                                <div class="from__input-box">
-                                    <select class="js-example-basic-single">
-                                        <option value="opt1">2024</option>
-                                        <option value="opt2">2024</option>
-                                        <option value="opt3">2022</option>
-                                        <option value="opt4">2021</option>
-                                        <option value="opt5">2020</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="attendance__list">
-                            <div class="row g-20">
-                                <div class="col-md-4 col-6">
-                                    <div class="attendance__details mb-10">
-                                        <h4 class="text-primary">10</h4>
-                                        <p>Total Leaves</p>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 col-6">
-                                    <div class="attendance__details mb-10">
-                                        <h4 class="text-secondary">6.5</h4>
-                                        <p>Leaves Taken</p>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 col-6">
-                                    <div class="attendance__details mb-10">
-                                        <h4 class="text-success">06</h4>
-                                        <p>Leaves Absent</p>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 col-6">
-                                    <div class="attendance__details mb-10">
-                                        <h4 class="text-link">1</h4>
-                                        <p>Pending Approval</p>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 col-6">
-                                    <div class="attendance__details mb-10">
-                                        <h4 class="text-info">315</h4>
-                                        <p>Working Days</p>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 col-6">
-                                    <div class="attendance__details mb-10">
-                                        <h4 class="text-danger">3</h4>
-                                        <p>Loss of Pay</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="attendance-btn">
-                            <a class="btn btn-primary" href="leaves-employee.html">
-                                Apply Leave</a>
-                        </div>
-                    </div>
-
-                </div>
-
-
-                <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-12">
-                    <div class="card__wrapper">
-                        <div class="card__title-wrap d-flex align-items-center justify-content-between mb-20">
-                            <h5 class="card__heading-title">Recent Activity</h5>
-                            <div class="card__dropdown">
-                                <div class="dropdown">
-                                    <button>
-                                        <i class="fa-regular fa-ellipsis-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-list">
-                                        <a class="dropdown__item" href="javascript:void(0)">Action</a>
-                                        <a class="dropdown__item" href="javascript:void(0)">More Action</a>
-                                        <a class="dropdown__item" href="javascript:void(0)">Another Action</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="scroll-h-5 card__scroll">
-                            <div class="card__inner">
-                                <ul class="timeline">
-                                    <li class="timeline__item d-flex gap-10">
-                                        <div class="timeline__icon"><span><i class="fa-light fa-box"></i></span></div>
-                                        <div class="timeline__content w-100">
-                                            <div class="d-flex flex-wrap gap-10 align-items-center justify-content-between">
-                                                <h5 class="small">Purchased from MediaTek</h5>
-                                                <span class="bd-badge bg-success">04 Mins Ago</span>
-                                            </div>
-                                            <p>Successfully integrated new HRM features into the system</p>
-                                            <div class="timeline__thumb">
-                                                <img src="assets/images/product/item1.png" alt="image">
-                                                <img src="assets/images/product/item2.png" alt="image">
-                                                <img src="assets/images/product/item3.png" alt="image">
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <li class="timeline__item d-flex gap-10">
-                                        <div class="timeline__icon"><span><i class="fa-light fa-box"></i></span></div>
-                                        <div class="timeline__content w-100">
-                                            <div class="d-flex flex-wrap gap-10 align-items-center justify-content-between">
-                                                <h5 class="small">CRM Notification</h5>
-                                                <span class="bd-badge bg-success">10 Mins Ago</span>
-                                            </div>
-                                            <p><span class="text-danger text-decoration-underline">3 days left</span> to update
-                                                customer profiles with the new CRM tools</p>
-                                        </div>
-                                    </li>
-                                    <li class="timeline__item d-flex gap-10">
-                                        <div class="timeline__icon"><span><i class="fa-light fa-box"></i></span></div>
-                                        <div class="timeline__content w-100">
-                                            <div class="d-flex flex-wrap gap-10 align-items-center justify-content-between">
-                                                <h5 class="small">Purchased from MediaTek</h5>
-                                                <span class="bd-badge bg-success">30 Mins Ago</span>
-                                            </div>
-                                            <p>Team collaboration improved with new HRM tools</p>
-                                            <div class="avatar">
-                                                <ul>
-                                                    <li class="d-inline-block"><img class="img-48 border-circle" src="assets/images/avatar/avatar1.png" alt="image"></li>
-                                                    <li class="d-inline-block"><img class="img-48 border-circle" src="assets/images/avatar/avatar2.png" alt="image"></li>
-                                                    <li class="d-inline-block"><img class="img-48 border-circle" src="assets/images/avatar/avatar3.png" alt="image"></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <li class="timeline__item d-flex gap-10">
-                                        <div class="timeline__icon"><span><i class="fa-light fa-box"></i></span></div>
-                                        <div class="timeline__content w-100">
-                                            <div class="d-flex flex-wrap gap-10 align-items-center justify-content-between">
-                                                <h5 class="small">CRM Update</h5>
-                                                <span class="bd-badge bg-success">45 Mins Ago</span>
-                                            </div>
-                                            <p class="mb-10"><span class="text-danger text-decoration-underline">2 days
-                                                    left</span> to complete CRM training sessions</p>
-                                        </div>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-
-
             </div>
         </div>
-        <!-- App side area end -->
+
+
+        <div class="col-xxl-3  col-12">
+            <div class="card__wrapper stat-card">
+
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon"><span class="chip badge-present"> <i class="bi bi-clock-history" style="color:var(--accent4)"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Late Arrivals</h6>
+                        <span class="chip badge-late"><i class="bi bi-dot"></i> Check-in &gt; 9:15 AM - <strong class="ms-2">2</strong></span>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xxl-3  col-12">
+            <div class="card__wrapper stat-card">
+
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon"><span class="chip badge-present"> <i class="bi bi-x-circle-fill" style="color:var(--accent5)"></i></span></div>
+                    <div class="card__title-wrap">
+
+                        <h6 class="card__sub-title mb-10">Absent Days</h6>
+                        <span class="chip badge-absent"> 2</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xxl-3  col-12">
+            <div class="card__wrapper stat-card">
+
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon"><span class="chip badge-present">  <i class="bi bi-umbrella-fill" style="color:var(--accent2)"></i></span></div>
+                    <div class="card__title-wrap">
+
+                        <h6 class="card__sub-title mb-10">Leave Days Taken</h6>
+                       <span class="chip badge-leave"> 2 Approved</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+       
+    </div>
+
+    <!-- ATTENDANCE VISUAL + LEAVE SUMMARY -->
+    <div class="row mb-4">
+        <!-- Attendance Bar Chart -->
+        <div class="col-lg-7">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div class="section-title">Monthly Attendance</div>
+                        <div class="section-sub">Week-by-week breakdown</div>
+                    </div>
+                    <div class="ring-wrap">
+                        <svg width="72" height="72" viewBox="0 0 72 72">
+                            <circle cx="36" cy="36" r="30" fill="none" stroke="var(--border)" stroke-width="7" />
+                            <circle cx="36" cy="36" r="30" fill="none" stroke="var(--accent3)" stroke-width="7"
+                                stroke-dasharray="188.5" stroke-dashoffset="35" stroke-linecap="round" />
+                        </svg>
+                        <div class="ring-center">
+                            <div class="ring-pct" style="color:var(--accent3)">81%</div>
+                            <div class="ring-lbl">Rate</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span style="font-size:.78rem;color:var(--muted)">Present</span>
+                        <span style="font-size:.78rem;font-weight:600;color:var(--accent3)">22 days</span>
+                    </div>
+                    <div class="att-bar-wrap">
+                        <div class="att-bar" style="width:81%;background:var(--accent3)"></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span style="font-size:.78rem;color:var(--muted)">Late</span>
+                        <span style="font-size:.78rem;font-weight:600;color:var(--accent4)">3 days</span>
+                    </div>
+                    <div class="att-bar-wrap">
+                        <div class="att-bar" style="width:11%;background:var(--accent4)"></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span style="font-size:.78rem;color:var(--muted)">Absent</span>
+                        <span style="font-size:.78rem;font-weight:600;color:var(--accent5)">2 days</span>
+                    </div>
+                    <div class="att-bar-wrap">
+                        <div class="att-bar" style="width:7%;background:var(--accent5)"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span style="font-size:.78rem;color:var(--muted)">Leave</span>
+                        <span style="font-size:.78rem;font-weight:600;color:var(--accent2)">4 days</span>
+                    </div>
+                    <div class="att-bar-wrap">
+                        <div class="att-bar" style="width:15%;background:var(--accent2)"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leave Summary -->
+        <div class="col-lg-5">
+            <div class="stat-card h-100">
+                <div class="section-title mb-3">Leave Balance</div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <div style="font-size:.72rem;color:var(--muted)">Medical Leave</div>
+                            <div style="font-size:.72rem;color:var(--muted)">Used 3 / Total 12</div>
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-size:1.3rem;font-weight:700;color:var(--accent3);font-family:'Space Mono',monospace">9</div>
+                            <div style="font-size:.68rem;color:var(--muted)">remaining</div>
+                        </div>
+                    </div>
+                    <div class="att-bar-wrap">
+                        <div class="att-bar" style="width:25%;background:var(--accent3)"></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <div style="font-size:.72rem;color:var(--muted)">Casual Leave</div>
+                            <div style="font-size:.72rem;color:var(--muted)">Used 2 / Total 10</div>
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-size:1.3rem;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace">8</div>
+                            <div style="font-size:.68rem;color:var(--muted)">remaining</div>
+                        </div>
+                    </div>
+                    <div class="att-bar-wrap">
+                        <div class="att-bar" style="width:20%;background:var(--accent)"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <div style="font-size:.72rem;color:var(--muted)">Annual Leave</div>
+                            <div style="font-size:.72rem;color:var(--muted)">Used 8 / Total 20</div>
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-size:1.3rem;font-weight:700;color:var(--accent2);font-family:'Space Mono',monospace">12</div>
+                            <div style="font-size:.68rem;color:var(--muted)">remaining</div>
+                        </div>
+                    </div>
+                    <div class="att-bar-wrap">
+                        <div class="att-bar" style="width:40%;background:var(--accent2)"></div>
+                    </div>
+                </div>
+                <div class="mt-4 p-3 rounded-3" style="background:rgba(79,140,255,.07);border:1px solid rgba(79,140,255,.2)">
+                    <div style="font-size:.75rem;color:var(--muted)">Total Leave Taken (YTD)</div>
+                    <div style="font-size:1.5rem;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace">13 <span style="font-size:.9rem;font-weight:400;color:var(--muted)">/ 42 days</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TASKS SUMMARY -->
+    <div class="row">
+        <div class="col-12">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div class="section-title">Tasks This Month</div>
+                        <div class="section-sub">December 2025 · 12 total tasks</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <span class="chip task-status-done">7 Done</span>
+                        <span class="chip task-status-prog">3 In Progress</span>
+                        <span class="chip task-status-pend">2 Pending</span>
+                    </div>
+                </div>
+                <div class="att-bar-wrap mb-4" style="height:12px;border-radius:8px">
+                    <div class="att-bar" style="width:58%;background:linear-gradient(90deg,var(--accent3),var(--accent));border-radius:8px;height:100%"></div>
+                </div>
+                <div class="row" id="dash-tasks">
+                    <!-- tasks injected by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- ══ PAGE: TASKS ══ -->
+<div class="page" id="page-tasks">
+    <div class="section-header">
+        <div class="section-title">My Tasks</div>
+        <div class="section-sub">December 2025 · All assigned tasks</div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-value" style="color:var(--text)">12</div>
+                <div class="stat-label">Total Tasks</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-value" style="color:var(--accent3)">7</div>
+                <div class="stat-label">Completed</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-value" style="color:var(--accent)">3</div>
+                <div class="stat-label">In Progress</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-value" style="color:var(--accent4)">2</div>
+                <div class="stat-label">Pending</div>
+            </div>
+        </div>
+    </div>
+    <div class="row" id="all-tasks"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    /* ── DATA ── */
+    const tasks = [{
+            title: 'API Integration Sprint',
+            desc: 'Backend REST endpoints',
+            priority: 'high',
+            status: 'done',
+            due: 'Dec 8'
+        },
+        {
+            title: 'Dashboard UI Redesign',
+            desc: 'Figma to code',
+            priority: 'high',
+            status: 'prog',
+            due: 'Dec 18'
+        },
+        {
+            title: 'Database Migration',
+            desc: 'PostgreSQL upgrade',
+            priority: 'med',
+            status: 'done',
+            due: 'Dec 5'
+        },
+        {
+            title: 'Unit Test Coverage',
+            desc: 'Jest + 80% coverage',
+            priority: 'med',
+            status: 'done',
+            due: 'Dec 10'
+        },
+        {
+            title: 'Code Review #42',
+            desc: 'PR review for auth module',
+            priority: 'low',
+            status: 'done',
+            due: 'Dec 4'
+        },
+        {
+            title: 'CI/CD Pipeline Setup',
+            desc: 'GitHub Actions workflow',
+            priority: 'high',
+            status: 'prog',
+            due: 'Dec 20'
+        },
+        {
+            title: 'Mobile Responsive Fix',
+            desc: 'Tablet & phone layout',
+            priority: 'med',
+            status: 'pend',
+            due: 'Dec 22'
+        },
+        {
+            title: 'Email Notification Service',
+            desc: 'SMTP integration',
+            priority: 'low',
+            status: 'done',
+            due: 'Dec 9'
+        },
+        {
+            title: 'Security Audit',
+            desc: 'OWASP top 10 check',
+            priority: 'high',
+            status: 'pend',
+            due: 'Dec 28'
+        },
+        {
+            title: 'Documentation Update',
+            desc: 'API docs & README',
+            priority: 'low',
+            status: 'done',
+            due: 'Dec 7'
+        },
+        {
+            title: 'Performance Profiling',
+            desc: 'Lighthouse audit & fix',
+            priority: 'med',
+            status: 'prog',
+            due: 'Dec 24'
+        },
+        {
+            title: 'Deployment to Staging',
+            desc: 'AWS EC2 staging env',
+            priority: 'med',
+            status: 'done',
+            due: 'Dec 12'
+        },
+    ];
+
+    const attData = [{
+            date: 'Dec 1',
+            day: 'Mon',
+            in: '09:02',
+            out: '18:05',
+            h: '9h 03m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 2',
+            day: 'Tue',
+            in: '09:18',
+            out: '18:10',
+            h: '8h 52m',
+            s: 'late'
+        },
+        {
+            date: 'Dec 3',
+            day: 'Wed',
+            in: '09:45',
+            out: '18:20',
+            h: '8h 35m',
+            s: 'late'
+        },
+        {
+            date: 'Dec 4',
+            day: 'Thu',
+            in: '09:05',
+            out: '18:00',
+            h: '8h 55m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 5',
+            day: 'Fri',
+            in: '—',
+            out: '—',
+            h: '—',
+            s: 'leave'
+        },
+        {
+            date: 'Dec 8',
+            day: 'Mon',
+            in: '09:00',
+            out: '18:10',
+            h: '9h 10m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 9',
+            day: 'Tue',
+            in: '09:10',
+            out: '18:05',
+            h: '8h 55m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 10',
+            day: 'Wed',
+            in: '—',
+            out: '—',
+            h: '—',
+            s: 'absent'
+        },
+        {
+            date: 'Dec 11',
+            day: 'Thu',
+            in: '09:03',
+            out: '18:00',
+            h: '8h 57m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 12',
+            day: 'Fri',
+            in: '09:07',
+            out: '18:15',
+            h: '9h 08m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 15',
+            day: 'Mon',
+            in: '09:01',
+            out: '18:00',
+            h: '8h 59m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 16',
+            day: 'Tue',
+            in: '—',
+            out: '—',
+            h: '—',
+            s: 'absent'
+        },
+        {
+            date: 'Dec 17',
+            day: 'Wed',
+            in: '09:22',
+            out: '18:10',
+            h: '8h 48m',
+            s: 'late'
+        },
+        {
+            date: 'Dec 18',
+            day: 'Thu',
+            in: '09:04',
+            out: '18:05',
+            h: '9h 01m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 19',
+            day: 'Fri',
+            in: '09:00',
+            out: '18:00',
+            h: '9h 00m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 22',
+            day: 'Mon',
+            in: '09:06',
+            out: '18:10',
+            h: '9h 04m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 23',
+            day: 'Tue',
+            in: '09:02',
+            out: '18:05',
+            h: '9h 03m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 24',
+            day: 'Wed',
+            in: '09:08',
+            out: '18:00',
+            h: '8h 52m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 25',
+            day: 'Thu',
+            in: '—',
+            out: '—',
+            h: '—',
+            s: 'leave'
+        },
+        {
+            date: 'Dec 26',
+            day: 'Fri',
+            in: '—',
+            out: '—',
+            h: '—',
+            s: 'leave'
+        },
+        {
+            date: 'Dec 29',
+            day: 'Mon',
+            in: '09:03',
+            out: '18:05',
+            h: '9h 02m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 30',
+            day: 'Tue',
+            in: '09:05',
+            out: '18:00',
+            h: '8h 55m',
+            s: 'present'
+        },
+        {
+            date: 'Dec 31',
+            day: 'Wed',
+            in: '—',
+            out: '—',
+            h: '—',
+            s: 'leave'
+        },
+    ];
+
+    /* ── BUILD ATTENDANCE TABLE ── */
+    const attBody = document.getElementById('att-table-body');
+    attData.forEach(r => {
+        const map = {
+            present: 'badge-present',
+            late: 'badge-late',
+            absent: 'badge-absent',
+            leave: 'badge-leave'
+        };
+        const label = {
+            present: 'Present',
+            late: 'Late',
+            absent: 'Absent',
+            leave: 'On Leave'
+        };
+        attBody.innerHTML += `<tr>
+      <td>${r.date}</td>
+      <td style="color:var(--muted)">${r.day}</td>
+      <td>${r.in}</td><td>${r.out}</td>
+      <td style="font-family:'Space Mono',monospace;font-size:.8rem">${r.h}</td>
+      <td><span class="leave-badge ${map[r.s]}">${label[r.s]}</span></td>
+    </tr>`;
+    });
+
+    /* ── BUILD TASK CARDS (dashboard preview) ── */
+    function buildTaskCard(t, slim) {
+        const pMap = {
+            high: 'priority-high',
+            med: 'priority-med',
+            low: 'priority-low'
+        };
+        const pLabel = {
+            high: 'High',
+            med: 'Medium',
+            low: 'Low'
+        };
+        const sMap = {
+            done: 'task-status-done',
+            prog: 'task-status-prog',
+            pend: 'task-status-pend'
+        };
+        const sLabel = {
+            done: 'Done',
+            prog: 'In Progress',
+            pend: 'Pending'
+        };
+        return `<div class="${slim?'col-md-4':'col-md-6 col-lg-4'}">
+      <div class="task-card">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <div class="task-title">${t.title}</div>
+          <span class="task-priority ${pMap[t.priority]}">${pLabel[t.priority]}</span>
+        </div>
+        <div class="task-meta">${t.desc} · Due ${t.due}</div>
+        <div class="mt-2"><span class="chip ${sMap[t.status]}" style="font-size:.7rem">${sLabel[t.status]}</span></div>
+      </div>
+    </div>`;
+    }
+
+    // Dashboard: show 6
+    document.getElementById('dash-tasks').innerHTML = tasks.slice(0, 6).map(t => buildTaskCard(t, false)).join('');
+    // All tasks page
+    document.getElementById('all-tasks').innerHTML = tasks.map(t => buildTaskCard(t, false)).join('');
+
+    /* ── PAGE NAVIGATION ── */
+    const titles = {
+        dashboard: 'Dashboard Overview',
+        attendance: 'Attendance Details',
+        leaves: 'Leave Management',
+        tasks: 'My Tasks',
+        profile: 'My Profile'
+    };
+
+    function showPage(id, btn) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        document.getElementById('page-' + id).classList.add('active');
+        document.getElementById('topbar-title').textContent = titles[id];
+        if (btn) btn.classList.add('active');
+        document.getElementById('sidebar').classList.remove('open');
+    }
+
+    /* ── MONTH CHANGE (demo) ── */
+    function updateMonth() {
+        const m = document.getElementById('monthSelect').value;
+        const presents = [20, 18, 22, 21, 20, 19, 23, 22, 21, 22, 21, 22];
+        const lates = [2, 3, 1, 2, 3, 1, 2, 2, 3, 1, 2, 3];
+        const absents = [1, 2, 0, 1, 2, 1, 0, 1, 2, 0, 1, 2];
+        const leaves = [3, 2, 3, 2, 1, 4, 1, 1, 2, 3, 2, 4];
+        document.getElementById('dash-present').textContent = presents[m];
+        document.getElementById('dash-late').textContent = lates[m];
+        document.getElementById('dash-absent').textContent = absents[m];
+        document.getElementById('dash-leave').textContent = leaves[m];
+    }
+</script>

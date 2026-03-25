@@ -18,15 +18,15 @@ class EmpAttendanceController extends Controller
     public function index()
     {
         // Get filter params
-       
+
         $selectedMonth = $_GET['month'] ?? date('m');
         $employeeId    = !empty($_GET['employee_id']) ? (int) $_GET['employee_id'] : null;
         $totalEmployee = $this->employeeModel->getTotalCount();
         $todaySummary = $this->EmpAttendanceModel->getTodaySummary();
         // Fetch filtered data
-    $selectedDate = $_GET['date'] ?? date('Y-m-d');
+        $selectedDate = $_GET['date'] ?? date('Y-m-d');
 
-    $attendances  = $this->EmpAttendanceModel->getByDate($selectedDate);
+        $attendances  = $this->EmpAttendanceModel->getByDate($selectedDate);
         $employees   = $this->employeeModel->getAll();
 
         // Pass to view
@@ -289,6 +289,103 @@ class EmpAttendanceController extends Controller
     }
 
 
+    public function createMobilePuch()
+    {
+
+          $selectedMonth = $_GET['month'] ?? date('m');
+           $selectedDate = $_GET['date'] ?? date('Y-m-d');
+        $myAttendances  = $this->EmpAttendanceModel->myAttendance($selectedDate);
+
+        if (!isset($_SESSION['user']['employee_id'])) {
+            setError("Unauthorized");
+            header("Location: {$GLOBALS['base_url']}/admin-login");
+            exit;
+        }
+
+
+        $employee_id = (int)$_SESSION['user']['employee_id'];
+
+        if ($employee_id <= 0) {
+            setError("Employee ID not found");
+            header("Location: {$GLOBALS['base_url']}/admin-login");
+            exit;
+        }
+
+
+
+        $this->view("hrm/mobile-punch/mobile-punch", [
+            "current_route" => 'mobile-punch',
+            "page_title"    => "Punch Add",
+            "myAttendances"    =>$myAttendances,
+            "selectedDate"    =>$selectedDate,
+        ]);
+    }
+
+    public function storeMobilePunch()
+    {
+        // Check if user is logged in
+        if (!isset($_SESSION['user']['employee_id'])) {
+            setError("Unauthorized");
+            header("Location: {$GLOBALS['base_url']}/login");
+            exit;
+        }
+
+        $employee_id = (int)$_SESSION['user']['employee_id'];
+
+        $allowedStatus = [
+            'Present',
+            'Absent',
+            'Late',
+            'Half-Day',
+            'On Leave',
+            'Holiday',
+            'Day Off'
+        ];
+
+        // Validate required fields
+        if (empty($_POST['attendance_date']) || empty($_POST['today_status'])) {
+            setError('Required fields missing');
+            header("Location: {$GLOBALS['base_url']}/create-self-mobile-punch");
+            exit;
+        }
+
+        // Status validation
+        if (!in_array($_POST['today_status'], $allowedStatus)) {
+            setError('Invalid attendance status');
+            header("Location: {$GLOBALS['base_url']}/create-self-mobile-punch");
+            exit;
+        }
+
+        // Format punch times
+        $punchIn = !empty($_POST['punch_in_time'])
+            ? $_POST['attendance_date'] . ' ' . $_POST['punch_in_time'] . ':00'
+            : null;
+
+        $punchOut = !empty($_POST['punch_out_time'])
+            ? $_POST['attendance_date'] . ' ' . $_POST['punch_out_time'] . ':00'
+            : null;
+
+        // Prepare data
+        $data = [
+            'employee_id'     => $employee_id,
+            'attendance_date' => $_POST['attendance_date'],
+            'today_status'    => $_POST['today_status'],
+            'punch_in_time'   => $punchIn,
+            'punch_out_time'  => $punchOut,
+            'created_by'      => $_SESSION['user']['id'] ?? null,
+        ];
+
+        // Save attendance
+        if ($this->EmpAttendanceModel->create($data)) {
+            setSuccess("Attendance created successfully.");
+            header("Location: {$GLOBALS['base_url']}/mobile-punch");
+            exit;
+        } else {
+            setError("Failed to create attendance.");
+            header("Location: {$GLOBALS['base_url']}/mobile-punch");
+            exit;
+        }
+    }
 
 
 

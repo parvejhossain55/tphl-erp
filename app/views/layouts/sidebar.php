@@ -173,7 +173,7 @@
                         </a>
                     </li>
                     <!-- Community -->
-                    <li class="slide">
+                    <li class="slide d-none">
                         <a href="<?= $base_url ?>/community-lists" class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
                             <span class="sidebar__menu-label">Device</span>
@@ -183,7 +183,7 @@
 
                     <!-- Executive Team  -->
                     <!--target set-sales-target show here for sales executiive team  -->
-                    <li class="slide ">
+                    <li class="slide d-none">
                         <a href="<?= $base_url ?>/sales-executive-teams" class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                             <span class="sidebar__menu-label"> Team</span>
@@ -191,13 +191,13 @@
                     </li>
 
 
-                    <li class="slide ">
+                    <li class="slide d-none">
                         <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                             <span class="sidebar__menu-label">Safety Controll</span>
                         </a>
                     </li>
-                    <li class="slide ">
+                    <li class="slide d-none">
                         <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                             <span class="sidebar__menu-label">Notification</span>
@@ -367,9 +367,6 @@
                 <?php endif; ?>
                 <!--End For Sales Team Head  -->
 
-
-
-
                 <!--HRM CATEGORY -->
                 <?php if (hasPermission("Hr Manage")):  ?>
                     <li class="sidebar__menu-category">
@@ -413,6 +410,20 @@
                             <span class="sidebar__menu-label">Designation Lists</span>
                         </a>
                     </li>
+                    <!-- designation -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/holiday-lists" class="sidebar__menu-item <?= isActive('holiday-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                            <span class="sidebar__menu-label">Holiday Manage</span>
+                        </a>
+                    </li>
+                    <!-- designation -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/day-off" class="sidebar__menu-item <?= isActive('day-off', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                            <span class="sidebar__menu-label">Day Off Manage</span>
+                        </a>
+                    </li>
                     <li class="slide has-sub <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['create-attendance', 'attendance-list'], $current_route) ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -442,8 +453,52 @@
                             <li class="slide <?= isActive('leave-lists', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>" href="<?= $base_url ?>/leave-lists">Employee Leave Request</a>
                             </li>
+
                         </ul>
                     </li>
+                    <li class="sidebar__menu-category">
+                        <span class="category-name">Report</span>
+                    </li>
+
+                    <ul class="sidebar-menu child2" style="display:block;">
+                        <li class="slide <?= isActive('daily-attendance-report', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('daily-attendance-report', $current_route) ?>" href="<?= $base_url ?>/daily-attendance-report">Daily Attendance Report</a>
+                        </li>
+                        <li class="slide <?= isActive('leave-report', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('leave-report', $current_route) ?>" href="<?= $base_url ?>/leave-report">Leave Report</a>
+                        </li>
+                        <li class="slide <?= isActive('absent-report', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('absent-report', $current_route) ?>" href="<?= $base_url ?>/absent-report">Absent Report</a>
+                        </li>
+                        <li class="slide <?= isActive('daily-late-report', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('daily-late-report', $current_route) ?>" href="<?= $base_url ?>/daily-late-report"> Daily Late Report</a>
+                        </li>
+                        <li class="slide <?= isActive('mobile-punch-report', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('mobile-punch-report', $current_route) ?>" href="<?= $base_url ?>/mobile-punch-report"> Mobile Punch Report</a>
+                        </li>
+                    </ul>
+                    <li class="sidebar__menu-category">
+                        <span class="category-name">All Report </span>
+                    </li>
+
+                    <ul class="sidebar-menu child2" style="display:block;">
+                        <li class="slide <?= isActive('department-kpi', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('department-kpi', $current_route) ?>" href="<?= $base_url ?>/department-kpi">Performance Report</a>
+                        </li>
+                        <li class="slide <?= isActive('job-card-report', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('job-card-report', $current_route) ?>" href="<?= $base_url ?>/job-card-report">Attendance (Job Card)</a>
+                        </li>
+                        <li class="slide <?= isActive('hrm-daily-report', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('hrm-daily-report', $current_route) ?>" href="<?= $base_url ?>/hrm-daily-report">Daily Report</a>
+                        </li>
+                        <li class="slide <?= isActive('hrm-monthly-report', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('hrm-monthly-report', $current_route) ?>" href="<?= $base_url ?>/hrm-monthly-report">Monthly Report</a>
+                        </li>
+                        <li class="slide <?= isActive('dept-wise-report', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('dept-wise-report', $current_route) ?>" href="<?= $base_url ?>/dept-wise-report"> Department Wise</a>
+                        </li>
+
+                    </ul>
                 <?php endif; ?>
 
 
@@ -468,6 +523,7 @@
                         </a>
                     </li>
                 <?php endif; ?>
+
                 <?php if (hasPermission("User Manage")):  ?>
                     <li class="slide has-sub <?= isActive(['create-user', 'user-lists'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['create-user', 'user-lists'], $current_route) ? 'active' : '' ?>">
@@ -493,6 +549,36 @@
 
                 <!--End HRM CATEGORY -->
 
+
+
+                <?php if (hasPermission("My Attendance")) : ?>
+                    <!-- Sales Dashboard -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/employee-dashboard" class="sidebar__menu-item <?= isActive('employee-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">My Dashboard</span>
+                        </a>
+                        <a href="<?= $base_url ?>/my-profile" class="sidebar__menu-item <?= isActive('my-profile', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fas fa-user"></i></div>
+                            <span class="sidebar__menu-label">My Profile</span>
+                        </a>
+                        <a href="<?= $base_url ?>/my-attendance" class="sidebar__menu-item <?= isActive('my-attendance', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                            <span class="sidebar__menu-label">My Attendance</span>
+                        </a>
+                        <a href="<?= $base_url ?>/my-leaves" class="sidebar__menu-item <?= isActive('my-leaves', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                            <span class="sidebar__menu-label">My Leaves </span>
+                        </a>
+                    <li class="slide">
+                        <a href="<?= $base_url ?>/task-dashboard" class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
+                            <span class="sidebar__menu-label">Task Dashbaord</span>
+                        </a>
+                    </li>
+                    </li>
+
+                <?php endif;  ?>
 
 
                 <!--Start CED  -->
@@ -614,6 +700,7 @@
 
 
 
+
                 <!--ROle & Permission -->
                 <?php if (hasPermission("role & permission")):  ?>
                     <li class="sidebar__menu-category">
@@ -673,7 +760,12 @@
                 <?php endif ?>
 
                 <!-- FOR Task Manage  -->
-
+                <li class="slide ">
+                    <a href="<?= $base_url ?>/task-sheets" class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                        <span class="sidebar__menu-label">My Task Sheets</span>
+                    </a>
+                </li>
                 <?php if (hasPermission("task manage")):  ?>
                     <li class="slide has-sub <?= isActive(['create-task', 'task-lists'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['create-task', 'task-lists'], $current_route) ? 'menu-open active' : '' ?>">
@@ -693,6 +785,13 @@
 
                 <?php endif; ?>
                 <!-- FOR Task Manage  -->
+                <li class="slide <?= isActive('mobile-punch', $current_route) ?>">
+                    <a href="<?= $base_url ?>/mobile-punch" class="sidebar__menu-item <?= isActive('mobile-punch', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-book"></i></div>
+                        <span class="sidebar__menu-label">Mobile Punch</span>
+                    </a>
+                </li>
+
 
 
                 <!-- Others-->

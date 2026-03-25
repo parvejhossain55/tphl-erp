@@ -536,9 +536,9 @@
 .align-items-stretch{
     gap: 15px!important;
 }
-.app__slide-wrapper{
+/* .app__slide-wrapper{
     margin:4px;
-}
+} */
 
     .td_1,
     .td_2{

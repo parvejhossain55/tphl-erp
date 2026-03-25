@@ -544,7 +544,7 @@
             }
 
             .btn-accept {
-                background: orange;
+                background: #0d9f5d;
                 color: white;
             }
 

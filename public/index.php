@@ -99,6 +99,7 @@ $routes = [
     //================== hrm ========================
 
     "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
+    "calendar-load" => ["controller" => "HrmDashboardController", "method" => "calenderLoad"],
     // Tasks
 
     'task-lists' => ["controller" => "TaskController", "method" => "index"],
@@ -134,6 +135,9 @@ $routes = [
 
     //employee dashboard
     "employee-dashboard" => ["controller" => "EmployeeDashboardController", "method" => "index"],
+    "my-attendance" => ["controller" => "EmployeeDashboardController", "method" => "myAttendance"],
+    "my-leaves" => ["controller" => "EmployeeDashboardController", "method" => "myLeaves"],
+    "my-profile" => ["controller" => "EmployeeDashboardController", "method" => "myProfile"],
     "update-task-status-employee" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
     "update-task-progress-employee" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
@@ -147,7 +151,54 @@ $routes = [
     "delete-attendance" => ["controller" => "EmpAttendanceController", "method" => "delete"],
     "download-excel" => ["controller" => "EmpAttendanceController", "method" => "downloadExcel"],
     "download-pdf" => ["controller" => "EmpAttendanceController", "method" => "downloadPDF"],
+    "mobile-punch" => ["controller" => "EmpAttendanceController", "method" => "createMobilePuch"],
+    "store-self-mobile-punch" => ["controller" => "EmpAttendanceController", "method" => "storeMobilePunch"],
 
+    //==== Report
+    "daily-attendance-report" => ["controller" => "AttendanceReportController", "method" => "attendanceReport"],
+    "export-daily-report" => ["controller" => "AttendanceReportController", "method" => "exportDailyReport"],
+    "export-daily-report-pdf" => ["controller" => "AttendanceReportController", "method" => "exportDailyReportPDF"],
+
+    // late report 
+     "daily-late-report" => ["controller" => "LateReportController", "method" => "lateReport"],
+     "export-late-report" => ["controller" => "LateReportController", "method" => "exportLateReport"],
+     "export-late-report-pdf" => ["controller" => "LateReportController", "method" => "exportLateReportPDF"],
+
+    // leave report 
+     "leave-report" => ["controller" => "LeaveReportController", "method" => "leaveReport"],
+     "export-leave-report" => ["controller" => "LeaveReportController", "method" => "exportLeaveReport"],
+     "export-leave-report-pdf" => ["controller" => "LeaveReportController", "method" => "exportLeaveReportPDF"],
+
+    // absent report 
+     "absent-report" => ["controller" => "AbsentReportController", "method" => "absentReport"],
+     "export-absent-report" => ["controller" => "AbsentReportController", "method" => "exportAbsentReport"],
+     "export-absent-report-pdf" => ["controller" => "AbsentReportController", "method" => "exportAbsentReportPDF"],
+
+    // mobile punch report 
+     "mobile-punch-report" => ["controller" => "MobilePunchReportController", "method" => "mobilePunchReport"],
+     "export-mobile-punch-report" => ["controller" => "MobilePunchReportController", "method" => "exportMobilePunchReport"],
+     "export-mobile-punch-report-pdf" => ["controller" => "MobilePunchReportController", "method" => "exportMobilePunchReportPDF"],
+
+    // === ALL REPORTS MODULE ===
+    "job-card-report" => ["controller" => "JobCardReportController", "method" => "index"],
+    "export-job-card-csv" => ["controller" => "JobCardReportController", "method" => "exportCSV"],
+    "export-job-card-pdf" => ["controller" => "JobCardReportController", "method" => "exportPDF"],
+
+    "hrm-daily-report" => ["controller" => "HrmDailyReportController", "method" => "index"],
+    "export-hrm-daily-csv" => ["controller" => "HrmDailyReportController", "method" => "exportCSV"],
+    "export-hrm-daily-pdf" => ["controller" => "HrmDailyReportController", "method" => "exportPDF"],
+
+    "hrm-monthly-report" => ["controller" => "HrmMonthlyReportController", "method" => "index"],
+    "export-hrm-monthly-csv" => ["controller" => "HrmMonthlyReportController", "method" => "exportCSV"],
+    "export-hrm-monthly-pdf" => ["controller" => "HrmMonthlyReportController", "method" => "exportPDF"],
+
+    "dept-wise-report" => ["controller" => "HrmDepartmentReportController", "method" => "index"],
+    "export-hrm-dept-csv" => ["controller" => "HrmDepartmentReportController", "method" => "exportCSV"],
+    "export-hrm-dept-pdf" => ["controller" => "HrmDepartmentReportController", "method" => "exportPDF"],
+    "department-kpi" => ["controller" => "HrmDepartmentReportController", "method" => "departmentKPIReport"],
+
+
+    //=== End Report
 
     // Employee Leave Controller
     "leave-lists" => ["controller" => "LeaveController", "method" => "index"],
@@ -159,11 +210,28 @@ $routes = [
     "store-self-leave-request" => ["controller" => "LeaveController", "method" => "store"],
     "create-self-leave-request" => ["controller" => "LeaveController", "method" => "createSelf"],
     "remaining-days-self" => ["controller" => "LeaveController", "method" => "remainingDaysSelf"],
-    // "update-task-status" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskStatus"],
+
+    // holiday controller
+    "holiday-lists" => ["controller" => "HolidayController", "method" => "index"],
+    "store-holiday" => ["controller" => "HolidayController", "method" => "store"],
+    "update-holiday" => ["controller" => "HolidayController", "method" => "update"],
+    "delete-holiday" => ["controller" => "HolidayController", "method" => "delete"],
+    
+    // Day Off Controller
+    "day-off" => ["controller" => "DayOffController", "method" => "dayOffManage"],
+    "get-employee-days-off/(\d+)" => ["controller" => "DayOffController", "method" => "getEmployeeDaysOff"],
+    "update-day-off" => ["controller" => "DayOffController", "method" => "updateDayOff"],
+    
     // "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
 
     //==================END hrm ========================
+
+
+
+    // ============ employee task sheets
+     "store-update-task" => ["controller" => "EmployeeTaskController", "method" => "save"],
+     "task-sheets" => ["controller" => "EmployeeTaskController", "method" => "index"],
     // leads
     "lead-lists" => ["controller" => "LeadController", "method" => "index"],
     "create-lead" => ["controller" => "LeadController", "method" => "create"],
@@ -176,6 +244,7 @@ $routes = [
     "onboarding-clients" => ["controller" => "LeadController", "method" => "showOnboardClient"],
     "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
     "update-last_leadAction/(\d+)" => ["controller" => "LeadController", "method" => "updateLastleadAction"],
+
     "lead-delete" => ["controller" => "LeadController", "method" => "delete"],
     "assign-multiple-leads" => ["controller" => "LeadController", "method" => "assignMultipleLeads"],
 
@@ -351,9 +420,13 @@ $routes = [
     "ai-chatbox" => ["controller" => "Ai\\ChatController", "method" => "handleMessage"],
     // =========== Whatsapp marketing ============
     "whatsapp-dashboard" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "dashboard"],
+    "update-campaignAction/(\d+)" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "updateCampaignAction"],
     "contacts-whatsapp" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "contactLeads"],
-    "campaign-contacts" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "campaigns"],
     "report-campaign" => ["controller" => "WhatsappMarketing\\WhatsappDashboardController", "method" => "reports"],
+
+    //==== Whatsapp campaign route==========
+    "campaign-contacts" => ["controller" => "WhatsappMarketing\\WhatsappCampaignController", "method" => "index"],
+    "store-campaign" => ["controller" => "WhatsappMarketing\\WhatsappCampaignController", "method" => "store"],
     //Rafi Start  Accounts
     // ==================== ACCOUNTS====================
     'dashboard' => ["controller" => "DashboardController", "method" => "index"],
