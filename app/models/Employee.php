@@ -484,4 +484,15 @@ class Employee extends Model
 
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
+ public function getById($id)
+    {
+        $stmt = $this->db->prepare("SELECT e.*, d.name as department_name, des.name as designation_name
+                                    FROM employees e
+                                    LEFT JOIN departments d ON e.department_id = d.id
+                                    LEFT JOIN designations des ON e.designation_id = des.id
+                                    WHERE e.id = ? AND e.deleted_at IS NULL");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
 }

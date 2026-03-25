@@ -145,11 +145,11 @@ class HrmDepartmentReportController extends Controller
         $pdf->SetAutoPageBreak(TRUE, 15);
         $pdf->AddPage();
 
-        $darkGreen   = array(0,  100,  0);    
-        $lightGreen  = array(144, 238, 144);  
-        $white       = array(255, 255, 255);  
-        $headerText  = array(255, 255, 255);  
-        $bodyText    = array(0,   0,   0);    
+        $darkGreen   = array(0,  100,  0);
+        $lightGreen  = array(144, 238, 144);
+        $white       = array(255, 255, 255);
+        $headerText  = array(255, 255, 255);
+        $bodyText    = array(0,   0,   0);
 
         $pdf->SetFillColor($darkGreen[0], $darkGreen[1], $darkGreen[2]);
         $pdf->SetTextColor($headerText[0], $headerText[1], $headerText[2]);
@@ -158,9 +158,9 @@ class HrmDepartmentReportController extends Controller
 
         $pdf->SetFont('helvetica', 'B', 11);
         $pdf->Cell(0, 7, 'Department Wise Report', 0, 1, 'C', true);
-        
+
         $pdf->Ln(2);
-        
+
         $pdf->SetFillColor($white[0], $white[1], $white[2]);
         $pdf->SetTextColor($bodyText[0], $bodyText[1], $bodyText[2]);
         $pdf->SetFont('helvetica', 'B', 10);
@@ -174,7 +174,7 @@ class HrmDepartmentReportController extends Controller
         $pdf->SetDrawColor(180, 180, 180);
         $pdf->SetLineWidth(0.3);
 
-        $colWidths = [40, 25, 20, 20, 20, 20, 20, 20]; 
+        $colWidths = [40, 25, 20, 20, 20, 20, 20, 20];
         $headers   = ['Department', 'Total Emp.', 'Present', 'Absent', 'Late', 'Half-Day', 'Leave', 'Day Off'];
 
         foreach ($headers as $i => $h) {
@@ -210,52 +210,111 @@ class HrmDepartmentReportController extends Controller
 
 
 
-public function departmentKPIReport() {
+    public function departmentKPIReport()
+    {
 
-    $department_id = $_GET['department_id'] ?? null;
-    $employee_id   = $_GET['employee_id'] ?? null;
-    $status        = $_GET['status'] ?? null;
-    $date_from     = $_GET['date_from'] ?? null;
-    $date_to       = $_GET['date_to'] ?? null;
-    $month         = $_GET['month'] ?? date('Y-m');
+        $department_id = $_GET['department_id'] ?? null;
+        $employee_id   = $_GET['employee_id'] ?? null;
+        $status        = $_GET['status'] ?? null;
+        $date_from     = $_GET['date_from'] ?? null;
+        $date_to       = $_GET['date_to'] ?? null;
+        $month         = $_GET['month'] ?? date('Y-m');
 
-    $reportData = $this->empTaskModel->getDepartmentKPI(
-        $department_id,
-        $employee_id,
-        $status,
-        $date_from,
-        $date_to,
-        $month
-    );
+        $reportData = $this->empTaskModel->getDepartmentKPI(
+            $department_id,
+            $employee_id,
+            $status,
+            $date_from,
+            $date_to,
+            $month
+        );
 
-    // dropdown data
-    $departments = $this->empTaskModel->getAllDepartments();
-    $employees   = $this->empTaskModel->getAllEmployees();
+        // dropdown data
+        $departments = $this->empTaskModel->getAllDepartments();
+        $employees   = $this->empTaskModel->getAllEmployees();
 
-    return $this->view('hrm/reports/department-kpi', [
-        'reportData'   => $reportData,
-        'currentMonth' => $month,
-        'departments'  => $departments,
-        'employees'    => $employees,
-        'filters'      => $_GET
-    ]);
-}
-public function getTaskData()
+        return $this->view('hrm/reports/department-kpi', [
+            'current_route' => 'department-kpi',
+            'reportData'   => $reportData,
+            'currentMonth' => $month,
+            'departments'  => $departments,
+            'employees'    => $employees,
+            'filters'      => $_GET
+        ]);
+    }
+
+public function departmentKPIReportPDF()
 {
-    $department_id = $_GET['department_id'] ?? null;
-    $employee_id   = $_GET['employee_id'] ?? null;
-    $status        = $_GET['status'] ?? null;
-    $date_from     = $_GET['date_from'] ?? null;
-    $date_to       = $_GET['date_to'] ?? null;
-
-    $data = $this->empTaskModel->getFilteredTasks(
-        $department_id,
-        $employee_id,
-        $status,
-        $date_from,
-        $date_to
+    $reportData = $this->empTaskModel->getDepartmentKPI(
+        $_GET['department_id'] ?? null,
+        $_GET['employee_id'] ?? null,
+        $_GET['status'] ?? null,
+        $_GET['date_from'] ?? null,
+        $_GET['date_to'] ?? null,
+        $_GET['month'] ?? date('Y-m')
     );
 
-    echo json_encode($data);
+    ob_start();
+?>
+<h2 class="text-center">Task Sheet</h2>
+<table border="1" width="100%" cellspacing="0" cellpadding="5">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Employee</th>
+            <th>Department</th>
+            <th>Work Date</th>
+            <th>Task Description</th>
+            <th>Hours</th>
+            <th>Status</th>
+            <th>Remarks</th>
+            <th>Created</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($reportData as $i => $row): ?>
+        <tr>
+            <td><?= $row['employee_id']?></td>
+            <td><?= $row['emp_name'] ?></td>
+            <td><?= $row['department_name'] ?></td>
+            <td><?= $row['work_date'] ?></td>
+            <td><?= $row['task_description'] ?></td>
+            <td><?= $row['hours_spent'] ?></td>
+            <td><?= $row['status'] ?></td>
+            <td><?= $row['remarks'] ?? '-' ?></td>
+            <td><?= $row['created_at'] ?></td>
+        </tr>
+        <?php endforeach; ?>
+    </tbody>
+</table>
+
+<?php
+    $html = ob_get_clean();
+
+    require_once __DIR__ . '/../../vendor/autoload.php';
+
+    $dompdf = new \Dompdf\Dompdf();
+    $dompdf->loadHtml($html);
+    $dompdf->render();
+
+    $dompdf->stream("report.pdf", ["Attachment" => true]);
 }
+    public function getTaskData()
+    {
+        $department_id = $_GET['department_id'] ?? null;
+        $employee_id   = $_GET['employee_id'] ?? null;
+        $status        = $_GET['status'] ?? null;
+        $date_from     = $_GET['date_from'] ?? null;
+        $date_to       = $_GET['date_to'] ?? null;
+
+        $data = $this->empTaskModel->getFilteredTasks(
+            $department_id,
+            $employee_id,
+            $status,
+            $date_from,
+            $date_to
+        );
+
+        echo json_encode($data);
+    }
 }

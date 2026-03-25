@@ -58,7 +58,7 @@
 
     /* FILTER SECTION */
     .filter-section {
-        
+
         border-bottom: 1px solid var(--border);
         padding: 20px 36px;
         display: flex;
@@ -213,14 +213,12 @@
         align-items: center;
         justify-content: space-between;
         padding: 18px 24px 14px;
-        border-bottom: 1.5px solid var(--border);
     }
 
     .table-title {
         font-family: 'Syne', sans-serif;
         font-weight: 700;
         font-size: 1rem;
-        color: var(--text-main);
     }
 
     .table-subtitle {
@@ -485,29 +483,33 @@
                 <label>Month</label>
                 <input type="month" name="month" value="<?= $currentMonth ?>">
             </div>
-
-            <button type="submit">Filter</button>
-            <a href="index.php?controller=task&action=departmentKPIReport">Reset</a>
-
+            <div class="filter-group">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a href="<?= $GLOBALS['base_url'] ?>/department-kpi" class="btn btn-success">Reset</a>
+                <a href="<?= $GLOBALS['base_url'] ?>/department-kpi-pdf?<?= http_build_query($_GET) ?>"
+                    class="btn btn-danger">
+                    Export PDF
+                </a>
+            </div>
         </div>
     </form>
 </div>
 
 <!-- TABLE -->
 <div class="row">
-       <div class="card__wrapper">
-                 <div class="table__wrapper table-responsive">
-            <div class="table-header-row">
-                <div>
-                    <div class="table-title">Employee Task Records</div>
-                    <div class="table-subtitle" id="recordCount">Showing all records</div>
-                </div>
-            </div>
-            <div style="overflow-x:auto;">
-                <table id="taskTable">
+
+    <div class="table-header-row">
+        <div>
+            <div class="table-title text-muted">Employee Task Records</div>
+        </div>
+    </div>
+    <div style="overflow-x:auto;">
+        <div class="card__wrapper">
+            <div class="table__wrapper table-responsive">
+                <table class="table no-border-table mb-20 multiple_tables">
                     <thead>
                         <tr>
-                            <th>#</th>
+                            <th>ID</th>
                             <th>Employee</th>
                             <th>Department</th>
                             <th>Work Date</th>
@@ -519,292 +521,287 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($reportData)): ?>
+                        1
+                        <?php foreach ($reportData as $i => $row): ?>
                             <tr>
-                                <td colspan="9">No Data Found</td>
+                                <td><?= $row['employee_id']?></td>
+                                <td><?= htmlspecialchars($row['emp_name']) ?></td>
+                                <td><?= htmlspecialchars($row['department_name']) ?></td>
+                                <td><?= $row['work_date'] ?></td>
+                                <td><?= htmlspecialchars($row['task_description']) ?></td>
+                                <td><?= $row['hours_spent'] ?></td>
+                                <td><?= ucfirst($row['status']) ?></td>
+                                <td><?= $row['remarks'] ?? '-' ?></td>
+                                <td><?= $row['created_at'] ?></td>
                             </tr>
-                        <?php else: ?>
-                            <?php foreach ($reportData as $i => $row): ?>
-                                <tr>
-                                    <td><?= $i + 1 ?></td>
-                                    <td><?= htmlspecialchars($row['emp_name']) ?></td>
-                                    <td><?= htmlspecialchars($row['department_name']) ?></td>
-                                    <td><?= $row['work_date'] ?></td>
-                                    <td><?= htmlspecialchars($row['task_description']) ?></td>
-                                    <td><?= $row['hours_spent'] ?></td>
-                                    <td><?= ucfirst($row['status']) ?></td>
-                                    <td><?= $row['remarks'] ?? '-' ?></td>
-                                    <td><?= $row['created_at'] ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    // =============================================
-    // SAMPLE DATA — Replace with your actual DB fetch
-    // =============================================
-    const DEPARTMENTS = [{
-            id: 1,
-            name: "Software Development"
-        },
-        {
-            id: 2,
-            name: "Human Resources"
-        },
-        {
-            id: 3,
-            name: "Finance & Accounts"
-        },
-        {
-            id: 4,
-            name: "Marketing"
-        },
-        {
-            id: 5,
-            name: "Operations"
-        },
-    ];
 
-    const EMPLOYEES = [{
-            id: 1,
-            name: "Rafiul Islam",
-            dept_id: 1
-        },
-        {
-            id: 2,
-            name: "Sadia Akter",
-            dept_id: 2
-        },
-        {
-            id: 3,
-            name: "Tanvir Ahmed",
-            dept_id: 1
-        },
-        {
-            id: 4,
-            name: "Nusrat Jahan",
-            dept_id: 3
-        },
-        {
-            id: 5,
-            name: "Karim Uddin",
-            dept_id: 4
-        },
-        {
-            id: 6,
-            name: "Farzana Hossain",
-            dept_id: 5
-        },
-    ];
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // =============================================
+        // SAMPLE DATA — Replace with your actual DB fetch
+        // =============================================
+        const DEPARTMENTS = [{
+                id: 1,
+                name: "Software Development"
+            },
+            {
+                id: 2,
+                name: "Human Resources"
+            },
+            {
+                id: 3,
+                name: "Finance & Accounts"
+            },
+            {
+                id: 4,
+                name: "Marketing"
+            },
+            {
+                id: 5,
+                name: "Operations"
+            },
+        ];
 
-    const AVATAR_COLORS = ["#0f2c4a", "#f4a623", "#2dd4bf", "#e11d48", "#7c3aed", "#059669"];
+        const EMPLOYEES = [{
+                id: 1,
+                name: "Rafiul Islam",
+                dept_id: 1
+            },
+            {
+                id: 2,
+                name: "Sadia Akter",
+                dept_id: 2
+            },
+            {
+                id: 3,
+                name: "Tanvir Ahmed",
+                dept_id: 1
+            },
+            {
+                id: 4,
+                name: "Nusrat Jahan",
+                dept_id: 3
+            },
+            {
+                id: 5,
+                name: "Karim Uddin",
+                dept_id: 4
+            },
+            {
+                id: 6,
+                name: "Farzana Hossain",
+                dept_id: 5
+            },
+        ];
 
-    const TASKS = [{
-            id: 1,
-            employee_id: 2,
-            work_date: "2026-03-18",
-            task_description: "Lead 2",
-            hours_spent: 2.00,
-            status: "Done",
-            remarks: "",
-            created_at: "2026-03-18 12:44:17"
-        },
-        {
-            id: 2,
-            employee_id: 1,
-            work_date: "2026-03-18",
-            task_description: "API Integration",
-            hours_spent: 3.50,
-            status: "Done",
-            remarks: "Merged to main",
-            created_at: "2026-03-18 09:10:00"
-        },
-        {
-            id: 3,
-            employee_id: 3,
-            work_date: "2026-03-17",
-            task_description: "Bug Fix #402",
-            hours_spent: 1.50,
-            status: "Done",
-            remarks: "Closed ticket",
-            created_at: "2026-03-17 14:22:10"
-        },
-        {
-            id: 4,
-            employee_id: 2,
-            work_date: "2026-03-17",
-            task_description: "Team Onboarding",
-            hours_spent: 4.00,
-            status: "Pending",
-            remarks: "Awaiting docs",
-            created_at: "2026-03-17 10:00:00"
-        },
-        {
-            id: 5,
-            employee_id: 4,
-            work_date: "2026-03-18",
-            task_description: "Monthly P&L Report",
-            hours_spent: 5.00,
-            status: "In-Progress",
-            remarks: "50% done",
-            created_at: "2026-03-18 08:30:00"
-        },
-        {
-            id: 6,
-            employee_id: 5,
-            work_date: "2026-03-16",
-            task_description: "Campaign Analytics",
-            hours_spent: 2.50,
-            status: "Done",
-            remarks: "Sent to CEO",
-            created_at: "2026-03-16 13:00:00"
-        },
-        {
-            id: 7,
-            employee_id: 6,
-            work_date: "2026-03-15",
-            task_description: "Supply Chain Audit",
-            hours_spent: 6.00,
-            status: "Pending",
-            remarks: "",
-            created_at: "2026-03-15 09:45:00"
-        },
-        {
-            id: 8,
-            employee_id: 1,
-            work_date: "2026-03-15",
-            task_description: "DB Schema Design",
-            hours_spent: 3.00,
-            status: "Done",
-            remarks: "Reviewed",
-            created_at: "2026-03-15 11:20:00"
-        },
-        {
-            id: 9,
-            employee_id: 3,
-            work_date: "2026-03-14",
-            task_description: "Unit Tests",
-            hours_spent: 2.00,
-            status: "In-Progress",
-            remarks: "80% coverage",
-            created_at: "2026-03-14 15:00:00"
-        },
-        {
-            id: 10,
-            employee_id: 4,
-            work_date: "2026-03-14",
-            task_description: "Invoice Processing",
-            hours_spent: 3.50,
-            status: "Done",
-            remarks: "Sent",
-            created_at: "2026-03-14 10:10:00"
-        },
-    ];
+        const AVATAR_COLORS = ["#0f2c4a", "#f4a623", "#2dd4bf", "#e11d48", "#7c3aed", "#059669"];
 
-    // =============================================
-    let filteredTasks = [...TASKS];
+        const TASKS = [{
+                id: 1,
+                employee_id: 2,
+                work_date: "2026-03-18",
+                task_description: "Lead 2",
+                hours_spent: 2.00,
+                status: "Done",
+                remarks: "",
+                created_at: "2026-03-18 12:44:17"
+            },
+            {
+                id: 2,
+                employee_id: 1,
+                work_date: "2026-03-18",
+                task_description: "API Integration",
+                hours_spent: 3.50,
+                status: "Done",
+                remarks: "Merged to main",
+                created_at: "2026-03-18 09:10:00"
+            },
+            {
+                id: 3,
+                employee_id: 3,
+                work_date: "2026-03-17",
+                task_description: "Bug Fix #402",
+                hours_spent: 1.50,
+                status: "Done",
+                remarks: "Closed ticket",
+                created_at: "2026-03-17 14:22:10"
+            },
+            {
+                id: 4,
+                employee_id: 2,
+                work_date: "2026-03-17",
+                task_description: "Team Onboarding",
+                hours_spent: 4.00,
+                status: "Pending",
+                remarks: "Awaiting docs",
+                created_at: "2026-03-17 10:00:00"
+            },
+            {
+                id: 5,
+                employee_id: 4,
+                work_date: "2026-03-18",
+                task_description: "Monthly P&L Report",
+                hours_spent: 5.00,
+                status: "In-Progress",
+                remarks: "50% done",
+                created_at: "2026-03-18 08:30:00"
+            },
+            {
+                id: 6,
+                employee_id: 5,
+                work_date: "2026-03-16",
+                task_description: "Campaign Analytics",
+                hours_spent: 2.50,
+                status: "Done",
+                remarks: "Sent to CEO",
+                created_at: "2026-03-16 13:00:00"
+            },
+            {
+                id: 7,
+                employee_id: 6,
+                work_date: "2026-03-15",
+                task_description: "Supply Chain Audit",
+                hours_spent: 6.00,
+                status: "Pending",
+                remarks: "",
+                created_at: "2026-03-15 09:45:00"
+            },
+            {
+                id: 8,
+                employee_id: 1,
+                work_date: "2026-03-15",
+                task_description: "DB Schema Design",
+                hours_spent: 3.00,
+                status: "Done",
+                remarks: "Reviewed",
+                created_at: "2026-03-15 11:20:00"
+            },
+            {
+                id: 9,
+                employee_id: 3,
+                work_date: "2026-03-14",
+                task_description: "Unit Tests",
+                hours_spent: 2.00,
+                status: "In-Progress",
+                remarks: "80% coverage",
+                created_at: "2026-03-14 15:00:00"
+            },
+            {
+                id: 10,
+                employee_id: 4,
+                work_date: "2026-03-14",
+                task_description: "Invoice Processing",
+                hours_spent: 3.50,
+                status: "Done",
+                remarks: "Sent",
+                created_at: "2026-03-14 10:10:00"
+            },
+        ];
 
-    function getEmployee(id) {
-        return EMPLOYEES.find(e => e.id === id) || {
-            name: "Unknown",
-            dept_id: 0
-        };
-    }
+        // =============================================
+        let filteredTasks = [...TASKS];
 
-    function getDept(id) {
-        return DEPARTMENTS.find(d => d.id === id) || {
-            name: "—"
-        };
-    }
-
-    function getAvatarColor(id) {
-        return AVATAR_COLORS[(id - 1) % AVATAR_COLORS.length];
-    }
-
-    function getInitials(name) {
-        return name.split(" ").map(p => p[0]).join("").substring(0, 2).toUpperCase();
-    }
-
-    // Populate Dept filter
-    const deptSel = document.getElementById("deptFilter");
-    DEPARTMENTS.forEach(d => {
-        const o = document.createElement("option");
-        o.value = d.id;
-        o.textContent = d.name;
-        deptSel.appendChild(o);
-    });
-
-    // Populate Employee filter (dependent on dept)
-    function populateEmployeeFilter(deptId) {
-        const empSel = document.getElementById("empFilter");
-        const currentVal = empSel.value;
-        empSel.innerHTML = '<option value="">All Employees</option>';
-        const list = deptId ? EMPLOYEES.filter(e => e.dept_id == deptId) : EMPLOYEES;
-        list.forEach(e => {
-            const o = document.createElement("option");
-            o.value = e.id;
-            o.textContent = e.name;
-            empSel.appendChild(o);
-        });
-        empSel.value = currentVal;
-        if (!list.find(e => e.id == currentVal)) empSel.value = "";
-    }
-
-    document.getElementById("deptFilter").addEventListener("change", function() {
-        populateEmployeeFilter(this.value);
-        applyFilters();
-    });
-
-    populateEmployeeFilter("");
-
-    function applyFilters() {
-        const dept = document.getElementById("deptFilter").value;
-        const emp = document.getElementById("empFilter").value;
-        const status = document.getElementById("statusFilter").value;
-        const from = document.getElementById("dateFrom").value;
-        const to = document.getElementById("dateTo").value;
-
-        filteredTasks = TASKS.filter(t => {
-            const e = getEmployee(t.employee_id);
-            if (dept && e.dept_id != dept) return false;
-            if (emp && t.employee_id != emp) return false;
-            if (status && t.status !== status) return false;
-            if (from && t.work_date < from) return false;
-            if (to && t.work_date > to) return false;
-            return true;
-        });
-        renderTable();
-        updateStats();
-    }
-
-    const maxHours = Math.max(...TASKS.map(t => t.hours_spent));
-
-    function renderTable() {
-        const tbody = document.getElementById("tableBody");
-        tbody.innerHTML = "";
-        if (filteredTasks.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9"><div class="no-data"><i class="bi bi-inbox"></i>No records found</div></td></tr>`;
-            document.getElementById("recordCount").textContent = "No records found";
-            return;
+        function getEmployee(id) {
+            return EMPLOYEES.find(e => e.id === id) || {
+                name: "Unknown",
+                dept_id: 0
+            };
         }
-        document.getElementById("recordCount").textContent = `Showing ${filteredTasks.length} record${filteredTasks.length>1?"s":""}`;
 
-        filteredTasks.forEach((t, i) => {
-            const emp = getEmployee(t.employee_id);
-            const dept = getDept(emp.dept_id);
-            const color = getAvatarColor(t.employee_id);
-            const pct = Math.round((t.hours_spent / maxHours) * 100);
-            const sc = t.status.replace(/\s+/g, "-");
+        function getDept(id) {
+            return DEPARTMENTS.find(d => d.id === id) || {
+                name: "—"
+            };
+        }
 
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
+        function getAvatarColor(id) {
+            return AVATAR_COLORS[(id - 1) % AVATAR_COLORS.length];
+        }
+
+        function getInitials(name) {
+            return name.split(" ").map(p => p[0]).join("").substring(0, 2).toUpperCase();
+        }
+
+        // Populate Dept filter
+        const deptSel = document.getElementById("deptFilter");
+        DEPARTMENTS.forEach(d => {
+            const o = document.createElement("option");
+            o.value = d.id;
+            o.textContent = d.name;
+            deptSel.appendChild(o);
+        });
+
+        // Populate Employee filter (dependent on dept)
+        function populateEmployeeFilter(deptId) {
+            const empSel = document.getElementById("empFilter");
+            const currentVal = empSel.value;
+            empSel.innerHTML = '<option value="">All Employees</option>';
+            const list = deptId ? EMPLOYEES.filter(e => e.dept_id == deptId) : EMPLOYEES;
+            list.forEach(e => {
+                const o = document.createElement("option");
+                o.value = e.id;
+                o.textContent = e.name;
+                empSel.appendChild(o);
+            });
+            empSel.value = currentVal;
+            if (!list.find(e => e.id == currentVal)) empSel.value = "";
+        }
+
+        document.getElementById("deptFilter").addEventListener("change", function() {
+            populateEmployeeFilter(this.value);
+            applyFilters();
+        });
+
+        populateEmployeeFilter("");
+
+        function applyFilters() {
+            const dept = document.getElementById("deptFilter").value;
+            const emp = document.getElementById("empFilter").value;
+            const status = document.getElementById("statusFilter").value;
+            const from = document.getElementById("dateFrom").value;
+            const to = document.getElementById("dateTo").value;
+
+            filteredTasks = TASKS.filter(t => {
+                const e = getEmployee(t.employee_id);
+                if (dept && e.dept_id != dept) return false;
+                if (emp && t.employee_id != emp) return false;
+                if (status && t.status !== status) return false;
+                if (from && t.work_date < from) return false;
+                if (to && t.work_date > to) return false;
+                return true;
+            });
+            renderTable();
+            updateStats();
+        }
+
+        const maxHours = Math.max(...TASKS.map(t => t.hours_spent));
+
+        function renderTable() {
+            const tbody = document.getElementById("tableBody");
+            tbody.innerHTML = "";
+            if (filteredTasks.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9"><div class="no-data"><i class="bi bi-inbox"></i>No records found</div></td></tr>`;
+                document.getElementById("recordCount").textContent = "No records found";
+                return;
+            }
+            document.getElementById("recordCount").textContent = `Showing ${filteredTasks.length} record${filteredTasks.length>1?"s":""}`;
+
+            filteredTasks.forEach((t, i) => {
+                const emp = getEmployee(t.employee_id);
+                const dept = getDept(emp.dept_id);
+                const color = getAvatarColor(t.employee_id);
+                const pct = Math.round((t.hours_spent / maxHours) * 100);
+                const sc = t.status.replace(/\s+/g, "-");
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
         <td style="color:var(--text-muted);font-size:0.8rem;">${i+1}</td>
         <td>
           <div class="emp-badge">
@@ -828,57 +825,57 @@
         <td><div class="remarks-cell" title="${t.remarks}">${t.remarks || "—"}</div></td>
         <td style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">${t.created_at}</td>
       `;
-            tbody.appendChild(tr);
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateStats() {
+            document.getElementById("statTotal").textContent = filteredTasks.length;
+            document.getElementById("statDone").textContent = filteredTasks.filter(t => t.status === "Done").length;
+            document.getElementById("statPending").textContent = filteredTasks.filter(t => t.status === "Pending").length;
+            document.getElementById("statInProgress").textContent = filteredTasks.filter(t => t.status === "In-Progress").length;
+            const hrs = filteredTasks.reduce((s, t) => s + t.hours_spent, 0);
+            document.getElementById("statHours").textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
+        }
+
+        function resetFilters() {
+            document.getElementById("deptFilter").value = "";
+            document.getElementById("empFilter").value = "";
+            document.getElementById("statusFilter").value = "";
+            document.getElementById("dateFrom").value = "";
+            document.getElementById("dateTo").value = "";
+            populateEmployeeFilter("");
+            filteredTasks = [...TASKS];
+            renderTable();
+            updateStats();
+        }
+
+        function exportCSV() {
+            const headers = ["ID", "Employee", "Department", "Work Date", "Task Description", "Hours Spent", "Status", "Remarks", "Created At"];
+            const rows = filteredTasks.map(t => {
+                const emp = getEmployee(t.employee_id);
+                const dept = getDept(emp.dept_id);
+                return [t.id, emp.name, dept.name, t.work_date, `"${t.task_description}"`, t.hours_spent, t.status, `"${t.remarks}"`, t.created_at].join(",");
+            });
+            const csv = [headers.join(","), ...rows].join("\n");
+            const blob = new Blob([csv], {
+                type: "text/csv"
+            });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `kpi_tasks_${new Date().toISOString().split("T")[0]}.csv`;
+            a.click();
+        }
+
+        // Date header
+        document.getElementById("currentDate").textContent = new Date().toLocaleDateString("en-BD", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric"
         });
-    }
 
-    function updateStats() {
-        document.getElementById("statTotal").textContent = filteredTasks.length;
-        document.getElementById("statDone").textContent = filteredTasks.filter(t => t.status === "Done").length;
-        document.getElementById("statPending").textContent = filteredTasks.filter(t => t.status === "Pending").length;
-        document.getElementById("statInProgress").textContent = filteredTasks.filter(t => t.status === "In-Progress").length;
-        const hrs = filteredTasks.reduce((s, t) => s + t.hours_spent, 0);
-        document.getElementById("statHours").textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
-    }
-
-    function resetFilters() {
-        document.getElementById("deptFilter").value = "";
-        document.getElementById("empFilter").value = "";
-        document.getElementById("statusFilter").value = "";
-        document.getElementById("dateFrom").value = "";
-        document.getElementById("dateTo").value = "";
-        populateEmployeeFilter("");
-        filteredTasks = [...TASKS];
+        // Init
         renderTable();
         updateStats();
-    }
-
-    function exportCSV() {
-        const headers = ["ID", "Employee", "Department", "Work Date", "Task Description", "Hours Spent", "Status", "Remarks", "Created At"];
-        const rows = filteredTasks.map(t => {
-            const emp = getEmployee(t.employee_id);
-            const dept = getDept(emp.dept_id);
-            return [t.id, emp.name, dept.name, t.work_date, `"${t.task_description}"`, t.hours_spent, t.status, `"${t.remarks}"`, t.created_at].join(",");
-        });
-        const csv = [headers.join(","), ...rows].join("\n");
-        const blob = new Blob([csv], {
-            type: "text/csv"
-        });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `kpi_tasks_${new Date().toISOString().split("T")[0]}.csv`;
-        a.click();
-    }
-
-    // Date header
-    document.getElementById("currentDate").textContent = new Date().toLocaleDateString("en-BD", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-    });
-
-    // Init
-    renderTable();
-    updateStats();
-</script>
+    </script>
