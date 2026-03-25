@@ -357,7 +357,7 @@ $statementModel = $statementModel ?? null;
                         <tr style="background: #e9ecef;">
                             <th style="border: 0.3mm solid #999; padding: 2mm;">Date</th>
                             <th style="border: 0.3mm solid #999; padding: 2mm;">Purpose/Paid To</th>
-                            <th style="border: 0.3mm solid #999; padding: 2mm;">Amount (৳)</th>
+                            <th style="border: 0.3mm solid #999; padding: 2mm;">Amount (TK.)</th>
                             <th style="border: 0.3mm solid #999; padding: 2mm;">Requester</th>
                         </tr>
                     </thead>
@@ -395,25 +395,25 @@ $statementModel = $statementModel ?? null;
                 <?= $cashinLabel ?>
             </div>
             <div class="stat-value <?= (isset($category) && in_array($category, ['cashout', 'utilities', 'other'])) ? 'cash-out' : 'revenue' ?>">
-                ৳<?= number_format((isset($category) && in_array($category, ['cashout', 'utilities', 'other'])) ? $printTotalCashOut : $printTotalCashIn, 2) ?>
+                TK.<?= number_format((isset($category) && in_array($category, ['cashout', 'utilities', 'other'])) ? $printTotalCashOut : $printTotalCashIn, 2) ?>
             </div>
         </div>
         <div class="stat-box">
             <div class="stat-label">Total Revenue</div>
             <div class="stat-value <?= $printTotalRevenue >= 0 ? 'revenue' : 'cash-out' ?>">
-                ৳<?= number_format($printTotalRevenue, 2) ?>
+                TK.<?= number_format($printTotalRevenue, 2) ?>
             </div>
         </div>
         <div class="stat-box">
             <div class="stat-label">Total Cash Out</div>
             <div class="stat-value cash-out">
-             ৳<?= number_format($printTotalCashOut, 2) ?>
+             TK.<?= number_format($printTotalCashOut, 2) ?>
             </div>
         </div>
         <div class="stat-box">
             <div class="stat-label">Net Balance</div>
             <div class="stat-value net-balance">
-                ৳<?= number_format($printNetBalance, 2) ?>
+                TK.<?= number_format($printNetBalance, 2) ?>
             </div>
         </div>
     </div>
@@ -432,45 +432,45 @@ $statementModel = $statementModel ?? null;
                 <th>Day</th>
 
                 <?php if (!isset($category) || $category === 'all'): ?>
-                    <th class="text-right">Agreement Value (৳)</th>
-                    <th class="text-right">Booking Money (৳)</th>
-                    <th class="text-right">Service Fee (৳)</th>
-                    <th class="text-right">EMI Payments (৳)</th>
-                    <th class="text-right">Landshare (৳)</th>
-                    <th class="text-right">Registration (৳)</th>
-                    <th class="text-right">Management Cashin (৳)</th>
-                    <th class="text-right">Total Cash IN (৳)</th>
-                    <th class="text-right">Cash Out (৳)</th>
-                    <th class="text-right">Net Amount (৳)</th>
-                    <th class="text-right">Running Balance (৳)</th>
+                    <th class="text-right">Agreement Value (TK.)</th>
+                    <th class="text-right">Booking Money (TK.)</th>
+                    <th class="text-right">Service Fee (TK.)</th>
+                    <th class="text-right">EMI Payments (TK.)</th>
+                    <th class="text-right">Landshare (TK.)</th>
+                    <th class="text-right">Registration (TK.)</th>
+                    <th class="text-right">Management Cashin (TK.)</th>
+                    <th class="text-right">Total Cash IN (TK.)</th>
+                    <th class="text-right">Cash Out (TK.)</th>
+                    <th class="text-right">Net Amount (TK.)</th>
+                    <th class="text-right">Running Balance (TK.)</th>
                 <?php elseif (isset($category)): ?>
                     <?php if ($category === 'total_cashin'): ?>
-                        <th class="text-right">Total Cash IN (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Total Cash IN (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'emi'): ?>
-                        <th class="text-right">EMI Payments (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">EMI Payments (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'landshare'): ?>
-                        <th class="text-right">Landshare (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Landshare (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'service_fee'): ?>
-                        <th class="text-right">Service Fee (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Service Fee (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'registration'): ?>
-                        <th class="text-right">Registration (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Registration (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'booking_money'): ?>
-                        <th class="text-right">Booking Money (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Booking Money (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'agreement'): ?>
-                        <th class="text-right">Agreement Value (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Agreement Value (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'management_cashin'): ?>
-                        <th class="text-right">Management Cashin (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Management Cashin (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
-                        <th class="text-right">Cash Out (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Cash Out (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                         <?php if ($category === 'cashout'): ?>
                         <th>Purpose / Paid To</th>
                         <?php endif; ?>
@@ -487,49 +487,49 @@ $statementModel = $statementModel ?? null;
                     <td><?= htmlspecialchars($row['day_name'] ?? '') ?></td>
 
                     <?php if (!isset($category) || $category === 'all'): ?>
-                        <td class="text-right positive">৳<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['registration'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
-                        <td class="text-right negative">৳<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['registration'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
+                        <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
                         <td class="text-right <?= ($row['net_amount'] ?? 0) >= 0 ? 'positive' : 'negative' ?>">
-                            ৳<?= number_format($row['net_amount'] ?? 0, 2) ?>
+                            TK.<?= number_format($row['net_amount'] ?? 0, 2) ?>
                         </td>
                         <td class="text-right <?= ($row['running_balance'] ?? 0) >= 0 ? 'positive' : 'negative' ?>">
-                            ৳<?= number_format($row['running_balance'] ?? 0, 2) ?>
+                            TK.<?= number_format($row['running_balance'] ?? 0, 2) ?>
                         </td>
                     <?php elseif (isset($category)): ?>
                         <?php if ($category === 'total_cashin'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'emi'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'landshare'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'service_fee'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'registration'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['registration'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['registration'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['registration'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['registration'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'booking_money'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'agreement'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'management_cashin'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
                         <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
-                            <td class="text-right negative">৳<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
-                            <td class="text-right negative">৳<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
                             <?php if ($category === 'cashout'): ?>
                             <td>
                                 <?php 
@@ -575,45 +575,45 @@ $statementModel = $statementModel ?? null;
                 <th>Month</th>
 
                 <?php if (!isset($category) || $category === 'all'): ?>
-                    <th class="text-right">Agreement Value (৳)</th>
-                    <th class="text-right">Booking Money (৳)</th>
-                    <th class="text-right">Service Fee (৳)</th>
-                    <th class="text-right">EMI Payments (৳)</th>
-                    <th class="text-right">Landshare (৳)</th>
-                    <th class="text-right">Registration (৳)</th>
-                    <th class="text-right">Management Cashin (৳)</th>
-                    <th class="text-right">Total Cash IN (৳)</th>
-                    <th class="text-right">Cash Out (৳)</th>
-                    <th class="text-right">Net Amount (৳)</th>
-                    <th class="text-right">Running Balance (৳)</th>
+                    <th class="text-right">Agreement Value (TK.)</th>
+                    <th class="text-right">Booking Money (TK.)</th>
+                    <th class="text-right">Service Fee (TK.)</th>
+                    <th class="text-right">EMI Payments (TK.)</th>
+                    <th class="text-right">Landshare (TK.)</th>
+                    <th class="text-right">Registration (TK.)</th>
+                    <th class="text-right">Management Cashin (TK.)</th>
+                    <th class="text-right">Total Cash IN (TK.)</th>
+                    <th class="text-right">Cash Out (TK.)</th>
+                    <th class="text-right">Net Amount (TK.)</th>
+                    <th class="text-right">Running Balance (TK.)</th>
                 <?php elseif (isset($category)): ?>
                     <?php if ($category === 'total_cashin'): ?>
-                        <th class="text-right">Total Cash IN (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Total Cash IN (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'emi'): ?>
-                        <th class="text-right">EMI Payments (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">EMI Payments (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'landshare'): ?>
-                        <th class="text-right">Landshare (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Landshare (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'service_fee'): ?>
-                        <th class="text-right">Service Fee (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Service Fee (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'registration'): ?>
-                        <th class="text-right">Registration (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Registration (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'booking_money'): ?>
-                        <th class="text-right">Booking Money (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Booking Money (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'agreement'): ?>
-                        <th class="text-right">Agreement Value (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Agreement Value (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'management_cashin'): ?>
-                        <th class="text-right">Management Cashin (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Management Cashin (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
-                        <th class="text-right">Cash Out (৳)</th>
-                        <th class="text-right">Amount (৳)</th>
+                        <th class="text-right">Cash Out (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                         <?php if ($category === 'cashout'): ?>
                         <th>Purpose / Paid To</th>
                         <?php endif; ?>
@@ -629,49 +629,49 @@ $statementModel = $statementModel ?? null;
                     <td><?= htmlspecialchars($row['month'] ?? '') ?></td>
 
                     <?php if (!isset($category) || $category === 'all'): ?>
-                        <td class="text-right positive">৳<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['registration_payments'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
-                        <td class="text-right positive">৳<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
-                        <td class="text-right negative">৳<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['registration_payments'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
+                        <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
                         <td class="text-right <?= ($row['net_amount'] ?? 0) >= 0 ? 'positive' : 'negative' ?>">
-                            ৳<?= number_format($row['net_amount'] ?? 0, 2) ?>
+                            TK.<?= number_format($row['net_amount'] ?? 0, 2) ?>
                         </td>
                         <td class="text-right <?= ($row['running_balance'] ?? 0) >= 0 ? 'positive' : 'negative' ?>">
-                            ৳<?= number_format($row['running_balance'] ?? 0, 2) ?>
+                            TK.<?= number_format($row['running_balance'] ?? 0, 2) ?>
                         </td>
                     <?php elseif (isset($category)): ?>
                         <?php if ($category === 'total_cashin'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'emi'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'landshare'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'service_fee'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['service_fee'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'registration'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['registration_payments'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['registration_payments'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['registration_payments'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['registration_payments'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'booking_money'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'agreement'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'management_cashin'): ?>
-                            <td class="text-right positive">৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
-                            <td class="text-right positive">৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
                         <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
-                            <td class="text-right negative">৳<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
-                            <td class="text-right negative">৳<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
                             <?php if ($category === 'cashout'): ?>
                             <td>
                                 <?php 
@@ -738,7 +738,7 @@ $statementModel = $statementModel ?? null;
                             ?>
                             <?= $summaryLabel ?>:
                         </span>
-                        <span class="summary-value revenue">৳<?= number_format($printTotalCashIn, 2) ?></span>
+                        <span class="summary-value revenue">TK.<?= number_format($printTotalCashIn, 2) ?></span>
                     </div>
                 <?php endif; ?>
                 
@@ -754,7 +754,7 @@ $statementModel = $statementModel ?? null;
                             ?>
                             <?= $cashoutLabel ?>:
                         </span>
-                        <span class="summary-value cash-out">৳<?= number_format($printTotalCashOut, 2) ?></span>
+                        <span class="summary-value cash-out">TK.<?= number_format($printTotalCashOut, 2) ?></span>
                     </div>
                 <?php endif; ?>
             </div>
@@ -763,13 +763,13 @@ $statementModel = $statementModel ?? null;
                 <div class="summary-row">
                     <span class="summary-label">Total Revenue:</span>
                     <span class="summary-value <?= $printTotalRevenue >= 0 ? 'revenue' : 'cash-out' ?>">
-                        ৳<?= number_format($printTotalRevenue, 2) ?>
+                        TK.<?= number_format($printTotalRevenue, 2) ?>
                     </span>
                 </div>
                 
                 <div class="summary-row">
                     <span class="summary-label">Net Balance:</span>
-                    <span class="summary-value net-balance">৳<?= number_format($printNetBalance, 2) ?></span>
+                    <span class="summary-value net-balance">TK.<?= number_format($printNetBalance, 2) ?></span>
                 </div>
             </div>
         </div>

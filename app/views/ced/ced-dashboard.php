@@ -213,7 +213,7 @@ $statusBadgeMap = [
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Collected</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($totalCollected, 0) ?></h4>
+                        <h4 class="card__title">TK.<?= number_format($totalCollected, 0) ?></h4>
                     </div>
                 </div>
             </div>
@@ -245,7 +245,7 @@ $statusBadgeMap = [
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">This Month Collection</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($monthlyCollection, 0) ?></h4>
+                        <h4 class="card__title">TK.<?= number_format($monthlyCollection, 0) ?></h4>
                     </div>
                 </div>
             </div>
@@ -356,8 +356,8 @@ $statusBadgeMap = [
                                         <?php endif; ?>
                                     </td>
                                     <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
-                                    <td>৳<?= number_format($client['total_price'] ?? 0, 2) ?></td>
-                                    <td>৳<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
+                                    <td>TK.<?= number_format($client['total_price'] ?? 0, 2) ?></td>
+                                    <td>TK.<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
                                     <td>
                                         <?php if (!empty($client['last_payment_date'])): ?>
                                             <?= date('d M, Y', strtotime($client['last_payment_date'])) ?>
@@ -403,7 +403,7 @@ $statusBadgeMap = [
         const weeklyCollection   = <?= json_encode($weeklyCollectionData) ?>;
         const paymentStatusData  = <?= json_encode($paymentStatusData) ?>;
 
-        const formatCurrency = (value) => '৳' + value.toLocaleString();
+        const formatCurrency = (value) => 'TK.' + value.toLocaleString();
 
         const colors = {
             primary:  '#6366f1',

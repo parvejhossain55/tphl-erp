@@ -118,7 +118,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Requested Amount:</label>
                                         <p class="form-control-static"><strong
-                                                class="text-primary">৳<?= number_format($request['amount'], 2) ?></strong>
+                                                class="text-primary">TK.<?= number_format($request['amount'], 2) ?></strong>
                                         </p>
                                     </div>
                                     <div class="col-md-6 mb-3">
@@ -126,7 +126,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                         <p class="form-control-static">
                                             <?php if (!empty($request['approved_amount'])): ?>
                                                 <strong
-                                                    class="text-success">৳<?= number_format($request['approved_amount'], 2) ?></strong>
+                                                    class="text-success">TK.<?= number_format($request['approved_amount'], 2) ?></strong>
                                                 <?php if (!empty($request['approval_note'])): ?>
                                                     <br><small class="text-muted">Note:
                                                         <?= htmlspecialchars($request['approval_note']) ?></small>
@@ -141,9 +141,9 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                         <p class="form-control-static">
                                             <?php if ($request['due_amount'] > 0): ?>
                                                 <strong
-                                                    class="text-danger">৳<?= number_format($request['due_amount'], 2) ?></strong>
+                                                    class="text-danger">TK.<?= number_format($request['due_amount'], 2) ?></strong>
                                             <?php else: ?>
-                                                <strong class="text-success">৳0.00</strong>
+                                                <strong class="text-success">TK.0.00</strong>
                                             <?php endif; ?>
                                         </p>
                                     </div>
@@ -268,7 +268,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                                 <?php foreach ($payments as $payment): ?>
                                                     <tr>
                                                         <td><?= date('d M, Y', strtotime($payment['payment_date'])) ?></td>
-                                                        <td><strong>৳<?= number_format($payment['amount'], 2) ?></strong></td>
+                                                        <td><strong>TK.<?= number_format($payment['amount'], 2) ?></strong></td>
                                                         <td><?= ucfirst($payment['payment_method']) ?></td>
                                                         <td><?= htmlspecialchars($payment['transaction_ref'] ?? '-') ?></td>
                                                         <td><?= htmlspecialchars($payment['created_by_name'] ?? 'N/A') ?></td>
@@ -297,7 +297,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                                     <td colspan="<?= $colspan - 1 ?>" class="text-end"><strong>Total
                                                             Paid:</strong></td>
                                                     <td colspan="1"><strong
-                                                            class="text-success">৳<?= number_format($total_paid, 2) ?></strong>
+                                                            class="text-success">TK.<?= number_format($total_paid, 2) ?></strong>
                                                     </td>
                                                 </tr>
                                             </tfoot>
@@ -346,7 +346,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                         <?php if (!empty($request['approved_amount'])): ?>
                                             <p class="text-info text-center mt-2 mb-0 small">
                                                 <i class="fa-light fa-info-circle me-1"></i>
-                                                Approved: ৳<?= number_format($request['approved_amount'], 2) ?>
+                                                Approved: TK.<?= number_format($request['approved_amount'], 2) ?>
                                             </p>
                                         <?php endif; ?>
                                     <?php elseif ($showFullyPaid): ?>
@@ -417,7 +417,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                             <label class="form-label">Approved Amount:</label>
                                             <p class="form-control-static">
                                                 <strong
-                                                    class="text-success">৳<?= number_format($approval_request['approved_amount'], 2) ?></strong>
+                                                    class="text-success">TK.<?= number_format($approval_request['approved_amount'], 2) ?></strong>
                                             </p>
                                         </div>
                                     <?php endif; ?>
@@ -535,7 +535,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                         <input type="hidden" name="request_id" value="<?= $request['id'] ?>">
 
                         <div class="mb-3">
-                            <label class="form-label">Amount (৳): <span class="text-danger">*</span></label>
+                            <label class="form-label">Amount (TK.): <span class="text-danger">*</span></label>
                             <?php
                             // Determine max amount - use approved amount if available, otherwise use due amount
                             $maxAmount = !empty($request['approved_amount']) ?
@@ -545,9 +545,9 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                             <input type="number" name="amount" class="form-control" placeholder="0.00" step="0.01"
                                 min="0.01" max="<?= $maxAmount ?>" value="<?= $maxAmount ?>" required>
                             <small class="text-muted">
-                                Max: ৳<?= number_format($maxAmount, 2) ?>
+                                Max: TK.<?= number_format($maxAmount, 2) ?>
                                 <?php if (!empty($request['approved_amount'])): ?>
-                                    <br>Approved Amount: ৳<?= number_format($request['approved_amount'], 2) ?>
+                                    <br>Approved Amount: TK.<?= number_format($request['approved_amount'], 2) ?>
                                 <?php endif; ?>
                             </small>
                         </div>

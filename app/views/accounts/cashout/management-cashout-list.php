@@ -128,7 +128,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title  mb-10">Total Amount</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title fs-6">৳<?= number_format($statistics['total_amount'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title fs-6">TK.<?= number_format($statistics['total_amount'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -144,7 +144,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Paid Amount</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title fs-6">৳<?= number_format($statistics['paid_amount'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title fs-6">TK.<?= number_format($statistics['paid_amount'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -160,7 +160,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Pending Amount</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title fs-6">৳<?= number_format($statistics['pending_amount'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title fs-6">TK.<?= number_format($statistics['pending_amount'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -237,7 +237,7 @@ $show_breadcrumb = true;
                                                 <?php endif; ?>
                                             </small>
                                         </td>
-                                        <td><strong>৳<?= number_format($transaction['amount'], 2) ?></strong></td>
+                                        <td><strong>TK.<?= number_format($transaction['amount'], 2) ?></strong></td>
                                         <td>
                                             <?php if ($transaction['payment_status'] == 'paid'): ?>
                                                 <span class="bd-badge bg-success">Paid</span>
