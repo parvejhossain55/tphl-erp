@@ -394,9 +394,24 @@ CREATE TABLE `employees` (
 --
 -- Dumping data for table `employees`
 --
-
-INSERT INTO `employees` (`id`, `user_id`, `full_name`, `employee_id`, `username`, `email`, `father_name`, `phone`, `emergency_contact`, `qualification`, `experience`, `address`, `pass_num`, `nid`, `department_id`, `designation_id`, `dob`, `joining_date`, `basic_salary`, `account_holder_name`, `account_number`, `make_user`, `password`, `bank_name`, `branch_name`, `social_media1`, `social_media2`, `social_media3`, `photo`, `employee_type`, `employee_status`, `created_by`, `deleted_at`, `created_at`, `updated_at`) VALUES
-(1, NULL, 'Fahim', 'EMP-00001', '', 'fahim@gmail.com', 'Forhad', '01734555783', '01734555783', 'BBA', '', 'Dhaka', '', '23784', 15, 1, '1998-02-04', '2026-01-01', 30000, 'Fahim', '7523423478', 1, '$2y$10$JphYkjE9NT3MdD93lmgv7uZ2uu4nWUubfKZHjdFvqN6rq6KTk8UIC', 'City Bank', 'Shaymoli', '', '', '', '', 'permanent', 'active',NULL, 3, NULL, '2026-02-19 16:54:13', '2026-02-19 16:54:13');
+INSERT INTO `employees` (
+    `employee_id`, `full_name`, `username`, `email`, `father_name`, `phone`,
+    `emergency_contact`, `qualification`, `experience`, `address`, `pass_num`, `nid`,
+    `department_id`, `designation_id`, `dob`, `workplace`, `joining_date`, `basic_salary`,
+    `account_holder_name`, `account_number`,
+    `make_user`, `password`, `bank_name`, `branch_name`,
+    `social_media1`, `social_media2`, `social_media3`,
+    `photo`, `employee_type`, `employee_status`, `created_by`
+) VALUES (
+    'EMP-00001', 'Fahim', 'fahim', 'fahim@gmail.com', 'Forhad', '01734555783',
+    '01734555783', 'BBA', '', 'Dhaka', '', '23784',
+    15, 1, '1998-02-04', 'Gulshan', '2026-01-01', 30000,
+    'Fahim', '7523423478',
+    1, '$2y$10$JphYkjE9NT3MdD93lmgv7uZ2uu4nWUubfKZHjdFvqN6rq6KTk8UIC',
+    'City Bank', 'Shaymoli',
+    '', '', '',
+    '', 'permanent', 'active', 3
+);
 
 -- --------------------------------------------------------
 
@@ -1900,7 +1915,7 @@ ALTER TABLE `emi_schedules`
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 
 --
 -- AUTO_INCREMENT for table `employee_leaves`
