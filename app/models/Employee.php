@@ -391,27 +391,35 @@ class Employee extends Model
     }
 
 
-    public function delete($id)
-    {
-        $tables = ['payslips', 'tasks', 'employees'];
+public function delete($id)
+{
+    $tables = ['payslips', 'tasks', 'employees'];
 
-        foreach ($tables as $table) {
-            $stmt = $this->db->prepare($table == 'employees'
+    foreach ($tables as $table) {
+
+        $stmt = $this->db->prepare(
+            $table == 'employees'
                 ? "DELETE FROM employees WHERE id = ?"
-                : "DELETE FROM $table WHERE employee_id = ?");
+                : "DELETE FROM $table WHERE employee_id = ?"
+        );
 
-            if (!$stmt) {
-                error_log("Prepare failed for table $table: " . $this->db->error);
-                continue;
-            }
-
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
-            $stmt->close();
+        if (!$stmt) {
+            error_log("Prepare failed for table $table: " . $this->db->error);
+            return false;
         }
 
-        return true;
+        $stmt->bind_param("i", $id);
+
+        if (!$stmt->execute()) {
+            error_log("Delete failed in $table: " . $stmt->error);
+            return false; 
+        }
+
+        $stmt->close();
     }
+
+    return true;
+}
 
     public function taskNotification()
     {

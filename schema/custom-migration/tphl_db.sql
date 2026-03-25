@@ -394,7 +394,7 @@ CREATE TABLE `employees` (
 --
 -- Dumping data for table `employees`
 --
-INSERT INTO `employees` (
+INSERT INTO `employees` (`id`,
     `employee_id`, `full_name`, `username`, `email`, `father_name`, `phone`,
     `emergency_contact`, `qualification`, `experience`, `address`, `pass_num`, `nid`,
     `department_id`, `designation_id`, `dob`, `workplace`, `joining_date`, `basic_salary`,
@@ -403,7 +403,7 @@ INSERT INTO `employees` (
     `social_media1`, `social_media2`, `social_media3`,
     `photo`, `employee_type`, `employee_status`, `created_by`
 ) VALUES (
-    'EMP-00001', 'Fahim', 'fahim', 'fahim@gmail.com', 'Forhad', '01734555783',
+   '1', 'EMP-00001', 'Fahim', 'fahim', 'fahim@gmail.com', 'Forhad', '01734555783',
     '01734555783', 'BBA', '', 'Dhaka', '', '23784',
     15, 1, '1998-02-04', 'Gulshan', '2026-01-01', 30000,
     'Fahim', '7523423478',
