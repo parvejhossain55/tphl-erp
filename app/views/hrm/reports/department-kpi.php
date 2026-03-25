@@ -58,7 +58,7 @@
 
     /* FILTER SECTION */
     .filter-section {
-        background: var(--card-bg);
+        
         border-bottom: 1px solid var(--border);
         padding: 20px 36px;
         display: flex;
@@ -202,7 +202,6 @@
     }
 
     .table-wrapper {
-        background: var(--card-bg);
         border-radius: 14px;
         border: 1.5px solid var(--border);
         overflow: hidden;
@@ -496,9 +495,8 @@
 
 <!-- TABLE -->
 <div class="row">
-
-    <div class="table-section">
-        <div class="table-wrapper">
+       <div class="card__wrapper">
+                 <div class="table__wrapper table-responsive">
             <div class="table-header-row">
                 <div>
                     <div class="table-title">Employee Task Records</div>
