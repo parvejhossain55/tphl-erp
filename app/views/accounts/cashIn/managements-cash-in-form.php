@@ -94,7 +94,7 @@ unset($_SESSION['old_form_data']);
 
                         <!-- Amount -->
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Amount (৳): <span class="text-danger">*</span></label>
+                            <label class="form-label">Amount (TK.): <span class="text-danger">*</span></label>
                             <input type="number" name="amount" class="form-control" 
                                    placeholder="0.00" step="0.01" min="0.01" 
                                    value="<?= !empty($old_data['amount']) ? htmlspecialchars($old_data['amount']) : '' ?>" required>

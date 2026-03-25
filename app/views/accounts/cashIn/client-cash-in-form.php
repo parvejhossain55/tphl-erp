@@ -64,7 +64,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                                 <?php if (!$isLandShareCompleted): ?>
                                     <option value="land_share" data-details="false">
                                         Land Share
-                                        <?php echo $remainingLandShare > 0 ? '(Remaining: ৳' . number_format($remainingLandShare, 2) . ')' : ''; ?>
+                                        <?php echo $remainingLandShare > 0 ? '(Remaining: TK.' . number_format($remainingLandShare, 2) . ')' : ''; ?>
                                     </option>
                                 <?php else: ?>
                                     <option value="land_share" disabled>
@@ -95,7 +95,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                                 <?php elseif (!$isLandShareCompleted): ?>
                                     <span class="text-warning">
                                         <i class="fa-light fa-exclamation-triangle"></i>
-                                        Remaining Land Share: ৳<?= number_format($remainingLandShare, 2) ?>
+                                        Remaining Land Share: TK.<?= number_format($remainingLandShare, 2) ?>
                                     </span>
                                 <?php else: ?>
                                     <span class="text-success">
@@ -255,7 +255,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
             switch (paymentTypeValue) {
                 case 'land_share':
                     if (remainingLandShare > 0) {
-                        helpText = 'Maximum: ৳' + remainingLandShare.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                        helpText = 'Maximum: TK.' + remainingLandShare.toLocaleString('en-IN', { minimumFractionDigits: 2 });
                         maxAmount = remainingLandShare;
                         amountField.setAttribute('max', maxAmount);
                     } else {
@@ -360,7 +360,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                         this.classList.add('is-invalid');
                         const errorMsg = document.createElement('div');
                         errorMsg.className = 'invalid-feedback';
-                        errorMsg.textContent = 'Amount cannot exceed remaining land share (৳' +
+                        errorMsg.textContent = 'Amount cannot exceed remaining land share (TK.' +
                             remainingLandShare.toLocaleString('en-IN', { minimumFractionDigits: 2 }) + ')';
 
                         // Remove previous error message
@@ -458,7 +458,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
 
                     if (amount > remainingLandShare) {
                         e.preventDefault();
-                        alert('Land share amount cannot exceed remaining: ৳' +
+                        alert('Land share amount cannot exceed remaining: TK.' +
                             remainingLandShare.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
                         amountField.focus();
                         return false;

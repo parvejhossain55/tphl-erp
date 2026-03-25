@@ -91,7 +91,7 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                 </div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Amount</h6>
-                    <h4 class="card__title fs-6">৳<?= number_format($statistics['total_amount'] ?? 0, 2) ?></h4>
+                    <h4 class="card__title fs-6">TK.<?= number_format($statistics['total_amount'] ?? 0, 2) ?></h4>
                 </div>
             </div>
         </div>
@@ -105,7 +105,7 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                 </div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Due Amount</h6>
-                    <h4 class="card__title fs-6">৳<?= number_format($statistics['total_due'] ?? 0, 2) ?></h4>
+                    <h4 class="card__title fs-6">TK.<?= number_format($statistics['total_due'] ?? 0, 2) ?></h4>
                 </div>
             </div>
         </div>
@@ -134,7 +134,7 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                 </div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Approved Amount</h6>
-                    <h4 class="card__title fs-6">৳<?= number_format($statistics['total_approved'] ?? 0, 2) ?></h4>
+                    <h4 class="card__title fs-6">TK.<?= number_format($statistics['total_approved'] ?? 0, 2) ?></h4>
                 </div>
             </div>
         </div>
@@ -207,7 +207,7 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                                     <tr>
                                         <td>#<?= $request['id'] ?></td>
                                         <td><?= htmlspecialchars($request['purpose_paid_to']) ?></td>
-                                        <td><strong>৳<?= number_format($request['amount'], 2) ?></strong></td>
+                                        <td><strong>TK.<?= number_format($request['amount'], 2) ?></strong></td>
                                         <td>
                                             <?php
                                             // Check BOTH approved_amount fields
@@ -218,7 +218,7 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
 
                                             <?php if ($hasApprovedAmount && $approvedAmount > 0): ?>
                                                 <div class="d-flex flex-column">
-                                                    <strong class="text-success">৳<?= number_format($approvedAmount, 2) ?></strong>
+                                                    <strong class="text-success">TK.<?= number_format($approvedAmount, 2) ?></strong>
                                                     <?php if ($request['approval_status'] === 'partial'): ?>
                                                         <small class="text-info">(Partial Approval)</small>
                                                     <?php endif; ?>
@@ -238,9 +238,9 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                                         </td>
                                         <td>
                                             <?php if ($request['due_amount'] > 0): ?>
-                                                <span class="text-danger">৳<?= number_format($request['due_amount'], 2) ?></span>
+                                                <span class="text-danger">TK.<?= number_format($request['due_amount'], 2) ?></span>
                                             <?php else: ?>
-                                                <span class="text-success">৳0.00</span>
+                                                <span class="text-success">TK.0.00</span>
                                             <?php endif; ?>
                                         </td>
                                         // Inside your foreach loop, update this section:

@@ -229,7 +229,7 @@
     <div class="stat-bar">
         <div class="stat-item cashout">
             <div class="s-label">Total Cash Out</div>
-            <div class="s-value">৳<?= number_format($total_cashout, 2) ?></div>
+            <div class="s-value">TK.<?= number_format($total_cashout, 2) ?></div>
         </div>
         <div class="stat-item txn">
             <div class="s-label">Transactions</div>
@@ -237,11 +237,11 @@
         </div>
         <div class="stat-item avg">
             <div class="s-label">Avg. Payment</div>
-            <div class="s-value">৳<?= number_format($avg_payment, 2) ?></div>
+            <div class="s-value">TK.<?= number_format($avg_payment, 2) ?></div>
         </div>
         <div class="stat-item largest">
             <div class="s-label">Largest Payment</div>
-            <div class="s-value">৳<?= number_format($max_payment, 2) ?></div>
+            <div class="s-value">TK.<?= number_format($max_payment, 2) ?></div>
         </div>
     </div>
 
@@ -256,9 +256,9 @@
                 <tr>
                     <th>Month</th>
                     <th>Project</th>
-                    <th style="text-align:right;">Total Cash Out (৳)</th>
+                    <th style="text-align:right;">Total Cash Out (TK.)</th>
                     <th style="text-align:center;">Transactions</th>
-                    <th style="text-align:right;">Running Total (৳)</th>
+                    <th style="text-align:right;">Running Total (TK.)</th>
                 </tr>
             </thead>
             <tbody>
@@ -282,18 +282,18 @@
                         <?php endforeach; ?>
                         <?php if (empty($monthProjects)): ?><span style="color:#aaa;">—</span><?php endif; ?>
                     </td>
-                    <td style="text-align:right;" class="negative mono">৳<?= number_format($row['total_amount'], 2) ?></td>
+                    <td style="text-align:right;" class="negative mono">TK.<?= number_format($row['total_amount'], 2) ?></td>
                     <td style="text-align:center;"><?= number_format($row['transaction_count']) ?></td>
-                    <td style="text-align:right;" class="negative mono">৳<?= number_format($row['running'], 2) ?></td>
+                    <td style="text-align:right;" class="negative mono">TK.<?= number_format($row['running'], 2) ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
             <tfoot>
                 <tr>
                     <td colspan="2">TOTAL</td>
-                    <td style="text-align:right;" class="mono">৳<?= number_format($total_cashout, 2) ?></td>
+                    <td style="text-align:right;" class="mono">TK.<?= number_format($total_cashout, 2) ?></td>
                     <td style="text-align:center;"><?= number_format($total_transactions) ?></td>
-                    <td style="text-align:right;" class="mono">৳<?= number_format($total_cashout, 2) ?></td>
+                    <td style="text-align:right;" class="mono">TK.<?= number_format($total_cashout, 2) ?></td>
                 </tr>
             </tfoot>
         </table>
@@ -306,9 +306,9 @@
                     <th>Date</th>
                     <th>Day</th>
                     <th>Project</th>
-                    <th style="text-align:right;">Cash Out (৳)</th>
+                    <th style="text-align:right;">Cash Out (TK.)</th>
                     <th style="text-align:center;">Txns</th>
-                    <th style="text-align:right;">Running (৳)</th>
+                    <th style="text-align:right;">Running (TK.)</th>
                     <th>Details — Purpose / Paid To</th>
                 </tr>
             </thead>
@@ -333,14 +333,14 @@
                         <?php endforeach; ?>
                         <?php if (empty($projectNames)): ?><span style="color:#aaa;">—</span><?php endif; ?>
                     </td>
-                    <td style="text-align:right;" class="negative mono">৳<?= number_format($row['total_amount'], 2) ?></td>
+                    <td style="text-align:right;" class="negative mono">TK.<?= number_format($row['total_amount'], 2) ?></td>
                     <td style="text-align:center;"><?= number_format($row['transaction_count']) ?></td>
-                    <td style="text-align:right;" class="negative mono">৳<?= number_format($row['running'], 2) ?></td>
+                    <td style="text-align:right;" class="negative mono">TK.<?= number_format($row['running'], 2) ?></td>
                     <td>
                         <?php if (!empty($details)): ?>
                             <?php foreach ($details as $d): ?>
                                 <div class="detail-item">
-                                    <span class="detail-amount">৳<?= number_format($d['amount'] ?? 0, 2) ?></span>
+                                    <span class="detail-amount">TK.<?= number_format($d['amount'] ?? 0, 2) ?></span>
                                     <span class="detail-purpose"><?= htmlspecialchars($d['purpose_paid_to'] ?? '—') ?></span>
                                     <span class="detail-method"><?= ucfirst(htmlspecialchars($d['payment_method'] ?? 'cash')) ?></span>
                                     <?php if (!empty($d['bank_name'])): ?>
@@ -364,9 +364,9 @@
             <tfoot>
                 <tr>
                     <td colspan="3">TOTAL</td>
-                    <td style="text-align:right;" class="mono">৳<?= number_format($total_cashout, 2) ?></td>
+                    <td style="text-align:right;" class="mono">TK.<?= number_format($total_cashout, 2) ?></td>
                     <td style="text-align:center;"><?= number_format($total_transactions) ?></td>
-                    <td style="text-align:right;" class="mono">৳<?= number_format($total_cashout, 2) ?></td>
+                    <td style="text-align:right;" class="mono">TK.<?= number_format($total_cashout, 2) ?></td>
                     <td></td>
                 </tr>
             </tfoot>

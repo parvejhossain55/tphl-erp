@@ -43,7 +43,7 @@ $show_breadcrumb = true;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Total Price</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">৳<?= number_format($paymentSummary['total_price'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_price'] ?? 0, 2) ?></h4>
                         </div>
                     </div>
                 </div>
@@ -59,7 +59,7 @@ $show_breadcrumb = true;
             <div class="card__title-wrap">
                 <h6 class="card__sub-title mb-10">Total Land Share</h6>
                 <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title">৳<?= number_format($paymentSummary['total_land_share'] ?? 0, 2) ?></h4>
+                    <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share'] ?? 0, 2) ?></h4>
                 </div>
             </div>
         </div>
@@ -74,7 +74,7 @@ $show_breadcrumb = true;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Booking Money</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">৳<?= number_format($paymentSummary['booking_money'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['booking_money'] ?? 0, 2) ?></h4>
                         </div>
                     </div>
                 </div>
@@ -90,7 +90,7 @@ $show_breadcrumb = true;
             <div class="card__title-wrap">
                 <h6 class="card__sub-title mb-10"> Land Share Paid</h6>
                 <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title">৳<?= number_format($paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
+                    <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
                 </div>
             </div>
         </div>
@@ -106,7 +106,7 @@ $show_breadcrumb = true;
             <div class="card__title-wrap">
                 <h6 class="card__sub-title mb-10">Remaining Land Share</h6>
                 <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title">৳<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?></h4>
+                    <h4 class="card__title">TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?></h4>
                 </div>
 
 
@@ -124,7 +124,7 @@ $show_breadcrumb = true;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Discount Amount</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title text-success">৳<?= number_format($paymentSummary['discount_amount'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title text-success">TK.<?= number_format($paymentSummary['discount_amount'] ?? 0, 2) ?></h4>
                         </div>
                     </div>
                 </div>
@@ -140,7 +140,7 @@ $show_breadcrumb = true;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Registration Money</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">৳<?= number_format($paymentSummary['registration_money'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['registration_money'] ?? 0, 2) ?></h4>
                         </div>
                     </div>
                 </div>
@@ -156,7 +156,7 @@ $show_breadcrumb = true;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Total Construction Fee</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">৳<?= number_format($paymentSummary['construction_fee'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['construction_fee'] ?? 0, 2) ?></h4>
                         </div>
                     </div>
                 </div>
@@ -172,7 +172,7 @@ $show_breadcrumb = true;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Construction Fee Paid</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">৳<?= number_format($paymentSummary['construction_fee_paid_after_service'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['construction_fee_paid_after_service'] ?? 0, 2) ?></h4>
                         </div>
                     </div>
                 </div>
@@ -188,7 +188,7 @@ $show_breadcrumb = true;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Service Fee (10%)</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">৳<?= number_format($paymentSummary['total_service_fee'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_service_fee'] ?? 0, 2) ?></h4>
                         </div>
                     </div>
                 </div>
@@ -204,7 +204,7 @@ $show_breadcrumb = true;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Remaining Construction Fee</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">৳<?= number_format($paymentSummary['remaining_construction_fee'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['remaining_construction_fee'] ?? 0, 2) ?></h4>
                         </div>
                     </div>
                 </div>
@@ -222,7 +222,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Average EMI Amount</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">৳<?= number_format($paymentSummary['avg_emi_amount'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title">TK.<?= number_format($paymentSummary['avg_emi_amount'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -337,25 +337,25 @@ $show_breadcrumb = true;
                                         </span>
                                     </td>
                                     <td><?php echo $transaction['payment_details']; ?></td>
-                                    <td>৳<?php echo number_format($transaction['amount'], 2); ?></td>
+                                    <td>TK.<?php echo number_format($transaction['amount'], 2); ?></td>
                                     <!-- ADD THIS -->
                                      <td>
                                          <?php if (!empty($transaction['due_emi_amount']) && $transaction['due_emi_amount'] > 0): ?>
-                                             ৳<?php echo number_format($transaction['due_emi_amount'], 2); ?>
+                                             TK.<?php echo number_format($transaction['due_emi_amount'], 2); ?>
                                          <?php else: ?>
                                              <span class="text-muted">-</span>
                                          <?php endif; ?>
                                      </td>
                                     <td>
                                         <?php if ($transaction['land_share_amount'] > 0): ?>
-                                            ৳<?php echo number_format($transaction['land_share_amount'], 2); ?>
+                                            TK.<?php echo number_format($transaction['land_share_amount'], 2); ?>
                                         <?php else: ?>
                                             <span class="text-muted">-</span>
                                         <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php if ($transaction['service_fee'] > 0): ?>
-                                            ৳<?php echo number_format($transaction['service_fee'], 2); ?>
+                                            TK.<?php echo number_format($transaction['service_fee'], 2); ?>
                                         <?php else: ?>
                                             <span class="text-muted">-</span>
                                         <?php endif; ?>

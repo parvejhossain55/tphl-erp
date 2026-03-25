@@ -757,7 +757,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Total Amount (Paid Only):</span>
-                        <span class="detail-value">৳<?= number_format($totalAmount, 2) ?></span>
+                        <span class="detail-value">TK.<?= number_format($totalAmount, 2) ?></span>
                     </div>
                 </div>
             </div>
@@ -781,7 +781,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                         <th class="person">Person</th>
                         <th class="method">Method</th>
                         <th class="status">Status</th>
-                        <th class="amount">Amount (৳)</th>
+                        <th class="amount">Amount (TK.)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -807,7 +807,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                         <th class="person">Person</th>
                         <th class="method">Method</th>
                         <th class="status">Status</th>
-                        <th class="amount">Amount (৳)</th>
+                        <th class="amount">Amount (TK.)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -857,7 +857,7 @@ $totalAmountWords = convertNumberToWords($totalAmount);
                 </tr>
                 <tr class="grand-total">
                     <td class="totals-label">TOTAL AMOUNT (PAID ONLY):</td>
-                    <td class="totals-value">৳<?= number_format($totalAmount, 2) ?></td>
+                    <td class="totals-value">TK.<?= number_format($totalAmount, 2) ?></td>
                 </tr>
             </table>
 

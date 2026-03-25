@@ -159,18 +159,18 @@ $disable_layout = true;
 
                 <div class="payment-row" style="border-bottom: 1px solid #e0e0e0; padding-bottom: 10px;">
                     <span >Paid EMI:</span>
-                    <span style="font-weight: 600; color: #27ae60;">৳<?= number_format($netPaidEmi, 2) ?></span>
+                    <span style="font-weight: 600; color: #27ae60;">TK.<?= number_format($netPaidEmi, 2) ?></span>
                 </div>
                 
                 <div class="payment-row" >
                     <span>Service Fee (10%):</span>
-                    <span style="font-weight: 600; color: #e67e22;"> ৳<?= number_format($serviceFee, 2) ?></span>
+                    <span style="font-weight: 600; color: #e67e22;"> TK.<?= number_format($serviceFee, 2) ?></span>
                 </div>
             <?php endif; ?>
             
             <div class="payment-row total">
                 <span>Total Amount Paid:</span>
-                <span class="amount-highlight">৳<?= number_format($payment['amount'] ?? 0, 2) ?></span>
+                <span class="amount-highlight">TK.<?= number_format($payment['amount'] ?? 0, 2) ?></span>
             </div>
         </div>
 

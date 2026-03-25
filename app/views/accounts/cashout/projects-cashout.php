@@ -200,7 +200,7 @@ $show_breadcrumb = true;
                 <div class="card__icon"><span><i class="fa-light fa-arrow-up-from-line"></i></span></div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Cash Out</h6>
-                    <h4 class="card__title fs-6 negative">৳<?= number_format($total_cashout, 2) ?></h4>
+                    <h4 class="card__title fs-6 negative">TK.<?= number_format($total_cashout, 2) ?></h4>
                 </div>
             </div>
         </div>
@@ -224,7 +224,7 @@ $show_breadcrumb = true;
                 <div class="card__icon"><span><i class="fa-light fa-chart-bar"></i></span></div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Avg. Payment</h6>
-                    <h4 class="card__title fs-6" style="color:#6f42c1;">৳<?= number_format($avg_payment, 2) ?></h4>
+                    <h4 class="card__title fs-6" style="color:#6f42c1;">TK.<?= number_format($avg_payment, 2) ?></h4>
                 </div>
             </div>
         </div>
@@ -236,7 +236,7 @@ $show_breadcrumb = true;
                 <div class="card__icon"><span><i class="fa-light fa-arrow-trend-up"></i></span></div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Largest Payment</h6>
-                    <h4 class="card__title fs-6" style="color:#007bff;">৳<?= number_format($max_payment, 2) ?></h4>
+                    <h4 class="card__title fs-6" style="color:#007bff;">TK.<?= number_format($max_payment, 2) ?></h4>
                 </div>
             </div>
         </div>
@@ -270,9 +270,9 @@ $show_breadcrumb = true;
                                 <tr class="table__title table__sort">
                                     <th>Month</th>
                                     <th>Project</th>
-                                    <th>Total Cash Out (৳)</th>
+                                    <th>Total Cash Out (TK.)</th>
                                     <th>Transactions</th>
-                                    <th>Running Total (৳)</th>
+                                    <th>Running Total (TK.)</th>
                                 </tr>
                             </thead>
                             <tbody class="table__body">
@@ -302,9 +302,9 @@ $show_breadcrumb = true;
                                                 <span style="color:#aaa; font-size:12px;">—</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="negative"><strong>৳<?= number_format($row['total_amount'], 2) ?></strong></td>
+                                        <td class="negative"><strong>TK.<?= number_format($row['total_amount'], 2) ?></strong></td>
                                         <td><?= number_format($row['transaction_count']) ?></td>
-                                        <td class="negative"><strong>৳<?= number_format($row['running'], 2) ?></strong></td>
+                                        <td class="negative"><strong>TK.<?= number_format($row['running'], 2) ?></strong></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -312,9 +312,9 @@ $show_breadcrumb = true;
                                 <tr>
                                     <td>Total</td>
                                     <td></td>
-                                    <td class="negative">৳<?= number_format($total_cashout, 2) ?></td>
+                                    <td class="negative">TK.<?= number_format($total_cashout, 2) ?></td>
                                     <td><?= number_format($total_transactions) ?></td>
-                                    <td class="negative">৳<?= number_format($total_cashout, 2) ?></td>
+                                    <td class="negative">TK.<?= number_format($total_cashout, 2) ?></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -329,9 +329,9 @@ $show_breadcrumb = true;
                                     <th>Date</th>
                                     <th>Day</th>
                                     <th>Project</th>
-                                    <th>Cash Out (৳)</th>
+                                    <th>Cash Out (TK.)</th>
                                     <th>Transactions</th>
-                                    <th>Running Total (৳)</th>
+                                    <th>Running Total (TK.)</th>
                                     <th>Details (Purpose / Paid To)</th>
                                 </tr>
                             </thead>
@@ -362,9 +362,9 @@ $show_breadcrumb = true;
                                                 <span style="color:#aaa; font-size:12px;">—</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="negative"><strong>৳<?= number_format($row['total_amount'], 2) ?></strong></td>
+                                        <td class="negative"><strong>TK.<?= number_format($row['total_amount'], 2) ?></strong></td>
                                         <td><?= number_format($row['transaction_count']) ?></td>
-                                        <td class="negative"><strong>৳<?= number_format($row['running'], 2) ?></strong></td>
+                                        <td class="negative"><strong>TK.<?= number_format($row['running'], 2) ?></strong></td>
                                         <td>
                                             <?php if (!empty($details)): ?>
                                                 <?php foreach ($details as $d): ?>
@@ -393,7 +393,7 @@ $show_breadcrumb = true;
                                                             <span class="badge-ref">· Chq: <?= htmlspecialchars($d['cheque_no']) ?></span>
                                                         <?php endif; ?>
 
-                                                        <strong class="negative" style="margin-left:6px;">৳<?= number_format($d['amount'] ?? 0, 2) ?></strong>
+                                                        <strong class="negative" style="margin-left:6px;">TK.<?= number_format($d['amount'] ?? 0, 2) ?></strong>
                                                     </div>
                                                 <?php endforeach; ?>
                                             <?php else: ?>
@@ -407,9 +407,9 @@ $show_breadcrumb = true;
                                 <tr>
                                     <td colspan="2">Total</td>
                                     <td></td>
-                                    <td class="negative">৳<?= number_format($total_cashout, 2) ?></td>
+                                    <td class="negative">TK.<?= number_format($total_cashout, 2) ?></td>
                                     <td><?= number_format($total_transactions) ?></td>
-                                    <td class="negative">৳<?= number_format($total_cashout, 2) ?></td>
+                                    <td class="negative">TK.<?= number_format($total_cashout, 2) ?></td>
                                     <td></td>
                                 </tr>
                             </tfoot>
