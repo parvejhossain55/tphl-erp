@@ -1,4 +1,3 @@
-
 <div class="row">
 
     <!-- ── Header ── -->
@@ -12,16 +11,17 @@
 
         <div class="report-meta d-flex gap-2">
             <div>
-                <?php 
-                    $qs = "?date=" . htmlspecialchars($selectedDate);
-                    if ($selectedDepartmentId) $qs .= "&department_id=" . htmlspecialchars($selectedDepartmentId);
+                <?php
+                $qs = "?date=" . htmlspecialchars($selectedDate);
+                if ($selectedDepartmentId) $qs .= "&department_id=" . htmlspecialchars($selectedDepartmentId);
                 ?>
                 <a href="<?= $GLOBALS['base_url'] ?>/export-hrm-dept-csv<?= $qs ?>" class="btn btn-success">
                     Export CSV
                 </a>
             </div>
             <div>
-                <a href="<?= $GLOBALS['base_url'] ?>/export-hrm-dept-pdf<?= $qs ?>" class="btn btn-danger">
+                <a href="<?= $GLOBALS['base_url'] ?>/export-hrm-dept-pdf?<?= http_build_query($_GET) ?>"
+                    class="btn btn-danger">
                     Export PDF
                 </a>
             </div>
@@ -79,7 +79,7 @@
                                 <td colspan="9" class="text-center">No attendance data found for the selected criteria.</td>
                             </tr>
                         <?php endif; ?>
-                        
+
                         <?php foreach ($reportData as $i => $row): ?>
                             <tr>
                                 <td><?= $i + 1 ?></td>

@@ -441,12 +441,14 @@ CREATE TABLE `emp_attendances` (
   `attendance_date` date NOT NULL,
   `punch_in_time` timestamp NULL DEFAULT NULL,
   `punch_out_time` timestamp NULL DEFAULT NULL,
-  `today_status` varchar(20) NOT NULL,
+  `today_status` enum('Present','Late','Absent','On Leave','Half-Day') DEFAULT 'Absent',
   `created_by` bigint(20) UNSIGNED NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
 
 -- --------------------------------------------------------
 
@@ -1437,6 +1439,17 @@ CREATE TABLE `employee_tasks` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+
+
+CREATE TABLE `letter_templates` (
+  `id` int(11) NOT NULL,
+  `type` enum('appointment','joining','promotion','increment','experience','noc') NOT NULL,
+  `designation_id` int(10) UNSIGNED DEFAULT NULL,
+  `subject` varchar(255) NOT NULL,
+  `body` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 --
 -- Indexes for table `approval_requests`
 --
@@ -2174,6 +2187,22 @@ ALTER TABLE `employee_tasks`
 ALTER TABLE `employee_tasks`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 
+
+
+
+ALTER TABLE `letter_templates`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `designation_id` (`designation_id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `letter_templates`
+--
+ALTER TABLE `letter_templates`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 --
 -- Constraints for table `cameras`
 --

@@ -53,3 +53,4 @@ DROP TABLE IF EXISTS whatsapp_messages;
 DROP TABLE IF EXISTS holidays;
 DROP TABLE IF EXISTS emp_weekly_day_off;
 DROP TABLE IF EXISTS employee_tasks;
+DROP TABLE IF EXISTS letter_templates;

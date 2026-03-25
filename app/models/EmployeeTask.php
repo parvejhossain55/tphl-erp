@@ -65,6 +65,7 @@ public function getDepartmentKPI($department_id, $employee_id, $status, $date_fr
 {
     $sql = "SELECT 
                 t.*,
+                e.id As employee_id,
                 e.full_name AS emp_name,
                 d.name AS department_name
             FROM employee_tasks t

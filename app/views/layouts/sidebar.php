@@ -417,11 +417,17 @@
                             <span class="sidebar__menu-label">Holiday Manage</span>
                         </a>
                     </li>
-                    <!-- designation -->
+                    <!-- Day Off Manage -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/day-off" class="sidebar__menu-item <?= isActive('day-off', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
                             <span class="sidebar__menu-label">Day Off Manage</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/generate-letter" class="sidebar__menu-item <?= isActive('generate-letter', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                            <span class="sidebar__menu-label">Generate Employee Letter</span>
                         </a>
                     </li>
                     <li class="slide has-sub <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
@@ -462,7 +468,7 @@
 
                     <ul class="sidebar-menu child2" style="display:block;">
                         <li class="slide <?= isActive('daily-attendance-report', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('daily-attendance-report', $current_route) ?>" href="<?= $base_url ?>/daily-attendance-report">Daily Attendance Report</a>
+                            <a class="sidebar__menu-item <?= isActive('daily-attendance-report', $current_route) ?>" href="<?= $base_url ?>/daily-attendance-report">Dept. Wise Attendance Report</a>
                         </li>
                         <li class="slide <?= isActive('leave-report', $current_route) ?>">
                             <a class="sidebar__menu-item <?= isActive('leave-report', $current_route) ?>" href="<?= $base_url ?>/leave-report">Leave Report</a>
@@ -489,7 +495,7 @@
                             <a class="sidebar__menu-item <?= isActive('job-card-report', $current_route) ?>" href="<?= $base_url ?>/job-card-report">Attendance (Job Card)</a>
                         </li>
                         <li class="slide <?= isActive('hrm-daily-report', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('hrm-daily-report', $current_route) ?>" href="<?= $base_url ?>/hrm-daily-report">Daily Report</a>
+                            <a class="sidebar__menu-item <?= isActive('hrm-daily-report', $current_route) ?>" href="<?= $base_url ?>/hrm-daily-report">Daily Punch Report</a>
                         </li>
                         <li class="slide <?= isActive('hrm-monthly-report', $current_route) ?>">
                             <a class="sidebar__menu-item <?= isActive('hrm-monthly-report', $current_route) ?>" href="<?= $base_url ?>/hrm-monthly-report">Monthly Report</a>
@@ -499,6 +505,7 @@
                         </li>
 
                     </ul>
+                 
                 <?php endif; ?>
 
 

@@ -962,4 +962,30 @@ function exportCSV() {
 }
 </script>
 
+<script>
+function loadTask(task) {
+    console.log(task); // debug
 
+    document.getElementById('taskId').value = task.id;
+    document.getElementById('workDate').value = task.work_date;
+    document.getElementById('taskDesc').value = task.task_description;
+    document.getElementById('hoursSpent').value = task.hours_spent;
+    document.getElementById('taskRemarks').value = task.remarks ?? '';
+
+    // status mapping (IMPORTANT)
+    let statusMap = {
+        'done': 'Done',
+        'pending': 'Pending',
+        'in_progress': 'In Progress'
+    };
+
+    document.getElementById('taskStatus').value =
+        statusMap[task.status] ?? task.status;
+
+    // UI change
+    document.getElementById('formTitle').innerText = "Edit Task";
+    document.getElementById('saveLabel').innerText = "Update Task";
+
+    document.getElementById('formPanel').classList.remove('mode-new');
+}
+</script>

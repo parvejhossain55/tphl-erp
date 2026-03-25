@@ -96,6 +96,10 @@ $routes = [
     "store-role" => ["controller" => "RoleController", "method" => "store"],
     "get-role" => ["controller" => "RoleController", "method" => "edit"],
     "update-role" => ["controller" => "RoleController", "method" => "update"],
+
+
+
+
     //================== hrm ========================
 
     "hrm-dashboard" => ["controller" => "HrmDashboardController", "method" => "index"],
@@ -160,24 +164,24 @@ $routes = [
     "export-daily-report-pdf" => ["controller" => "AttendanceReportController", "method" => "exportDailyReportPDF"],
 
     // late report 
-     "daily-late-report" => ["controller" => "LateReportController", "method" => "lateReport"],
-     "export-late-report" => ["controller" => "LateReportController", "method" => "exportLateReport"],
-     "export-late-report-pdf" => ["controller" => "LateReportController", "method" => "exportLateReportPDF"],
+    "daily-late-report" => ["controller" => "LateReportController", "method" => "lateReport"],
+    "export-late-report" => ["controller" => "LateReportController", "method" => "exportLateReport"],
+    "export-late-report-pdf" => ["controller" => "LateReportController", "method" => "exportLateReportPDF"],
 
     // leave report 
-     "leave-report" => ["controller" => "LeaveReportController", "method" => "leaveReport"],
-     "export-leave-report" => ["controller" => "LeaveReportController", "method" => "exportLeaveReport"],
-     "export-leave-report-pdf" => ["controller" => "LeaveReportController", "method" => "exportLeaveReportPDF"],
+    "leave-report" => ["controller" => "LeaveReportController", "method" => "leaveReport"],
+    "export-leave-report" => ["controller" => "LeaveReportController", "method" => "exportLeaveReport"],
+    "export-leave-report-pdf" => ["controller" => "LeaveReportController", "method" => "exportLeaveReportPDF"],
 
     // absent report 
-     "absent-report" => ["controller" => "AbsentReportController", "method" => "absentReport"],
-     "export-absent-report" => ["controller" => "AbsentReportController", "method" => "exportAbsentReport"],
-     "export-absent-report-pdf" => ["controller" => "AbsentReportController", "method" => "exportAbsentReportPDF"],
+    "absent-report" => ["controller" => "AbsentReportController", "method" => "absentReport"],
+    "export-absent-report" => ["controller" => "AbsentReportController", "method" => "exportAbsentReport"],
+    "export-absent-report-pdf" => ["controller" => "AbsentReportController", "method" => "exportAbsentReportPDF"],
 
     // mobile punch report 
-     "mobile-punch-report" => ["controller" => "MobilePunchReportController", "method" => "mobilePunchReport"],
-     "export-mobile-punch-report" => ["controller" => "MobilePunchReportController", "method" => "exportMobilePunchReport"],
-     "export-mobile-punch-report-pdf" => ["controller" => "MobilePunchReportController", "method" => "exportMobilePunchReportPDF"],
+    "mobile-punch-report" => ["controller" => "MobilePunchReportController", "method" => "mobilePunchReport"],
+    "export-mobile-punch-report" => ["controller" => "MobilePunchReportController", "method" => "exportMobilePunchReport"],
+    "export-mobile-punch-report-pdf" => ["controller" => "MobilePunchReportController", "method" => "exportMobilePunchReportPDF"],
 
     // === ALL REPORTS MODULE ===
     "job-card-report" => ["controller" => "JobCardReportController", "method" => "index"],
@@ -196,8 +200,12 @@ $routes = [
     "export-hrm-dept-csv" => ["controller" => "HrmDepartmentReportController", "method" => "exportCSV"],
     "export-hrm-dept-pdf" => ["controller" => "HrmDepartmentReportController", "method" => "exportPDF"],
     "department-kpi" => ["controller" => "HrmDepartmentReportController", "method" => "departmentKPIReport"],
+    "department-kpi-pdf" => ["controller" => "HrmDepartmentReportController", "method" => "departmentKPIReportPDF"],
 
-
+    // Generate employee letter
+    "generate-letter" => ["controller" => "LetterTemplateController", "method" => "index"],
+    "create-letter-templete" => ["controller" => "LetterTemplateController", "method" => "create"],
+    "store-letter-templete" => ["controller" => "LetterTemplateController", "method" => "store"],
     //=== End Report
 
     // Employee Leave Controller
@@ -216,12 +224,12 @@ $routes = [
     "store-holiday" => ["controller" => "HolidayController", "method" => "store"],
     "update-holiday" => ["controller" => "HolidayController", "method" => "update"],
     "delete-holiday" => ["controller" => "HolidayController", "method" => "delete"],
-    
+
     // Day Off Controller
     "day-off" => ["controller" => "DayOffController", "method" => "dayOffManage"],
     "get-employee-days-off/(\d+)" => ["controller" => "DayOffController", "method" => "getEmployeeDaysOff"],
     "update-day-off" => ["controller" => "DayOffController", "method" => "updateDayOff"],
-    
+
     // "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
 
@@ -230,8 +238,8 @@ $routes = [
 
 
     // ============ employee task sheets
-     "store-update-task" => ["controller" => "EmployeeTaskController", "method" => "save"],
-     "task-sheets" => ["controller" => "EmployeeTaskController", "method" => "index"],
+    "store-update-task" => ["controller" => "EmployeeTaskController", "method" => "save"],
+    "task-sheets" => ["controller" => "EmployeeTaskController", "method" => "index"],
     // leads
     "lead-lists" => ["controller" => "LeadController", "method" => "index"],
     "create-lead" => ["controller" => "LeadController", "method" => "create"],
