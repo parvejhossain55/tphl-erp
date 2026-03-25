@@ -1390,27 +1390,34 @@ CREATE TABLE `whatsapp_campaigns` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+
+
+
+
 CREATE TABLE `whatsapp_messages` (
   `id` int(11) NOT NULL,
   `campaign_id` int(11) NOT NULL,
   `lead_id` int(10) UNSIGNED DEFAULT NULL,
-  `status` enum('pending','sent','delivered','failed') DEFAULT 'pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `status` enum('pending','sent','delivered','failed') DEFAULT 'pending'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+
+
+CREATE TABLE `holidays` (
+  `id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
---
--- Indexes for dumped tables
---
 
-CREATE TABLE holidays (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    holiday_date DATE NOT NULL,
-    `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-    `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-);
+
 CREATE TABLE `emp_weekly_day_off` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `id` int(11) NOT NULL,
   `employee_id` int(11) NOT NULL,
   `day_off_name` varchar(100) NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
@@ -1418,22 +1425,18 @@ CREATE TABLE `emp_weekly_day_off` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
+CREATE TABLE `employee_tasks` (
+  `id` int(11) NOT NULL,
+  `employee_id` int(10) UNSIGNED NOT NULL,
+  `work_date` date NOT NULL,
+  `task_description` text NOT NULL,
+  `hours_spent` decimal(4,2) NOT NULL DEFAULT 0.00,
+  `status` enum('Pending','In Progress','Done') DEFAULT 'Pending',
+  `remarks` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-
-
-CREATE TABLE employee_tasks (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    employee_id INT UNSIGNED NOT NULL,
-    work_date DATE NOT NULL,
-    task_description TEXT NOT NULL,
-    hours_spent DECIMAL(4,2) NOT NULL DEFAULT 0,
-    status ENUM('Pending','In Progress','Done') DEFAULT 'Pending',
-    remarks TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-
-    FOREIGN KEY (employee_id) REFERENCES employees(id)
-);
 --
 -- Indexes for table `approval_requests`
 --
@@ -2089,6 +2092,87 @@ ALTER TABLE `users`
 --
 -- Constraints for dumped tables
 --
+ALTER TABLE `whatsapp_campaigns`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `whatsapp_campaigns`
+--
+ALTER TABLE `whatsapp_campaigns`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+COMMIT;
+
+
+
+ALTER TABLE `whatsapp_messages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `campaign_id` (`campaign_id`),
+  ADD KEY `lead_id` (`lead_id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `whatsapp_messages`
+--
+ALTER TABLE `whatsapp_messages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+
+
+
+
+
+ALTER TABLE `holidays`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `holidays`
+--
+ALTER TABLE `holidays`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+COMMIT;
+
+
+
+
+ALTER TABLE `emp_weekly_day_off`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `emp_weekly_day_off`
+--
+ALTER TABLE `emp_weekly_day_off`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+COMMIT;
+
+
+
+ALTER TABLE `employee_tasks`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `employee_id` (`employee_id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `employee_tasks`
+--
+ALTER TABLE `employee_tasks`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 
 --
 -- Constraints for table `cameras`
