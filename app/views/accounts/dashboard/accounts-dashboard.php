@@ -196,7 +196,7 @@ function getStatusBadge($status)
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted">Total Cash In</h6>
-                    <h4 class="card__title mb-0 text-success text-break">৳<?= number_format($overviewStats['total_cashin'] ?? 0, 2) ?></h4>
+                    <h4 class="card__title mb-0 text-success text-break">TK.<?= number_format($overviewStats['total_cashin'] ?? 0, 2) ?></h4>
                     <small class="text-muted" style="font-size: 0.7rem;">Payments Received</small>
                 </div>
             </div>
@@ -210,7 +210,7 @@ function getStatusBadge($status)
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted ">Total Revenue</h6>
-                    <h4 class="card__title mb-0 text-success text-break">৳<?= number_format($overviewStats['total_revenue'] ?? 0, 2) ?></h4>
+                    <h4 class="card__title mb-0 text-success text-break">TK.<?= number_format($overviewStats['total_revenue'] ?? 0, 2) ?></h4>
                 </div>
             </div>
         </div>
@@ -223,7 +223,7 @@ function getStatusBadge($status)
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted">Total Expenses</h6>
-                    <h4 class="card__title mb-0 text-danger text-break">৳<?= number_format($overviewStats['total_cashout'] ?? 0, 2) ?></h4>
+                    <h4 class="card__title mb-0 text-danger text-break">TK.<?= number_format($overviewStats['total_cashout'] ?? 0, 2) ?></h4>
                     <small class="text-muted" style="font-size: 0.7rem;">All Outflows</small>
                 </div>
             </div>
@@ -339,7 +339,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Client Payments</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['lead_payments'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['lead_payments'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -353,7 +353,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Total Cash In</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($overviewStats['total_cashin'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($overviewStats['total_cashin'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -367,7 +367,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Land Share <br><small>(booking money excluded)</small></h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['booking_money'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['booking_money'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -381,7 +381,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Registration Money</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['registration_money'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['registration_money'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -395,7 +395,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">EMI Payments</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['emi_payments'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['emi_payments'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -409,7 +409,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">This Month</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['this_month'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['this_month'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -423,7 +423,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Pending Amount</h6>
-                        <h4 class="card__title mb-0 text-warning text-break">৳<?= number_format($statistics['pending_amount'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-warning text-break">TK.<?= number_format($statistics['pending_amount'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -453,7 +453,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Paid Amount</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['paid_amount'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['paid_amount'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -467,7 +467,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Pending Amount</h6>
-                        <h4 class="card__title mb-0 text-warning text-break">৳<?= number_format($statistics['pending_amount'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-warning text-break">TK.<?= number_format($statistics['pending_amount'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -481,7 +481,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">This Month</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['this_month'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['this_month'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -509,7 +509,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Cash Payments</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['by_payment_method']['cash'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['by_payment_method']['cash'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -523,7 +523,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Bank Transfers</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['by_payment_method']['bank'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['by_payment_method']['bank'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -537,7 +537,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Cheque Payments</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['by_payment_method']['cheque'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['by_payment_method']['cheque'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -551,7 +551,7 @@ function getStatusBadge($status)
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">Online Payments</h6>
-                        <h4 class="card__title mb-0 text-break">৳<?= number_format($statistics['by_payment_method']['online'] ?? 0, 2) ?></h4>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['by_payment_method']['online'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -598,7 +598,7 @@ function getStatusBadge($status)
                                     <tr>
                                         <td><?= date('d M, Y', strtotime($transaction['date'])) ?></td>
                                         <td><?= htmlspecialchars($transaction['description'] ?? 'N/A') ?></td>
-                                        <td><strong>৳<?= number_format($transaction['amount'], 2) ?></strong></td>
+                                        <td><strong>TK.<?= number_format($transaction['amount'], 2) ?></strong></td>
                                         <td>
                                             <span class="bd-badge bg-light text-dark">
                                                 <?= ucfirst($transaction['payment_method'] ?? 'N/A') ?>
@@ -661,10 +661,10 @@ function getStatusBadge($status)
                                                 <br><small class="text-muted"><?= htmlspecialchars(substr($request['description'], 0, 50)) ?><?= strlen($request['description']) > 50 ? '...' : '' ?></small>
                                             <?php endif; ?>
                                         </td>
-                                        <td><strong>৳<?= number_format($request['amount'], 2) ?></strong></td>
+                                        <td><strong>TK.<?= number_format($request['amount'], 2) ?></strong></td>
                                         <td>
                                             <?php if (!empty($request['approved_amount'])): ?>
-                                                <strong class="text-success">৳<?= number_format($request['approved_amount'], 2) ?></strong>
+                                                <strong class="text-success">TK.<?= number_format($request['approved_amount'], 2) ?></strong>
                                             <?php else: ?>
                                                 <span class="text-muted">-</span>
                                             <?php endif; ?>
@@ -731,7 +731,7 @@ function getStatusBadge($status)
         const paymentMethodData = <?= json_encode($paymentMethodData) ?>;
 
         // Currency formatter
-        const formatCurrency = (value) => '৳' + value.toLocaleString();
+        const formatCurrency = (value) => 'TK.' + value.toLocaleString();
 
         // Modern chart color palette
         const colors = {

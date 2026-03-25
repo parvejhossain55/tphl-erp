@@ -568,7 +568,7 @@ $disable_layout = true;
             <?php endif; ?>
             <div class="payment-row total">
                 <span>Amount:</span>
-                <span class="amount-highlight">৳<?= number_format($transaction['amount'] ?? 0, 2) ?></span>
+                <span class="amount-highlight">TK.<?= number_format($transaction['amount'] ?? 0, 2) ?></span>
             </div>
         </div>
 

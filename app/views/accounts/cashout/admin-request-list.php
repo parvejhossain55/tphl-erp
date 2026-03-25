@@ -100,7 +100,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                 </div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Amount</h6>
-                    <h4 class="card__title fs-6">৳<?= number_format($statistics['total_amount'] ?? 0, 2) ?></h4>
+                    <h4 class="card__title fs-6">TK.<?= number_format($statistics['total_amount'] ?? 0, 2) ?></h4>
                 </div>
             </div>
         </div>
@@ -259,7 +259,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                                 <?= htmlspecialchars($request['purpose_paid_to']) ?>
                                             </div>
                                         </td>
-                                        <td><strong class="text-primary">৳<?= number_format($request['amount'], 2) ?></strong></td>
+                                        <td><strong class="text-primary">TK.<?= number_format($request['amount'], 2) ?></strong></td>
                                         <td>
                                             <?php
                                             // Get approved amount (check both fields)
@@ -269,7 +269,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
 
                                             <?php if ($hasApprovedAmount): ?>
                                                 <div class="d-flex flex-column">
-                                                    <strong class="text-success">৳<?= number_format($approvedAmount, 2) ?></strong>
+                                                    <strong class="text-success">TK.<?= number_format($approvedAmount, 2) ?></strong>
                                                     <?php if (!empty($request['approval_note'])): ?>
                                                         <small class="text-muted" title="<?= htmlspecialchars($request['approval_note']) ?>">
                                                         <small class="text-muted"> <?= htmlspecialchars($request['approval_note']) ?></small>
@@ -287,9 +287,9 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                         </td>
                                         <td>
                                             <?php if ($request['due_amount'] > 0): ?>
-                                                <strong class="text-danger">৳<?= number_format($request['due_amount'], 2) ?></strong>
+                                                <strong class="text-danger">TK.<?= number_format($request['due_amount'], 2) ?></strong>
                                             <?php else: ?>
-                                                <span class="text-success">৳0.00</span>
+                                                <span class="text-success">TK.0.00</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>

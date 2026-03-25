@@ -206,14 +206,14 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                     <div class="col-md-4">
                         <div class="info-label">Total Amount</div>
                         <div class="info-value">
-                            <h4 class="text-primary mb-0">৳<?= number_format($request['amount'], 2) ?></h4>
+                            <h4 class="text-primary mb-0">TK.<?= number_format($request['amount'], 2) ?></h4>
                         </div>
                     </div>
                     
                     <div class="col-md-4">
                         <div class="info-label">Total Paid</div>
                         <div class="info-value">
-                            <h4 class="text-success mb-0">৳<?= number_format($total_paid ?? 0, 2) ?></h4>
+                            <h4 class="text-success mb-0">TK.<?= number_format($total_paid ?? 0, 2) ?></h4>
                         </div>
                     </div>
                     
@@ -221,9 +221,9 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                         <div class="info-label">Due Amount</div>
                         <div class="info-value">
                             <?php if ($request['due_amount'] > 0): ?>
-                                <h4 class="text-danger mb-0">৳<?= number_format($request['due_amount'], 2) ?></h4>
+                                <h4 class="text-danger mb-0">TK.<?= number_format($request['due_amount'], 2) ?></h4>
                             <?php else: ?>
-                                <h4 class="text-success mb-0">৳0.00</h4>
+                                <h4 class="text-success mb-0">TK.0.00</h4>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -326,7 +326,7 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                                 <?php foreach ($payments as $payment): ?>
                                     <tr>
                                         <td><?= date('d M, Y', strtotime($payment['payment_date'])) ?></td>
-                                        <td><strong class="text-success">৳<?= number_format($payment['amount'], 2) ?></strong></td>
+                                        <td><strong class="text-success">TK.<?= number_format($payment['amount'], 2) ?></strong></td>
                                         <td><span class="badge bg-info"><?= ucfirst($payment['payment_method']) ?></span></td>
                                         <td><?= htmlspecialchars($payment['transaction_ref'] ?? 'N/A') ?></td>
                                         <td><?= htmlspecialchars($payment['created_by_name'] ?? 'N/A') ?></td>
@@ -350,7 +350,7 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                             <tfoot>
                                 <tr class="table-light">
                                     <td colspan="1"><strong>Total Paid:</strong></td>
-                                    <td><strong class="text-success">৳<?= number_format($total_paid ?? 0, 2) ?></strong></td>
+                                    <td><strong class="text-success">TK.<?= number_format($total_paid ?? 0, 2) ?></strong></td>
                                     <td colspan="<?= $userRole == 3 ? 5 : 4 ?>"></td>
                                 </tr>
                             </tfoot>
@@ -657,18 +657,18 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                     <input type="hidden" name="request_id" value="<?= $request['id'] ?>">
                     
                     <div class="alert alert-info">
-                        <strong>Request Amount:</strong> ৳<?= number_format($request['amount'], 2) ?><br>
-                        <strong>Already Paid:</strong> ৳<?= number_format($total_paid ?? 0, 2) ?><br>
-                        <strong>Due Amount:</strong> <span class="text-danger">৳<?= number_format($request['due_amount'], 2) ?></span>
+                        <strong>Request Amount:</strong> TK.<?= number_format($request['amount'], 2) ?><br>
+                        <strong>Already Paid:</strong> TK.<?= number_format($total_paid ?? 0, 2) ?><br>
+                        <strong>Due Amount:</strong> <span class="text-danger">TK.<?= number_format($request['due_amount'], 2) ?></span>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Payment Amount (৳): <span class="text-danger">*</span></label>
+                            <label class="form-label">Payment Amount (TK.): <span class="text-danger">*</span></label>
                             <input type="number" name="amount" class="form-control" 
                                    placeholder="0.00" step="0.01" min="0.01" max="<?= $request['due_amount'] ?>"
                                    value="<?= $request['due_amount'] ?>" required>
-                            <small class="text-muted">Maximum: ৳<?= number_format($request['due_amount'], 2) ?></small>
+                            <small class="text-muted">Maximum: TK.<?= number_format($request['due_amount'], 2) ?></small>
                         </div>
                         
                         <div class="col-md-6 mb-3">

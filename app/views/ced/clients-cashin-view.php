@@ -86,8 +86,8 @@ $show_breadcrumb = true;
                                     <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['designation'] ?? 'N/A') ?></td>
 
-                                    <td>৳<?= number_format($client['total_agreement_value'] ?? 0, 2) ?></td>
-                                    <td>৳<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
+                                    <td>TK.<?= number_format($client['total_agreement_value'] ?? 0, 2) ?></td>
+                                    <td>TK.<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
                                     <td>
                                         <?= $client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment' ?>
                                     </td>
@@ -256,15 +256,15 @@ $show_breadcrumb = true;
             <td>${escapeHtml(land.project_name)}</td>
             <td>${escapeHtml(land.unit_name)} - Floor ${escapeHtml(land.flat_no)}</td>
             <td>${Number(land.flat_size).toLocaleString('en-BD')} sqft</td>
-            <td>৳${Number(land.total_price).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
-            <td>৳${Number(land.agreement_value).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
-            <td>৳${Number(land.total_paid || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
+            <td>TK.${Number(land.total_price).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
+            <td>TK.${Number(land.agreement_value).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
+            <td>TK.${Number(land.total_paid || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
             <td>
                 <div>
-                    <strong>Fee:</strong> ৳${Number(land.total_service_fee || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}
+                    <strong>Fee:</strong> TK.${Number(land.total_service_fee || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}
                 </div>
                 <div class="text-muted small">
-                    <strong>Balance:</strong> ৳${Number(land.service_fee_balance || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}
+                    <strong>Balance:</strong> TK.${Number(land.service_fee_balance || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}
                 </div>
             </td>
             <td>

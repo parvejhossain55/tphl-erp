@@ -578,52 +578,52 @@ $cashout_payment_details = $cashout_payment_details ?? [];
 
                                 <?php if ($category === 'all'): ?>
                                     <!-- Show all columns for 'all' category -->
-                                    <th>Booking Money (৳)</th>
-                                    <th>Service Fee (৳)</th>
-                                    <th>EMI Payments (৳)</th>
-                                    <th>Landshare Payments (৳)</th>
-                                    <th>Registration (৳)</th>
-                                    <th>Management Cashin (৳)</th>
-                                    <th>Total Cash IN (৳)</th>
-                                    <th>Cash Out (৳)</th>
-                                    <th>Net Amount (৳)</th>
-                                    <th>Running Balance (৳)</th>
+                                    <th>Booking Money (TK.)</th>
+                                    <th>Service Fee (TK.)</th>
+                                    <th>EMI Payments (TK.)</th>
+                                    <th>Landshare Payments (TK.)</th>
+                                    <th>Registration (TK.)</th>
+                                    <th>Management Cashin (TK.)</th>
+                                    <th>Total Cash IN (TK.)</th>
+                                    <th>Cash Out (TK.)</th>
+                                    <th>Net Amount (TK.)</th>
+                                    <th>Running Balance (TK.)</th>
                                 <?php elseif ($category === 'total_cashin'): ?>
                                     <!-- For Total Cash IN only -->
-                                    <th>Total Cash IN (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Total Cash IN (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'emi'): ?>
                                     <!-- For EMI only -->
-                                    <th>EMI Payments (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>EMI Payments (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'landshare'): ?>
                                     <!-- For landshare only -->
-                                    <th>Landshare Payments (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Landshare Payments (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'service_fee'): ?>
                                     <!-- For service fee only -->
-                                    <th>Service Fee (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Service Fee (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'registration'): ?>
                                     <!-- For registration only -->
-                                    <th>Registration (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Registration (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'booking_money'): ?>
                                     <!-- For booking money only -->
-                                    <th>Booking Money (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Booking Money (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'agreement'): ?>
                                     <!-- For agreement value only -->
-                                    <th>Agreement Value (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Agreement Value (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'management_cashin'): ?>
                                     <!-- For management cashin only -->
-                                    <th>Management Cashin (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Management Cashin (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
                                     <!-- For cashout/expense categories -->
-                                    <th>Cash Out (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Cash Out (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                     <?php if ($category === 'cashout'): ?>
                                     <th>Source / Purpose</th>
                                     <?php endif; ?>
@@ -733,53 +733,53 @@ $cashout_payment_details = $cashout_payment_details ?? [];
 
                                 <?php if ($category === 'all'): ?>
                                     <!-- Show all columns only for 'all' category -->
-                                    <th>Agreement Value (৳)</th>
-                                    <th>Booking Money (৳)</th>
-                                    <th>Service Fee (৳)</th>
-                                    <th>EMI Payments (৳)</th>
-                                    <th>Landshare Payments (৳)</th>
-                                    <th>Registration (৳)</th>
-                                    <th>Management Cashin (৳)</th>
-                                    <th>Total Cash IN (৳)</th>
-                                    <th>Cash Out (৳)</th>
-                                    <th>Net Amount (৳)</th>
-                                    <th>Running Balance (৳)</th>
+                                    <th>Agreement Value (TK.)</th>
+                                    <th>Booking Money (TK.)</th>
+                                    <th>Service Fee (TK.)</th>
+                                    <th>EMI Payments (TK.)</th>
+                                    <th>Landshare Payments (TK.)</th>
+                                    <th>Registration (TK.)</th>
+                                    <th>Management Cashin (TK.)</th>
+                                    <th>Total Cash IN (TK.)</th>
+                                    <th>Cash Out (TK.)</th>
+                                    <th>Net Amount (TK.)</th>
+                                    <th>Running Balance (TK.)</th>
                                 <?php elseif ($category === 'total_cashin'): ?>
                                     <!-- For Total Cash IN only -->
-                                    <th>Total Cash IN (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Total Cash IN (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'emi'): ?>
                                     <!-- For EMI only -->
-                                    <th>EMI Payments (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>EMI Payments (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'landshare'): ?>
                                     <!-- For landshare only -->
-                                    <th>Landshare Payments (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Landshare Payments (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'service_fee'): ?>
                                     <!-- For service fee only -->
-                                    <th>Service Fee (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Service Fee (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'registration'): ?>
                                     <!-- For registration only -->
-                                    <th>Registration (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Registration (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'booking_money'): ?>
                                     <!-- For booking money only -->
-                                    <th>Booking Money (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Booking Money (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'agreement'): ?>
                                     <!-- For agreement value only -->
-                                    <th>Agreement Value (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Agreement Value (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'management_cashin'): ?>
                                     <!-- For management cashin only -->
-                                    <th>Management Cashin (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Management Cashin (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
                                     <!-- For cashout/expense categories -->
-                                    <th>Cash Out (৳)</th>
-                                    <th>Amount (৳)</th>
+                                    <th>Cash Out (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                     <?php if ($category === 'cashout'): ?>
                                     <th>Source / Purpose</th>
                                     <?php endif; ?>

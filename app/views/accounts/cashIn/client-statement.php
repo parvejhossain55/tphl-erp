@@ -700,7 +700,7 @@ $amountInWords    = numberToWords($actualPaidAmount);
                         <th class="installment">Installment</th>
                         <th class="method">Method</th>
                         <th class="status">Status</th>
-                        <th class="amount">Amount (৳)</th>
+                        <th class="amount">Amount (TK.)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -720,7 +720,7 @@ $amountInWords    = numberToWords($actualPaidAmount);
                         <th class="installment">Installment</th>
                         <th class="method">Method</th>
                         <th class="status">Status</th>
-                        <th class="amount">Amount (৳)</th>
+                        <th class="amount">Amount (TK.)</th>
                     </tr>
                 </thead>
                 <tbody>
