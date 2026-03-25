@@ -1397,7 +1397,7 @@ CREATE TABLE `whatsapp_messages` (
   `id` int(11) NOT NULL,
   `campaign_id` int(11) NOT NULL,
   `lead_id` int(10) UNSIGNED DEFAULT NULL,
-  `status` enum('pending','sent','delivered','failed') DEFAULT 'pending'
+  `status` enum('pending','sent','delivered','failed') DEFAULT 'pending',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
