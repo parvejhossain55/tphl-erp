@@ -1413,7 +1413,7 @@ CREATE TABLE holidays (
     `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 );
 CREATE TABLE `emp_weekly_day_off` (
-  `id` int(11) NOT NULL,
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
   `employee_id` int(11) NOT NULL,
   `day_off_name` varchar(100) NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
@@ -1433,7 +1433,7 @@ CREATE TABLE employee_tasks (
     status ENUM('Pending','In Progress','Done') DEFAULT 'Pending',
     remarks TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
     FOREIGN KEY (employee_id) REFERENCES employees(id)
 );
