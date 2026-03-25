@@ -500,3 +500,133 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+
+
+
+
+
+
+
+
+
+
+
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS approval_requests;
+DROP TABLE IF EXISTS blogs;
+DROP TABLE IF EXISTS cache;
+DROP TABLE IF EXISTS cameras;
+DROP TABLE IF EXISTS camera_logs;
+DROP TABLE IF EXISTS cashout_payments;
+DROP TABLE IF EXISTS cashout_requests;
+DROP TABLE IF EXISTS chat_messages;
+DROP TABLE IF EXISTS communities;
+DROP TABLE IF EXISTS company_bank_accounts;
+DROP TABLE IF EXISTS contacts;
+DROP TABLE IF EXISTS departments;
+DROP TABLE IF EXISTS designations;
+DROP TABLE IF EXISTS emi_schedules;
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS employee_leaves;
+DROP TABLE IF EXISTS employee_leave_balances;
+DROP TABLE IF EXISTS emp_attendances;
+DROP TABLE IF EXISTS flats;
+DROP TABLE IF EXISTS flat_purchase_rules;
+DROP TABLE IF EXISTS head_notifications;
+DROP TABLE IF EXISTS holidays;
+DROP TABLE IF EXISTS leads;
+DROP TABLE IF EXISTS lead_bookings;
+DROP TABLE IF EXISTS lead_follow_ups;
+DROP TABLE IF EXISTS lead_payments;
+DROP TABLE IF EXISTS lead_sources;
+DROP TABLE IF EXISTS leave_types;
+DROP TABLE IF EXISTS locations;
+DROP TABLE IF EXISTS management_cashin;
+DROP TABLE IF EXISTS management_cashout;
+DROP TABLE IF EXISTS management_categories;
+DROP TABLE IF EXISTS management_roles;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS onboard_clients;
+DROP TABLE IF EXISTS payslips;
+DROP TABLE IF EXISTS payslip_details;
+DROP TABLE IF EXISTS payslip_items;
+DROP TABLE IF EXISTS permissions;
+DROP TABLE IF EXISTS personal_access_tokens;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS property_reviews;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS role_permissions;
+DROP TABLE IF EXISTS sales_targets;
+DROP TABLE IF EXISTS site_settings;
+DROP TABLE IF EXISTS site_visits;
+DROP TABLE IF EXISTS sliders;
+DROP TABLE IF EXISTS tasks;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS whatsapp_campaigns;
+DROP TABLE IF EXISTS whatsapp_messages;
+DROP TABLE IF EXISTS emp_weekly_day_off;
+DROP TABLE IF EXISTS employee_tasks;
+
+
+
+
+
+
+CREATE TABLE `whatsapp_campaigns` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `target_project_id` int(11) DEFAULT NULL,
+  `message_type` enum('text','image','pdf','button','brocure') DEFAULT 'text',
+  `message_content` text NOT NULL,
+  `schedule_time` datetime NOT NULL,
+  `device` varchar(50) DEFAULT 'Auto Select',
+  `status` enum('Active','Scheduled','Paused','Completed','Failed') DEFAULT 'Scheduled',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `whatsapp_messages` (
+  `id` int(11) NOT NULL,
+  `campaign_id` int(11) NOT NULL,
+  `lead_id` int(10) UNSIGNED DEFAULT NULL,
+  `status` enum('pending','sent','delivered','failed') DEFAULT 'pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+--
+-- Indexes for dumped tables
+--
+
+CREATE TABLE holidays (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    holiday_date DATE NOT NULL,
+    `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+    `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+);
+CREATE TABLE `emp_weekly_day_off` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `employee_id` int(11) NOT NULL,
+  `day_off_name` varchar(100) NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+
+
+
+CREATE TABLE employee_tasks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT UNSIGNED NOT NULL,
+    work_date DATE NOT NULL,
+    task_description TEXT NOT NULL,
+    hours_spent DECIMAL(4,2) NOT NULL DEFAULT 0,
+    status ENUM('Pending','In Progress','Done') DEFAULT 'Pending',
+    remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+    FOREIGN KEY (employee_id) REFERENCES employees(id)
+);
