@@ -146,22 +146,22 @@ $photoPath = !empty($employee['photo'])
                     foreach ($leaveBalances as $idx => $lb):
                         $color = $accentColors[$idx % count($accentColors)];
                 ?>
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div>
-                            <div style="font-size:.72rem;color:var(--muted)"><?= htmlspecialchars($lb['name']) ?></div>
-                            <div style="font-size:.72rem;color:var(--muted)">Used <?= $lb['used'] ?> / Total <?= $lb['total_days'] ?></div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <div style="font-size:.72rem;color:var(--muted)"><?= htmlspecialchars($lb['name']) ?></div>
+                                    <div style="font-size:.72rem;color:var(--muted)">Used <?= $lb['used'] ?> / Total <?= $lb['total_days'] ?></div>
+                                </div>
+                                <div style="text-align:right">
+                                    <div style="font-size:1.3rem;font-weight:700;color:<?= $color ?>;font-family:'Space Mono',monospace"><?= $lb['remaining'] ?></div>
+                                    <div style="font-size:.68rem;color:var(--muted)">remaining</div>
+                                </div>
+                            </div>
+                            <div class="att-bar-wrap">
+                                <div class="att-bar" style="width:<?= $lb['pct'] ?>%;background:<?= $color ?>"></div>
+                            </div>
                         </div>
-                        <div style="text-align:right">
-                            <div style="font-size:1.3rem;font-weight:700;color:<?= $color ?>;font-family:'Space Mono',monospace"><?= $lb['remaining'] ?></div>
-                            <div style="font-size:.68rem;color:var(--muted)">remaining</div>
-                        </div>
-                    </div>
-                    <div class="att-bar-wrap">
-                        <div class="att-bar" style="width:<?= $lb['pct'] ?>%;background:<?= $color ?>"></div>
-                    </div>
-                </div>
-                <?php endforeach; ?>
+                    <?php endforeach; ?>
                 <?php else: ?>
                     <p class="text-muted" style="font-size:.85rem">No leave types configured.</p>
                 <?php endif; ?>
@@ -201,10 +201,22 @@ $photoPath = !empty($employee['photo'])
                             <?php
                             $priority   = strtolower($task['priority'] ?? 'low');
                             $status     = strtolower($task['status']   ?? 'pending');
-                            $pClass     = match($priority) { 'high' => 'priority-high', 'medium', 'med' => 'priority-med', default => 'priority-low' };
+                            $pClass     = match ($priority) {
+                                'high' => 'priority-high',
+                                'medium', 'med' => 'priority-med',
+                                default => 'priority-low'
+                            };
                             $pLabel     = ucfirst($priority);
-                            $sClass     = match($status)   { 'completed' => 'task-status-done', 'in_progress' => 'task-status-prog', default => 'task-status-pend' };
-                            $sLabel     = match($status)   { 'completed' => 'Done', 'in_progress' => 'In Progress', default => 'Pending' };
+                            $sClass     = match ($status) {
+                                'completed' => 'task-status-done',
+                                'in_progress' => 'task-status-prog',
+                                default => 'task-status-pend'
+                            };
+                            $sLabel     = match ($status) {
+                                'completed' => 'Done',
+                                'in_progress' => 'In Progress',
+                                default => 'Pending'
+                            };
                             $dueDate    = !empty($task['deadline']) ? date('M d', strtotime($task['deadline'])) : 'N/A';
                             ?>
                             <div class="col-md-4 mb-3">
@@ -214,7 +226,7 @@ $photoPath = !empty($employee['photo'])
                                         <span class="task-priority <?= $pClass ?>"><?= $pLabel ?></span>
                                     </div>
                                     <div class="task-meta">
-                                        <?=$task['description'] ?? '' ?>
+                                        <?= $task['description'] ?? '' ?>
                                         <?= !empty($task['deadline']) ? '· Due ' . $dueDate : '' ?>
                                     </div>
                                     <div class="mt-2 d-flex align-items-center justify-content-between flex-wrap gap-1">
@@ -275,10 +287,22 @@ $photoPath = !empty($employee['photo'])
                 <?php
                 $priority = strtolower($task['priority'] ?? 'low');
                 $status   = strtolower($task['status']   ?? 'pending');
-                $pClass   = match($priority) { 'high' => 'priority-high', 'medium', 'med' => 'priority-med', default => 'priority-low' };
+                $pClass   = match ($priority) {
+                    'high' => 'priority-high',
+                    'medium', 'med' => 'priority-med',
+                    default => 'priority-low'
+                };
                 $pLabel   = ucfirst($priority);
-                $sClass   = match($status)   { 'completed' => 'task-status-done', 'in_progress' => 'task-status-prog', default => 'task-status-pend' };
-                $sLabel   = match($status)   { 'completed' => 'Done', 'in_progress' => 'In Progress', default => 'Pending' };
+                $sClass   = match ($status) {
+                    'completed' => 'task-status-done',
+                    'in_progress' => 'task-status-prog',
+                    default => 'task-status-pend'
+                };
+                $sLabel   = match ($status) {
+                    'completed' => 'Done',
+                    'in_progress' => 'In Progress',
+                    default => 'Pending'
+                };
                 $dueDate  = !empty($task['deadline']) ? date('M d', strtotime($task['deadline'])) : 'N/A';
                 ?>
                 <div class="col-md-4 mb-3">
@@ -288,7 +312,7 @@ $photoPath = !empty($employee['photo'])
                             <span class="task-priority <?= $pClass ?>"><?= $pLabel ?></span>
                         </div>
                         <div class="task-meta">
-                            <?=$task['description'] ?? ''?>
+                            <?= $task['description'] ?? '' ?>
                             <?= !empty($task['deadline']) ? ' · Due ' . $dueDate : '' ?>
                         </div>
                         <div class="mt-2 d-flex align-items-center justify-content-between flex-wrap gap-1">
@@ -299,13 +323,13 @@ $photoPath = !empty($employee['photo'])
                         </div>
                         <!-- Progress update form -->
                         <?php if ($status !== 'completed'): ?>
-                        <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-task-progress-employee" class="mt-2 d-flex gap-2 align-items-center">
-                            <input type="hidden" name="task_id" value="<?= (int)$task['id'] ?>">
-                            <input type="range" name="progress" min="0" max="100"
-                                   value="<?= (int)($task['progress'] ?? 0) ?>"
-                                   class="form-range flex-grow-1" style="height:4px">
-                            <button type="submit" class="btn btn-outline-secondary btn-sm py-0" style="font-size:.7rem">Save</button>
-                        </form>
+                            <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-task-progress-employee" class="mt-2 d-flex gap-2 align-items-center">
+                                <input type="hidden" name="task_id" value="<?= (int)$task['id'] ?>">
+                                <input type="range" name="progress" min="0" max="100"
+                                    value="<?= (int)($task['progress'] ?? 0) ?>"
+                                    class="form-range flex-grow-1" style="height:4px">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm py-0" style="font-size:.7rem">Save</button>
+                            </form>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -320,11 +344,11 @@ $photoPath = !empty($employee['photo'])
 <script>
     /* ── PAGE NAVIGATION ── */
     const titles = {
-        dashboard:  'Dashboard Overview',
+        dashboard: 'Dashboard Overview',
         attendance: 'Attendance Details',
-        leaves:     'Leave Management',
-        tasks:      'My Tasks',
-        profile:    'My Profile'
+        leaves: 'Leave Management',
+        tasks: 'My Tasks',
+        profile: 'My Profile'
     };
 
     function showPage(id, btn) {

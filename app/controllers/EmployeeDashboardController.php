@@ -65,7 +65,7 @@ class EmployeeDashboardController extends Controller
         ];
     }
 
-    // ─── Dashboard ────────────────────────────────────────────────────────────
+    // ─── Dashboard 
     public function index()
     {
         $data = $this->getSessionEmployee();
@@ -77,7 +77,7 @@ class EmployeeDashboardController extends Controller
 
         $notifications = $this->employeeModel->taskNotification();
 
-        // ── Current month attendance summary ──────────────────────────────
+        // ── Current month attendance summary 
         $currentMonth = date('Y-m');
         $monthStart   = date('Y-m-01');
         $monthEnd     = date('Y-m-t');
@@ -106,7 +106,7 @@ class EmployeeDashboardController extends Controller
         $absentPct = $totalDays > 0 ? round(($absentDays / $totalDays) * 100) : 0;
         $leavePct  = $totalDays > 0 ? round(($leaveDays  / $totalDays) * 100) : 0;
 
-        // ── Leave balances ────────────────────────────────────────────────
+        // ── Leave balances 
         $leaveTypes    = $this->leaveTypeModel->getAll();
         $leaveBalances = [];
         $totalUsed = 0;
@@ -126,7 +126,7 @@ class EmployeeDashboardController extends Controller
             ];
         }
 
-        // ── Tasks this month ──────────────────────────────────────────────
+        // ── Tasks this month 
         $stmt = $this->db->prepare("
             SELECT
                 COUNT(*) AS total_tasks,
@@ -145,7 +145,7 @@ class EmployeeDashboardController extends Controller
         $pendTasks  = (int)($taskSummary['pend_count']  ?? 0);
         $taskPct    = $totalTasks > 0 ? round(($doneTasks / $totalTasks) * 100) : 0;
 
-        // ── Pending tasks (all, for task list) ───────────────────────────
+        // ── Pending tasks (all, for task list) 
         $stmt = $this->db->prepare("
             SELECT t.* FROM tasks t
             WHERE t.user_id = ? AND t.status != 'completed'
@@ -155,13 +155,13 @@ class EmployeeDashboardController extends Controller
         $stmt->execute();
         $pendingTasks = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // ── All tasks (for all-tasks section) ────────────────────────────
+        // ── All tasks (for all-tasks section) 
         $stmt = $this->db->prepare("SELECT t.* FROM tasks t WHERE t.user_id = ? ORDER BY t.deadline ASC");
         $stmt->bind_param("i", $userId);
         $stmt->execute();
         $allTasks = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // ── This month's attendance records ───────────────────────────────
+        // ── This month's attendance records 
         $attendanceData = $this->attendanceModel->getByEmployeeAndMonth($employeeId, $currentMonth);
 
         $this->view("employee-dashboard/emp-dashboard", [
@@ -197,7 +197,7 @@ class EmployeeDashboardController extends Controller
     }
 
 
-    // ─── My Profile ──────────────────────────────────────────────────────────
+    // ─── My Profile 
     public function myProfile()
     {
         $data = $this->getSessionEmployee();
@@ -309,7 +309,7 @@ class EmployeeDashboardController extends Controller
         ]);
     }
 
-    // ─── My Leaves ───────────────────────────────────────────────────────────
+    // ─── My Leaves 
     public function myLeaves()
     {
         $data = $this->getSessionEmployee();
@@ -348,7 +348,7 @@ class EmployeeDashboardController extends Controller
         ]);
     }
 
-    // ─── My Attendance ───────────────────────────────────────────────────────
+    // ─── My Attendance 
     public function myAttendance()
     {
         $data = $this->getSessionEmployee();
@@ -379,7 +379,7 @@ class EmployeeDashboardController extends Controller
         ]);
     }
 
-    // ─── Task updates ─────────────────────────────────────────────────────────
+    // ─── Task updates 
     public function updateTaskStatus()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
