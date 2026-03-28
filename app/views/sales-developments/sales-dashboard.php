@@ -19,10 +19,11 @@
     </div>
 
     <form method="GET" action="">
-        <div class="row mb-3 align-items-end">
+        <div class="row g-2 mb-3 align-items-end">
+
             <!-- Employee Select -->
-            <div class="col-12 col-md-3">
-                <label for="executiveSelect" class="form--label d-none">Select Executive Team</label>
+            <div class="col-12 col-sm-6 col-md-3">
+                <label for="executiveSelect" class="form-label">Select Team</label>
                 <select id="executiveSelect" name="executive" class="form-select">
                     <option value="">-- Select Team --</option>
                     <?php foreach ($allSalesTeams as $team): ?>
@@ -34,36 +35,47 @@
             </div>
 
             <!-- Month Select -->
-            <div class="col-12 col-md-3">
-                <label for="periodSelect" class="form--label">Select Month</label>
-                <select class="form-control" name="month" id="periodSelect">
+            <div class="col-12 col-sm-6 col-md-3">
+                <label for="periodSelect" class="form-label">Select Month</label>
+                <select class="form-select" name="month" id="periodSelect">
                     <option value="">Month Select</option>
                     <?php foreach (range(1, 12) as $m):
                         $monthName = date('F', mktime(0, 0, 0, $m, 1));
                     ?>
-                        <option value="<?= $m ?>" <?= ($month == $m) ? 'selected' : '' ?>><?= $monthName ?></option>
+                        <option value="<?= $m ?>" <?= ($month == $m) ? 'selected' : '' ?>>
+                            <?= $monthName ?>
+                        </option>
                     <?php endforeach; ?>
                 </select>
             </div>
 
             <!-- Year Select -->
-            <div class="col-12 col-md-2">
-                <label for="yearSelect" class="form--label">Select Year</label>
-                <select class="form-control" name="year" id="yearSelect">
+            <div class="col-12 col-sm-6 col-md-2">
+                <label for="yearSelect" class="form-label">Select Year</label>
+                <select class="form-select" name="year" id="yearSelect">
                     <option value="">Year Select</option>
                     <?php for ($y = date('Y'); $y >= date('Y') - 10; $y--): ?>
-                        <option value="<?= $y ?>" <?= ($year == $y) ? 'selected' : '' ?>><?= $y ?></option>
+                        <option value="<?= $y ?>" <?= ($year == $y) ? 'selected' : '' ?>>
+                            <?= $y ?>
+                        </option>
                     <?php endfor; ?>
                 </select>
             </div>
 
-            <!-- Buttons -->
-            <div class="col-12 col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Filter</button>
+            <!-- Filter Button -->
+            <div class="col-12 col-sm-6 col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    Filter
+                </button>
             </div>
-            <div class="col-12 col-md-2">
-                <a href="<?= $GLOBALS['base_url'] ?>/sales-dashboard" class="btn btn-secondary w-100">Reset</a>
+
+            <!-- Reset Button -->
+            <div class="col-12 col-sm-6 col-md-2">
+                <a href="<?= $GLOBALS['base_url'] ?>/sales-dashboard" class="btn btn-secondary w-100">
+                    Reset
+                </a>
             </div>
+
         </div>
     </form>
 
