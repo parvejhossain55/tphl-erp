@@ -39,11 +39,14 @@ jobs:
             sudo find $PROJECT_DIR -type d -exec chmod 755 {} \;
             sudo find $PROJECT_DIR -type f -exec chmod 644 {} \;
 
+
             # Drop all tables
-             mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/drop_table.sql
+            # mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/drop_table.sql
 
             # Import fresh database
-             mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
-            
+            # mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
+            # Project upload in Main From Staging
+            cp -r /var/www/staging/TPHL-ERP/* /var/www/html/TPHL-ERP/
+            cp -r /var/www/staging/TPHL-ERP/.htaccess /var/www/html/TPHL-ERP/
 
             echo "Deployment completed successfully"
