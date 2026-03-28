@@ -1,150 +1,145 @@
+
+
 <div class="row">
     <div class="card__wrapper">
         <div class="col-xxl-12 col-xl-12 col-lg-12">
 
-            <div class="card__title-wrap mb-20">
-                <h5 class="card__heading-title">Generate Employee Letter</h5>
+            <!-- Title + Add button -->
+            <div class="card__title-wrap mb-20 d-flex align-items-center justify-content-between">
+                <h5 class="card__heading-title">Issued Employee Letters</h5>
+                <a href="<?= $GLOBALS['base_url'] ?>/create-letter-templete" class="btn btn-primary btn-sm">
+                    + Generate New Letter
+                </a>
             </div>
 
-            <!-- Generate Form -->
-            <form id="generateLetterForm">
-                <div class="card__wrapper mb-20">
-                    <div class="row g-20 gy-20">
+            <!-- Filter bar -->
+            <form method="GET" action="" class="card__wrapper mb-20">
+                <div class="row g-20 gy-20 align-items-end">
 
-                        <div class="col-lg-6">
-                            <div class="from__input-box">
-                                <div class="form__input-title">
-                                    <label for="employee_id">Select Employee <span>*</span></label>
-                                </div>
-                                <div class="form__input">
-                                    <select class="form-control" name="employee_id" id="employee_id" required>
-                                        <option value="">— Select Employee —</option>
-                                        <?php foreach ($employees as $emp): ?>
-                                            <?php $designationShortName = !empty($emp['designation_name']) ? explode(' ', $emp['designation_name'])[0] : 'N/A'; ?>
-                                            <option value="<?= $emp['id'] ?>" data-designation="<?= $emp['designation_id'] ?>"><?= $emp['full_name'] ?> (<?= htmlspecialchars($designationShortName) ?>)</option>
-                                        <?php endforeach ?>
-                                    </select>
-                                </div>
+                    <div class="col-lg-4">
+                        <div class="from__input-box">
+                            <div class="form__input-title">
+                                <label for="filter_designation">Designation</label>
+                            </div>
+                            <div class="form__input">
+                                <select class="form-control" name="designation_id" id="filter_designation">
+                                    <option value="">— All Designations —</option>
+                                    <?php foreach ($designations as $designation): ?>
+                                        <option value="<?= $designation['id'] ?>"
+                                            <?= (isset($_GET['designation_id']) && $_GET['designation_id'] == $designation['id']) ? 'selected' : '' ?>>
+                                            <?= $designation['designation_name'] ?>
+                                        </option>
+                                    <?php endforeach ?>
+                                </select>
                             </div>
                         </div>
-
-                        <div class="col-lg-6">
-                            <div class="from__input-box">
-                                <div class="form__input-title">
-                                    <label for="letter_type">Letter Type <span>*</span></label>
-                                </div>
-                                <div class="form__input">
-                                    <select class="form-control" name="letter_type" id="letter_type" required>
-                                        <option value="">— Select Letter Type —</option>
-                                        <option value="appointment">Appointment Letter</option>
-                                        <option value="joining">Joining Letter</option>
-                                        <option value="promotion">Promotion Letter</option>
-                                        <option value="increment">Salary Increment Letter</option>
-                                        <option value="experience">Experience Certificate</option>
-                                        <option value="noc">No Objection Certificate (NOC)</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-12 text-center mt-3">
-                            <button type="button" class="btn btn-primary" id="btnFetchTemplate">Fetch Letter Template</button>
-                        </div>
-
                     </div>
+
+                    <div class="col-lg-4">
+                        <div class="from__input-box">
+                            <div class="form__input-title">
+                                <label for="filter_type">Letter Type</label>
+                            </div>
+                            <div class="form__input">
+                                <select class="form-control" name="type" id="filter_type">
+                                    <option value="">— All Types —</option>
+                                    <option value="appointment" <?= (isset($_GET['type']) && $_GET['type'] == 'appointment') ? 'selected' : '' ?>>Appointment</option>
+                                    <option value="joining"     <?= (isset($_GET['type']) && $_GET['type'] == 'joining')     ? 'selected' : '' ?>>Joining</option>
+                                    <option value="promotion"   <?= (isset($_GET['type']) && $_GET['type'] == 'promotion')   ? 'selected' : '' ?>>Promotion</option>
+                                    <option value="increment"   <?= (isset($_GET['type']) && $_GET['type'] == 'increment')   ? 'selected' : '' ?>>Increment</option>
+                                    <option value="experience"  <?= (isset($_GET['type']) && $_GET['type'] == 'experience')  ? 'selected' : '' ?>>Experience</option>
+                                    <option value="noc"         <?= (isset($_GET['type']) && $_GET['type'] == 'noc')         ? 'selected' : '' ?>>NOC</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="submit__btn">
+                            <button class="btn btn-primary" type="submit">Filter</button>
+                            <a href="<?= $GLOBALS['base_url'] ?>/generate-letter" class="btn btn-secondary ms-2">Reset</a>
+                        </div>
+                    </div>
+
                 </div>
             </form>
 
-            <hr>
-
-            <!-- Preview / Editor Area -->
-            <div id="previewArea" style="display: none;">
-                <h5 class="mb-3">Letter Preview & Edit</h5>
-                <form action="<?= $GLOBALS['base_url'] ?>/save-generated-letter" method="POST" target="_blank">
-                    <input type="hidden" name="employee_id" id="hidden_employee_id">
-                    
-                    <div class="from__input-box mb-3">
-                        <div class="form__input-title">
-                            <label>Subject</label>
-                        </div>
-                        <div class="form__input">
-                            <input class="form-control" name="subject" id="preview_subject" type="text" required>
-                        </div>
-                    </div>
-
-                    <div class="from__input-box mb-3">
-                        <div class="form__input-title">
-                            <label>Content</label>
-                        </div>
-                        <div class="form__input-box">
-                            <textarea id="tinymce_simple_textarea" name="letter_body"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="text-center mt-3">
-                        <button type="button" class="btn btn-success" onclick="printLetter()">Print Letter</button>
-                    </div>
-                </form>
+            <!-- Table -->
+            <div class="card__wrapper">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Employee</th>
+                                <th>Letter Type</th>
+                                <th>Subject</th>
+                                <th>Letter Date</th>
+                                <th>Status</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($letters)): ?>
+                                <?php foreach ($letters as $index => $letter): ?>
+                                <tr>
+                                    <td><?= $index + 1 ?></td>
+                                    <td>
+                                        <strong><?= $letter['full_name'] ?></strong><br>
+                                        <small class="text-muted"><?= $letter['employee_code'] ?></small>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            <?php
+                                                echo match($letter['letter_type']) {
+                                                    'appointment' => 'bg-primary',
+                                                    'joining'     => 'bg-success',
+                                                    'promotion'   => 'bg-info',
+                                                    'increment'   => 'bg-warning text-dark',
+                                                    'experience'  => 'bg-secondary',
+                                                    'noc'         => 'bg-dark',
+                                                    default       => 'bg-secondary',
+                                                };
+                                            ?>">
+                                            <?= ucfirst($letter['letter_type']) ?>
+                                        </span>
+                                    </td>
+                                    <td><?= htmlspecialchars($letter['subject']) ?></td>
+                                    <td><?= date('d M Y', strtotime($letter['letter_date'])) ?></td>
+                                    <td>
+                                        <span class="badge <?= $letter['status'] == 'issued' ? 'bg-success' : 'bg-warning' ?>">
+                                            <?= ucfirst($letter['status']) ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex gap-1 justify-content-center">
+                                            <a href="<?= $GLOBALS['base_url'] ?>/view-letter/<?= $letter['id'] ?>" class="btn btn-info btn-sm" title="View">
+                                                <i class="fa fa-eye"></i>
+                                            </a>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>" class="btn btn-danger btn-sm" target="_blank" title="PDF">
+                                                <i class="fa fa-file-pdf"></i>
+                                            </a>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>" class="btn btn-secondary btn-sm" target="_blank" title="Print">
+                                                <i class="fa fa-print"></i>
+                                            </a>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/delete-letter/<?= $letter['id'] ?>" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')">
+                                                <i class="fa fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="7" class="text-center">No issued letters found.</td>
+                                </tr>
+                            <?php endif ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+            <!-- End Table -->
 
         </div>
     </div>
 </div>
-
-<script>
-    document.getElementById('btnFetchTemplate').addEventListener('click', function() {
-        const employeeId = document.getElementById('employee_id').value;
-        const letterType = document.getElementById('letter_type').value;
-
-        if (!employeeId || !letterType) {
-            alert('Please select both Employee and Letter Type.');
-            return;
-        }
-
-        const designationId = document.getElementById('employee_id').options[document.getElementById('employee_id').selectedIndex].getAttribute('data-designation');
-
-        fetch(`<?= $GLOBALS['base_url'] ?>/fetch-employee-template?employee_id=${employeeId}&type=${letterType}&designation_id=${designationId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    document.getElementById('previewArea').style.display = 'block';
-                    document.getElementById('hidden_employee_id').value = employeeId;
-                    document.getElementById('preview_subject').value = data.subject;
-                    
-                    if (typeof tinymce !== 'undefined' && tinymce.get('tinymce_simple_textarea')) {
-                        tinymce.get('tinymce_simple_textarea').setContent(data.body);
-                    } else {
-                        document.getElementById('tinymce_simple_textarea').value = data.body;
-                    }
-                } else {
-                    alert(data.message || 'Error fetching template.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while fetching the template.');
-            });
-    });
-
-    function printLetter() {
-        let printWindow = window.open('', '', 'height=600,width=800');
-        let subject = document.getElementById('preview_subject').value;
-        let body = '';
-        
-        if (typeof tinymce !== 'undefined' && tinymce.get('tinymce_simple_textarea')) {
-            body = tinymce.get('tinymce_simple_textarea').getContent();
-        } else {
-            body = document.getElementById('tinymce_simple_textarea').value;
-        }
-        
-        printWindow.document.write('<html><head><title>Print Letter</title>');
-        printWindow.document.write('<style>body{font-family: Arial, sans-serif; padding: 40px;} .subject{font-weight: bold; margin-bottom: 20px;} @media print { button { display: none; } }</style>');
-        printWindow.document.write('</head><body >');
-        printWindow.document.write('<h2>' + subject + '</h2><hr>');
-        printWindow.document.write(body);
-        printWindow.document.write('<br><br><button onclick="window.print()">Print</button>');
-        printWindow.document.write('</body></html>');
-        printWindow.document.close();
-        printWindow.focus();
-    }
-</script>

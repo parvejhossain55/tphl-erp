@@ -5,9 +5,8 @@
             <!-- Title + Add button -->
             <div class="card__title-wrap mb-20 d-flex align-items-center justify-content-between">
                 <h5 class="card__heading-title">Letter Templates</h5>
-                <a href="<?= $GLOBALS['base_url'] ?>/create-letter-template" class="btn btn-primary btn-sm">
-                    + Add New Template
-                </a>
+                  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTemplate">  + Add New Template</button>
+         
             </div>
 
             <!-- Table -->
@@ -17,7 +16,7 @@
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Designation</th>
+                                <th>Name</th>
                                 <th>Letter Type</th>
                                 <th>Subject</th>
                                 <th>Created At</th>
@@ -29,7 +28,7 @@
                                 <?php foreach ($templates as $index => $template): ?>
                                 <tr>
                                     <td><?= $index + 1 ?></td>
-                                    <td><?= $template['designation_name'] ?? 'All Designations' ?></td>
+                                    <td><?= $template['name'] ?></td>
                                     <td>
                                         <span class="badge bg-secondary">
                                             <?= ucfirst($template['type']) ?>
@@ -67,6 +66,65 @@
             </div>
             <!-- End Table -->
 
+        </div>
+    </div>
+</div>
+<!-- new template modal start -->
+<div id="addTemplate" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Template</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/store-letter-template" method="POST">
+
+                    <div class="row gy-20">
+
+                        <!-- Template Name -->
+                        <div class="col-md-6">
+                            <label>Template Name *</label>
+                            <input class="form-control" name="name" type="text" required>
+                        </div>
+
+                        <!-- Type -->
+                        <div class="col-md-6">
+                            <label>Letter Type *</label>
+                            <select name="type" class="form-control" required>
+                                <option value="">Select Type</option>
+                                <option value="appointment">Appointment</option>
+                                <option value="joining">Joining</option>
+                                <option value="promotion">Promotion</option>
+                                <option value="increment">Increment</option>
+                                <option value="experience">Experience</option>
+                                <option value="noc">NOC</option>
+                            </select>
+                        </div>
+
+                        <!-- Subject -->
+                        <div class="col-md-12">
+                            <label>Subject *</label>
+                            <input class="form-control" name="subject" type="text" required>
+                        </div>
+
+                        <!-- Body -->
+                        <div class="col-md-12">
+                            <label>Template Body *</label>
+                            <textarea name="body" id="template_body" class="form-control" rows="8" required></textarea>
+                        </div>
+
+                    </div>
+
+                    <div class="submit__btn text-center mt-3">
+                        <button class="btn btn-primary">Save Template</button>
+                    </div>
+
+                </form>
+            </div>
         </div>
     </div>
 </div>

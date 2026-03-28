@@ -203,16 +203,21 @@ $routes = [
     "department-kpi-pdf" => ["controller" => "HrmDepartmentReportController", "method" => "departmentKPIReportPDF"],
 
     // Letter Templates CRUD
-    "letter-templates" => ["controller" => "LetterTemplateController", "method" => "index"],
-    "create-letter-template" => ["controller" => "LetterTemplateController", "method" => "create"],
-    "store-letter-template" => ["controller" => "LetterTemplateController", "method" => "store"],
+    "letter-templates" => ["controller" => "LetterTemplateController", "method" => "template"],
+    "store-letter-template" => ["controller" => "LetterTemplateController", "method" => "storeLetterTemplate"],
     "edit-letter-template/(\d+)" => ["controller" => "LetterTemplateController", "method" => "edit"],
     "update-letter-template/(\d+)" => ["controller" => "LetterTemplateController", "method" => "update"],
     "delete-letter-template/(\d+)" => ["controller" => "LetterTemplateController", "method" => "delete"],
 
     // Generate employee letter
     "generate-letter" => ["controller" => "LetterTemplateController", "method" => "generateLetter"],
-    "fetch-employee-template" => ["controller" => "LetterTemplateController", "method" => "fetchTemplate"],
+    "create-letter-templete" => ["controller" => "LetterTemplateController", "method" => "create"],
+    "store-generate-letter" => ["controller" => "LetterTemplateController", "method" => "store"],
+    "get-employee-info-ajax" => ["controller" => "LetterTemplateController", "method" => "getEmployeeInfo"],
+    "view-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "viewLetter"],
+    "print-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "printLetter"],
+    "pdf-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "generatePDFLetter"],
+    "delete-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "deleteLetter"],
     //=== End Report
 
     // Employee Leave Controller

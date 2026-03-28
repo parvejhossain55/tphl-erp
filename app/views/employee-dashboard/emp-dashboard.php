@@ -38,7 +38,7 @@ $photoPath = !empty($employee['photo'])
                     <div class="card__icon"><span class="chip badge-present"><i class="bi bi-clock-history" style="color:var(--accent4)"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Late Arrivals</h6>
-                        <span class="chip badge-late"><i class="bi bi-dot"></i> Check-in &gt; 9:15 · <strong class="ms-1"><?= $lateDays ?? 0 ?></strong></span>
+                        <span class="chip badge-late"><i class="bi bi-dot"></i> Check-in &gt; 9:40 · <strong class="ms-1"><?= $lateDays ?? 0 ?></strong></span>
                     </div>
                 </div>
             </div>

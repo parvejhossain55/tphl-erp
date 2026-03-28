@@ -34,36 +34,60 @@ class EmpAttentendance extends Model
 
 
 
-    public function create($data)
-    {
-        $stmt = $this->db->prepare(
-            "INSERT INTO emp_attendances
-        (employee_id, punch_in_time, punch_out_time, attendance_date, today_status, created_by)
-        VALUES (?, ?, ?, ?, ?, ?)"
-        );
+   public function create($data)
+{
+    $punchIn  = !empty($data['punch_in_time']) ? $data['punch_in_time'] : null;
+    $punchOut = !empty($data['punch_out_time']) ? $data['punch_out_time'] : null;
 
-        if (!$stmt) {
-            echo "Prepare failed: " . $this->db->error;
-            return false;
+    $status = 'Absent'; // default
+
+    if (!empty($punchIn)) {
+
+        $time = date('H:i:s', strtotime($punchIn));
+
+        if ($time > '09:40:00') {
+            $status = 'Late';
+        } else {
+            $status = 'Present';
         }
 
-        $stmt->bind_param(
-            "issssi", // 
-            $data['employee_id'],
-            $data['punch_in_time'],
-            $data['punch_out_time'],
-            $data['attendance_date'],
-            $data['today_status'],
-            $data['created_by']
-        );
-
-        if ($stmt->execute()) {
-            return true;
-        } else {
-            echo "Execute error: " . $stmt->error;
-            return false;
+        if ($time > '13:00:00') {
+            $status = 'Half-Day';
         }
     }
+
+    if (!empty($data['today_status']) && $data['today_status'] != 'Present') {
+        $status = $data['today_status'];
+    }
+
+    $stmt = $this->db->prepare("
+        INSERT INTO emp_attendances
+        (employee_id, punch_in_time, punch_out_time, attendance_date, today_status, created_by)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ");
+
+    if (!$stmt) {
+        echo "Prepare failed: " . $this->db->error;
+        return false;
+    }
+
+    $stmt->bind_param(
+        "issssi",
+        $data['employee_id'],
+        $punchIn,
+        $punchOut,
+        $data['attendance_date'],
+        $status,
+        $data['created_by']
+    );
+
+    if ($stmt->execute()) {
+        return true;
+    } else {
+        echo "Execute error: " . $stmt->error;
+        return false;
+    }
+}
 
 
     // Fetch a single attendance record by ID
@@ -176,7 +200,7 @@ class EmpAttentendance extends Model
     COUNT(emp.id) AS total_employee,
 
     SUM(CASE WHEN a.today_status = 'Present' THEN 1 ELSE 0 END) AS present_count,
-    SUM(CASE WHEN a.today_status = 'Late' OR TIME(a.punch_in_time) > '09:10:00' THEN 1 ELSE 0 END) AS late_count,
+    SUM(CASE WHEN a.today_status = 'Late' OR TIME(a.punch_in_time) > '09:40:00' THEN 1 ELSE 0 END) AS late_count,
     SUM(CASE WHEN a.today_status = 'Absent' OR a.punch_in_time IS NULL THEN 1 ELSE 0 END) AS absent_count,
     SUM(CASE WHEN a.today_status = 'On Leave' THEN 1 ELSE 0 END) AS on_leave_count,
     SUM(CASE WHEN a.today_status = 'Half-Day' THEN 1 ELSE 0 END) AS half_day_count,

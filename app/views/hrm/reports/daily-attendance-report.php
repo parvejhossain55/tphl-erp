@@ -45,7 +45,7 @@
             <div class="card__wrapper stat-card late">
                 <div class="stat-label">Late</div>
                 <div class="stat-value"><?= $todaySummary['Late'] ?></div>
-                <div class="stat-sub">After 9:10 AM</div>
+                <div class="stat-sub">After 9:40 AM</div>
             </div>
         </div>
         <div class="col-6 col-md-4 col-lg-2">

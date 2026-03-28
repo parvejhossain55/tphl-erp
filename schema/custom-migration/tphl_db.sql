@@ -1469,6 +1469,64 @@ CREATE TABLE `letter_templates` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+CREATE TABLE `letters` (
+  `id` int(11) NOT NULL,
+  `employee_id` int(10) UNSIGNED NOT NULL,
+  `department_id` int(10) UNSIGNED NOT NULL,
+  `designation_id` int(10) UNSIGNED DEFAULT NULL,
+  `letter_type` enum('appointment','joining','promotion','increment','experience','noc') NOT NULL,
+  `template_id` int(11) DEFAULT NULL,
+  `subject` varchar(255) NOT NULL,
+  `body` longtext NOT NULL,
+  `letter_date` date NOT NULL,
+  `ref_number` varchar(100) DEFAULT NULL,
+  `joining_date` date DEFAULT NULL,
+  `effective_date` date DEFAULT NULL,
+  `current_salary` decimal(10,2) DEFAULT NULL,
+  `revised_salary` decimal(10,2) DEFAULT NULL,
+  `new_designation` varchar(150) DEFAULT NULL,
+  `signatory_name` varchar(150) NOT NULL,
+  `signatory_title` varchar(150) NOT NULL,
+  `cc_email` varchar(150) DEFAULT NULL,
+  `send_to_email` tinyint(1) DEFAULT 0,
+  `status` enum('draft','issued') DEFAULT 'draft',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+
+CREATE TABLE `manpower_requisitions` (
+  `id` int(11) NOT NULL,
+  `department_id` int(11) NOT NULL,
+  `department_head_id` int(11) NOT NULL,
+  `designation_id` int(11) NOT NULL,
+  `job_title` varchar(255) NOT NULL,
+  `no_of_vacancies` int(11) NOT NULL,
+  `job_experience` varchar(100) DEFAULT NULL,
+  `to_be_filled_before` date DEFAULT NULL,
+  `age_limit` varchar(50) DEFAULT NULL,
+  `report_to` int(11) DEFAULT NULL,
+  `requirement_type` enum('project','replacement','new') NOT NULL,
+  `project_id` int(11) DEFAULT NULL,
+  `replacement_reason` text DEFAULT NULL,
+  `job_description` text DEFAULT NULL,
+  `education_qualification` text DEFAULT NULL,
+  `special_skills` text DEFAULT NULL,
+  `status` enum('pending','approved','rejected') DEFAULT 'pending',
+  `approved_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Indexes for dumped tables
+--
+
+
+
 --
 -- Indexes for table `approval_requests`
 --
@@ -2225,6 +2283,47 @@ ALTER TABLE `letter_templates`
 --
 -- Constraints for table `cameras`
 --
+ALTER TABLE `letters`
+  ADD PRIMARY KEY (`id`),
+
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `letters`
+--
+ALTER TABLE `letters`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `letters`
+--
+
+
+--
+-- Indexes for table `manpower_requisitions`
+--
+ALTER TABLE `manpower_requisitions`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `manpower_requisitions`
+--
+ALTER TABLE `manpower_requisitions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+COMMIT;
+
+
 ALTER TABLE `cameras`
   ADD CONSTRAINT `cameras_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL;
 

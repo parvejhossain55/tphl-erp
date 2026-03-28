@@ -57,7 +57,7 @@ class EmployeeController extends Controller
     public function create()
     {
         $departments = $this->departmentModel->getAll();
-        $roles = $this->roleModel->getAll();
+        $roles = $this->roleModel->getAllFilterRole();
         $designations = $this->designationModel->getAll();
         $employeeCode = $this->employeeModel->getNextEmployeeCode();
         $this->view("hrm/employees/create-employee", [

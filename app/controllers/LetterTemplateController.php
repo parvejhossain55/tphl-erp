@@ -4,134 +4,244 @@ class LetterTemplateController extends Controller
 {
     protected $db;
     protected $employeeModel;
-    protected $payslipItemModel;
-    protected $paymentModel;
-    protected $bankModel;
     protected $templateModel;
+    protected $letterModel;
+    protected $leaveModel;
+
     public function __construct($db)
     {
         $this->db = $db;
         $this->employeeModel = new Employee($this->db);
-        $this->payslipItemModel = new PayslipItem($this->db);
-        $this->paymentModel = new Payslip($this->db);
-        $this->bankModel = new LetterTemplate($this->db);
+        $this->templateModel = new LetterTemplate($this->db);
+        $this->letterModel = new Letter($this->db);
     }
 
-    public function index() {
-        $templates = $this->templateModel->getAll();
-        $this->view("hrm/letter-templates/list-letter-templates", [
-            "current_route" => "letter-templates",
-            "templates" => $templates
+    public function getEmployeeInfo()
+    {
+        if (!isset($_GET['employee_id'])) {
+            echo json_encode(['success' => false]);
+            return;
+        }
+
+        $empId = (int)$_GET['employee_id'];
+        $employee = $this->employeeModel->find($empId);
+
+        if ($employee) {
+            echo json_encode([
+                'success' => true,
+                'department_id' => $employee['department_id'],
+                'designation_id' => $employee['designation_id']
+            ]);
+        } else {
+            echo json_encode(['success' => false]);
+        }
+    }
+
+    public function generateLetter()
+    {
+        $designation_id = $_GET['designation_id'] ?? null;
+        $letter_type = $_GET['type'] ?? null;
+
+        $letters = $this->letterModel->getAllWithDetails($designation_id, $letter_type);
+
+        require_once __DIR__ . '/../models/Designation.php';
+        $designationModel = new Designation($this->db);
+        $designations = $designationModel->getAll();
+
+        $this->view("hrm/letter-templates/generate-employee-letter", [
+            "letters" => $letters,
+            "designations" => $designations
         ]);
     }
+    // show generate form
+    public function create()
+    {
+        $employees = $this->employeeModel->getAll();
+        $templates = $this->templateModel->getAll();
 
-    public function create() {
-        $designations = $this->getDesignations();
+        require_once __DIR__ . '/../models/Department.php';
+        require_once __DIR__ . '/../models/Designation.php';
+        $departmentModel = new Department($this->db);
+        $designationModel = new Designation($this->db);
+        
+        $departments = $departmentModel->getAll();
+        $designations = $designationModel->getAll();
+
         $this->view("hrm/letter-templates/create-letter-template", [
-            "current_route" => "letter-templates",
+            "employees" => $employees,
+            "templates" => $templates,
+            "departments" => $departments,
             "designations" => $designations
         ]);
     }
 
-    public function store() {
-        $data = [
-            'type' => $_POST['type'] ?? '',
-            'designation_id' => $_POST['designation_id'] ?? null,
-            'subject' => $_POST['subject'] ?? '',
-            'body' => $_POST['body'] ?? ''
+    // store letter
+    public function store()
+    {
+        $data = $_POST;
+
+        // employee load
+        $employee = $this->employeeModel->find($data['employee_id']);
+
+        //  template load (optional)
+        $template = null;
+        if (!empty($data['template_id'])) {
+            $template = $this->templateModel->find($data['template_id']);
+        }
+
+        // body decide
+        $body = $data['letter_body'];
+
+        if ($template) {
+            $body = $this->replacePlaceholders($template['body'], $employee, $data);
+        }
+
+        // final save data
+        $saveData = [
+            "employee_id" => $data['employee_id'],
+            "designation_id" => $employee['designation_id'], 
+            "department_id" => $employee['department_id'],   //  auto
+            "letter_type" => $data['letter_type'],
+            "template_id" => $data['template_id'] ?? null,
+            "subject" => $data['subject'],
+            "body" => $body,
+            "letter_date" => $data['letter_date'],
+            "ref_number" => $data['ref_number'] ?? null,
+            "joining_date" => $data['joining_date'],
+            "effective_date" => $data['effective_date'] ?? null,
+            "current_salary" => $data['current_salary'] ?? null,
+            "revised_salary" => $data['revised_salary'] ?? null,
+            "new_designation" => $data['new_designation'] ?? null,
+            "signatory_name" => $data['signatory_name'],
+            "signatory_title" => $data['signatory_title'],
+            "cc_email" => $data['cc_email'] ?? null,
+            "send_to_email" => $data['send_to_email'] ?? 0,
+            "status" => $data['letter_status']
         ];
-        $this->templateModel->create($data);
-        $_SESSION['success'] = "Template created successfully";
-        header("Location: " . $GLOBALS['base_url'] . "/letter-templates");
-        exit();
+
+        $this->letterModel->create($saveData);
+
+        header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
     }
 
-    public function edit($id) {
-        $template = $this->templateModel->getById($id);
-        $designations = $this->getDesignations();
+    //  placeholder replace system
+    private function replacePlaceholders($body, $employee, $data)
+    {
+        $replace = [
+            "{{employee_name}}" => $employee['full_name'] ?? '',
+            "{{employee_code}}" => $employee['employee_id'] ?? '',
+            "{{designation}}" => $employee['designation_name'] ?? '',
+            "{{department}}" => $employee['department_name'] ?? '',
+            "{{joining_date}}" => $data['joining_date'] ?? '',
+            "{{current_salary}}" => $data['current_salary'] ?? '',
+            "{{revised_salary}}" => $data['revised_salary'] ?? '',
+            "{{new_designation}}" => $data['new_designation'] ?? '',
+            "{{letter_date}}" => $data['letter_date'] ?? '',
+        ];
+
+        return str_replace(array_keys($replace), array_values($replace), $body);
+    }
+    public function template()
+    {
+        $designation_id = $_GET['designation_id'] ?? null;
+        $type = $_GET['type'] ?? null;
+
+        $templates = $this->templateModel->getAll($designation_id, $type);
+
+        require_once __DIR__ . '/../models/Designation.php';
+        $designationModel = new Designation($this->db);
+        $designations = $designationModel->getAll();
+
+        $this->view("hrm/letter-templates/list-letter-templates", [
+            "templates" => $templates,
+            "designations" => $designations
+        ]);
+    }
+
+    public function storeLetterTemplate()
+    {
+        $this->templateModel->create($_POST);
+        header("Location: " . $GLOBALS['base_url'] . "/letter-templates");
+    }
+
+    public function edit($id)
+    {
+        $template = $this->templateModel->find($id);
+        
+        require_once __DIR__ . '/../models/Designation.php';
+        $designationModel = new Designation($this->db);
+        $designations = $designationModel->getAll();
+
         $this->view("hrm/letter-templates/edit-letter-template", [
-            "current_route" => "letter-templates",
             "template" => $template,
             "designations" => $designations
         ]);
     }
 
-    public function update($id) {
-        $data = [
-            'type' => $_POST['type'] ?? '',
-            'designation_id' => $_POST['designation_id'] ?? null,
-            'subject' => $_POST['subject'] ?? '',
-            'body' => $_POST['body'] ?? ''
-        ];
-        $this->templateModel->update($id, $data);
-        $_SESSION['success'] = "Template updated successfully";
+    public function update($id)
+    {
+        $this->templateModel->update($id, $_POST);
         header("Location: " . $GLOBALS['base_url'] . "/letter-templates");
-        exit();
     }
 
-    public function delete($id) {
+    public function delete($id)
+    {
         $this->templateModel->delete($id);
-        $_SESSION['success'] = "Template deleted successfully";
         header("Location: " . $GLOBALS['base_url'] . "/letter-templates");
-        exit();
     }
 
-    // Generate Letter features
-    public function generateLetter() {
-        $employees = $this->employeeModel->getAll();
-        $designations = $this->getDesignations();
-        $this->view("hrm/letter-templates/generate-employee-letter", [
-            "current_route" => "generate-letter",
-            "employees" => $employees,
-            "designations" => $designations
-        ]);
+    public function viewLetter($id)
+    {
+        $letter = $this->letterModel->find($id);
+        $this->view("hrm/letter-templates/view-letter", ["letter" => $letter]);
     }
 
-    public function fetchTemplate() {
-        $designation_id = $_GET['designation_id'] ?? null;
-        $type = $_GET['type'] ?? null;
-        $employee_id = $_GET['employee_id'] ?? null;
+    public function printLetter($id)
+    {
+        $letter = $this->letterModel->find($id);
+        $this->view("hrm/letter-templates/print-letter", ["letter" => $letter], false);
+    }
 
-        if (!$type || !$employee_id) {
-            echo json_encode(["status" => "error", "message" => "Missing parameters"]);
-            return;
+    public function deleteLetter($id)
+    {
+        $this->letterModel->delete($id);
+        header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
+    }
+
+    public function generatePDFLetter($id)
+    {
+        $letter = $this->letterModel->find($id);
+        if (!$letter) {
+            die("Letter not found");
         }
 
-        $templates = $this->templateModel->getByTypeAndDesignation($type, $designation_id);
-        if (empty($templates)) {
-            echo json_encode(["status" => "error", "message" => "No template found for this designation and type"]);
-            return;
-        }
+        // TCPDF is already autoloaded in public/index.php
+        
+        $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
+        $pdf->SetCreator('TPHL ERP');
+        $pdf->SetTitle(ucfirst($letter['letter_type']) . " - " . $letter['employee_code']);
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(20, 20, 20);
+        $pdf->SetAutoPageBreak(TRUE, 20);
+        
+        $pdf->AddPage();
+        
+        // Load HTML from view file to allow user changes to reflect
+        ob_start();
+        extract(['letter' => $letter]);
+        include __DIR__ . '/../views/hrm/letter-templates/pdf-letter.php';
+        $html = ob_get_clean();
 
-        $template = $templates[0]; // Take the first matched
-        $employee = $this->employeeModel->getById($employee_id);
+        $pdf->writeHTML($html, true, false, true, false, '');
 
-        // Replace placeholders dynamically
-        $body = str_replace(
-            ['{{employee_name}}', '{{designation}}', '{{department}}', '{{joining_date}}', '{{responsibilities}}'],
-            [$employee['full_name'], $employee['designation_name'], $employee['department_name'], $employee['joining_date'], $employee['responsibilities']],
-            $template['body']
-        );
-
-        echo json_encode([
-            "status" => "success",
-            "subject" => $template['subject'],
-            "body" => $body
-        ]);
+        $filename = str_replace(' ', '_', $letter['letter_type']) . "_" . $letter['employee_code'] . ".pdf";
+        
+        // Clean output buffer to prevent "Some data already output" error
+        if (ob_get_length()) ob_end_clean();
+        
+        $pdf->Output($filename, 'I');
+        exit;
     }
-
-    private function getDesignations() {
-        // Fetch designations from DB
-        global $db;
-        $res = $db->query("SELECT * FROM designations");
-        return $res->fetch_all(MYSQLI_ASSOC);
-    }
-
-    private function getDepartments() {
-        global $db;
-        $res = $db->query("SELECT * FROM departments");
-        return $res->fetch_all(MYSQLI_ASSOC);
-    }
-   
 }
 

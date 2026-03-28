@@ -54,3 +54,5 @@ DROP TABLE IF EXISTS holidays;
 DROP TABLE IF EXISTS emp_weekly_day_off;
 DROP TABLE IF EXISTS employee_tasks;
 DROP TABLE IF EXISTS letter_templates;
+DROP TABLE IF EXISTS letters;
+DROP TABLE IF EXISTS manpower_requisitions;

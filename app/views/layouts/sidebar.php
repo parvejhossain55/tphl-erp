@@ -424,10 +424,14 @@
                             <span class="sidebar__menu-label">Day Off Manage</span>
                         </a>
                     </li>
-                    <li class="slide d-none">
+                    <li class="slide">
                         <a href="<?= $base_url ?>/generate-letter" class="sidebar__menu-item <?= isActive('generate-letter', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
                             <span class="sidebar__menu-label">Generate Employee Letter</span>
+                        </a>
+                        <a href="<?= $base_url ?>/letter-templates" class="sidebar__menu-item <?= isActive('letter-templates', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                            <span class="sidebar__menu-label">Generate Template</span>
                         </a>
                     </li>
                     <li class="slide has-sub <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
