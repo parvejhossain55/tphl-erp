@@ -171,8 +171,8 @@ class Employee extends Model
             account_holder_name, account_number, bank_name, branch_name,
             social_media1, social_media2, social_media3,
             photo, make_user, password, created_by,
-            employee_type, employee_status,workplace
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            employee_type, employee_status,workplace, responsibilities
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         $tempEmployeeId = '';
@@ -184,7 +184,7 @@ class Employee extends Model
             : '';
 
         $stmt->bind_param(
-            "ssdssssssssssiissssssssssisisss",
+            "ssdssssssssssiissssssssssisissss",
             $tempEmployeeId,
             $data['full_name'],
             $data['basic_salary'],
@@ -215,7 +215,8 @@ class Employee extends Model
             $data['created_by'],
             $data['employee_type'],
             $data['employee_status'],
-            $data['workplace']
+            $data['workplace'],
+            $data['responsibilities']
         );
 
         if (!$stmt->execute()) {
@@ -340,7 +341,8 @@ class Employee extends Model
         photo = ?,
         created_by = ?,
         employee_type = ?,
-        employee_status = ?
+        employee_status = ?,
+        responsibilities = ?
     WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -351,7 +353,7 @@ class Employee extends Model
         }
 
         $stmt->bind_param(
-            "sdsssssssssiissssssssssisss",
+            "sdsssssssssiissssssssssissss",
             $data['full_name'],        // s
             $data['basic_salary'],     // d
             $data['username'],         // s
@@ -378,6 +380,7 @@ class Employee extends Model
             $data['created_by'],          // i
             $data['employee_type'],       // s
             $data['employee_status'],     // s 
+            $data['responsibilities'],    // s
             $id                           // i
         );
 

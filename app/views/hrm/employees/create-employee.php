@@ -350,7 +350,18 @@
                                      <textarea id="tinymce_simple_textarea" name="experience"></textarea>
                                  </div>
                              </div>
+                             <div class="col-md-12 mt-3">
+                             <div class="from__input-box">
+                                 <div class="form__input-title">
+                                     <label>Responsibilities</label>
+                                 </div>
+                                 <div class="from__input-box">
+                                     <textarea class="form-control" name="responsibilities" rows="4" placeholder="Enter key responsibilities..."></textarea>
+                                 </div>
+                             </div>
                          </div>
+
+                     </div>
 
 
                      </div>

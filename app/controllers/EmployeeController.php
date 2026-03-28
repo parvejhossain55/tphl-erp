@@ -125,7 +125,8 @@ class EmployeeController extends Controller
             'password'        => $hashedPassword,
             'created_by'      => $_SESSION['user']['id'] ?? null,
             'employee_type'      => $_POST['employee_type'],
-            'employee_status'    => $_POST['employee_status']
+            'employee_status'    => $_POST['employee_status'],
+            'responsibilities'    => $_POST['responsibilities'],
 
         ];
 
@@ -271,6 +272,7 @@ class EmployeeController extends Controller
             'created_by'           => $_SESSION['user']['id'] ?? null,
             'employee_type'      => $_POST['employee_type'],
             'employee_status'    => $_POST['employee_status'],
+            'responsibilities'    => $_POST['responsibilities']
 
         ];
         if (!$this->employeeModel->update($id, $employeeData, 'photo')) {

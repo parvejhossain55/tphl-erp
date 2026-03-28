@@ -237,9 +237,15 @@
 
 
                  <!-- Experience -->
-                 <div class="col-lg-12">
+                 <div class="col-lg-12 mt-3">
                      <label>Experience <span>*</span></label>
-                     <textarea id="tinymce_simple_textarea" name="experience"><?= htmlspecialchars($employee['experience']) ?></textarea>
+                     <textarea id="tinymce_simple_textarea" name="experience"><?= htmlspecialchars($employee['experience'] ?? '') ?></textarea>
+                 </div>
+
+                 <!-- Responsibilities -->
+                 <div class="col-lg-12 mt-3">
+                     <label>Responsibilities</label>
+                     <textarea class="form-control" name="responsibilities" rows="4" placeholder="Enter key responsibilities..."><?= htmlspecialchars($employee['responsibilities'] ?? '') ?></textarea>
                  </div>
 
                  <!-- Submit -->
