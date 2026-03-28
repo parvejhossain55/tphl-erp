@@ -424,7 +424,7 @@
                             <span class="sidebar__menu-label">Day Off Manage</span>
                         </a>
                     </li>
-                    <li class="slide ">
+                    <li class="slide d-none">
                         <a href="<?= $base_url ?>/generate-letter" class="sidebar__menu-item <?= isActive('generate-letter', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
                             <span class="sidebar__menu-label">Generate Employee Letter</span>

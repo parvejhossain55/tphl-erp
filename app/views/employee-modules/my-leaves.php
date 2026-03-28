@@ -7,85 +7,56 @@
             <div class="section-title">Leave Management</div>
             <div class="section-sub">Track and manage your leave quota</div>
         </div>
+
+        <!-- Leave Balance Cards -->
         <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="stat-icon" style="background:rgba(52,211,153,.12)">
-                            <i class="bi bi-hospital" style="color:var(--accent3)"></i>
-                        </div>
-                        <div>
-                            <div style="font-size:.85rem;font-weight:700">Medical Leave</div>
-                            <div style="font-size:.72rem;color:var(--muted)">Total: 12 days/year</div>
+            <?php if (!empty($leaveBalances)): ?>
+                <?php foreach ($leaveBalances as $lb): ?>
+                    <div class="col-md-4 mb-3">
+                        <div class="stat-card">
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <div class="stat-icon" style="background:rgba(79,140,255,.12)">
+                                    <i class="bi bi-calendar2-check" style="color:var(--accent)"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:.85rem;font-weight:700"><?= htmlspecialchars($lb['type_name']) ?></div>
+                                    <div style="font-size:.72rem;color:var(--muted)">Total: <?= $lb['total_days'] ?> days/year
+                                        <?= !$lb['is_paid'] ? '· <span style="color:#e55353">Unpaid</span>' : '' ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <div class="text-center">
+                                    <div style="font-size:1.6rem;font-weight:700;color:var(--accent5);font-family:'Space Mono',monospace"><?= $lb['used'] ?></div>
+                                    <div style="font-size:.7rem;color:var(--muted)">Used</div>
+                                </div>
+                                <div class="text-center">
+                                    <div style="font-size:1.6rem;font-weight:700;color:var(--accent3);font-family:'Space Mono',monospace">
+                                        <?= $lb['is_paid'] ? $lb['remaining'] : 'N/A' ?>
+                                    </div>
+                                    <div style="font-size:.7rem;color:var(--muted)">Remaining</div>
+                                </div>
+                            </div>
+                            <?php if ($lb['is_paid']): ?>
+                            <div class="att-bar-wrap mt-3">
+                                <div class="att-bar" style="width:<?= $lb['pct'] ?>%;background:var(--accent3)"></div>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
-                    <div class="d-flex justify-content-between">
-                        <div class="text-center">
-                            <div style="font-size:1.6rem;font-weight:700;color:var(--accent5);font-family:'Space Mono',monospace">3</div>
-                            <div style="font-size:.7rem;color:var(--muted)">Used</div>
-                        </div>
-                        <div class="text-center">
-                            <div style="font-size:1.6rem;font-weight:700;color:var(--accent3);font-family:'Space Mono',monospace">9</div>
-                            <div style="font-size:.7rem;color:var(--muted)">Remaining</div>
-                        </div>
-                    </div>
-                    <div class="att-bar-wrap mt-3">
-                        <div class="att-bar" style="width:25%;background:var(--accent3)"></div>
-                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="col-12">
+                    <div class="alert alert-info">No leave types configured yet.</div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="stat-icon" style="background:rgba(79,140,255,.12)">
-                            <i class="bi bi-cup-hot-fill" style="color:var(--accent)"></i>
-                        </div>
-                        <div>
-                            <div style="font-size:.85rem;font-weight:700">Casual Leave</div>
-                            <div style="font-size:.72rem;color:var(--muted)">Total: 10 days/year</div>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-between">
-                        <div class="text-center">
-                            <div style="font-size:1.6rem;font-weight:700;color:var(--accent5);font-family:'Space Mono',monospace">2</div>
-                            <div style="font-size:.7rem;color:var(--muted)">Used</div>
-                        </div>
-                        <div class="text-center">
-                            <div style="font-size:1.6rem;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace">8</div>
-                            <div style="font-size:.7rem;color:var(--muted)">Remaining</div>
-                        </div>
-                    </div>
-                    <div class="att-bar-wrap mt-3">
-                        <div class="att-bar" style="width:20%;background:var(--accent)"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="stat-icon" style="background:rgba(167,139,250,.12)">
-                            <i class="bi bi-airplane-fill" style="color:var(--accent2)"></i>
-                        </div>
-                        <div>
-                            <div style="font-size:.85rem;font-weight:700">Annual Leave</div>
-                            <div style="font-size:.72rem;color:var(--muted)">Total: 20 days/year</div>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-between">
-                        <div class="text-center">
-                            <div style="font-size:1.6rem;font-weight:700;color:var(--accent5);font-family:'Space Mono',monospace">8</div>
-                            <div style="font-size:.7rem;color:var(--muted)">Used</div>
-                        </div>
-                        <div class="text-center">
-                            <div style="font-size:1.6rem;font-weight:700;color:var(--accent2);font-family:'Space Mono',monospace">12</div>
-                            <div style="font-size:.7rem;color:var(--muted)">Remaining</div>
-                        </div>
-                    </div>
-                    <div class="att-bar-wrap mt-3">
-                        <div class="att-bar" style="width:40%;background:var(--accent2)"></div>
-                    </div>
-                </div>
-            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Leave Application Link -->
+        <div class="mb-3">
+            <a href="<?= $GLOBALS['base_url'] ?>/create-self-leave-request" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-lg me-1"></i> Apply for Leave
+            </a>
         </div>
 
         <!-- Leave History -->
@@ -105,51 +76,34 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td style="color:var(--muted)">01</td>
-                            <td><span class="leave-badge badge-present">Medical</span></td>
-                            <td>Jan 14</td>
-                            <td>Jan 15</td>
-                            <td>2</td>
-                            <td style="color:var(--muted)">Flu & fever</td>
-                            <td><span class="leave-badge badge-present">Approved</span></td>
-                        </tr>
-                        <tr>
-                            <td style="color:var(--muted)">02</td>
-                            <td><span class="leave-badge badge-leave">Casual</span></td>
-                            <td>Mar 5</td>
-                            <td>Mar 5</td>
-                            <td>1</td>
-                            <td style="color:var(--muted)">Personal work</td>
-                            <td><span class="leave-badge badge-present">Approved</span></td>
-                        </tr>
-                        <tr>
-                            <td style="color:var(--muted)">03</td>
-                            <td><span class="leave-badge badge-leave">Annual</span></td>
-                            <td>Jun 1</td>
-                            <td>Jun 5</td>
-                            <td>5</td>
-                            <td style="color:var(--muted)">Vacation</td>
-                            <td><span class="leave-badge badge-present">Approved</span></td>
-                        </tr>
-                        <tr>
-                            <td style="color:var(--muted)">04</td>
-                            <td><span class="leave-badge badge-present">Medical</span></td>
-                            <td>Aug 22</td>
-                            <td>Aug 22</td>
-                            <td>1</td>
-                            <td style="color:var(--muted)">Dental appointment</td>
-                            <td><span class="leave-badge badge-present">Approved</span></td>
-                        </tr>
-                        <tr>
-                            <td style="color:var(--muted)">05</td>
-                            <td><span class="leave-badge badge-leave">Annual</span></td>
-                            <td>Dec 10</td>
-                            <td>Dec 12</td>
-                            <td>3</td>
-                            <td style="color:var(--muted)">Family event</td>
-                            <td><span class="leave-badge badge-late">Pending</span></td>
-                        </tr>
+                        <?php if (!empty($myLeaves)): ?>
+                            <?php foreach ($myLeaves as $i => $leave): ?>
+                                <?php
+                                $badgeClass = match ($leave['approval_status'] ?? '') {
+                                    'approved' => 'badge-present',
+                                    'rejected' => 'badge-late',
+                                    default    => 'badge-leave',
+                                };
+                                ?>
+                                <tr>
+                                    <td style="color:var(--muted)"><?= str_pad($i + 1, 2, '0', STR_PAD_LEFT) ?></td>
+                                    <td><span class="leave-badge badge-leave"><?= htmlspecialchars($leave['leave_type_name'] ?? '') ?></span></td>
+                                    <td><?= !empty($leave['start_date']) ? date('M d', strtotime($leave['start_date'])) : '-' ?></td>
+                                    <td><?= !empty($leave['end_date']) ? date('M d', strtotime($leave['end_date'])) : '-' ?></td>
+                                    <td><?= (int)($leave['requested_days'] ?? 0) ?></td>
+                                    <td style="color:var(--muted)"><?= htmlspecialchars($leave['reason'] ?? '-') ?></td>
+                                    <td>
+                                        <span class="leave-badge <?= $badgeClass ?>">
+                                            <?= htmlspecialchars(ucfirst($leave['approval_status'] ?? 'Pending')) ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">No leave records found.</td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
