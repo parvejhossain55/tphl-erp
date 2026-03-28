@@ -1,51 +1,49 @@
     <div class="row">
-        <div class="card__wrapper">
+        <div class="section-header">
+            <div class="section-title">Attendance Details</div>
+            <div class="section-sub">
+                Monthly attendance log
+                <!-- Month picker -->
+                <form method="GET" action="" class="d-inline-flex align-items-center gap-2 ms-3">
+                    <input type="month" name="month"
+                        class="form-control form-control-sm"
+                        value="<?= htmlspecialchars($selectedMonth ?? date('Y-m')) ?>"
+                        style="max-width:160px;">
+                    <button type="submit" class="btn btn-primary btn-sm">Go</button>
+                </form>
+            </div>
+        </div>
 
-            <div class="section-header">
-                <div class="section-title">Attendance Details</div>
-                <div class="section-sub">
-                    Monthly attendance log
-                    <!-- Month picker -->
-                    <form method="GET" action="" class="d-inline-flex align-items-center gap-2 ms-3">
-                        <input type="month" name="month"
-                               class="form-control form-control-sm"
-                               value="<?= htmlspecialchars($selectedMonth ?? date('Y-m')) ?>"
-                               style="max-width:160px;">
-                        <button type="submit" class="btn btn-primary btn-sm">Go</button>
-                    </form>
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-6 col-md-3">
+                <div class="card__wrapper stat-card text-center">
+                    <div class="stat-value" style="color:var(--accent3)"><?= (int)($summary['Present'] ?? 0) ?></div>
+                    <div class="stat-label">Present</div>
                 </div>
             </div>
-
-            <!-- Summary Cards -->
-            <div class="row mb-4">
-                <div class="col-6 col-md-3">
-                    <div class="stat-card text-center">
-                        <div class="stat-value" style="color:var(--accent3)"><?= (int)($summary['Present'] ?? 0) ?></div>
-                        <div class="stat-label">Present</div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-card text-center">
-                        <div class="stat-value" style="color:var(--accent4)"><?= (int)($summary['Late'] ?? 0) ?></div>
-                        <div class="stat-label">Late</div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-card text-center">
-                        <div class="stat-value" style="color:var(--accent5)"><?= (int)($summary['Absent'] ?? 0) ?></div>
-                        <div class="stat-label">Absent</div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-card text-center">
-                        <div class="stat-value" style="color:var(--accent2)"><?= (int)($summary['On Leave'] ?? 0) ?></div>
-                        <div class="stat-label">On Leave</div>
-                    </div>
+            <div class="col-6 col-md-3">
+                <div class="card__wrapper stat-card text-center">
+                    <div class="stat-value" style="color:var(--accent4)"><?= (int)($summary['Late'] ?? 0) ?></div>
+                    <div class="stat-label">Late</div>
                 </div>
             </div>
-
+            <div class="col-6 col-md-3">
+                <div class="card__wrapper stat-card text-center">
+                    <div class="stat-value" style="color:var(--accent5)"><?= (int)($summary['Absent'] ?? 0) ?></div>
+                    <div class="stat-label">Absent</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card__wrapper stat-card text-center">
+                    <div class="stat-value" style="color:var(--accent2)"><?= (int)($summary['On Leave'] ?? 0) ?></div>
+                    <div class="stat-label">On Leave</div>
+                </div>
+            </div>
             <!-- Attendance Table -->
-            <div class="stat-card">
+           
+        </div>
+         <div class="card__wrapper stat-card ">
                 <div class="table-responsive">
                     <table class="leave-table">
                         <thead>
@@ -64,20 +62,22 @@
                                     <?php
                                     $punchIn  = $row['punch_in_time'];
                                     $punchOut = $row['punch_out_time'];
-
+    
                                     $checkIn  = ($punchIn  && $punchIn  !== '0000-00-00 00:00:00') ? date('h:i A', strtotime($punchIn))  : '-';
                                     $checkOut = ($punchOut && $punchOut !== '0000-00-00 00:00:00') ? date('h:i A', strtotime($punchOut)) : '-';
-
+    
                                     $hours = '-';
-                                    if ($punchIn && $punchOut
+                                    if (
+                                        $punchIn && $punchOut
                                         && $punchIn  !== '0000-00-00 00:00:00'
-                                        && $punchOut !== '0000-00-00 00:00:00') {
+                                        && $punchOut !== '0000-00-00 00:00:00'
+                                    ) {
                                         $diff  = strtotime($punchOut) - strtotime($punchIn);
                                         $h     = floor($diff / 3600);
                                         $m     = floor(($diff % 3600) / 60);
                                         $hours = "{$h}h {$m}m";
                                     }
-
+    
                                     $status = $row['today_status'] ?? '-';
                                     $badgeClass = match ($status) {
                                         'Present'  => 'badge-present',
@@ -109,5 +109,5 @@
                     </table>
                 </div>
             </div>
-        </div>
+
     </div>
