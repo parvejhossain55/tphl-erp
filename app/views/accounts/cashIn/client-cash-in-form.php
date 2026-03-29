@@ -55,10 +55,16 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                             <select name="payment_type" class="form-control" id="paymentType" required>
                                 <option value="">-- Select Payment Type --</option>
 
-                                <!-- Registration - Always available -->
-                                <option value="registration" data-details="false">
-                                    Registration
-                                </option>
+                                <!-- Registration - Only if Land Share is completed -->
+                                <?php if ($isLandShareCompleted): ?>
+                                    <option value="registration" data-details="false">
+                                        Registration
+                                    </option>
+                                <?php else: ?>
+                                    <option value="registration" disabled>
+                                        Registration (Requires: Land Share Completed)
+                                    </option>
+                                <?php endif; ?>
 
                                 <!-- Land Share - Only if not completed -->
                                 <?php if (!$isLandShareCompleted): ?>
@@ -87,15 +93,15 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
 
                             <!-- Help text with status -->
                             <small class="text-muted mt-2 d-block">
-                                <?php if (!$isRegistrationPaid): ?>
-                                    <span class="text-warning">
-                                        <i class="fa-light fa-exclamation-triangle"></i>
-                                        Registration must be paid first
-                                    </span>
-                                <?php elseif (!$isLandShareCompleted): ?>
+                                <?php if (!$isLandShareCompleted): ?>
                                     <span class="text-warning">
                                         <i class="fa-light fa-exclamation-triangle"></i>
                                         Remaining Land Share: TK.<?= number_format($remainingLandShare, 2) ?>
+                                    </span>
+                                <?php elseif (!$isRegistrationPaid): ?>
+                                    <span class="text-warning">
+                                        <i class="fa-light fa-exclamation-triangle"></i>
+                                        Registration must be paid first before EMI
                                     </span>
                                 <?php else: ?>
                                     <span class="text-success">

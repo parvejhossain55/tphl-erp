@@ -67,7 +67,7 @@ $show_breadcrumb = true;
                             <th>Company</th>
                             <th>Phone</th>
                             <th>Email</th>
-                            <th>Assigned Agent</th>
+                            <th>Booking Agent(s)</th>
                             <th>Designation</th>
                             <th>Total Agreement Value</th>
                             <th>Total Paid</th>
@@ -140,8 +140,8 @@ $show_breadcrumb = true;
                             <thead>
                                 <tr class="table__title">
                                     <th>Project Name</th>
-
                                     <th>Unit - Floor</th>
+                                    <th>Added By</th>
                                     <th>Flat Size</th>
                                     <th>Total Price</th>
                                     <th>Agreement Value</th>
@@ -255,6 +255,7 @@ $show_breadcrumb = true;
             row.innerHTML = `
             <td>${escapeHtml(land.project_name)}</td>
             <td>${escapeHtml(land.unit_name)} - Floor ${escapeHtml(land.flat_no)}</td>
+            <td>${escapeHtml(land.booking_agent_name || 'System')}</td>
             <td>${Number(land.flat_size).toLocaleString('en-BD')} sqft</td>
             <td>TK.${Number(land.total_price).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
             <td>TK.${Number(land.agreement_value).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>

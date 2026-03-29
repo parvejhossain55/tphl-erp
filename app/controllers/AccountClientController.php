@@ -148,8 +148,8 @@ public function indexTwo($bookingId = null)
     }
     public function CedView()
     {
-        // Get all clients (booked leads with their details)
-        $clients = $this->clientModel->getAllClients();
+        // Get all bookings to show correctly in the CED dashboard
+        $clients = $this->clientModel->getAllBookings();
 
         // Get payment statistics for each client
         $paymentStats = $this->clientModel->getPaymentStatistics();
@@ -327,6 +327,14 @@ public function addTransaction()
 
         $paymentType = $_POST['payment_type'] ?? '';
         
+        // CHECK 0: Ensure land share is completed before other payments
+        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+        if ($paymentType !== 'land_share' && $paymentType !== 'booking_money' && empty($paymentSummary['is_land_share_completed'])) {
+            setError("Land share must be fully paid before adding other payments.");
+            header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
+            exit;
+        }
+
         // SIMPLE CHECK: If EMI is selected, verify registration is paid
         if ($paymentType === 'emi') {
             if (!$this->clientModel->isRegistrationPaid($bookingId)) {
