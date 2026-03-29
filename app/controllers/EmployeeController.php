@@ -59,7 +59,6 @@ class EmployeeController extends Controller
         $departments = $this->departmentModel->getAll();
         $roles = $this->roleModel->getAllFilterRole();
         $designations = $this->designationModel->getAll();
-        $employeeCode = $this->employeeModel->getNextEmployeeCode();
         $this->view("hrm/employees/create-employee", [
             "current_route"   => "create-employee",
             "active"          => "create-employee",
@@ -67,8 +66,6 @@ class EmployeeController extends Controller
             "show_breadcrumb" => true,
             "departments"     => $departments,
             "designations"    => $designations,
-
-            "employeeCode"    => $employeeCode,
             "roles"           => $roles
         ]);
     }
@@ -95,8 +92,9 @@ class EmployeeController extends Controller
             ? password_hash($plainPassword, PASSWORD_DEFAULT)
             : '';
 
-        //  Employee data (NO employee_id here)
+        //  Employee data
         $employeeData = [
+            'employee_id'     => trim($_POST['employee_id'] ?? ''),
             'full_name'       => trim($_POST['full_name'] ?? ''),
             'username'        => trim($_POST['username'] ?? ''),
             'email'           => trim($_POST['email'] ?? ''),
@@ -246,6 +244,7 @@ class EmployeeController extends Controller
 
         //    2 Employee data
         $employeeData = [
+            'employee_id'          => trim($_POST['employee_id'] ?? ''),
             'full_name'            => trim($_POST['full_name'] ?? ''),
             'username'             => trim($_POST['username'] ?? ''),
             'email'                => trim($_POST['email'] ?? ''),

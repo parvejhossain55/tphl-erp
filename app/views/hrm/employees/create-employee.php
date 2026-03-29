@@ -36,8 +36,7 @@
                                  <div class="form__input">
                                      <input class="form-control"
                                          name="employee_id"
-                                         value="<?= $employeeCode ?>"
-                                         readonly>
+                                         required>
                                  </div>
                              </div>
                          </div>
@@ -101,7 +100,7 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
-                                     <label for="qualification">Qualification<span>*</span></label>
+                                     <label for="qualification">Qualification<span>Optional</span></label>
                                  </div>
                                  <div class="form__input">
                                      <input class="form-control" name="qualification" id="qualification" type="text">
@@ -112,7 +111,7 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
-                                     <label for="photo">NID Number</label>
+                                     <label for="photo">NID Number <span>Optional</span></label>
                                  </div>
                                  <div class="form__input">
                                      <input class="form-control" name="nid" id="nid" type="text">
@@ -187,7 +186,7 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
-                                     <label class="form-check-label">Date Of Birth <span>*</span></label>
+                                     <label class="form-check-label">Date Of Birth <span>Optional</span></label>
                                  </div>
                                  <div class="form__input">
                                      <input name="dob" class="form-control" id="humanFriendlyDates" type="date" readonly>
@@ -308,7 +307,7 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
-                                     <label for="photo">Employee Photo (300px*300px)</label>
+                                     <label for="photo">Employee Photo (300px*300px)<span>Optional</span></label>
                                  </div>
                                  <div class="form__input">
                                      <input class="form-control" id="photo" type="file" name="photo">

@@ -14,8 +14,8 @@ class Employee extends Model
                    desg.name AS designation_name, 
                    dept.name AS department_name  
             FROM employees AS e
-            JOIN designations AS desg ON e.designation_id = desg.id
-            JOIN departments AS dept ON e.department_id = dept.id
+            LEFT JOIN designations AS desg ON e.designation_id = desg.id
+            LEFT JOIN departments AS dept ON e.department_id = dept.id
             WHERE 1";
 
         $params = [];
@@ -110,21 +110,9 @@ class Employee extends Model
         $result = $this->db->query($sql);
         return (int)$result->fetch_assoc()['total'];
     }
-    public function getNextEmployeeCode()
-    {
-        $result = $this->db->query("SELECT AUTO_INCREMENT 
-                                    FROM INFORMATION_SCHEMA.TABLES 
-                                    WHERE TABLE_SCHEMA = DATABASE() 
-                                    AND TABLE_NAME = 'employees'");
-
-        $row = $result->fetch_assoc();
-        $nextId = $row['AUTO_INCREMENT'];
-
-        return 'EMP-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
-    }
 
 
-    public function countAll($search = '', $department_id = 'employeePhoto')
+    public function countAll($search = '', $department_id = '')
     {
         $sql = "SELECT COUNT(*) as total FROM employees WHERE 1";
         $params = [];
@@ -153,7 +141,7 @@ class Employee extends Model
         }
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
-        return $result['total'];
+        return (int)$result['total'];
     }
     public function create($data, $photoInputName = '')
     {
@@ -176,7 +164,6 @@ class Employee extends Model
         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
-        $tempEmployeeId = '';
         $dob = !empty($data['dob']) ? $data['dob'] : null;
         $joining_date = !empty($data['joining_date']) ? $data['joining_date'] : null;
 
@@ -186,7 +173,7 @@ class Employee extends Model
 
         $stmt->bind_param(
             "ssdssssssssssiissssssssssisissss",
-            $tempEmployeeId,
+            $data['employee_id'],
             $data['full_name'],
             $data['basic_salary'],
             $data['username'],
@@ -225,12 +212,6 @@ class Employee extends Model
         }
 
         $id = $this->db->insert_id;
-
-        $employeeCode = 'EMP-' . str_pad($id, 5, '0', STR_PAD_LEFT);
-
-        $update = $this->db->prepare("UPDATE employees SET employee_id = ? WHERE id = ?");
-        $update->bind_param("si", $employeeCode, $id);
-        $update->execute();
 
         return $id;
     }
@@ -315,8 +296,9 @@ class Employee extends Model
             unlink(dirname(__DIR__, 2) . "/public/uploads/employees/" . $oldPhoto);
         }
 
-        // 5 Update query (NO employee_id)
+        // 5 Update query (WITH employee_id)
         $sql = "UPDATE employees SET
+        employee_id = ?,
         full_name = ?, 
         basic_salary = ?, 
         username = ?, 
@@ -354,7 +336,8 @@ class Employee extends Model
         }
 
         $stmt->bind_param(
-            "sdsssssssssiissssssssssissss",
+            "ssdsssssssssiissssssssssisssi",
+            $data['employee_id'],      // s
             $data['full_name'],        // s
             $data['basic_salary'],     // d
             $data['username'],         // s

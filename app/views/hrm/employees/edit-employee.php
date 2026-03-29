@@ -16,6 +16,13 @@
          <form action="<?= $GLOBALS['base_url'] ?>/update-employee/<?= $employee['id'] ?>" method="POST" enctype="multipart/form-data">
 
              <div class="row g-20 gy-20 align-items-center justify-content-center">
+                 <!-- Employee ID -->
+                 <div class="col-lg-6">
+                     <label for="employee_id">Employee ID <span>*</span></label>
+                     <input class="form-control" name="employee_id" id="employee_id" type="text"
+                         value="<?= htmlspecialchars($employee['employee_id']) ?>" required>
+                 </div>
+
                  <!-- Full Name -->
                  <div class="col-lg-6">
                      <label for="full_name">Full Name <span>*</span></label>
