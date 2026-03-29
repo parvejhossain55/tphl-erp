@@ -64,7 +64,7 @@ $show_breadcrumb = true;
                     </div>
                     <div class="employee__content">
                         <div class="employee__meta mb-15">
-                            <h4 class="mb-8"><a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['id'] ?>"><?= $employee['full_name'] ?? '' ?></a></h4>
+                            <h4 class="mb-8"><a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['employee_id'] ?>"><?= $employee['full_name'] ?? '' ?></a></h4>
                             <p><?= $employee['department_name'] ?></p>
                             <p>Employee ID - <?= $employee['id'] ?></p>
                         </div>

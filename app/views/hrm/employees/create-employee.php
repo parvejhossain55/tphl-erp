@@ -239,6 +239,16 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
+                                     <label for="gross_salary">Gross Salary<span>*</span></label>
+                                 </div>
+                                 <div class="form__input">
+                                     <input class="form-control" name="gross_salary" id="gross_salary" type="number" required>
+                                 </div>
+                             </div>
+                         </div>
+                         <div class="col-lg-6">
+                             <div class="from__input-box">
+                                 <div class="form__input-title">
                                      <label for="basic_salary">Basic Salary<span>*</span></label>
                                  </div>
                                  <div class="form__input">

@@ -82,7 +82,7 @@
                                               data-designation-id="<?= $emp['designation_id'] ?>"
                                               data-empid="<?= $emp['employee_id'] ?>"
                                               data-email="<?= $emp['email'] ?>"
-                                              data-basic-salary="<?= $emp['basic_salary'] ?>">
+                                              data-basic-salary="<?= $emp['basic_salary'] ?>" data-gross-salary="<?= $emp['gross_salary'] ?>">
                                               <?= htmlspecialchars($emp['full_name']) ?> - <?= $emp['employee_id'] ?>
                                           </option>
                                       <?php endforeach; ?>
@@ -116,6 +116,10 @@
                               <div class="col-md-6">
                                   <h5 class="mb-3">Earnings</h5>
                                   <div class="row g-3">
+                                      <div class="col-12 mb-2">
+                                          <label class="form-label">Gross Salary</label>
+                                          <input id="grossSalary" type="number" class="form-control" value="0" readonly>
+                                      </div>
                                       <div class="col-12 mb-2">
                                           <label class="form-label">Basic Salary</label>
                                           <input id="basicSalary" type="number" class="form-control earning" value="0" readonly>
@@ -213,6 +217,7 @@
               basic_salary: document.getElementById('basicSalary').value,
               total_earning: document.getElementById('totalEarningInput').value,
               total_deduction: document.getElementById('totalDeductionInput').value,
+              gross_salary: document.getElementById('grossSalary').value,
               net_salary: (parseFloat(document.getElementById('totalEarningInput').value) - parseFloat(document.getElementById('totalDeductionInput').value)).toFixed(2),
               earnings,
               deductions,
@@ -295,6 +300,8 @@
           document.getElementById('emp_id').value = selected.dataset.empid || '';
           document.getElementById('email').value = selected.dataset.email || '';
           document.getElementById('basicSalary').value = selected.dataset.basicSalary || 0;
+          // ✅ NEW: Gross Salary set
+          document.getElementById('grossSalary').value = selected.dataset.grossSalary || 0;
 
           calculateNetSalary();
       });

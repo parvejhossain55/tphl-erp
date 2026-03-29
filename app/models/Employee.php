@@ -14,8 +14,8 @@ class Employee extends Model
                    desg.name AS designation_name, 
                    dept.name AS department_name  
             FROM employees AS e
-            LEFT JOIN designations AS desg ON e.designation_id = desg.id
-            LEFT JOIN departments AS dept ON e.department_id = dept.id
+            JOIN designations AS desg ON e.designation_id = desg.id
+            JOIN departments AS dept ON e.department_id = dept.id
             WHERE 1";
 
         $params = [];
@@ -112,7 +112,7 @@ class Employee extends Model
     }
 
 
-    public function countAll($search = '', $department_id = '')
+    public function countAll($search = '', $department_id = 'employeePhoto')
     {
         $sql = "SELECT COUNT(*) as total FROM employees WHERE 1";
         $params = [];
@@ -141,7 +141,7 @@ class Employee extends Model
         }
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
-        return (int)$result['total'];
+        return $result['total'];
     }
     public function create($data, $photoInputName = '')
     {
@@ -153,7 +153,7 @@ class Employee extends Model
 
         $stmt = $this->db->prepare("
         INSERT INTO employees (
-            employee_id, full_name, basic_salary, username, email,
+            employee_id, full_name, gross_salary, basic_salary, username, email,
             father_name, phone, emergency_contact, qualification,
             experience, address, pass_num, nid,
             department_id, designation_id, dob, joining_date,
@@ -161,7 +161,7 @@ class Employee extends Model
             social_media1, social_media2, social_media3,
             photo, make_user, password, created_by,
             employee_type, employee_status,workplace, responsibilities
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         $dob = !empty($data['dob']) ? $data['dob'] : null;
@@ -172,9 +172,10 @@ class Employee extends Model
             : '';
 
         $stmt->bind_param(
-            "ssdssssssssssiissssssssssisissss",
+            "sssdssssssssssiissssssssssisissss",
             $data['employee_id'],
             $data['full_name'],
+            $data['gross_salary'],
             $data['basic_salary'],
             $data['username'],
             $data['email'],
@@ -225,6 +226,7 @@ class Employee extends Model
             e.id,
             e.full_name,
             e.email,
+            e.gross_salary,
             e.basic_salary,
             e.employee_id,
             e.joining_date,
@@ -300,6 +302,7 @@ class Employee extends Model
         $sql = "UPDATE employees SET
         employee_id = ?,
         full_name = ?, 
+        gross_salary = ?,
         basic_salary = ?, 
         username = ?, 
         email = ?, 
@@ -336,9 +339,10 @@ class Employee extends Model
         }
 
         $stmt->bind_param(
-            "ssdsssssssssiissssssssssisssi",
+            "ssddsssssssssiissssssssssisssi",
             $data['employee_id'],      // s
             $data['full_name'],        // s
+            $data['gross_salary'],     // d
             $data['basic_salary'],     // d
             $data['username'],         // s
             $data['email'],            // s
