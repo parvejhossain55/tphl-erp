@@ -1498,28 +1498,6 @@ CREATE TABLE `letters` (
 
 
 
-CREATE TABLE `manpower_requisitions` (
-  `id` int(11) NOT NULL,
-  `department_id` int(11) NOT NULL,
-  `department_head_id` int(11) NOT NULL,
-  `designation_id` int(11) NOT NULL,
-  `job_title` varchar(255) NOT NULL,
-  `no_of_vacancies` int(11) NOT NULL,
-  `job_experience` varchar(100) DEFAULT NULL,
-  `to_be_filled_before` date DEFAULT NULL,
-  `age_limit` varchar(50) DEFAULT NULL,
-  `report_to` int(11) DEFAULT NULL,
-  `requirement_type` enum('project','replacement','new') NOT NULL,
-  `project_id` int(11) DEFAULT NULL,
-  `replacement_reason` text DEFAULT NULL,
-  `job_description` text DEFAULT NULL,
-  `education_qualification` text DEFAULT NULL,
-  `special_skills` text DEFAULT NULL,
-  `status` enum('pending','approved','rejected') DEFAULT 'pending',
-  `approved_by` int(11) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Indexes for dumped tables
@@ -2306,22 +2284,6 @@ ALTER TABLE `letters`
 --
 
 
---
--- Indexes for table `manpower_requisitions`
---
-ALTER TABLE `manpower_requisitions`
-  ADD PRIMARY KEY (`id`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `manpower_requisitions`
---
-ALTER TABLE `manpower_requisitions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-COMMIT;
 
 
 ALTER TABLE `cameras`
