@@ -656,6 +656,7 @@ CREATE TABLE `employees` (
   `dob` date DEFAULT NULL,
   `workplace` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `joining_date` date DEFAULT NULL,
+  `gross_salary` float DEFAULT NULL,
   `basic_salary` float DEFAULT NULL,
   `account_holder_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `account_number` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -690,7 +691,7 @@ CREATE TABLE `employees` (
 
 LOCK TABLES `employees` WRITE;
 /*!40000 ALTER TABLE `employees` DISABLE KEYS */;
-INSERT INTO `employees` VALUES (1,NULL,'Fahim','EMP-00001','fahim','fahim@gmail.com','Forhad','01734555783','01734555783','BBA','','Dhaka','','23784',1,1,'1998-02-04','Gulshan','2026-01-01',30000,'Fahim','7523423478',1,'$2y$10$JphYkjE9NT3MdD93lmgv7uZ2uu4nWUubfKZHjdFvqN6rq6KTk8UIC','City Bank','Shaymoli','','','','','permanent','active',NULL,3,NULL,'2026-03-29 03:42:23','2026-03-29 03:42:23');
+INSERT INTO `employees` VALUES (1,NULL,'Fahim','EMP-00001','fahim','fahim@gmail.com','Forhad','01734555783','01734555783','BBA','','Dhaka','','23784',1,1,'1998-02-04','Gulshan','2026-01-01',30000,20000,'Fahim','7523423478',1,'$2y$10$JphYkjE9NT3MdD93lmgv7uZ2uu4nWUubfKZHjdFvqN6rq6KTk8UIC','City Bank','Shaymoli','','','','','permanent','active',NULL,3,NULL,'2026-03-29 03:42:23','2026-03-29 03:42:23');
 /*!40000 ALTER TABLE `employees` ENABLE KEYS */;
 UNLOCK TABLES;
 
