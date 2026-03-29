@@ -44,7 +44,7 @@ $show_breadcrumb = true;
                                     <div class="d-flex align-items-center justify-content-start gap-10">
                                         <button type="button" class="table__icon edit"
                                             data-bs-toggle="modal"
-                                            data-bs-target="#editTemplate"
+                                            data-bs-target="#editDepartment"
                                             data-id="<?= $dept['id'] ?>"
                                             data-name="<?= htmlspecialchars($dept['name']) ?>"
                                             data-status="<?= $dept['status'] ?>">
