@@ -651,12 +651,13 @@ CREATE TABLE `employees` (
   `social_media2` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `social_media3` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `photo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
- `employee_type` enum('permanent','contract','director','intern','remote','probation','management') DEFAULT NULL,
+  `employee_type` enum('permanent','contract','director','intern','remote','probation','management') DEFAULT NULL,
   `employee_status` enum('active','inactive','resigned','terminated','on_leave') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'active',
   `responsibilities` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+   `team_id` int(11) DEFAULT NULL,
   `created_by` int DEFAULT NULL,
-  `team_id` int(11) DEFAULT NULL,
   `deleted_at` datetime DEFAULT NULL,
+
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -1016,7 +1017,7 @@ CREATE TABLE `leads` (
   `status` enum('active','inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'active',
   `last_lead_action` enum('new','booked','follow up','visited','cancel') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'new',
   `deleted_at` datetime DEFAULT NULL,
-    `team_id` int(11) DEFAULT NULL,
+   `team_id` int(11) DEFAULT NULL,
   `lead_quality` enum('Not Interested','Prospect','Pending') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Pending',
   `lead_image` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `lead_name_bn` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -1536,6 +1537,26 @@ LOCK TABLES `payslips` WRITE;
 /*!40000 ALTER TABLE `payslips` ENABLE KEYS */;
 UNLOCK TABLES;
 
+DROP TABLE IF EXISTS `teams`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `teams` (
+   `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `status` int(11) NOT NULL DEFAULT 1,
+  `created_by` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `teams`
+--
+
+LOCK TABLES `teams` WRITE;
+/*!40000 ALTER TABLE `payslips` DISABLE KEYS */;
+/*!40000 ALTER TABLE `payslips` ENABLE KEYS */;
+UNLOCK TABLES;
+
 --
 -- Table structure for table `permissions`
 --
@@ -1823,8 +1844,6 @@ CREATE TABLE `site_settings` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-
-
 --
 -- Dumping data for table `site_settings`
 --
@@ -1866,27 +1885,6 @@ CREATE TABLE `site_visits` (
 --
 
 LOCK TABLES `site_visits` WRITE;
-/*!40000 ALTER TABLE `site_visits` DISABLE KEYS */;
-/*!40000 ALTER TABLE `site_visits` ENABLE KEYS */;
-UNLOCK TABLES;
-
-
-DROP TABLE IF EXISTS `teams`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `teams` (
-  `id` int(11) NOT NULL,
-  `name` varchar(100) NOT NULL,
-  `status` int(11) NOT NULL DEFAULT 1,
-  `created_by` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `site_visits`
---
-
-LOCK TABLES `teams` WRITE;
 /*!40000 ALTER TABLE `site_visits` DISABLE KEYS */;
 /*!40000 ALTER TABLE `site_visits` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -2006,7 +2004,7 @@ CREATE TABLE `users` (
   `media_link1` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `media_link2` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `last_logout` datetime DEFAULT CURRENT_TIMESTAMP,
-  `team_id` int(11) DEFAULT NULL,
+  `team_id` int DEFAULT NULL,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
