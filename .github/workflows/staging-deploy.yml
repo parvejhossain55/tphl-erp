@@ -53,3 +53,8 @@ jobs:
             cp -r /var/www/staging/TPHL-ERP/.htaccess /var/www/html/TPHL-ERP/
 
             echo "Deployment completed successfully"
+
+
+
+
+            
