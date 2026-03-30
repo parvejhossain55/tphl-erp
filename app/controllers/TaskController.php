@@ -101,35 +101,35 @@ class TaskController extends Controller
         $assignedBy = $stmt2->get_result()->fetch_assoc();
 
 
-        try {
+        // try {
 
-            if (!$user) {
-                die("User not found");
-            }
+        //     if (!$user) {
+        //         die("User not found");
+        //     }
 
-            if (empty($user['email'])) {
-                die("User email empty");
-            }
+        //     if (empty($user['email'])) {
+        //         die("User email empty");
+        //     }
 
-            $response = sendMail(
-                $user['email'],
-                'New Task Assigned',
-                'https://staging.thepremiumhomesltd.com/TPHL-ERP/task-lists',
-                $assignedBy
-            );
+        //     $response = sendMail(
+        //         $user['email'],
+        //         'New Task Assigned',
+        //         'https://thepremiumhomesltd.com/TPHL-ERP/admin-login',
+        //         $assignedBy
+        //     );
 
-            // echo "<pre>";
-            // print_r($response);
-            exit;
-        } catch (\Throwable $th) {
-            echo "Error: " . $th->getMessage();
-        }
+        //     // echo "<pre>";
+        //     // print_r($response);
+        //     exit;
+        // } catch (\Throwable $th) {
+        //     echo "Error: " . $th->getMessage();
+        // }
         try {
             if ($user && !empty($user['email'])) {
                 sendMail(
                     $user['email'],
                     'New Task Assigned',
-                    'https://staging.thepremiumhomesltd.com/TPHL-ERP/task-lists',
+                    'https://thepremiumhomesltd.com/TPHL-ERP/admin-login',
                     $assignedBy
                 );
             }
