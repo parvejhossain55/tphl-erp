@@ -14,8 +14,8 @@ class Employee extends Model
                    desg.name AS designation_name, 
                    dept.name AS department_name  
             FROM employees AS e
-            JOIN designations AS desg ON e.designation_id = desg.id
-            JOIN departments AS dept ON e.department_id = dept.id
+            LEFT JOIN designations AS desg ON e.designation_id = desg.id
+           LEFT JOIN departments AS dept ON e.department_id = dept.id
             WHERE 1";
 
         $params = [];
@@ -384,15 +384,17 @@ class Employee extends Model
 
 public function delete($id)
 {
-    $tables = ['payslips', 'tasks', 'employees'];
+    foreach (['payslips', 'tasks', 'employees'] as $table) {
 
-    foreach ($tables as $table) {
+        if ($table == 'employees') {
+            $sql = "DELETE FROM employees WHERE id = ?";
+        } elseif ($table == 'tasks') {
+            $sql = "DELETE FROM tasks WHERE user_id = ?"; // 
+        } else {
+            $sql = "DELETE FROM payslips WHERE employee_id = ?";
+        }
 
-        $stmt = $this->db->prepare(
-            $table == 'employees'
-                ? "DELETE FROM employees WHERE id = ?"
-                : "DELETE FROM $table WHERE employee_id = ?"
-        );
+        $stmt = $this->db->prepare($sql);
 
         if (!$stmt) {
             error_log("Prepare failed for table $table: " . $this->db->error);
@@ -403,7 +405,7 @@ public function delete($id)
 
         if (!$stmt->execute()) {
             error_log("Delete failed in $table: " . $stmt->error);
-            return false; 
+            return false;
         }
 
         $stmt->close();

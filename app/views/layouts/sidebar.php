@@ -466,11 +466,11 @@
 
                         </ul>
                     </li>
-                    <li class="sidebar__menu-category">
+                    <li class="sidebar__menu-category d-none">
                         <span class="category-name">Report</span>
                     </li>
 
-                    <ul class="sidebar-menu child2" style="display:block;">
+                    <ul class="sidebar-menu child2 d-none" style="display:block;">
                         <li class="slide <?= isActive('daily-attendance-report', $current_route) ?>">
                             <a class="sidebar__menu-item <?= isActive('daily-attendance-report', $current_route) ?>" href="<?= $base_url ?>/daily-attendance-report">Dept. Wise Attendance Report</a>
                         </li>
@@ -487,11 +487,11 @@
                             <a class="sidebar__menu-item <?= isActive('mobile-punch-report', $current_route) ?>" href="<?= $base_url ?>/mobile-punch-report"> Mobile Punch Report</a>
                         </li>
                     </ul>
-                    <li class="sidebar__menu-category">
+                    <li class="sidebar__menu-category d-none">
                         <span class="category-name">All Report </span>
                     </li>
 
-                    <ul class="sidebar-menu child2" style="display:block;">
+                    <ul class="sidebar-menu child2 d-none" style="display:block;">
                         <li class="slide <?= isActive('department-kpi', $current_route) ?>">
                             <a class="sidebar__menu-item <?= isActive('department-kpi', $current_route) ?>" href="<?= $base_url ?>/department-kpi">Performance Report</a>
                         </li>
@@ -796,7 +796,7 @@
 
                 <?php endif; ?>
                 <!-- FOR Task Manage  -->
-                <li class="slide <?= isActive('mobile-punch', $current_route) ?>">
+                <li class="slide d-none <?= isActive('mobile-punch', $current_route) ?>">
                     <a href="<?= $base_url ?>/mobile-punch" class="sidebar__menu-item <?= isActive('mobile-punch', $current_route) ?>">
                         <div class="side-menu__icon"><i class="fa-solid fa-book"></i></div>
                         <span class="sidebar__menu-label">Mobile Punch</span>

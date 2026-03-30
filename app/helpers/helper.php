@@ -980,3 +980,14 @@ function renderApprovalContext(array $req)
 
 <?php
 }
+
+
+//mail
+
+if (!function_exists('sendMail')) {
+    function sendMail($email, $title, $link, $assignedBy)
+    {
+        $mail = new MailService();
+        return $mail->sendMail($email, $title, $link, $assignedBy);
+    }
+}

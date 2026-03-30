@@ -668,7 +668,7 @@ CREATE TABLE `employees` (
   `social_media2` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `social_media3` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `photo` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `employee_type` enum('permanent','contract','director') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `employee_type` enum('permanent','contract','director','intern','remote','probation','management') COLLATE utf8mb4_general_ci DEFAULT NULL,
   `employee_status` enum('active','inactive','resigned','terminated','on_leave') COLLATE utf8mb4_general_ci DEFAULT 'active',
   `responsibilities` text COLLATE utf8mb4_general_ci,
   `created_by` int DEFAULT NULL,

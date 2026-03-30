@@ -127,7 +127,7 @@
 
                                  <div class="form__input">
                                      <select class="form-control" name="role_id">
-                                        <option value="">Select Role</option>
+                                         <option value="">Select Role</option>
                                          <?php foreach ($roles as $role): ?>
                                              <option value="<?= $role['id'] ?>"><?= $role['name'] ?></option>
                                          <?php endforeach ?>
@@ -231,7 +231,7 @@
                                      <label for="branchname">Branch Name <span class="text-muted">optional</span></label>
                                  </div>
                                  <div class="form__input">
-                                     <input class="form-control" name="branch_name" id="branch_name" type="text" >
+                                     <input class="form-control" name="branch_name" id="branch_name" type="text">
 
                                  </div>
                              </div>
@@ -294,8 +294,12 @@
                                  <select name="employee_type" id="employee_type" class="form-select" required>
                                      <option value="">Select</option>
                                      <option value="permanent">Permanent</option>
-                                     <option value="contract">Contract</option>
+                                     <option value="contract">Contracted</option>
                                      <option value="director">Director</option>
+                                     <option value="intern">Intern</option>
+                                     <option value="remote">Remote</option>
+                                     <option value="probation">Probation</option>
+                                     <option value="management">Management</option>
                                  </select>
                              </div>
                          </div>
@@ -324,13 +328,19 @@
                                  </div>
                              </div>
                          </div>
-                             <div class="col-lg-6">
+                         <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
                                      <label for="workplace">Workplace <span class="text-muted">Optional</span></label>
                                  </div>
                                  <div class="form__input">
-                                     <input class="form-control" name="workplace" id="workplace" type="text">
+                                     <select class="form-control" name="workplace" id="workplace">
+                                         <option value="">Select Workplace</option>
+                                         <option value="Corporate Office">Corporate Office</option>
+                                         <option value="Site Office">Site Office</option>
+                                         <option value="Site Office 2">Ati Society (Site Office 2)</option>
+                                         <option value="Zonal Office">Zonal Office</option>
+                                     </select>
                                  </div>
                              </div>
                          </div>
@@ -360,17 +370,17 @@
                                  </div>
                              </div>
                              <div class="col-md-12 mt-3">
-                             <div class="from__input-box">
-                                 <div class="form__input-title">
-                                     <label>Responsibilities</label>
-                                 </div>
                                  <div class="from__input-box">
-                                     <textarea class="form-control" name="responsibilities" rows="4" placeholder="Enter key responsibilities..."></textarea>
+                                     <div class="form__input-title">
+                                         <label>Responsibilities</label>
+                                     </div>
+                                     <div class="from__input-box">
+                                         <textarea class="form-control" name="responsibilities" rows="4" placeholder="Enter key responsibilities..."></textarea>
+                                     </div>
                                  </div>
                              </div>
-                         </div>
 
-                     </div>
+                         </div>
 
 
                      </div>

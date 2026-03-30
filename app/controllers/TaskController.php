@@ -62,49 +62,98 @@ class TaskController extends Controller
     public function store()
     {
         $data = [
-            'title'            => trim($_POST['title'] ?? ''),
-            'user_id'      => (int) ($_POST['user_id'] ?? 0),
-            'description'      => trim($_POST['description'] ?? ''),
-            'start_date'       => $_POST['start_date'] ?? null,
-            'deadline'         => $_POST['deadline'] ?? null,
-            'employee_accept'  => (int) ($_POST['employee_accept'] ?? 0),
-            'status'           => $_POST['status'] ?? 'pending',
-            'progress'         => (int) ($_POST['progress'] ?? 0),
-            'priority'         => $_POST['priority'] ?? 'medium',
-            'assigned_by'      => $_SESSION['user']['id'] ?? null,
+            'title' => trim($_POST['title'] ?? ''),
+            'user_id' => (int) ($_POST['user_id'] ?? 0),
+            'description' => trim($_POST['description'] ?? ''),
+            'start_date' => $_POST['start_date'] ?? null,
+            'deadline' => $_POST['deadline'] ?? null,
+            'employee_accept' => (int) ($_POST['employee_accept'] ?? 0),
+            'status' => $_POST['status'] ?? 'pending',
+            'progress' => (int) ($_POST['progress'] ?? 0),
+            'priority' => $_POST['priority'] ?? 'medium',
+            'assigned_by' => $_SESSION['user']['id'] ?? null,
         ];
 
+        //  Receiver (assigned user)
+        $stmt = $this->db->prepare("SELECT email, full_name FROM users WHERE id = ?");
+        $stmt->bind_param("i", $data['user_id']);
+        $stmt->execute();
+        $user = $stmt->get_result()->fetch_assoc();
+        // var_dump($user);
+        // exit;
 
-        if ($this->taskModel->create($data)) {
-            $taskId = $this->db->insert_id; // নতুন task id
-            $message = "New task assigned: " . $data['title'];
+        //  Assigned By (full details)
+        $stmt2 = $this->db->prepare("
+        SELECT 
+            u.full_name,
+            r.name AS role_name,
+            dsg.name AS designation_name,
+            dep.name AS department_name
+        FROM users u
+        LEFT JOIN roles r ON u.role_id = r.id
+        LEFT JOIN designations dsg ON u.designation_id = dsg.id
+        LEFT JOIN departments dep ON dsg.department_id = dep.id
+        WHERE u.id = ?
+    ");
 
-            // Notification insert
-            $stmt = $this->db->prepare(
-                "INSERT INTO notifications (user_id, task_id, assigned_by, message) VALUES (?, ?, ?, ?)"
-            );
-            $stmt->bind_param("iiis", $data['user_id'], $taskId, $data['assigned_by'], $message);
-            $stmt->execute();
+        $stmt2->bind_param("i", $data['assigned_by']);
+        $stmt2->execute();
+        $assignedBy = $stmt2->get_result()->fetch_assoc();
 
-            header("Location: {$GLOBALS['base_url']}/task-lists");
-            exit;
+
+        // try {
+
+        //     if (!$user) {
+        //         die("User not found");
+        //     }
+
+        //     if (empty($user['email'])) {
+        //         die("User email empty");
+        //     }
+
+        //     $response = sendMail(
+        //         $user['email'],
+        //         'New Task Assigned',
+        //         'https://staging.thepremiumhomesltd.com/TPHL-ERP/task-lists',
+        //         $assignedBy
+        //     );
+
+        //     // echo "<pre>";
+        //     // print_r($response);
+        //     // exit;
+        // } catch (\Throwable $th) {
+        //     echo "Error: " . $th->getMessage();
+        // }
+        try {
+            if ($user && !empty($user['email'])) {
+                sendMail(
+                    $user['email'],
+                    'New Task Assigned',
+                    'https://staging.thepremiumhomesltd.com/TPHL-ERP/task-lists',
+                    $assignedBy
+                );
+            }
+        } catch (\Throwable $th) {
+            echo "<h3 style='color:red'>Mail Error: " . $th->getMessage() . "</h3>";
         }
-
 
         if ($this->taskModel->create($data)) {
             $taskId = $this->db->insert_id;
-            $message = "New Task Assigned for You" . $data["title"];
 
-            $stmt = $this->db->prepare(
-                "INSERT INTO notifications(user_id,task_id, assigned_by, message) VALUES(?,?,?,?) "
+            $stmt3 = $this->db->prepare(
+                "INSERT INTO notifications (user_id, task_id, assigned_by, message) VALUES (?, ?, ?, ?)"
             );
-            $stmt->bind_param("");
-            $stmt->execute();
+
+            $message = "New task assigned: " . $data['title'];
+
+            $stmt3->bind_param("iiis", $data['user_id'], $taskId, $data['assigned_by'], $message);
+            $stmt3->execute();
+
             header("Location: {$GLOBALS['base_url']}/task-lists");
             exit;
-        } else {
-            echo "<h3 style='color:red'>Failed to create task</h3>";
         }
+
+        echo "<h3 style='color:red'>Failed to create task</h3>";
     }
     // Edit Employee Page
     public function edit($id)
@@ -193,17 +242,17 @@ class TaskController extends Controller
 
         // 2 Notifications
         $notifications = $this->taskModel->taskNotification();
-// 1. Get count of today's tasks (for card)
-    $stmt = $this->db->prepare("
+        // 1. Get count of today's tasks (for card)
+        $stmt = $this->db->prepare("
         SELECT COUNT(*) AS today_task_count
         FROM tasks
         WHERE user_id = ?
           AND status != 'completed'
           AND DATE(deadline) = CURDATE()
     ");
-    $stmt->bind_param("i", $loggedUserId);
-    $stmt->execute();
-    $todayTaskCount = $stmt->get_result()->fetch_assoc()['today_task_count'] ?? 0;
+        $stmt->bind_param("i", $loggedUserId);
+        $stmt->execute();
+        $todayTaskCount = $stmt->get_result()->fetch_assoc()['today_task_count'] ?? 0;
         // 3 Pending tasks for this user
         $stmt = $this->db->prepare("
     SELECT 

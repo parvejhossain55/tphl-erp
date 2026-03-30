@@ -17,7 +17,6 @@ ini_set('display_errors', 1);
 $root = dirname(__DIR__);
 $GLOBALS['base_url'] = '/TPHL-ERP';
 
-
 spl_autoload_register(function ($class) use ($root) {
     $class = str_replace('\\', '/', $class);
 
