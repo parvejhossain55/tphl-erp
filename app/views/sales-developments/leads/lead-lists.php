@@ -147,7 +147,7 @@ $show_breadcrumb = true;
                         </a>
 
                         <!-- Import CSV button outside form submit -->
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
+                        <button type="button" class="d-none btn btn-outline-secondary btn-sm" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
                             Import CSV
                         </button>
 

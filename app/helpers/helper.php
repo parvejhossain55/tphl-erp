@@ -242,6 +242,9 @@ function redirectByRole()
         case 11: // sales
             $url = "{$GLOBALS['base_url']}/whatsapp-dashboard";
             break;
+        case 12: // sales
+            $url = "{$GLOBALS['base_url']}/digital-marketing-dashboard";
+            break;
 
         default:
             $url = "{$GLOBALS['base_url']}/admin-login";

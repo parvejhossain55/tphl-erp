@@ -132,6 +132,8 @@
                         </a>
                     </li>
 
+
+
                     <li class="slide ">
                         <a href="<?= $base_url ?>/contact-lists" class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
@@ -386,7 +388,13 @@
                             <span class="sidebar__menu-label">Task Dashbaord</span>
                         </a>
                     </li>
-
+                    <!-- Teams Manage -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/teams" class="sidebar__menu-item <?= isActive('teams', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
+                            <span class="sidebar__menu-label">Teams Manage</span>
+                        </a>
+                    </li>
                     <!-- Location -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/employee-lists" class="sidebar__menu-item <?= isActive('employee-lists', $current_route) ?>">
@@ -509,7 +517,7 @@
                         </li>
 
                     </ul>
-                 
+
                 <?php endif; ?>
 
 
@@ -591,6 +599,27 @@
 
                 <?php endif;  ?>
 
+                <!--Start CED  -->
+                <?php if (hasPermission("Upload CSV")):  ?>
+                    <!--CED CATEGORY -->
+                    <li class="sidebar__menu-category">
+
+                        <span class="category-name">My Dashboard</span>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/digital-marketing-dashboard" class="sidebar__menu-item <?= isActive('digital-marketing-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">Marketing Head Dashboard</span>
+                        </a>
+                    </li>
+
+
+
+
+
+
+                <?php endif; ?>
+                <!--End CED CATEGORY -->
 
                 <!--Start CED  -->
                 <?php if (hasPermission("CED Manage")):  ?>

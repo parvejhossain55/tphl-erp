@@ -307,7 +307,7 @@
         </div>
         <?php foreach ($myAllleads as $key => $lead): ?>
             <!-- Lead Card -->
-            <div class="lead-card  mb-2" data-id="<?= $lead['id'] ?>">
+            <div class="lead-card h-100 mb-0" data-id="<?= $lead['id'] ?>">
                 <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
                     <div class="flex-grow-1 overflow-hidden">
                         <span class="lead-name text-truncate"><?= $lead['full_name'] ?></span>
@@ -335,14 +335,14 @@
                         <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>" class="btn btn-primary btn-sm w-100 d-flex justify-content-between align-items-center px-2">
                             <span>Follow Up</span>
                             <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px;justify-content: center;"><?= $followUpCounts[$lead['id']] ?></span>
+                                <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;"><?= $followUpCounts[$lead['id']] ?></span>
                             <?php endif; ?>
                         </a>
 
                         <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>" class="btn btn-secondary btn-sm w-100 d-flex justify-content-between align-items-center px-2">
                             <span>Booking</span>
                             <?php if (!empty($bookingCount[$lead['id']])): ?>
-                                <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px; justify-content: center;"><?= $bookingCount[$lead['id']] ?></span>
+                                <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;"><?= $bookingCount[$lead['id']] ?></span>
                             <?php endif; ?>
                         </a>
                     </div>
@@ -370,11 +370,11 @@
                     <div class="info-label mt-2">Follow-up Project</div>
                     <div class="small mt-1">
                         <?php if (!empty($lead['project_name'])): ?>
-                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1" style="font-size: 13px;">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1" style="font-size: 0.65rem;">
                                 <?= htmlspecialchars($lead['project_name']) ?> (<?= !empty($lead['flat_name']) ? htmlspecialchars($lead['flat_name']) : 'N/A' ?>)
                             </span>
                         <?php else: ?>
-                            <span class="text-muted italic small" style="font-size: 13px;">No Follow Data</span>
+                            <span class="text-muted italic small" style="font-size: 0.65rem;">No Follow Data</span>
                         <?php endif; ?>
                     </div>
                 </div>

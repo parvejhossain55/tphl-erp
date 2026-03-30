@@ -11,7 +11,7 @@ class MailService
         $html = $this->buildTemplate($title, $link, $assignedBy);
 
         $data = [
-            "from" => "onboarding@resend.dev",
+            "from" => "onboarding@thepremiumhomesltd.com",
             "to" => [$email],
             "subject" => $title,
             "html" => $html

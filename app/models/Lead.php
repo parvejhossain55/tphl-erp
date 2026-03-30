@@ -91,7 +91,7 @@ class Lead extends Model
     }
 
 
-    public function getAllWithFilter($year = null, $month = null, $lastAction = null)
+    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null)
     {
         $sql = "SELECT 
         l.*,
@@ -115,50 +115,59 @@ class Lead extends Model
     ) lf ON lf.lead_id = l.id
 
     LEFT JOIN users AS u ON l.assigned_id = u.id
-   LEFT JOIN (
-    SELECT t1.*
-    FROM lead_bookings t1
-    INNER JOIN (
-        SELECT lead_id, MAX(id) AS max_id
-        FROM lead_bookings
-        GROUP BY lead_id
-    ) t2 
-    ON t1.id = t2.max_id
-) lb ON lb.lead_id = l.id
 
-LEFT JOIN projects AS p ON lb.project_id = p.id
+    LEFT JOIN (
+        SELECT t1.*
+        FROM lead_bookings t1
+        INNER JOIN (
+            SELECT lead_id, MAX(id) AS max_id
+            FROM lead_bookings
+            GROUP BY lead_id
+        ) t2 
+        ON t1.id = t2.max_id
+    ) lb ON lb.lead_id = l.id
 
-  WHERE l.deleted_at IS NULL
+    LEFT JOIN projects AS p ON lb.project_id = p.id
 
+    WHERE l.deleted_at IS NULL
     ";
 
+        //  IMPORTANT: declare first
         $params = [];
         $types  = "";
 
+        //  ROLE BASED FILTER
+        if ($roleId == 5 && !empty($teamId)) {
+            $sql .= " AND l.team_id = ?";
+            $params[] = $teamId;
+            $types .= "i";
+        }
+
+        //  Year filter
         if (!empty($year)) {
             $sql .= " AND YEAR(l.created_at) = ?";
             $params[] = $year;
-            $types   .= "i";
+            $types .= "i";
         }
 
+        // 📅 Month filter
         if (!empty($month)) {
             $sql .= " AND MONTH(l.created_at) = ?";
             $params[] = $month;
-            $types   .= "i";
+            $types .= "i";
         }
 
+        //  Last action filter
         if (!empty($lastAction)) {
             $sql .= " AND l.last_lead_action = ?";
             $params[] = $lastAction;
-            $types   .= "s";
+            $types .= "s";
         }
 
-
-        //  Only one ORDER BY at the end
+        //  Order
         $sql .= " ORDER BY l.id DESC";
 
         $stmt = $this->db->prepare($sql);
-
 
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
@@ -171,8 +180,6 @@ LEFT JOIN projects AS p ON lb.project_id = p.id
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-
-
 
     public function getAllLeadsWithProjectContact($project_id = null, $search = null)
     {
@@ -397,7 +404,8 @@ LEFT JOIN projects AS p ON lb.project_id = p.id
         lead_quality,
         lead_type,
         company_name,
-        created_by ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?)");
+        team_id,
+        created_by ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?,?)");
 
         if (!$stmt) {
             setError("Prepare failed: " . $this->db->error);
@@ -442,11 +450,12 @@ LEFT JOIN projects AS p ON lb.project_id = p.id
         $lead_quality = $data['lead_quality'] ?? 'Pending';
         $lead_type = $data['lead_type'] ?? null;
         $company_name = $data['company_name'] ?? null;
+        $team_id = $data['team_id'] ?? null;
         $created_by = $data['created_by'] ?? null;
 
         // Bind parameters (CSV first, then existing)
         $stmt->bind_param(
-            "ssssssssssssssssssiisisisssssssssi",
+            "ssssssssssssssssssiisisisssssssssii",
             $campaign_name,
             $platform,
             $which_apartment_size_are_you_interested_in,
@@ -480,6 +489,7 @@ LEFT JOIN projects AS p ON lb.project_id = p.id
             $lead_quality,
             $lead_type,
             $company_name,
+            $team_id,
             $created_by
         );
 
@@ -694,6 +704,30 @@ LEFT JOIN projects AS p ON lb.project_id = p.id
         }
     }
 
-    // user for dashboard 
+    public function getDigitalMarketingStats()
+    {
+        $stats = [];
 
+        // Total Leads (Active and not deleted)
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE status = 'active' AND deleted_at IS NULL");
+        $stmt->execute();
+        $stats['total_leads'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+
+        // Uploaded This Week (Leads created in the last 7 days)
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND deleted_at IS NULL");
+        $stmt->execute();
+        $stats['leads_this_week'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+
+        // Failed / Errors (Inactive or Cancelled leads)
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE (status = 'inactive' OR last_lead_action = 'cancel') AND deleted_at IS NULL");
+        $stmt->execute();
+        $stats['failed_leads'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+
+        // Total Uploads (Leads with campaign_name, assuming they are from CSV/Marketing)
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE campaign_name IS NOT NULL AND deleted_at IS NULL");
+        $stmt->execute();
+        $stats['total_uploads'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+
+        return $stats;
+    }
 }

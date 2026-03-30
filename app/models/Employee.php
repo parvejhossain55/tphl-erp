@@ -160,8 +160,8 @@ class Employee extends Model
             account_holder_name, account_number, bank_name, branch_name,
             social_media1, social_media2, social_media3,
             photo, make_user, password, created_by,
-            employee_type, employee_status,workplace, responsibilities
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            employee_type, employee_status,workplace, responsibilities,team_id
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         $dob = !empty($data['dob']) ? $data['dob'] : null;
@@ -172,7 +172,7 @@ class Employee extends Model
             : '';
 
         $stmt->bind_param(
-            "sssdssssssssssiissssssssssisissss",
+            "sssdssssssssssiissssssssssisissssi",
             $data['employee_id'],
             $data['full_name'],
             $data['gross_salary'],
@@ -205,7 +205,8 @@ class Employee extends Model
             $data['employee_type'],
             $data['employee_status'],
             $data['workplace'],
-            $data['responsibilities']
+            $data['responsibilities'],
+            $data['team_id']
         );
 
         if (!$stmt->execute()) {
@@ -253,15 +254,18 @@ class Employee extends Model
     public function find($id)
     {
         $stmt = $this->db->prepare("SELECT 
-            e.*,
-            u.role_id as role_id, 
-            desg.name AS designation_name, 
-            dept.name AS department_name
-        FROM employees AS e
-        LEFT JOIN designations AS desg ON e.designation_id = desg.id
-        LEFT JOIN departments AS dept ON e.department_id = dept.id
-        LEFT JOIN users AS u ON u.employee_id = e.id
-        WHERE e.id = ?
+    e.*,
+    u.id as user_id,
+    u.role_id as role_id, 
+    desg.name AS designation_name, 
+    dept.name AS department_name,
+    t.name AS team_name
+FROM employees AS e
+LEFT JOIN designations AS desg ON e.designation_id = desg.id
+LEFT JOIN departments AS dept ON e.department_id = dept.id
+LEFT JOIN teams AS t ON e.team_id = t.id
+LEFT JOIN users AS u ON u.id = e.user_id
+WHERE e.id = ?
 ");
         $stmt->bind_param("i", $id);
         $stmt->execute();
@@ -328,7 +332,8 @@ class Employee extends Model
         created_by = ?,
         employee_type = ?,
         employee_status = ?,
-        responsibilities = ?
+        responsibilities = ?,
+        team_id = ?
     WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -339,7 +344,7 @@ class Employee extends Model
         }
 
         $stmt->bind_param(
-            "ssddsssssssssiissssssssssisssi",
+            "ssddsssssssssiissssssssssisssii",
             $data['employee_id'],      // s
             $data['full_name'],        // s
             $data['gross_salary'],     // d
@@ -369,6 +374,7 @@ class Employee extends Model
             $data['employee_type'],       // s
             $data['employee_status'],     // s 
             $data['responsibilities'],    // s
+            $data['team_id'],             // i
             $id                           // i
         );
 
@@ -382,37 +388,37 @@ class Employee extends Model
     }
 
 
-public function delete($id)
-{
-    foreach (['payslips', 'tasks', 'employees'] as $table) {
+    public function delete($id)
+    {
+        foreach (['payslips', 'tasks', 'employees'] as $table) {
 
-        if ($table == 'employees') {
-            $sql = "DELETE FROM employees WHERE id = ?";
-        } elseif ($table == 'tasks') {
-            $sql = "DELETE FROM tasks WHERE user_id = ?"; // 
-        } else {
-            $sql = "DELETE FROM payslips WHERE employee_id = ?";
+            if ($table == 'employees') {
+                $sql = "DELETE FROM employees WHERE id = ?";
+            } elseif ($table == 'tasks') {
+                $sql = "DELETE FROM tasks WHERE user_id = ?"; // 
+            } else {
+                $sql = "DELETE FROM payslips WHERE employee_id = ?";
+            }
+
+            $stmt = $this->db->prepare($sql);
+
+            if (!$stmt) {
+                error_log("Prepare failed for table $table: " . $this->db->error);
+                return false;
+            }
+
+            $stmt->bind_param("i", $id);
+
+            if (!$stmt->execute()) {
+                error_log("Delete failed in $table: " . $stmt->error);
+                return false;
+            }
+
+            $stmt->close();
         }
 
-        $stmt = $this->db->prepare($sql);
-
-        if (!$stmt) {
-            error_log("Prepare failed for table $table: " . $this->db->error);
-            return false;
-        }
-
-        $stmt->bind_param("i", $id);
-
-        if (!$stmt->execute()) {
-            error_log("Delete failed in $table: " . $stmt->error);
-            return false;
-        }
-
-        $stmt->close();
+        return true;
     }
-
-    return true;
-}
 
     public function taskNotification()
     {
@@ -426,7 +432,7 @@ public function delete($id)
         //  Get employee ID
         $stmt = $this->db->prepare("SELECT id FROM employees WHERE user_id = ? LIMIT 1");
         $stmt->bind_param("i", $loggedUserId);
-        
+
         $stmt->execute();
         $emp = $stmt->get_result()->fetch_assoc();
         if (!$emp) return [];
@@ -474,18 +480,18 @@ public function delete($id)
 
 
     public function birthdayNotification()
-{
-    $stmt = $this->db->prepare(" SELECT e.id, e.full_name, e.dob, d.name AS designation_name, dep.name as dept_name
+    {
+        $stmt = $this->db->prepare(" SELECT e.id, e.full_name, e.dob, d.name AS designation_name, dep.name as dept_name
         FROM employees e
         LEFT JOIN designations d ON e.designation_id = d.id
         LEFT JOIN departments dep ON e.department_id = dep.id
         WHERE DATE_FORMAT(dob, '%m-%d') = DATE_FORMAT(CURDATE(), '%m-%d')
     ");
-    $stmt->execute();
+        $stmt->execute();
 
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-}
- public function getById($id)
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+    public function getById($id)
     {
         $stmt = $this->db->prepare("SELECT e.*, d.name as department_name, des.name as designation_name
                                     FROM employees e

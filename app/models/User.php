@@ -283,11 +283,12 @@ class User extends Model
         $media_link1    = $data['media_link1'] ?? '';
         $media_link2    = $data['media_link2'] ?? '';
         $created_by     = (int)($data['created_by'] ?? 0);
+        $team_id         = (int)($data['team_id'] ?? 0);
 
         $stmt = $this->db->prepare(
             "INSERT INTO users
-        (full_name, employee_id, phone, email, designation_id, address, nid, role_id, user_name, password, photo, media_link1, media_link2, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        (full_name, employee_id, phone, email, designation_id, address, nid, role_id, user_name, password, photo, media_link1, media_link2, created_by,team_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)"
         );
 
         if (!$stmt) {
@@ -296,7 +297,7 @@ class User extends Model
         }
 
         $stmt->bind_param(
-            "sissississsssi",
+            "sissississsssii",
             $full_name,
             $employee_id,
             $phone,
@@ -310,7 +311,8 @@ class User extends Model
             $photo,
             $media_link1,
             $media_link2,
-            $created_by
+            $created_by,
+            $team_id
         );
 
         if ($stmt->execute()) {
@@ -401,6 +403,7 @@ class User extends Model
         $media_link2    = $data['media_link2'] ?? '';
         $created_by     = (int)($data['created_by'] ?? 0);
         $employee_id    = (int)($data['employee_id'] ?? 0);
+        $team_id         = (int)($data['team_id'] ?? 0);
 
         // Use COALESCE in SQL to avoid overwriting with NULL
         $stmt = $this->db->prepare(
@@ -419,7 +422,8 @@ class User extends Model
             media_link1 = ?,
             media_link2 = ?,
             created_by = ?,
-            employee_id = ?
+            employee_id = ?,
+            team_id = ?
         WHERE id = ?"
         );
 
@@ -432,7 +436,7 @@ class User extends Model
         $ph  = $photo ?: null;
 
         if (!$stmt->bind_param(
-            "sissississssssii",
+            "sissississssssiii",
             $full_name,
             $employee_id,
             $phone,
@@ -448,6 +452,7 @@ class User extends Model
             $media_link2,
             $created_by,
             $employee_id,
+            $team_id,
             $id
         )) {
             throw new \Exception("User update bind_param failed: " . $stmt->error);

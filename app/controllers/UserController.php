@@ -185,50 +185,52 @@ class UserController extends Controller
 
         // ===== VALIDATION =====
         $errors = [];
+        if (empty($data['full_name'])) $errors[] = "Full Name is required";
+        if (empty($data['email'])) $errors[] = "Email is required";
+        elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) $errors[] = "Invalid email format";
 
-        if (empty($data['full_name'])) {
-            $errors[] = "Full Name is required";
-        }
-
-        if (empty($data['email'])) {
-            $errors[] = "Email is required";
-        } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            $errors[] = "Invalid email format";
-        }
+        $redirectTo = $_POST['redirect_to'] ?? $_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/user-lists";
 
         if (!empty($errors)) {
             setError(implode('<br>', $errors));
-            header("Location: " . $_SERVER['HTTP_REFERER']);
+            header("Location: " . $redirectTo);
             exit;
         }
 
         // ===== PASSWORD LOGIC =====
-        if (empty($data['password'])) {
-            unset($data['password']);
-        }
+        if (empty($data['password'])) unset($data['password']);
 
         // ===== UPDATE =====
         try {
-
             if ($this->userModel->update($data, $id)) {
-
                 setSuccess('User updated successfully');
-                header("Location: {$GLOBALS['base_url']}/user-lists");
-                exit;
             } else {
                 setError('Failed to update user');
-                header("Location: {$GLOBALS['base_url']}/edit-user/{$id}");
-                exit;
             }
         } catch (\Throwable $th) {
-
             setError('Failed to update user');
             error_log('User update error: ' . $th->__toString());
-            header("Location: {$GLOBALS['base_url']}/edit-user/{$id}");
-            exit;
         }
-    }
 
+        // ===== GET ROLE NAME OF UPDATED USER =====
+        $stmt = $this->db->prepare("SELECT r.name AS role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $roleResult = $stmt->get_result()->fetch_assoc();
+        $roleName = $roleResult['role_name'] ?? '';
+
+        // ===== CONDITIONAL REDIRECT =====
+        if (in_array($roleName, ['Admin', 'super Admin'])) {
+            // Admins & super Admins → go to user list
+            $finalRedirect = "{$GLOBALS['base_url']}/user-lists";
+        } else {
+            // Everyone else → back to previous page
+            $finalRedirect = $redirectTo;
+        }
+
+        header("Location: " . $finalRedirect);
+        exit;
+    }
     public function delete()
     {
         $id = $_POST['id'] ?? 0;

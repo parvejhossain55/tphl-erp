@@ -206,11 +206,11 @@ $page = "create Lead"
                     <div class="from__input-box">
                         <label>Preferred Project Optional</label>
                         <select name="project_id" class="form-select">
-                         <option value="">Select Project</option>
-                         <?php foreach ($projects as $project): ?>
-                             <option value="<?= $project['id']; ?>"><?= $project['name']; ?></option>
+                            <option value="">Select Project</option>
+                            <?php foreach ($projects as $project): ?>
+                                <option value="<?= $project['id']; ?>"><?= $project['name']; ?></option>
                             <?php endforeach; ?>
-       
+
                         </select>
                     </div>
                 </div>
@@ -283,6 +283,19 @@ $page = "create Lead"
                             <option value="">Select</option>
                             <?php foreach ($assignedUsers as $user) : ?>
                                 <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?> - <?= $user['role_name'] ?> </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title" for="assignedUser">Select Team<span class="text-danger">*</span></label>
+                        <select name="team_id" class="form-select" required>
+                            <option value="">-- Select Team --</option>
+                            <?php foreach ($teams as $team): ?>
+                                <option value="<?= $team['id'] ?>">
+                                    <?= htmlspecialchars($team['name']) ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>

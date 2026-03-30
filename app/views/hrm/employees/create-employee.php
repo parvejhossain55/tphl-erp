@@ -344,8 +344,27 @@
                                  </div>
                              </div>
                          </div>
-
                          <div class="col-lg-6">
+                             <div class="from__input-box">
+                                 <div class="form__input-title">
+                                     <label class="form-label">Select Team <span class="text-danger">*</span></label>
+
+
+                                 </div>
+                                 <div class="form__input">
+                                     <select name="team_id" class="form-select" required>
+                                         <option value="">-- Select Team --</option>
+                                         <?php foreach ($teams as $team): ?>
+                                             <option value="<?= $team['id'] ?>">
+                                                 <?= htmlspecialchars($team['name']) ?>
+                                             </option>
+                                         <?php endforeach; ?>
+                                     </select>
+                                 </div>
+                             </div>
+                         </div>
+
+                         <div class="col-lg-12">
                              <div class="form__input-box">
                                  <div class="form__input-box">
                                      <label>

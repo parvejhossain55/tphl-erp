@@ -7,6 +7,7 @@ class EmployeeController extends Controller
     protected $roleModel;
     protected $departmentModel;
     protected $designationModel;
+    protected $teamsModel;
 
     public function __construct($db)
     {
@@ -17,6 +18,7 @@ class EmployeeController extends Controller
         $this->roleModel = new Role($this->db); // 
 
         $this->userModel = new User($this->db);
+        $this->teamsModel = new Team($this->db);
     }
 
     // Employee List Page
@@ -59,6 +61,7 @@ class EmployeeController extends Controller
         $departments = $this->departmentModel->getAll();
         $roles = $this->roleModel->getAllFilterRole();
         $designations = $this->designationModel->getAll();
+        $teams = $this->teamsModel->getAll();
         $this->view("hrm/employees/create-employee", [
             "current_route"   => "create-employee",
             "active"          => "create-employee",
@@ -66,7 +69,9 @@ class EmployeeController extends Controller
             "show_breadcrumb" => true,
             "departments"     => $departments,
             "designations"    => $designations,
-            "roles"           => $roles
+            "roles"           => $roles,
+            "teams"           => $teams
+
         ]);
     }
 
@@ -126,6 +131,7 @@ class EmployeeController extends Controller
                 'employee_type'   => $_POST['employee_type'],
                 'employee_status' => $_POST['employee_status'],
                 'responsibilities' => $_POST['responsibilities'],
+                'team_id' => (int)($_POST['team_id'] ?? 0),
             ];
 
             $photoInputName = 'photo';
@@ -181,6 +187,7 @@ class EmployeeController extends Controller
                 $userData['password']       = $hashedPassword;
                 $userData['role_id']        = $_POST['role_id'] ?? null;
                 $userData['employee_id']    = $employee_id;
+                $userData['team_id']        = $employeeData['team_id'];
 
                 $user_id = $this->userModel->create($userData);
 
@@ -209,6 +216,7 @@ class EmployeeController extends Controller
     // Edit Employee Page
     public function edit($id)
     {
+        $teams = $this->teamsModel->getAll();
         $employee = $this->employeeModel->find($id);
         $departments = $this->departmentModel->getAll();
         $designations = $this->designationModel->getAll();
@@ -222,6 +230,7 @@ class EmployeeController extends Controller
             "departments"     => $departments,
             "designations"    => $designations,
             "roles"    => $roles,
+            "teams"    => $teams
         ]);
     }
 
@@ -288,8 +297,8 @@ class EmployeeController extends Controller
             'created_by'           => $_SESSION['user']['id'] ?? null,
             'employee_type'      => $_POST['employee_type'],
             'employee_status'    => $_POST['employee_status'],
-            'responsibilities'    => $_POST['responsibilities']
-
+            'responsibilities'    => $_POST['responsibilities'],
+            'team_id'             => (int)($_POST['team_id'] ?? 0)
         ];
         if (!$this->employeeModel->update($id, $employeeData, 'photo')) {
             $_SESSION['error'] = "Employee update failed!";
@@ -312,6 +321,7 @@ class EmployeeController extends Controller
                 'nid'            => $employeeData['nid'],
                 'designation_id' => $employeeData['designation_id'],
                 'address'        => $employeeData['address'],
+                'team_id'        => $employeeData['team_id'],
                 'role_id'        => (int)($_POST['role_id'] ?? 0),
             ];
 
