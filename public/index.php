@@ -10,13 +10,22 @@ if (session_status() === PHP_SESSION_NONE) {
 // for producttion error hide 
 require_once("../app/helpers/helper.php");
 require_once __DIR__ . '/../vendor/autoload.php';
+//// Maintenance Mode Check
+// if (file_exists(__DIR__ . '/maintenance.flag')) {
+//     http_response_code(503); // Service Unavailable
+//     echo "<h1 style=\"color: #333; text-align: center;\">Site is under maintenance</h1><p style=\"color: #666; text-align: center;\">We'll be back soon!</p>";
+//     exit;
+// }
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 // Enable debug
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 $root = dirname(__DIR__);
 $GLOBALS['base_url'] = '/TPHL-ERP';
-
 
 spl_autoload_register(function ($class) use ($root) {
     $class = str_replace('\\', '/', $class);
@@ -269,6 +278,9 @@ $routes = [
     "assign-multiple-leads" => ["controller" => "LeadController", "method" => "assignMultipleLeads"],
 
 
+    // upload Csv From Csv Digital Marketing
+    "digital-marketing-dashboard" => ["controller" => "DigitalMarketingController", "method" => "index"],
+
     // == access onboard clients ==
 
     "onboard-access-client-lists" => ["controller" => "OnboardClientController", "method" => "index"],
@@ -409,6 +421,12 @@ $routes = [
     "contacts/update-status" => ["controller" => "ContactController", "method" => "updateStatus"],
 
     // ==========END SALES & BUISENESS======//
+    
+    // teams
+    'teams' => ['controller' => 'TeamController', 'method' => 'index'],
+    'store-team' => ['controller' => 'TeamController', 'method' => 'store'],
+    'update-team' => ['controller' => 'TeamController', 'method' => 'update'],
+    'delete-team' => ['controller' => 'TeamController', 'method' => 'delete'],
 
 
     //======payrolls===========//

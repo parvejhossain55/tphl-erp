@@ -307,28 +307,21 @@
         </div>
         <?php foreach ($myAllleads as $key => $lead): ?>
             <!-- Lead Card -->
-            <div class="lead-card">
-                <div class="lead-card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="lead-name"><?= $lead['full_name'] ?></div>
-                        <div class="lead-phone"><?= $lead['phone'] ?></div>
+            <div class="lead-card h-100 mb-0" data-id="<?= $lead['id'] ?>">
+                <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
+                    <div class="flex-grow-1 overflow-hidden">
+                        <span class="lead-name text-truncate"><?= $lead['full_name'] ?></span>
+                        <div class="lead-phone text-truncate small"><?= $lead['phone'] ?></div>
                     </div>
-
-
                 </div>
 
-                <!-- Status -->
-                <div class="row">
-
-                    <div class="info-label ">Status</div>
-                </div>
-                <div class="lead-info-row">
-
-                    <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>" class="m-0 p-0">
+                <!-- Status & Action -->
+                <div class="mt-2">
+                    <div class="info-label">Status & Action</div>
+                    <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>" class="m-0 p-0 mb-2">
                         <select name="last_lead_action"
-                            class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
+                            class="form-select form-select-sm last-action-select w-100 <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
                             onchange="this.form.submit()">
-
                             <option value="">Update action</option>
                             <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>New</option>
                             <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>Booked</option>
@@ -338,63 +331,51 @@
                         </select>
                     </form>
 
-
-                    <!-- Follow Up & Booking Buttons (Condition Based) -->
-                    <div class="d-flex align-items-center gap-2 flex-wrap text-end">
-                        <!-- Follow Up Button -->
-                        <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>" class="btn btn-primary d-flex align-items-center gap-1">
+                    <div class="d-flex flex-column gap-2">
+                        <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>" class="btn btn-primary btn-sm w-100 d-flex justify-content-between align-items-center px-2">
                             <span>Follow Up</span>
                             <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                <span class="action-badge"><?= $followUpCounts[$lead['id']] ?></span>
+                                <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;"><?= $followUpCounts[$lead['id']] ?></span>
                             <?php endif; ?>
                         </a>
 
-                        <!-- Booking Button -->
-                        <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>" class="btn btn-secondary d-flex align-items-center gap-1">
-                            <span><?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?></span>
+                        <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>" class="btn btn-secondary btn-sm w-100 d-flex justify-content-between align-items-center px-2">
+                            <span>Booking</span>
                             <?php if (!empty($bookingCount[$lead['id']])): ?>
-                                <span class="action-badge"><?= $bookingCount[$lead['id']] ?></span>
+                                <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;"><?= $bookingCount[$lead['id']] ?></span>
                             <?php endif; ?>
                         </a>
                     </div>
-
                 </div>
-                <!-- Project Info -->
+                <!-- Project & Last Follow-up -->
+                <div class="mt-2">
+                    <div class="info-label ">Project Info</div>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <span class="project-badge mb-0">
+                            <i class="bi bi-building"></i>
+                            <?= truncateText($displayName, 15) ?>
+                        </span>
+                        <?php if (mb_strlen($plainText) > 15): ?>
+                            <button type="button"
+                                id="viewCampaignBtn<?= $lead['id'] ?>"
+                                class="btn btn-sm btn-outline-primary w-auto px-1 py-0"
+                                data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
+                                data-bs-toggle="modal"
+                                data-bs-target="#viewProjectCampaignName"
+                                title="View Project">View
+                            </button>
+                        <?php endif; ?>
+                    </div>
 
-                <div class="project-detail">
-                    <div class="info-label flex-shrink-0">Project/Follow Up Project</div>
-
-                    <div class="d-flex align-items-center gap-2 mt-2" style="min-width: 0;">
-
-                        <div class="lead-info-row d-flex justify-content-between align-items-center">
-                            <span class="project-badge mb-0">
-                                <i class="bi bi-building"></i>
-                                <?= truncateText($displayName, 15) ?>
+                    <div class="info-label mt-2">Follow-up Project</div>
+                    <div class="small mt-1">
+                        <?php if (!empty($lead['project_name'])): ?>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1" style="font-size: 0.65rem;">
+                                <?= htmlspecialchars($lead['project_name']) ?> (<?= !empty($lead['flat_name']) ? htmlspecialchars($lead['flat_name']) : 'N/A' ?>)
                             </span>
-
-                            <?php if (mb_strlen($plainText) > 15): ?>
-                                <button type="button"
-                                    id="viewCampaignBtn<?= $lead['id'] ?>"
-                                    class="btn btn-sm btn-outline-primary  ms-3 w-auto px-1 py-0"
-                                    data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#viewProjectCampaignName"
-                                    title="View Project">View
-                                </button>
-                            <?php endif; ?>
-
-                            <?php if (!empty($lead['project_name'])): ?>
-                                <span class="ms-3 fw-semibold">
-                                    <?= htmlspecialchars($lead['project_name']) ?>, 
-                                    <strong class="ms-2">Flat:</strong>
-                                    <span><?= !empty($lead['flat_name']) ? htmlspecialchars($lead['flat_name']) : 'N/A' ?></span>
-                                </span>
-                            <?php else: ?>
-                                <span class="fw-semibold ms-3">
-                                    No Follow Data
-                                </span>
-                            <?php endif; ?>
-                        </div>
+                        <?php else: ?>
+                            <span class="text-muted italic small" style="font-size: 0.65rem;">No Follow Data</span>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <!-- Next Follow-Up -->

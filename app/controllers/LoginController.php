@@ -45,7 +45,8 @@ class LoginController extends Controller
                         "user_name" => $user["user_name"],
                         "email" => $user["email"],
                         "role_id" => $user["role_id"],
-                        "employee_id" => $user["employee_id"] ?? '',
+                        "team_id" => $user["team_id"] ?? null,       // ← use null
+                        "employee_id" => $user["employee_id"] ?? null, // optional
                         "role_name" => strtolower($user['role_name'] ?? ''),
                     ];
 

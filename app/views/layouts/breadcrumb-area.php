@@ -21,7 +21,7 @@ if (!isset($page)) {
         </nav>
 
         <!-- Back Button -->
-        <button type="button" class="btn btn-secondary mt-2" onclick="goBack()">
+        <button type="button" class="btn btn-secondary mt-2 goBackBtn" onclick="goBack()">
             ← Back
         </button>
     </div>

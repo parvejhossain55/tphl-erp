@@ -28,8 +28,8 @@ $show_breadcrumb = true;
                             <span class="d-block text-muted mb-5"><?= $employee['designation_name'] ?? '' ?></span>
                             <h6 class="small employee-id text-black mb-5">Employee ID :<?= $employee['employee_id'] ?></h6>
                             <span class="d-block text-muted ">Date of Join : <?= $employee['joining_date'] ?  date('d F, Y', strtotime($employee['joining_date'])) : '' ?></span>
-                            <span class="small employee-id text-black mb-5">Basic Salary :<?= $employee['basic_salary'] ?? 0 ?></span>
-                            <p><span class="small employee-id text-black mb-5">Employee Type :<?= $employee['employee_type'] ?? 'none' ?></span></p>
+                            <span class="small employee-id text-black mb-5">Gross Salary :<?= $employee['gross_salary'] ?? 0 ?></span>
+                            <p><span class="small employee-id text-black mb-5">Employee Type :<?= ucwords($employee['employee_type'] ?? 'none') ?></span></p>
                             <div class="employee-msg d-none my-3"><a class="btn btn-primary" href="chat.html">Send Message</a></div>
                         </div>
                     </div>
@@ -38,7 +38,7 @@ $show_breadcrumb = true;
                             <li class="d-flex mb-2">
                                 <div class="fw-bold me-2" style="min-width:130px;">Phone:</div>
                                 <div class="text text-link-hover">
-                                    <a href="tel:<?= $employee['phone'] ?>"> <?= $employee['phone'] ?></a>
+                                    <a href="tel:<?= $employee['phone'] ?>"><?= $employee['phone'] ?? '' ?></a>
                                 </div>
                             </li>
                             <li class="d-flex mb-2">
@@ -57,7 +57,7 @@ $show_breadcrumb = true;
                             </li>
                             <li class="d-flex mb-2">
                                 <div class="fw-bold me-2" style="min-width:130px;">Employee Status:</div>
-                                <div class="bd-badge bg-primary"><?= $employee['employee_status'] ?></div>
+                                <div class="bd-badge bg-primary"><?= ucwords($employee['employee_status'] ?? 'none') ?></div>
                             </li>
                             <li class="d-flex mb-2">
                                 <div class="fw-bold me-2" style="min-width:130px;">Workplace:</div>
@@ -91,10 +91,17 @@ $show_breadcrumb = true;
                                 <li class="d-flex mb-2">
                                     <div class="fw-bold me-2" style="min-width:130px;">Phone:</div>
                                     <span class="text-link-hover">
-                                        <a href="tel:<?= $employee['emergency_contact'] ?>"><?= $employee['emergency_contact'] ?></a>,
-                                        <a href="tel:<?= $employee['emergency_contact'] ?>"><?= $employee['emergency_contact'] ?></a>
+                                        <a href="tel:<?= $employee['phone'] ?>"><?= $employee['phone'] ?? 'N/A' ?></a>
                                     </span>
                                 </li>
+                                <li class="d-flex mb-2">
+                                    <div class="fw-bold me-2" style="min-width:130px;">Emergency number:</div>
+                                    <span class="text-link-hover">
+
+                                        <a href="tel:<?= $employee['emergency_contact'] ?>"><?= $employee['emergency_contact'] ?? 'N/A' ?></a>
+                                    </span>
+                                </li>
+
                                 <li class="d-flex mb-2">
                                     <div class="fw-bold me-2" style="min-width:130px;">Address:</div>
                                     <span><?= $employee['address'] ?></span>

@@ -11,6 +11,7 @@ class LeadController extends Controller
     protected $leadSourceModel;
     protected $projectModel;
     protected $followUpModel;
+    protected $teamsModel;
     public function __construct($db)
     {
         $this->db = $db;
@@ -22,9 +23,11 @@ class LeadController extends Controller
         $this->leadSourceModel = new LeadSource($this->db);
         $this->projectModel = new Project($this->db);
         $this->followUpModel = new FollowUp($this->db);
+        $this->teamsModel = new Team($this->db);
     }
     public function index()
     {
+
         $assignedUsers = $this->userModel->getAllRoleUser();
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
@@ -37,9 +40,13 @@ class LeadController extends Controller
         $totalTodayFollowUps = array_sum($todayFollowUp);
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
+        $userRoleId = $_SESSION['user']['role_id'] ?? null;
+        $userTeamId = $_SESSION['user']['team_id'] ?? null;
 
-
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction);
+        // echo "Role: " . $_SESSION['user']['role_id'];
+        // echo "<br>Team: " . $_SESSION['user']['team_id'];
+        // die();
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId);
         $leadCounts = count($leads);
 
         if (session_status() === PHP_SESSION_NONE) {
@@ -87,6 +94,7 @@ class LeadController extends Controller
             "conversionRate" => $conversionRate,
             "totalHotLeads" => $totalHotLeads,
             "selectedAction" => $lastAction,
+
         ]);
     }
 
@@ -172,6 +180,7 @@ class LeadController extends Controller
 
     public function create()
     {
+        $teams = $this->teamsModel->getAll();
         $assignedUsers = $this->userModel->getAllRoleUser();
         $sources = $this->leadSource->getAll();
         $locations = $this->locationModel->getAll();
@@ -185,6 +194,7 @@ class LeadController extends Controller
             "sources" => $sources,
             "locations" => $locations,
             "projects" => $projects,
+            "teams" => $teams,
 
         ]);
     }
@@ -235,6 +245,7 @@ class LeadController extends Controller
             'status' => 'active',
             'lead_quality' => $_POST['lead_quality'] ?? 'Pending',
             'created_by' => $_SESSION['user']['id'] ?? null,
+            'team_id' => $_POST['team_id'] ?? null,
         ];
 
 
@@ -425,6 +436,14 @@ class LeadController extends Controller
             return;
         }
 
+        //  FORM theke team_id
+        $team_id = $_POST['team_id'] ?? null;
+
+        if (!$team_id) {
+            setError("Please select a team");
+            return;
+        }
+
         $fileTmp = $_FILES['csv_file']['tmp_name'];
         $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
 
@@ -435,22 +454,30 @@ class LeadController extends Controller
 
         if (($handle = fopen($fileTmp, "r")) !== false) {
 
-            $header = fgetcsv($handle); // first row → header
+            $header = fgetcsv($handle);
 
             while (($row = fgetcsv($handle, 1000, ",")) !== false) {
 
-                //  CSV → DB column mapping
                 $data = array_combine($header, $row);
+
                 $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
-                $data['status'] = (int)($data['status'] ?? 0);
+                $data['status'] = 'active';
                 $data['visibility'] = $data['visibility'] ?? 'public';
+
+                //  IMPORTANT FIX
+                $data['team_id'] = (int)$team_id;
+
+                // optional
+                $data['created_by'] = $_SESSION['user']['id'] ?? null;
 
                 $this->leadModel->create($data);
             }
 
             fclose($handle);
+
             setSuccess("CSV imported successfully");
-            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-dashboard");
+            exit;
         }
     }
 

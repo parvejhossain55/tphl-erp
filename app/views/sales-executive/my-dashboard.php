@@ -1,8 +1,4 @@
 <style>
-    body {
-        background-color: #f8f9fa;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
 
     .dashboard-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -58,10 +54,28 @@
     }
 
     .stat-label {
-        font-size: 13px;
-        font-weight: 500;
+        font-size: 11px;
+        font-weight: 600;
         text-transform: uppercase;
-        /* letter-spacing: 0.2px; */
+        color: #718096;
+    }
+
+    @media (max-width: 576px) {
+        .stat-card {
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .stat-value {
+            font-size: 1.25rem;
+        }
+        .stat-card-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 0.875rem;
+        }
+        .card__icon {
+            display: none !important; /* Hide large icon on very small screens to save space */
+        }
     }
 
     .chart-container {
@@ -95,16 +109,15 @@
 <div class="app__slide-wrapper">
 
     <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
-            <h3 class="mb-2">Executive Dashboard</h3>
-            <p class="mb-0 opacity-75">Today's Summery & performance</p>
+            <h3 class="mb-1">Executive Dashboard</h3>
+            <p class="mb-0 opacity-75 small text-muted">Today's Summary & Performance</p>
         </div>
-
     </div>
     <div class="row g-20 mb-4 align-items-stretch">
         <!-- Pending Tasks -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -117,7 +130,7 @@
         </div>
 
         <!-- Today Leads Assigned -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -130,7 +143,7 @@
         </div>
 
         <!-- Today FollowUp Due -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -143,7 +156,7 @@
         </div>
 
         <!-- Today Follow Up Complete -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -156,7 +169,7 @@
         </div>
 
         <!-- My Total Sale -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -169,7 +182,7 @@
         </div>
 
         <!-- Total Leads Assigned -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -182,7 +195,7 @@
         </div>
 
         <!-- Monthly Site Visit Target -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -195,7 +208,7 @@
         </div>
 
         <!-- My Monthly Booking Target -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -208,7 +221,7 @@
         </div>
 
         <!-- Monthly Visit Complete -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -225,7 +238,7 @@
         </div>
 
         <!-- Monthly Booking Target Complete -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -238,7 +251,7 @@
         </div>
 
         <!-- Deal Lost -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -251,7 +264,7 @@
         </div>
 
         <!-- Deal Win -->
-        <div class="col-md-6 col-lg-4 col-xxl-3">
+        <div class="col-6 col-md-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -355,10 +368,10 @@
             xaxis: {
                 categories: monthlyData.labels,
                 labels: {
-                    rotate: -15,
+                    rotate: -45,
                     style: {
                         colors: '#1a6e40', // GREEN
-                        fontSize: '12px',
+                        fontSize: '11px',
                         fontWeight: 700
                     }
                 }
@@ -375,11 +388,43 @@
                 labels: {
                     style: {
                         colors: '#1a6e40', // GREEN
-                        fontSize: '12px',
+                        fontSize: '11px',
                         fontWeight: 700
                     }
                 }
             },
+
+            responsive: [{
+                breakpoint: 480,
+                options: {
+                    chart: {
+                        height: 500
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: true,
+                            columnWidth: '100%',
+                            distributed: true,
+                        }
+                    },
+                    xaxis: {
+                        labels: {
+                            rotate: 0,
+                        }
+                    },
+                    yaxis: {
+                        labels: {
+                            show: true,
+                            style: {
+                                fontSize: '10px'
+                            }
+                        }
+                    },
+                    legend: {
+                        show: false
+                    }
+                }
+            }],
 
             tooltip: {
                 y: {

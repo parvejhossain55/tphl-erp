@@ -65,12 +65,10 @@ $hasTransactions = !empty($recentTransactions);
     </div>
 </div>
 
-
-
 </div>
 <div class="row  align-items-stretch">
 
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6">
         <div class="card__wrapper h-100 d-flex flex-column justify-content-center">
             <div class="d-flex align-items-center gap-3">
                 <div class="card__icon">
@@ -94,7 +92,7 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     </div>
 
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6">
         <div class="card__wrapper h-100 d-flex flex-column justify-content-center">
             <div class="d-flex align-items-center gap-3">
                 <div class="card__icon">
@@ -108,7 +106,7 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     </div>
 
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6">
         <div class="card__wrapper h-100 d-flex flex-column justify-content-center">
             <div class="d-flex align-items-center gap-3">
                 <div class="card__icon">
@@ -122,7 +120,7 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     </div>
 
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6">
         <div class="card__wrapper h-100 d-flex flex-column justify-content-center">
             <div class="d-flex align-items-center gap-3">
                 <div class="card__icon">
@@ -137,7 +135,7 @@ $hasTransactions = !empty($recentTransactions);
     </div>
 
     <!-- Example for Revenue Card -->
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6">
         <div class="card__wrapper h-100 d-flex flex-column justify-content-center dashboard-card">
             <div class="d-flex align-items-center gap-3">
                 <div class="card__icon icon-indigo">
@@ -151,7 +149,7 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     </div>
 
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-10">
                 <div class="d-flex align-items-center gap-2 h-100">
@@ -167,7 +165,7 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     </div>
 
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-10">
                 <div class="d-flex align-items-center gap-2 h-100">
@@ -182,7 +180,7 @@ $hasTransactions = !empty($recentTransactions);
             </div>
         </div>
     </div>
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-10">
                 <div class="d-flex align-items-center gap-2 h-100">
@@ -197,7 +195,7 @@ $hasTransactions = !empty($recentTransactions);
             </div>
         </div>
     </div>
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-10">
                 <div class="d-flex align-items-center gap-2 h-100">
@@ -214,7 +212,7 @@ $hasTransactions = !empty($recentTransactions);
     </div>
 
 
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12 mb-3">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
             <div class="d-flex align-items-center gap-2 h-100">
                 <div class="card__icon icon-teal">
@@ -228,7 +226,7 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     </div>
 
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12 mb-3">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
             <div class="d-flex align-items-center gap-2 h-100">
                 <div class="card__icon icon-primary">
@@ -242,7 +240,7 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     </div>
 
-    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-12 mb-3">
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card">
             <div class="d-flex align-items-center gap-2 h-100">
                 <div class="card__icon icon-primary">
@@ -256,8 +254,6 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     </div>
 
-
-    <!-- Repeat similar structure for remaining cards -->
 </div>
 
 <!-- script in footer  -->
@@ -1043,10 +1039,10 @@ $hasTransactions = !empty($recentTransactions);
         .equal-height-row {
             display: block;
         }
-
+/* 
         .card__wrapper.height-equal {
             min-height: auto;
-        }
+        } */
     }
 
     @media (max-width: 767px) {

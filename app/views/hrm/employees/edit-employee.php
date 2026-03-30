@@ -83,7 +83,7 @@
                                  <option value="">Select Role</option>
                                  <?php foreach ($roles as $role): ?>
                                      <option value="<?= $role['id'] ?>"
-                                         <?= ($employee['role_id'] == $role['id']) ? 'selected' : '' ?>>
+                                         <?= (isset($employee['role_id']) && $employee['role_id'] == $role['id']) ? 'selected' : '' ?>>
                                          <?= $role['name'] ?>
                                      </option>
                                  <?php endforeach ?>
@@ -92,6 +92,7 @@
 
                      </div>
                  </div>
+
 
                  <!-- Department -->
                  <div class="col-lg-6">
@@ -121,7 +122,8 @@
                      </select>
                  </div>
                  <!-- Designation -->
-                 <div class="col-lg-6"><label>Gross Salary <span>*</span></label><input class="form-control" name="gross_salary" id="gross_salary" type="number" value="<?= $employee['gross_salary'] ?>"></div><div class="col-lg-6"><label>Basic Salary <span>*</span></label>
+                 <div class="col-lg-6"><label>Gross Salary <span>*</span></label><input class="form-control" name="gross_salary" id="gross_salary" type="number" value="<?= $employee['gross_salary'] ?>"></div>
+                 <div class="col-lg-6"><label>Basic Salary <span>*</span></label>
                      <input class="form-control" name="basic_salary" id="basic_salary" type="number"
                          value="<?= $employee['basic_salary'] ?>">
                  </div>
@@ -222,7 +224,26 @@
                          <option value="terminated" <?= ($employee['employee_status'] ?? '') == 'terminated' ? 'selected' : '' ?>>Terminated</option>
                      </select>
                  </div>
+                 <div class="col-lg-6">
+                     <div class="from__input-box">
+                         <div class="form__input-title">
+                             <label>Project Team<span>*</span></label>
+                         </div>
 
+                         <div class="form__input">
+                             <select class="form-control" name="team_id">
+                                 <option value="">Select Team</option>
+                                 <?php foreach ($teams as $team): ?>
+                                     <option value="<?= $team['id'] ?>"
+                                         <?= ($employee['team_id'] == $team['id']) ? 'selected' : '' ?>>
+                                         <?= $team['name'] ?>
+                                     </option>
+                                 <?php endforeach ?>
+                             </select>
+                         </div>
+
+                     </div>
+                 </div>
 
                  <div class="col-lg-6">
                      <div class="form__input-box">

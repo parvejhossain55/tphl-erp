@@ -22,7 +22,7 @@
         <div class="row g-2 mb-3 align-items-end">
 
             <!-- Employee Select -->
-            <div class="col-12 col-sm-6 col-md-3">
+            <div class="col-6 col-sm-6 col-md-3">
                 <label for="executiveSelect" class="form-label">Select Team</label>
                 <select id="executiveSelect" name="executive" class="form-select">
                     <option value="">-- Select Team --</option>
@@ -35,7 +35,7 @@
             </div>
 
             <!-- Month Select -->
-            <div class="col-12 col-sm-6 col-md-3">
+            <div class="col-6 col-sm-6 col-md-3">
                 <label for="periodSelect" class="form-label">Select Month</label>
                 <select class="form-select" name="month" id="periodSelect">
                     <option value="">Month Select</option>
@@ -50,7 +50,7 @@
             </div>
 
             <!-- Year Select -->
-            <div class="col-12 col-sm-6 col-md-2">
+            <div class="col-6 col-sm-6 col-md-2">
                 <label for="yearSelect" class="form-label">Select Year</label>
                 <select class="form-select" name="year" id="yearSelect">
                     <option value="">Year Select</option>
@@ -63,14 +63,14 @@
             </div>
 
             <!-- Filter Button -->
-            <div class="col-12 col-sm-6 col-md-2">
+            <div class="col-6 col-sm-6 col-md-2">
                 <button type="submit" class="btn btn-primary w-100">
                     Filter
                 </button>
             </div>
 
             <!-- Reset Button -->
-            <div class="col-12 col-sm-6 col-md-2">
+            <div class="col-6 col-sm-6 col-md-2">
                 <a href="<?= $GLOBALS['base_url'] ?>/sales-dashboard" class="btn btn-secondary w-100">
                     Reset
                 </a>
@@ -82,7 +82,7 @@
     <!-- Performance Cards -->
     <div class="row" id="performanceCards">
         <?php if ($showCards): ?>
-            <div class="col-md-4 mb-3 card-item">
+            <div class="col-6 col-md-4 mb-3 card-item">
                 <div class="card__wrapper p-3 shadow-sm">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
@@ -99,7 +99,7 @@
                 </div>
             </div>
 
-            <div class="col-md-4 mb-3 card-item">
+            <div class="col-6 col-md-4 mb-3 card-item">
                 <div class="card__wrapper p-3 shadow-sm">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
@@ -116,7 +116,7 @@
                 </div>
             </div>
 
-            <div class="col-md-4 mb-3 card-item">
+            <div class="col-6 col-md-4 mb-3 card-item">
                 <div class="card__wrapper p-3 shadow-sm">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
@@ -145,7 +145,7 @@
     </div>
     <div class="row g-20 mb-4 align-items-stretch">
 
-        <div class="col-xxl-3  col-md-4 col-12 mb-2">
+        <div class="col-xxl-3  col-md-4 col-6 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -159,7 +159,7 @@
             </div>
         </div>
 
-        <div class="col-xxl-3  col-md-4 col-12 mb-2">
+        <div class="col-xxl-3  col-md-4 col-6 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -173,7 +173,7 @@
             </div>
         </div>
 
-        <div class=" d-none col-xxl-4 col-xl-4 col-md-4 col-12 mb-2">
+        <div class=" d-none col-xxl-4 col-xl-4 col-md-4 col-6 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -187,7 +187,7 @@
             </div>
         </div>
 
-        <div class="col-xxl-3  col-md-4 col-12 mb-2">
+        <div class="col-xxl-3  col-md-4 col-6 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -200,7 +200,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-xxl-3  col-md-4 col-12 mb-2">
+        <div class="col-xxl-3  col-md-4 col-6 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -216,7 +216,7 @@
 
 
         <!-- REVENUE + CONVERSION -->
-        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
+        <div class="col-xxl-3 col-xl-4 col-md-4 col-6 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -231,7 +231,7 @@
         </div>
 
         <!-- TOTAL PROJECT -->
-        <div class="col-xxl-3 col-xl-4 col-md-4 col-12 mb-2">
+        <div class="col-xxl-3 col-xl-4 col-md-4 col-6 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -246,7 +246,7 @@
         </div>
 
         <!-- BOOKING MONEY COLLECTED -->
-        <div class="col-xxl-3  col-xl-4 col-md-4 col-12 mb-2">
+        <div class="col-xxl-3  col-xl-4 col-md-4 col-6 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -262,7 +262,7 @@
             </div>
         </div>
         <!-- CONVERSION RATE -->
-        <div class="col-xxl-3  col-xl-4 col-md-4 col-12 mb-2">
+        <div class="col-xxl-3  col-xl-4 col-md-4 col-6 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
