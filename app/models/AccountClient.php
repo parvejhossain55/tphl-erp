@@ -21,7 +21,12 @@ class AccountClient extends Model
             l.phone,
             l.email,
             l.designation,
-            u.full_name AS agent_name,
+            (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
+             FROM lead_bookings lb_sub
+             INNER JOIN lead_payments lp_sub ON lp_sub.booking_id = lb_sub.id AND lp_sub.payment_type = 'booking_money'
+             INNER JOIN users u_agent ON u_agent.id = lp_sub.created_by
+             WHERE lb_sub.lead_id = l.id AND lb_sub.booking_status != 'cancelled'
+            ) AS agent_name,
             COUNT(lb.id) AS total_bookings,
             SUM(lb.agreement_value) AS total_agreement_value,
             COALESCE(
@@ -41,7 +46,6 @@ class AccountClient extends Model
             ) AS last_payment_date
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
-        LEFT JOIN users u ON u.id = l.assigned_id
         WHERE lb.booking_status != 'cancelled'
         GROUP BY l.id
         ORDER BY l.full_name
@@ -49,6 +53,60 @@ class AccountClient extends Model
 
         if (!$sql) {
             error_log("getAllClients prepare failed: " . $this->db->error);
+            return [];
+        }
+
+        $sql->execute();
+        $result = $sql->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Get all bookings with client and location info
+     */
+    public function getAllBookings()
+    {
+        $sql = $this->db->prepare("
+        SELECT
+            l.id AS lead_id,
+            l.full_name AS client_name,
+            l.phone,
+            l.email,
+            l.designation,
+            lb.id AS booking_id,
+            p.name AS project_name,
+            f.flat_name AS unit_name,
+            f.floor_no AS flat_floor_no,
+            lb.agreement_value AS total_price,
+            lb.agreement_value AS total_agreement_value,
+            (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
+             FROM lead_payments lp_sub
+             INNER JOIN users u_agent ON u_agent.id = lp_sub.created_by
+             WHERE lp_sub.booking_id = lb.id AND lp_sub.payment_type = 'booking_money'
+            ) AS agent_name,
+            COALESCE(
+                (SELECT SUM(lp.amount)
+                 FROM lead_payments lp
+                 WHERE lp.booking_id = lb.id
+                 AND lp.payment_status = 'paid'),
+                0
+            ) AS total_paid,
+            (
+                SELECT MAX(lp.payment_date)
+                FROM lead_payments lp
+                WHERE lp.booking_id = lb.id
+                AND lp.payment_status = 'paid'
+            ) AS last_payment_date
+        FROM leads l
+        INNER JOIN lead_bookings lb ON lb.lead_id = l.id
+        LEFT JOIN projects p ON lb.project_id = p.id
+        LEFT JOIN flats f ON lb.flat_id = f.id
+        WHERE lb.booking_status != 'cancelled'
+        ORDER BY l.full_name
+        ");
+
+        if (!$sql) {
+            error_log("getAllBookings prepare failed: " . $this->db->error);
             return [];
         }
 
@@ -81,6 +139,13 @@ class AccountClient extends Model
             f.price_value as total_price,
             f.land_share_value as total_land_share,
             f.flat_name as unit_name,
+            
+            (SELECT u_agent.full_name
+             FROM lead_payments lp_sub
+             INNER JOIN users u_agent ON u_agent.id = lp_sub.created_by
+             WHERE lp_sub.booking_id = lb.id AND lp_sub.payment_type = 'booking_money'
+             LIMIT 1
+            ) AS booking_agent_name,
             
             COALESCE(
                 (SELECT SUM(lp.amount) 
