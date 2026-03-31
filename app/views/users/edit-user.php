@@ -44,7 +44,7 @@ $show_breadcrumb = true;
                     <!-- Designation -->
                     <div class="col-lg-6 mb-3">
                         <label for="designation">Designation <span>*</span></label>
-                        <select class="form-control" name="designation_id" id="designation" required>
+                        <select class="form-control" name="designation_id" id="designation" >
                             <option value="">Select Designation</option>
                             <?php foreach ($designations as $d): ?>
                                 <option value="<?= $d['id'] ?>" <?= ($user['designation_id'] == $d['id'] ? 'selected' : '') ?>><?= $d['designation_name'] ?></option>
@@ -70,7 +70,7 @@ $show_breadcrumb = true;
                     <!-- NID / Passport -->
                     <div class="col-lg-6 mb-3">
                         <label for="nid">NID <span>*</span></label>
-                        <input class="form-control" name="nid" id="nid" type="text" value="<?= htmlspecialchars($user['nid']) ?>" required>
+                        <input class="form-control" name="nid" id="nid" type="text" value="<?= $user['nid'] ?? ''?>" >
                     </div>
 
                     <!-- NID / Passport -->

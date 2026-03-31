@@ -49,72 +49,55 @@
         </form>
     </div>
 </div>
-<div class="card__wrapper p-4">
-    <h4 class="mb-3">My Leave Requests</h4>
+<h4 class="mb-3">My Leave Requests</h4>
+<div class="card__wrapper">
+    <div class="table__wrapper table-responsive">
+        <table class="table mb-20" id="">
 
-    <table class="table table-bordered table-striped">
-        <tr class="table__title">
-            <th>Leave Type</th>
-            <th>Leave Duration</th>
-            <th>Days</th>
-            <th>Approved Days</th>
-            <th>Remaining Leave</th>
-            <th>Reason</th>
-            <th>Status</th>
-            <th>Applied At</th>
-        </tr>
-        </thead>
-        <tbody>
-
-            <?php if (empty($leaves)): ?>
-                <tr>
-                    <td colspan="7" class="text-center text-muted">
-                        No leave requests found
-                    </td>
+            <thead>
+                <tr class="table__title">
+                    <th>Leave Type</th>
+                    <th>Leave Duration</th>
+                    <th>Days</th>
+                    <th>Approved Days</th>
+                    <th>Remaining Leave</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Applied At</th>
                 </tr>
-            <?php endif; ?>
+            </thead>
 
-            <?php foreach ($leaves as $i => $leave):
-                $start = new DateTime($leave['start_date']);
-                $end = new DateTime($leave['end_date']);
-                $days = $start->diff($end)->days + 1;
-                $remaining_days = $leave['total_days'] - $leave['approved_days'];
-            ?>
+            <tbody class="table__body">
 
+                <?php if (empty($leaves)): ?>
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">
+                            No leave requests found
+                        </td>
+                    </tr>
+                <?php endif; ?>
 
-                <tr>
-                    <td><?= htmlspecialchars($leave['leave_type_name']) ?></td>
+                <?php foreach ($leaves as $leave): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($leave['leave_type_name']) ?></td>
+                        <td><?= formatDate($leave['start_date']) ?> - <?= formatDate($leave['end_date']) ?></td>
+                        <td><?= $days ?></td>
+                        <td><?= ($leave['approved_days'] ?? 0) > 0 ? $leave['approved_days'] : 'Not Approved' ?></td>
+                        <td><?= $remaining_days ?? 0 ?></td>
+                        <td><?= htmlspecialchars($leave['reason'] ?? 'N/A') ?></td>
+                        <td>
+                            <span class="bd-badge bg-<?= $badge ?>">
+                                <?= ucfirst($status) ?>
+                            </span>
+                        </td>
+                        <td><?= date('d M Y', strtotime($leave['created_at'])) ?></td>
+                    </tr>
+                <?php endforeach; ?>
 
-                    <td class="table__leave-duration"><?= formatDate($leave['start_date']) ?> - <?= formatDate($leave['end_date']) ?></td>
-                    <td class="table__leave-days"><?= $days ?></td>
-                    <td class="table__leave-approved">
-                        <?= ($leave['approved_days'] ?? 0) > 0 ? $leave['approved_days'] : 'Not Approved' ?>
-                    </td>
-                    <td><?= $remaining_days ?? 0 ?></td>
-                    <td class="table__leave-reason">
-                        <?= htmlspecialchars($leave['reason'] ?? 'N/A') ?>
-                    </td>
-                    <td>
-                        <?php
-                        $status = $leave['approval_status'];
-                        $badge = match ($status) {
-                            'approved' => 'success',
-                            'partial'  => 'warning',
-                            'rejected' => 'danger',
-                            default    => 'secondary'
-                        };
-                        ?>
-                        <span class="bd-badge bg-<?= $badge ?>">
-                            <?= ucfirst($status) ?>
-                        </span>
-                    </td>
-                    <td><?= date('d M Y', strtotime($leave['created_at'])) ?></td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+            </tbody>
+        </table>
+    </div>
 </div>
-
 <script>
     const leaveType = document.getElementById('leaveTypeSelect');
     const remaining = document.getElementById('remainingDays');
@@ -122,21 +105,22 @@
     const endDateInput = document.getElementById('endDate');
     const numberDaysInput = document.getElementById('numberDays');
 
-leaveType.addEventListener('change', () => {
-    fetch('<?= $GLOBALS['base_url'] ?>/remaining-days-self?leave_type_id=' + leaveType.value)
-        .then(res => res.json())
-        .then(data => {
-            remaining.value = data.remaining_days;
+    leaveType.addEventListener('change', () => {
+        fetch('<?= $GLOBALS['base_url'] ?>/remaining-days-self?leave_type_id=' + leaveType.value)
+            .then(res => res.json())
+            .then(data => {
+                remaining.value = data.remaining_days;
 
-            if(data.remaining_days === 'N/A'){
-                numberDaysInput.max = 365;
-            } else {
-                numberDaysInput.max = parseInt(data.remaining_days) || '';
-            }
+                if (data.remaining_days === 'N/A') {
+                    numberDaysInput.max = 365;
+                } else {
+                    numberDaysInput.max = parseInt(data.remaining_days) || '';
+                }
 
-            calculateNumberOfDays();
-        });
-});
+                calculateNumberOfDays();
+            });
+    });
+
     function calculateNumberOfDays() {
         const start = new Date(startDateInput.value);
         const end = new Date(endDateInput.value);

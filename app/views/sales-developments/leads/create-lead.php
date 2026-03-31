@@ -278,11 +278,11 @@ $page = "create Lead"
 
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="assignedUser">Assigned User <span class="text-danger">*</span></label>
+                        <label class="form__input-title" for="assignedUser">Assigned Sales Person <span class="text-danger">*</span></label>
                         <select name="assigned_id" id="assignedUser" class="form-select">
                             <option value="">Select</option>
                             <?php foreach ($assignedUsers as $user) : ?>
-                                <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?> - <?= $user['role_name'] ?> </option>
+                                <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?> - <?= $user['role_name'] ?> - <?= $user['team_name'] ?? 'No Team' ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
