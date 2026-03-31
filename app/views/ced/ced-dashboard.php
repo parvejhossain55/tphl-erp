@@ -42,9 +42,12 @@ if (!empty($clients)) {
         $totalCollected      += $paid;
         $totalOutstanding    += $outstanding;
 
-        if ($payPct >= 100)                        { $paymentStatusData[3]++; }
-        elseif ($payPct >= 50)                     { $paymentStatusData[0]++; }
-        elseif ($payPct < 25 && $outstanding > 0)  { $paymentStatusData[1]++; }
+        $hasBeenCounted = false;
+
+        if ($payPct >= 100) { 
+            $paymentStatusData[3]++; 
+            $hasBeenCounted = true;
+        }
 
         if (!empty($client['last_payment_date'])) {
             $lpDate    = $client['last_payment_date'];
@@ -52,23 +55,34 @@ if (!empty($clients)) {
             $daysSince = (strtotime(date('Y-m-d')) - strtotime($lpDate)) / 86400;
 
             if ($lpMonth === $currentMonth) {
-                $monthlyCollection += $paid * 0.1;
+                $monthlyCollection += $paid;
             }
             if (isset($monthlyCollectionMap[$lpMonth])) {
-                $monthlyCollectionMap[$lpMonth]  += $paid * 0.1;
+                $monthlyCollectionMap[$lpMonth]  += $paid;
                 $monthlyOutstandingMap[$lpMonth]  = $totalOutstanding;
             }
             if ($daysSince <= 7) {
                 $idx = max(0, min(6, 6 - (int)floor($daysSince)));
-                $weeklyCollectionData[$idx] += $paid * 0.1;
+                $weeklyCollectionData[$idx] += $paid;
             }
-            if ($daysSince > 60 && $outstanding > 0) {
+            
+            if (!$hasBeenCounted && $daysSince > 60 && $outstanding > 0) {
                 $overduePayments++;
                 $paymentStatusData[2]++;
+                $hasBeenCounted = true;
             }
-        } elseif ($outstanding > 0) {
-            $overduePayments++;
-            $paymentStatusData[2]++;
+        } elseif ($outstanding > 0 && !$hasBeenCounted) {
+            $paymentStatusData[1]++;
+            $hasBeenCounted = true;
+        }
+        
+        // Fallback for remaining active payments
+        if (!$hasBeenCounted) {
+            if ($payPct >= 50) {
+                $paymentStatusData[0]++;
+            } else {
+                $paymentStatusData[1]++;
+            }
         }
     }
 }

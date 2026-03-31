@@ -330,6 +330,7 @@ $show_breadcrumb = true;
                                 <th>Land Share</th>
                                 <th>Service Fee</th>
                                 <th>Status</th>
+                                <th>Added By</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -372,6 +373,9 @@ $show_breadcrumb = true;
                                         </span>
                                     </td>
                                     <td>
+                                        <?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?>
+                                    </td>
+                                    <td>
                                         
                                         <div class="d-flex align-items-center justify-content-start gap-10">
                                             <?php if (!empty($transaction['id']) && strpos($transaction['id'], 'booking-') === false): ?>
@@ -384,11 +388,17 @@ $show_breadcrumb = true;
                                                     <i class="fa-light fa-file-invoice"></i>
                                                 </a>
                                                 <!-- EDIT BUTTON -->
+                                                <?php if ($transaction['payment_type'] !== 'booking_money'): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/edit-client-cash-in/<?= $transaction['id'] ?>"
                                                     class="table__icon edit"
                                                     title="Edit">
                                                     <i class="fa-sharp fa-light fa-pen"></i>
                                                 </a>
+                                                <?php else: ?>
+                                                <span class="table__icon disabled" title="Booking Money Cannot Be Edited" style="background-color: #f3f6f9; color: #a5aeb7;">
+                                                    <i class="fa-regular fa-lock"></i>
+                                                </span>
+                                                <?php endif; ?>
                                                 <!-- DELETE BUTTON - FIXED -->
                                                 <a href="#" class="removeBtn table__icon delete"
                                                     onclick="deleteTransaction(<?= $transaction['id'] ?>); return false;"

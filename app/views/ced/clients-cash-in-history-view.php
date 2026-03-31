@@ -325,6 +325,7 @@ $show_breadcrumb = true;
                                 <th>Land Share</th>
                                 <th>Service Fee</th>
                                 <th>Status</th>
+                                <th>Added By</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -364,6 +365,9 @@ $show_breadcrumb = true;
                                         <span class="badge <?php echo $transaction['status_class']; ?>">
                                             <?php echo $transaction['status_text']; ?>
                                         </span>
+                                    </td>
+                                    <td>
+                                        <?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
