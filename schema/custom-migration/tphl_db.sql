@@ -848,7 +848,7 @@ CREATE TABLE `lead_bookings` (
 
 LOCK TABLES `lead_bookings` WRITE;
 /*!40000 ALTER TABLE `lead_bookings` DISABLE KEYS */;
-INSERT INTO `lead_bookings` VALUES (1,8,1,1,200000.00,0,'2026-03-29','completed',3,3,NULL,'2026-03-29 10:09:03','2026-03-29 10:09:03','not_required',NULL,NULL,'active');
+INSERT INTO `lead_bookings` VALUES (1,1,1,1,200000.00,0,'2026-03-29','completed',3,3,NULL,'2026-03-29 10:09:03','2026-03-29 10:09:03','not_required',NULL,NULL,'active');
 /*!40000 ALTER TABLE `lead_bookings` ENABLE KEYS */;
 UNLOCK TABLES;
 

@@ -245,10 +245,12 @@ class User extends Model
                 e.photo AS employee_photo,
                 e.make_user,
                 d.name AS designation_name,
-                r.name AS role_name
+                r.name AS role_name,
+                t.name AS team_name
             FROM users u
             LEFT JOIN employees e ON e.user_id = u.id
             LEFT JOIN designations AS d ON d.id = u.designation_id
+            LEFT JOIN teams AS t ON t.id = u.team_id
             LEFT JOIN roles AS r ON r.id = u.role_id
            WHERE r.name IS NOT NULL AND r.name IN('Sales Executive','Sales Manager','Sales Team Head')
 
