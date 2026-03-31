@@ -176,6 +176,7 @@
   .stat-card {
     border: none;
     border-radius: 12px;
+    margin-bottom: 10px;
     padding: 1.25rem 1.4rem;
     box-shadow: 0 1px 6px rgba(0, 0, 0, .06);
     display: flex;
@@ -192,7 +193,6 @@
   .stat-card .value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #1a2744;
     line-height: 1.1;
   }
 
@@ -325,29 +325,29 @@
   .history-card {
     border: none;
     border-radius: 14px;
-    background: #fff;
+    /* background: #fff; */
     box-shadow: 0 1px 6px rgba(0, 0, 0, .07);
     overflow: hidden;
   }
 
   .history-card .card-header {
-    background: #fff;
+    /* background: #fff; */
     border-bottom: 1px solid #e9ecef;
     padding: .9rem 1.4rem;
     font-weight: 600;
     font-size: .9rem;
-    color: #1a2744;
+    /* color: #1a2744; */
   }
 
   .history-card table thead th {
     font-size: .72rem;
     letter-spacing: .07em;
     text-transform: uppercase;
-    color: #78909c;
+    /* color: #78909c; */
     font-weight: 600;
     border-bottom: 1px solid #e9ecef;
     padding: .65rem 1rem;
-    background: #f8fafc;
+    /* background: #f8fafc; */
   }
 
   .history-card table tbody td {
@@ -441,9 +441,9 @@
 
   <!-- Stat row -->
   <div class="row mb-4">
-    <div class="col-xl-3 col-sm-6">
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
-        
+
         <div>
           <div class="label">Total Leads</div>
           <div class="value"><?= number_format($stats['total_leads'] ?? 0) ?></div>
@@ -451,9 +451,9 @@
         </div>
       </div>
     </div>
-    <div class="col-xl-3 col-sm-6">
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
-        
+
         <div>
           <div class="label">Uploaded This Week</div>
           <div class="value"><?= number_format($stats['leads_this_week'] ?? 0) ?></div>
@@ -461,9 +461,9 @@
         </div>
       </div>
     </div>
-    <div class="col-xl-3 col-sm-6">
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
-       
+
         <div>
           <div class="label">Failed / Errors</div>
           <div class="value"><?= number_format($stats['failed_leads'] ?? 0) ?></div>
@@ -471,9 +471,9 @@
         </div>
       </div>
     </div>
-    <div class="col-xl-3 col-sm-6">
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
-       
+
         <div>
           <div class="label">Total Uploads</div>
           <div class="value"><?= number_format($stats['total_uploads'] ?? 0) ?></div>
@@ -515,7 +515,7 @@
           <!-- File input -->
           <div class="mb-3">
             <label class="form-label fw-semibold" style="font-size:.82rem;">Select CSV File</label>
-            <div class="input-group">
+            <div class="input-group d-none">
               <input type="file" class="form-control" accept=".csv" style="font-size:.85rem;">
               <span class="input-group-text bg-white" style="font-size:.8rem; color:#78909c;">
                 <i class="bi bi-filetype-csv me-1"></i>.csv only
@@ -563,6 +563,71 @@
     </div>
 
   </div><!-- /row -->
+
+  <!-- Recent Leads Table -->
+  <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 10): ?>
+    <div class="row mt-4">
+      <div class="col-12">
+        <div class="history-card shadow-sm border-0">
+          <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
+            <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Uploaded Leads (Last 7 Days)</h6>
+            <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($leads) ?> Leads</span>
+          </div>
+          <div class="table__wrapper table-responsive">
+            <table class="table mb-20 multiple_tables">
+              <thead class="">
+                <tr>
+                  <th class="ps-4">Lead Name</th>
+                  <th>Contact Info</th>
+                  <th>Platform & Campaign</th>
+                  <th>Project</th>
+                  <th class="pe-4 text-end">Upload Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php if (empty($leads)): ?>
+                  <tr>
+                    <td colspan="5" class="text-center py-5">
+                      <div class="text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        No leads uploaded in the last 7 days.
+                      </div>
+                    </td>
+                  </tr>
+                <?php else: ?>
+                  <?php foreach ($leads as $lead): ?>
+                    <tr>
+                      <td class="ps-4">
+                        <div class="fw-bold text-dark"><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></div>
+                        <small class="text-muted"><?= htmlspecialchars($lead['job_title'] ?? 'N/A') ?></small>
+                      </td>
+                      <td>
+                        <div class="d-flex flex-column">
+                          <span><i class="bi bi-telephone text-muted me-2"></i><?= htmlspecialchars($lead['phone_number'] ?? 'N/A') ?></span>
+                          <small class="text-muted"><i class="bi bi-envelope me-2"></i><?= htmlspecialchars($lead['email'] ?? 'N/A') ?></small>
+                        </div>
+                      </td>
+                      <td>
+                        <span class="badge bg-info-soft text-info mb-1 d-inline-block"><?= htmlspecialchars($lead['platform'] ?? 'N/A') ?></span>
+                        <div class="small text-muted"><?= htmlspecialchars($lead['campaign_name'] ?? 'N/A') ?></div>
+                      </td>
+                      <td>
+                        <span class="text-dark"><?= htmlspecialchars($lead['project_name'] ?? 'N/A') ?></span>
+                      </td>
+                      <td class="pe-4 text-end">
+                        <div class="fw-semibold"><?= date('M d, Y', strtotime($lead['created_at'])) ?></div>
+                        <small class="text-muted"><?= date('h:i A', strtotime($lead['created_at'])) ?></small>
+                      </td>
+                    </tr>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  <?php endif; ?>
 
 </div>
 

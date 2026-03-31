@@ -379,21 +379,20 @@ class User extends Model
 
     public function update($data, $id)
     {
-        // Ensure $data is array
         if (!is_array($data)) return false;
 
-        // Photo handling
+        // Photo
         $photo = $data['photo'] ?? null;
         if (isset($_FILES['photo']) && !empty($_FILES['photo']['tmp_name'])) {
             $photo = uploadImage('photo', 'users', 'fixed', 300, 300);
         }
 
-        // Password handling
+        // Password
         $password = !empty($data['password']) ? password_hash($data['password'], PASSWORD_DEFAULT) : null;
 
-        // Assign all values to variables (needed for bind_param)
+        // Variables
         $full_name      = $data['full_name'] ?? '';
-        $employee_id    = $data['employee_id'] ?? null;
+        $employee_id    = (int)($data['employee_id'] ?? 0);
         $phone          = $data['phone'] ?? '';
         $email          = $data['email'] ?? '';
         $designation_id = (int)($data['designation_id'] ?? 0);
@@ -404,10 +403,8 @@ class User extends Model
         $media_link1    = $data['media_link1'] ?? '';
         $media_link2    = $data['media_link2'] ?? '';
         $created_by     = (int)($data['created_by'] ?? 0);
-        $employee_id    = (int)($data['employee_id'] ?? 0);
-        $team_id         = (int)($data['team_id'] ?? 0);
+        $team_id        = (int)($data['team_id'] ?? 0);
 
-        // Use COALESCE in SQL to avoid overwriting with NULL
         $stmt = $this->db->prepare(
             "UPDATE users SET
             full_name = ?,
@@ -424,21 +421,17 @@ class User extends Model
             media_link1 = ?,
             media_link2 = ?,
             created_by = ?,
-            employee_id = ?,
             team_id = ?
         WHERE id = ?"
         );
 
-        if (!$stmt) {
-            throw new \Exception("User update prepare failed: " . $this->db->error);
-        }
+        if (!$stmt) throw new \Exception("User update prepare failed: " . $this->db->error);
 
-        // For bind_param, null-safe variables
         $pwd = $password ?: null;
         $ph  = $photo ?: null;
 
         if (!$stmt->bind_param(
-            "sissississssssiii",
+            "sissississssssii",
             $full_name,
             $employee_id,
             $phone,
@@ -453,16 +446,11 @@ class User extends Model
             $media_link1,
             $media_link2,
             $created_by,
-            $employee_id,
             $team_id,
             $id
-        )) {
-            throw new \Exception("User update bind_param failed: " . $stmt->error);
-        }
+        )) throw new \Exception("User update bind_param failed: " . $stmt->error);
 
-        if (!$stmt->execute()) {
-            throw new \Exception("User update execute failed: " . $stmt->error);
-        }
+        if (!$stmt->execute()) throw new \Exception("User update execute failed: " . $stmt->error);
 
         return true;
     }
@@ -588,30 +576,29 @@ class User extends Model
 
 
 
-public function countSalesTeams(){
-    $sql = $this->db->prepare("SELECT COUNT(*) as total FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name IN ('Sales Manager', 'Sales Executive')");
-    $sql->execute();
-    $result = $sql->get_result()->fetch_assoc();
-    return $result['total'];
-}
-// public function getSalesTeams(){
-//     $sql = $this->db->prepare("SELECT * FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name IN ('Sales Manager', 'Sales Executive')");
-//     $sql->execute();
-//     $result = $sql->get_result();
-//     return $result->fetch_all(MYSQLI_ASSOC);
-// }
-public function getSalesTeams() {
-    // Only fetch users with role_id = 8 (executives)
-    $sql = $this->db->prepare("
+    public function countSalesTeams()
+    {
+        $sql = $this->db->prepare("SELECT COUNT(*) as total FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name IN ('Sales Manager', 'Sales Executive')");
+        $sql->execute();
+        $result = $sql->get_result()->fetch_assoc();
+        return $result['total'];
+    }
+    // public function getSalesTeams(){
+    //     $sql = $this->db->prepare("SELECT * FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name IN ('Sales Manager', 'Sales Executive')");
+    //     $sql->execute();
+    //     $result = $sql->get_result();
+    //     return $result->fetch_all(MYSQLI_ASSOC);
+    // }
+    public function getSalesTeams()
+    {
+        // Only fetch users with role_id = 8 (executives)
+        $sql = $this->db->prepare("
         SELECT u.id, u.full_name, u.role_id 
         FROM users u
         WHERE u.role_id IN(8, 5)
     ");
-    $sql->execute();
-    $result = $sql->get_result();
-    return $result->fetch_all(MYSQLI_ASSOC);
-}
-
-
-    
+        $sql->execute();
+        $result = $sql->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
 }

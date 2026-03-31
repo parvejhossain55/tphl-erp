@@ -74,69 +74,42 @@ class TaskController extends Controller
             'assigned_by' => $_SESSION['user']['id'] ?? null,
         ];
 
-        //  Receiver (assigned user)
+        // Receiver (assigned user)
         $stmt = $this->db->prepare("SELECT email, full_name FROM users WHERE id = ?");
         $stmt->bind_param("i", $data['user_id']);
         $stmt->execute();
         $user = $stmt->get_result()->fetch_assoc();
-        // var_dump($user);
-        // exit;
 
-        //  Assigned By (full details)
+        // Assigned By (full details)
         $stmt2 = $this->db->prepare("
-        SELECT 
-            u.full_name,
-            r.name AS role_name,
-            dsg.name AS designation_name,
-            dep.name AS department_name
+        SELECT u.full_name, r.name AS role_name, dsg.name AS designation_name, dep.name AS department_name
         FROM users u
         LEFT JOIN roles r ON u.role_id = r.id
         LEFT JOIN designations dsg ON u.designation_id = dsg.id
         LEFT JOIN departments dep ON dsg.department_id = dep.id
         WHERE u.id = ?
     ");
-
         $stmt2->bind_param("i", $data['assigned_by']);
         $stmt2->execute();
         $assignedBy = $stmt2->get_result()->fetch_assoc();
 
-
-        // try {
-
-        //     if (!$user) {
-        //         die("User not found");
-        //     }
-
-        //     if (empty($user['email'])) {
-        //         die("User email empty");
-        //     }
-
-        //     $response = sendMail(
-        //         $user['email'],
-        //         'New Task Assigned',
-        //         'https://thepremiumhomesltd.com/TPHL-ERP/admin-login',
-        //         $assignedBy
-        //     );
-
-        //     // echo "<pre>";
-        //     // print_r($response);
-        //     exit;
-        // } catch (\Throwable $th) {
-        //     echo "Error: " . $th->getMessage();
-        // }
-        try {
-            if ($user && !empty($user['email'])) {
+        // মেইল পাঠানোর চেষ্টা (Data save করার আগে বা পরে করতে পারেন)
+        if ($user && !empty($user['email'])) {
+            try {
                 sendMail(
                     $user['email'],
-                    'New Task Assigned',
+                    'New Task Assigned: ' . $data['title'],
                     'https://thepremiumhomesltd.com/TPHL-ERP/admin-login',
                     $assignedBy
                 );
+                echo "<p style='color:green'>Email sent successfully to " . htmlspecialchars($user['email']) . "</p>";
+                exit;
+            } catch (\Throwable $th) {
+                error_log("Mail Sending Failed: " . $th->getMessage());
             }
-        } catch (\Throwable $th) {
-            echo "<h3 style='color:red'>Mail Error: " . $th->getMessage() . "</h3>";
         }
 
+        // ডাটাবেসে টাস্ক সেভ করা
         if ($this->taskModel->create($data)) {
             $taskId = $this->db->insert_id;
 
@@ -145,7 +118,6 @@ class TaskController extends Controller
             );
 
             $message = "New task assigned: " . $data['title'];
-
             $stmt3->bind_param("iiis", $data['user_id'], $taskId, $data['assigned_by'], $message);
             $stmt3->execute();
 

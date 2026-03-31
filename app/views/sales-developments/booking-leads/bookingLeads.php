@@ -195,8 +195,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                         <div class="d-flex align-items-center gap-2">
 
                                             <!-- Edit -->
-                                            <button type="button"
-                                                class="table__icon edit editBookingBtn"
+                                            <button  type="button"
+                                                class="d-none table__icon edit editBookingBtn"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#editModalBooking"
                                                 data-id="<?= $or['id'] ?>"

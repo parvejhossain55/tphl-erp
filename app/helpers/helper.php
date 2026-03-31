@@ -986,10 +986,10 @@ function renderApprovalContext(array $req)
 
 
 //mail
-
 if (!function_exists('sendMail')) {
     function sendMail($email, $title, $link, $assignedBy)
     {
+        // require_once 'path/to/MailService.php'; 
         $mail = new MailService();
         return $mail->sendMail($email, $title, $link, $assignedBy);
     }
