@@ -1814,8 +1814,14 @@ CREATE TABLE `teams` (
 --
 
 INSERT INTO `teams` (`id`, `name`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'Gulshan Team', 1, 4, '2026-03-30 16:36:44', NULL),
-(2, 'Ashuliya Team', 1, 4, '2026-03-31 06:52:47', NULL);
+(1, 'Gulshan Team Coordinator', 1, 4, '2026-04-01 06:51:26', '2026-04-01 06:54:07'),
+(2, 'Gulshan Team - 1', 1, 4, '2026-04-01 06:51:26', '2026-04-01 06:54:11'),
+(3, 'Gulshan Team - 2', 1, NULL, '2026-04-01 06:52:05', NULL),
+(4, 'Ashulia Team - 1', 1, NULL, '2026-04-01 06:52:05', NULL),
+(5, 'Ashulia Team - 2', 1, NULL, '2026-04-01 06:53:01', NULL),
+(6, 'Ati Team - 1', 1, NULL, '2026-04-01 06:53:01', NULL),
+(7, 'Ati Team - 2', 1, NULL, '2026-04-01 06:53:28', NULL);
+
 
 -- --------------------------------------------------------
 

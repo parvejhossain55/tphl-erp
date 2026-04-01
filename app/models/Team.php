@@ -11,7 +11,7 @@ class Team extends Model
 
     public function getAll()
     {
-        $stmt = $this->db->prepare("SELECT * FROM teams ORDER BY id DESC");
+        $stmt = $this->db->prepare("SELECT * FROM teams ORDER BY id ASC");
         if (!$stmt) {
             die("Prepare failed: " . $this->db->error);
         }

@@ -320,8 +320,8 @@ class Dashboard extends Model
         $stmt->close();
 
         // Calculate Total Cash In
-        $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] + 
-            $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['management_cashin'] - 
+        $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] +
+            $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['management_cashin'] -
             $stats['total_discount'];
 
         // Calculate Total Revenue
@@ -1020,49 +1020,49 @@ class Dashboard extends Model
         $endDate = $dateRange['end'];
 
         $sql = "
-        SELECT 
-            'client' as source,
-            lp.id,
-            lp.payment_date as date,
-            lp.payment_type as type,
-            lp.amount,
-            lp.payment_method,
-            lp.payment_status,
-            CONCAT(l.full_name, ' - ', p.name) as description,
-            p.id as project_id,
-            p.name as project_name
-        FROM lead_payments lp
-        LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
-        LEFT JOIN leads l ON lb.lead_id = l.id
-        LEFT JOIN projects p ON lb.project_id = p.id
-        WHERE lp.payment_date BETWEEN ? AND ?
-        AND lp.payment_status = 'paid'
-    ";
+SELECT 
+    'client' COLLATE utf8mb4_general_ci as source,
+    lp.id,
+    lp.payment_date as date,
+    lp.payment_type COLLATE utf8mb4_general_ci as type,
+    lp.amount,
+    lp.payment_method COLLATE utf8mb4_general_ci,
+    lp.payment_status COLLATE utf8mb4_general_ci,
+    CONCAT(l.full_name, ' - ', p.name) COLLATE utf8mb4_general_ci as description,
+    p.id as project_id,
+    p.name COLLATE utf8mb4_general_ci as project_name
+FROM lead_payments lp
+LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
+LEFT JOIN leads l ON lb.lead_id = l.id
+LEFT JOIN projects p ON lb.project_id = p.id
+WHERE lp.payment_date BETWEEN ? AND ?
+AND lp.payment_status = 'paid'
+";
 
         if ($projectId) {
             $sql .= " AND lb.project_id = ?";
         }
 
         $sql .= "
-        UNION ALL
-        
-        SELECT 
-            'management' as source,
-            mci.id,
-            mci.transaction_date as date,
-            'management' as type,
-            mci.amount,
-            mci.payment_method,
-            mci.payment_status,
-            CONCAT(mci.role_name, ' - ', mci.source) as description,
-            NULL as project_id,
-            NULL as project_name
-        FROM management_cashin mci
-        WHERE mci.transaction_date BETWEEN ? AND ?
-        
-        ORDER BY date DESC
-        LIMIT ?
-    ";
+UNION ALL
+
+SELECT 
+    'management' COLLATE utf8mb4_general_ci as source,
+    mci.id,
+    mci.transaction_date as date,
+    'management' COLLATE utf8mb4_general_ci as type,
+    mci.amount,
+    mci.payment_method COLLATE utf8mb4_general_ci,
+    mci.payment_status COLLATE utf8mb4_general_ci,
+    CONCAT(mci.role_name, ' - ', mci.source) COLLATE utf8mb4_general_ci as description,
+    NULL as project_id,
+    NULL as project_name
+FROM management_cashin mci
+WHERE mci.transaction_date BETWEEN ? AND ?
+
+ORDER BY date DESC
+LIMIT ?
+";
 
         $stmt = $this->db->prepare($sql);
 

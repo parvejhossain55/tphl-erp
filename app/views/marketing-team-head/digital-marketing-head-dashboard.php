@@ -574,13 +574,13 @@
             <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($leads) ?> Leads</span>
           </div>
           <div class="table__wrapper table-responsive">
-            <table class="table mb-20 multiple_tables">
+            <table class="table mb-20 ">
               <thead class="">
                 <tr>
                   <th class="ps-4">Lead Name</th>
                   <th>Contact Info</th>
                   <th>Platform & Campaign</th>
-                  <th>Project</th>
+                  <th>Team Name</th>
                   <th class="pe-4 text-end">Upload Date</th>
                 </tr>
               </thead>
@@ -612,7 +612,7 @@
                         <div class="small text-muted"><?= htmlspecialchars($lead['campaign_name'] ?? 'N/A') ?></div>
                       </td>
                       <td>
-                        <span class="text-dark"><?= htmlspecialchars($lead['project_name'] ?? 'N/A') ?></span>
+                        <span class="text-dark"><?= htmlspecialchars($lead['team_name'] ?? 'N/A') ?></span>
                       </td>
                       <td class="pe-4 text-end">
                         <div class="fw-semibold"><?= date('M d, Y', strtotime($lead['created_at'])) ?></div>
