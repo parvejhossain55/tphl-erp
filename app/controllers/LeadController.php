@@ -429,57 +429,86 @@ class LeadController extends Controller
     }
 
 
-    public function importCsv()
-    {
-        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
-            setError("CSV upload failed");
-            return;
-        }
+public function importCsv()
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 
-        //  FORM theke team_id
-        $team_id = $_POST['team_id'] ?? null;
+    if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
+        setError("CSV upload failed");
+        return;
+    }
 
-        if (!$team_id) {
-            setError("Please select a team");
-            return;
-        }
+    // FORM থেকে team_id
+    $team_id = $_POST['team_id'] ?? null;
 
-        $fileTmp = $_FILES['csv_file']['tmp_name'];
-        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+    if (!$team_id) {
+        setError("Please select a team");
+        return;
+    }
 
-        if ($ext !== 'csv') {
-            setError("Only CSV files allowed");
-            return;
-        }
+    $fileTmp = $_FILES['csv_file']['tmp_name'];
+    $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
 
-        if (($handle = fopen($fileTmp, "r")) !== false) {
+    if ($ext !== 'csv') {
+        setError("Only CSV files allowed");
+        return;
+    }
 
-            $header = fgetcsv($handle);
+    if (($handle = fopen($fileTmp, "r")) !== false) {
 
-            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+        //  HEADER read + encoding fix
+        $header = fgetcsv($handle);
+        $header = array_map(function ($value) {
+            return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+        }, $header);
 
-                $data = array_combine($header, $row);
+        while (($row = fgetcsv($handle, 1000, ",")) !== false) {
 
-                $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
-                $data['status'] = 'active';
-                $data['visibility'] = $data['visibility'] ?? 'public';
+            //  ROW encoding fix
+            $row = array_map(function ($value) {
+                return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+            }, $row);
 
-                //  IMPORTANT FIX
-                $data['team_id'] = (int)$team_id;
-
-                // optional
-                $data['created_by'] = $_SESSION['user']['id'] ?? null;
-
-                $this->leadModel->create($data);
+            // skip empty row
+            if (count(array_filter($row)) === 0) {
+                continue;
             }
 
-            fclose($handle);
+            // header mismatch safe check
+            if (count($header) !== count($row)) {
+                continue;
+            }
 
-            setSuccess("CSV imported successfully");
-            header("Location: {$GLOBALS['base_url']}/digital-marketing-dashboard");
-            exit;
+            $data = array_combine($header, $row);
+
+            // default / required fields
+            $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
+            $data['status'] = 'active';
+            $data['visibility'] = $data['visibility'] ?? 'public';
+            $data['team_id'] = (int)$team_id;
+            $data['created_by'] = $_SESSION['user']['id'] ?? null;
+
+            try {
+                $this->leadModel->create($data);
+            } catch (Exception $e) {
+                // optional: log error instead of breaking পুরো import
+                error_log("CSV Import Error: " . $e->getMessage());
+                continue;
+            }
         }
+
+        fclose($handle);
+
+        setSuccess("CSV imported successfully");
+        header("Location: {$GLOBALS['base_url']}/digital-marketing-dashboard");
+        exit;
+    } else {
+        setError("Unable to read CSV file");
+        return;
     }
+}
 
 
     // Get single lead by ID
