@@ -329,6 +329,8 @@ WHERE e.id = ?
         social_media2 = ?, 
         social_media3 = ?, 
         photo = ?,
+        make_user = ?,
+        password = ?,
         created_by = ?,
         employee_type = ?,
         employee_status = ?,
@@ -344,7 +346,7 @@ WHERE e.id = ?
         }
 
         $stmt->bind_param(
-            "ssddsssssssssiissssssssssisssii",
+            "ssddsssssssssiissssssssssssisssii",
             $data['employee_id'],      // s
             $data['full_name'],        // s
             $data['gross_salary'],     // d
@@ -370,6 +372,8 @@ WHERE e.id = ?
             $data['social_media2'],      // s
             $data['social_media3'],      // s
             $finalPhoto,                  // s
+            $data['make_user'],           // i
+            $data['password'],            // s
             $data['created_by'],          // i
             $data['employee_type'],       // s
             $data['employee_status'],     // s 
@@ -502,4 +506,31 @@ WHERE e.id = ?
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
     }
+
+//     public function getAllForExport()
+// {
+//     $sql = "SELECT e.employee_id, e.full_name, e.email, e.phone,
+//                    dept.name AS department_name, desg.name AS designation_name,
+//                    e.joining_date, e.gross_salary
+//             FROM employees AS e
+//             LEFT JOIN departments AS dept ON e.department_id = dept.id
+//             LEFT JOIN designations AS desg ON e.designation_id = desg.id
+//             ORDER BY e.id DESC";
+
+//     $result = $this->db->query($sql);
+//     return $result->fetch_all(MYSQLI_ASSOC);
+// }
+public function getAllForExport()
+{
+    $sql = "SELECT e.*, 
+                   dept.name AS department_name, 
+                   desg.name AS designation_name
+            FROM employees AS e
+            LEFT JOIN departments AS dept ON e.department_id = dept.id
+            LEFT JOIN designations AS desg ON e.designation_id = desg.id
+            ORDER BY e.id DESC";
+
+    $result = $this->db->query($sql);
+    return $result->fetch_all(MYSQLI_ASSOC);
+}
 }

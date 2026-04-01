@@ -209,9 +209,10 @@
   }
 
   .upload-card .card-header {
-    background: var(--brand);
+    background: #198754;
     border-radius: 14px 14px 0 0 !important;
     padding: 1rem 1.4rem;
+    color: #fff;
     display: flex;
     align-items: center;
     gap: .6rem;
