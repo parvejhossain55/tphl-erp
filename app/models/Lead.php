@@ -740,8 +740,8 @@ class Lead extends Model
                 t.name AS team_name
             FROM leads l
             LEFT JOIN lead_sources ls ON l.source_type_id = ls.id
-            LEFT JOIN projects p ON l.project_id = p.id,
-            LEFT JOIN teams t ON l.team_id = t.id,
+            LEFT JOIN projects p ON l.project_id = p.id
+            LEFT JOIN teams t ON l.team_id = t.id
             WHERE l.created_by = ? 
               AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
               AND l.deleted_at IS NULL
