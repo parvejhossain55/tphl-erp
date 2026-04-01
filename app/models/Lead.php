@@ -730,4 +730,24 @@ class Lead extends Model
 
         return $stats;
     }
+    public function getLeadsByCreatedByLast7Days(int $userId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT 
+                l.*,
+                ls.name AS source_name,
+                p.name AS project_name
+            FROM leads l
+            LEFT JOIN lead_sources ls ON l.source_type_id = ls.id
+            LEFT JOIN projects p ON l.project_id = p.id
+            WHERE l.created_by = ? 
+              AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+              AND l.deleted_at IS NULL
+            ORDER BY l.created_at DESC
+        ");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
 }

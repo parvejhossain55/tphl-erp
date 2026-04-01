@@ -94,11 +94,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                 <label class="form__input-title">Payment Type *</label>
                             </div>
                             <select name="payment_type" class="form-select" required>
-                                <option value="">Select Type</option>
+                    
                                 <option value="booking_money">Booking</option>
-                                <option value="registration">Registration</option>
-                                <option value="emi">EMI</option>
-                                <option value="other">Other</option>
                             </select>
                         </div>
 
