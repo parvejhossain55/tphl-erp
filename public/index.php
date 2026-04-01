@@ -145,6 +145,8 @@ $routes = [
     "update-employee/(\d+)" => ["controller" => "EmployeeController", "method" => "update"],
     "employee-profile/(\d+)" => ["controller" => "EmployeeController", "method" => "show"],
     "delete-employee" => ["controller" => "EmployeeController", "method" => "delete"],
+    "employees-excel-download" => ["controller" => "EmployeeController", "method" => "exportExcel"],
+    "employees-pdf-download" => ["controller" => "EmployeeController", "method" => "exportPDF"],
 
     //employee dashboard
     "employee-dashboard" => ["controller" => "EmployeeDashboardController", "method" => "index"],
@@ -250,6 +252,7 @@ $routes = [
     "day-off" => ["controller" => "DayOffController", "method" => "dayOffManage"],
     "get-employee-days-off/(\d+)" => ["controller" => "DayOffController", "method" => "getEmployeeDaysOff"],
     "update-day-off" => ["controller" => "DayOffController", "method" => "updateDayOff"],
+
 
     // "update-task-progress" => ["controller" => "EmployeeDashboardController", "method" => "updateTaskProgress"],
 
@@ -421,7 +424,7 @@ $routes = [
     "contacts/update-status" => ["controller" => "ContactController", "method" => "updateStatus"],
 
     // ==========END SALES & BUISENESS======//
-    
+
     // teams
     'teams' => ['controller' => 'TeamController', 'method' => 'index'],
     'store-team' => ['controller' => 'TeamController', 'method' => 'store'],

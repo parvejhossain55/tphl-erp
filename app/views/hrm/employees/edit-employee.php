@@ -246,20 +246,20 @@
                  </div>
 
                  <div class="col-lg-6">
-                     <div class="form__input-box">
-                         <div class="form__input-box">
-                             <label>
-                                 <input type="checkbox" id="make_user" name="make_user" value="1">
-                                 Create User Account?
-                             </label>
+                    <div class="form__input-box">
+                        <div class="form__input-box">
+                            <label>
+                                <input type="checkbox" id="make_user" name="make_user" value="1" <?= ($employee['make_user'] == 1) ? 'checked' : '' ?>>
+                                Create User Account?
+                            </label>
 
-                             <div id="password_box" style="display:none;">
-                                 <label>Password</label>
-                                 <input type="password" name="password" class="form-control">
-                             </div>
-                         </div>
-                     </div>
-                 </div>
+                            <div id="password_box" style="display: <?= ($employee['make_user'] == 1) ? 'block' : 'none' ?>;">
+                                <label>Password</label>
+                                <input type="password" name="password" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
 
 

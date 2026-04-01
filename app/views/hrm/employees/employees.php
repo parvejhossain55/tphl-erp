@@ -5,10 +5,10 @@ $show_breadcrumb = true;
 
 ?>
 <form action="" method="get">
-    <div class="row g-20 mb-20 justify-content-between align-items-end">
+    <div class="row g-20 mb-20 justify-content-between align-items-end ">
 
         <!-- Search -->
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
+        <div class="col-xxl-3 col-md-6 col-12 ">
             <div class="card__wrapper">
                 <div class="search-box">
                     <input type="text" class="form-control" name="q" id="employeeName"
@@ -20,7 +20,7 @@ $show_breadcrumb = true;
 
 
         <!-- Department Filter -->
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
+        <div class="col-xxl-3 col-md-6 col-12">
             <div class="card__wrapper">
                 <div class="from__input-box">
                     <select class="form-control" name="department_id">
@@ -37,23 +37,40 @@ $show_breadcrumb = true;
         </div>
 
         <!-- Submit -->
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
+        <div class="col-xxl-6 col-12">
             <div class="card__wrapper">
-                <div class="d-flex align-items-center justify-content-between gap-15">
-                    <button type="submit" class="btn btn-secondary"> Filter</button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/employee-lists" class="btn btn-success w-100">
+                <div class="d-flex align-items-stretch gap-15">
+
+                    <button type="submit" class="btn btn-secondary flex-fill">
+                        Filter
+                    </button>
+
+                    <a href="<?= $GLOBALS['base_url'] ?>/employee-lists"
+                        class="btn btn-success flex-fill">
                         Reset
                     </a>
-                    <a type="button" class="btn btn-primary w-100" href="<?= $GLOBALS['base_url'] ?>/create-employee">
-                        Add Employee</a>
+
+                    <a href="<?= $GLOBALS['base_url'] ?>/employees-pdf-download"
+                        class="btn btn-success flex-fill">
+                        PDF Download
+                    </a>
+                    <a href="<?= $GLOBALS['base_url'] ?>/employees-excel-download"
+                        class="btn btn-success flex-fill">
+                        Excel Download
+                    </a>
+
+                    <a href="<?= $GLOBALS['base_url'] ?>/create-employee"
+                        class="btn btn-primary flex-fill">
+                        Add Employee
+                    </a>
+
                 </div>
             </div>
         </div>
-
     </div>
 </form>
 
-<div class="row">
+<div class="row align-items-stretch">
     <?php foreach ($employees as $employee): ?>
         <div class="col-xxl-3 col-xl-4 col-lg-6 col-md-6 px-2">
             <div class="card__wrapper">
@@ -66,7 +83,7 @@ $show_breadcrumb = true;
                         <div class="employee__meta mb-15">
                             <h4 class="mb-8"><a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['id'] ?>"><?= $employee['full_name'] ?? '' ?></a></h4>
                             <p><?= $employee['department_name'] ?> - <strong><?= $employee['designation_name'] ?? '' ?></strong></p>
-                          
+
                             <p>Employee ID - <?= $employee['employee_id'] ?></p>
                         </div>
                         <div class="common-social mb-20">
@@ -104,7 +121,7 @@ $show_breadcrumb = true;
     <!-- Pagination -->
     <div class="row my-4">
         <div class="col-12 d-flex justify-content-center">
-            <?= paginateLinksSecondary($base_url . "/user-lists", $currentPage, $totalPages); ?>
+            <?= paginateLinksSecondary($base_url . "/employee-lists", $currentPage, $totalPages); ?>
 
 
         </div>

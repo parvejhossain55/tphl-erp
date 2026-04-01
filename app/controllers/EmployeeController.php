@@ -253,21 +253,30 @@ class EmployeeController extends Controller
             session_start();
         }
 
+        $existingEmployee = $this->employeeModel->find($id);
+        if (!$existingEmployee) {
+            $_SESSION['error'] = "Employee not found!";
+            header("Location: {$GLOBALS['base_url']}/employee-lists");
+            exit;
+        }
+
         $makeUser = $_POST['make_user'] ?? 0;
         $plainPassword = trim($_POST['password'] ?? '');
-        // password validation only if user account is needed
-        if ($makeUser == 1 && empty($plainPassword)) {
-            $_SESSION['error'] = "Password is required when creating/updating user account!";
+        $existingUserId = $existingEmployee['user_id'] ?? null;
+
+        // password validation only for NEW user account
+        if ($makeUser == 1 && !$existingUserId && empty($plainPassword)) {
+            $_SESSION['error'] = "Password is required when creating a new user account!";
             header("Location: {$GLOBALS['base_url']}/edit-employee/$id");
             exit;
         }
 
-        $hashedPassword = null;
-        if ($makeUser == 1 && !empty($plainPassword)) {
+        $hashedPassword = $existingEmployee['password'] ?? '';
+        if (!empty($plainPassword)) {
             $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
         }
 
-        //    2 Employee data
+        // Employee data
         $employeeData = [
             'employee_id'          => trim($_POST['employee_id'] ?? ''),
             'full_name'            => trim($_POST['full_name'] ?? ''),
@@ -285,8 +294,8 @@ class EmployeeController extends Controller
             'pass_num'             => trim($_POST['pass_num'] ?? ''),
             'department_id'        => (int)($_POST['department_id'] ?? 0),
             'designation_id'       => (int)($_POST['designation_id'] ?? 0),
-            'dob' => !empty($_POST['dob']) ? $_POST['dob'] : null,
-            'joining_date' => !empty($_POST['joining_date']) ? $_POST['joining_date'] : null,
+            'dob'                  => !empty($_POST['dob']) ? $_POST['dob'] : null,
+            'joining_date'         => !empty($_POST['joining_date']) ? $_POST['joining_date'] : null,
             'account_holder_name'  => trim($_POST['account_holder_name'] ?? ''),
             'account_number'       => trim($_POST['account_number'] ?? ''),
             'bank_name'            => trim($_POST['bank_name'] ?? ''),
@@ -295,24 +304,32 @@ class EmployeeController extends Controller
             'social_media2'        => trim($_POST['social_media2'] ?? ''),
             'social_media3'        => trim($_POST['social_media3'] ?? ''),
             'created_by'           => $_SESSION['user']['id'] ?? null,
-            'employee_type'      => $_POST['employee_type'],
-            'employee_status'    => $_POST['employee_status'],
-            'responsibilities'    => $_POST['responsibilities'],
-            'team_id'             => (int)($_POST['team_id'] ?? 0)
+            'employee_type'        => $_POST['employee_type'],
+            'employee_status'      => $_POST['employee_status'],
+            'responsibilities'     => $_POST['responsibilities'],
+            'team_id'              => (int)($_POST['team_id'] ?? 0),
+            'make_user'            => $makeUser,
+            'password'             => $hashedPassword
         ];
+
         if (!$this->employeeModel->update($id, $employeeData, 'photo')) {
             $_SESSION['error'] = "Employee update failed!";
             header("Location: {$GLOBALS['base_url']}/edit-employee/$id");
             exit;
         }
 
-        //    4 User account handling
-
-        $employee = $this->employeeModel->find($id);
-        $existingUserId = $employee['user_id'] ?? null;
+        // User account handling
+        if (!$existingUserId && $makeUser == 1) {
+            // Check if user already exists with this email but is not linked
+            $existingUserByEmail = $this->userModel->getByEmail($employeeData['email']);
+            if ($existingUserByEmail) {
+                $existingUserId = $existingUserByEmail['id'];
+                // Link them now
+                $this->db->query("UPDATE employees SET user_id = $existingUserId WHERE id = $id");
+            }
+        }
 
         if ($existingUserId) {
-
             $userData = [
                 'full_name'      => $employeeData['full_name'],
                 'user_name'      => $employeeData['username'],
@@ -323,19 +340,15 @@ class EmployeeController extends Controller
                 'address'        => $employeeData['address'],
                 'team_id'        => $employeeData['team_id'],
                 'role_id'        => (int)($_POST['role_id'] ?? 0),
+                'employee_id'    => $id,
             ];
 
             if (!empty($plainPassword)) {
-                $userData['password'] = password_hash($plainPassword, PASSWORD_DEFAULT);
+                $userData['password'] = $plainPassword;
             }
 
             $this->userModel->update($userData, $existingUserId);
-        }
-
-        //  If no user exists AND checkbox checked → create user
-
-        elseif ($makeUser == 1) {
-
+        } elseif ($makeUser == 1) {
             $userData = [
                 'full_name'      => $employeeData['full_name'],
                 'user_name'      => $employeeData['username'],
@@ -346,15 +359,15 @@ class EmployeeController extends Controller
                 'address'        => $employeeData['address'],
                 'role_id'        => (int)($_POST['role_id'] ?? 0),
                 'employee_id'    => $id,
-                'password'       => password_hash($plainPassword, PASSWORD_DEFAULT),
+                'team_id'        => $employeeData['team_id'],
+                'password'       => $plainPassword,
             ];
 
             $user_id = $this->userModel->create($userData);
 
             if ($user_id) {
-                $stmt = $this->db->prepare("UPDATE employees SET user_id = ? WHERE id = ?");
-                $stmt->bind_param("ii", $user_id, $id);
-                $stmt->execute();
+                // Update employee with user_id
+                $this->db->query("UPDATE employees SET user_id = $user_id WHERE id = $id");
             }
         }
 
@@ -366,8 +379,123 @@ class EmployeeController extends Controller
     }
 
 
+    public function exportExcel()
+    {
+        $employees = $this->employeeModel->getAllForExport();
 
+        header("Content-Type: application/vnd.ms-excel");
+        header("Content-Disposition: attachment; filename=employees.xls");
 
+        // Only used columns
+        echo "S/L\tEmployee ID\tFull Name\tUsername\tEmail\tFather Name\tPhone\tEmergency Contact\tQualification\tAddress\tDepartment\tDesignation\tDOB\tWorkplace\tJoining Date\tGross Salary\tBasic Salary\tEmployee Status\n";
+
+        $sl = 1;
+
+        foreach ($employees as $emp) {
+            echo $sl++ . "\t" .
+                ($emp['employee_id'] ?? '') . "\t" .
+                ($emp['full_name'] ?? '') . "\t" .
+                ($emp['username'] ?? '') . "\t" .
+                ($emp['email'] ?? '') . "\t" .
+                ($emp['father_name'] ?? '') . "\t" .
+                ($emp['phone'] ?? '') . "\t" .
+                ($emp['emergency_contact'] ?? '') . "\t" .
+                ($emp['qualification'] ?? '') . "\t" .
+                ($emp['address'] ?? '') . "\t" .
+                ($emp['department_name'] ?? '') . "\t" .
+                ($emp['designation_name'] ?? '') . "\t" .
+                ($emp['dob'] ?? '') . "\t" .
+                ($emp['workplace'] ?? '') . "\t" .
+                ($emp['joining_date'] ?? '') . "\t" .
+                ($emp['gross_salary'] ?? '') . "\t" .
+                ($emp['basic_salary'] ?? '') . "\t" .
+                ($emp['employee_status'] ?? '') . "\t";
+        }
+
+        exit;
+    }
+    public function exportPDF()
+    {
+        $employees = $this->employeeModel->getAllForExport();
+        $totalEmployees = count($employees);
+
+        $pdf = new \TCPDF('L', 'mm', 'A4');
+        $pdf->SetCreator('Your App');
+        $pdf->SetAuthor('Admin');
+        $pdf->SetTitle('Employee List');
+
+        $pdf->AddPage();
+
+        $html = '
+    <div style="text-align:center;">
+        <h1 style="color:#078134;">The Premium Homes Ltd</h1>
+        <h3 style="color:#28B463;">Employee List Report</h3>
+        <p style="font-size:12px;">
+            <b>Total Employees: </b> ' . $totalEmployees . '
+        </p>
+    </div>
+
+    <br>
+
+    <table border="1" cellpadding="4">
+        <thead>
+            <tr style="background-color:#078134; color:#ffffff;">
+                <th>S/L</th>
+                <th>Emp ID</th>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Father</th>
+                <th>Phone</th>
+                <th>Emergency</th>
+                <th>Qualification</th>
+                <th>Address</th>
+                <th>Department</th>
+                <th>Designation</th>
+                <th>DOB</th>
+                <th>Workplace</th>
+                <th>Joining</th>
+                <th>Gross</th>
+                <th>Basic</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+    ';
+
+        $sl = 1;
+
+        foreach ($employees as $emp) {
+            $html .= '<tr>
+            <td>' . $sl++ . '</td>
+            <td>' . ($emp['employee_id'] ?? '') . '</td>
+            <td>' . ($emp['full_name'] ?? '') . '</td>
+            <td>' . ($emp['username'] ?? '') . '</td>
+            <td>' . ($emp['email'] ?? '') . '</td>
+            <td>' . ($emp['father_name'] ?? '') . '</td>
+            <td>' . ($emp['phone'] ?? '') . '</td>
+            <td>' . ($emp['emergency_contact'] ?? '') . '</td>
+            <td>' . ($emp['qualification'] ?? '') . '</td>
+            <td>' . ($emp['address'] ?? '') . '</td>
+            <td>' . ($emp['department_name'] ?? '') . '</td>
+            <td>' . ($emp['designation_name'] ?? '') . '</td>
+            <td>' . ($emp['dob'] ?? '') . '</td>
+            <td>' . ($emp['workplace'] ?? '') . '</td>
+            <td>' . ($emp['joining_date'] ?? '') . '</td>
+            <td>' . ($emp['gross_salary'] ?? '') . '</td>
+            <td>' . ($emp['basic_salary'] ?? '') . '</td>
+            <td>' . ($emp['employee_status'] ?? '') . '</td>
+        </tr>';
+        }
+
+        $html .= '</tbody></table>';
+
+        $pdf->SetFont('helvetica', '', 8);
+        $pdf->writeHTML($html, true, false, true, false, '');
+
+        $pdf->Output('employees.pdf', 'D');
+        exit;
+    }
 
     // Delete Employee
     public function delete()
@@ -381,3 +509,4 @@ class EmployeeController extends Controller
         }
     }
 }
+
