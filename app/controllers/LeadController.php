@@ -502,7 +502,7 @@ public function importCsv()
         fclose($handle);
 
         setSuccess("CSV imported successfully");
-        header("Location: {$GLOBALS['base_url']}/digital-marketing-dashboard");
+        header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
         exit;
     } else {
         setError("Unable to read CSV file");
