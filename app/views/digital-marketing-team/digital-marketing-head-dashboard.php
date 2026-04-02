@@ -1,569 +1,700 @@
 <style>
   :root {
-    --brand: #0d47a1;
-    --brand-light: #1565c0;
-    --accent: #00bcd4;
-    --sidebar-bg: #0a2d6e;
-    --sidebar-w: 240px;
+    --brand: #1a2744;
+    --brand-light: #2563eb;
+    --surface: #f4f6fb;
+    --card-radius: 14px;
   }
 
-  body {
-    font-family: 'Segoe UI', sans-serif;
-    background: #f0f4f8;
-    min-height: 100vh;
-  }
-
-  /* ── Sidebar ── */
-  .sidebar {
-    width: var(--sidebar-w);
-    min-height: 100vh;
-    background: var(--sidebar-bg);
-    position: fixed;
-    top: 0;
-    left: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .sidebar-brand {
-    padding: 1.4rem 1.2rem;
-    border-bottom: 1px solid rgba(255, 255, 255, .1);
-  }
-
-  .sidebar-brand span {
-    font-size: .75rem;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--accent);
-    font-weight: 600;
-  }
-
-  .sidebar-brand h5 {
-    color: #fff;
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 700;
-  }
-
-  .sidebar-nav {
-    padding: 1rem 0;
-    flex: 1;
-  }
-
-  .sidebar-nav .nav-item {
-    margin: 2px 0;
-  }
-
-  .sidebar-nav .nav-link {
-    color: rgba(255, 255, 255, .65);
-    padding: .6rem 1.4rem;
-    border-radius: 0;
-    font-size: .875rem;
-    display: flex;
-    align-items: center;
-    gap: .65rem;
-    transition: all .2s;
-  }
-
-  .sidebar-nav .nav-link:hover,
-  .sidebar-nav .nav-link.active {
-    color: #fff;
-    background: rgba(255, 255, 255, .1);
-    border-left: 3px solid var(--accent);
-  }
-
-  .sidebar-nav .nav-link i {
-    font-size: 1rem;
-  }
-
-  .sidebar-footer {
-    padding: 1rem 1.2rem;
-    border-top: 1px solid rgba(255, 255, 255, .1);
-  }
-
-  .sidebar-footer .user-thumb {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-weight: 700;
-    font-size: .85rem;
-    flex-shrink: 0;
-  }
-
-  .sidebar-footer .user-info small {
-    font-size: .7rem;
-    color: rgba(255, 255, 255, .5);
-  }
-
-  .sidebar-footer .user-info strong {
-    font-size: .8rem;
-    color: #fff;
-    display: block;
-    line-height: 1.2;
-  }
-
-  /* ── Main ── */
-  .main-wrap {
-    margin-left: var(--sidebar-w);
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-  }
-
-  /* ── Topbar ── */
-  .topbar {
+  /* ── reuse your existing wrappers ── */
+  .card__wrapper {
     background: #fff;
-    border-bottom: 1px solid #dde3ea;
-    padding: .75rem 1.75rem;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    border-radius: var(--card-radius);
+    border: 1px solid #e8ecf3;
+    padding: 18px 20px;
+    height: 100%;
   }
 
-  .topbar .page-title {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #1a2744;
-    margin: 0;
+  .table__wrapper {
+    border-radius: 0 0 var(--card-radius) var(--card-radius);
+    overflow: hidden;
   }
 
-  .topbar .breadcrumb {
-    margin: 0;
-    font-size: .75rem;
-  }
-
-  .badge-role {
-    background: #e3f2fd;
-    color: var(--brand);
-    font-size: .7rem;
-    font-weight: 600;
-    padding: .25rem .65rem;
-    border-radius: 20px;
-    letter-spacing: .05em;
-  }
-
-  .bell-btn {
-    position: relative;
-    background: #f0f4f8;
-    border: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #555;
-    font-size: 1rem;
-  }
-
-  .bell-btn .dot {
-    position: absolute;
-    top: 6px;
-    right: 7px;
-    width: 8px;
-    height: 8px;
-    background: #f44336;
-    border-radius: 50%;
-    border: 1.5px solid #fff;
-  }
-
-  /* ── Stat Cards ── */
-  .stat-card {
-    border: none;
-    border-radius: 12px;
-    margin-bottom: 10px;
-    padding: 1.25rem 1.4rem;
-    box-shadow: 0 1px 6px rgba(0, 0, 0, .06);
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
-
+  /* ── stat cards ── */
   .stat-card .label {
-    font-size: .75rem;
-    color: #6c757d;
+    font-size: .74rem;
+    color: #78909c;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 4px;
   }
 
   .stat-card .value {
-    font-size: 1.5rem;
+    font-size: 1.7rem;
     font-weight: 700;
+    color: #1a2744;
     line-height: 1.1;
   }
 
   .stat-card .change {
-    font-size: .72rem;
+    font-size: .76rem;
+    margin-top: 4px;
   }
 
-  /* ── Upload Card ── */
-  .upload-card {
-    border: none;
-    border-radius: 14px;
+  /* ── section title ── */
+  .section-title {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #1a2744;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 14px;
+  }
+
+  /* ── team cards ── */
+  .team-card {
     background: #fff;
-    box-shadow: 0 1px 6px rgba(0, 0, 0, .07);
-  }
-
-  .upload-card .card-header {
-    background: #198754;
-    border-radius: 14px 14px 0 0 !important;
-    padding: 1rem 1.4rem;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    gap: .6rem;
-  }
-
-  .upload-card .card-header h6 {
-    margin: 0;
-    font-weight: 600;
-    font-size: .95rem;
-  }
-
-  .drop-zone {
-    border: 2px dashed #b0bec5;
-    border-radius: 12px;
-    background: #f8fafc;
-    text-align: center;
-    padding: 2.8rem 1rem;
-    transition: border-color .2s, background .2s;
+    border: 1.5px solid #e8ecf3;
+    border-radius: var(--card-radius);
+    padding: 16px;
     cursor: pointer;
+    transition: border-color .18s, box-shadow .18s;
   }
 
-  .drop-zone:hover {
-    border-color: var(--accent);
-    background: #e0f7fa;
+  .team-card:hover {
+    border-color: #2563eb;
+    box-shadow: 0 2px 12px rgba(37, 99, 235, .08);
   }
 
-  .drop-zone .drop-icon {
-    font-size: 2.8rem;
-    display: block;
-    margin-bottom: .6rem;
+  .team-card.active {
+    border-color: #2563eb;
+    background: #f0f5ff;
   }
 
-  .drop-zone p {
-    margin: 0;
-    font-size: .875rem;
-    color: #546e7a;
-  }
-
-  .drop-zone small {
-    color: #90a4ae;
-    font-size: .75rem;
-  }
-
-  .file-preview {
-    border: 1px solid #e0e7ef;
-    border-radius: 10px;
-    padding: .75rem 1rem;
-    background: #f8fafc;
+  .team-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: .75rem;
+    justify-content: center;
+    font-size: .8rem;
+    font-weight: 700;
+    margin-bottom: 10px;
   }
 
-  .file-preview .file-icon {
-    width: 40px;
-    height: 40px;
-    background: #e8f5e9;
+  .team-name {
+    font-size: .85rem;
+    font-weight: 700;
+    color: #1a2744;
+  }
+
+  .team-lead {
+    font-size: .74rem;
+    color: #78909c;
+    margin-bottom: 8px;
+  }
+
+  .team-spend {
+    font-size: .76rem;
+    color: #546e7a;
+    margin-top: 5px;
+  }
+
+  /* ── progress bar ── */
+  .prog-bg {
+    height: 5px;
+    background: #edf0f6;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  .prog-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .4s ease;
+  }
+
+  /* ── platform cards ── */
+  .plat-card {
+    background: #fff;
+    border: 1px solid #e8ecf3;
+    border-radius: var(--card-radius);
+    padding: 16px;
+  }
+
+  .plat-icon {
+    width: 34px;
+    height: 34px;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #2e7d32;
-    font-size: 1.2rem;
-    flex-shrink: 0;
+    font-size: .75rem;
+    font-weight: 700;
   }
 
-  .file-preview .file-name {
-    font-size: .85rem;
-    font-weight: 600;
+  .plat-budget {
+    font-size: 1.25rem;
+    font-weight: 700;
     color: #1a2744;
+    margin: 8px 0 2px;
   }
 
-  .file-preview .file-meta {
-    font-size: .72rem;
+  .plat-meta {
+    font-size: .74rem;
     color: #78909c;
   }
 
-  .upload-progress .progress {
-    height: 8px;
-    border-radius: 4px;
-  }
-
-  .upload-progress .progress-bar {
-    background: linear-gradient(90deg, var(--brand), var(--accent));
-    border-radius: 4px;
-  }
-
-  /* ── Template download ── */
-  .template-strip {
-    background: #e8f5e9;
-    border: 1px solid #c8e6c9;
-    border-radius: 10px;
-    padding: .75rem 1rem;
+  /* ── summary strip ── */
+  .sum-strip {
+    background: #fff;
+    border: 1px solid #e8ecf3;
+    border-radius: var(--card-radius);
+    padding: 14px 20px;
     display: flex;
-    align-items: center;
-    gap: .75rem;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
   }
 
-  .template-strip i {
-    color: #2e7d32;
-    font-size: 1.1rem;
-  }
-
-  .template-strip p {
-    margin: 0;
-    font-size: .8rem;
-    color: #1b5e20;
-  }
-
-  /* ── History Table ── */
-  .history-card {
-    border: none;
-    border-radius: 14px;
-    /* background: #fff; */
-    box-shadow: 0 1px 6px rgba(0, 0, 0, .07);
-    overflow: hidden;
-  }
-
-  .history-card .card-header {
-    /* background: #fff; */
-    border-bottom: 1px solid #e9ecef;
-    padding: .9rem 1.4rem;
-    font-weight: 600;
-    font-size: .9rem;
-    /* color: #1a2744; */
-  }
-
-  .history-card table thead th {
+  .sum-item .s-label {
     font-size: .72rem;
-    letter-spacing: .07em;
+    color: #78909c;
+    font-weight: 600;
     text-transform: uppercase;
-    /* color: #78909c; */
-    font-weight: 600;
-    border-bottom: 1px solid #e9ecef;
-    padding: .65rem 1rem;
-    /* background: #f8fafc; */
+    letter-spacing: .04em;
   }
 
-  .history-card table tbody td {
+  .sum-item .s-val {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a2744;
+  }
+
+  /* ── tabs ── */
+  .nav-pills .nav-link {
+    font-size: .8rem;
+    border-radius: 8px;
+    color: #546e7a;
+    padding: 6px 16px;
+  }
+
+  .nav-pills .nav-link.active {
+    background: #1a2744;
+    color: #fff;
+  }
+
+  /* ── add-row ── */
+  .add-row select,
+  .add-row input {
     font-size: .82rem;
-    color: #3d4f6e;
-    padding: .7rem 1rem;
-    vertical-align: middle;
-    border-bottom: 1px solid #f0f4f8;
+    border-radius: 8px;
+    border: 1px solid #dde3ef;
+    padding: 7px 10px;
+    color: #1a2744;
   }
 
-  .status-badge {
-    font-size: .68rem;
+  .add-row .btn-brand {
+    background: #1a2744;
+    color: #fff;
+    border-radius: 8px;
+    font-size: .82rem;
     font-weight: 600;
-    padding: .25rem .7rem;
-    border-radius: 20px;
+    padding: 7px 18px;
+    border: none;
   }
 
-  .status-success {
-    background: #e8f5e9;
-    color: #2e7d32;
+  .add-row .btn-brand:hover {
+    background: #2563eb;
   }
 
-  .status-processing {
+  /* ── table ── */
+  .table thead th {
+    background: #f7f9fc;
+    font-size: .76rem;
+    font-weight: 700;
+    color: #78909c;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border-bottom: 1px solid #e8ecf3;
+    padding: 10px 14px;
+  }
+
+  .table tbody td {
+    font-size: .83rem;
+    color: #1a2744;
+    padding: 10px 14px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f3f8;
+  }
+
+  .table tbody tr:hover td {
+    background: #f7f9fc;
+  }
+
+  /* ── badges ── */
+  .bg-info-soft {
+    background: #e3f2fd;
+  }
+
+  .text-info-dark {
+    color: #0d47a1;
+  }
+
+  .bg-warn-soft {
     background: #fff8e1;
+  }
+
+  .text-warn-dark {
     color: #f57f17;
   }
 
-  .status-failed {
-    background: #ffebee;
-    color: #c62828;
+  .bg-success-soft {
+    background: #e8f5e9;
   }
 
-  /* ── Buttons ── */
-  .btn-brand {
-    background: var(--brand);
-    color: #fff;
-    border: none;
-    font-size: .85rem;
-    font-weight: 600;
-    border-radius: 8px;
-    padding: .55rem 1.3rem;
+  .text-success-dark {
+    color: #1b5e20;
+  }
+
+  .bg-danger-soft {
+    background: #fce4ec;
+  }
+
+  .text-danger-dark {
+    color: #880e4f;
+  }
+
+  .bg-purple-soft {
+    background: #ede7f6;
+  }
+
+  .text-purple-dark {
+    color: #4527a0;
+  }
+
+  /* ── chart legend ── */
+  .chart-legend span {
     display: inline-flex;
     align-items: center;
-    gap: .4rem;
-  }
-
-  .btn-brand:hover {
-    background: var(--brand-light);
-    color: #fff;
-  }
-
-  .btn-outline-brand {
-    border: 1.5px solid var(--brand);
-    color: var(--brand);
-    background: transparent;
-    font-size: .8rem;
-    font-weight: 600;
-    border-radius: 8px;
-    padding: .45rem 1.1rem;
-  }
-
-  .btn-outline-brand:hover {
-    background: var(--brand);
-    color: #fff;
-  }
-
-  /* ── Field requirements ── */
-  .req-list li {
-    font-size: .78rem;
+    gap: 5px;
+    font-size: .76rem;
     color: #546e7a;
-    padding: .15rem 0;
   }
 
-  .req-list li i {
-    color: var(--brand);
-    font-size: .75rem;
-    margin-right: .35rem;
+  .leg-box {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
   }
 </style>
 
 
-<!-- ════════════════════════════════════
-     SIDEBAR
-════════════════════════════════════ -->
-
-
-<!-- ════════════════════════════════════
-     MAIN WRAPPER
-════════════════════════════════════ -->
 <div class="app__slide-wrapper">
-
-  <!-- Stat row -->
   <div class="row mb-4">
     <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
-
-        <div>
-          <div class="label">Total Leads</div>
-          <div class="value"><?= number_format($stats['total_leads'] ?? 0) ?></div>
-          <div class="change text-success"><i class="bi bi-arrow-up-short"></i>Data sync ready</div>
-        </div>
+        <div class="label">Total Monthly Budget</div>
+        <div class="value">৳18,50,000</div>
+        <div class="change text-success"><i class="bi bi-arrow-up-short"></i>5 Active Teams</div>
       </div>
     </div>
     <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
-
-        <div>
-          <div class="label">Uploaded This Week</div>
-          <div class="value"><?= number_format($stats['leads_this_week'] ?? 0) ?></div>
-          <div class="change text-success"><i class="bi bi-arrow-up-short"></i>Last 7 days</div>
-        </div>
+        <div class="label">Total Spent</div>
+        <div class="value">৳11,37,500</div>
+        <div class="change text-danger"><i class="bi bi-arrow-up-short"></i>61.5% of budget</div>
       </div>
     </div>
     <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
-
-        <div>
-          <div class="label">Failed / Errors</div>
-          <div class="value"><?= number_format($stats['failed_leads'] ?? 0) ?></div>
-          <div class="change text-danger"><i class="bi bi-arrow-down-short"></i>Inactive/Cancelled</div>
-        </div>
+        <div class="label">Remaining</div>
+        <div class="value">৳7,12,500</div>
+        <div class="change text-muted"><i class="bi bi-clock"></i> 12 days left</div>
       </div>
     </div>
     <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
-
-        <div>
-          <div class="label">Total Uploads</div>
-          <div class="value"><?= number_format($stats['total_uploads'] ?? 0) ?></div>
-          <div class="change text-muted">Marketing leads</div>
-        </div>
+        <div class="label">Top Platform</div>
+        <div class="value">Facebook</div>
+        <div class="change text-success"><i class="bi bi-graph-up"></i> ৳4,50,000 spent</div>
       </div>
     </div>
   </div>
 
-  <div class="row d-none">
+  <!-- ════ TEAMS ════ -->
+  <div class="section-title"><i class="bi bi-people-fill me-2 text-primary"></i>Marketing Teams</div>
+  <div class="row mb-4" id="teamGrid">
 
-    <!-- LEFT: Upload Section -->
-    <div class="col-xl-7">
-      <!-- Template Strip -->
-      <div class="template-strip mb-3">
-        <i class="bi bi-file-earmark-arrow-down-fill"></i>
-        <p>Download the official CSV template before uploading to ensure correct column mapping.</p>
-        <a href="#" class="btn btn-sm btn-outline-success ms-auto" style="white-space:nowrap;font-size:.75rem;font-weight:600;">
-          <i class="bi bi-download me-1"></i> CSV Template
-        </a>
-      </div>
-
-      <!-- Upload Card -->
-      <div class="upload-card card">
-        <div class="card-header">
-          <i class="bi bi-cloud-upload-fill fs-5"></i>
-          <h6>Bulk Lead Upload – CSV</h6>
-        </div>
-        <div class="card-body p-4">
-
-          <!-- Drop Zone -->
-          <div class="drop-zone mb-3">
-            <i class="bi bi-file-earmark-spreadsheet drop-icon"></i>
-            <p class="fw-semibold mb-1">Drag & drop your CSV file here</p>
-            <p>or <span style="color:var(--brand);font-weight:600;cursor:pointer;">browse to upload</span></p>
-            <small>Accepted format: <strong>.csv</strong> only &nbsp;|&nbsp; Max file size: <strong>10 MB</strong></small>
-          </div>
-
-          <!-- File input -->
-          <div class="mb-3">
-            <label class="form-label fw-semibold" style="font-size:.82rem;">Select CSV File</label>
-            <div class="input-group d-none">
-              <input type="file" class="form-control" accept=".csv" style="font-size:.85rem;">
-              <span class="input-group-text bg-white" style="font-size:.8rem; color:#78909c;">
-                <i class="bi bi-filetype-csv me-1"></i>.csv only
-              </span>
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="d-flex gap-2">
-            <button type="button" class="btn btn-brand flex-grow-1" data-bs-toggle="modal" data-bs-target="#importCsvModal">
-              <i class="bi bi-cloud-upload-fill"></i> Upload Leads
-            </button>
-            <button class="btn btn-outline-secondary" style="font-size:.85rem; border-radius:8px;">
-              <i class="bi bi-x-circle"></i> Clear
-            </button>
-          </div>
-
+    <!-- Team Alpha -->
+    <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
+      <div class="team-card active" onclick="selectTeam(this,'alpha')">
+        <div class="team-avatar" style="background:#dbeafe;color:#1d4ed8;">A</div>
+        <div class="team-name">Team Alpha</div>
+        <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Rahim</div>
+        <div class="team-spend">৳2,30,000 / ৳4,00,000</div>
+        <div class="prog-bg">
+          <div class="prog-fill" style="width:57%;background:#2563eb;"></div>
         </div>
       </div>
     </div>
 
-    <!-- RIGHT: Required Columns -->
-    <div class="col-xl-5">
-      <div class="card border-0 shadow-sm mb-3" style="border-radius:14px; overflow:hidden;">
-        <div class="card-header bg-white border-bottom fw-semibold" style="font-size:.88rem; color:#1a2744;">
-          <i class="bi bi-list-check text-primary me-2"></i>Required CSV Columns
-        </div>
-        <div class="card-body p-3">
-          <ul class="req-list list-unstyled mb-0">
-            <li><i class="bi bi-dot"></i><strong>campaign_name</strong></li>
-            <li><i class="bi bi-dot"></i><strong>platform</strong></li>
-            <li><i class="bi bi-dot"></i><strong>which_apartment_size_are_you_interested_in</strong></li>
-            <li><i class="bi bi-dot"></i><strong>which_floor_are_you_for_shop</strong></li>
-            <li><i class="bi bi-dot"></i><strong>when_are_you_planning_to_buy</strong></li>
-            <li><i class="bi bi-dot"></i><strong>would_you_like_to_schedule_a_site_visit</strong></li>
-            <li><i class="bi bi-dot"></i><strong>when_is_the_best_time_to_contact_you</strong></li>
-            <li><i class="bi bi-dot"></i><strong>full_name</strong></li>
-            <li><i class="bi bi-dot"></i><strong>job_title</strong></li>
-            <li><i class="bi bi-dot"></i><strong>company_name</strong></li>
-            <li><i class="bi bi-dot"></i><strong>phone_number</strong></li>
-            <li><i class="bi bi-dot"></i><strong>city</strong></li>
-          </ul>
+    <!-- Team Beta -->
+    <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
+      <div class="team-card" onclick="selectTeam(this,'beta')">
+        <div class="team-avatar" style="background:#fce7f3;color:#be185d;">B</div>
+        <div class="team-name">Team Beta</div>
+        <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Karim</div>
+        <div class="team-spend">৳2,80,000 / ৳3,50,000</div>
+        <div class="prog-bg">
+          <div class="prog-fill" style="width:80%;background:#be185d;"></div>
         </div>
       </div>
     </div>
 
-  </div><!-- /row -->
+    <!-- Team Gamma -->
+    <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
+      <div class="team-card" onclick="selectTeam(this,'gamma')">
+        <div class="team-avatar" style="background:#fef9c3;color:#92400e;">G</div>
+        <div class="team-name">Team Gamma</div>
+        <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Nadia</div>
+        <div class="team-spend">৳1,95,000 / ৳3,00,000</div>
+        <div class="prog-bg">
+          <div class="prog-fill" style="width:65%;background:#d97706;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Delta -->
+    <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
+      <div class="team-card" onclick="selectTeam(this,'delta')">
+        <div class="team-avatar" style="background:#dcfce7;color:#166534;">D</div>
+        <div class="team-name">Team Delta</div>
+        <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Sadia</div>
+        <div class="team-spend">৳2,00,000 / ৳4,00,000</div>
+        <div class="prog-bg">
+          <div class="prog-fill" style="width:50%;background:#16a34a;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Omega -->
+    <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
+      <div class="team-card" onclick="selectTeam(this,'omega')">
+        <div class="team-avatar" style="background:#ede9fe;color:#6d28d9;">O</div>
+        <div class="team-name">Team Omega</div>
+        <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Tariq</div>
+        <div class="team-spend">৳1,32,500 / ৳2,00,000</div>
+        <div class="prog-bg">
+          <div class="prog-fill" style="width:66%;background:#7c3aed;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /team row -->
+
+  <!-- ════ TABS ════ -->
+  <ul class="nav nav-pills mb-3" id="budgetTabs">
+    <li class="nav-item"><a class="nav-link active" href="#" onclick="showTab('platform',this);return false;">
+        <i class="bi bi-pie-chart-fill me-1"></i>Platform Budget</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('add',this);return false;">
+        <i class="bi bi-plus-circle-fill me-1"></i>Add Budget</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('log',this);return false;">
+        <i class="bi bi-clock-history me-1"></i>Budget Log</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('chart',this);return false;">
+        <i class="bi bi-bar-chart-line-fill me-1"></i>Chart View</a></li>
+  </ul>
+
+  <!-- ── TAB: Platform Budget ── -->
+  <div id="tab-platform">
+
+    <!-- summary strip -->
+    <div class="sum-strip mb-4">
+      <div class="sum-item">
+        <div class="s-label">Team Budget</div>
+        <div class="s-val">৳4,00,000</div>
+      </div>
+      <div class="sum-item">
+        <div class="s-label">Spent</div>
+        <div class="s-val" style="color:#e53e3e;">৳2,30,000</div>
+      </div>
+      <div class="sum-item">
+        <div class="s-label">Remaining</div>
+        <div class="s-val" style="color:#16a34a;">৳1,70,000</div>
+      </div>
+      <div class="sum-item">
+        <div class="s-label">Active Platforms</div>
+        <div class="s-val">4</div>
+      </div>
+    </div>
+
+    <!-- platform cards -->
+    <div class="row g-3 mb-4">
+
+      <!-- Facebook -->
+      <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
+        <div class="plat-card">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="plat-icon" style="background:#dbeafe;color:#1d4ed8;">FB</div>
+            <span class="fw-semibold" style="font-size:.85rem;">Facebook</span>
+          </div>
+          <div class="plat-budget">৳1,20,000</div>
+          <div class="plat-meta">Spent: ৳95,000 (79%)</div>
+          <div class="prog-bg mt-2">
+            <div class="prog-fill" style="width:79%;background:#2563eb;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- YouTube -->
+      <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
+        <div class="plat-card">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="plat-icon" style="background:#fee2e2;color:#b91c1c;">YT</div>
+            <span class="fw-semibold" style="font-size:.85rem;">YouTube</span>
+          </div>
+          <div class="plat-budget">৳80,000</div>
+          <div class="plat-meta">Spent: ৳45,000 (56%)</div>
+          <div class="prog-bg mt-2">
+            <div class="prog-fill" style="width:56%;background:#dc2626;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Instagram -->
+      <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
+        <div class="plat-card">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="plat-icon" style="background:#fce7f3;color:#be185d;">IG</div>
+            <span class="fw-semibold" style="font-size:.85rem;">Instagram</span>
+          </div>
+          <div class="plat-budget">৳1,00,000</div>
+          <div class="plat-meta">Spent: ৳70,000 (70%)</div>
+          <div class="prog-bg mt-2">
+            <div class="prog-fill" style="width:70%;background:#be185d;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Ads -->
+      <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
+        <div class="plat-card">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="plat-icon" style="background:#dcfce7;color:#166534;">GA</div>
+            <span class="fw-semibold" style="font-size:.85rem;">Google Ads</span>
+          </div>
+          <div class="plat-budget">৳70,000</div>
+          <div class="plat-meta">Spent: ৳20,000 (29%)</div>
+          <div class="prog-bg mt-2">
+            <div class="prog-fill" style="width:29%;background:#16a34a;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TikTok -->
+      <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
+        <div class="plat-card">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="plat-icon" style="background:#f3f4f6;color:#111827;">TT</div>
+            <span class="fw-semibold" style="font-size:.85rem;">TikTok</span>
+          </div>
+          <div class="plat-budget">৳30,000</div>
+          <div class="plat-meta">Spent: ৳0 (0%)</div>
+          <div class="prog-bg mt-2">
+            <div class="prog-fill" style="width:0%;background:#374151;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /tab-platform -->
+
+  <!-- ── TAB: Add Budget ── -->
+  <div id="tab-add" style="display:none;">
+    <div class="card__wrapper mb-4">
+      <div class="section-title mb-3"><i class="bi bi-plus-circle-fill me-2 text-primary"></i>Add / Update Platform Budget</div>
+      <div class="row g-2 add-row align-items-end">
+        <div class="d-none col-xl-2 col-md-3 col-6">
+          <label class="form-label fw-semibold" style="font-size:.78rem;">Team</label>
+          <select class="form-select w-100">
+            <option>Team Alpha</option>
+            <option>Team Beta</option>
+            <option>Team Gamma</option>
+            <option>Team Delta</option>
+            <option>Team Omega</option>
+          </select>
+        </div>
+        <div class="col-xl-2 col-md-3 col-6">
+          <label class="form-label fw-semibold" style="font-size:.78rem;">Platform</label>
+          <select class="form-select w-100">
+            <option>Facebook</option>
+            <option>YouTube</option>
+            <option>Instagram</option>
+            <option>TikTok</option>
+            <option>Google Ads</option>
+            <option>LinkedIn</option>
+            <option>Twitter/X</option>
+          </select>
+        </div>
+        <div class="col-xl-2 col-md-3 col-6">
+          <label class="form-label fw-semibold" style="font-size:.78rem;">Month</label>
+          <input type="month" class="form-control" value="2025-05" />
+        </div>
+        <div class="col-xl-2 col-md-3 col-6">
+          <label class="form-label fw-semibold" style="font-size:.78rem;">Budget (৳)</label>
+          <input type="number" class="form-control" placeholder="e.g. 150000" />
+        </div>
+        <div class="col-xl-2 col-md-3 col-6">
+          <label class="form-label fw-semibold" style="font-size:.78rem;">Spent (৳)</label>
+          <input type="number" class="form-control" placeholder="e.g. 80000" />
+        </div>
+        <div class="col-xl-1 col-md-2 col-6">
+          <button class="btn-brand w-100" style="padding:8px 0;border-radius:8px;font-size:.82rem;font-weight:600;background:#1a2744;color:#fff;border:none;cursor:pointer;">
+            <i class="bi bi-plus-lg me-1"></i>Add
+          </button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /tab-add -->
+
+  <!-- ── TAB: Budget Log ── -->
+  <div id="tab-log" style="display:none;">
+    <div class="card border-0 shadow-sm mb-4" style="border-radius:var(--card-radius);">
+      <div class="card-header bg-white border-bottom fw-bold d-flex justify-content-between align-items-center py-3">
+        <span style="font-size:.88rem;color:#1a2744;"><i class="bi bi-clock-history me-2 text-primary"></i>Monthly Budget Log</span>
+        <span class="badge bg-primary-soft text-primary rounded-pill">8 Entries</span>
+      </div>
+      <div class="table__wrapper table-responsive">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>Platform</th>
+              <th>Month</th>
+              <th class="text-end">Budget (৳)</th>
+              <th class="text-end">Spent (৳)</th>
+              <th class="text-end">Remaining</th>
+              <th class="text-end pe-4">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge bg-info-soft text-info-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Alpha</span></td>
+              <td><i class="bi bi-facebook text-primary me-1"></i>Facebook</td>
+              <td>May 2025</td>
+              <td class="text-end fw-semibold">1,20,000</td>
+              <td class="text-end">95,000</td>
+              <td class="text-end text-success fw-semibold">25,000</td>
+              <td class="text-end pe-4"><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">79% used</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-info-soft text-info-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Alpha</span></td>
+              <td><i class="bi bi-youtube text-danger me-1"></i>YouTube</td>
+              <td>May 2025</td>
+              <td class="text-end fw-semibold">80,000</td>
+              <td class="text-end">45,000</td>
+              <td class="text-end text-success fw-semibold">35,000</td>
+              <td class="text-end pe-4"><span class="badge bg-success-soft text-success-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">56% used</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-danger-soft text-danger-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Beta</span></td>
+              <td><i class="bi bi-instagram text-danger me-1"></i>Instagram</td>
+              <td>May 2025</td>
+              <td class="text-end fw-semibold">1,50,000</td>
+              <td class="text-end">1,48,000</td>
+              <td class="text-end text-success fw-semibold">2,000</td>
+              <td class="text-end pe-4"><span class="badge bg-danger-soft text-danger-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">99% used</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-danger-soft text-danger-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Beta</span></td>
+              <td><i class="bi bi-google text-success me-1"></i>Google Ads</td>
+              <td>May 2025</td>
+              <td class="text-end fw-semibold">1,00,000</td>
+              <td class="text-end">70,000</td>
+              <td class="text-end text-success fw-semibold">30,000</td>
+              <td class="text-end pe-4"><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">70% used</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gamma</span></td>
+              <td><i class="bi bi-facebook text-primary me-1"></i>Facebook</td>
+              <td>May 2025</td>
+              <td class="text-end fw-semibold">1,20,000</td>
+              <td class="text-end">85,000</td>
+              <td class="text-end text-success fw-semibold">35,000</td>
+              <td class="text-end pe-4"><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">71% used</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gamma</span></td>
+              <td><i class="bi bi-tiktok me-1"></i>TikTok</td>
+              <td>May 2025</td>
+              <td class="text-end fw-semibold">80,000</td>
+              <td class="text-end">50,000</td>
+              <td class="text-end text-success fw-semibold">30,000</td>
+              <td class="text-end pe-4"><span class="badge bg-success-soft text-success-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">63% used</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-success-soft text-success-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Delta</span></td>
+              <td><i class="bi bi-youtube text-danger me-1"></i>YouTube</td>
+              <td>May 2025</td>
+              <td class="text-end fw-semibold">2,00,000</td>
+              <td class="text-end">1,10,000</td>
+              <td class="text-end text-success fw-semibold">90,000</td>
+              <td class="text-end pe-4"><span class="badge bg-success-soft text-success-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">55% used</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-purple-soft text-purple-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Omega</span></td>
+              <td><i class="bi bi-instagram text-danger me-1"></i>Instagram</td>
+              <td>May 2025</td>
+              <td class="text-end fw-semibold">1,00,000</td>
+              <td class="text-end">72,500</td>
+              <td class="text-end text-success fw-semibold">27,500</td>
+              <td class="text-end pe-4"><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">73% used</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- /tab-log -->
+
+  <!-- ── TAB: Chart ── -->
+  <div id="tab-chart" style="display:none;">
+    <div class="card__wrapper mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="section-title mb-0"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Budget vs Spent by Platform</div>
+        <div class="chart-legend d-flex gap-3">
+          <span><span class="leg-box" style="background:#3b82f6;"></span> Budget</span>
+          <span><span class="leg-box" style="background:#f472b6;"></span> Spent</span>
+        </div>
+      </div>
+      <div style="position:relative;width:100%;height:280px;">
+        <canvas id="mainChart"></canvas>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card__wrapper">
+          <div class="section-title mb-3"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Spend Distribution</div>
+          <div style="position:relative;width:100%;height:220px;">
+            <canvas id="pieChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card__wrapper">
+          <div class="section-title mb-3"><i class="bi bi-people-fill me-2 text-primary"></i>Team Budget Overview</div>
+          <div style="position:relative;width:100%;height:220px;">
+            <canvas id="teamChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /tab-chart -->
+
+
 
   <!-- Recent Leads Table -->
   <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 10): ?>
@@ -629,56 +760,154 @@
       </div>
     </div>
   <?php endif; ?>
-
 </div>
-
-<!-- CSV Import Modal -->
-<div class="modal fade" id="importCsvModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-md">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Import Leads from CSV</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <form action="<?= $GLOBALS['base_url'] ?>/leads-import-csv" method="post" enctype="multipart/form-data">
-          <div class="mb-3">
-            <label class="form-label">Upload CSV File <span class="text-danger">*</span></label>
-            <input type="file" name="csv_file" class="form-control" accept=".csv" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Select Team <span class="text-danger">*</span></label>
-            <select name="team_id" class="form-select" required>
-              <option value="">-- Select Team --</option>
-              <?php foreach ($teams as $team): ?>
-                <option value="<?= $team['id'] ?>">
-                  <?= htmlspecialchars($team['name']) ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="text-center">
-            <button type="submit" class="btn btn-primary">Import</button>
-          </div>
-        </form>
-        <p class="mt-3 text-muted small">CSV header must match the columns listed on the right.</p>
-      </div>
-
-
-    </div>
-  </div>
-</div>
-
-<!-- Bootstrap 5 JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Prevent page reload when Import CSV clicked
-    const importBtn = document.getElementById('importCsvBtn');
-    importBtn.addEventListener('click', function(e) {
-      e.preventDefault(); // ensures no form submit
-      // Bootstrap modal opens automatically via data-bs-toggle="modal"
+  /* ── tab switching ── */
+  function showTab(name, el) {
+    ['platform', 'add', 'log', 'chart'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
     });
-  });
+    document.querySelectorAll('#budgetTabs .nav-link').forEach(a => a.classList.remove('active'));
+    el.classList.add('active');
+    if (name === 'chart') buildCharts();
+  }
+
+  /* ── team card select ── */
+  function selectTeam(el) {
+    document.querySelectorAll('.team-card').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  /* ── charts ── */
+  let chartsBuilt = false;
+
+  function buildCharts() {
+    if (chartsBuilt) return;
+    chartsBuilt = true;
+
+    /* bar — budget vs spent per platform */
+    new Chart(document.getElementById('mainChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Facebook', 'YouTube', 'Instagram', 'Google Ads', 'TikTok', 'LinkedIn'],
+        datasets: [{
+            label: 'Budget',
+            data: [450000, 280000, 350000, 200000, 110000, 80000],
+            backgroundColor: '#3b82f6',
+            borderRadius: 5
+          },
+          {
+            label: 'Spent',
+            data: [345000, 200000, 290500, 140000, 62500, 40000],
+            backgroundColor: '#f472b6',
+            borderRadius: 5
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            ticks: {
+              callback: v => '৳' + (v / 1000) + 'k'
+            },
+            grid: {
+              color: '#f0f3f8'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+
+    /* pie — spend share */
+    new Chart(document.getElementById('pieChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Facebook', 'YouTube', 'Instagram', 'Google Ads', 'TikTok', 'LinkedIn'],
+        datasets: [{
+          data: [345000, 200000, 290500, 140000, 62500, 40000],
+          backgroundColor: ['#3b82f6', '#dc2626', '#be185d', '#16a34a', '#374151', '#0d47a1'],
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              font: {
+                size: 11
+              },
+              boxWidth: 10
+            }
+          }
+        }
+      }
+    });
+
+    /* horizontal bar — team budget */
+    new Chart(document.getElementById('teamChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Team Alpha', 'Team Beta', 'Team Gamma', 'Team Delta', 'Team Omega'],
+        datasets: [{
+            label: 'Budget',
+            data: [400000, 350000, 300000, 400000, 200000],
+            backgroundColor: '#c7d2fe',
+            borderRadius: 4
+          },
+          {
+            label: 'Spent',
+            data: [230000, 280000, 195000, 200000, 132500],
+            backgroundColor: '#6366f1',
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              callback: v => '৳' + (v / 1000) + 'k'
+            },
+            grid: {
+              color: '#f0f3f8'
+            }
+          },
+          y: {
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+  }
 </script>
+</body>
+
+</html>
