@@ -172,26 +172,26 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
                 <!-- Apartment Count -->
                 <div class="col-xl-4">
-                    <label>Apartment Count</label>
+                    <label>Apartment Count <span>(Optional)</span></label>
                     <input type="number" name="apartment_count" class="form-control"
                         value="<?= $project['apartment_count'] ?? '' ?>">
                 </div>
 
                 <!-- Plot Info -->
                 <div class="col-xl-4">
-                    <label>Plot Size</label>
+                    <label>Plot Size <span>(Optional)</span></label>
                     <input type="text" name="plot_size" class="form-control"
                         value="<?= $project['plot_size'] ?? '' ?>">
                 </div>
 
                 <div class="col-xl-4">
-                    <label>Plot No</label>
+                    <label>Plot No <span>(Optional)</span></label>
                     <input type="text" name="plot_no" class="form-control"
                         value="<?= $project['plot_no'] ?? '' ?>">
                 </div>
 
                 <div class="col-xl-4">
-                    <label>Block Size</label>
+                    <label>Block Size <span>(Optional)</span></label>
                     <input type="text" name="block_no" class="form-control"
                         value="<?= $project['block_no'] ?? '' ?>">
                 </div>
@@ -216,12 +216,12 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
                 <!-- Location  Image -->
                 <div class="col-xl-6">
-                    <label>Project Location Map Name</label>
+                    <label>Project Location Map Name <span>(Optional)</span></label>
                     <input type="text" name="project_map_location" class="form-control" value="<?= $project['project_map_location'] ?? '' ?>">
                 </div>
                 <!-- Map Image -->
                 <div class="col-xl-6">
-                    <label>Map Image</label>
+                    <label>Map Image <span>(Optional)</span></label>
                     <input type="file" name="map_image" class="form-control">
                 </div>
 
@@ -231,7 +231,7 @@ if (!empty($project['floor_wise_unit_meta'])) {
                     <input type="text" name="map_link" class="form-control" value="<?= $project['map_link'] ?? '' ?>">
                 </div>
                 <div class="col-xl-3 col-12">
-                    <label>Amenities Image</label>
+                    <label>Amenities Image  <span>(Optional)</span></label>
                     <input type="file" name="amenities_image" class="form-control">
                 </div>
                 <!-- Project Images -->
@@ -241,12 +241,12 @@ if (!empty($project['floor_wise_unit_meta'])) {
                 </div>
 
                 <div class="col-xl-3 col-12">
-                    <label>Image 2</label>
+                    <label>Image 2 <span>(Optional)</span></label>
                     <input type="file" name="image2" class="form-control">
                 </div>
 
                 <div class="col-xl-3 col-12">
-                    <label>Image 3</label>
+                    <label>Image 3 <span>(Optional)</span></label>
                     <input type="file" name="image3" class="form-control">
                 </div
 
@@ -275,7 +275,7 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
                 <!-- Amenities -->
                 <div class="col-12">
-                    <label>Amenities Details</label>
+                    <label>Amenities Details <span>(Optional)</span></label>
                     <textarea name="amenities_details" id="tinymce_simple_textarea">
 <?= htmlspecialchars($project['amenities_details'] ?? '') ?>
             </textarea>
@@ -283,7 +283,7 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
                 <!-- Description -->
                 <div class="col-12">
-                    <label>Description</label>
+                    <label>Description <span>(Optional)</span></label>
                     <textarea name="description" id="tinymce_simple_textarea">
 <?= htmlspecialchars($project['description'] ?? '') ?>
             </textarea>

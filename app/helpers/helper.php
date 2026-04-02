@@ -237,13 +237,16 @@ function redirectByRole()
             $url = "{$GLOBALS['base_url']}/my-dashboard";
             break;
         case 9: // sales
-            $url = "{$GLOBALS['base_url']}/sales-dashboard";
+            $url = "{$GLOBALS['base_url']}/sales-team-head-dashboard";
             break;
-        case 11: // whatsapp
-            $url = "{$GLOBALS['base_url']}/whatsapp-dashboard";
+        // case 11: // whatsapp
+        //     $url = "{$GLOBALS['base_url']}/whatsapp-dashboard";
             break;
         case 10: // sales
             $url = "{$GLOBALS['base_url']}/digital-marketing-dashboard";
+            break;
+        case 11: // digital marketing executive
+            $url = "{$GLOBALS['base_url']}/digital-marketing-executive-dashboard";
             break;
 
         default:

@@ -34,7 +34,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
 
 
- public function getAllOnboardClientBooking($year = null, $month = null)
+    public function getAllOnboardClientBooking($year = null, $month = null)
     {
         $sql = "SELECT 
                 lb.*, 
@@ -91,9 +91,9 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-public function getAllOnboardClient($year = null, $month = null)
-{
-    $sql = "SELECT 
+    public function getAllOnboardClient($year = null, $month = null)
+    {
+        $sql = "SELECT 
                 l.id AS lead_id, 
                 l.full_name, 
                 l.email, 
@@ -105,34 +105,34 @@ public function getAllOnboardClient($year = null, $month = null)
               AND lb.booking_status = 'completed'
               AND oc.id IS NULL";
 
-    $params = [];
-    $types = "";
+        $params = [];
+        $types = "";
 
-    if (!empty($year)) {
-        $sql .= " AND YEAR(l.created_at) = ?";
-        $params[] = (int)$year;
-        $types .= "i";
-    }
+        if (!empty($year)) {
+            $sql .= " AND YEAR(l.created_at) = ?";
+            $params[] = (int)$year;
+            $types .= "i";
+        }
 
-    if (!empty($month)) {
-        $sql .= " AND MONTH(l.created_at) = ?";
-        $params[] = (int)$month;
-        $types .= "i";
-    }
+        if (!empty($month)) {
+            $sql .= " AND MONTH(l.created_at) = ?";
+            $params[] = (int)$month;
+            $types .= "i";
+        }
 
-    $sql .= " GROUP BY l.id, l.full_name, l.email
+        $sql .= " GROUP BY l.id, l.full_name, l.email
               ORDER BY l.full_name ASC";
 
-    $stmt = $this->db->prepare($sql);
+        $stmt = $this->db->prepare($sql);
 
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
-
-    $stmt->execute();
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
 
 
 
@@ -569,6 +569,7 @@ public function getAllOnboardClient($year = null, $month = null)
 
         // ------------------- Monthly -------------------
         elseif ($type === 'monthly') {
+
             $query = "SELECT 
         DATE_FORMAT(lb.booking_date, '%Y-%m') AS month_key,
         DATE_FORMAT(lb.booking_date, '%M %Y') AS month_name,
@@ -583,28 +584,55 @@ public function getAllOnboardClient($year = null, $month = null)
     LEFT JOIN flats f ON lb.flat_id = f.id
     WHERE lb.deleted_at IS NULL";
 
+            $types = '';
+            $params = [];
+
+            // ✅ user filter
             if (!empty($userId)) {
-                $query .= " AND lb.sales_by_id = $userId";
+                $query .= " AND lb.sales_by_id = ?";
+                $types .= 'i';
+                $params[] = $userId;
             }
 
+            // ✅ project filter
             if (!empty($projectId)) {
-                $query .= " AND lb.project_id = $projectId";
+                $query .= " AND lb.project_id = ?";
+                $types .= 'i';
+                $params[] = $projectId;
             }
 
+            // ✅ search filter
             if (!empty($search)) {
-                $query .= " AND (l.full_name LIKE '%$search%' OR f.flat_name LIKE '%$search%' OR p.name LIKE '%$search%')";
+                $query .= " AND (l.full_name LIKE ? OR f.flat_name LIKE ? OR p.name LIKE ?)";
+                $types .= 'sss';
+                $searchTerm = "%$search%";
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
             }
 
-            $query .= " GROUP BY month_key ORDER BY month_key DESC";
+            // ✅ GROUP BY fix (important)
+            $query .= " 
+GROUP BY 
+    DATE_FORMAT(lb.booking_date, '%Y-%m'), 
+    DATE_FORMAT(lb.booking_date, '%M %Y')
+    ";
 
             $stmt = $this->db->prepare($query);
+
             if (!$stmt) {
                 setError($this->db->error);
                 return [];
             }
 
+            // ✅ bind যদি param থাকে
+            if (!empty($params)) {
+                $stmt->bind_param($types, ...$params);
+            }
+
             $stmt->execute();
             $result = $stmt->get_result();
+
             return $result->fetch_all(MYSQLI_ASSOC);
         }
 

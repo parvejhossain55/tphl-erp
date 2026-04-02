@@ -325,68 +325,100 @@ $show_breadcrumb = true;
                                     <td><?= $lead['agent_name'] ?? 'No Agent Assigned' ?></td>
 
                                     <td>
-                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 5): ?>
+                                            <div class="d-flex align-items-center gap-2 flex-wrap">
 
-                                            <!-- Follow Up -->
-                                            <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
-                                                class="btn btn-primary">
+                                                <!-- Follow Up -->
+                                                <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
+                                                    class="btn btn-primary">
 
-                                                <span>Follow Up</span>
+                                                    <span>Follow Up</span>
 
-                                                <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                                    <span class="action-badge">
-                                                        <?= $followUpCounts[$lead['id']] ?>
+                                                    <?php if (!empty($followUpCounts[$lead['id']])): ?>
+                                                        <span class="action-badge">
+                                                            <?= $followUpCounts[$lead['id']] ?>
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </a>
+
+                                                <!-- Booking -->
+                                                <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
+                                                    class="btn btn-secondary">
+
+                                                    <span>
+                                                        <?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?>
                                                     </span>
-                                                <?php endif; ?>
-                                            </a>
 
-                                            <!-- Booking -->
-                                            <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
-                                                class="btn btn-secondary">
+                                                    <?php if (!empty($bookingCount[$lead['id']])): ?>
+                                                        <span class="action-badge">
+                                                            <?= $bookingCount[$lead['id']] ?>
+                                                        </span>
+                                                    <?php else: ?>
+                                                        <span class="action-badge">0</span>
+                                                    <?php endif; ?>
+                                                </a>
 
-                                                <span>
-                                                    <?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?>
-                                                </span>
+                                                <!-- 3 Dot Dropdown -->
+                                                <div class="dropdown">
+                                                    <button class="action-dot-btn" type="button" data-bs-toggle="dropdown">
+                                                        <i class="bi bi-three-dots-vertical"></i>
+                                                    </button>
 
-                                                <?php if (!empty($bookingCount[$lead['id']])): ?>
+                                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                                                        <li>
+                                                            <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>">
+                                                                <i class="bi bi-pencil-square me-2 text-primary"></i> Edit
+                                                            </a>
+                                                        </li>
+
+                                                        <li>
+                                                            <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>">
+                                                                <i class="bi bi-eye me-2 text-success"></i> View
+                                                            </a>
+                                                        </li>
+
+                                                        <li>
+                                                            <buton class="dropdown__item text-danger removeBtnCust" data-name="<?= $lead['full_name'] ?>"
+                                                                data-action="lead-delete"
+                                                                data-id="<?= $lead['id'] ?>">
+                                                                <i class="bi bi-trash me-2"></i> Delete
+                                                            </buton>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="d-flex align-items-center gap-2 flex-wrap">
+
+                                                <!-- Follow Up (Disabled) -->
+                                                <button
+                                                    class="btn btn-success ">
+
+                                                    <span>Follow Up</span>
+
                                                     <span class="action-badge">
-                                                        <?= $bookingCount[$lead['id']] ?>
+                                                        <?= $followUpCounts[$lead['id']] ?? 0 ?>
                                                     </span>
-                                                <?php else: ?>
-                                                    <span class="action-badge">0</span>
-                                                <?php endif; ?>
-                                            </a>
-
-                                            <!-- 3 Dot Dropdown -->
-                                            <div class="dropdown">
-                                                <button class="action-dot-btn" type="button" data-bs-toggle="dropdown">
-                                                    <i class="bi bi-three-dots-vertical"></i>
                                                 </button>
 
-                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
-                                                    <li>
-                                                        <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>">
-                                                            <i class="bi bi-pencil-square me-2 text-primary"></i> Edit
-                                                        </a>
-                                                    </li>
+                                                <!-- Booking (Disabled) -->
+                                                <button
+                                                    class="btn btn-secondary ">
 
-                                                    <li>
-                                                        <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>">
-                                                            <i class="bi bi-eye me-2 text-success"></i> View
-                                                        </a>
-                                                    </li>
+                                                    <span>
+                                                        <?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?>
+                                                    </span>
 
-                                                    <li>
-                                                        <buton class="dropdown__item text-danger removeBtnCust" data-name="<?= $lead['full_name'] ?>"
-                                                            data-action="lead-delete"
-                                                            data-id="<?= $lead['id'] ?>">
-                                                            <i class="bi bi-trash me-2"></i> Delete
-                                                        </buton>
-                                                    </li>
-                                                </ul>
+                                                    <span class="action-badge">
+                                                        <?= $bookingCount[$lead['id']] ?? 0 ?>
+                                                    </span>
+                                                </button>
+
+                                                <!-- No Dropdown for non-admin -->
+
                                             </div>
-
-                                        </div>
+                                        <?php endif; ?>
                                     </td>
 
 

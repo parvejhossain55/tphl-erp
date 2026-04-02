@@ -204,8 +204,8 @@
                                             </a>
 
                                             <!-- Booking -->
-                                            <a href="#"
-                                                class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between no-click" style=" pointer-events: none;cursor: not-allowed;">
+                                            <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
+                                                class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between" >
                                                 <?php if (!empty($bookingCount[$lead['id']])): ?>
                                                     <span>Booked </span>
                                                     <span class="followup-badge">
