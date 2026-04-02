@@ -428,6 +428,9 @@
     margin-right: .35rem;
   }
 </style>
+<?php 
+  print_r($_SESSION['user'] ?? []);
+?>
 <div class="app__slide-wrapper">
 
   <!-- Stat row -->

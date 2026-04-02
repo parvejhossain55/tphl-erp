@@ -326,76 +326,7 @@
     </div>
   </div>
 
-  <!-- ════ TEAMS ════ -->
-  <div class="section-title"><i class="bi bi-people-fill me-2 text-primary"></i>Marketing Teams</div>
-  <div class="row mb-4" id="teamGrid">
 
-    <!-- Team Gulshan -->
-    <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
-      <div class="team-card active" onclick="selectTeam(this,'alpha')">
-        <div class="team-avatar" style="background:#dbeafe;color:#1d4ed8;">A</div>
-        <div class="team-name">Team Gulshan</div>
-        <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Rahim</div>
-        <div class="team-spend">৳2,30,000 / ৳4,00,000</div>
-        <div class="prog-bg">
-          <div class="prog-fill" style="width:57%;background:#2563eb;"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Team Gulshan - 1 -->
-    <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
-      <div class="team-card" onclick="selectTeam(this,'beta')">
-        <div class="team-avatar" style="background:#fce7f3;color:#be185d;">B</div>
-        <div class="team-name">Team Gulshan - 1</div>
-        <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Karim</div>
-        <div class="team-spend">৳2,80,000 / ৳3,50,000</div>
-        <div class="prog-bg">
-          <div class="prog-fill" style="width:80%;background:#be185d;"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Team Gulsahn-2 -->
-    <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
-      <div class="team-card" onclick="selectTeam(this,'gamma')">
-        <div class="team-avatar" style="background:#fef9c3;color:#92400e;">G</div>
-        <div class="team-name">Team Gulsahn-2</div>
-        <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Nadia</div>
-        <div class="team-spend">৳1,95,000 / ৳3,00,000</div>
-        <div class="prog-bg">
-          <div class="prog-fill" style="width:65%;background:#d97706;"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Team Delta -->
-    <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
-      <div class="team-card" onclick="selectTeam(this,'delta')">
-        <div class="team-avatar" style="background:#dcfce7;color:#166534;">D</div>
-        <div class="team-name">Team Delta</div>
-        <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Sadia</div>
-        <div class="team-spend">৳2,00,000 / ৳4,00,000</div>
-        <div class="prog-bg">
-          <div class="prog-fill" style="width:50%;background:#16a34a;"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Team Omega -->
-    <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
-      <div class="team-card" onclick="selectTeam(this,'omega')">
-        <div class="team-avatar" style="background:#ede9fe;color:#6d28d9;">O</div>
-        <div class="team-name">Team Omega</div>
-        <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Tariq</div>
-        <div class="team-spend">৳1,32,500 / ৳2,00,000</div>
-        <div class="prog-bg">
-          <div class="prog-fill" style="width:66%;background:#7c3aed;"></div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /team row -->
 
   <!-- ════ TABS ════ -->
   <ul class="nav nav-pills mb-3" id="budgetTabs">
@@ -528,7 +459,7 @@
             <option>Team Omega</option>
           </select>
         </div>
-        <div class="col-xl-2 col-md-3 col-6">
+        <div class="col-xl-3 col-md-3 col-6">
           <label class="form-label fw-semibold" style="font-size:.78rem;">Platform</label>
           <select class="form-select w-100">
             <option>Facebook</option>
@@ -540,19 +471,19 @@
             <option>Twitter/X</option>
           </select>
         </div>
-        <div class="col-xl-2 col-md-3 col-6">
+        <div class="col-xl-3 col-md-3 col-6">
           <label class="form-label fw-semibold" style="font-size:.78rem;">Month</label>
           <input type="month" class="form-control" value="2025-05" />
         </div>
-        <div class="col-xl-2 col-md-3 col-6">
+        <div class="col-xl-3 col-md-3 col-6">
           <label class="form-label fw-semibold" style="font-size:.78rem;">Budget (৳)</label>
           <input type="number" class="form-control" placeholder="e.g. 150000" />
         </div>
-        <div class="col-xl-2 col-md-3 col-6">
+        <div class="col-xl-3 col-md-3 col-6">
           <label class="form-label fw-semibold" style="font-size:.78rem;">Spent (৳)</label>
           <input type="number" class="form-control" placeholder="e.g. 80000" />
         </div>
-        <div class="col-xl-1 col-md-2 col-6">
+        <div class="col-xl-3 col-md-3 col-6">
           <button class="btn-brand w-100" style="padding:8px 0;border-radius:8px;font-size:.82rem;font-weight:600;background:#1a2744;color:#fff;border:none;cursor:pointer;">
             <i class="bi bi-plus-lg me-1"></i>Add
           </button>
