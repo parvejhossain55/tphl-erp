@@ -592,39 +592,7 @@
     </div>
   </div><!-- /tab-log -->
 
-  <!-- ── TAB: Chart ── -->
-  <div id="tab-chart" style="display:none;">
-    <div class="card__wrapper mb-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="section-title mb-0"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Budget vs Spent by Platform</div>
-        <div class="chart-legend d-flex gap-3">
-          <span><span class="leg-box" style="background:#3b82f6;"></span> Budget</span>
-          <span><span class="leg-box" style="background:#f472b6;"></span> Spent</span>
-        </div>
-      </div>
-      <div style="position:relative;width:100%;height:280px;">
-        <canvas id="mainChart"></canvas>
-      </div>
-    </div>
-    <div class="row g-3">
-      <div class="col-md-6">
-        <div class="card__wrapper">
-          <div class="section-title mb-3"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Spend Distribution</div>
-          <div style="position:relative;width:100%;height:220px;">
-            <canvas id="pieChart"></canvas>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card__wrapper">
-          <div class="section-title mb-3"><i class="bi bi-people-fill me-2 text-primary"></i>Team Budget Overview</div>
-          <div style="position:relative;width:100%;height:220px;">
-            <canvas id="teamChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div><!-- /tab-chart -->
+
 
 
 
