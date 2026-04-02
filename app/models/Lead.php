@@ -758,4 +758,29 @@ public function getLeadsByCreatedByLast7Days(int $userId)
     $result = $stmt->get_result();
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }
+
+public function getLeadsByTeamId($teamId)
+{
+    $stmt = $this->db->prepare("
+        SELECT 
+            l.*,
+            ls.name AS source_name,
+            p.name AS project_name,
+            t.name AS team_name
+        FROM leads l
+        LEFT JOIN lead_sources ls ON l.source_type_id = ls.id
+        LEFT JOIN projects p ON l.project_id = p.id
+        LEFT JOIN teams t ON l.team_id = t.id
+        WHERE l.team_id = ?
+          AND l.deleted_at IS NULL
+        ORDER BY l.created_at DESC
+    ");
+
+    $stmt->bind_param("i", $teamId);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
 }

@@ -554,7 +554,24 @@
       </div>
     </div>
 
-  </div><!-- /row -->
+  </div>
+  <div class="row">
+    <div class="col-md-4 mb-3">
+    <label for="teamFilter" class="form-label">Select Team</label>
+    <select id="teamFilter" class="form-control">
+        <option value="">All Teams</option>
+        <?php foreach ($teams as $team): ?>
+            <option value="<?= $team['id'] ?>">
+                <?= $team['name'] ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+
+    <div>
+      <label for="teamFilter">Team</label>
+    </div>
+</div>
+  </div>
 
   <!-- Recent Leads Table -->
   <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 11): ?>
@@ -565,9 +582,9 @@
             <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Uploaded Leads (Last 7 Days)</h6>
             <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($leads) ?> Leads</span>
           </div>
-          <div class="table__wrapper table-responsive">
-            <table class="table mb-20 ">
-              <thead class="">
+          <div class="table__wrapper table-responsive my-3">
+            <table class="table no-border-table mt-20 multiple_tables">
+              <thead class="py-3">
                 <tr>
                   <th class="ps-4">Lead Name</th>
                   <th>Contact Info</th>

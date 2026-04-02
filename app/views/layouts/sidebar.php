@@ -322,10 +322,23 @@
                             <span class="sidebar__menu-label">Marketing Executive Dashboard</span>
                         </a>
                     </li>
-
+                    <li class="slide">
+                        <a href="<?= $base_url ?>/create-lead" class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user"></i></div>
+                            <span class="sidebar__menu-label">Create Lead</span>
+                        </a>
+                    </li>
+                    <ul class="sidebar-menu child2" style="display:block;">
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/lead-lists" class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">Lead List</a>
+                        </li>
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/onboarding-clients" class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">Team Onboarding Clients</a>
+                        </li>
+                    </ul>
                 <?php endif; ?>
 
-              
+
                 <!--End Marketing Executive Dashboard  -->
                 <!-- For Sales Team Head  sales-head -->
                 <?php if (hasPermission("view lead")): ?>

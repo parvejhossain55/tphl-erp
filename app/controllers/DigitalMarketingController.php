@@ -45,4 +45,19 @@ class DigitalMarketingController extends Controller
             "leads"               => $leads
         ]);
     }
+
+    public function getLeadsByTeam()
+{
+    $teamId = $_GET['team_id'] ?? null;
+
+    if (!$teamId) {
+        echo json_encode([]);
+        return;
+    }
+
+    $leads = $this->leadModel->getLeadsByTeamId($teamId);
+
+    header('Content-Type: application/json');
+    echo json_encode($leads);
+}
 }
