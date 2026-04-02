@@ -330,11 +330,11 @@
   <div class="section-title"><i class="bi bi-people-fill me-2 text-primary"></i>Marketing Teams</div>
   <div class="row mb-4" id="teamGrid">
 
-    <!-- Team Alpha -->
+    <!-- Team Gulshan -->
     <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
       <div class="team-card active" onclick="selectTeam(this,'alpha')">
         <div class="team-avatar" style="background:#dbeafe;color:#1d4ed8;">A</div>
-        <div class="team-name">Team Alpha</div>
+        <div class="team-name">Team Gulshan</div>
         <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Rahim</div>
         <div class="team-spend">৳2,30,000 / ৳4,00,000</div>
         <div class="prog-bg">
@@ -343,11 +343,11 @@
       </div>
     </div>
 
-    <!-- Team Beta -->
+    <!-- Team Gulshan - 1 -->
     <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
       <div class="team-card" onclick="selectTeam(this,'beta')">
         <div class="team-avatar" style="background:#fce7f3;color:#be185d;">B</div>
-        <div class="team-name">Team Beta</div>
+        <div class="team-name">Team Gulshan - 1</div>
         <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Karim</div>
         <div class="team-spend">৳2,80,000 / ৳3,50,000</div>
         <div class="prog-bg">
@@ -356,11 +356,11 @@
       </div>
     </div>
 
-    <!-- Team Gamma -->
+    <!-- Team Gulsahn-2 -->
     <div class="col-xl-2 col-lg-3 col-sm-4 col-6 mb-3">
       <div class="team-card" onclick="selectTeam(this,'gamma')">
         <div class="team-avatar" style="background:#fef9c3;color:#92400e;">G</div>
-        <div class="team-name">Team Gamma</div>
+        <div class="team-name">Team Gulsahn-2</div>
         <div class="team-lead"><i class="bi bi-person-fill me-1"></i>Lead: Nadia</div>
         <div class="team-spend">৳1,95,000 / ৳3,00,000</div>
         <div class="prog-bg">
@@ -521,9 +521,9 @@
         <div class="d-none col-xl-2 col-md-3 col-6">
           <label class="form-label fw-semibold" style="font-size:.78rem;">Team</label>
           <select class="form-select w-100">
-            <option>Team Alpha</option>
-            <option>Team Beta</option>
-            <option>Team Gamma</option>
+            <option>Team Gulshan</option>
+            <option>Team Gulshan - 1</option>
+            <option>Team Gulsahn-2</option>
             <option>Team Delta</option>
             <option>Team Omega</option>
           </select>
@@ -557,7 +557,7 @@
             <i class="bi bi-plus-lg me-1"></i>Add
           </button>
         </div>
-        
+
       </div>
     </div>
   </div><!-- /tab-add -->
@@ -584,7 +584,7 @@
           </thead>
           <tbody>
             <tr>
-              <td><span class="badge bg-info-soft text-info-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Alpha</span></td>
+              <td><span class="badge bg-info-soft text-info-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulshan</span></td>
               <td><i class="bi bi-facebook text-primary me-1"></i>Facebook</td>
               <td>May 2025</td>
               <td class="text-end fw-semibold">1,20,000</td>
@@ -593,7 +593,7 @@
               <td class="text-end pe-4"><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">79% used</span></td>
             </tr>
             <tr>
-              <td><span class="badge bg-info-soft text-info-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Alpha</span></td>
+              <td><span class="badge bg-info-soft text-info-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulshan</span></td>
               <td><i class="bi bi-youtube text-danger me-1"></i>YouTube</td>
               <td>May 2025</td>
               <td class="text-end fw-semibold">80,000</td>
@@ -602,7 +602,7 @@
               <td class="text-end pe-4"><span class="badge bg-success-soft text-success-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">56% used</span></td>
             </tr>
             <tr>
-              <td><span class="badge bg-danger-soft text-danger-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Beta</span></td>
+              <td><span class="badge bg-danger-soft text-danger-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulshan - 1</span></td>
               <td><i class="bi bi-instagram text-danger me-1"></i>Instagram</td>
               <td>May 2025</td>
               <td class="text-end fw-semibold">1,50,000</td>
@@ -611,7 +611,7 @@
               <td class="text-end pe-4"><span class="badge bg-danger-soft text-danger-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">99% used</span></td>
             </tr>
             <tr>
-              <td><span class="badge bg-danger-soft text-danger-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Beta</span></td>
+              <td><span class="badge bg-danger-soft text-danger-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulshan - 1</span></td>
               <td><i class="bi bi-google text-success me-1"></i>Google Ads</td>
               <td>May 2025</td>
               <td class="text-end fw-semibold">1,00,000</td>
@@ -620,7 +620,7 @@
               <td class="text-end pe-4"><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">70% used</span></td>
             </tr>
             <tr>
-              <td><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gamma</span></td>
+              <td><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulsahn-2</span></td>
               <td><i class="bi bi-facebook text-primary me-1"></i>Facebook</td>
               <td>May 2025</td>
               <td class="text-end fw-semibold">1,20,000</td>
@@ -629,7 +629,7 @@
               <td class="text-end pe-4"><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">71% used</span></td>
             </tr>
             <tr>
-              <td><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gamma</span></td>
+              <td><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulsahn-2</span></td>
               <td><i class="bi bi-tiktok me-1"></i>TikTok</td>
               <td>May 2025</td>
               <td class="text-end fw-semibold">80,000</td>
@@ -866,7 +866,7 @@
     new Chart(document.getElementById('teamChart'), {
       type: 'bar',
       data: {
-        labels: ['Team Alpha', 'Team Beta', 'Team Gamma', 'Team Delta', 'Team Omega'],
+        labels: ['Team Gulshan', 'Team Gulshan - 1', 'Team Gulsahn-2', 'Team Delta', 'Team Omega'],
         datasets: [{
             label: 'Budget',
             data: [400000, 350000, 300000, 400000, 200000],
