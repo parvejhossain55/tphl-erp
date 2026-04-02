@@ -19,9 +19,27 @@ class DigitalMarketingController extends Controller
             $leads = $this->leadModel->getLeadsByCreatedByLast7Days($_SESSION['user']['id']);
         }
 
-        return $this->view("marketing-team-head/digital-marketing-head-dashboard", [
+        return $this->view("digital-marketing-team/digital-marketing-head-dashboard", [
             "current_route"       => "digital-marketing-dashboard",
             "page_title"          => "Digital Marketing Dashboard",
+            "teams"               => $teams,
+            "stats"               => $stats,
+            "leads"               => $leads
+        ]);
+    }
+
+    public function executiveDashboard()
+    {
+         $stats = $this->leadModel->getDigitalMarketingStats();
+        $teams = $this->teamsModel->getAll();
+        $leads = [];
+        if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 11) {
+            $leads = $this->leadModel->getLeadsByCreatedByLast7Days($_SESSION['user']['id']);
+        }
+
+        return $this->view("digital-marketing-team/digital-marketing-executive", [
+            "current_route"       => "digital-marketing-executive-dashboard",
+            "page_title"          => "Digital Marketing Executive Dashboard",
             "teams"               => $teams,
             "stats"               => $stats,
             "leads"               => $leads

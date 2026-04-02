@@ -566,7 +566,7 @@
   </div><!-- /row -->
 
   <!-- Recent Leads Table -->
-  <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 10): ?>
+  <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 11): ?>
     <div class="row mt-4">
       <div class="col-12">
         <div class="history-card shadow-sm border-0">
