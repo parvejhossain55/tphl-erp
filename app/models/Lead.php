@@ -710,8 +710,11 @@ class Lead extends Model
 
         // Total Leads (Active and not deleted)
         $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE status = 'active' AND deleted_at IS NULL");
+        $stmt2 = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE created_at >= CURDATE() AND deleted_at IS NULL");
         $stmt->execute();
         $stats['total_leads'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+        $stmt2->execute();
+        $stats['today_uploads'] = $stmt2->get_result()->fetch_assoc()['total'] ?? 0;
 
         // Uploaded This Week (Leads created in the last 7 days)
         $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND deleted_at IS NULL");
@@ -758,4 +761,29 @@ public function getLeadsByCreatedByLast7Days(int $userId)
     $result = $stmt->get_result();
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }
+
+public function getLeadsByTeamId($teamId)
+{
+    $stmt = $this->db->prepare("
+        SELECT 
+            l.*,
+            ls.name AS source_name,
+            p.name AS project_name,
+            t.name AS team_name
+        FROM leads l
+        LEFT JOIN lead_sources ls ON l.source_type_id = ls.id
+        LEFT JOIN projects p ON l.project_id = p.id
+        LEFT JOIN teams t ON l.team_id = t.id
+        WHERE l.team_id = ?
+          AND l.deleted_at IS NULL
+        ORDER BY l.created_at DESC
+    ");
+
+    $stmt->bind_param("i", $teamId);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
 }
