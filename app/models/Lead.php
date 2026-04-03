@@ -710,8 +710,11 @@ class Lead extends Model
 
         // Total Leads (Active and not deleted)
         $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE status = 'active' AND deleted_at IS NULL");
+        $stmt2 = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE created_at >= CURDATE() AND deleted_at IS NULL");
         $stmt->execute();
         $stats['total_leads'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+        $stmt2->execute();
+        $stats['today_uploads'] = $stmt2->get_result()->fetch_assoc()['total'] ?? 0;
 
         // Uploaded This Week (Leads created in the last 7 days)
         $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND deleted_at IS NULL");

@@ -290,7 +290,9 @@ class EmployeeController extends Controller
             'basic_salary'         => trim($_POST['basic_salary'] ?? ''),
             'experience'           => trim($_POST['experience'] ?? ''),
             'nid'                  => trim($_POST['nid'] ?? ''),
-            'address'              => trim($_POST['address'] ?? ''),
+            'address' => !empty($_POST['address'])
+                ? trim($_POST['address'])
+                : 'N/A',
             'pass_num'             => trim($_POST['pass_num'] ?? ''),
             'department_id'        => (int)($_POST['department_id'] ?? 0),
             'designation_id'       => (int)($_POST['designation_id'] ?? 0),
@@ -509,4 +511,3 @@ class EmployeeController extends Controller
         }
     }
 }
-

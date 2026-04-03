@@ -457,9 +457,9 @@
       <div class="card__wrapper stat-card">
 
         <div>
-          <div class="label">Failed / Errors</div>
-          <div class="value"><?= number_format($stats['failed_leads'] ?? 0) ?></div>
-          <div class="change text-danger"><i class="bi bi-arrow-down-short"></i>Inactive/Cancelled</div>
+          <div class="label">Today Upload Leads</div>
+          <div class="value"><?= number_format($stats['today_uploads'] ?? 0) ?></div>
+          <div class="change text-danger"><i class="bi bi-arrow-down-short"></i>Active</div>
         </div>
       </div>
     </div>
