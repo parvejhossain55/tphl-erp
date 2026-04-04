@@ -842,7 +842,7 @@ function renderApprovalContext(array $req)
                                 <span class="badge bg-primary ms-md-2">Requested By</span>
                             </div>
                             <div class="col-12 col-md-6 text-break">
-                                <strong><?= esc($ctx['requester']['user_name']) ?></strong>
+                              <strong><?= esc($ctx['requester']['user_name'] ?? 'N/A') ?></strong>
                                 <div class="small text-muted">
                                     <i class="bi bi-envelope"></i>
                                     <?= esc($ctx['requester']['email']) ?>
@@ -904,7 +904,7 @@ function renderApprovalContext(array $req)
                                 <span class="badge bg-warning text-dark ms-md-2">Employee</span>
                             </div>
                             <div class="col-12 col-md-6">
-                                <strong><?= esc($ctx['employee']['user_name']) ?></strong>
+                              <strong><?= esc($ctx['employee']['user_name'] ?? 'N/A') ?></strong>
                                 <div class="small text-muted">
                                     <i class="bi bi-briefcase"></i>
                                     <?= esc($ctx['employee']['designation'], 'N/A') ?>

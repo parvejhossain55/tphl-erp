@@ -473,16 +473,7 @@
         </div>
       </div>
     </div>
-    <div class="col-xl-3 col-sm-6 col-6 mb-2">
-      <div class="card__wrapper stat-card">
 
-        <div>
-          <div class="label">Duplicate Number Leads</div>
-          <div class="value text-danger"><?= number_format($duplicateLeadsCount ?? 0) ?></div>
-          <div class="change text-danger"><i class="bi bi-exclamation-triangle"></i>Duplicates Found</div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <div class="row">
@@ -565,26 +556,88 @@
     </div>
 
   </div>
-  <div class="row">
-    <div class="col-md-5 mb-3">
-      <form action="" method="GET" class="d-flex align-items-end gap-2">
-        <div class="flex-grow-1">
-          <label for="team_id" class="form-label fw-bold">Search By Teamwise</label>
-          <select name="team_id" id="team_id" class="form-select select2">
-            <option value="">All Teams</option>
-            <?php foreach ($teams as $team): ?>
-              <option value="<?= $team['id'] ?>" <?= (isset($selected_team_id) && $selected_team_id == $team['id']) ? 'selected' : '' ?>>
-                <?= htmlspecialchars($team['name']) ?>
-              </option>
-            <?php endforeach; ?>
-          </select>
+  <div class="row mt-4">
+    <div class="col-12 mb-3">
+      <form action="" method="GET" class="card__wrapper p-3 shadow-sm" style="border-radius:12px;">
+
+        <div class="row align-items-end g-2">
+
+          <!-- Team Filter -->
+          <div class="col-md-3 col-6">
+            <label class="form-label small text-muted fw-semibold">Team</label>
+            <select name="team_id" class="form-select form-select-sm select2">
+              <option value="">All Teams</option>
+              <?php foreach ($teams as $team): ?>
+                <option value="<?= $team['id'] ?>" <?= ($selected_team_id ?? '') == $team['id'] ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($team['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <!-- Lead Age -->
+          <div class="col-md-2 col-6">
+            <label class="form-label small text-muted fw-semibold">Lead Age</label>
+            <select name="date_age" class="form-select form-select-sm">
+              <option value="all" <?= ($date_age ?? '') == 'all' ? 'selected' : '' ?>>All</option>
+              <option value="today" <?= ($date_age ?? '') == 'today' ? 'selected' : '' ?>>Today</option>
+              <option value="7days" <?= ($date_age ?? '') == '7days' ? 'selected' : '' ?>>7 Days</option>
+              <option value="old" <?= ($date_age ?? '') == 'old' ? 'selected' : '' ?>>Old</option>
+            </select>
+          </div>
+
+          <!-- Sort -->
+          <div class="col-md-2 col-6">
+            <label class="form-label small text-muted fw-semibold">Sort</label>
+            <select name="sort" class="form-select form-select-sm">
+              <option value="newest" <?= ($sort_order ?? '') == 'newest' ? 'selected' : '' ?>>Newest</option>
+              <option value="oldest" <?= ($sort_order ?? '') == 'oldest' ? 'selected' : '' ?>>Oldest</option>
+            </select>
+          </div>
+
+          <!-- Duplicate Toggle -->
+          <div class="col-md-2 col-6">
+            <label class="form-label small text-muted fw-semibold d-block">Duplicates</label>
+            <div class="form-check form-switch">
+               <input class="form-check-input" type="checkbox" name="duplicates_only" id="duplicates_only" value="1" <?= ($duplicates_only ?? false) ? 'checked' : '' ?>>
+              <label class="form-check-label fw-bold small text-muted" for="duplicates_only">Show Duplicates Only</label>
+            </div>
+          </div>
+
+          <!-- 🔥 Small Duplicate Count UI -->
+          <div class="col-md-2 col-6 d-flex align-items-end">
+            <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-dashboard?duplicates_only=1&date_age=all"
+              class="text-decoration-none w-100">
+
+              <div class="d-flex align-items-center justify-content-between px-2 py-2 rounded"
+                style="background:#fff5f5; border:1px solid #f5c2c7;">
+
+                <div class="small text-danger fw-semibold">
+                  <i class="bi bi-exclamation-circle me-1"></i>Total Duplicates Lead
+                </div>
+
+                <span class="badge bg-danger">
+                  <?= number_format($duplicateLeadsCount ?? 0) ?>
+                </span>
+              </div>
+
+            </a>
+          </div>
+
+          <!-- Buttons -->
+          <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-sm w-100" style="background:#1a2744; color:#fff;">
+              <i class="bi bi-filter me-1"></i> Apply
+            </button>
+
+            <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-dashboard"
+              class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-arrow-clockwise"></i>
+            </a>
+          </div>
+
         </div>
-        <button type="submit" class="btn btn-primary">
-          <i class="bi bi-search me-1"></i> Search
-        </button>
-        <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard" class="btn btn-outline-secondary">
-          <i class="bi bi-arrow-clockwise"></i>
-        </a>
+
       </form>
     </div>
   </div>
@@ -595,8 +648,19 @@
       <div class="col-12">
         <div class="history-card shadow-sm border-0">
           <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
-            <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Uploaded Leads (Last 7 Days)</h6>
-            <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($leads) ?> Leads</span>
+            <h6 class="mb-0 fw-bold text-dark">
+              <i class="bi bi-layers me-2 text-primary"></i>
+              <?php
+              $headerText = "Uploaded Leads";
+              if ($date_age == 'today') $headerText = "Today's Uploaded Leads";
+              elseif ($date_age == 'old') $headerText = "Old Uploaded Leads";
+              elseif ($date_age == '7days') $headerText = "Recent Uploaded Leads (Last 7 Days)";
+
+              if ($duplicates_only) $headerText .= " (Duplicates Only)";
+              echo $headerText;
+              ?>
+            </h6>
+            <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($leads) ?> Leads Shown</span>
           </div>
           <div class="table__wrapper table-responsive my-3">
             <table class="table no-border-table mt-20 multiple_tables">
@@ -631,9 +695,9 @@
                       <td>
                         <div class="d-flex flex-column">
                           <?php
-                            $p = $lead['phone_number'] ?? '';
-                            $isDuplicate = !empty($p) && isset($phoneFreq[$p]) && $phoneFreq[$p] > 1;
-                            $textClass = $isDuplicate ? 'text-danger fw-bold' : 'text-muted';
+                          $p = $lead['phone_number'] ?? '';
+                          $isDuplicate = !empty($p) && isset($phoneFreq[$p]) && $phoneFreq[$p] > 1;
+                          $textClass = $isDuplicate ? 'text-danger fw-bold' : 'text-muted';
                           ?>
                           <span><i class="bi bi-telephone text-muted me-2"></i><span class="<?= $textClass ?>"><?= htmlspecialchars($p ?: 'N/A') ?></span></span>
                           <small class="text-muted"><i class="bi bi-envelope me-2"></i><?= htmlspecialchars($lead['email'] ?? 'N/A') ?></small>
@@ -657,7 +721,7 @@
                       </td>
                       <td class="pe-4 text-center">
 
-                        <button type="button" class="btn btn-sm btn-outline-danger removeBtnCust cursor" 
+                        <button type="button" class="btn btn-sm btn-outline-danger removeBtnCust cursor"
                           data-name="<?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?>"
                           data-action="delete-lead-permanent"
                           data-id="<?= $lead['id'] ?>">

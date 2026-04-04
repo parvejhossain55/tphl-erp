@@ -772,7 +772,19 @@ class Lead extends Model
     }
 public function getLeadsByCreatedByLast7Days(int $userId)
 {
-    $stmt = $this->db->prepare("
+    return $this->getMarketingLeadsFlexible($userId, null, '7days', 'DESC');
+}
+
+/**
+ * Flexible marketing lead fetcher
+ * @param int|null $userId
+ * @param int|null $teamId
+ * @param string $dateFilter 'today', 'old', '7days', 'all'
+ * @param string $sortOrder 'ASC', 'DESC'
+ */
+public function getMarketingLeadsFlexible($userId = null, $teamId = null, $dateFilter = 'all', $sortOrder = 'DESC')
+{
+    $sql = "
         SELECT 
             l.*,
             ls.name AS source_name,
@@ -787,19 +799,45 @@ public function getLeadsByCreatedByLast7Days(int $userId)
         LEFT JOIN lead_sources ls ON l.source_type_id = ls.id
         LEFT JOIN projects p ON l.project_id = p.id
         LEFT JOIN teams t ON l.team_id = t.id
-        WHERE l.created_by = ?
-          AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-          AND l.deleted_at IS NULL
-        ORDER BY l.created_at DESC
-    ");
+        WHERE l.deleted_at IS NULL
+    ";
 
-    if (!$stmt) {
-        die($this->db->error); // debug
+    $params = [];
+    $types = "";
+
+    if ($userId) {
+        $sql .= " AND l.created_by = ?";
+        $params[] = $userId;
+        $types .= "i";
     }
 
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
+    if ($teamId) {
+        $sql .= " AND l.team_id = ?";
+        $params[] = $teamId;
+        $types .= "i";
+    }
 
+    // Date filtering
+    if ($dateFilter === 'today') {
+        $sql .= " AND DATE(l.created_at) = CURDATE()";
+    } elseif ($dateFilter === 'old') {
+        $sql .= " AND DATE(l.created_at) < CURDATE()";
+    } elseif ($dateFilter === '7days') {
+        $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+    }
+
+    // Sorting
+    $order = ($sortOrder === 'ASC') ? 'ASC' : 'DESC';
+    $sql .= " ORDER BY l.created_at $order";
+
+    $stmt = $this->db->prepare($sql);
+    if (!$stmt) die($this->db->error);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
     $result = $stmt->get_result();
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }

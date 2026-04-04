@@ -82,10 +82,10 @@ $show_breadcrumb = true;
                             type="password"
                             placeholder="Leave blank to keep current password">
                     </div>
-                    <!-- Email -->
+                    <!-- Employee ID -->
                     <div class="col-lg-6 mb-3">
                         <label for="employee_id">Employee ID <span>Optional</span></label>
-                        <input class="form-control" name="employee_id" id="employee_id" type="text" value="<?= $user['user_employee_id'] ?? '-' ?>">
+                        <input class="form-control" name="employee_id" id="employee_id" type="text" value="<?= $user['user_employee_id'] ?? '' ?>">
                     </div>
 
                     <!-- Photo -->
