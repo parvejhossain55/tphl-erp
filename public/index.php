@@ -284,6 +284,7 @@ $routes = [
     // upload Csv From Csv Digital Marketing
     "digital-marketing-dashboard" => ["controller" => "DigitalMarketingController", "method" => "index"],
     "digital-marketing-executive-dashboard" => ["controller" => "DigitalMarketingController", "method" => "executiveDashboard"],
+    "delete-lead-permanent" => ["controller" => "DigitalMarketingController", "method" => "deletePermanent"],
     "store-platform-budget" => ["controller" => "DigitalMarketingController", "method" => "storeBudget"],
 
     // == access onboard clients ==
