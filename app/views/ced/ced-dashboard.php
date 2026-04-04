@@ -4,7 +4,7 @@ $page = 'CED Dashboard';
 $show_breadcrumb = true;
 
 // ── Use variables exactly as passed by CedView() controller ──────────────────
-// $clients       = getAllClients()
+// $clients       = getAllBookings()
 // $paymentStats  = getPaymentStatistics()
 
 // ── Aggregate from $clients ───────────────────────────────────────────────────
@@ -389,14 +389,6 @@ $statusBadgeMap = [
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <!-- <tr>
-                                <td colspan="9" class="text-center py-4">
-                                    <div class="text-muted">
-                                        <i class="fa-light fa-users fa-2x mb-3 d-block"></i>
-                                        No clients found
-                                    </div>
-                                </td>
-                            </tr> -->
                         <?php endif; ?>
                     </tbody>
                 </table>

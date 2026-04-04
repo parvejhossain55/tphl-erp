@@ -129,29 +129,59 @@ public function indexTwo($bookingId = null)
 
     public function indexView()
     {
-        // Get all clients (booked leads with their details)
-        $clients = $this->clientModel->getAllClients();
-
-        // Get payment statistics for each client
-        $paymentStats = $this->clientModel->getPaymentStatistics();
-
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
+        // Check for project filter
+        $selectedProjectId = isset($_GET['project_id']) ? (int) $_GET['project_id'] : null;
+
+        // Get all clients, optionally filtered by project
+        $clients = $this->clientModel->getAllClients($selectedProjectId);
+
+        // Get payment statistics
+        $paymentStats = $this->clientModel->getPaymentStatistics();
+
+        // Get all projects for dropdown
+        $projects = $this->clientModel->getProjectsForCED();
+
+        // Get flat stats and booked flats if project selected
+        $flatStats = null;
+        $bookedFlats = [];
+        $availableFlats = [];
+        $selectedProjectName = '';
+
+        if ($selectedProjectId) {
+            $flatStats = $this->clientModel->getProjectFlatStats($selectedProjectId);
+            $bookedFlats = $this->clientModel->getBookedFlatsByProject($selectedProjectId);
+            $availableFlats = $this->clientModel->getAvailableFlatsByProject($selectedProjectId);
+
+            foreach ($projects as $project) {
+                if ((int) $project['id'] === $selectedProjectId) {
+                    $selectedProjectName = $project['name'];
+                    break;
+                }
+            }
+        }
+
         $this->view("ced/clients-cashin-view", [
             "current_route" => "clients-cashin-view",
-            "page_title" => "Clients Management - Cash In View",
+            "page_title" => "Clients Cash In" . ($selectedProjectName ? " - " . $selectedProjectName : ""),
             "clients" => $clients,
-            "paymentStats" => $paymentStats
+            "paymentStats" => $paymentStats,
+            "projects" => $projects,
+            "selectedProjectId" => $selectedProjectId,
+            "selectedProjectName" => $selectedProjectName,
+            "flatStats" => $flatStats,
+            "bookedFlats" => $bookedFlats,
+            "availableFlats" => $availableFlats
         ]);
     }
+
     public function CedView()
     {
-        // Get all bookings to show correctly in the CED dashboard
+        // Get all bookings for the CED dashboard
         $clients = $this->clientModel->getAllBookings();
-
-        // Get payment statistics for each client
         $paymentStats = $this->clientModel->getPaymentStatistics();
 
         if (session_status() === PHP_SESSION_NONE) {
@@ -160,7 +190,7 @@ public function indexTwo($bookingId = null)
 
         $this->view("ced/ced-dashboard", [
             "current_route" => "ced-dashboard",
-            "page_title" => "Clients Management - Cash In View",
+            "page_title" => "CED Dashboard",
             "clients" => $clients,
             "paymentStats" => $paymentStats
         ]);
