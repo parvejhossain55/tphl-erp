@@ -428,14 +428,11 @@ public function update($data, $id)
 
     if (!$stmt) throw new \Exception("User update prepare failed: " . $this->db->error);
 
-    $pwd = $password ?: null;
-    $ph  = $photo ?: null;
-
-    // Bind parameters (corrected types)
+    // Bind parameters
     if (!$stmt->bind_param(
-        "ssssississssssii",
+        "sissississsssiii",
         $full_name,
-        $employee_id,   // STRING
+        $emp_id,        // Nullable INT
         $phone,
         $email,
         $designation_id,
@@ -443,8 +440,8 @@ public function update($data, $id)
         $nid,
         $role_id,
         $user_name,
-        $pwd,
-        $ph,
+        $pwd,           // COALESCE handles null
+        $ph,            // COALESCE handles null
         $media_link1,
         $media_link2,
         $created_by,

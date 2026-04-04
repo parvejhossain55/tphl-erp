@@ -296,11 +296,11 @@
 <div class="app__slide-wrapper">
   <div class="row mb-4">
     <?php
-        $tb = $budgetSummary['total_budget'] ?? 0;
-        $ts = $budgetSummary['total_spent'] ?? 0;
-        $trem = $tb - $ts;
-        $ap = $budgetSummary['active_platforms'] ?? 0;
-        $spentPercentage = $tb > 0 ? round(($ts / $tb) * 100, 1) : 0;
+    $tb = $budgetSummary['total_budget'] ?? 0;
+    $ts = $budgetSummary['total_spent'] ?? 0;
+    $trem = $tb - $ts;
+    $ap = $budgetSummary['active_platforms'] ?? 0;
+    $spentPercentage = $tb > 0 ? round(($ts / $tb) * 100, 1) : 0;
     ?>
     <div class="col-xl-4 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
@@ -323,6 +323,7 @@
         <div class="change text-muted"><i class="bi bi-clock"></i> </div>
       </div>
     </div>
+
   </div>
 
 
@@ -363,26 +364,26 @@
 
     <!-- platform cards -->
     <div class="row g-3 mb-4">
-      <?php foreach($platformBudgets as $pb): ?>
-      <?php 
+      <?php foreach ($platformBudgets as $pb): ?>
+        <?php
         $rem = $pb['budget'] - $pb['spent'];
         $percent = $pb['budget'] > 0 ? round(($pb['spent'] / $pb['budget']) * 100) : 0;
         $color = '#3b82f6';
-        if($percent > 85) $color = '#dc2626';
-        elseif($percent > 60) $color = '#f59e0b';
-      ?>
-      <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
-        <div class="plat-card">
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <span class="fw-semibold" style="font-size:.85rem;"><?= htmlspecialchars($pb['source_name'] ?? 'Unknown Platform') ?></span>
-          </div>
-          <div class="plat-budget">৳<?= number_format($pb['budget']) ?></div>
-          <div class="plat-meta">Spent: ৳<?= number_format($pb['spent']) ?> (<?= $percent ?>%)</div>
-          <div class="prog-bg mt-2">
-            <div class="prog-fill" style="width:<?= min(100, $percent) ?>%;background:<?= $color ?>;"></div>
+        if ($percent > 85) $color = '#dc2626';
+        elseif ($percent > 60) $color = '#f59e0b';
+        ?>
+        <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
+          <div class="plat-card">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="fw-semibold" style="font-size:.85rem;"><?= htmlspecialchars($pb['source_name'] ?? 'Unknown Platform') ?></span>
+            </div>
+            <div class="plat-budget">৳<?= number_format($pb['budget']) ?></div>
+            <div class="plat-meta">Spent: ৳<?= number_format($pb['spent']) ?> (<?= $percent ?>%)</div>
+            <div class="prog-bg mt-2">
+              <div class="prog-fill" style="width:<?= min(100, $percent) ?>%;background:<?= $color ?>;"></div>
+            </div>
           </div>
         </div>
-      </div>
       <?php endforeach; ?>
     </div>
   </div><!-- /tab-platform -->
@@ -445,27 +446,27 @@
           </thead>
           <tbody>
             <?php if (empty($platformBudgets)): ?>
-            <tr>
-              <td colspan="6" class="text-center py-4">No budget records found for this month.</td>
-            </tr>
+              <tr>
+                <td colspan="6" class="text-center py-4">No budget records found for this month.</td>
+              </tr>
             <?php else: ?>
-            <?php foreach ($platformBudgets as $pb): ?>
-            <?php
-              $rem = $pb['budget'] - $pb['spent'];
-              $percent = $pb['budget'] > 0 ? round(($pb['spent'] / $pb['budget']) * 100) : 0;
-              $badgeClass = 'bg-success-soft text-success-dark';
-              if($percent > 85) $badgeClass = 'bg-danger-soft text-danger-dark';
-              elseif($percent > 60) $badgeClass = 'bg-warn-soft text-warn-dark';
-            ?>
-            <tr>
-              <td><?= htmlspecialchars($pb['source_name'] ?? 'Unknown Platform') ?></td>
-              <td><?= date('F Y', strtotime($pb['month'])) ?></td>
-              <td class="text-end fw-semibold"><?= number_format($pb['budget']) ?></td>
-              <td class="text-end"><?= number_format($pb['spent']) ?></td>
-              <td class="text-end text-success fw-semibold"><?= number_format($rem) ?></td>
-              <td class="text-end pe-4"><span class="badge <?= $badgeClass ?> px-2 py-1 rounded-pill" style="font-size:.72rem;"><?= $percent ?>% used</span></td>
-            </tr>
-            <?php endforeach; ?>
+              <?php foreach ($platformBudgets as $pb): ?>
+                <?php
+                $rem = $pb['budget'] - $pb['spent'];
+                $percent = $pb['budget'] > 0 ? round(($pb['spent'] / $pb['budget']) * 100) : 0;
+                $badgeClass = 'bg-success-soft text-success-dark';
+                if ($percent > 85) $badgeClass = 'bg-danger-soft text-danger-dark';
+                elseif ($percent > 60) $badgeClass = 'bg-warn-soft text-warn-dark';
+                ?>
+                <tr>
+                  <td><?= htmlspecialchars($pb['source_name'] ?? 'Unknown Platform') ?></td>
+                  <td><?= date('F Y', strtotime($pb['month'])) ?></td>
+                  <td class="text-end fw-semibold"><?= number_format($pb['budget']) ?></td>
+                  <td class="text-end"><?= number_format($pb['spent']) ?></td>
+                  <td class="text-end text-success fw-semibold"><?= number_format($rem) ?></td>
+                  <td class="text-end pe-4"><span class="badge <?= $badgeClass ?> px-2 py-1 rounded-pill" style="font-size:.72rem;"><?= $percent ?>% used</span></td>
+                </tr>
+              <?php endforeach; ?>
             <?php endif; ?>
           </tbody>
         </table>
@@ -478,25 +479,87 @@
 
 
   <div class="row mt-4">
-    <div class="col-md-5 mb-3">
-      <form action="" method="GET" class="d-flex align-items-end gap-2 p-3 bg-white shadow-sm" style="border-radius:14px;">
-        <div class="flex-grow-1">
-          <label for="team_id" class="form-label fw-bold" style="font-size: .85rem;">Search By Teamwise</label>
-          <select name="team_id" id="team_id" class="form-select select2">
-            <option value="">All Teams (Last 30 Days)</option>
-            <?php foreach ($teams as $team): ?>
-              <option value="<?= $team['id'] ?>" <?= (isset($selected_team_id) && $selected_team_id == $team['id']) ? 'selected' : '' ?>>
-                <?= htmlspecialchars($team['name']) ?>
-              </option>
-            <?php endforeach; ?>
-          </select>
+    <div class="col-12 mb-3">
+      <form action="" method="GET" class="card__wrapper p-3 shadow-sm" style="border-radius:12px;">
+
+        <div class="row align-items-end g-2">
+
+          <!-- Team Filter -->
+          <div class="col-md-3 col-6">
+            <label class="form-label small text-muted fw-semibold">Team</label>
+            <select name="team_id" class="form-select form-select-sm select2">
+              <option value="">All Teams</option>
+              <?php foreach ($teams as $team): ?>
+                <option value="<?= $team['id'] ?>" <?= ($selected_team_id ?? '') == $team['id'] ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($team['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <!-- Lead Age -->
+          <div class="col-md-2 col-6">
+            <label class="form-label small text-muted fw-semibold">Lead Age</label>
+            <select name="date_age" class="form-select form-select-sm">
+              <option value="all" <?= ($date_age ?? '') == 'all' ? 'selected' : '' ?>>All</option>
+              <option value="today" <?= ($date_age ?? '') == 'today' ? 'selected' : '' ?>>Today</option>
+              <option value="7days" <?= ($date_age ?? '') == '7days' ? 'selected' : '' ?>>7 Days</option>
+              <option value="old" <?= ($date_age ?? '') == 'old' ? 'selected' : '' ?>>Old</option>
+            </select>
+          </div>
+
+          <!-- Sort -->
+          <div class="col-md-2 col-6">
+            <label class="form-label small text-muted fw-semibold">Sort</label>
+            <select name="sort" class="form-select form-select-sm">
+              <option value="newest" <?= ($sort_order ?? '') == 'newest' ? 'selected' : '' ?>>Newest</option>
+              <option value="oldest" <?= ($sort_order ?? '') == 'oldest' ? 'selected' : '' ?>>Oldest</option>
+            </select>
+          </div>
+
+          <!-- Duplicate Toggle -->
+          <div class="col-md-2 col-6">
+            <label class="form-label small text-muted fw-semibold d-block">Duplicates</label>
+            <div class="form-check form-switch">
+               <input class="form-check-input" type="checkbox" name="duplicates_only" id="duplicates_only" value="1" <?= ($duplicates_only ?? false) ? 'checked' : '' ?>>
+              <label class="form-check-label fw-bold small text-muted" for="duplicates_only">Show Duplicates Only</label>
+            </div>
+          </div>
+
+          <!-- 🔥 Small Duplicate Count UI -->
+          <div class="col-md-2 col-6 d-flex align-items-end">
+            <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-dashboard?duplicates_only=1&date_age=all"
+              class="text-decoration-none w-100">
+
+              <div class="d-flex align-items-center justify-content-between px-2 py-2 rounded"
+                style="background:#fff5f5; border:1px solid #f5c2c7;">
+
+                <div class="small text-danger fw-semibold">
+                  <i class="bi bi-exclamation-circle me-1"></i>Total Duplicates Lead
+                </div>
+
+                <span class="badge bg-danger">
+                  <?= number_format($duplicateLeadsCount ?? 0) ?>
+                </span>
+              </div>
+
+            </a>
+          </div>
+
+          <!-- Buttons -->
+          <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-sm w-100" style="background:#1a2744; color:#fff;">
+              <i class="bi bi-filter me-1"></i> Apply
+            </button>
+
+            <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-dashboard"
+              class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-arrow-clockwise"></i>
+            </a>
+          </div>
+
         </div>
-        <button type="submit" class="btn btn-primary" style="background:#1a2744; border:none; padding: 7px 15px;">
-          <i class="bi bi-search me-1"></i> Search
-        </button>
-        <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-dashboard" class="btn btn-outline-secondary" style="padding: 7px 12px;">
-          <i class="bi bi-arrow-clockwise"></i>
-        </a>
+
       </form>
     </div>
   </div>
@@ -507,8 +570,19 @@
       <div class="col-12">
         <div class="history-card shadow-sm border-0">
           <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
-            <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Uploaded Leads (Last 7 Days)</h6>
-            <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($leads) ?> Leads</span>
+            <h6 class="mb-0 fw-bold text-dark">
+              <i class="bi bi-clock-history me-2 text-primary"></i>
+              <?php
+              $headerText = "Uploaded Leads";
+              if ($date_age == 'today') $headerText = "Today's Uploaded Leads";
+              elseif ($date_age == 'old') $headerText = "Old Uploaded Leads";
+              elseif ($date_age == '7days') $headerText = "Recent Uploaded Leads (Last 7 Days)";
+
+              if ($duplicates_only) $headerText .= " (Duplicates Only)";
+              echo $headerText;
+              ?>
+            </h6>
+            <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($leads) ?> Leads Shown</span>
           </div>
           <div class="table__wrapper table-responsive my-3">
             <table class="table no-border-table mt-20 multiple_tables">
@@ -541,7 +615,12 @@
                       </td>
                       <td>
                         <div class="d-flex flex-column">
-                          <span><i class="bi bi-telephone text-muted me-2"></i><?= htmlspecialchars($lead['phone_number'] ?? 'N/A') ?></span>
+                          <?php
+                          $p = $lead['phone_number'] ?? '';
+                          $isDuplicate = !empty($p) && isset($phoneFreq[$p]) && $phoneFreq[$p] > 1;
+                          $textClass = $isDuplicate ? 'text-danger fw-bold' : '';
+                          ?>
+                          <span class="<?= $textClass ?>"><i class="bi bi-telephone text-muted me-2"></i><?= htmlspecialchars($p ?: 'N/A') ?></span>
                           <small class="text-muted"><i class="bi bi-envelope me-2"></i><?= htmlspecialchars($lead['email'] ?? 'N/A') ?></small>
                         </div>
                       </td>

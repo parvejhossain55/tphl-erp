@@ -22,9 +22,15 @@ class DigitalMarketingController extends Controller
         $leads = [];
         $teamId = $_GET['team_id'] ?? null;
 
-        $currentMonthFilter = $_GET['budget_month'] ?? date('Y-m') . '-01'; // Default correctly using -01
+        // New Filters
+        $dateAge = $_GET['date_age'] ?? '7days'; // default to last 30 for head, but let's keep consistency or adjust
+        $sortOrder = $_GET['sort'] ?? 'newest';
+        $duplicatesOnly = isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1';
+
+        $sqlSort = ($sortOrder === 'oldest') ? 'ASC' : 'DESC';
+
+        $currentMonthFilter = $_GET['budget_month'] ?? date('Y-m') . '-01'; 
         if (strlen($currentMonthFilter) === 7) { 
-            // If submitted as YYYY-MM
             $currentMonthFilter .= '-01';
         }
 
@@ -33,10 +39,35 @@ class DigitalMarketingController extends Controller
         $budgetSummary = $this->platformBudgetModel->getMonthlySummary($currentMonthFilter);
 
         if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 10) {
-            if ($teamId) {
-                $leads = $this->leadModel->getLeadsByTeamId($teamId);
-            } else {
-                $leads = $this->leadModel->getAllMarketingLeads(30); // 30 days default
+            $leads = $this->leadModel->getMarketingLeadsFlexible(
+                null, // No specific user for head dashboard
+                $teamId, 
+                $dateAge, 
+                $sqlSort
+            );
+        }
+
+        // Calculate duplicate frequencies
+        $phoneFreq = [];
+        foreach ($leads as $l) {
+            $p = $l['phone_number'] ?? '';
+            if (!empty($p)) {
+                $phoneFreq[$p] = ($phoneFreq[$p] ?? 0) + 1;
+            }
+        }
+        
+        // Filter for duplicates if requested
+        if ($duplicatesOnly) {
+            $leads = array_filter($leads, function($l) use ($phoneFreq) {
+                $p = $l['phone_number'] ?? '';
+                return !empty($p) && ($phoneFreq[$p] ?? 0) > 1;
+            });
+        }
+
+        $duplicateLeadsCount = 0;
+        foreach ($phoneFreq as $p => $count) {
+            if ($count > 1) {
+                $duplicateLeadsCount += $count;
             }
         }
 
@@ -50,7 +81,12 @@ class DigitalMarketingController extends Controller
             "sources"             => $sources,
             "platformBudgets"     => $platformBudgets,
             "budgetSummary"       => $budgetSummary,
-            "budget_month"        => substr($currentMonthFilter, 0, 7) // back to YYYY-MM for the form
+            "budget_month"        => substr($currentMonthFilter, 0, 7),
+            "phoneFreq"           => $phoneFreq,
+            "duplicateLeadsCount" => $duplicateLeadsCount,
+            "date_age"            => $dateAge,
+            "sort_order"          => $sortOrder,
+            "duplicates_only"     => $duplicatesOnly
         ]);
     }
 
@@ -78,19 +114,28 @@ class DigitalMarketingController extends Controller
 
     public function executiveDashboard()
     {
-         $stats = $this->leadModel->getDigitalMarketingStats();
+        $stats = $this->leadModel->getDigitalMarketingStats();
         $teams = $this->teamsModel->getAll();
         $leads = [];
         $teamId = $_GET['team_id'] ?? null;
+        
+        // New Filters
+        $dateAge = $_GET['date_age'] ?? '7days'; // default to last 7 days
+        $sortOrder = $_GET['sort'] ?? 'newest';
+        $duplicatesOnly = isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1';
+
+        $sqlSort = ($sortOrder === 'oldest') ? 'ASC' : 'DESC';
 
         if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 11) {
-            if ($teamId) {
-                $leads = $this->leadModel->getLeadsByTeamId($teamId);
-            } else {
-                $leads = $this->leadModel->getLeadsByCreatedByLast7Days($_SESSION['user']['id']);
-            }
+            $leads = $this->leadModel->getMarketingLeadsFlexible(
+                $_SESSION['user']['id'], 
+                $teamId, 
+                $dateAge, 
+                $sqlSort
+            );
         }
 
+        // Calculate duplicate frequencies
         $phoneFreq = [];
         foreach ($leads as $l) {
             $p = $l['phone_number'] ?? '';
@@ -99,11 +144,21 @@ class DigitalMarketingController extends Controller
             }
         }
         
+        // Filter for duplicates if requested
+        if ($duplicatesOnly) {
+            $leads = array_filter($leads, function($l) use ($phoneFreq) {
+                $p = $l['phone_number'] ?? '';
+                return !empty($p) && ($phoneFreq[$p] ?? 0) > 1;
+            });
+        }
+
         $duplicateLeadsCount = 0;
-        foreach ($leads as $l) {
-            $p = $l['phone_number'] ?? '';
-            if (!empty($p) && ($phoneFreq[$p] ?? 0) > 1) {
-                $duplicateLeadsCount++;
+        // recalculate duplicate count for the stats based on the FULL dataset if possible, 
+        // but the stats method usually handles this across the whole DB.
+        // For the Executive, let's keep the existing logic but use the full fetched list.
+        foreach ($phoneFreq as $p => $count) {
+            if ($count > 1) {
+                $duplicateLeadsCount += $count;
             }
         }
 
@@ -115,7 +170,10 @@ class DigitalMarketingController extends Controller
             "leads"               => $leads,
             "selected_team_id"    => $teamId,
             "phoneFreq"           => $phoneFreq,
-            "duplicateLeadsCount" => $duplicateLeadsCount
+            "duplicateLeadsCount" => $duplicateLeadsCount,
+            "date_age"            => $dateAge,
+            "sort_order"          => $sortOrder,
+            "duplicates_only"     => $duplicatesOnly
         ]);
     }
 

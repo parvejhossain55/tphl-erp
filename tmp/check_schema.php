@@ -1,9 +1,17 @@
 <?php
-$config = require "app/config/config.php";
-$conn = new mysqli($config['db_host'], $config['db_user'], $config['db_pass'], $config['db_name']);
-$result = $conn->query("DESCRIBE letter_templates");
-$fields = [];
-while($row = $result->fetch_assoc()) {
-    $fields[] = $row['Field'] . " (" . $row['Type'] . ")";
+$mysqli = new mysqli("localhost", "root", "", "tphl_db");
+if ($mysqli->connect_error) {
+    die("Connection failed: " . $mysqli->connect_error);
 }
-echo implode(", ", $fields);
+
+function dumpTable($mysqli, $table) {
+    echo "--- Table: $table ---\n";
+    $result = $mysqli->query("DESCRIBE $table");
+    while ($row = $result->fetch_assoc()) {
+        echo $row['Field'] . " | " . $row['Type'] . " | " . $row['Null'] . "\n";
+    }
+}
+
+dumpTable($mysqli, 'users');
+dumpTable($mysqli, 'employees');
+$mysqli->close();
