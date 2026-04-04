@@ -264,6 +264,28 @@ class EmployeeController extends Controller
         $plainPassword = trim($_POST['password'] ?? '');
         $existingUserId = $existingEmployee['user_id'] ?? null;
 
+        // User account linking check
+        if (!$existingUserId) {
+            // First check by employee_id 
+            $userByEmpResult = $this->db->query("SELECT id FROM users WHERE employee_id = $id LIMIT 1");
+            if ($userByEmpResult && $userByEmpResult->num_rows > 0) {
+                $userRow = $userByEmpResult->fetch_assoc();
+                $existingUserId = $userRow['id'];
+                $this->db->query("UPDATE employees SET user_id = $existingUserId WHERE id = $id");
+            } elseif ($makeUser == 1) {
+                // Check if user already exists with this email but is not linked
+                $emailToCheck = trim($_POST['email'] ?? '');
+                if ($emailToCheck) {
+                    $existingUserByEmail = $this->userModel->getByEmail($emailToCheck);
+                    if ($existingUserByEmail) {
+                        $existingUserId = $existingUserByEmail['id'];
+                        // Link them now
+                        $this->db->query("UPDATE employees SET user_id = $existingUserId WHERE id = $id");
+                    }
+                }
+            }
+        }
+
         // password validation only for NEW user account
         if ($makeUser == 1 && !$existingUserId && empty($plainPassword)) {
             $_SESSION['error'] = "Password is required when creating a new user account!";
@@ -321,15 +343,7 @@ class EmployeeController extends Controller
         }
 
         // User account handling
-        if (!$existingUserId && $makeUser == 1) {
-            // Check if user already exists with this email but is not linked
-            $existingUserByEmail = $this->userModel->getByEmail($employeeData['email']);
-            if ($existingUserByEmail) {
-                $existingUserId = $existingUserByEmail['id'];
-                // Link them now
-                $this->db->query("UPDATE employees SET user_id = $existingUserId WHERE id = $id");
-            }
-        }
+
 
         if ($existingUserId) {
             $userData = [

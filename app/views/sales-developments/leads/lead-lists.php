@@ -159,7 +159,7 @@ $show_breadcrumb = true;
                 </div>
             </form>
         </div>
-
+      <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 5): ?>
         <div class="col-md-6">
             <div id="assignCard"
                 class="card__wrapper shadow-sm p-3 my-2"
@@ -200,7 +200,7 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-
+<?php endif; ?>
 
         <!-- Table -->
         <div class="col-xxl-12">

@@ -295,32 +295,32 @@
 
 <div class="app__slide-wrapper">
   <div class="row mb-4">
-    <div class="col-xl-3 col-sm-6 col-6 mb-2">
+    <?php
+        $tb = $budgetSummary['total_budget'] ?? 0;
+        $ts = $budgetSummary['total_spent'] ?? 0;
+        $trem = $tb - $ts;
+        $ap = $budgetSummary['active_platforms'] ?? 0;
+        $spentPercentage = $tb > 0 ? round(($ts / $tb) * 100, 1) : 0;
+    ?>
+    <div class="col-xl-4 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
         <div class="label">Total Monthly Budget</div>
-        <div class="value">৳18,50,000</div>
-        <div class="change text-success"><i class="bi bi-arrow-up-short"></i>5 Active Teams</div>
+        <div class="value">৳<?= number_format($tb) ?></div>
+        <div class="change text-success"><i class="bi bi-arrow-up-short"></i><?= $ap ?> Active Platforms</div>
       </div>
     </div>
-    <div class="col-xl-3 col-sm-6 col-6 mb-2">
+    <div class="col-xl-4 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
         <div class="label">Total Spent</div>
-        <div class="value">৳11,37,500</div>
-        <div class="change text-danger"><i class="bi bi-arrow-up-short"></i>61.5% of budget</div>
+        <div class="value">৳<?= number_format($ts) ?></div>
+        <div class="change text-danger"><i class="bi bi-arrow-up-short"></i><?= $spentPercentage ?>% of budget</div>
       </div>
     </div>
-    <div class="col-xl-3 col-sm-6 col-6 mb-2">
+    <div class="col-xl-4 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
         <div class="label">Remaining</div>
-        <div class="value">৳7,12,500</div>
-        <div class="change text-muted"><i class="bi bi-clock"></i> 12 days left</div>
-      </div>
-    </div>
-    <div class="col-xl-3 col-sm-6 col-6 mb-2">
-      <div class="card__wrapper stat-card">
-        <div class="label">Top Platform</div>
-        <div class="value">Facebook</div>
-        <div class="change text-success"><i class="bi bi-graph-up"></i> ৳4,50,000 spent</div>
+        <div class="value">৳<?= number_format($trem) ?></div>
+        <div class="change text-muted"><i class="bi bi-clock"></i> </div>
       </div>
     </div>
   </div>
@@ -345,100 +345,45 @@
     <div class="sum-strip mb-4">
       <div class="sum-item">
         <div class="s-label">Team Budget</div>
-        <div class="s-val">৳4,00,000</div>
+        <div class="s-val">৳<?= number_format($tb) ?></div>
       </div>
       <div class="sum-item">
         <div class="s-label">Spent</div>
-        <div class="s-val" style="color:#e53e3e;">৳2,30,000</div>
+        <div class="s-val" style="color:#e53e3e;">৳<?= number_format($ts) ?></div>
       </div>
       <div class="sum-item">
         <div class="s-label">Remaining</div>
-        <div class="s-val" style="color:#16a34a;">৳1,70,000</div>
+        <div class="s-val" style="color:#16a34a;">৳<?= number_format($trem) ?></div>
       </div>
       <div class="sum-item">
         <div class="s-label">Active Platforms</div>
-        <div class="s-val">4</div>
+        <div class="s-val"><?= $ap ?></div>
       </div>
     </div>
 
     <!-- platform cards -->
     <div class="row g-3 mb-4">
-
-      <!-- Facebook -->
+      <?php foreach($platformBudgets as $pb): ?>
+      <?php 
+        $rem = $pb['budget'] - $pb['spent'];
+        $percent = $pb['budget'] > 0 ? round(($pb['spent'] / $pb['budget']) * 100) : 0;
+        $color = '#3b82f6';
+        if($percent > 85) $color = '#dc2626';
+        elseif($percent > 60) $color = '#f59e0b';
+      ?>
       <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
         <div class="plat-card">
           <div class="d-flex align-items-center gap-2 mb-2">
-            <div class="plat-icon" style="background:#dbeafe;color:#1d4ed8;">FB</div>
-            <span class="fw-semibold" style="font-size:.85rem;">Facebook</span>
+            <span class="fw-semibold" style="font-size:.85rem;"><?= htmlspecialchars($pb['source_name'] ?? 'Unknown Platform') ?></span>
           </div>
-          <div class="plat-budget">৳1,20,000</div>
-          <div class="plat-meta">Spent: ৳95,000 (79%)</div>
+          <div class="plat-budget">৳<?= number_format($pb['budget']) ?></div>
+          <div class="plat-meta">Spent: ৳<?= number_format($pb['spent']) ?> (<?= $percent ?>%)</div>
           <div class="prog-bg mt-2">
-            <div class="prog-fill" style="width:79%;background:#2563eb;"></div>
+            <div class="prog-fill" style="width:<?= min(100, $percent) ?>%;background:<?= $color ?>;"></div>
           </div>
         </div>
       </div>
-
-      <!-- YouTube -->
-      <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
-        <div class="plat-card">
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <div class="plat-icon" style="background:#fee2e2;color:#b91c1c;">YT</div>
-            <span class="fw-semibold" style="font-size:.85rem;">YouTube</span>
-          </div>
-          <div class="plat-budget">৳80,000</div>
-          <div class="plat-meta">Spent: ৳45,000 (56%)</div>
-          <div class="prog-bg mt-2">
-            <div class="prog-fill" style="width:56%;background:#dc2626;"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Instagram -->
-      <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
-        <div class="plat-card">
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <div class="plat-icon" style="background:#fce7f3;color:#be185d;">IG</div>
-            <span class="fw-semibold" style="font-size:.85rem;">Instagram</span>
-          </div>
-          <div class="plat-budget">৳1,00,000</div>
-          <div class="plat-meta">Spent: ৳70,000 (70%)</div>
-          <div class="prog-bg mt-2">
-            <div class="prog-fill" style="width:70%;background:#be185d;"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Google Ads -->
-      <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
-        <div class="plat-card">
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <div class="plat-icon" style="background:#dcfce7;color:#166534;">GA</div>
-            <span class="fw-semibold" style="font-size:.85rem;">Google Ads</span>
-          </div>
-          <div class="plat-budget">৳70,000</div>
-          <div class="plat-meta">Spent: ৳20,000 (29%)</div>
-          <div class="prog-bg mt-2">
-            <div class="prog-fill" style="width:29%;background:#16a34a;"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TikTok -->
-      <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
-        <div class="plat-card">
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <div class="plat-icon" style="background:#f3f4f6;color:#111827;">TT</div>
-            <span class="fw-semibold" style="font-size:.85rem;">TikTok</span>
-          </div>
-          <div class="plat-budget">৳30,000</div>
-          <div class="plat-meta">Spent: ৳0 (0%)</div>
-          <div class="prog-bg mt-2">
-            <div class="prog-fill" style="width:0%;background:#374151;"></div>
-          </div>
-        </div>
-      </div>
-
+      <?php endforeach; ?>
     </div>
   </div><!-- /tab-platform -->
 
@@ -446,48 +391,36 @@
   <div id="tab-add" style="display:none;">
     <div class="card__wrapper mb-4">
       <div class="section-title mb-3"><i class="bi bi-plus-circle-fill me-2 text-primary"></i>Add / Update Platform Budget</div>
-      <div class="row g-2 add-row align-items-end">
-        <div class="d-none col-xl-2 col-md-3 col-6">
-          <label class="form-label fw-semibold" style="font-size:.78rem;">Team</label>
-          <select class="form-select w-100">
-            <option>Team Gulshan</option>
-            <option>Team Gulshan - 1</option>
-            <option>Team Gulsahn-2</option>
-            <option>Team Delta</option>
-            <option>Team Omega</option>
-          </select>
+      <form action="<?= $GLOBALS['base_url'] ?>/store-platform-budget" method="POST">
+        <div class="row g-2 add-row align-items-end">
+          <div class="col-xl-3 col-md-3 col-6">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Platform Source</label>
+            <select class="form-select w-100" name="source_id" required>
+              <option value="">Select Platform</option>
+              <?php foreach ($sources as $source): ?>
+                <option value="<?= $source['id'] ?>"><?= htmlspecialchars($source['name']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-xl-3 col-md-3 col-6">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Select Month</label>
+            <input type="month" name="month" class="form-control" value="<?= htmlspecialchars($budget_month) ?>" required />
+          </div>
+          <div class="col-xl-2 col-md-2 col-6">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Budget Limit (৳)</label>
+            <input type="number" name="budget" step="0.01" class="form-control" placeholder="e.g. 150000" required />
+          </div>
+          <div class="col-xl-2 col-md-2 col-6">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Spent Amount (৳)</label>
+            <input type="number" name="spent" step="0.01" class="form-control" placeholder="e.g. 80000" required />
+          </div>
+          <div class="col-xl-2 col-md-2 col-12">
+            <button type="submit" class="btn-brand w-100" style="padding:8px 0;border-radius:8px;font-size:.82rem;font-weight:600;background:#1a2744;color:#fff;border:none;cursor:pointer;">
+              <i class="bi bi-plus-lg me-1"></i>Add Budget
+            </button>
+          </div>
         </div>
-        <div class="col-xl-3 col-md-3 col-6">
-          <label class="form-label fw-semibold" style="font-size:.78rem;">Platform</label>
-          <select class="form-select w-100">
-            <option>Facebook</option>
-            <option>YouTube</option>
-            <option>Instagram</option>
-            <option>TikTok</option>
-            <option>Google Ads</option>
-            <option>LinkedIn</option>
-            <option>Twitter/X</option>
-          </select>
-        </div>
-        <div class="col-xl-3 col-md-3 col-6">
-          <label class="form-label fw-semibold" style="font-size:.78rem;">Month</label>
-          <input type="month" class="form-control" value="2025-05" />
-        </div>
-        <div class="col-xl-3 col-md-3 col-6">
-          <label class="form-label fw-semibold" style="font-size:.78rem;">Budget (৳)</label>
-          <input type="number" class="form-control" placeholder="e.g. 150000" />
-        </div>
-        <div class="col-xl-3 col-md-3 col-6">
-          <label class="form-label fw-semibold" style="font-size:.78rem;">Spent (৳)</label>
-          <input type="number" class="form-control" placeholder="e.g. 80000" />
-        </div>
-        <div class="col-xl-3 col-md-3 col-6">
-          <button class="btn-brand w-100" style="padding:8px 0;border-radius:8px;font-size:.82rem;font-weight:600;background:#1a2744;color:#fff;border:none;cursor:pointer;">
-            <i class="bi bi-plus-lg me-1"></i>Add
-          </button>
-        </div>
-
-      </div>
+      </form>
     </div>
   </div><!-- /tab-add -->
 
@@ -502,7 +435,6 @@
         <table class="table mb-0">
           <thead>
             <tr>
-              <th>Team</th>
               <th>Platform</th>
               <th>Month</th>
               <th class="text-end">Budget (৳)</th>
@@ -512,78 +444,29 @@
             </tr>
           </thead>
           <tbody>
+            <?php if (empty($platformBudgets)): ?>
             <tr>
-              <td><span class="badge bg-info-soft text-info-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulshan</span></td>
-              <td><i class="bi bi-facebook text-primary me-1"></i>Facebook</td>
-              <td>May 2025</td>
-              <td class="text-end fw-semibold">1,20,000</td>
-              <td class="text-end">95,000</td>
-              <td class="text-end text-success fw-semibold">25,000</td>
-              <td class="text-end pe-4"><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">79% used</span></td>
+              <td colspan="6" class="text-center py-4">No budget records found for this month.</td>
             </tr>
+            <?php else: ?>
+            <?php foreach ($platformBudgets as $pb): ?>
+            <?php
+              $rem = $pb['budget'] - $pb['spent'];
+              $percent = $pb['budget'] > 0 ? round(($pb['spent'] / $pb['budget']) * 100) : 0;
+              $badgeClass = 'bg-success-soft text-success-dark';
+              if($percent > 85) $badgeClass = 'bg-danger-soft text-danger-dark';
+              elseif($percent > 60) $badgeClass = 'bg-warn-soft text-warn-dark';
+            ?>
             <tr>
-              <td><span class="badge bg-info-soft text-info-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulshan</span></td>
-              <td><i class="bi bi-youtube text-danger me-1"></i>YouTube</td>
-              <td>May 2025</td>
-              <td class="text-end fw-semibold">80,000</td>
-              <td class="text-end">45,000</td>
-              <td class="text-end text-success fw-semibold">35,000</td>
-              <td class="text-end pe-4"><span class="badge bg-success-soft text-success-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">56% used</span></td>
+              <td><?= htmlspecialchars($pb['source_name'] ?? 'Unknown Platform') ?></td>
+              <td><?= date('F Y', strtotime($pb['month'])) ?></td>
+              <td class="text-end fw-semibold"><?= number_format($pb['budget']) ?></td>
+              <td class="text-end"><?= number_format($pb['spent']) ?></td>
+              <td class="text-end text-success fw-semibold"><?= number_format($rem) ?></td>
+              <td class="text-end pe-4"><span class="badge <?= $badgeClass ?> px-2 py-1 rounded-pill" style="font-size:.72rem;"><?= $percent ?>% used</span></td>
             </tr>
-            <tr>
-              <td><span class="badge bg-danger-soft text-danger-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulshan - 1</span></td>
-              <td><i class="bi bi-instagram text-danger me-1"></i>Instagram</td>
-              <td>May 2025</td>
-              <td class="text-end fw-semibold">1,50,000</td>
-              <td class="text-end">1,48,000</td>
-              <td class="text-end text-success fw-semibold">2,000</td>
-              <td class="text-end pe-4"><span class="badge bg-danger-soft text-danger-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">99% used</span></td>
-            </tr>
-            <tr>
-              <td><span class="badge bg-danger-soft text-danger-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulshan - 1</span></td>
-              <td><i class="bi bi-google text-success me-1"></i>Google Ads</td>
-              <td>May 2025</td>
-              <td class="text-end fw-semibold">1,00,000</td>
-              <td class="text-end">70,000</td>
-              <td class="text-end text-success fw-semibold">30,000</td>
-              <td class="text-end pe-4"><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">70% used</span></td>
-            </tr>
-            <tr>
-              <td><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulsahn-2</span></td>
-              <td><i class="bi bi-facebook text-primary me-1"></i>Facebook</td>
-              <td>May 2025</td>
-              <td class="text-end fw-semibold">1,20,000</td>
-              <td class="text-end">85,000</td>
-              <td class="text-end text-success fw-semibold">35,000</td>
-              <td class="text-end pe-4"><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">71% used</span></td>
-            </tr>
-            <tr>
-              <td><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Gulsahn-2</span></td>
-              <td><i class="bi bi-tiktok me-1"></i>TikTok</td>
-              <td>May 2025</td>
-              <td class="text-end fw-semibold">80,000</td>
-              <td class="text-end">50,000</td>
-              <td class="text-end text-success fw-semibold">30,000</td>
-              <td class="text-end pe-4"><span class="badge bg-success-soft text-success-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">63% used</span></td>
-            </tr>
-            <tr>
-              <td><span class="badge bg-success-soft text-success-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Delta</span></td>
-              <td><i class="bi bi-youtube text-danger me-1"></i>YouTube</td>
-              <td>May 2025</td>
-              <td class="text-end fw-semibold">2,00,000</td>
-              <td class="text-end">1,10,000</td>
-              <td class="text-end text-success fw-semibold">90,000</td>
-              <td class="text-end pe-4"><span class="badge bg-success-soft text-success-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">55% used</span></td>
-            </tr>
-            <tr>
-              <td><span class="badge bg-purple-soft text-purple-dark px-2 py-1 rounded-pill" style="font-size:.74rem;">Team Omega</span></td>
-              <td><i class="bi bi-instagram text-danger me-1"></i>Instagram</td>
-              <td>May 2025</td>
-              <td class="text-end fw-semibold">1,00,000</td>
-              <td class="text-end">72,500</td>
-              <td class="text-end text-success fw-semibold">27,500</td>
-              <td class="text-end pe-4"><span class="badge bg-warn-soft text-warn-dark px-2 py-1 rounded-pill" style="font-size:.72rem;">73% used</span></td>
-            </tr>
+            <?php endforeach; ?>
+            <?php endif; ?>
           </tbody>
         </table>
       </div>
