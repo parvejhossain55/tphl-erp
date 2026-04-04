@@ -15,8 +15,14 @@ class DigitalMarketingController extends Controller
         $stats = $this->leadModel->getDigitalMarketingStats();
         $teams = $this->teamsModel->getAll();
         $leads = [];
+        $teamId = $_GET['team_id'] ?? null;
+
         if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 10) {
-            $leads = $this->leadModel->getLeadsByCreatedByLast7Days($_SESSION['user']['id']);
+            if ($teamId) {
+                $leads = $this->leadModel->getLeadsByTeamId($teamId);
+            } else {
+                $leads = $this->leadModel->getAllMarketingLeads(30); // 30 days default
+            }
         }
 
         return $this->view("digital-marketing-team/digital-marketing-head-dashboard", [
@@ -24,7 +30,8 @@ class DigitalMarketingController extends Controller
             "page_title"          => "Digital Marketing Dashboard",
             "teams"               => $teams,
             "stats"               => $stats,
-            "leads"               => $leads
+            "leads"               => $leads,
+            "selected_team_id"    => $teamId
         ]);
     }
 
@@ -33,8 +40,14 @@ class DigitalMarketingController extends Controller
          $stats = $this->leadModel->getDigitalMarketingStats();
         $teams = $this->teamsModel->getAll();
         $leads = [];
+        $teamId = $_GET['team_id'] ?? null;
+
         if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 11) {
-            $leads = $this->leadModel->getLeadsByCreatedByLast7Days($_SESSION['user']['id']);
+            if ($teamId) {
+                $leads = $this->leadModel->getLeadsByTeamId($teamId);
+            } else {
+                $leads = $this->leadModel->getLeadsByCreatedByLast7Days($_SESSION['user']['id']);
+            }
         }
 
         return $this->view("digital-marketing-team/digital-marketing-executive", [
@@ -42,7 +55,8 @@ class DigitalMarketingController extends Controller
             "page_title"          => "Digital Marketing Executive Dashboard",
             "teams"               => $teams,
             "stats"               => $stats,
-            "leads"               => $leads
+            "leads"               => $leads,
+            "selected_team_id"    => $teamId
         ]);
     }
 
