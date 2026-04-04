@@ -704,6 +704,43 @@ class Lead extends Model
         }
     }
 
+    public function permanentDelete($leadId)
+    {
+        $this->db->begin_transaction();
+
+        try {
+            // Delete payments associated with bookings for this lead
+            $stmt = $this->db->prepare("DELETE FROM lead_payments WHERE booking_id IN (SELECT id FROM lead_bookings WHERE lead_id = ?)");
+            $stmt->bind_param("i", $leadId);
+            $stmt->execute();
+            $stmt->close();
+
+            // Delete lead bookings
+            $stmt = $this->db->prepare("DELETE FROM lead_bookings WHERE lead_id = ?");
+            $stmt->bind_param("i", $leadId);
+            $stmt->execute();
+            $stmt->close();
+
+            // Delete lead follow ups
+            $stmt = $this->db->prepare("DELETE FROM lead_follow_ups WHERE lead_id = ?");
+            $stmt->bind_param("i", $leadId);
+            $stmt->execute();
+            $stmt->close();
+
+            // Delete lead
+            $stmt = $this->db->prepare("DELETE FROM leads WHERE id = ?");
+            $stmt->bind_param("i", $leadId);
+            $stmt->execute();
+            $stmt->close();
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return false;
+        }
+    }
+
     public function getDigitalMarketingStats()
     {
         $stats = [];

@@ -473,6 +473,16 @@
         </div>
       </div>
     </div>
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
+      <div class="card__wrapper stat-card">
+
+        <div>
+          <div class="label">Duplicate Number Leads</div>
+          <div class="value text-danger"><?= number_format($duplicateLeadsCount ?? 0) ?></div>
+          <div class="change text-danger"><i class="bi bi-exclamation-triangle"></i>Duplicates Found</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="row">
@@ -492,7 +502,7 @@
       <div class="upload-card card">
         <div class="card-header">
           <i class="bi bi-cloud-upload-fill fs-5"></i>
-          <h6>Bulk Lead Upload – CSV</h6>
+          <h6 class="text-light">Bulk Lead Upload – CSV</h6>
         </div>
         <div class="card-body p-4">
 
@@ -557,25 +567,25 @@
   </div>
   <div class="row">
     <div class="col-md-5 mb-3">
-    <form action="" method="GET" class="d-flex align-items-end gap-2">
-      <div class="flex-grow-1">
-        <label for="team_id" class="form-label fw-bold">Search By Teamwise</label>
-        <select name="team_id" id="team_id" class="form-select select2">
+      <form action="" method="GET" class="d-flex align-items-end gap-2">
+        <div class="flex-grow-1">
+          <label for="team_id" class="form-label fw-bold">Search By Teamwise</label>
+          <select name="team_id" id="team_id" class="form-select select2">
             <option value="">All Teams</option>
             <?php foreach ($teams as $team): ?>
-                <option value="<?= $team['id'] ?>" <?= (isset($selected_team_id) && $selected_team_id == $team['id']) ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($team['name']) ?>
-                </option>
+              <option value="<?= $team['id'] ?>" <?= (isset($selected_team_id) && $selected_team_id == $team['id']) ? 'selected' : '' ?>>
+                <?= htmlspecialchars($team['name']) ?>
+              </option>
             <?php endforeach; ?>
-        </select>
-      </div>
-      <button type="submit" class="btn btn-primary">
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">
           <i class="bi bi-search me-1"></i> Search
-      </button>
-      <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard" class="btn btn-outline-secondary">
+        </button>
+        <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard" class="btn btn-outline-secondary">
           <i class="bi bi-arrow-clockwise"></i>
-      </a>
-    </form>
+        </a>
+      </form>
     </div>
   </div>
 
@@ -598,6 +608,7 @@
                   <th>Team Name</th>
                   <th>Sales Team Lead</th>
                   <th class="pe-4 text-end">Upload Date</th>
+                  <th class="pe-4 text-center">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -619,7 +630,12 @@
                       </td>
                       <td>
                         <div class="d-flex flex-column">
-                          <span><i class="bi bi-telephone text-muted me-2"></i><?= htmlspecialchars($lead['phone_number'] ?? 'N/A') ?></span>
+                          <?php
+                            $p = $lead['phone_number'] ?? '';
+                            $isDuplicate = !empty($p) && isset($phoneFreq[$p]) && $phoneFreq[$p] > 1;
+                            $textClass = $isDuplicate ? 'text-danger fw-bold' : 'text-muted';
+                          ?>
+                          <span><i class="bi bi-telephone text-muted me-2"></i><span class="<?= $textClass ?>"><?= htmlspecialchars($p ?: 'N/A') ?></span></span>
                           <small class="text-muted"><i class="bi bi-envelope me-2"></i><?= htmlspecialchars($lead['email'] ?? 'N/A') ?></small>
                         </div>
                       </td>
@@ -632,12 +648,21 @@
                       </td>
                       <td>
                         <div class="fw-bold text-primary">
-                            <?= htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') ?>
+                          <?= htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') ?>
                         </div>
                       </td>
                       <td class="pe-4 text-end">
                         <div class="fw-semibold"><?= date('M d, Y', strtotime($lead['created_at'])) ?></div>
                         <small class="text-muted"><?= date('h:i A', strtotime($lead['created_at'])) ?></small>
+                      </td>
+                      <td class="pe-4 text-center">
+
+                        <buton class="dropdown__item text-danger removeBtnCust cursor" data-name="<?= $lead['full_name'] ?>"
+                          data-action="delete-lead-permanent"
+                          data-id="<?= $lead['id'] ?>">
+                          <i class="bi bi-trash me-2"></i> Delete
+                        </buton>
+
                       </td>
                     </tr>
                   <?php endforeach; ?>
@@ -693,6 +718,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+  const base_url = "<?= $GLOBALS['base_url'] ?>";
   document.addEventListener('DOMContentLoaded', function() {
     // Prevent page reload when Import CSV clicked
     const importBtn = document.getElementById('importCsvBtn');

@@ -91,13 +91,31 @@ class DigitalMarketingController extends Controller
             }
         }
 
+        $phoneFreq = [];
+        foreach ($leads as $l) {
+            $p = $l['phone_number'] ?? '';
+            if (!empty($p)) {
+                $phoneFreq[$p] = ($phoneFreq[$p] ?? 0) + 1;
+            }
+        }
+        
+        $duplicateLeadsCount = 0;
+        foreach ($leads as $l) {
+            $p = $l['phone_number'] ?? '';
+            if (!empty($p) && ($phoneFreq[$p] ?? 0) > 1) {
+                $duplicateLeadsCount++;
+            }
+        }
+
         return $this->view("digital-marketing-team/digital-marketing-executive", [
             "current_route"       => "digital-marketing-executive-dashboard",
             "page_title"          => "Digital Marketing Executive Dashboard",
             "teams"               => $teams,
             "stats"               => $stats,
             "leads"               => $leads,
-            "selected_team_id"    => $teamId
+            "selected_team_id"    => $teamId,
+            "phoneFreq"           => $phoneFreq,
+            "duplicateLeadsCount" => $duplicateLeadsCount
         ]);
     }
 
@@ -115,4 +133,36 @@ class DigitalMarketingController extends Controller
     header('Content-Type: application/json');
     echo json_encode($leads);
 }
+
+    public function deletePermanent()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $_SESSION['error'] = "Invalid Request";
+            header("Location:{$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
+        }
+
+        $id = (int)($_POST['id'] ?? 0);
+
+        if ($id <= 0) {
+            $_SESSION['error'] = "Invalid Lead ID";
+            header("Location:{$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
+        }
+
+        try {
+            $leadDelete = $this->leadModel->permanentDelete($id);
+
+            if ($leadDelete) {
+                $_SESSION['success'] = "Lead permanently deleted successfully!";
+            } else {
+                $_SESSION['error'] = "Something went wrong while deleting.";
+            }
+        } catch (\Throwable $th) {
+            $_SESSION['error'] = "Error: " . $th->getMessage();
+        }
+
+        header("Location:{$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+        exit;
+    }
 }
