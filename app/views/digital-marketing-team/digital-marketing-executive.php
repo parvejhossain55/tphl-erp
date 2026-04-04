@@ -657,11 +657,12 @@
                       </td>
                       <td class="pe-4 text-center">
 
-                        <buton class="dropdown__item text-danger removeBtnCust cursor" data-name="<?= $lead['full_name'] ?>"
+                        <button type="button" class="btn btn-sm btn-outline-danger removeBtnCust cursor" 
+                          data-name="<?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?>"
                           data-action="delete-lead-permanent"
                           data-id="<?= $lead['id'] ?>">
                           <i class="bi bi-trash me-2"></i> Delete
-                        </buton>
+                        </button>
 
                       </td>
                     </tr>
