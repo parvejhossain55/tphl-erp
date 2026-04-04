@@ -23,9 +23,9 @@
 
             <!-- Employee Select -->
             <div class="col-6 col-sm-6 col-md-3">
-                <label for="executiveSelect" class="form-label">Select Team</label>
+                <label for="executiveSelect" class="form-label">Select Sales Executive</label>
                 <select id="executiveSelect" name="executive" class="form-select">
-                    <option value="">-- Select Team --</option>
+                    <option value="">-- Select Sales Executive --</option>
                     <?php foreach ($allSalesTeams as $team): ?>
                         <option value="<?= $team['id'] ?>" <?= ($executiveId == $team['id']) ? 'selected' : '' ?>>
                             <?= htmlspecialchars($team['full_name']) ?>
@@ -81,9 +81,64 @@
 
     <!-- Performance Cards -->
     <div class="row" id="performanceCards">
+        <!-- Target tracking data -->
         <?php if ($showCards): ?>
+
+
+            <!-- New Lead & Action tracking data -->
             <div class="col-6 col-md-4 mb-3 card-item">
-                <div class="card__wrapper p-3 shadow-sm">
+                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-primary fw-semibold">Total Leads Assigned</span>
+                                <span class="fw-bold text-dark"><?= $singleData['total_leads_assigned'] ?? 0 ?></span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-primary fw-semibold">Total Follow Up Yet</span>
+                                <span class="fw-bold text-dark"><?= $singleData['total_follow_ups_yet'] ?? 0 ?></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 mb-3 card-item">
+                <div class="card__wrapper p-3 shadow-sm border-end border-success border-4" style="border-right-width: 4px !important;">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-primary fw-semibold">Today Total Leads Assigned</span>
+                                <span class="fw-bold text-dark"><?= $singleData['today_leads_assigned'] ?? 0 ?></span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-primary fw-semibold">Today Total Contacted</span>
+                                <span class="fw-bold text-success"><?= $singleData['today_contacted'] ?? 0 ?></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 mb-3 card-item">
+                <div class="card__wrapper p-3 shadow-sm border-end border-warning border-4" style="border-right-width: 4px !important;">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-primary fw-semibold">Today Follow Up</span>
+                                <span class="fw-bold text-dark"><?= $singleData['today_follow_ups'] ?? 0 ?></span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-primary fw-semibold">Today Remaining Data</span>
+                                <span class="fw-bold text-warning"><?= $singleData['today_remaining'] ?? 0 ?></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 mb-3 card-item">
+                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between mb-2">
@@ -100,7 +155,7 @@
             </div>
 
             <div class="col-6 col-md-4 mb-3 card-item">
-                <div class="card__wrapper p-3 shadow-sm">
+                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between mb-2">
@@ -117,7 +172,7 @@
             </div>
 
             <div class="col-6 col-md-4 mb-3 card-item">
-                <div class="card__wrapper p-3 shadow-sm">
+                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between mb-2">
@@ -132,6 +187,7 @@
                     </div>
                 </div>
             </div>
+
         <?php endif; ?>
     </div>
 

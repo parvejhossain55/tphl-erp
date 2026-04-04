@@ -180,6 +180,53 @@ class SalesDashboardController extends Controller
                     $singleData = $data[0];
                 }
 
+                // 1. Total Leads Assigned
+                $totalLeadsExecQuery = "SELECT COUNT(*) AS count FROM leads WHERE assigned_id = $executiveId AND deleted_at IS NULL";
+                $totalLeadsExecResult = $this->db->query($totalLeadsExecQuery);
+                $singleData['total_leads_assigned'] = $totalLeadsExecResult->fetch_assoc()['count'] ?? 0;
+
+                // 2. Today Total Leads Assigned
+                $todayLeadsExecQuery = "
+                    SELECT COUNT(*) AS count 
+                    FROM leads 
+                    WHERE assigned_id = $executiveId 
+                    AND deleted_at IS NULL 
+                    AND (
+                        (created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY)
+                        OR (assigned_at IS NOT NULL AND assigned_at >= CURDATE() AND assigned_at < CURDATE() + INTERVAL 1 DAY)
+                    )
+                ";
+                $todayLeadsExecResult = $this->db->query($todayLeadsExecQuery);
+                $singleData['today_leads_assigned'] = $todayLeadsExecResult->fetch_assoc()['count'] ?? 0;
+
+                // 3. Today Total Contacted
+                $todayContactedExecQuery = "
+                    SELECT COUNT(*) AS count 
+                    FROM leads 
+                    WHERE assigned_id = $executiveId 
+                    AND deleted_at IS NULL 
+                    AND call_status != 'not_called'
+                    AND (
+                        (created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY)
+                        OR (assigned_at IS NOT NULL AND assigned_at >= CURDATE() AND assigned_at < CURDATE() + INTERVAL 1 DAY)
+                    )
+                ";
+                $todayContactedExecResult = $this->db->query($todayContactedExecQuery);
+                $singleData['today_contacted'] = $todayContactedExecResult->fetch_assoc()['count'] ?? 0;
+
+                // 4. Today Remaining Data
+                $singleData['today_remaining'] = max(0, $singleData['today_leads_assigned'] - $singleData['today_contacted']);
+
+                // 5. Total Follow up Data Yet
+                $totalFollowUpQuery = "SELECT COUNT(*) AS count FROM lead_follow_ups WHERE assigned_with = $executiveId AND deleted_at IS NULL";
+                $totalFollowUpResult = $this->db->query($totalFollowUpQuery);
+                $singleData['total_follow_ups_yet'] = $totalFollowUpResult->fetch_assoc()['count'] ?? 0;
+
+                // 6. Today Follow up
+                $todayFollowUpQuery = "SELECT COUNT(*) AS count FROM lead_follow_ups WHERE assigned_with = $executiveId AND deleted_at IS NULL AND DATE(next_follow_up_date) = CURDATE()";
+                $todayFollowUpResult = $this->db->query($todayFollowUpQuery);
+                $singleData['today_follow_ups'] = $todayFollowUpResult->fetch_assoc()['count'] ?? 0;
+
                 $showCards = true;
             }
 }

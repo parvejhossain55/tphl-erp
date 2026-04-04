@@ -284,6 +284,7 @@ $routes = [
     // upload Csv From Csv Digital Marketing
     "digital-marketing-dashboard" => ["controller" => "DigitalMarketingController", "method" => "index"],
     "digital-marketing-executive-dashboard" => ["controller" => "DigitalMarketingController", "method" => "executiveDashboard"],
+    "store-platform-budget" => ["controller" => "DigitalMarketingController", "method" => "storeBudget"],
 
     // == access onboard clients ==
 
@@ -303,9 +304,9 @@ $routes = [
     "leadSource-lists" => ["controller" => "LeadSourceController", "method" => "index"],
     // "create-leadSource" => ["controller" => "LeadSourceController", "method" => "create"],
     "store-leadSource" => ["controller" => "LeadSourceController", "method" => "store"],
-    "edit-leadSource/(\d+)" => ["controller" => "LeadSourceController", "method" => "edit"],
-    "update-leadSource/(\d+)" => ["controller" => "LeadSourceController", "method" => "update"],
-    "delete-leadSource/(\d+)" => ["controller" => "LeadSourceController", "method" => "delete"],
+    "edit-leadSource" => ["controller" => "LeadSourceController", "method" => "edit"],
+    "update-leadSource" => ["controller" => "LeadSourceController", "method" => "update"],
+    "delete-leadSource" => ["controller" => "LeadSourceController", "method" => "delete"],
 
     //blogs
     "blog-lists" => ["controller" => "BlogController", "method" => "index"],

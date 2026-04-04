@@ -103,4 +103,26 @@ public function create($data)
         setError("Update failed: " . $stmt->error);
         return false;
     }
+
+    /**
+     * Delete source
+     */
+    public function delete($id)
+    {
+        $stmt = $this->db->prepare("DELETE FROM lead_sources WHERE id = ?");
+        
+        if (!$stmt) {
+            setError("Prepare failed: " . $this->db->error);
+            return false;
+        }
+
+        $stmt->bind_param("i", $id);
+
+        if ($stmt->execute()) {
+            return true;
+        }
+
+        setError("Delete failed: " . $stmt->error);
+        return false;
+    }
 }

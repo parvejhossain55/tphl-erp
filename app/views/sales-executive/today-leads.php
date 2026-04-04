@@ -21,7 +21,7 @@
                                    <tr class="table__title table__sort">
 
 
-                                       <th style="min-width:60px;">S/L</th> <!-- non-sticky first column -->
+                                       <th style="min-width:60px;">S/L</th> 
                                        <th class="th_1">Client/Lead Name</th>
 
                                        <!-- <th>Source Type</th> -->
