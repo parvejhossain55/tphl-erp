@@ -556,21 +556,27 @@
 
   </div>
   <div class="row">
-    <div class="col-md-4 mb-3">
-    <label for="teamFilter" class="form-label">Select Team</label>
-    <select id="teamFilter" class="form-control">
-        <option value="">All Teams</option>
-        <?php foreach ($teams as $team): ?>
-            <option value="<?= $team['id'] ?>">
-                <?= $team['name'] ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-
-    <div>
-      <label for="teamFilter">Team</label>
+    <div class="col-md-5 mb-3">
+    <form action="" method="GET" class="d-flex align-items-end gap-2">
+      <div class="flex-grow-1">
+        <label for="team_id" class="form-label fw-bold">Search By Teamwise</label>
+        <select name="team_id" id="team_id" class="form-select select2">
+            <option value="">All Teams</option>
+            <?php foreach ($teams as $team): ?>
+                <option value="<?= $team['id'] ?>" <?= (isset($selected_team_id) && $selected_team_id == $team['id']) ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($team['name']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">
+          <i class="bi bi-search me-1"></i> Search
+      </button>
+      <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-clockwise"></i>
+      </a>
+    </form>
     </div>
-</div>
   </div>
 
   <!-- Recent Leads Table -->
@@ -590,6 +596,7 @@
                   <th>Contact Info</th>
                   <th>Platform & Campaign</th>
                   <th>Team Name</th>
+                  <th>Sales Team Lead</th>
                   <th class="pe-4 text-end">Upload Date</th>
                 </tr>
               </thead>
@@ -622,6 +629,11 @@
                       </td>
                       <td>
                         <span class="text-dark"><?= htmlspecialchars($lead['team_name'] ?? 'N/A') ?></span>
+                      </td>
+                      <td>
+                        <div class="fw-bold text-primary">
+                            <?= htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') ?>
+                        </div>
                       </td>
                       <td class="pe-4 text-end">
                         <div class="fw-semibold"><?= date('M d, Y', strtotime($lead['created_at'])) ?></div>

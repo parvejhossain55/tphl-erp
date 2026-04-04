@@ -46,7 +46,7 @@
   .section-title {
     font-size: .82rem;
     font-weight: 700;
-    color: #1a2744;
+    color: #fff;
     text-transform: uppercase;
     letter-spacing: .06em;
     margin-bottom: 14px;
@@ -178,7 +178,6 @@
   .nav-pills .nav-link {
     font-size: .8rem;
     border-radius: 8px;
-    color: #546e7a;
     padding: 6px 16px;
   }
 
@@ -336,8 +335,7 @@
         <i class="bi bi-plus-circle-fill me-1"></i>Add Budget</a></li>
     <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('log',this);return false;">
         <i class="bi bi-clock-history me-1"></i>Budget Log</a></li>
-    <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('chart',this);return false;">
-        <i class="bi bi-bar-chart-line-fill me-1"></i>Chart View</a></li>
+
   </ul>
 
   <!-- ── TAB: Platform Budget ── -->
@@ -596,6 +594,30 @@
 
 
 
+  <div class="row mt-4">
+    <div class="col-md-5 mb-3">
+      <form action="" method="GET" class="d-flex align-items-end gap-2 p-3 bg-white shadow-sm" style="border-radius:14px;">
+        <div class="flex-grow-1">
+          <label for="team_id" class="form-label fw-bold" style="font-size: .85rem;">Search By Teamwise</label>
+          <select name="team_id" id="team_id" class="form-select select2">
+            <option value="">All Teams (Last 30 Days)</option>
+            <?php foreach ($teams as $team): ?>
+              <option value="<?= $team['id'] ?>" <?= (isset($selected_team_id) && $selected_team_id == $team['id']) ? 'selected' : '' ?>>
+                <?= htmlspecialchars($team['name']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="background:#1a2744; border:none; padding: 7px 15px;">
+          <i class="bi bi-search me-1"></i> Search
+        </button>
+        <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-dashboard" class="btn btn-outline-secondary" style="padding: 7px 12px;">
+          <i class="bi bi-arrow-clockwise"></i>
+        </a>
+      </form>
+    </div>
+  </div>
+
   <!-- Recent Leads Table -->
   <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 10): ?>
     <div class="row mt-4">
@@ -605,14 +627,15 @@
             <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Uploaded Leads (Last 7 Days)</h6>
             <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($leads) ?> Leads</span>
           </div>
-          <div class="table__wrapper table-responsive">
-            <table class="table mb-20 ">
+          <div class="table__wrapper table-responsive my-3">
+            <table class="table no-border-table mt-20 multiple_tables">
               <thead class="">
                 <tr>
                   <th class="ps-4">Lead Name</th>
                   <th>Contact Info</th>
                   <th>Platform & Campaign</th>
                   <th>Team Name</th>
+                  <th>Sales Team Lead</th>
                   <th class="pe-4 text-end">Upload Date</th>
                 </tr>
               </thead>
@@ -645,6 +668,11 @@
                       </td>
                       <td>
                         <span class="text-dark"><?= htmlspecialchars($lead['team_name'] ?? 'N/A') ?></span>
+                      </td>
+                      <td>
+                        <div class="fw-bold text-primary">
+                          <?= htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') ?>
+                        </div>
                       </td>
                       <td class="pe-4 text-end">
                         <div class="fw-semibold"><?= date('M d, Y', strtotime($lead['created_at'])) ?></div>
