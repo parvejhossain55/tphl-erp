@@ -2674,35 +2674,6 @@ INSERT INTO `teams` (`id`, `name`, `status`, `created_by`, `created_at`, `update
 
 -- --------------------------------------------------------
 
---
--- Table structure for table `units`
---
-
-CREATE TABLE `units` (
-  `id` int(11) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `units`
---
-
-INSERT INTO `units` (`id`, `name`, `created_at`, `updated_at`) VALUES
-(1, 'Unit A', '2025-12-18 10:55:04', '2025-12-18 10:55:04'),
-(2, 'Unit - B', '2025-12-18 10:59:55', '2025-12-18 10:59:55'),
-(3, 'Unit C', '2025-12-18 11:04:55', '2025-12-18 11:04:55'),
-(4, 'Unit -A1', '2025-12-22 08:02:40', '2025-12-22 08:02:40'),
-(5, 'Unit - A2', '2025-12-22 08:02:55', '2025-12-22 08:02:55'),
-(6, 'Unit - A3', '2025-12-22 08:03:13', '2025-12-22 08:03:13'),
-(7, 'Unit - B1', '2025-12-22 08:03:26', '2025-12-22 08:03:26'),
-(8, 'Unit - B2', '2025-12-22 08:03:39', '2025-12-22 08:03:39'),
-(9, 'Unit - B3', '2025-12-22 08:03:54', '2025-12-22 08:03:54'),
-(10, 'Unit - C1', '2025-12-22 08:04:07', '2025-12-22 08:04:07'),
-(11, 'Unit - C3', '2025-12-22 08:04:40', '2025-12-22 08:04:40'),
-(12, 'Unit - C2', '2025-12-22 08:04:59', '2025-12-22 08:04:59');
-
 -- --------------------------------------------------------
 
 --
@@ -3245,12 +3216,6 @@ ALTER TABLE `teams`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `units`
---
-ALTER TABLE `units`
-  ADD PRIMARY KEY (`id`);
-
---
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -3589,11 +3554,6 @@ ALTER TABLE `tasks`
 ALTER TABLE `teams`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
---
--- AUTO_INCREMENT for table `units`
---
-ALTER TABLE `units`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `users`
