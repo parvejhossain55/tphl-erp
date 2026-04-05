@@ -387,12 +387,13 @@ public function update($data, $id)
         $photo = uploadImage('photo', 'users', 'fixed', 300, 300);
     }
 
-    // Password
+    // Password - Hash if provided
     $password = !empty($data['password']) ? password_hash($data['password'], PASSWORD_DEFAULT) : null;
 
-    // Variables
+    // Variables for bind_param (ensuring correct types)
     $full_name      = $data['full_name'] ?? '';
-    $employee_id    = trim($data['employee_id'] ?? ''); // STRING now
+    // employee_id should be integer or null
+    $emp_id         = ($data['employee_id'] && (int)$data['employee_id'] > 0) ? (int)$data['employee_id'] : null;
     $phone          = $data['phone'] ?? '';
     $email          = $data['email'] ?? '';
     $designation_id = (int)($data['designation_id'] ?? 0);
@@ -428,11 +429,11 @@ public function update($data, $id)
 
     if (!$stmt) throw new \Exception("User update prepare failed: " . $this->db->error);
 
-    // Bind parameters
+    // Bind parameters - "sissississsssiii"
     if (!$stmt->bind_param(
         "sissississsssiii",
         $full_name,
-        $emp_id,        // Nullable INT
+        $emp_id,
         $phone,
         $email,
         $designation_id,
@@ -440,8 +441,8 @@ public function update($data, $id)
         $nid,
         $role_id,
         $user_name,
-        $pwd,           // COALESCE handles null
-        $ph,            // COALESCE handles null
+        $password,
+        $photo,
         $media_link1,
         $media_link2,
         $created_by,
