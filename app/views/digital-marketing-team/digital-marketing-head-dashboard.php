@@ -323,7 +323,6 @@
         <div class="change text-muted"><i class="bi bi-clock"></i> </div>
       </div>
     </div>
-
   </div>
 
 
@@ -332,20 +331,19 @@
   <ul class="nav nav-pills mb-3" id="budgetTabs">
     <li class="nav-item"><a class="nav-link active" href="#" onclick="showTab('platform',this);return false;">
         <i class="bi bi-pie-chart-fill me-1"></i>Platform Budget</a></li>
-    <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('add',this);return false;">
+    <li class="nav-item ms-2"><a class="nav-link" href="#" onclick="showTab('add',this);return false;">
         <i class="bi bi-plus-circle-fill me-1"></i>Add Budget</a></li>
-    <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('log',this);return false;">
+    <li class="nav-item ms-2"><a class="nav-link" href="#" onclick="showTab('log',this);return false;">
         <i class="bi bi-clock-history me-1"></i>Budget Log</a></li>
 
   </ul>
 
   <!-- ── TAB: Platform Budget ── -->
   <div id="tab-platform">
-
     <!-- summary strip -->
     <div class="sum-strip mb-4">
       <div class="sum-item">
-        <div class="s-label">Team Budget</div>
+        <div class="s-label">Platform Budget</div>
         <div class="s-val">৳<?= number_format($tb) ?></div>
       </div>
       <div class="sum-item">
@@ -372,7 +370,7 @@
         if ($percent > 85) $color = '#dc2626';
         elseif ($percent > 60) $color = '#f59e0b';
         ?>
-        <div class="col-xl-2 col-lg-3 col-sm-4 col-6">
+        <div class="col-xxl-2 col-md-3 col-lg-3 col-sm-4 col-6">
           <div class="plat-card">
             <div class="d-flex align-items-center gap-2 mb-2">
               <span class="fw-semibold" style="font-size:.85rem;"><?= htmlspecialchars($pb['source_name'] ?? 'Unknown Platform') ?></span>
@@ -473,9 +471,6 @@
       </div>
     </div>
   </div><!-- /tab-log -->
-
-
-
 
 
   <div class="row mt-4">

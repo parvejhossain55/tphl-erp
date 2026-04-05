@@ -159,51 +159,51 @@ $show_breadcrumb = true;
                 </div>
             </form>
         </div>
-      <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 5): ?>
-        <div class="col-md-6">
-            <div id="assignCard"
-                class="card__wrapper shadow-sm p-3 my-2"
-                style="display:none; border-radius:12px;">
+        <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 5): ?>
+            <div class="col-md-6">
+                <div id="assignCard"
+                    class="card__wrapper shadow-sm p-3 my-2"
+                    style="display:none; border-radius:12px;">
 
-                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
 
-                    <label class="fw-bold mb-0">Assign Selected Leads to: <span id="selectedCount" class="badge bg-primary ms-2">0</span></label>
+                        <label class="fw-bold mb-0">Assign Selected Leads to: <span id="selectedCount" class="badge bg-primary ms-2">0</span></label>
 
-                    <select id="assignUserSelect"
-                        class="form-select form-select-sm"
-                        style="min-width:200px; width:auto;">
-                        <option value="">Assigned User</option>
-                        <?php foreach ($assignedUsers as $user): ?>
-                            <option value="<?= $user['id'] ?>">
-                                <?= htmlspecialchars($user['full_name']) ?>-<?= htmlspecialchars($user['role_name']) ?>
-                            </option>
-                        <?php endforeach ?>
-                    </select>
+                        <select id="assignUserSelect"
+                            class="form-select form-select-sm"
+                            style="min-width:200px; width:auto;">
+                            <option value="">Assigned User</option>
+                            <?php foreach ($assignedUsers as $user): ?>
+                                <option value="<?= $user['id'] ?>">
+                                    <?= htmlspecialchars($user['full_name']) ?>-<?= htmlspecialchars($user['role_name']) ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
 
-                    <!--  NEW DATE INPUT -->
-                    <input type="date"
-                        id="assignedDate"
-                        class="form-control form-control-sm"
-                        style="width:auto;"
-                        value="<?= date('Y-m-d') ?>">
+                        <!--  NEW DATE INPUT -->
+                        <input type="date"
+                            id="assignedDate"
+                            class="form-control form-control-sm"
+                            style="width:auto;"
+                            value="<?= date('Y-m-d') ?>">
 
-                    <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
-                        <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
-                    </button>
+                        <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
+                            <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
+                        </button>
 
-                    <span id="assignFeedback"
-                        class="text-success fw-bold"
-                        style="display:none;">
-                        Leads assigned successfully!
-                    </span>
+                        <span id="assignFeedback"
+                            class="text-success fw-bold"
+                            style="display:none;">
+                            Leads assigned successfully!
+                        </span>
 
+                    </div>
                 </div>
             </div>
-        </div>
-<?php endif; ?>
+        <?php endif; ?>
 
 
-<p>Lead Lists</p>
+        <p>Lead Lists</p>
 
         <!-- Table -->
         <div class="col-xxl-12">
@@ -530,7 +530,7 @@ $show_breadcrumb = true;
                     <?php endforeach ?>
                 </select>
 
-                <!-- ✅ Assigned Date -->
+                <!--  Assigned Date -->
                 <input type="date"
                     id="assignedDateMobile"
                     class="form-control form-control-sm"
@@ -905,14 +905,16 @@ $show_breadcrumb = true;
 
             selectAll.addEventListener('change', function() {
                 const table = $('.multiple_tables').DataTable();
-                const currentPageNodes = table.rows({ page: 'current' }).nodes();
+                const currentPageNodes = table.rows({
+                    page: 'current'
+                }).nodes();
                 const isChecked = this.checked;
 
                 // Only toggle leads on the current page
                 $(currentPageNodes).find('.selectedId').each(function() {
                     this.checked = isChecked;
                     const id = this.dataset.id;
-                    
+
                     if (isChecked) {
                         selectedLeadsSet.add(id);
                     } else {
@@ -954,7 +956,7 @@ $show_breadcrumb = true;
         if (dtTable.length > 0) {
             // Get DataTable instance
             const table = dtTable.DataTable();
-            
+
             // Disable sorting on the first column (where the checkbox is)
             table.settings()[0].aoColumns[0].bSortable = false;
 
