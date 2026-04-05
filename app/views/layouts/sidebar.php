@@ -78,8 +78,20 @@
                                 <a href="<?= $base_url ?>/lead-lists" class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">Lead List</a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $base_url ?>/onboarding-clients" class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">Onboarding Clients</a>
+                                <a href="<?= $base_url ?>/my-all-assigned-leads" class="sidebar__menu-item <?= isActive('my-all-assigned-leads', $current_route) ?>">My All Assigned Leads </a>
                             </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/today-leads" class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">
+                                    Today Leads Assigned
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-onboarding-projects" class="sidebar__menu-item <?= isActive('my-onboarding-projects', $current_route) ?>">My Onboarding Projects </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/onboarding-clients" class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">All Onboarding Clients</a>
+                            </li>
+
                         </ul>
                     </li>
 

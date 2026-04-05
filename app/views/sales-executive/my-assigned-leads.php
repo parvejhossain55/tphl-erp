@@ -1,3 +1,124 @@
+<!-- Custom Styles for Table and Responsiveness -->
+<style>
+    /* Table Layout Fixes */
+    .table__wrapper.table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .multiple_tables {
+        width: 100%;
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .multiple_tables th {
+        white-space: nowrap;
+        background: #f8f9fa;
+        padding: 12px 15px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #333;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .multiple_tables td {
+        vertical-align: middle;
+        padding: 10px 15px;
+        font-size: 0.85rem;
+        border-bottom: 1px solid #eee;
+    }
+
+    /* Column Specific Widths */
+    .multiple_tables th:nth-child(1), .multiple_tables td:nth-child(1) { min-width: 110px !important; } /* Date */
+    .multiple_tables th:nth-child(2), .multiple_tables td:nth-child(2) { min-width: 150px !important; } /* Name */
+    .multiple_tables th:nth-child(3), .multiple_tables td:nth-child(3) { min-width: 130px !important; } /* Phone */
+    .multiple_tables th:nth-child(4), .multiple_tables td:nth-child(4) { min-width: 180px !important; } /* Project Campaign */
+    .multiple_tables th:nth-child(5), .multiple_tables td:nth-child(5) { min-width: 220px !important; } /* Last Follow Project */
+    .multiple_tables th:nth-child(6), .multiple_tables td:nth-child(6) { min-width: 150px !important; } /* Action Dropdown */
+    .multiple_tables th:nth-child(7), .multiple_tables td:nth-child(7) { min-width: 150px !important; } /* Communicate Type */
+    .multiple_tables th:nth-child(8), .multiple_tables td:nth-child(8) { min-width: 200px !important; } /* Note */
+    .multiple_tables th:nth-child(9), .multiple_tables td:nth-child(9) { min-width: 130px !important; } /* Next Follow Up */
+    .multiple_tables th:nth-child(10), .multiple_tables td:nth-child(10) { min-width: 180px !important; } /* Action Buttons */
+
+    /* Badge and Note Styles Refinement */
+    .bd-badge-custom {
+        display: block;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        line-height: 1.4;
+        background-color: #0d894f;
+        color: #fff;
+    }
+
+    .bd-badge-secondary-custom {
+        background-color: #6c757d;
+        color: #fff;
+    }
+
+    .note-wrapper {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+    }
+
+    .call-note {
+        flex: 1;
+        min-height: 38px;
+        max-height: 38px;
+        font-size: 0.8rem;
+        padding: 5px 8px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        resize: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .call-note:focus {
+        border-color: #22c55e;
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+        outline: none;
+        min-height: 80px;
+        max-height: 200px;
+    }
+
+    .note-save-btn {
+        padding: 5px 10px;
+        font-size: 0.75rem;
+        height: 38px;
+    }
+
+    /* Next Follow-up Badge */
+    .next-followup-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background-color: #e0f2fe;
+        color: #075985;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    /* Mobile Improvements */
+    @media (max-width: 768px) {
+        .multiple_tables td, .multiple_tables th {
+            padding: 8px 10px;
+            font-size: 0.8rem;
+        }
+        .lead-card {
+            border-left: 4px solid #22c55e;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+    }
+</style>
+
 <!-- Breadcrumb -->
 <div class="container-fluid mt-3">
     <nav aria-label="breadcrumb">
@@ -79,15 +200,17 @@
                     <table class="table no-border-table mb-20 multiple_tables">
                         <thead>
                             <tr class="table__title table__sort">
-                                <th>Lead Date</th>
-                                <th>Lead Name</th>
-                                <th>Phone</th>
-                                <th>Project Campaign</th>
+                                <th style="min-width: 120px;">Lead Date</th>
+                                <th style="min-width: 160px;">Lead Name</th>
+                                <th style="min-width: 130px;">Phone</th>
+                                <th style="min-width: 180px;">Project Campaign</th>
 
-                                <th>Last Follow Up Project</th>
-                                <th>Change Client Action</th>
-                                <th>Next Follow-Up</th>
-                                <th>Action</th>
+                                <th style="min-width: 200px;">Last Follow Up Project</th>
+                                <th style="min-width: 160px;">Change Client Action</th>
+                                <th style="min-width: 160px;" class="text-center">Communicate Type</th>
+                                <th style="min-width: 250px;" class="text-center">Communicate Note</th>
+                                <th style="min-width: 140px;">Next Follow-Up</th>
+                                <th style="min-width: 180px;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -131,15 +254,16 @@
                                     <td>
 
                                         <?php if (!empty($lead['project_name'])): ?>
-                                            <span class="bd-badge bg-primary fw-semibold">
-                                                <?= htmlspecialchars($lead['project_name']) ?>,
-                                                <strong class="ms-2">Flat:</strong>
-                                                <span><?= !empty($lead['flat_name']) ? htmlspecialchars($lead['flat_name']) : 'N/A' ?></span>
-                                            </span>
+                                            <div class="bd-badge-custom">
+                                                <div class="fw-bold"><?= htmlspecialchars($lead['project_name']) ?></div>
+                                                <div class="mt-1 small" style="opacity: 0.9; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 2px;">
+                                                    <strong>Flat:</strong> <?= !empty($lead['flat_name']) ? htmlspecialchars($lead['flat_name']) : 'N/A' ?>
+                                                </div>
+                                            </div>
                                         <?php else: ?>
-                                            <span class="bd-badge bg-secondary fw-semibold">
+                                            <div class="bd-badge-custom bd-badge-secondary-custom">
                                                 No Follow Data
-                                            </span>
+                                            </div>
                                         <?php endif; ?>
                                     </td>
                                     <!-- New Last Action Update Button -->
@@ -180,9 +304,35 @@
 
                                         </form>
                                     </td>
-                                    <!-- last_action_form  -->
+                                    <!-- Communicate Type -->
+                                    <td class="call-status-cell">
+                                        <select
+                                            class="call-status"
+                                            data-id="<?= $lead['id'] ?>">
+                                            <option value="not_called" <?= ($lead['call_status'] ?? 'not_called') == 'not_called' ? 'selected' : '' ?>>Not Called</option>
+                                            <option value="called" <?= ($lead['call_status'] ?? '') == 'called' ? 'selected' : '' ?>>Called</option>
+                                            <option value="received" <?= ($lead['call_status'] ?? '') == 'received' ? 'selected' : '' ?>>Received</option>
+                                            <option value="not_received" <?= ($lead['call_status'] ?? '') == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+                                        </select>
+                                    </td>
+
+                                    <!-- Interactive Note -->
+                                    <td class="note-cell">
+                                        <div class="note-wrapper">
+                                            <textarea
+                                                class="call-note"
+                                                data-id="<?= $lead['id'] ?>"
+                                                placeholder="Click to add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
+                                            <button type="button" class="btn btn-sm btn-success note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
+                                        </div>
+                                    </td>
+
+                                    <!-- Next Follow-up -->
                                     <td>
-                                        <div><?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?></div>
+                                        <div class="next-followup-badge">
+                                            <i class="bi bi-calendar-check me-1"></i>
+                                            <?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?>
+                                        </div>
                                     </td>
 
 
@@ -307,7 +457,7 @@
         </div>
         <?php foreach ($myAllleads as $key => $lead): ?>
             <!-- Lead Card -->
-            <div class="lead-card h-100 mb-0" data-id="<?= $lead['id'] ?>">
+            <div class="lead-card  mb-3" data-id="<?= $lead['id'] ?>">
                 <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
                     <div class="flex-grow-1 overflow-hidden">
                         <span class="lead-name text-truncate"><?= $lead['full_name'] ?></span>
@@ -335,14 +485,14 @@
                         <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>" class="btn btn-primary btn-sm w-100 d-flex justify-content-between align-items-center px-2">
                             <span>Follow Up</span>
                             <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;"><?= $followUpCounts[$lead['id']] ?></span>
+                                <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px;  align-items: center; justify-content: center;"><?= $followUpCounts[$lead['id']] ?></span>
                             <?php endif; ?>
                         </a>
 
                         <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>" class="btn btn-secondary btn-sm w-100 d-flex justify-content-between align-items-center px-2">
                             <span>Booking</span>
                             <?php if (!empty($bookingCount[$lead['id']])): ?>
-                                <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;"><?= $bookingCount[$lead['id']] ?></span>
+                                <span class="badge bg-white text-dark rounded-circle" style="font-size: 10px; width: 18px; height: 18px;  align-items: center; justify-content: center;"><?= $bookingCount[$lead['id']] ?></span>
                             <?php endif; ?>
                         </a>
                     </div>
@@ -367,7 +517,18 @@
                         <?php endif; ?>
                     </div>
 
-                    <div class="info-label mt-2">Follow-up Project</div>
+                    <!-- Call Status (Communicate Type) -->
+                    <div class="mt-2">
+                        <label class="info-label d-block mb-1">Call Status (Communicate Type)</label>
+                        <select class="call-status w-100" data-id="<?= $lead['id'] ?>">
+                            <option value="not_called" <?= ($lead['call_status'] ?? 'not_called') == 'not_called' ? 'selected' : '' ?>>Not Called</option>
+                            <option value="called" <?= ($lead['call_status'] ?? '') == 'called' ? 'selected' : '' ?>>Called</option>
+                            <option value="received" <?= ($lead['call_status'] ?? '') == 'received' ? 'selected' : '' ?>>Received</option>
+                            <option value="not_received" <?= ($lead['call_status'] ?? '') == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+                        </select>
+                    </div>
+
+                    <div class="info-label mt-2">Last Follow-up Project</div>
                     <div class="small mt-1">
                         <?php if (!empty($lead['project_name'])): ?>
                             <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1" style="font-size: 0.65rem;">
@@ -378,6 +539,14 @@
                         <?php endif; ?>
                     </div>
                 </div>
+
+                <!-- Last Contacted Note -->
+                <div class="mt-2">
+                    <label class="info-label d-block mb-1">Note</label>
+                    <textarea class="form-control call-note" data-id="<?= $lead['id'] ?>" placeholder="Add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
+                    <button type="button" class="btn btn-sm btn-success mt-1 note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
+                </div>
+
                 <!-- Next Follow-Up -->
                 <div class="d-flex align-items-center gap-2 mt-3">
                     <div class="info-label flex-shrink-0">Next Follow-Up</div>
@@ -544,32 +713,83 @@
     const selectAll = document.getElementById('selectAllLeads');
     const assignCard = document.getElementById('assignCard');
 
-    selectAll.addEventListener('change', function() {
-        const checkboxes = document.querySelectorAll('.selectedId');
-        checkboxes.forEach(cb => cb.checked = this.checked);
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.selectedId');
+            checkboxes.forEach(cb => cb.checked = this.checked);
 
-        // Show the card if any checkbox is checked
-        if (this.checked) {
-            assignCard.style.display = 'flex';
-        } else {
-            // Optional: hide if none checked
-            const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
-            assignCard.style.display = anyChecked ? 'flex' : 'none';
-        }
-    });
+            if (this.checked) {
+                if (assignCard) assignCard.style.display = 'flex';
+            } else {
+                const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
+                if (assignCard) assignCard.style.display = anyChecked ? 'flex' : 'none';
+            }
+        });
+    }
 
-    // Individual checkbox toggle
     document.querySelectorAll('.selectedId').forEach(cb => {
         cb.addEventListener('change', function() {
-            // If any checkbox checked → show assign card
             const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
-            assignCard.style.display = anyChecked ? 'flex' : 'none';
+            if (assignCard) assignCard.style.display = anyChecked ? 'flex' : 'none';
 
-            // Header checkbox logic
-            const allChecked = Array.from(document.querySelectorAll('.selectedId')).every(c => c.checked);
-            selectAll.checked = allChecked;
+            if (selectAll) {
+                const allChecked = Array.from(document.querySelectorAll('.selectedId')).every(c => c.checked);
+                selectAll.checked = allChecked;
+            }
         });
     });
+
+    // --- Interactive Column AJAX Logic ---
+    // Update call status (Communicate Type)
+    document.querySelectorAll('.call-status').forEach(select => {
+        select.addEventListener('change', function() {
+            fetch(base_url + '/update-call-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'lead_id=' + this.dataset.id + '&call_status=' + this.value
+            });
+        });
+    });
+
+    // Save notes via button
+    document.querySelectorAll('.note-save-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const leadId = this.dataset.id;
+            const textarea = document.querySelector('.call-note[data-id="' + leadId + '"]');
+            saveNote(leadId, textarea.value, textarea);
+        });
+    });
+
+    // Save notes via Enter key
+    document.querySelectorAll('.call-note').forEach(textarea => {
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                saveNote(this.dataset.id, this.value, this);
+            }
+        });
+    });
+
+    function saveNote(leadId, note, el) {
+        fetch(base_url + '/update-call-notes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'lead_id=' + encodeURIComponent(leadId) + '&call_note=' + encodeURIComponent(note)
+        })
+        .then(res => res.text())
+        .then(() => {
+            el.style.borderColor = '#198754'; // success hint
+            setTimeout(() => el.style.borderColor = '#ddd', 800);
+        })
+        .catch(err => {
+            console.error('Error saving note:', err);
+            el.style.borderColor = '#dc3545'; // error hint
+        });
+    }
 </script>
 
 <script>

@@ -255,7 +255,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 </div>
 
 
-<!-- edit payslip-item modal start -->
 <!-- Edit Booking Modal -->
 <div id="editModalBooking" class="modal custom-modal fade" role="dialog">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -308,9 +307,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
     </div>
 </div>
 
-
-
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const projectSelect = document.getElementById('projectSelect');
@@ -357,8 +353,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             });
         }
 
-
-
         // Show price when flat selected
         flatSelect.addEventListener('change', function() {
             const selectedFlatId = this.value;
@@ -369,8 +363,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         });
     });
 </script>
-
-
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -408,7 +400,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         });
 
                         // Set flat after options loaded
-                        if (typeof flatId !== 'undefined') {
+                        if (typeof flatId !== 'undefined') { 
                             editFlatSelect.value = flatId;
                         }
                     });
