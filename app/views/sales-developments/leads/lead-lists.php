@@ -530,7 +530,7 @@ $show_breadcrumb = true;
                     <?php endforeach ?>
                 </select>
 
-                <!-- ✅ Assigned Date -->
+                <!--  Assigned Date -->
                 <input type="date"
                     id="assignedDateMobile"
                     class="form-control form-control-sm"
