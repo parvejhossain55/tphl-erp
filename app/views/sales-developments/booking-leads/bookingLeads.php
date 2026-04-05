@@ -5,6 +5,15 @@ $show_breadcrumb = true;
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 ?>
+<style>
+    .locked-option {
+        color: #dc3545 !important;
+        font-weight: 600;
+    }
+    .booked-option {
+        color: #6c757d;
+    }
+</style>
 <div class="row">
     <div clas="card__wrapper">
         <a href="<?= $base_url ?>/edit-lead/<?= $lead['id'] ?>"
@@ -338,10 +347,20 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             const option = document.createElement('option');
                             option.value = flat.flat_id;
 
-                            if (flat.is_booked == 1) {
+                            // Calculate 48-hour lock
+                            const now = new Date();
+                            const bookingTime = flat.booking_time ? new Date(flat.booking_time) : null;
+                            const isLocked = flat.booking_status === 'booked' && bookingTime && (now - bookingTime < 48 * 60 * 60 * 1000);
+
+                            if (isLocked) {
+                                option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Locked for 48 hours]`;
+                                option.className = 'locked-option';
+                                option.disabled = true;
+                                option.style.color = 'red'; // ensure visibility in basic select
+                            } else if (flat.is_booked == 1) {
                                 option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
-                                option.classList.add('booked-option');
-                                option.disabled = true; // Disable booked flats
+                                option.className = 'booked-option';
+                                option.disabled = true;
                             } else {
                                 option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
                             }
@@ -391,10 +410,21 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         data.forEach(flat => {
                             const opt = document.createElement('option');
                             opt.value = flat.flat_id;
-                            opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
-                            if (flat.is_booked == 1) {
+
+                            // Calculate 48-hour lock
+                            const now = new Date();
+                            const bTime = flat.booking_time ? new Date(flat.booking_time) : null;
+                            const isLocked = flat.booking_status === 'booked' && bTime && (now - bTime < 48 * 60 * 60 * 1000);
+
+                            if (isLocked) {
+                                opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Locked for 48 hours]`;
+                                opt.style.color = 'red';
                                 opt.disabled = true;
-                                opt.textContent += ' [Booked]';
+                            } else if (flat.is_booked == 1) {
+                                opt.disabled = true;
+                                opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
+                            } else {
+                                opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
                             }
                             editFlatSelect.appendChild(opt);
                         });

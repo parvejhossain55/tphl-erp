@@ -222,11 +222,17 @@ class FlatModel extends Model
                 f.bhk,
                 f.price_value,
                 f.land_share_value,
-                f.flat_name
+                f.flat_name,
+                lb.booking_status,
+                lb.created_at AS booking_time
             FROM flats f
+            LEFT JOIN lead_bookings lb ON f.id = lb.flat_id 
+                AND lb.deleted_at IS NULL 
+                AND lb.booking_status IN ('booked', 'completed')
             WHERE f.project_id = ?
             AND f.deleted_at IS NULL
-            ORDER BY f.floor_no ASC,f.flat_name ASC
+            GROUP BY f.id
+            ORDER BY f.floor_no ASC, f.flat_name ASC
         ");
 
         $stmt->bind_param("i", $projectId);
