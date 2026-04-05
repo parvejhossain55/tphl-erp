@@ -10,7 +10,8 @@ class ApprovalRequest extends Model
         'payslips',
 
         'salary_requests',
-        'cashout_requests'
+        'cashout_requests',
+        'manpower_requisitions'
     ];
     public function create($data)
     {
@@ -210,6 +211,13 @@ class ApprovalRequest extends Model
             }
         }
 
+        // Manpower request 
+
+        // if($approval['request_type'] === 'manpower_requisition'){
+        //     if(){
+
+        //     }
+        // }
 
         /* =====================
        ACCOUNTS → CASH IN / OUT
@@ -222,6 +230,19 @@ class ApprovalRequest extends Model
             );
 
             $details['meta'] = $meta; // purpose, payment_method etc
+        }
+
+        /* =====================
+       GENERAL → MANPOWER REQUISITION
+       ===================== */
+        if ($approval['request_type'] === 'manpower_requisition') {
+            $details['requisition'] = $this->db
+                ->query("SELECT mr.*, d.name as department_name, des.name AS designation_name 
+                        FROM manpower_requisitions mr
+                        LEFT JOIN departments d ON mr.department_id = d.id
+                        LEFT JOIN designations des ON mr.designation_id = des.id
+                        WHERE mr.id = " . (int)$approval['source_id'])
+                ->fetch_assoc();
         }
         // Fetch requester info
         if (!empty($approval['requested_by'])) {

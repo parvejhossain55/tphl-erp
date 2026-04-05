@@ -377,38 +377,38 @@ class User extends Model
         return $stmt->get_result()->fetch_assoc();
     }
 
-public function update($data, $id)
-{
-    if (!is_array($data)) return false;
+    public function update($data, $id)
+    {
+        if (!is_array($data)) return false;
 
-    // Photo
-    $photo = $data['photo'] ?? null;
-    if (isset($_FILES['photo']) && !empty($_FILES['photo']['tmp_name'])) {
-        $photo = uploadImage('photo', 'users', 'fixed', 300, 300);
-    }
+        // Photo
+        $photo = $data['photo'] ?? null;
+        if (isset($_FILES['photo']) && !empty($_FILES['photo']['tmp_name'])) {
+            $photo = uploadImage('photo', 'users', 'fixed', 300, 300);
+        }
 
-    // Password - Hash if provided
-    $password = !empty($data['password']) ? password_hash($data['password'], PASSWORD_DEFAULT) : null;
+        // Password - Hash if provided
+        $password = !empty($data['password']) ? password_hash($data['password'], PASSWORD_DEFAULT) : null;
 
-    // Variables for bind_param (ensuring correct types)
-    $full_name      = $data['full_name'] ?? '';
-    // employee_id should be integer or null
-    $emp_id         = ($data['employee_id'] && (int)$data['employee_id'] > 0) ? (int)$data['employee_id'] : null;
-    $phone          = $data['phone'] ?? '';
-    $email          = $data['email'] ?? '';
-    $designation_id = (int)($data['designation_id'] ?? 0);
-    $address        = $data['address'] ?? '';
-    $nid            = $data['nid'] ?? '';
-    $role_id        = (int)($data['role_id'] ?? 2);
-    $user_name      = $data['user_name'] ?? '';
-    $media_link1    = $data['media_link1'] ?? '';
-    $media_link2    = $data['media_link2'] ?? '';
-    $created_by     = (int)($data['created_by'] ?? 0);
-    $team_id        = (int)($data['team_id'] ?? 0);
+        // Variables for bind_param (ensuring correct types)
+        $full_name      = $data['full_name'] ?? '';
+        // employee_id should be integer or null
+        $emp_id         = ($data['employee_id'] && (int)$data['employee_id'] > 0) ? (int)$data['employee_id'] : null;
+        $phone          = $data['phone'] ?? '';
+        $email          = $data['email'] ?? '';
+        $designation_id = (int)($data['designation_id'] ?? 0);
+        $address        = $data['address'] ?? '';
+        $nid            = $data['nid'] ?? '';
+        $role_id        = (int)($data['role_id'] ?? 2);
+        $user_name      = $data['user_name'] ?? '';
+        $media_link1    = $data['media_link1'] ?? '';
+        $media_link2    = $data['media_link2'] ?? '';
+        $created_by     = (int)($data['created_by'] ?? 0);
+        $team_id        = (int)($data['team_id'] ?? 0);
 
-    // Prepare statement
-    $stmt = $this->db->prepare(
-        "UPDATE users SET
+        // Prepare statement
+        $stmt = $this->db->prepare(
+            "UPDATE users SET
             full_name = ?,
             employee_id = ?,
             phone = ?,
@@ -425,35 +425,35 @@ public function update($data, $id)
             created_by = ?,
             team_id = ?
         WHERE id = ?"
-    );
+        );
 
-    if (!$stmt) throw new \Exception("User update prepare failed: " . $this->db->error);
+        if (!$stmt) throw new \Exception("User update prepare failed: " . $this->db->error);
 
-    // Bind parameters - "sissississsssiii"
-    if (!$stmt->bind_param(
-        "sissississsssiii",
-        $full_name,
-        $emp_id,
-        $phone,
-        $email,
-        $designation_id,
-        $address,
-        $nid,
-        $role_id,
-        $user_name,
-        $password,
-        $photo,
-        $media_link1,
-        $media_link2,
-        $created_by,
-        $team_id,
-        $id
-    )) throw new \Exception("User update bind_param failed: " . $stmt->error);
+        // Bind parameters - "sissississsssiii"
+        if (!$stmt->bind_param(
+            "sissississsssiii",
+            $full_name,
+            $emp_id,
+            $phone,
+            $email,
+            $designation_id,
+            $address,
+            $nid,
+            $role_id,
+            $user_name,
+            $password,
+            $photo,
+            $media_link1,
+            $media_link2,
+            $created_by,
+            $team_id,
+            $id
+        )) throw new \Exception("User update bind_param failed: " . $stmt->error);
 
-    if (!$stmt->execute()) throw new \Exception("User update execute failed: " . $stmt->error);
+        if (!$stmt->execute()) throw new \Exception("User update execute failed: " . $stmt->error);
 
-    return true;
-}
+        return true;
+    }
 
 
     public function getPermissionsByRole($role_id)
@@ -531,9 +531,11 @@ public function update($data, $id)
     public function getByEmail($email)
     {
         $stmt = $this->db->prepare(
-            "SELECT u.*, LOWER(r.name) AS role_name 
+            "SELECT u.*, LOWER(r.name) AS role_name ,des.name AS designation_name , des.id as designation_id, dept.name AS department_name , dept.id AS department_id
          FROM users u 
-         JOIN roles r ON u.role_id = r.id
+         LEFT JOIN roles r ON u.role_id = r.id
+         LEFT JOIN designations des ON u.designation_id = des.id
+            LEFT JOIN departments dept ON des.department_id = dept.id
          WHERE u.email = ?"
         );
 

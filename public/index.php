@@ -260,6 +260,14 @@ $routes = [
     //==================END hrm ========================
 
 
+    // ================ Manpower Requisition ================
+
+    "requisition-lists" => ["controller" => "ManpowerRequisitionController", "method" => "index"],
+    "create-requisition" => ["controller" => "ManpowerRequisitionController", "method" => "create"],
+    "store-requisition" => ["controller" => "ManpowerRequisitionController", "method" => "store"],
+    // ================END Manpower Requisition ================
+
+
 
     // ============ employee task sheets
     "store-update-task" => ["controller" => "EmployeeTaskController", "method" => "save"],

@@ -67,7 +67,7 @@
 
                         <div class="from__input-box">
                             <div class="form__input-title">
-                                <label for="nameEmail">Email or Username</label>
+                                <label for="nameEmail">Email </label>
                             </div>
                             <div class="form__input">
                                 <input class="form-control" name="email" id="nameEmail" type="text" required>

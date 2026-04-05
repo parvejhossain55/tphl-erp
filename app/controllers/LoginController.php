@@ -20,8 +20,6 @@ class LoginController extends Controller
 
         $message = "";
 
-
-
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $email = trim($_POST['email'] ?? '');
@@ -41,26 +39,28 @@ class LoginController extends Controller
 
                     $_SESSION['user'] = [
                         "id" => $user['id'],
-                        "name" => $user["full_name"],
-                        "user_name" => $user["user_name"],
-                        "email" => $user["email"],
-                        "role_id" => $user["role_id"],
-                        "team_id" => $user["team_id"] ?? null,       // ← use null
-                        "employee_id" => $user["employee_id"] ?? null, // optional
+                        "full_name" => $user['full_name'],
+                        "user_name" => $user['user_name'],
+                        "email" => $user['email'],
+                        "role_id" => $user['role_id'],
+                        "team_id" => $user['team_id'] ?? null,
+                        "employee_id" => $user['employee_id'] ?? null,
                         "role_name" => strtolower($user['role_name'] ?? ''),
+                        "designation_name" => strtolower($user['designation_name'] ?? ''),
+                        "department_name" => strtolower($user['department_name'] ?? ''),
+                        "department_id" => $user['department_id'] ?? null,
+                        "designation_id" => $user['designation_id'] ?? null,
                     ];
 
                     $_SESSION['user']['permissions'] =
                         $this->userModel->getPermissionsByRole($user['role_id']);
 
-                    // role wise redirect
                     redirectByRole();
                 } else {
                     $message = "Invalid Email or Password!";
                 }
             }
         }
-
 
         $this->view("auth/login", [
             "current_route" => "admin-login",

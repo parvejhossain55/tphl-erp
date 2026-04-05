@@ -2079,26 +2079,45 @@ INSERT INTO `management_roles` (`id`, `role_name`, `person_name`, `status`, `cre
 --
 
 CREATE TABLE `manpower_requisitions` (
-  `id` int(11) NOT NULL,
-  `department_id` int(11) NOT NULL,
-  `department_head_id` int(11) NOT NULL,
-  `designation_id` int(11) NOT NULL,
-  `job_title` varchar(255) NOT NULL,
-  `no_of_vacancies` int(11) NOT NULL,
-  `job_experience` varchar(100) DEFAULT NULL,
-  `to_be_filled_before` date DEFAULT NULL,
-  `age_limit` varchar(50) DEFAULT NULL,
-  `report_to` int(11) DEFAULT NULL,
-  `requirement_type` enum('project','replacement','new') NOT NULL,
-  `project_id` int(11) DEFAULT NULL,
-  `replacement_reason` text DEFAULT NULL,
-  `job_description` text DEFAULT NULL,
-  `education_qualification` text DEFAULT NULL,
-  `special_skills` text DEFAULT NULL,
-  `status` enum('pending','approved','rejected') DEFAULT 'pending',
-  `approved_by` int(11) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+   id INT AUTO_INCREMENT PRIMARY KEY,
+
+    -- কে requisition করলো (Dept Head / User)
+    created_by INT NOT NULL,
+
+    -- Auto-filled info
+    department_id INT NOT NULL,
+    designation_id INT NOT NULL,
+
+    -- Manpower Details
+    job_title VARCHAR(255) NOT NULL,
+    no_of_vacancies INT NOT NULL,
+    job_experience VARCHAR(100),
+    to_be_filled_before DATE,
+    age_limit VARCHAR(50),
+    report_to INT NULL,
+
+    -- Requirement Type
+    requirement_type ENUM('project', 'replacement', 'new') NOT NULL,
+
+    -- Project সম্পর্কিত
+    project_id INT NULL,
+
+    -- Replacement / New Hiring Reason
+    reason TEXT NULL,
+
+    -- Job Details
+    job_description TEXT,
+    education_qualification TEXT,
+    special_skills TEXT,
+
+    -- Approval অংশ
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    approved_by INT NULL,
+    approved_at DATETIME NULL,
+
+    -- টাইম ট্র্যাক
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
