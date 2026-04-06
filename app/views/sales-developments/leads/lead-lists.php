@@ -328,7 +328,7 @@ $show_breadcrumb = true;
                                     <td><?= $lead['agent_name'] ?? 'No Agent Assigned' ?></td>
 
                                     <td>
-                                        <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 5): ?>
+                                        <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 5 || $_SESSION['user']['role_id'] == 1 || $_SESSION['user']['role_id'] == 3 || $_SESSION['user']['role_id'] == 9 ): ?>
                                             <div class="d-flex align-items-center gap-2 flex-wrap">
 
                                                 <!-- Follow Up -->
