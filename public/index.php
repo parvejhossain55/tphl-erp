@@ -265,6 +265,7 @@ $routes = [
     "requisition-lists" => ["controller" => "ManpowerRequisitionController", "method" => "index"],
     "create-requisition" => ["controller" => "ManpowerRequisitionController", "method" => "create"],
     "store-requisition" => ["controller" => "ManpowerRequisitionController", "method" => "store"],
+    "view-requisition/(\d+)" => ["controller" => "ManpowerRequisitionController", "method" => "find"],
     // ================END Manpower Requisition ================
 
 

@@ -632,7 +632,7 @@
             </h1>
         </div>
         <div class="header-meta">
-            <strong><?= htmlspecialchars($_SESSION['user']['name'] ?? 'Employee') ?></strong>
+            <strong><?= htmlspecialchars($_SESSION['user']['full_name'] ?? 'Employee') ?></strong>
             <Span>Must Be Need Employee Id For save Task</Span>
             <strong>My ID — <?= htmlspecialchars($_SESSION['user']['employee_id'] ?? '—') ?></strong>
         </div>

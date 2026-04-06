@@ -263,7 +263,7 @@
                         <span><i class="fa-regular fa-circle-check"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-primary mb-10">Total Sales Teams</h6>
+                        <h6 class="card__title text-break text-primary mb-10">Total Sales Team Members</h6>
                         <h4 class="card__title"><?= $totalSalesTeams ?></h4>
                     </div>
                 </div>

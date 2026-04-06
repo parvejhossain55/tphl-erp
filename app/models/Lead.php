@@ -9,7 +9,7 @@ class Lead extends Model
         return parent::__construct($db);
     }
 
-    public function getAll($period = null)
+    public function getAll($period = null, $roleId = null, $teamId = null)
     {
         // Base query
         $sqlQuery = "
@@ -19,8 +19,19 @@ class Lead extends Model
             u.full_name AS agent_name
         FROM leads AS l
         LEFT JOIN users AS u ON l.assigned_id = u.id
-        AND l.deleted_at IS NULL
+        WHERE l.deleted_at IS NULL
     ";
+
+        $params = [];
+        $types = "";
+
+        //  ROLE BASED FILTER
+        // If teamId is provided, filter by team regardless of role
+        if (!empty($teamId)) {
+            $sqlQuery .= " AND l.team_id = ?";
+            $params[] = $teamId;
+            $types .= "i";
+        }
 
         // Add period filter
         if ($period) {
@@ -41,6 +52,11 @@ class Lead extends Model
         }
 
         $stmt = $this->db->prepare($sqlQuery);
+
+        if (!empty($params)) {
+             $stmt->bind_param($types, ...$params);
+        }
+
         $stmt->execute();
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -137,7 +153,7 @@ class Lead extends Model
         $types  = "";
 
         //  ROLE BASED FILTER
-        if ($roleId == 5 && !empty($teamId)) {
+        if (in_array($roleId, [1, 3, 5]) && !empty($teamId)) {
             $sql .= " AND l.team_id = ?";
             $params[] = $teamId;
             $types .= "i";

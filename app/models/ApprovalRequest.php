@@ -237,13 +237,15 @@ class ApprovalRequest extends Model
        ===================== */
         if ($approval['request_type'] === 'manpower_requisition') {
             $details['requisition'] = $this->db
-                ->query("SELECT mr.*, d.name as department_name, des.name AS designation_name 
+                ->query("SELECT mr.*, d.name as department_name, des.name AS designation_name, p.name AS project_name
                         FROM manpower_requisitions mr
                         LEFT JOIN departments d ON mr.department_id = d.id
                         LEFT JOIN designations des ON mr.designation_id = des.id
+                        LEFT JOIN projects p ON mr.project_id = p.id
                         WHERE mr.id = " . (int)$approval['source_id'])
                 ->fetch_assoc();
         }
+
         // Fetch requester info
         if (!empty($approval['requested_by'])) {
             $details['requester'] = $this->getUserById((int)$approval['requested_by']);
@@ -356,6 +358,10 @@ class ApprovalRequest extends Model
             $updateFields[] = "approval_status = ?";
             $types .= 's';
             $params[] = $sourceStatus;
+        } elseif (in_array('status', $columns)) {
+            $updateFields[] = "status = ?";
+            $types .= 's';
+            $params[] = $sourceStatus;
         }
 
         if (in_array('approved_amount', $columns) && $approvedAmount !== null) {
@@ -368,6 +374,16 @@ class ApprovalRequest extends Model
             $updateFields[] = "approved_days = ?";
             $types .= 'i';
             $params[] = $approved_days;
+        }
+
+        if (in_array('approved_by', $columns)) {
+            $updateFields[] = "approved_by = ?";
+            $types .= 'i';
+            $params[] = $approvedBy;
+        }
+
+        if (in_array('approved_at', $columns)) {
+            $updateFields[] = "approved_at = NOW()";
         }
 
         //    7. Execute source update 

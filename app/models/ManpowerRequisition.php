@@ -12,23 +12,39 @@ class ManpowerRequisition extends Model
     // Get all requisitions
     public function getAll()
     {
-        $sql = "SELECT mr.*, d.name as department_name, des.name as designation_name 
+        $sql = "SELECT mr.*, d.name as department_name, des.name as designation_name ,u.full_name as requested_by
                 FROM manpower_requisitions mr
                 LEFT JOIN departments d ON mr.department_id = d.id
                 LEFT JOIN designations des ON mr.designation_id = des.id
+                LEFT JOIN users u ON mr.created_by = u.id
                 ORDER BY mr.id DESC";
         $result = $this->db->query($sql);
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getById($id)
-    {
-        $stmt = $this->db->prepare("SELECT * FROM manpower_requisitions WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
-    }
+   public function getById($id)
+{
+    $stmt = $this->db->prepare("
+        SELECT 
+            mr.*, 
+            d.name AS department_name, 
+            des.name AS designation_name,
+            u.full_name AS requested_by,
+            p.name AS project_name,
+            us.full_name AS approved_by
+        FROM manpower_requisitions mr
+        LEFT JOIN departments d ON mr.department_id = d.id
+        LEFT JOIN designations des ON mr.designation_id = des.id
+        LEFT JOIN users u ON mr.created_by = u.id
+        LEFT JOIN users us ON mr.approved_by = us.id
+        LEFT JOIN projects p ON mr.project_id = p.id
+        WHERE mr.id = ?
+    ");
 
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc();
+}
     public function create($data)
     {
         $sql = "INSERT INTO manpower_requisitions (

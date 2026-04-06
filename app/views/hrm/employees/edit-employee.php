@@ -156,28 +156,28 @@
                  <div class="col-lg-6">
                      <label for="account_holder_name">Account Holder Name <span>*</span></label>
                      <input class="form-control" name="account_holder_name" id="account_holder_name" type="text"
-                         value="<?= htmlspecialchars($employee['account_holder_name']) ?>">
+                         value="<?= htmlspecialchars($employee['account_holder_name'] ?? 'N/A') ?>">
                  </div>
 
                  <!-- Account Number -->
                  <div class="col-lg-6">
                      <label for="account_number">Account Number <span>*</span></label>
                      <input class="form-control" name="account_number" id="account_number" type="text"
-                         value="<?= htmlspecialchars($employee['account_number']) ?>">
+                         value="<?= htmlspecialchars($employee['account_number'] ?? 'N/A') ?>">
                  </div>
 
                  <!-- Bank Name -->
                  <div class="col-lg-6">
                      <label for="bank_name">Bank Name <span>*</span></label>
                      <input class="form-control" name="bank_name" id="bank_name" type="text"
-                         value="<?= htmlspecialchars($employee['bank_name']) ?>">
+                         value="<?= htmlspecialchars($employee['bank_name'] ?? 'N/A') ?>">
                  </div>
 
                  <!-- Branch Name -->
                  <div class="col-lg-6">
                      <label for="branch_name">Branch Name <span>*</span></label>
                      <input class="form-control" name="branch_name" id="branch_name" type="text"
-                         value="<?= htmlspecialchars($employee['branch_name']) ?>">
+                         value="<?= htmlspecialchars($employee['branch_name'] ?? 'N/A') ?>">
                  </div>
                  <!-- Photo -->
                  <div class="col-lg-6">
@@ -190,18 +190,18 @@
                  <!-- Address -->
                  <div class="col-lg-6">
                      <label for="address">Address <span>*</span></label>
-                     <textarea class="form-control" name="address" id="address"><?= htmlspecialchars($employee['address']) ?></textarea>
+                     <textarea class="form-control" name="address" id="address"><?= htmlspecialchars($employee['address'] ?? 'N/A') ?></textarea>
                  </div>
                  <!-- Social Media -->
                  <div class="col-lg-6">
                      <label for="social_media1">Social Media Link 1</label>
                      <input class="form-control" name="social_media1" id="social_media1" type="text"
-                         value="<?= htmlspecialchars($employee['social_media1']) ?>">
+                         value="<?= htmlspecialchars($employee['social_media1'] ?? 'N/A') ?>">
                  </div>
                  <div class="col-lg-6">
                      <label for="social_media2">Social Media Link 2</label>
                      <input class="form-control" name="social_media2" id="social_media2" type="text"
-                         value="<?= htmlspecialchars($employee['social_media2']) ?>">
+                         value="<?= htmlspecialchars($employee['social_media2'] ?? 'N/A') ?>">
                  </div>
 
                  <div class="col-lg-6">

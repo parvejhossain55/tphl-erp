@@ -25,7 +25,14 @@ class ManpowerRequisitionController extends Controller
 
     public function index()
     {
-        $requisitions = $this->requisitionModel->getAll();
+        $requisitions = $this->db->query("
+            SELECT mr.*, d.name AS department_name, u.full_name AS requested_by_name
+            FROM manpower_requisitions mr
+            LEFT JOIN departments d ON mr.department_id = d.id
+            LEFT JOIN users u ON mr.created_by = u.id
+            ORDER BY mr.created_at DESC
+        ")->fetch_all(MYSQLI_ASSOC);
+
         return $this->view('manpower-requisitions/requisition-lists', [
             'current_route' => 'requisition-lists',
             'page_title' => 'Manpower Requisition Lists',
@@ -99,8 +106,12 @@ class ManpowerRequisitionController extends Controller
                 'source_id'       => $requisitionId,
                 'requested_days'  => 0,
                 'requested_by'    => $_SESSION['user']['id'],
-                'approve_role'    => 'Management', 
-                'meta_data'       => json_encode(['job_title' => $data['job_title']]),
+                'approve_role'    => 'management', 
+                'meta_data'       => json_encode([
+                    'job_title' => $data['job_title'],
+                    'no_of_vacancies' => $data['no_of_vacancies'],
+                    'project_id' => $data['project_id']
+                ]),
                 'request_amount'  => 0
             ]);
 
@@ -112,4 +123,31 @@ class ManpowerRequisitionController extends Controller
         header("Location: {$GLOBALS['base_url']}/requisition-lists");
         exit;
     }
+
+    public function find($id)
+    {
+        $requisition = $this->db->query("
+            SELECT mr.*, 
+                   d.name AS department_name, 
+                   des.name AS designation_name,
+                   p.name AS project_name,
+                   u.full_name AS requested_by_name
+            FROM manpower_requisitions mr
+            LEFT JOIN departments d ON mr.department_id = d.id
+            LEFT JOIN designations des ON mr.designation_id = des.id
+            LEFT JOIN projects p ON mr.project_id = p.id
+            LEFT JOIN users u ON mr.created_by = u.id
+            WHERE mr.id = " . (int)$id
+        )->fetch_assoc();
+
+        if (!$requisition) {
+            setError("Manpower Requisition not found.");
+            header("Location: {$GLOBALS['base_url']}/requisition-lists");
+            exit;
+        }
+        return $this->view('manpower-requisitions/view-requisition', [
+            'requisition' => $requisition
+        ]);
+    }
+
 }

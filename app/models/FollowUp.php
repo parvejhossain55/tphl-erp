@@ -313,7 +313,7 @@ class FollowUp extends Model
     }
 
 
-    public function getTodaysFollowUps()
+    public function getTodaysFollowUps($teamId = null)
     {
         $today = date('Y-m-d'); // today date
 
@@ -334,8 +334,13 @@ class FollowUp extends Model
     WHERE DATE(f.next_follow_up_date) = '$today'
     AND f.deleted_at IS NULL
     AND f.status = 'pending'
-    ORDER BY f.follow_up_date DESC, f.follow_up_time DESC
     ";
+
+        if (!empty($teamId)) {
+            $sql .= " AND l.team_id = " . (int)$teamId;
+        }
+
+        $sql .= " ORDER BY f.follow_up_date DESC, f.follow_up_time DESC";
 
         $result = $this->db->query($sql);
 
