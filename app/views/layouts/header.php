@@ -42,8 +42,10 @@
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/employee-dashboard.css">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/holiday-calender.css">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/hr-report.css">
+    <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/requisition.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet"/>
 
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.14.0-beta3/css/bootstrap-select.min.css">
@@ -95,7 +97,7 @@
                         </div>
 
                         <h2 class="header__title">
-                            Hello <?= isset($_SESSION['user']['name']) ? $_SESSION['user']['name'] : 'Admin' ?>
+                            Hello <?= isset($_SESSION['user']['full_name']) ? $_SESSION['user']['full_name'] : 'Admin' ?>
                             <span><img src="<?= $GLOBALS['base_url'] ?>/assets/images/shape/hand.png" alt="image"></span>
                         </h2>
 
@@ -579,7 +581,7 @@
                                     </div>
 
                                     <div class="user__content">
-                                        <h5><?= isset($_SESSION['user']['name']) ? $_SESSION['user']['name'] : 'Admin' ?></h5>
+                                        <h5><?= isset($_SESSION['user']['full_name']) ? $_SESSION['user']['full_name'] : 'Admin' ?></h5>
                                         <span>online</span>
                                     </div>
                                 </div>

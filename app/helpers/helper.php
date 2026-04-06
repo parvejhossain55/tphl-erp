@@ -805,7 +805,6 @@ function renderReviewVideo($url, $width = '100%', $height = '315')
 }
 
 
-
 /* =========================
    SAFE ESCAPE HELPER
    ========================= */
@@ -956,6 +955,46 @@ function renderApprovalContext(array $req)
                             </div>
                             <div class="col-6 col-md-6 col-lg-6">
                                 <strong><?= esc($ctx['leave']['requested_days'], 0) ?> days</strong>
+                            </div>
+                        </div>
+                    </li>
+                <?php endif; ?>
+
+                <!-- Manpower Requisition -->
+                <?php if (!empty($ctx['requisition'])): ?>
+                    <li class="px-0 border-0 border-top py-2">
+                        <div class="row g-1 mb-1">
+                            <div class="col-12 col-md-6 mb-1 mb-md-0">
+                                <span class="badge bg-primary ms-md-2">Job Title</span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <strong><?= esc($ctx['requisition']['job_title'], 'N/A') ?></strong>
+                            </div>
+                        </div>
+                        <div class="row g-1 mb-1">
+                            <div class="col-12 col-md-6 mb-1 mb-md-0">
+                                <span class="badge bg-secondary ms-md-2">Vacancies</span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <strong><?= esc($ctx['requisition']['no_of_vacancies'], 0) ?></strong>
+                            </div>
+                        </div>
+                        <?php if (!empty($ctx['requisition']['project_name'])): ?>
+                        <div class="row g-1 mb-1">
+                            <div class="col-12 col-md-6 mb-1 mb-md-0">
+                                <span class="badge bg-info text-light ms-md-2">Project</span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <strong><?= esc($ctx['requisition']['project_name'], 'N/A') ?></strong>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <div class="row g-1">
+                            <div class="col-12 col-md-6 mb-1 mb-md-0">
+                                <span class="badge bg-dark ms-md-2">Department</span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <strong><?= esc($ctx['requisition']['department_name'], 'N/A') ?></strong>
                             </div>
                         </div>
                     </li>

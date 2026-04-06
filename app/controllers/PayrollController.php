@@ -59,49 +59,7 @@ class PayrollController extends Controller
 
         ]);
     }
-    // public function store()
-    // {
-    //     if (empty($_POST['payslip_payload'])) {
-    //         die('Invalid Payslip Data');
-    //     }
-
-    //     $payload = json_decode($_POST['payslip_payload'], true);
-
-    //     $payslipModel = new Payslip($this->db);
-    //     $detailsModel = new PayslipDetail($this->db);
-
-    //     $payslipId = $payslipModel->create([
-    //         'employee_id'     => $payload['employee_id'],
-    //         'designation_id'  => $payload['designation_id'],
-    //         'payslip_month'   => date('Y-m-01'),
-    //         'total_earning'   => $payload['total_earning'],
-    //         'total_deduction' => $payload['total_deduction'],
-    //         'net_salary'      => $payload['net_salary'],
-    //         'status'          => 'pending',
-    //         'created_by'      => $_SESSION['user']['id'] ?? null,
-    //     ]);
-
-    //     // Earnings
-    //     foreach ($payload['earnings'] as $itemId => $amount) {
-    //         if ($amount > 0) {
-    //             $detailsModel->create($payslipId, $itemId, $amount);
-    //         }
-    //     }
-
-    //     // Deductions
-    //     foreach ($payload['deductions'] as $itemId => $amount) {
-    //         if ($amount > 0) {
-    //             $detailsModel->create($payslipId, $itemId, $amount);
-    //         }
-    //     }
-
-    //     // Clear localStorage
-    //     echo "<script>
-    //     localStorage.removeItem('payslip_data');
-    //     window.location.href = '{$GLOBALS['base_url']}/payslip-lists';
-    // </script>";
-    // }
-
+   
 
 
     public function store()

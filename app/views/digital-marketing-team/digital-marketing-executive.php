@@ -606,7 +606,7 @@
 
           <!-- 🔥 Small Duplicate Count UI -->
           <div class="col-md-2 col-6 d-flex align-items-end">
-            <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-dashboard?duplicates_only=1&date_age=all"
+            <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard?duplicates_only=1&date_age=all"
               class="text-decoration-none w-100">
 
               <div class="d-flex align-items-center justify-content-between px-2 py-2 rounded"

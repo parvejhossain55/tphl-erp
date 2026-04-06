@@ -416,7 +416,9 @@ $hasTransactions = !empty($recentTransactions);
                                         </form>
 
                                         <!-- Partial Approve (Modal) -->
-                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#partialApproveModal<?= $req['id'] ?>">Partial Approve</button>
+                                        <?php if ($req['request_type'] !== 'manpower_requisition'): ?>
+                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#partialApproveModal<?= $req['id'] ?>">Partial Approve</button>
+                                        <?php endif; ?>
 
                                         <!-- Reject -->
                                         <form method="POST" action="<?= $GLOBALS['base_url'] ?>/reject-request/<?= $req['id'] ?>" class="d-inline">

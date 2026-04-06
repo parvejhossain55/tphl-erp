@@ -25,6 +25,15 @@
                     </li>
                 <?php endif; ?>
 
+                <?php if (hasPermission("Manpower Requisition")):  ?>
+                    <!-- Dashboard -->
+                    <li class="slide <?= isActive('requisition-lists', $current_route) ?>">
+                        <a href="<?= $base_url ?>/requisition-lists" class="sidebar__menu-item <?= isActive('requisition-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">Manpower Requisition</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <!-- Sales Manager CATEGORY -->
 
                 <?php if (hasPermission("sales & business")):  ?>

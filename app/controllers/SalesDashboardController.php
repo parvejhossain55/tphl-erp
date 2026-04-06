@@ -31,27 +31,42 @@ class SalesDashboardController extends Controller
 
     public function index()
     {
+        $roleId = $_SESSION['user']['role_id'] ?? null;
+        $teamId = $_SESSION['user']['team_id'] ?? null;
+
         //  Total Leads
-        $totalLeads = $this->leadModel->getAll();
+        $totalLeads = $this->leadModel->getAll(null, $roleId, $teamId);
         $totalLeadsCount = count($totalLeads);
 
         //  New Leads Today
-        $todayLeadsQuery = "SELECT COUNT(*) AS today_count FROM leads WHERE DATE(created_at) = CURDATE()";
+        $todayLeadsQuery = "SELECT COUNT(*) AS today_count FROM leads WHERE DATE(created_at) = CURDATE() AND deleted_at IS NULL";
+        if (!empty($teamId)) {
+            $todayLeadsQuery .= " AND team_id = " . (int)$teamId;
+        }
         $todayLeadsResult = $this->db->query($todayLeadsQuery);
         $todayLeads = $todayLeadsResult->fetch_assoc()['today_count'] ?? 0;
 
         //  Follow-ups Due
-        $followUpsQuery = "SELECT COUNT(*) AS due FROM lead_follow_ups WHERE follow_up_date <= CURDATE() AND status = 'pending' AND lead_follow_ups.deleted_at IS NULL";
+        $followUpsQuery = "SELECT COUNT(*) AS due FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id WHERE fu.next_follow_up_date <= CURDATE() AND fu.status = 'pending' AND fu.deleted_at IS NULL";
+        if (!empty($teamId)) {
+            $followUpsQuery .= " AND l.team_id = " . (int)$teamId;
+        }
         $followUpsResult = $this->db->query($followUpsQuery);
-        $followUpsDue = $todayLeads;
+        $followUpsDue = $followUpsResult->fetch_assoc()['due'] ?? 0;
 
         //  Onboarded Clients
-        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings WHERE booking_status = 'completed' AND lead_bookings.deleted_at IS NULL";
+        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings lb JOIN leads l ON lb.lead_id = l.id WHERE lb.booking_status = 'completed' AND lb.deleted_at IS NULL";
+        if (!empty($teamId)) {
+            $onboardedQuery .= " AND l.team_id = " . (int)$teamId;
+        }
         $onboardedResult = $this->db->query($onboardedQuery);
         $onboardedClients = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
 
         //  Booking Money Collected
-        $bookingCollectedQuery = "SELECT SUM(amount) AS total_collected FROM lead_payments WHERE payment_type='booking_money' AND payment_status='paid'";
+        $bookingCollectedQuery = "SELECT SUM(lp.amount) AS total_collected FROM lead_payments lp JOIN lead_bookings lb ON lp.booking_id = lb.id JOIN leads l ON lb.lead_id = l.id WHERE lp.payment_type='booking_money' AND lp.payment_status='paid'";
+        if (!empty($teamId)) {
+            $bookingCollectedQuery .= " AND l.team_id = " . (int)$teamId;
+        }
         $bookingCollectedResult = $this->db->query($bookingCollectedQuery);
         $bookingCollected = $bookingCollectedResult->fetch_assoc()['total_collected'] ?? 0;
 
@@ -59,24 +74,36 @@ class SalesDashboardController extends Controller
         $conversionRate = $totalLeadsCount > 0 ? ($onboardedClients / $totalLeadsCount) * 100 : 0;
 
         //  New Follow-ups Today (optional)
-        $newFollowUpsQuery = "SELECT COUNT(*) AS new_followups FROM lead_follow_ups WHERE DATE(created_at) = CURDATE() AND lead_follow_ups.deleted_at IS NULL";
+        $newFollowUpsQuery = "SELECT COUNT(*) AS new_followups FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id WHERE DATE(fu.created_at) = CURDATE() AND fu.deleted_at IS NULL";
+        if (!empty($teamId)) {
+            $newFollowUpsQuery .= " AND l.team_id = " . (int)$teamId;
+        }
         $newFollowUpsResult = $this->db->query($newFollowUpsQuery);
         $newFollowUpsToday = $newFollowUpsResult->fetch_assoc()['new_followups'] ?? 0;
 
-        $todayFollowUpCount = $this->followUpModel->getTodayFollowUpCountByLead();
-        $totalTodayFollowUps = array_sum($todayFollowUpCount);
+        // Today's Follow-up Count (Filtered by team)
+        $todayFollowUpSql = "SELECT COUNT(*) AS total FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id WHERE DATE(fu.next_follow_up_date) = CURDATE() AND fu.deleted_at IS NULL AND fu.status = 'pending'";
+        if (!empty($teamId)) {
+            $todayFollowUpSql .= " AND l.team_id = " . (int)$teamId;
+        }
+        $totalTodayFollowUps = $this->db->query($todayFollowUpSql)->fetch_assoc()['total'] ?? 0;
 
         // today's follow-ups table data
-        $todayFollowUpData = $this->followUpModel->getTodaysFollowUps();
+        // We'll update the model method or use custom logic if needed, but for now let's keep the existing call if it's acceptable, or add a team filter to it.
+        $todayFollowUpData = $this->followUpModel->getTodaysFollowUps($teamId);
 
 
         $weeklySalesQuery = "
-            SELECT DATE(payment_date) AS date, SUM(amount) AS total
-            FROM lead_payments
-            WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-            GROUP BY DATE(payment_date)
-            ORDER BY DATE(payment_date)
+            SELECT DATE(lp.payment_date) AS date, SUM(lp.amount) AS total
+            FROM lead_payments lp
+            JOIN lead_bookings lb ON lp.booking_id = lb.id
+            JOIN leads l ON lb.lead_id = l.id
+            WHERE lp.payment_status='paid' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
         ";
+        if (!empty($teamId)) {
+            $weeklySalesQuery .= " AND l.team_id = " . (int)$teamId;
+        }
+        $weeklySalesQuery .= " GROUP BY DATE(lp.payment_date) ORDER BY DATE(lp.payment_date)";
         $weeklySalesResult = $this->db->query($weeklySalesQuery);
         $weeklySales = [];
         while ($row = $weeklySalesResult->fetch_assoc()) {
@@ -87,12 +114,17 @@ class SalesDashboardController extends Controller
         }
 
         // MONTHLY SALES (Last 30 days)
-            $monthlySalesQuery = "
-        SELECT DATE(payment_date) AS date, SUM(amount) AS total
-        FROM lead_payments
-        WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-        GROUP BY DATE(payment_date)
-        ORDER BY DATE(payment_date)";
+        $monthlySalesQuery = "
+            SELECT DATE(lp.payment_date) AS date, SUM(lp.amount) AS total
+            FROM lead_payments lp
+            JOIN lead_bookings lb ON lp.booking_id = lb.id
+            JOIN leads l ON lb.lead_id = l.id
+            WHERE lp.payment_status='paid' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        ";
+        if (!empty($teamId)) {
+            $monthlySalesQuery .= " AND l.team_id = " . (int)$teamId;
+        }
+        $monthlySalesQuery .= " GROUP BY DATE(lp.payment_date) ORDER BY DATE(lp.payment_date)";
         $monthlySalesResult = $this->db->query($monthlySalesQuery);
         $monthlySales = [];
         while ($row = $monthlySalesResult->fetch_assoc()) {
@@ -103,11 +135,17 @@ class SalesDashboardController extends Controller
         }
 
         // YEARLY SALES (Last 12 months)
-        $yearlySalesQuery = "SELECT DATE_FORMAT(payment_date, '%Y-%m') AS month, SUM(amount) AS total
-        FROM lead_payments
-        WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
-        GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
-        ORDER BY DATE_FORMAT(payment_date, '%Y-%m')";
+        $yearlySalesQuery = "
+            SELECT DATE_FORMAT(lp.payment_date, '%Y-%m') AS month, SUM(lp.amount) AS total
+            FROM lead_payments lp
+            JOIN lead_bookings lb ON lp.booking_id = lb.id
+            JOIN leads l ON lb.lead_id = l.id
+            WHERE lp.payment_status='paid' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+        ";
+        if (!empty($teamId)) {
+            $yearlySalesQuery .= " AND l.team_id = " . (int)$teamId;
+        }
+        $yearlySalesQuery .= " GROUP BY DATE_FORMAT(lp.payment_date, '%Y-%m') ORDER BY DATE_FORMAT(lp.payment_date, '%Y-%m')";
         $yearlySalesResult = $this->db->query($yearlySalesQuery);
         $yearlySales = [];
         while ($row = $yearlySalesResult->fetch_assoc()) {
@@ -126,11 +164,14 @@ class SalesDashboardController extends Controller
         $flatSalesQuery = "SELECT p.name AS project_name, COUNT(lb.id) AS flat_sold
                             FROM lead_bookings lb
                             JOIN projects p ON p.id = lb.project_id
+                            JOIN leads l ON lb.lead_id = l.id
                             WHERE lb.booking_status = 'completed'
                             AND lb.deleted_at IS NULL
-                            GROUP BY lb.project_id
-                            ORDER BY flat_sold DESC
                         ";
+        if (!empty($teamId)) {
+            $flatSalesQuery .= " AND l.team_id = " . (int)$teamId;
+        }
+        $flatSalesQuery .= " GROUP BY lb.project_id ORDER BY flat_sold DESC";
 
         $result = $this->db->query($flatSalesQuery);
 

@@ -171,7 +171,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                                 <label class="form__input-title">Transaction Reference</label>
                             </div>
-                            <input type="text" name="transaction_ref" class="form-control" placeholder="Optional reference number">
+                            <input type="text" name="transaction_ref" class="form-control" placeholder="Required reference number" required>
                         </div>
 
                         <!-- Status -->
