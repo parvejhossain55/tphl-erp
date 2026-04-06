@@ -17,7 +17,7 @@ $page = "create Lead"
                 </div>
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="leadName">Father Name <span class="text-mute">optional</span></label>
+                        <label class="form__input-title" for="leadName">Father Name <span class="text-mute">(optional)</span></label>
                         <input class="form-control" name="father_name" id="father_name" type="text">
                     </div>
                 </div>
@@ -30,7 +30,7 @@ $page = "create Lead"
                 <div class="col-lg-6">
                     <div class="from__input-box">
                         <div class="form__input-title">
-                            <label class="form-check-label">Date Of Birth <small class="text-dark">(optional)</small></label>
+                            <label class="form-check-label">Date Of Birth <small class="text-mute">(optional)</small></label>
                         </div>
                         <div class="form__input">
                             <input name="dob" class="form-control" id="humanFriendlyDates" type="text" readonly="readonly">
@@ -115,7 +115,7 @@ $page = "create Lead"
                 <div class="col-lg-6">
                     <div class="from__input-box">
                         <label class="form__input-title" for="leadType">Lead Type*</label>
-                        <select name="lead_type" id="leadType" class="form-select" required>
+                        <select name="lead_type" id="leadType" class="form-select">
                             <option value="">Select Lead</option>
                             <option value="Hot">Hot</option>
                             <option value="Warm">Warm</option>
@@ -278,7 +278,7 @@ $page = "create Lead"
 
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="assignedUser">Assigned Sales Person <span class="text-danger"></span></label>
+                        <label class="form__input-title" for="assignedUser">Assigned Sales Person <span class="text-danger">Optional</span></label>
                         <select name="assigned_id" id="assignedUser" class="form-select">
                             <option value="">Select</option>
                             <?php foreach ($assignedUsers as $user) : ?>
@@ -289,8 +289,8 @@ $page = "create Lead"
                 </div>
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="assignedUser">Select Team<span class="text-danger">*</span></label>
-                        <select name="team_id" class="form-select" required>
+                        <label class="form__input-title" for="assignedUser">Select Team<span class="text-dark">Optional</span></label>
+                        <select name="team_id" class="form-select" >
                             <option value="">-- Select Team --</option>
                             <?php foreach ($teams as $team): ?>
                                 <option value="<?= $team['id'] ?>">

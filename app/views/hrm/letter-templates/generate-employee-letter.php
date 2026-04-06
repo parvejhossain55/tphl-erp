@@ -7,7 +7,7 @@
             <!-- Title + Add button -->
             <div class="card__title-wrap mb-20 d-flex align-items-center justify-content-between">
                 <h5 class="card__heading-title">Issued Employee Letters</h5>
-                <a href="<?= $GLOBALS['base_url'] ?>/create-letter-templete" class="btn btn-primary btn-sm">
+                <a href="<?= $GLOBALS['base_url'] ?>/create-letter-template" class="btn btn-primary btn-sm">
                     + Generate New Letter
                 </a>
             </div>
