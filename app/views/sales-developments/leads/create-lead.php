@@ -115,8 +115,8 @@ $page = "create Lead"
                 <div class="col-lg-6">
                     <div class="from__input-box">
                         <label class="form__input-title" for="leadType">Lead Type*</label>
-                        <select name="lead_type" id="leadType" class="form-select">
-                            <option value="">Select</option>
+                        <select name="lead_type" id="leadType" class="form-select" required>
+                            <option value="">Select Lead</option>
                             <option value="Hot">Hot</option>
                             <option value="Warm">Warm</option>
                             <option value="Cold">Cold</option>
@@ -278,7 +278,7 @@ $page = "create Lead"
 
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="assignedUser">Assigned Sales Person <span class="text-danger">*</span></label>
+                        <label class="form__input-title" for="assignedUser">Assigned Sales Person <span class="text-danger"></span></label>
                         <select name="assigned_id" id="assignedUser" class="form-select">
                             <option value="">Select</option>
                             <?php foreach ($assignedUsers as $user) : ?>

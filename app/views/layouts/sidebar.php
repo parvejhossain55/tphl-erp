@@ -95,6 +95,13 @@
                                 </a>
                             </li>
                             <li class="slide">
+                                <a href="<?= $base_url ?>/today-follow-up" class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today Follow Up  </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/upcoming-follow-up" class="sidebar__menu-item <?= isActive('overdue-next-followup', $current_route) ?>"> Upcoming Follow Up</span></a>
+                            </li>
+
+                            <li class="slide">
                                 <a href="<?= $base_url ?>/my-onboarding-projects" class="sidebar__menu-item <?= isActive('my-onboarding-projects', $current_route) ?>">My Onboarding Projects </a>
                             </li>
                             <li class="slide">
