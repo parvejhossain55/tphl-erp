@@ -45,9 +45,9 @@
 
                     <div class="letter-recipient mb-5">
                         <p class="mb-0"><strong>To,</strong></p>
-                        <h5 class="mb-0 fw-bold"><?= htmlspecialchars($letter['full_name']) ?></h5>
-                        <p class="mb-0"><?= htmlspecialchars($letter['designation_name']) ?></p>
-                        <p class="mb-0"><?= htmlspecialchars($letter['department_name']) ?></p>
+                        <h5 class="mb-0 fw-bold">Full Name: <?= htmlspecialchars($letter['full_name']) ?></h5>
+                        <p class="mb-0 "><?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></p>
+                        <p class="mb-0 "><?= htmlspecialchars($letter['department_name'] ?? 'N/A') ?></p>
                         <p class="mb-0"><strong>ID Code:</strong> <?= htmlspecialchars($letter['employee_code']) ?></p>
                         <p class="mb-0 mt-3"><?= nl2br(htmlspecialchars($letter['address'] ?? '')) ?></p>
                     </div>

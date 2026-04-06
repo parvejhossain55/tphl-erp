@@ -222,7 +222,7 @@ $routes = [
 
     // Generate employee letter
     "generate-letter" => ["controller" => "LetterTemplateController", "method" => "generateLetter"],
-    "create-letter-templete" => ["controller" => "LetterTemplateController", "method" => "create"],
+    "create-letter-template" => ["controller" => "LetterTemplateController", "method" => "create"],
     "store-generate-letter" => ["controller" => "LetterTemplateController", "method" => "store"],
     "get-employee-info-ajax" => ["controller" => "LetterTemplateController", "method" => "getEmployeeInfo"],
     "view-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "viewLetter"],

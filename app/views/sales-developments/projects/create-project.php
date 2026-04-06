@@ -19,7 +19,7 @@ $show_breadcrumb = true;
 
                 <!-- Location -->
                 <div class="col-xl-6">
-                    <label>Community *</label>
+                    <label>Location *</label>
                     <div class="d-flex gap-2">
                         <select name="location_id" class="form-control" required style="flex:1;">
                             <option value="">Select Location</option>

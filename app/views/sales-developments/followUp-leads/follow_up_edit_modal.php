@@ -29,7 +29,14 @@
                             <select name="project_id" id="editProjectSelect" class="form-select">
                                 <option value="">Select Project</option>
                                 <?php foreach ($projects as $project): ?>
-                                    <option value="<?= $project['id'] ?>"><?= $project['name'] ?></option>
+                                    <?php 
+                                        $isRestricted = in_array($project['project_sale_status'], ['Sold Out', 'Upcoming']);
+                                        $statusSuffix = !empty($project['project_sale_status']) ? " ({$project['project_sale_status']})" : '';
+                                    ?>
+                                    <option value="<?= $project['id'] ?>" 
+                                        <?= $isRestricted ? 'disabled style="color: red;"' : '' ?>>
+                                        <?= htmlspecialchars($project['name']) ?><?= $statusSuffix ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

@@ -68,7 +68,14 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <select name="project_id" id="projectSelect" class="form-select" required>
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>
-                                <option value="<?= $project['id'] ?>"><?= $project['name'] ?></option>
+                                <?php 
+                                    $isRestricted = in_array($project['project_sale_status'], ['Sold Out', 'Upcoming']);
+                                    $statusSuffix = !empty($project['project_sale_status']) ? " ({$project['project_sale_status']})" : '';
+                                ?>
+                                <option value="<?= $project['id'] ?>" 
+                                    <?= $isRestricted ? 'disabled style="color: red;"' : '' ?>>
+                                    <?= htmlspecialchars($project['name']) ?><?= $statusSuffix ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -125,8 +132,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <input type="number" name="discount_amount" class="form-control"
                             placeholder="" >
                     </div>
-
-                    
                 </div>
 
                 <div class="mt-4">
@@ -293,7 +298,14 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <select name="project_id" id="edit_project" class="form-select" required>
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>
-                                <option value="<?= $project['id'] ?>"><?= $project['name'] ?></option>
+                                <?php 
+                                    $isRestricted = in_array($project['project_sale_status'], ['Sold Out', 'Upcoming']);
+                                    $statusSuffix = !empty($project['project_sale_status']) ? " ({$project['project_sale_status']})" : '';
+                                ?>
+                                <option value="<?= $project['id'] ?>" 
+                                    <?= $isRestricted ? 'disabled style="color: red;"' : '' ?>>
+                                    <?= htmlspecialchars($project['name']) ?><?= $statusSuffix ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -338,10 +350,18 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 }
                 //strat fetch
                 fetch("<?= $GLOBALS['base_url'] ?>/get-flats-by-project/" + projectId)
-                    .then(res => res.json())
+                    .then(res => {
+                        if (!res.ok) throw new Error('Network response was not ok');
+                        return res.json();
+                    })
                     .then(data => {
                         flatData = data;
                         flatSelect.innerHTML = '<option value="">Select Flat</option>';
+
+                        if (data.length === 0) {
+                            flatSelect.innerHTML = '<option value="">No flats available</option>';
+                            return;
+                        }
 
                         data.forEach(flat => {
                             const option = document.createElement('option');
@@ -367,6 +387,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                             flatSelect.appendChild(option)
                         });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching flats:', error);
+                        flatSelect.innerHTML = '<option value="">Error loading flats</option>';
                     });
                 //end fetch
             });
@@ -402,7 +426,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     return;
                 }
                 fetch("<?= $GLOBALS['base_url'] ?>/get-flats-by-project/" + projectId)
-                    .then(res => res.json())
+                    .then(res => {
+                        if (!res.ok) throw new Error('Network response was not ok');
+                        return res.json();
+                    })
                     .then(data => {
                         flatDataEdit = data;
                         editFlatSelect.innerHTML = '<option value="">Select Flat</option>';
@@ -433,6 +460,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         if (typeof flatId !== 'undefined') { 
                             editFlatSelect.value = flatId;
                         }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching flats (edit):', error);
+                        editFlatSelect.innerHTML = '<option value="">Error loading flats</option>';
                     });
 
             });

@@ -98,6 +98,24 @@ $show_breadcrumb = true;
                     <label>Facilities</label>
                     <input type="text" name="facilities" class="form-control" placeholder="e.g., Gym, Pool, Parking">
                 </div>
+                <!-- Status -->
+                <div class="col-xl-6">
+                    <label>Status</label>
+                    <div class="d-flex gap-3 mt-1">
+                        <div class="form-check me-2">
+                            <input class="form-check-input" type="radio" name="status" id="available" value="available" checked>
+                            <label class="form-check-label" for="available">Available</label>
+                        </div>
+                        <div class="form-check me-2">
+                            <input class="form-check-input" type="radio" name="status" id="sold" value="sold">
+                            <label class="form-check-label" for="sold">Sold</label>
+                        </div>
+                        <!-- <div class="form-check me-2">
+                            <input class="form-check-input" type="radio" name="status" id="booked" value="booked">
+                            <label class="form-check-label" for="booked">Booked</label>
+                        </div> -->
+                    </div>
+                </div>
 
 
                 <div class="submit__btn text-center">

@@ -82,32 +82,33 @@ class FlatModel extends Model
     public function create($data)
     {
         $stmt = $this->db->prepare("
-            INSERT INTO flats (
-                project_id,
-                flat_name,
-                sqft,
-                bhk,
-                bedroom,
-                bathroom,
-                balcony,
-                drawing_dining_kitchen,
-                common_dining,
-                floor_no,
-                facing_site,
-                price_value,
-                facilities,
-                land_share_value,
-                created_by
-            ) VALUES (?,?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)
-        ");
+    INSERT INTO flats (
+        project_id,
+        flat_name,
+        sqft,
+        bhk,
+        bedroom,
+        bathroom,
+        balcony,
+        drawing_dining_kitchen,
+        common_dining,
+        floor_no,
+        facing_site,
+        price_value,
+        facilities,
+        land_share_value,
+        created_by,
+        status,
+        is_booked
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+");
 
         if (!$stmt) {
             setError($this->db->error);
             return false;
         }
-
         $stmt->bind_param(
-            "isiiiiiiiisdsdi",
+            "isiiiiiiiisdsdiss",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -122,7 +123,9 @@ class FlatModel extends Model
             $data['price_value'],
             $data['facilities'],
             $data['land_share_value'],
-            $data['created_by']
+            $data['created_by'],
+            $data['status'],
+            $data['is_booked'] //  add
         );
 
         return $stmt->execute();
@@ -136,7 +139,7 @@ class FlatModel extends Model
         $stmt = $this->db->prepare("
         SELECT 
             f.*, 
-            p.name AS project_name, 
+            p.name AS project_name
         FROM flats AS f 
         LEFT JOIN projects AS p ON f.project_id = p.id
         WHERE f.id = ?
@@ -223,15 +226,11 @@ class FlatModel extends Model
                 f.price_value,
                 f.land_share_value,
                 f.flat_name,
-                lb.booking_status,
-                lb.created_at AS booking_time
+                (SELECT booking_status FROM lead_bookings lb WHERE lb.flat_id = f.id AND lb.deleted_at IS NULL AND lb.booking_status IN ('booked', 'completed') ORDER BY lb.id DESC LIMIT 1) AS booking_status,
+                (SELECT created_at FROM lead_bookings lb WHERE lb.flat_id = f.id AND lb.deleted_at IS NULL AND lb.booking_status IN ('booked', 'completed') ORDER BY lb.id DESC LIMIT 1) AS booking_time
             FROM flats f
-            LEFT JOIN lead_bookings lb ON f.id = lb.flat_id 
-                AND lb.deleted_at IS NULL 
-                AND lb.booking_status IN ('booked', 'completed')
             WHERE f.project_id = ?
             AND f.deleted_at IS NULL
-            GROUP BY f.id
             ORDER BY f.floor_no ASC, f.flat_name ASC
         ");
 

@@ -84,6 +84,11 @@ class FlatController extends Controller
             session_start();
         }
 
+
+        $is_booked = 0;
+        if (in_array($_POST['status'], ['sold', 'booked'])) {
+            $is_booked = 1;
+        }
         // ======================
         // Collect Form Data
         // ======================
@@ -102,6 +107,8 @@ class FlatController extends Controller
             'price_value'            => $_POST['price_value'] ?? null,
             'land_share_value'            => $_POST['land_share_value'] ?? null,
             'facilities'             => $_POST['facilities'] ?? null,
+            'is_booked'              => $is_booked, //  add this
+            'status'                 => $_POST['status'] ?? null,
             'created_by'              => $_SESSION['user']['id'] ?? null,
         ];
 
@@ -180,11 +187,12 @@ class FlatController extends Controller
         }
     }
 
-    
-    public function show($id){
+
+    public function show($id)
+    {
         $flat = $this->flatModel->find($id);
-        $this->view('sales-developments/flats/flat-details',[
-            'current_route'=>'flat-details',
+        $this->view('sales-developments/flats/flat-details', [
+            'current_route' => 'flat-details',
             'page_title' => 'flat-details',
             'flat' => $flat,
         ]);
@@ -193,36 +201,35 @@ class FlatController extends Controller
 
 
     // Delete Employee
-    public function delete() {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    public function delete()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
-    $id = $_POST['id'] ?? 0;
+        $id = $_POST['id'] ?? 0;
 
-    if (!$id) {
-        setError("Invalid Flat ID");
+        if (!$id) {
+            setError("Invalid Flat ID");
+            header("Location:{$GLOBALS['base_url']}/flat-lists");
+            exit;
+        }
+
+        try {
+            $deleted = $this->flatModel->softDelete($id);
+
+            if ($deleted) {
+                setSuccess("Flat Deleted Successfully");
+            } else {
+                setError("Something went wrong. Please try again.");
+            }
+        } catch (Exception $e) {
+            // Catch DB exceptions
+            setError("Error: " . $e->getMessage());
+        }
+
+        // Redirect after setting flash message
         header("Location:{$GLOBALS['base_url']}/flat-lists");
         exit;
     }
-
-    try {
-        $deleted = $this->flatModel->softDelete($id);
-
-        if ($deleted) {
-            setSuccess("Flat Deleted Successfully");
-        } else {
-            setError("Something went wrong. Please try again.");
-        }
-
-    } catch (Exception $e) {
-        // Catch DB exceptions
-        setError("Error: " . $e->getMessage());
-    }
-
-    // Redirect after setting flash message
-    header("Location:{$GLOBALS['base_url']}/flat-lists");
-    exit;
-}
-
 }
