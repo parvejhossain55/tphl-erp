@@ -150,8 +150,8 @@ $show_breadcrumb = true;
 
                 <!-- block Size -->
                 <div class="col-xl-6">
-                    <label>Block Size</label>
-                    <input type="text" name="block_size" class="form-control">
+                    <label>Block Number</label>
+                    <input type="text" name="block_no" class="form-control">
                 </div>
                 <div class="col-xl-6 col-md-6">
                     <div class="from__input-box">

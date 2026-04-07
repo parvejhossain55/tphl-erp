@@ -72,13 +72,15 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             </div>
                             <input type="text" class="form-control" value="<?= number_format($booking['agreement_value'], 2) ?>" readonly>
                         </div>
-                        <div class="d-none col-lg-6">
+                        <?php if ($booking['approved_amount'] > 0): ?>
+                        <div class="col-lg-6">
                             <div class="form__input-title">
 
                                 <label class="form__input-title">Discount Value</label>
                             </div>
-                            <input type="text" class="form-control" value="<?= number_format($booking['discount_amount'] ?? 0, 2) ?>" readonly>
+                            <input type="text" class="form-control" value="<?= number_format($booking['approved_amount'] ?? 0, 2) ?>" readonly>
                         </div>
+                        <?php endif; ?>
                         <div class="col-lg-6">
                             <div class="form__input-title">
 
@@ -145,7 +147,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <label class="form__input-title">Online Type *</label>
                             <input type="text" name="online_type" class="form-control" placeholder="Enter Online Type (Bkash, Nagad, etc)">
                         </div>
-
+                            <?php 
+                            $totalPay = 0;
+                            $totalPay = $booking['agreement_value'] - ($booking['approved_amount'] ?? 0);
+                            ?>
 
                         <!-- Amount -->
                         <div class="col-lg-6">
@@ -153,7 +158,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                                 <label class="form__input-title">Pay Amount *</label>
                             </div>
-                            <input type="number" step="0.01" name="amount" class="form-control" placeholder="e.g. 5000000" required>
+                            <input type="number" step="0.01" name="amount" class="form-control" <?php if($booking['approved_amount']): ?> placeholder=" After Discount: <?= number_format($totalPay, 2) ?> " <?php else: ?> placeholder="Enter Pay Amount" <?php endif; ?> required>
                         </div>
 
                         <!-- Payment Date -->

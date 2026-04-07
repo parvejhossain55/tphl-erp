@@ -93,7 +93,7 @@ $show_breadcrumb = false;
 <!-- Pagination -->
 <div class="row my-4">
     <div class="col-12 d-flex justify-content-center">
-        <?= paginateLinksSecondary($base_url . "/user-lists", $currentPage, $totalPages); ?>
+        <?= paginateLinksSecondary($base_url . "/sales-executive-teams", $currentPage, $totalPages); ?>
 
 
     </div>

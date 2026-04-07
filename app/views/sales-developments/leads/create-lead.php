@@ -136,7 +136,7 @@ $page = "create Lead"
                 <div class="col-md-6">
                     <div class="from__input-box">
                         <label class="form__input-title" for="phoneNumber">Mobile Number <span class="text-danger">*</span></label>
-                        <input class="form-control" name="phone_number" id="phoneNumber" type="text">
+                        <input class="form-control" name="phone_number" id="phoneNumber" type="text" required>
                     </div>
                 </div>
 
@@ -151,7 +151,7 @@ $page = "create Lead"
                 <!-- Email -->
                 <div class="col-md-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="emailAddress">Email* <span class="text-danger">*</span></label>
+                        <label class="form__input-title" for="emailAddress">Email* <span class="text-danger">Optional</span></label>
                         <input class="form-control" name="email" id="emailAddress" type="email">
                     </div>
                 </div>
@@ -160,7 +160,7 @@ $page = "create Lead"
                 <div class="col-xl-6">
                     <label>Lead Source <span class="text-danger">*</span></label>
                     <div class="d-flex gap-2">
-                        <select name="source_type_id" class="form-control" style="flex:1;">
+                        <select name="source_type_id" class="form-control" style="flex:1;" required>
                             <option value="">Select Source </option>
                             <?php foreach ($sources as $source): ?>
                                 <option value="<?= $source['id']; ?>"><?= $source['name']; ?></option>
@@ -204,7 +204,7 @@ $page = "create Lead"
                 <!-- Project Type -->
                 <div class="col-md-6 ">
                     <div class="from__input-box">
-                        <label>Preferred Project Optional</label>
+                        <label>Preferred Project (Optional)</label>
                         <select name="project_id" class="form-select">
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>

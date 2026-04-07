@@ -5,7 +5,7 @@
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     }
 
     .multiple_tables {
@@ -33,16 +33,66 @@
     }
 
     /* Column Specific Widths */
-    .multiple_tables th:nth-child(1), .multiple_tables td:nth-child(1) { min-width: 110px !important; } /* Date */
-    .multiple_tables th:nth-child(2), .multiple_tables td:nth-child(2) { min-width: 150px !important; } /* Name */
-    .multiple_tables th:nth-child(3), .multiple_tables td:nth-child(3) { min-width: 130px !important; } /* Phone */
-    .multiple_tables th:nth-child(4), .multiple_tables td:nth-child(4) { min-width: 180px !important; } /* Project Campaign */
-    .multiple_tables th:nth-child(5), .multiple_tables td:nth-child(5) { min-width: 220px !important; } /* Last Follow Project */
-    .multiple_tables th:nth-child(6), .multiple_tables td:nth-child(6) { min-width: 150px !important; } /* Action Dropdown */
-    .multiple_tables th:nth-child(7), .multiple_tables td:nth-child(7) { min-width: 150px !important; } /* Communicate Type */
-    .multiple_tables th:nth-child(8), .multiple_tables td:nth-child(8) { min-width: 200px !important; } /* Note */
-    .multiple_tables th:nth-child(9), .multiple_tables td:nth-child(9) { min-width: 130px !important; } /* Next Follow Up */
-    .multiple_tables th:nth-child(10), .multiple_tables td:nth-child(10) { min-width: 180px !important; } /* Action Buttons */
+    .multiple_tables th:nth-child(1),
+    .multiple_tables td:nth-child(1) {
+        min-width: 110px !important;
+    }
+
+    /* Date */
+    .multiple_tables th:nth-child(2),
+    .multiple_tables td:nth-child(2) {
+        min-width: 150px !important;
+    }
+
+    /* Name */
+    .multiple_tables th:nth-child(3),
+    .multiple_tables td:nth-child(3) {
+        min-width: 130px !important;
+    }
+
+    /* Phone */
+    .multiple_tables th:nth-child(4),
+    .multiple_tables td:nth-child(4) {
+        min-width: 180px !important;
+    }
+
+    /* Project Campaign */
+    .multiple_tables th:nth-child(5),
+    .multiple_tables td:nth-child(5) {
+        min-width: 220px !important;
+    }
+
+    /* Last Follow Project */
+    .multiple_tables th:nth-child(6),
+    .multiple_tables td:nth-child(6) {
+        min-width: 150px !important;
+    }
+
+    /* Action Dropdown */
+    .multiple_tables th:nth-child(7),
+    .multiple_tables td:nth-child(7) {
+        min-width: 150px !important;
+    }
+
+    /* Communicate Type */
+    .multiple_tables th:nth-child(8),
+    .multiple_tables td:nth-child(8) {
+        min-width: 200px !important;
+    }
+
+    /* Note */
+    .multiple_tables th:nth-child(9),
+    .multiple_tables td:nth-child(9) {
+        min-width: 130px !important;
+    }
+
+    /* Next Follow Up */
+    .multiple_tables th:nth-child(10),
+    .multiple_tables td:nth-child(10) {
+        min-width: 180px !important;
+    }
+
+    /* Action Buttons */
 
     /* Badge and Note Styles Refinement */
     .bd-badge-custom {
@@ -108,13 +158,16 @@
 
     /* Mobile Improvements */
     @media (max-width: 768px) {
-        .multiple_tables td, .multiple_tables th {
+
+        .multiple_tables td,
+        .multiple_tables th {
             padding: 8px 10px;
             font-size: 0.8rem;
         }
+
         .lead-card {
             border-left: 4px solid #22c55e;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
         }
     }
 </style>
@@ -202,7 +255,6 @@
                             <tr class="table__title table__sort">
                                 <th style="min-width: 120px;">Lead Date</th>
                                 <th style="min-width: 160px;">Lead Name</th>
-                                <th style="min-width: 130px;">Phone</th>
                                 <th style="min-width: 180px;">Project Campaign</th>
 
                                 <th style="min-width: 200px;">Last Follow Up Project</th>
@@ -217,9 +269,10 @@
                             <?php foreach ($myAllleads as $key => $lead): ?>
                                 <tr data-id="<?= $lead['id'] ?>">
                                     <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
-                                    <td><strong><?= $lead['full_name'] ?? '' ?></strong></td>
-                                    <td><?= $lead['phone_number'] ?? $lead['phone']  ?>
+                                    <td><strong><?= $lead['full_name'] ?? '' ?></strong>
+                                        <p><?= $lead['phone_number'] ?? $lead['phone']  ?></p>
                                     </td>
+
                                     <?php
                                     $displayName = !empty($lead['campaign_name'])
                                         ? $lead['campaign_name']
@@ -355,7 +408,7 @@
 
                                             <!-- Booking -->
                                             <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
-                                                class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between" >
+                                                class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
                                                 <?php if (!empty($bookingCount[$lead['id']])): ?>
                                                     <span>Booked </span>
                                                     <span class="followup-badge">
@@ -774,21 +827,21 @@
 
     function saveNote(leadId, note, el) {
         fetch(base_url + '/update-call-notes', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: 'lead_id=' + encodeURIComponent(leadId) + '&call_note=' + encodeURIComponent(note)
-        })
-        .then(res => res.text())
-        .then(() => {
-            el.style.borderColor = '#198754'; // success hint
-            setTimeout(() => el.style.borderColor = '#ddd', 800);
-        })
-        .catch(err => {
-            console.error('Error saving note:', err);
-            el.style.borderColor = '#dc3545'; // error hint
-        });
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'lead_id=' + encodeURIComponent(leadId) + '&call_note=' + encodeURIComponent(note)
+            })
+            .then(res => res.text())
+            .then(() => {
+                el.style.borderColor = '#198754'; // success hint
+                setTimeout(() => el.style.borderColor = '#ddd', 800);
+            })
+            .catch(err => {
+                console.error('Error saving note:', err);
+                el.style.borderColor = '#dc3545'; // error hint
+            });
     }
 </script>
 

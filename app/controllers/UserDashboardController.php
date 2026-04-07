@@ -133,7 +133,7 @@ class UserDashboardController extends Controller
 
         ]);
     }
-    // today follow up 
+    // today follow up kpi
     public function updateFollowUpStatusNote()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -144,38 +144,74 @@ class UserDashboardController extends Controller
 
         if (session_status() === PHP_SESSION_NONE) session_start();
         $userId = $_SESSION['user']['id'] ?? null;
+
         if (!$userId) {
             http_response_code(401);
             echo json_encode(['error' => 'Unauthorized']);
             exit;
         }
 
-        $followUpId = (int) ($_POST['id'] ?? 0);
-        $status = $_POST['status'] ?? null;
-        $next_action = $_POST['next_action'] ?? null;
-        $note = trim($_POST['discussion_note'] ?? '');
+        $followUpId  = (int) ($_POST['id'] ?? 0);
+        $status      = $_POST['status'] ?? null;
+        $nextAction  = $_POST['next_action'] ?? null;
+        $note        = trim($_POST['discussion_note'] ?? '');
 
-        if (!$followUpId || !$status) {
+        if (!$followUpId) {
             http_response_code(400);
-            echo json_encode(['error' => 'Missing parameters']);
+            echo json_encode(['error' => 'Missing ID']);
             exit;
         }
 
-        $stmt = $this->db->prepare("
-        UPDATE lead_follow_ups
-        SET status = ?, discussion_note = ?, next_action = ?, updated_at = NOW()
-        WHERE id = ?
-    ");
-        $stmt->bind_param("sssi", $status, $note, $next_action, $followUpId);
+        //  Dynamic update
+        $fields = [];
+        $params = [];
+        $types  = "";
+
+        if ($status !== null) {
+            $fields[] = "status = ?";
+            $params[] = $status;
+            $types .= "s";
+        }
+
+        if ($note !== '') {
+            $fields[] = "discussion_note = ?";
+            $params[] = $note;
+            $types .= "s";
+        }
+
+        if ($nextAction !== null) {
+            $fields[] = "next_action = ?";
+            $params[] = $nextAction;
+            $types .= "s";
+
+            //  AUTO SET follow_up_type
+            if ($nextAction === 'site visit') {
+                $fields[] = "follow_up_type = 'visit'";
+            }
+        }
+
+        if (empty($fields)) {
+            echo json_encode(['error' => 'Nothing to update']);
+            exit;
+        }
+
+        $sql = "UPDATE lead_follow_ups SET " . implode(', ', $fields) . ", updated_at = NOW() WHERE id = ?";
+        $params[] = $followUpId;
+        $types .= "i";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
 
         if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Follow-up updated successfully']);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Follow-up updated successfully'
+            ]);
         } else {
             http_response_code(500);
             echo json_encode(['error' => 'Update failed']);
         }
     }
-
 
     public function updateCallStatus()
     {

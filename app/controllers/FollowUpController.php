@@ -61,51 +61,52 @@ class FollowUpController extends Controller
     }
 
     // Store new follow-up
-    public function store()
-    {
-        if (session_status() === PHP_SESSION_NONE) session_start();
-        $flat_id = $_POST['flat_id'] ?? null;
+public function store()
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
 
-        // empty string বা 0 হলে NULL বানাও
-        if (empty($flat_id)) {
-            $flat_id = null;
-        } else {
-            $flat_id = (int) $flat_id;
-        }
-
-        $followUpData = [
-            'lead_id' => (int) $_POST['lead_id'],
-            'project_id' => !empty($_POST['project_id']) ? (int) $_POST['project_id'] : null,
-            'flat_id' => $flat_id,   
-            'follow_up_date' => $_POST['follow_up_date'],
-            'follow_up_time' => $_POST['follow_up_time'] ?? null,
-            'follow_up_type' => $_POST['follow_up_type'],
-            'status' => $_POST['status'] ?? 'pending',
-            'discussion_note' => $_POST['discussion_note'] ?? null,
-            'next_follow_up_date' => $_POST['next_follow_up_date'] ?? null,
-            'next_action' => $_POST['next_action'] ?? null,
-            'assigned_with' => !empty($_POST['assigned_with']) ? (int)$_POST['assigned_with'] : null,
-            'created_by' => $_SESSION['user']['id'] ?? null,
-        ];
-
-
-
-
-        //  Create follow-up
-        $created = $this->followUpModel->create($followUpData);
-
-        if ($created) {
-            $leadId = $_POST['lead_id'];
-            setSuccess("Follow-up created successfully!");
-            header("Location: {$GLOBALS['base_url']}/follow-up-leads/{$leadId}");
-            exit;
-        } else {
-            $leadId = $_POST['lead_id'];
-            setError("Failed to create follow-up!");
-            header("Location: {$GLOBALS['base_url']}/follow-up-leads/{$leadId}");
-            exit;
-        }
+    // Handle optional flat_id
+    $flat_id = $_POST['flat_id'] ?? null;
+    if (empty($flat_id)) {
+        $flat_id = null;
+    } else {
+        $flat_id = (int) $flat_id;
     }
+
+    // Validate next_action against allowed ENUM values
+    $allowedNextActions = ['site visit', 'booking', 'call_back', 'take_time'];
+    $next_action = $_POST['next_action'] ?? null;
+    if (!in_array($next_action, $allowedNextActions)) {
+        $next_action = null; // fallback if invalid
+    }
+
+    $followUpData = [
+        'lead_id' => (int) $_POST['lead_id'],
+        'project_id' => !empty($_POST['project_id']) ? (int) $_POST['project_id'] : null,
+        'flat_id' => $flat_id,
+        'follow_up_date' => $_POST['follow_up_date'] ?? null,
+        'follow_up_time' => $_POST['follow_up_time'] ?? null,
+        'follow_up_type' => $_POST['follow_up_type'] ?? 'call',
+        'status' => $_POST['status'] ?? 'pending',
+        'discussion_note' => $_POST['discussion_note'] ?? null,
+        'next_follow_up_date' => $_POST['next_follow_up_date'] ?? null,
+        'next_action' => $next_action,
+        'assigned_with' => !empty($_POST['assigned_with']) ? (int)$_POST['assigned_with'] : null,
+        'created_by' => $_SESSION['user']['id'] ?? null,
+    ];
+
+    // Create follow-up
+    $created = $this->followUpModel->create($followUpData);
+
+    $leadId = $_POST['lead_id'];
+    if ($created) {
+        setSuccess("Follow-up created successfully!");
+    } else {
+        setError("Failed to create follow-up!");
+    }
+    header("Location: {$GLOBALS['base_url']}/follow-up-leads/{$leadId}");
+    exit;
+}
 
     public function update()
     {

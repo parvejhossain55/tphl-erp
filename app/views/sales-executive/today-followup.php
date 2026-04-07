@@ -44,9 +44,6 @@
                                          <option value="call_back" <?= $followUp['next_action'] == 'call_back' ? 'selected' : '' ?>>Call back</option>
                                          <option value="take_time" <?= $followUp['next_action'] == 'take_time' ? 'selected' : '' ?>>Take Time</option>
                                      </select>
-
-
-
                                  </td>
 
 

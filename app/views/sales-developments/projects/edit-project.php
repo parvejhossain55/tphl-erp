@@ -191,7 +191,7 @@ if (!empty($project['floor_wise_unit_meta'])) {
                 </div>
 
                 <div class="col-xl-4">
-                    <label>Block Size <span>(Optional)</span></label>
+                    <label>Block Number <span>(Optional)</span></label>
                     <input type="text" name="block_no" class="form-control"
                         value="<?= $project['block_no'] ?? '' ?>">
                 </div>
