@@ -380,7 +380,188 @@ class Lead extends Model
     }
 
 
+    public function getSalesTeamKpiData(array $options = [])
+    {
+        $search = trim($options['search'] ?? '');
+        $executiveId = !empty($options['executive']) ? (int) $options['executive'] : null;
+        $year = !empty($options['year']) ? (int) $options['year'] : null;
+        $month = !empty($options['month']) ? (int) $options['month'] : null;
+        $hasBookings = !empty($options['has_bookings']);
+        $hasVisits = !empty($options['has_visits']);
 
+        // Fetch sales users
+        $sql = "SELECT DISTINCT u.id, u.full_name, u.email, r.name as role_name
+            FROM users u
+            JOIN leads l ON l.assigned_id = u.id
+            LEFT JOIN roles r ON r.id = u.role_id
+            WHERE l.deleted_at IS NULL";
+
+        $params = [];
+        $types = "";
+
+        if ($executiveId) {
+            $sql .= " AND u.id = ?";
+            $params[] = $executiveId;
+            $types .= "i";
+        }
+
+        if ($search !== '') {
+            $sql .= " AND (u.full_name LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR r.name LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $types .= "ssss";
+        }
+
+        $sql .= " ORDER BY u.full_name";
+
+        $stmt = $this->db->prepare($sql);
+        if ($stmt === false) return [];
+
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $salesUsers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $kpiData = [];
+
+        foreach ($salesUsers as $user) {
+            $userId = $user['id'];
+
+            // Total leads
+            $leadWhere = ["assigned_id = ?", "deleted_at IS NULL"];
+            $leadParams = [$userId];
+            $leadTypes = "i";
+            if ($year) {
+                $leadWhere[] = "YEAR(created_at) = ?";
+                $leadParams[] = $year;
+                $leadTypes .= "i";
+            }
+            if ($month) {
+                $leadWhere[] = "MONTH(created_at) = ?";
+                $leadParams[] = $month;
+                $leadTypes .= "i";
+            }
+            $leadsSql = "SELECT COUNT(*) AS count FROM leads WHERE " . implode(" AND ", $leadWhere);
+            $leadsStmt = $this->db->prepare($leadsSql);
+            $leadsStmt->bind_param($leadTypes, ...$leadParams);
+            $leadsStmt->execute();
+            $totalLeads = $leadsStmt->get_result()->fetch_assoc()['count'] ?? 0;
+
+            // Completed visits
+            $visitWhere = ["assigned_with = ?", "follow_up_type = 'visit'", "status = 'complete'", "deleted_at IS NULL"];
+            $visitParams = [$userId];
+            $visitTypes = "i";
+            if ($year) {
+                $visitWhere[] = "YEAR(follow_up_date) = ?";
+                $visitParams[] = $year;
+                $visitTypes .= "i";
+            }
+            if ($month) {
+                $visitWhere[] = "MONTH(follow_up_date) = ?";
+                $visitParams[] = $month;
+                $visitTypes .= "i";
+            }
+            $visitsSql = "SELECT COUNT(*) AS count FROM lead_follow_ups WHERE " . implode(" AND ", $visitWhere);
+            $visitsStmt = $this->db->prepare($visitsSql);
+            $visitsStmt->bind_param($visitTypes, ...$visitParams);
+            $visitsStmt->execute();
+            $totalVisits = $visitsStmt->get_result()->fetch_assoc()['count'] ?? 0;
+
+            // Total bookings (paid only, filtered by sales_by_id)
+            $bookingWhere = ["lb.sales_by_id = ?", "lb.deleted_at IS NULL", "lp.payment_status = 'paid'"];
+            $bookingParams = [$userId];
+            $bookingTypes = "i";
+            if ($year) {
+                $bookingWhere[] = "YEAR(lb.booking_date) = ?";
+                $bookingParams[] = $year;
+                $bookingTypes .= "i";
+            }
+            if ($month) {
+                $bookingWhere[] = "MONTH(lb.booking_date) = ?";
+                $bookingParams[] = $month;
+                $bookingTypes .= "i";
+            }
+            $bookingsSql = "SELECT COUNT(DISTINCT lb.id) AS total_bookings 
+                        FROM lead_bookings lb
+                        JOIN lead_payments lp ON lp.booking_id = lb.id
+                        WHERE " . implode(" AND ", $bookingWhere);
+            $bookingsStmt = $this->db->prepare($bookingsSql);
+            $bookingsStmt->bind_param($bookingTypes, ...$bookingParams);
+            $bookingsStmt->execute();
+            $totalBookings = $bookingsStmt->get_result()->fetch_assoc()['total_bookings'] ?? 0;
+
+            // Total money collected
+            $moneySql = "SELECT SUM(lp.amount) AS total_money 
+                     FROM lead_bookings lb
+                     JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status = 'paid'
+                     WHERE lb.sales_by_id = ?" .
+                ($year ? " AND YEAR(lb.booking_date) = ?" : "") .
+                ($month ? " AND MONTH(lb.booking_date) = ?" : "");
+            $moneyStmt = $this->db->prepare($moneySql);
+
+            $moneyParams = [$userId];
+            $moneyTypes = "i";
+            if ($year) {
+                $moneyParams[] = $year;
+                $moneyTypes .= "i";
+            }
+            if ($month) {
+                $moneyParams[] = $month;
+                $moneyTypes .= "i";
+            }
+
+            $moneyStmt->bind_param($moneyTypes, ...$moneyParams);
+            $moneyStmt->execute();
+            $totalMoney = $moneyStmt->get_result()->fetch_assoc()['total_money'] ?? 0;
+
+            // Skip if filters require bookings or visits
+            if ($hasBookings && $totalBookings === 0) continue;
+            if ($hasVisits && $totalVisits === 0) continue;
+
+            // Conversion rate
+            $conversionRate = $totalLeads > 0 ? round(($totalBookings / $totalLeads) * 100, 2) : 0;
+
+            // Project-wise bookings
+            $projectSql = "SELECT p.id AS project_id, p.name AS project_name, 
+                       COUNT(DISTINCT lb.id) AS total_bookings,
+                       SUM(lp.amount) AS total_money
+                       FROM lead_bookings lb
+                       JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status = 'paid'
+                       JOIN projects p ON lb.project_id = p.id
+                       WHERE lb.deleted_at IS NULL AND lb.sales_by_id = ?";
+            $projectParams = [$userId];
+            $projectTypes = "i";
+            if ($year) {
+                $projectSql .= " AND YEAR(lb.booking_date) = ?";
+                $projectParams[] = $year;
+                $projectTypes .= "i";
+            }
+            if ($month) {
+                $projectSql .= " AND MONTH(lb.booking_date) = ?";
+                $projectParams[] = $month;
+                $projectTypes .= "i";
+            }
+            $projectSql .= " GROUP BY p.id, p.name";
+
+            $projectStmt = $this->db->prepare($projectSql);
+            $projectStmt->bind_param($projectTypes, ...$projectParams);
+            $projectStmt->execute();
+            $projectBookings = $projectStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+            $kpiData[] = [
+                'user' => $user,
+                'total_leads' => (int) $totalLeads,
+                'total_visits' => (int) $totalVisits,
+                'total_bookings' => (int) $totalBookings,
+                'total_money' => (float) $totalMoney,
+                'conversion_rate' => $conversionRate,
+                'project_bookings' => $projectBookings
+            ];
+        }
+
+        return $kpiData;
+    }
 
 
 

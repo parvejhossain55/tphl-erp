@@ -309,6 +309,10 @@ $routes = [
     "assign-onboard-client" => ["controller" => "OnboardClientController", "method" => "assignMultipleLeads"],
 
 
+    // === Sales team performance report==
+    "sales-team-performance" => ["controller" => "SalesTeamKpiController", "method" => "index"],
+
+
 
     // leads Source
     "leadSource-lists" => ["controller" => "LeadSourceController", "method" => "index"],

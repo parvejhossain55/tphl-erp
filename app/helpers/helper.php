@@ -128,13 +128,14 @@ function paginateLinksSecondary($route, $currentPage, $totalPages)
 
     if ($totalPages <= 1) return ""; // no need for pagination
 
+    $separator = strpos($route, '?') !== false ? '&' : '?';
     $html  = '<nav class="my-4">';
     $html .= '<ul class="pagination pagination-secondary">';
 
     // Previous Button
     if ($currentPage > 1) {
         $html .= '<li class="page-item">
-                    <a class="page-link btn-outline-border" href="' . $route . '?page=' . ($currentPage - 1) . '">&laquo; Previous</a>
+                    <a class="page-link btn-outline-border" href="' . $route . $separator . 'page=' . ($currentPage - 1) . '">&laquo; Previous</a>
                   </li>';
     } else {
         $html .= '<li class="page-item disabled">
@@ -147,14 +148,14 @@ function paginateLinksSecondary($route, $currentPage, $totalPages)
         $active = ($i == $currentPage) ? "active" : "";
 
         $html .= '<li class="page-item ' . $active . '">
-                    <a class="page-link btn-outline-border ' . $active . '" href="' . $route . '?page=' . $i . '">' . $i . '</a>
+                    <a class="page-link btn-outline-border ' . $active . '" href="' . $route . $separator . 'page=' . $i . '">' . $i . '</a>
                   </li>';
     }
 
     // Next Button
     if ($currentPage < $totalPages) {
         $html .= '<li class="page-item">
-                    <a class="page-link btn-outline-border" href="' . $route . '?page=' . ($currentPage + 1) . '">Next &raquo;</a>
+                    <a class="page-link btn-outline-border" href="' . $route . $separator . 'page=' . ($currentPage + 1) . '">Next &raquo;</a>
                   </li>';
     } else {
         $html .= '<li class="page-item disabled">
@@ -557,6 +558,8 @@ function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug
 
     return $slug;
 }
+
+
 
 function addCameraWithHls($db, $project_id, $project_name, $camera_name, $rtsp_url, $status = 'active', $hlsBase = __DIR__ . '/hls', $ffmpegPath = 'C:/ffmpeg/bin/ffmpeg.exe')
 {
@@ -1035,4 +1038,8 @@ if (!function_exists('sendMail')) {
         $mail = new MailService();
         return $mail->sendMail($email, $title, $link, $assignedBy);
     }
+}
+
+function generateVerificationCode($length = 6) {
+    return str_pad(rand(0, pow(10, $length)-1), $length, '0', STR_PAD_LEFT);
 }

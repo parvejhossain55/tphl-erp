@@ -33,9 +33,8 @@ class FollowUp extends Model
     public function create($data)
     {
         // ==============================
-        // DATE FORMAT FIX (IMPORTANT)
+        // DATE FORMAT FIX
         // ==============================
-
         $follow_up_date = !empty($data['follow_up_date'])
             ? date('Y-m-d', strtotime($data['follow_up_date']))
             : null;
@@ -47,13 +46,17 @@ class FollowUp extends Model
         // ==============================
         // OPTIONAL FIELD HANDLING
         // ==============================
-
         $flat_id = !empty($data['flat_id']) ? (int)$data['flat_id'] : null;
+
+        // ==============================
+        // VALIDATE next_action AGAINST ENUM
+        // ==============================
+        $allowedNextActions = ['site visit', 'booking', 'call_back', 'take_time'];
+        $next_action = in_array($data['next_action'], $allowedNextActions) ? $data['next_action'] : null;
 
         // ==============================
         // PREPARE QUERY
         // ==============================
-
         $stmt = $this->db->prepare("
         INSERT INTO lead_follow_ups 
         (lead_id, project_id, flat_id, follow_up_date, follow_up_time, follow_up_type, status, discussion_note, next_follow_up_date, next_action, created_by, assigned_with)
@@ -64,10 +67,6 @@ class FollowUp extends Model
             setError($this->db->error);
             return false;
         }
-
-        // ==============================
-        // BIND PARAMS
-        // ==============================
 
         $stmt->bind_param(
             "iiissssssssi",
@@ -80,26 +79,20 @@ class FollowUp extends Model
             $data['status'],
             $data['discussion_note'],
             $next_follow_up_date,
-            $data['next_action'],
+            $next_action,
             $data['created_by'],
             $data['assigned_with']
         );
 
-        // ==============================
-        // EXECUTE
-        // ==============================
-
         if (!$stmt->execute()) {
-            setError($stmt->error); // 
+            setError($stmt->error);
             return false;
         }
 
         // ==============================
         // LEAD STATUS AUTO UPDATE
         // ==============================
-
         $leadAction = null;
-
         if ($data['follow_up_type'] === 'visit' && $data['status'] === 'completed') {
             $leadAction = 'visited';
         } elseif ($data['status'] === 'pending') {
@@ -108,12 +101,7 @@ class FollowUp extends Model
             $leadAction = 'cancel';
         }
 
-        // ==============================
-        // UPDATE LEAD TABLE
-        // ==============================
-
         if ($leadAction !== null || isset($data['project_id'])) {
-
             $updateLead = $this->db->prepare("
             UPDATE leads 
             SET last_lead_action = ?, project_id = ?
@@ -121,15 +109,12 @@ class FollowUp extends Model
         ");
 
             if ($updateLead) {
-                $lastLeadAction = $leadAction !== null ? $leadAction : null;
-
                 $updateLead->bind_param(
                     "sii",
-                    $lastLeadAction,
+                    $leadAction,
                     $data['project_id'],
                     $data['lead_id']
                 );
-
                 $updateLead->execute();
             }
         }

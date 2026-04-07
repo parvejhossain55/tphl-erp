@@ -453,8 +453,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
     public function getById($id)
     {
-        $stmt = $this->db->prepare("
-        SELECT lb.*, 
+        $stmt = $this->db->prepare("SELECT lb.*, 
                l.full_name, 
                p.name AS project_name,
                p.total_share,
