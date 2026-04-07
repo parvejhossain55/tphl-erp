@@ -27,9 +27,12 @@ $weeklyCollectionData  = [0, 0, 0, 0, 0, 0, 0];
 for ($i = 5; $i >= 0; $i--) {
     $mk = date('Y-m', strtotime("-$i months"));
     $monthlyChartLabels[]       = date('M Y', strtotime($mk . '-01'));
-    $monthlyCollectionMap[$mk]  = 0;
+    $monthlyCollectionMap[$mk]  = $collectionData['monthly_data'][$mk] ?? 0;
     $monthlyOutstandingMap[$mk] = 0;
 }
+
+$monthlyCollection = $collectionData['this_month_collection'] ?? 0;
+$weeklyCollectionData = $collectionData['weekly_data'] ?? [0, 0, 0, 0, 0, 0, 0];
 
 if (!empty($clients)) {
     foreach ($clients as $client) {
@@ -54,16 +57,8 @@ if (!empty($clients)) {
             $lpMonth   = date('Y-m', strtotime($lpDate));
             $daysSince = (strtotime(date('Y-m-d')) - strtotime($lpDate)) / 86400;
 
-            if ($lpMonth === $currentMonth) {
-                $monthlyCollection += $paid;
-            }
-            if (isset($monthlyCollectionMap[$lpMonth])) {
-                $monthlyCollectionMap[$lpMonth]  += $paid;
-                $monthlyOutstandingMap[$lpMonth]  = $totalOutstanding;
-            }
-            if ($daysSince <= 7) {
-                $idx = max(0, min(6, 6 - (int)floor($daysSince)));
-                $weeklyCollectionData[$idx] += $paid;
+            if (isset($monthlyOutstandingMap[$lpMonth])) {
+                $monthlyOutstandingMap[$lpMonth] = $totalOutstanding;
             }
             
             if (!$hasBeenCounted && $daysSince > 60 && $outstanding > 0) {
@@ -202,21 +197,7 @@ $statusBadgeMap = [
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-check-circle"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Approved Bookings</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentStats['approved_bookings'] ?? 0 ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">

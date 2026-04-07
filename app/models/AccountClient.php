@@ -228,8 +228,18 @@ ORDER BY lb.booking_date DESC
     /**
      * Get payment statistics
      */
-    public function getPaymentStatistics()
+    public function getPaymentStatistics($projectId = null)
     {
+        $whereClause = "WHERE 1=1";
+        $params = [];
+        $types = "";
+
+        if ($projectId) {
+            $whereClause .= " AND lb.project_id = ?";
+            $params[] = (int) $projectId;
+            $types .= "i";
+        }
+
         $sql = $this->db->prepare("
             SELECT 
                 COUNT(DISTINCT l.id) as total_clients,
@@ -241,14 +251,27 @@ ORDER BY lb.booking_date DESC
                     THEN lb.id 
                 END) as full_payment_completed,
                 COUNT(DISTINCT CASE 
-                    WHEN lb.booking_status = 'booked' 
+                    WHEN (SELECT COUNT(*) 
+                          FROM lead_payments lp2 
+                          WHERE lp2.booking_id = lb.id 
+                          AND lp2.payment_status = 'paid') > 0
                     THEN lb.id 
                 END) as approved_bookings,
                 COALESCE(SUM(lp.service_fee), 0) as total_service_fee_collected
             FROM leads l
             INNER JOIN lead_bookings lb ON l.id = lb.lead_id
             LEFT JOIN lead_payments lp ON lb.id = lp.booking_id AND lp.payment_status = 'paid'
+            $whereClause
         ");
+
+        if (!$sql) {
+            error_log("getPaymentStatistics prepare failed: " . $this->db->error);
+            return [];
+        }
+
+        if (!empty($params)) {
+            $sql->bind_param($types, ...$params);
+        }
 
         $sql->execute();
         $result = $sql->get_result();
@@ -380,6 +403,14 @@ ORDER BY lb.booking_date DESC
                     0
                 ) as emi_paid,
                 COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status = 'paid'
+                     AND lp.payment_type = 'development_charge'), 
+                    0
+                ) as development_charge_paid,
+                COALESCE(
                     (SELECT MAX(lp.payment_date) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
@@ -421,27 +452,28 @@ ORDER BY lb.booking_date DESC
             $bookingMoneyPaid = (float) $clientDetails['booking_money_paid'];
             $additionalLandSharePaid = (float) $clientDetails['additional_land_share_paid'];
             $registrationPaid = (float) $clientDetails['registration_paid'];
+            $developmentChargePaid = (float) $clientDetails['development_charge_paid'];
             $emiPaid = (float) $clientDetails['emi_paid'];
             $totalServiceFee = (float) $clientDetails['total_service_fee'];
 
             // CORRECT: Total land share paid = booking money + additional land share payments
             $totalLandSharePaid = $bookingMoney + $additionalLandSharePaid;
 
-            // CORRECT: Remaining land share = total land share - (booking money + additional land share + discount)
-            $remainingLandShare = $totalLandShare - ($totalLandSharePaid + $discountAmount);
+            // CORRECT: Remaining land share = total land share - total land share paid
+            $remainingLandShare = max(0, $totalLandShare - $totalLandSharePaid);
 
-            // CORRECT: Construction fee = total price - (total land share + registration)
-            $constructionFee = $totalPrice - ($totalLandShare + $registrationPaid);
+            // CORRECT: Construction fee = total price - (total land share PAID + registration + development charges)
+            $constructionFee = $totalPrice - ($totalLandSharePaid + $registrationPaid + $developmentChargePaid);
 
-            // CORRECT: Construction fee paid = total paid - (booking money + registration + additional land share)
-            $constructionFeePaid = $totalPaid - ($bookingMoneyPaid + $registrationPaid + $additionalLandSharePaid);
+            // CORRECT: Construction fee paid = EMI paid only (not land share, registration, dev charges)
+            $constructionFeePaid = $emiPaid;
             $constructionFeePaid = max(0, $constructionFeePaid);
 
-            // Calculate remaining construction fee (also considering discount)
+            // Calculate remaining construction fee
             $remainingConstructionFee = max(0, $constructionFee - $constructionFeePaid);
 
-            // Calculate total due (total price minus discount and what's been paid)
-            $totalDue = max(0, ($totalPrice - $discountAmount) - $totalPaid);
+            // Calculate total due (total price what's been paid)
+            $totalDue = max(0, $totalPrice - $totalPaid);
 
             // Calculate net received
             $netReceived = $totalPaid - $totalServiceFee;
@@ -451,6 +483,7 @@ ORDER BY lb.booking_date DESC
 
             // Add calculated fields to response
             $clientDetails['total_land_share_paid'] = $totalLandSharePaid;
+            $clientDetails['development_charge_paid'] = $developmentChargePaid;
             $clientDetails['remaining_land_share'] = $remainingLandShare;
             $clientDetails['construction_fee'] = $constructionFee;
             $clientDetails['construction_fee_paid'] = $constructionFeePaid;
@@ -615,6 +648,7 @@ ORDER BY lb.booking_date DESC
             'discount_amount' => $clientDetails['discount_amount'],
             'registration_paid' => $clientDetails['registration_paid'],
             'registration_money' => $clientDetails['registration_paid'],
+            'development_charge_paid' => $clientDetails['development_charge_paid'] ?? 0,
             'construction_fee' => $clientDetails['construction_fee'],
             'construction_fee_paid' => $clientDetails['construction_fee_paid'],
             'construction_fee_paid_after_service' => $clientDetails['construction_fee_paid_after_service'],
@@ -833,6 +867,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
                     WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
                     WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
+                    WHEN lp.payment_type = 'development_charge' THEN 'DEV CHARGE'
                     ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
                 END as installment_label,
                 CASE 
@@ -841,6 +876,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
                     WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
                     WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
+                    WHEN lp.payment_type = 'development_charge' THEN 'Development Charge'
                     ELSE 'Other Payment'
                 END as payment_details
             FROM lead_payments lp
@@ -1777,5 +1813,81 @@ ORDER BY lb.booking_date DESC
         $stmt->execute();
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Get accurate collection statistics for the CED dashboard
+     */
+    public function getDashboardCollectionStats()
+    {
+        $currentMonthStart = date('Y-m-01');
+        $currentMonthEnd = date('Y-m-t');
+
+        $stats = [
+            'this_month_collection' => 0,
+            'monthly_data' => [],
+            'weekly_data' => array_fill(0, 7, 0)
+        ];
+
+        // This Month Collection
+        $stmt = $this->db->prepare("
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM lead_payments
+            WHERE payment_status = 'paid'
+            AND payment_date BETWEEN ? AND ?
+        ");
+        $stmt->bind_param("ss", $currentMonthStart, $currentMonthEnd);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($res && $row = $res->fetch_assoc()) {
+            $stats['this_month_collection'] = floatval($row['total']);
+        }
+        $stmt->close();
+
+        // Monthly Data (last 6 months)
+        $sixMonthsAgo = date('Y-m-01', strtotime('-5 months'));
+        $stmt2 = $this->db->prepare("
+            SELECT 
+                DATE_FORMAT(payment_date, '%Y-%m') as month,
+                SUM(amount) as total
+            FROM lead_payments
+            WHERE payment_status = 'paid'
+            AND payment_date >= ?
+            GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
+        ");
+        $stmt2->bind_param("s", $sixMonthsAgo);
+        $stmt2->execute();
+        $res2 = $stmt2->get_result();
+        if ($res2) {
+            while ($row = $res2->fetch_assoc()) {
+                $stats['monthly_data'][$row['month']] = floatval($row['total']);
+            }
+        }
+        $stmt2->close();
+
+        // Weekly Data (last 7 days, 0 is today, 6 is 6 days ago)
+        $sevenDaysAgo = date('Y-m-d', strtotime('-6 days'));
+        $stmt3 = $this->db->prepare("
+            SELECT 
+                DATE(payment_date) as day_date,
+                SUM(amount) as total
+            FROM lead_payments
+            WHERE payment_status = 'paid'
+            AND payment_date >= ?
+            GROUP BY DATE(payment_date)
+        ");
+        $stmt3->bind_param("s", $sevenDaysAgo);
+        $stmt3->execute();
+        $res3 = $stmt3->get_result();
+        if ($res3) {
+            while ($row = $res3->fetch_assoc()) {
+                $daysSince = (strtotime(date('Y-m-d')) - strtotime($row['day_date'])) / 86400;
+                $idx = max(0, min(6, 6 - (int)floor($daysSince)));
+                $stats['weekly_data'][$idx] += floatval($row['total']);
+            }
+        }
+        $stmt3->close();
+
+        return $stats;
     }
 }

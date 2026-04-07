@@ -139,6 +139,7 @@ class Dashboard extends Model
             'total_booking_money' => 0,
             'total_emi_amount' => 0,
             'total_service_fees' => 0,
+            'total_development_charge' => 0,
             'management_cashin' => 0,
             'projects_summary' => []
         ];
@@ -194,6 +195,33 @@ class Dashboard extends Model
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
             $stats['total_registration'] = floatval($row['total']);
+        }
+        $stmt->close();
+
+        // Get development charge
+        $sqlDevelopment = "
+        SELECT COALESCE(SUM(lp.amount), 0) as total
+        FROM lead_payments lp
+        INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+        WHERE lp.payment_status = 'paid'
+        AND lp.payment_type = 'development_charge'
+        AND lp.payment_date BETWEEN ? AND ?
+    ";
+
+        if ($projectId) {
+            $sqlDevelopment .= " AND lb.project_id = ?";
+        }
+
+        $stmt = $this->db->prepare($sqlDevelopment);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['total_development_charge'] = floatval($row['total']);
         }
         $stmt->close();
 
@@ -319,13 +347,12 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // Calculate Total Cash In
+        // Calculate Total Cash In (no discount subtraction - discount is not actual cash out)
         $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] +
-            $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['management_cashin'] -
-            $stats['total_discount'];
+            $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['total_development_charge'] + $stats['management_cashin'];
 
         // Calculate Total Revenue
-        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'];
+        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + $stats['total_development_charge'];
 
         // Get Cash Out with project filtering
         $sqlCashOut = "
@@ -485,6 +512,7 @@ class Dashboard extends Model
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' AND lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as booking_money,
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as registration_money,
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as emi_payments,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as development_charges,
                 COALESCE(SUM(CASE WHEN lp.payment_status = 'pending' THEN lp.amount ELSE 0 END), 0) as pending,
                 COUNT(*) as total_count
             FROM lead_payments lp
@@ -509,6 +537,7 @@ class Dashboard extends Model
             $stats['land_share_payments'] = floatval($row['land_share_paid']);
             $stats['booking_money'] = floatval($row['booking_money']);
             $stats['registration_money'] = floatval($row['registration_money']);
+            $stats['development_charges'] = floatval($row['development_charges']);
             $stats['emi_payments'] = floatval($row['emi_payments']);
             $stats['pending_amount'] = floatval($row['pending']);
             $stats['total_transactions'] = intval($row['total_count']);
@@ -691,10 +720,11 @@ class Dashboard extends Model
         }
         $stmt->close();
 
+        // total_amount = all lead payments + management cash in (no discount subtraction)
         $stats['total_amount'] = $stats['lead_payments'] + $stats['management_cashin'];
 
-        // Calculate total revenue
-        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'];
+        // Calculate total revenue (development charges included as revenue)
+        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + ($stats['development_charges'] ?? 0);
 
         // Get cashin by project (only if no specific project is selected)
         if (!$projectId) {
@@ -1028,6 +1058,7 @@ SELECT
     lp.amount,
     lp.payment_method COLLATE utf8mb4_general_ci,
     lp.payment_status COLLATE utf8mb4_general_ci,
+    lp.transaction_ref COLLATE utf8mb4_general_ci,
     CONCAT(l.full_name, ' - ', p.name) COLLATE utf8mb4_general_ci as description,
     p.id as project_id,
     p.name COLLATE utf8mb4_general_ci as project_name
@@ -1054,6 +1085,7 @@ SELECT
     mci.amount,
     mci.payment_method COLLATE utf8mb4_general_ci,
     mci.payment_status COLLATE utf8mb4_general_ci,
+    NULL as transaction_ref,
     CONCAT(mci.role_name, ' - ', mci.source) COLLATE utf8mb4_general_ci as description,
     NULL as project_id,
     NULL as project_name

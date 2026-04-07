@@ -390,6 +390,20 @@ function getStatusBadge($status)
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-primary">
+                        <span><i class="fa-light fa-tools"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-2 text-muted">Development Charges</h6>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['development_charges'] ?? 0, 2) ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+            <div class="card__wrapper h-100 dashboard-card">
+                <div class="d-flex align-items-center gap-2 h-100">
                     <div class="card__icon icon-orange">
                         <span><i class="fa-light fa-calendar-check"></i></span>
                     </div>
@@ -588,7 +602,8 @@ function getStatusBadge($status)
                                 <th>Date</th>
                                 <th>Description</th>
                                 <th>Amount</th>
-                                <th>Method</th>
+                                <th>Payment Method</th>
+                                <th>Transaction ID</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -605,19 +620,18 @@ function getStatusBadge($status)
                                             </span>
                                         </td>
                                         <td>
-                                            <?php if (($transaction['payment_status'] ?? '') === 'paid'): ?>
-                                                <span class="bd-badge bg-success">Paid</span>
-                                            <?php elseif (($transaction['payment_status'] ?? '') === 'pending'): ?>
-                                                <span class="bd-badge bg-warning">Pending</span>
-                                            <?php else: ?>
-                                                <span class="bd-badge bg-danger">Failed</span>
-                                            <?php endif; ?>
+                                            <code style="font-size: 11px; background: #f8f9fa; padding: 4px 8px; border-radius: 4px;">
+                                                <?= htmlspecialchars($transaction['transaction_ref'] ?? 'N/A') ?>
+                                            </code>
+                                        </td>
+                                        <td>
+                                            <span class="bd-badge bg-success">Paid</span>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="5" class="text-center py-4">
+                                    <td colspan="6" class="text-center py-4">
                                         <div class="text-muted">
                                             <i class="fa-light fa-inbox fa-2x mb-3"></i><br>
                                             No transactions found for <?= $periodText ?>
