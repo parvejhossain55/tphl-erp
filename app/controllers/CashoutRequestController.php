@@ -155,8 +155,8 @@ class CashoutRequestController extends Controller
             'payment_method' => $_POST['payment_method'] ?? 'cash',
             'transaction_ref' => trim($_POST['transaction_ref'] ?? ''),
             'attachment_path' => !empty($attachmentPaths) ? json_encode($attachmentPaths) : null,
-            'project_id'     => !empty($_POST['project_id']) ? (int) $_POST['project_id'] : null,
-            'office'         => !empty($_POST['office']) ? trim($_POST['office']) : null,
+            'project_id'     => !empty($_POST['project_id']) ? implode(',', array_map('intval', (array)$_POST['project_id'])) : null,
+            'office'         => !empty($_POST['office']) ? implode(',', array_map('trim', (array)$_POST['office'])) : null,
         ];
 
         if (empty($data['purpose_paid_to']) || $data['amount'] <= 0) {
@@ -534,9 +534,22 @@ class CashoutRequestController extends Controller
 
         $offices = [];
         while ($row = $result->fetch_assoc()) {
-            $offices[] = $row['office'];
+            if (strpos($row['office'], ',') !== false) {
+                $parts = explode(',', $row['office']);
+                foreach ($parts as $part) {
+                    $part = trim($part);
+                    if ($part && !in_array($part, $offices)) {
+                        $offices[] = $part;
+                    }
+                }
+            } else {
+                if (!in_array($row['office'], $offices)) {
+                    $offices[] = $row['office'];
+                }
+            }
         }
 
+        sort($offices);
         return $offices;
     }
 

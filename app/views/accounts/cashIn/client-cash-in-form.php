@@ -78,6 +78,17 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                                     </option>
                                 <?php endif; ?>
 
+                                <!-- Development Charges - Only if registration is paid -->
+                                <?php if ($isRegistrationPaid): ?>
+                                    <option value="development_charge" data-details="false">
+                                        Development Charges
+                                    </option>
+                                <?php else: ?>
+                                    <option value="development_charge" disabled>
+                                        Development Charges (Requires: Registration Paid)
+                                    </option>
+                                <?php endif; ?>
+
                                 <!-- EMI - Only if registration is paid AND land share is completed -->
                                 <?php if ($isRegistrationPaid && $isLandShareCompleted): ?>
                                     <option value="emi" data-details="true">
@@ -85,8 +96,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                                     </option>
                                 <?php else: ?>
                                     <option value="emi" disabled>
-                                        EMI (Requires: Registration
-                                        Paid<?php echo !$isLandShareCompleted ? ' + Land Share Completed' : ''; ?>)
+                                        EMI (Requires: Registration Paid)
                                     </option>
                                 <?php endif; ?>
                             </select>
@@ -106,7 +116,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                                 <?php else: ?>
                                     <span class="text-success">
                                         <i class="fa-light fa-circle-check"></i>
-                                        Ready for construction fee payments
+                                        Ready for development charges and construction fee payments
                                     </span>
                                 <?php endif; ?>
                             </small>
@@ -280,6 +290,10 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
 
                 case 'construction_fee':
                     helpText = 'Construction fee payment';
+                    break;
+
+                case 'development_charge':
+                    helpText = 'Development charge payment';
                     break;
 
                 default:

@@ -166,7 +166,7 @@ public function createRequest($data)
     {
         $sql = "SELECT cr.*, 
                 u.full_name as requester_name,
-                p.name as project_name,
+                (SELECT GROUP_CONCAT(name SEPARATOR ', ') FROM projects WHERE FIND_IN_SET(id, cr.project_id)) AS project_name,
                 ar.status as approval_status,
                 ar.approved_amount as approval_approved_amount,
                 ar.approved_at as approval_approved_at,
@@ -177,7 +177,6 @@ public function createRequest($data)
                 rejector.full_name as rejected_by_name
                 FROM {$this->table} cr
                 LEFT JOIN users u ON cr.requested_by = u.id
-                LEFT JOIN projects p ON cr.project_id = p.id
                 LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
                 LEFT JOIN users approver ON ar.approved_by = approver.id
                 LEFT JOIN users rejector ON cr.rejected_by = rejector.id
@@ -210,7 +209,7 @@ public function createRequest($data)
             SELECT 
                 cr.*,
                 u.full_name AS requester_name,
-                p.name AS project_name,
+                (SELECT GROUP_CONCAT(name SEPARATOR ', ') FROM projects WHERE FIND_IN_SET(id, cr.project_id)) AS project_name,
 
                 ar.status AS approval_status,
                 ar.approved_amount AS approval_approved_amount,
@@ -226,8 +225,6 @@ public function createRequest($data)
             FROM {$this->table} cr
             LEFT JOIN users u 
                 ON cr.requested_by = u.id
-            LEFT JOIN projects p 
-                ON cr.project_id = p.id
             LEFT JOIN approval_requests ar 
                 ON ar.source_table = 'cashout_requests' 
                AND ar.source_id = cr.id
@@ -266,14 +263,14 @@ public function createRequest($data)
 
         // Project filter
         if (!empty($filters['project_id'])) {
-            $sql .= " AND cr.project_id = ?";
+            $sql .= " AND FIND_IN_SET(?, cr.project_id)";
             $params[] = $filters['project_id'];
-            $types   .= "i";
+            $types   .= "s";
         }
 
         // Office filter
         if (!empty($filters['office'])) {
-            $sql .= " AND cr.office = ?";
+            $sql .= " AND FIND_IN_SET(?, cr.office)";
             $params[] = $filters['office'];
             $types   .= "s";
         }
@@ -326,7 +323,7 @@ public function createRequest($data)
     {
         $sql = "SELECT cr.*, 
                 u.full_name as requester_name,
-                p.name as project_name,
+                (SELECT GROUP_CONCAT(name SEPARATOR ', ') FROM projects WHERE FIND_IN_SET(id, cr.project_id)) AS project_name,
                 ar.status as approval_status,
                 ar.approved_amount as approval_approved_amount,
                 ar.approval_note,
@@ -337,7 +334,6 @@ public function createRequest($data)
                 rejector.full_name as rejected_by_name
                 FROM {$this->table} cr
                 LEFT JOIN users u ON cr.requested_by = u.id
-                LEFT JOIN projects p ON cr.project_id = p.id
                 LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
                 LEFT JOIN users approver ON ar.approved_by = approver.id
                 LEFT JOIN users rejector ON cr.rejected_by = rejector.id

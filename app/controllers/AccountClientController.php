@@ -83,7 +83,8 @@ public function indexTwo($bookingId = null)
                 'client_name' => $clientDetails['client_name'],
                 'project_name' => $clientDetails['project_name'],
                 'flat_no' => $clientDetails['flat_no'],
-                'unit_name' => $clientDetails['unit_name']
+                'unit_name' => $clientDetails['unit_name'],
+                'created_by_name' => $clientDetails['agent_name'] ?? 'System'
             ];
         }
         
@@ -140,7 +141,7 @@ public function indexTwo($bookingId = null)
         $clients = $this->clientModel->getAllClients($selectedProjectId);
 
         // Get payment statistics
-        $paymentStats = $this->clientModel->getPaymentStatistics();
+        $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
 
         // Get all projects for dropdown
         $projects = $this->clientModel->getProjectsForCED();
@@ -183,6 +184,7 @@ public function indexTwo($bookingId = null)
         // Get all bookings for the CED dashboard
         $clients = $this->clientModel->getAllBookings();
         $paymentStats = $this->clientModel->getPaymentStatistics();
+        $collectionData = $this->clientModel->getDashboardCollectionStats();
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -192,7 +194,8 @@ public function indexTwo($bookingId = null)
             "current_route" => "ced-dashboard",
             "page_title" => "CED Dashboard",
             "clients" => $clients,
-            "paymentStats" => $paymentStats
+            "paymentStats" => $paymentStats,
+            "collectionData" => $collectionData
         ]);
     }
     
@@ -220,6 +223,40 @@ public function indexTwoView($bookingId = null)
     }
 
     $transactions = $this->clientModel->getTransactionsByBookingId($bookingId);
+    
+    // Check if booking money transaction exists in database
+    $hasBookingMoneyInDB = $this->clientModel->hasBookingMoneyInDatabase($bookingId);
+    
+    // If booking money doesn't exist in transactions, add it from agreement
+    if (!$hasBookingMoneyInDB && !empty($clientDetails['booking_money'])) {
+        $bookingMoneyTransaction = $this->clientModel->getBookingMoneyTransaction($bookingId);
+        
+        // If still not found, create a display entry from the agreement
+        if (!$bookingMoneyTransaction) {
+            $bookingMoneyTransaction = [
+                'id' => 'booking-' . $bookingId,
+                'payment_date' => $clientDetails['booking_date'],
+                'formatted_date' => date('d M, Y', strtotime($clientDetails['booking_date'])),
+                'payment_type' => 'booking_money',
+                'installment_label' => 'BOOKING',
+                'amount' => $clientDetails['booking_money'],
+                'land_share_amount' => $clientDetails['booking_money'],
+                'service_fee' => 0,
+                'payment_status' => 'paid',
+                'status_class' => 'bg-success',
+                'status_text' => 'Paid',
+                'client_name' => $clientDetails['client_name'],
+                'project_name' => $clientDetails['project_name'],
+                'flat_no' => $clientDetails['flat_no'],
+                'unit_name' => $clientDetails['unit_name'],
+                'created_by_name' => $clientDetails['agent_name'] ?? 'System'
+            ];
+        }
+        
+        // Add booking money transaction at the beginning
+        array_unshift($transactions, $bookingMoneyTransaction);
+    }
+    
     $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
 
     $this->view("ced/clients-cash-in-history-view", [
@@ -387,7 +424,7 @@ public function addTransaction()
             'bank_account_no' => $_POST['bank_account_no'] ?? null,
             'cheque_no' => $_POST['cheque_no'] ?? null,
             'online_type' => $_POST['online_type'] ?? null,
-            'created_by' => $_SESSION['user_id'] ?? 1
+            'created_by' => $_SESSION['user']['id'] ?? 1
         ];
 
         // EMI schedule data (only if payment type is EMI)
@@ -499,7 +536,7 @@ public function updateTransaction()
 
         if (session_status() === PHP_SESSION_NONE) session_start();
         
-        error_log("Session User ID: " . ($_SESSION['user_id'] ?? 'null'));
+        error_log("Session User ID: " . ($_SESSION['user']['id'] ?? 'null'));
 
         // Get the OLD transaction data to compare due amounts
         $oldTransaction = $this->clientModel->getTransactionById($paymentId);
@@ -925,7 +962,7 @@ public function addPayment()
             'bank_account_no' => $data['bank_account_no'] ?? '',
             'cheque_no' => $data['cheque_no'] ?? '',
             'online_type' => $data['online_type'] ?? '',
-            'created_by' => $_SESSION['user_id']
+            'created_by' => $_SESSION['user']['id'] ?? 1
         ];
         
         // For land share payments, validate remaining amount
