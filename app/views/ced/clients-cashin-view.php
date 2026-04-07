@@ -6,6 +6,7 @@ $show_breadcrumb = true;
 
 <div class="row">
 
+    <!-- ══ STAT CARDS (existing) ══ -->
     <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-sm">
@@ -52,11 +53,111 @@ $show_breadcrumb = true;
         </div>
     </div>
 
+    <!-- ══ PROJECT FILTER DROPDOWN ══ -->
+    <div class="col-12">
+        <div class="card__wrapper">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-10">
+                <div class="d-flex align-items-center gap-10">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-filter"></i></span>
+                    </div>
+                    <div>
+                        <h6 class="card__sub-title mb-0">Filter by Project</h6>
+                    </div>
+                    <select id="projectFilter" class="form-select" style="max-width: 350px;" onchange="filterByProject(this.value)">
+                        <option value="">All Projects</option>
+                        <?php if (!empty($projects)): ?>
+                            <?php foreach ($projects as $project): ?>
+                                <option value="<?= $project['id'] ?>"
+                                    <?= ($selectedProjectId == $project['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($project['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <?php if ($selectedProjectId && $selectedProjectName): ?>
+                    <div class="d-flex align-items-center gap-10">
+                        <span class="bd-badge bg-primary">
+                            <i class="fa-light fa-building me-1"></i>
+                            <?= htmlspecialchars($selectedProjectName) ?>
+                        </span>
+                        <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view" class="bd-badge bg-danger" style="text-decoration:none;">
+                            <i class="fa-light fa-xmark me-1"></i> Clear
+                        </a>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
 
+    <!-- ══ PROJECT FLAT STAT CARDS (shown only when project is selected) ══ -->
+    <?php if ($selectedProjectId && $flatStats): ?>
+        <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-building"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Flats</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title"><?= (int)$flatStats['total_flats'] ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper" id="bookedFlatsCard" style="cursor: pointer;" onclick="openBookedFlatsModal()" title="Click to view booked flats list">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon">
+                        <span style="color: #f59e0b; background: rgba(245, 158, 11, 0.1);"><i class="fa-light fa-bookmark"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Booked Flats</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title" style="color: #f59e0b;"><?= (int)$flatStats['booked_flats'] ?></h4>
+                            <small class="text-muted"><i class="fa-light fa-hand-pointer"></i> Click to view</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper" id="availableFlatsCard" style="cursor: pointer;" onclick="openAvailableFlatsModal()" title="Click to view available flats list">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon">
+                        <span style="color: #10b981; background: rgba(16, 185, 129, 0.1);"><i class="fa-light fa-check-circle"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Available Flats</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title" style="color: #10b981;"><?= (int)$flatStats['available_flats'] ?></h4>
+                            <small class="text-muted"><i class="fa-light fa-hand-pointer"></i> Click to view</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    <?php endif; ?>
+
+    <!-- ══ CLIENTS TABLE ══ -->
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="d-flex justify-content-between mb-20">
-                <h4>Clients Information</h4>
+                <h4>
+                    Clients Information
+                    <?php if ($selectedProjectName): ?>
+                        <small class="text-muted" style="font-size: 14px; font-weight: 400;">
+                            — <?= htmlspecialchars($selectedProjectName) ?> (<?= count($clients) ?> records)
+                        </small>
+                    <?php endif; ?>
+                </h4>
             </div>
 
             <div class="table__wrapper table-responsive">
@@ -103,9 +204,12 @@ $show_breadcrumb = true;
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <!-- <tr>
-                                <td colspan="11" class="text-center">No clients found</td>
-                            </tr> -->
+                            <tr>
+                                <td colspan="10" class="text-center py-4">
+                                    <i class="fa-light fa-folder-open fa-2x d-block mb-2 text-muted"></i>
+                                    <span class="text-muted"><?= $selectedProjectId ? 'No clients found for this project' : 'No clients found' ?></span>
+                                </td>
+                            </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -115,7 +219,7 @@ $show_breadcrumb = true;
 
 </div>
 
-<!-- Projects Modal -->
+<!-- ══ PROJECTS MODAL (existing — per-lead land shares) ══ -->
 <div class="modal fade" id="projectsModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content">
@@ -169,12 +273,162 @@ $show_breadcrumb = true;
     </div>
 </div>
 
+<!-- ══ BOOKED FLATS MODAL (shown when project selected) ══ -->
+<?php if ($selectedProjectId && !empty($bookedFlats)): ?>
+<div class="modal fade" id="bookedFlatsModal" tabindex="-1" aria-labelledby="bookedFlatsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bookedFlatsModalLabel">
+                    <i class="fa-light fa-bookmark me-2"></i>
+                    Booked Flats — <?= htmlspecialchars($selectedProjectName) ?>
+                    <span class="bd-badge bg-primary ms-2"><?= count($bookedFlats) ?> flats</span>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="table__wrapper table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr class="table__title">
+                                <th>Unit</th>
+                                <th>Floor</th>
+                                <th>Size</th>
+                                <th>Client</th>
+                                <th>Phone</th>
+                                <th>Agent</th>
+                                <th>Agreement Value</th>
+                                <th>Total Paid</th>
+                                <th>Due</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($bookedFlats as $flat): ?>
+                                <?php
+                                    $due = max(0, (float)($flat['agreement_value'] ?? 0) - (float)($flat['total_paid'] ?? 0));
+                                ?>
+                                <tr>
+                                    <td class="fw-semibold"><?= htmlspecialchars($flat['flat_name'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($flat['floor_no'] ?? 'N/A') ?></td>
+                                    <td><?= number_format($flat['sqft'] ?? 0) ?> sqft</td>
+                                    <td class="fw-semibold"><?= htmlspecialchars($flat['client_name'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($flat['client_phone'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($flat['agent_name'] ?? 'N/A') ?></td>
+                                    <td>TK.<?= number_format($flat['agreement_value'] ?? 0, 2) ?></td>
+                                    <td class="text-success fw-semibold">TK.<?= number_format($flat['total_paid'] ?? 0, 2) ?></td>
+                                    <td class="<?= $due > 0 ? 'text-danger' : 'text-success' ?> fw-semibold">
+                                        TK.<?= number_format($due, 2) ?>
+                                    </td>
+                                    <td>
+                                        <span class="bd-badge <?= $flat['booking_status'] === 'booked' ? 'bg-success' : 'bg-warning' ?>">
+                                            <?= htmlspecialchars(ucfirst($flat['booking_status'] ?? 'N/A')) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a class="table__icon download"
+                                            href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/<?= $flat['booking_id'] ?>"
+                                            title="View Payment History">
+                                            <i class="fa-regular fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- ══ AVAILABLE FLATS MODAL (shown when project selected) ══ -->
+<?php if ($selectedProjectId && !empty($availableFlats)): ?>
+<div class="modal fade" id="availableFlatsModal" tabindex="-1" aria-labelledby="availableFlatsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="availableFlatsModalLabel">
+                    <i class="fa-light fa-check-circle me-2 text-success"></i>
+                    Available Flats — <?= htmlspecialchars($selectedProjectName) ?>
+                    <span class="bd-badge bg-success ms-2"><?= count($availableFlats) ?> flats</span>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="table__wrapper table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr class="table__title">
+                                <th>Unit</th>
+                                <th>Floor</th>
+                                <th>Size</th>
+                                <th>Price</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($availableFlats as $flat): ?>
+                                <tr>
+                                    <td class="fw-semibold"><?= htmlspecialchars($flat['flat_name'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($flat['floor_no'] ?? 'N/A') ?></td>
+                                    <td><?= number_format($flat['sqft'] ?? 0) ?> sqft</td>
+                                    <td class="text-primary fw-semibold">TK.<?= number_format($flat['price_value'] ?? 0, 2) ?></td>
+                                    <td>
+                                        <span class="bd-badge bg-success">
+                                            <?= htmlspecialchars(ucfirst($flat['flat_status'] ?? 'Available')) ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <script>
     let projectsModal;
 
     document.addEventListener('DOMContentLoaded', function () {
         projectsModal = new bootstrap.Modal(document.getElementById('projectsModal'));
     });
+
+    // ── Project Filter ──────────────────────────────────────────────────────
+    function filterByProject(projectId) {
+        if (projectId) {
+            window.location.href = '<?= $GLOBALS['base_url'] ?>/clients-cashin-view?project_id=' + projectId;
+        } else {
+            window.location.href = '<?= $GLOBALS['base_url'] ?>/clients-cashin-view';
+        }
+    }
+
+    // ── Booked Flats Modal ──────────────────────────────────────────────────
+    function openBookedFlatsModal() {
+        const modalEl = document.getElementById('bookedFlatsModal');
+        if (modalEl) {
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    }
+
+    // ── Available Flats Modal ───────────────────────────────────────────────
+    function openAvailableFlatsModal() {
+        const modalEl = document.getElementById('availableFlatsModal');
+        if (modalEl) {
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    }
 
     function openProjectsModal(leadId, clientName) {
         console.log('Opening modal for lead ID:', leadId);

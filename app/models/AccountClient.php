@@ -10,10 +10,20 @@ class AccountClient extends Model
     }
 
     /**
-     * Get all clients (booked leads) with full details including flat price
+     * Get all clients (booked leads) with full details, optionally filtered by project
      */
-    public function getAllClients()
+    public function getAllClients($projectId = null)
     {
+        $whereClause = "WHERE lb.booking_status != 'cancelled'";
+        $params = [];
+        $types = '';
+
+        if ($projectId) {
+            $whereClause .= " AND lb.project_id = ?";
+            $params[] = (int) $projectId;
+            $types .= 'i';
+        }
+
         $sql = $this->db->prepare("
         SELECT
             l.id AS lead_id,
@@ -46,7 +56,7 @@ class AccountClient extends Model
             ) AS last_payment_date
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
-        WHERE lb.booking_status != 'cancelled'
+        $whereClause
         GROUP BY l.id
         ORDER BY l.full_name
     ");
@@ -56,16 +66,30 @@ class AccountClient extends Model
             return [];
         }
 
+        if (!empty($params)) {
+            $sql->bind_param($types, ...$params);
+        }
+
         $sql->execute();
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     /**
-     * Get all bookings with client and location info
+     * Get all bookings with client and location info, optionally filtered by project
      */
-    public function getAllBookings()
+    public function getAllBookings($projectId = null)
     {
+        $whereClause = "WHERE lb.booking_status != 'cancelled'";
+        $params = [];
+        $types = '';
+
+        if ($projectId) {
+            $whereClause .= " AND lb.project_id = ?";
+            $params[] = (int) $projectId;
+            $types .= 'i';
+        }
+
         $sql = $this->db->prepare("
         SELECT
             l.id AS lead_id,
@@ -74,6 +98,7 @@ class AccountClient extends Model
             l.email,
             l.designation,
             lb.id AS booking_id,
+            lb.project_id,
             p.name AS project_name,
             f.flat_name AS unit_name,
             f.floor_no AS flat_floor_no,
@@ -101,13 +126,17 @@ class AccountClient extends Model
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
         LEFT JOIN projects p ON lb.project_id = p.id
         LEFT JOIN flats f ON lb.flat_id = f.id
-        WHERE lb.booking_status != 'cancelled'
+        $whereClause
         ORDER BY l.full_name
         ");
 
         if (!$sql) {
             error_log("getAllBookings prepare failed: " . $this->db->error);
             return [];
+        }
+
+        if (!empty($params)) {
+            $sql->bind_param($types, ...$params);
         }
 
         $sql->execute();
@@ -1612,5 +1641,141 @@ ORDER BY lb.booking_date DESC
                 'message' => 'Transaction update failed: ' . $e->getMessage()
             ];
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // CED Dashboard — Project Filter & Flat Statistics
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Get all projects that have at least one flat (for CED filter dropdown)
+     */
+    public function getProjectsForCED()
+    {
+        $sql = $this->db->prepare("
+            SELECT p.id, p.name
+            FROM projects p
+            WHERE p.deleted_at IS NULL
+            ORDER BY p.name ASC
+        ");
+
+        if (!$sql) {
+            error_log("getProjectsForCED prepare failed: " . $this->db->error);
+            return [];
+        }
+
+        $sql->execute();
+        $result = $sql->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Get flat statistics for a specific project
+     * Returns: total_flats, booked_flats, available_flats, sold_flats
+     */
+    public function getProjectFlatStats($projectId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                COUNT(*) as total_flats,
+                SUM(CASE WHEN f.status = 'booked' OR f.is_booked = 1 THEN 1 ELSE 0 END) as booked_flats,
+                SUM(CASE WHEN f.status = 'available' AND f.is_booked = 0 THEN 1 ELSE 0 END) as available_flats,
+                SUM(CASE WHEN f.status = 'sold' THEN 1 ELSE 0 END) as sold_flats
+            FROM flats f
+            WHERE f.project_id = ?
+            AND f.deleted_at IS NULL
+        ");
+
+        if (!$stmt) {
+            error_log("getProjectFlatStats prepare failed: " . $this->db->error);
+            return ['total_flats' => 0, 'booked_flats' => 0, 'available_flats' => 0, 'sold_flats' => 0];
+        }
+
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_assoc() : ['total_flats' => 0, 'booked_flats' => 0, 'available_flats' => 0, 'sold_flats' => 0];
+    }
+
+    /**
+     * Get booked flats list for a project (with client info)
+     */
+    public function getBookedFlatsByProject($projectId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                f.id as flat_id,
+                f.flat_name,
+                f.floor_no,
+                f.sqft,
+                f.price_value,
+                f.status as flat_status,
+                lb.id as booking_id,
+                lb.booking_date,
+                lb.agreement_value,
+                lb.booking_status,
+                lb.landshare_status,
+                l.full_name as client_name,
+                l.phone as client_phone,
+                COALESCE(
+                    (SELECT SUM(lp.amount)
+                     FROM lead_payments lp
+                     WHERE lp.booking_id = lb.id
+                     AND lp.payment_status = 'paid'), 0
+                ) as total_paid,
+                (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
+                 FROM lead_payments lp_sub
+                 INNER JOIN users u_agent ON u_agent.id = lp_sub.created_by
+                 WHERE lp_sub.booking_id = lb.id AND lp_sub.payment_type = 'booking_money'
+                ) AS agent_name
+            FROM flats f
+            INNER JOIN lead_bookings lb ON lb.flat_id = f.id AND lb.booking_status != 'cancelled'
+            INNER JOIN leads l ON l.id = lb.lead_id
+            WHERE f.project_id = ?
+            AND f.deleted_at IS NULL
+            ORDER BY f.floor_no ASC, f.flat_name ASC
+        ");
+
+        if (!$stmt) {
+            error_log("getBookedFlatsByProject prepare failed: " . $this->db->error);
+            return [];
+        }
+
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Get available flats list for a project
+     */
+    public function getAvailableFlatsByProject($projectId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                f.id as flat_id,
+                f.flat_name,
+                f.floor_no,
+                f.sqft,
+                f.price_value,
+                f.status as flat_status
+            FROM flats f
+            WHERE f.project_id = ?
+            AND f.deleted_at IS NULL
+            AND f.status = 'available'
+            AND f.is_booked = 0
+            ORDER BY f.floor_no ASC, f.flat_name ASC
+        ");
+
+        if (!$stmt) {
+            error_log("getAvailableFlatsByProject prepare failed: " . $this->db->error);
+            return [];
+        }
+
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 }
