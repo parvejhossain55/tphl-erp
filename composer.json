@@ -4,6 +4,7 @@
         "mpdf/mpdf": "^8.2",
         "cboden/ratchet": "^0.4.4",
         "phpoffice/phpspreadsheet": "^5.4",
-        "tecnickcom/tcpdf": "^6.10"
+        "tecnickcom/tcpdf": "^6.10",
+        "phpmailer/phpmailer": "^7.0"
     }
 }
