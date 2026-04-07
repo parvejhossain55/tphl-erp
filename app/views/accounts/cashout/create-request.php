@@ -54,13 +54,12 @@ $show_breadcrumb = true;
 
                         <!-- Project Selection (Optional) -->
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Project (Optional)</label>
-                            <select class="form-control" id="project_id" name="project_id">
-                                <option value="">Select Project (Optional)</option>
+                            <label class="form-label" for="project_id">Project(s) (Optional)</label>
+                            <select class="form-control select2" data-live-search="true" id="project_id" name="project_id[]" multiple title="Select Project(s)">
                                 <?php if (!empty($projects)): ?>
                                     <?php foreach ($projects as $project): ?>
                                         <option value="<?= $project['id'] ?>" 
-                                            <?= (isset($_POST['project_id']) && $_POST['project_id'] == $project['id']) ? 'selected' : '' ?>>
+                                            <?= (!empty($_POST['project_id']) && in_array($project['id'], (array)$_POST['project_id'])) ? 'selected' : '' ?>>
                                             <?= htmlspecialchars($project['name']) ?>
                                         </option>
                                     <?php endforeach; ?>
@@ -68,25 +67,25 @@ $show_breadcrumb = true;
                                     <option value="">No projects available</option>
                                 <?php endif; ?>
                             </select>
-                            <small class="text-muted">Select a project if this cashout is project-related</small>
                         </div>
                         
                         <!-- Office Selection (Optional) -->
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Office (Optional)</label>
-                            <select class="form-control" id="office" name="office">
+                            <label class="form-label" for="office">Office(s) (Optional)</label>
+                            <select class="form-control select2" id="office" name="office[]" multiple title="Select Office(s)">
                                 <?php if (!empty($officeOptions)): ?>
                                     <?php foreach ($officeOptions as $value => $label): ?>
-                                        <option value="<?= $value ?>" 
-                                            <?= (isset($_POST['office']) && $_POST['office'] == $value) ? 'selected' : '' ?>>
+                                        <?php if ($value !== ''): ?>
+                                        <option value="<?= htmlspecialchars($value) ?>" 
+                                            <?= (!empty($_POST['office']) && in_array($value, (array)$_POST['office'])) ? 'selected' : '' ?>>
                                             <?= htmlspecialchars($label) ?>
                                         </option>
+                                        <?php endif; ?>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <option value="">No office options available</option>
                                 <?php endif; ?>
                             </select>
-                            <small class="text-muted">Select an office if this cashout is office-related</small>
                         </div>
 
                         <!-- Description -->
@@ -159,6 +158,14 @@ $show_breadcrumb = true;
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('.select2').select2({
+            placeholder: "Select options",
+            allowClear: true,
+            width: '100%'
+        });
+    }
 
     // Payment method → transaction ref placeholder
     const paymentMethodSelect = document.querySelector('select[name="payment_method"]');

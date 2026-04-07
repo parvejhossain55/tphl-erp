@@ -324,6 +324,8 @@ $show_breadcrumb = true;
                                 <th>Due Amount</th> 
                                 <th>Land Share</th>
                                 <th>Service Fee</th>
+                                <th>Method</th>
+                                <th>Trx ID</th>
                                 <th>Status</th>
                                 <th>Added By</th>
                             </tr>
@@ -360,6 +362,12 @@ $show_breadcrumb = true;
                                         <?php else: ?>
                                             <span class="text-muted">-</span>
                                         <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $transaction['payment_method'] ?? 'N/A'))); ?>
+                                    </td>
+                                    <td>
+                                        <?php echo !empty($transaction['transaction_ref']) ? htmlspecialchars($transaction['transaction_ref']) : '<span class="text-muted">-</span>'; ?>
                                     </td>
                                     <td>
                                         <span class="badge <?php echo $transaction['status_class']; ?>">

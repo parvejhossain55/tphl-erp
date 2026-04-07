@@ -153,6 +153,22 @@ $show_breadcrumb = true;
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon">
+                        <span><i class="fa-light fa-tools"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Development Charges</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['development_charge_paid'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
                         <span><i class="fa-light fa-building"></i></span>
                     </div>
                     <div class="card__title-wrap">
@@ -329,6 +345,8 @@ $show_breadcrumb = true;
                                 <th>Due Amount</th> 
                                 <th>Land Share</th>
                                 <th>Service Fee</th>
+                                <th>Method</th>
+                                <th>Trx ID</th>
                                 <th>Status</th>
                                 <th>Added By</th>
                                 <th>Actions</th>
@@ -366,6 +384,12 @@ $show_breadcrumb = true;
                                         <?php else: ?>
                                             <span class="text-muted">-</span>
                                         <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $transaction['payment_method'] ?? 'N/A'))); ?>
+                                    </td>
+                                    <td>
+                                        <?php echo !empty($transaction['transaction_ref']) ? htmlspecialchars($transaction['transaction_ref']) : '<span class="text-muted">-</span>'; ?>
                                     </td>
                                     <td>
                                         <span class="badge <?php echo $transaction['status_class']; ?>">
