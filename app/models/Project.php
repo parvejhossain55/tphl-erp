@@ -54,78 +54,112 @@ class Project extends Model
     /* =========================
        Create Project
     ========================== */
-    public function create($data)
-    {
-        // ======================
-        // Image Uploads
-        // ======================
-        $image = !empty($_FILES['image']['name']) ? uploadImage('image', 'projects', 'fixed') : '';
-        $image2 = !empty($_FILES['image2']['name']) ? uploadImage('image2', 'projects', 'fixed') : '';
-        $image3 = !empty($_FILES['image3']['name']) ? uploadImage('image3', 'projects', 'fixed') : '';
-        $map_image = !empty($_FILES['map_image']['name']) ? uploadImage('map_image', 'projects', 'fixed') : '';
-        $amenities_image = !empty($_FILES['amenities_image']['name']) ? uploadImage('amenities_image', 'projects', 'fixed') : '';
+public function create($data)
+{
+    // ======================
+    // Image Uploads
+    // ======================
+    $image = !empty($_FILES['image']['name']) ? uploadImage('image', 'projects', 'fixed') : null;
+    $image2 = !empty($_FILES['image2']['name']) ? uploadImage('image2', 'projects', 'fixed') : null;
+    $image3 = !empty($_FILES['image3']['name']) ? uploadImage('image3', 'projects', 'fixed') : null;
+    $map_image = !empty($_FILES['map_image']['name']) ? uploadImage('map_image', 'projects', 'fixed') : null;
+    $amenities_image = !empty($_FILES['amenities_image']['name']) ? uploadImage('amenities_image', 'projects', 'fixed') : null;
 
-        // ======================
-        // Insert Query
-        // ======================
-        $stmt = $this->db->prepare("
-        INSERT INTO projects (
-            name,slug, location_id, community_id,plot_no,block_no, building_type,
-            total_share, unit_per_floor, types, front_road,
-            hover_text, price_range, plot_size, brochure_link,
-            description, apartment_count, amenities_details, amenities_image,
-            map_image, map_link, passenger_lift, cargo_lift,
-            rooftop_gardening, swimming_pool, convention, electricity_backup,
-            image, image2, image3,car_parking,created_by,floor_wise_unit_meta,project_map_location,project_sale_status
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    ");
+    // ======================
+    // Data Formatting (যাতে Integer কলামে Empty String না যায়)
+    // ======================
+    $location_id      = !empty($data['location_id']) ? (int)$data['location_id'] : null;
+    $community_id     = !empty($data['community_id']) ? (int)$data['community_id'] : null;
+    $total_share      = !empty($data['total_share']) ? (int)$data['total_share'] : null;
+    $unit_per_floor   = !empty($data['unit_per_floor']) ? (int)$data['unit_per_floor'] : null;
+    $apartment_count  = !empty($data['apartment_count']) ? (int)$data['apartment_count'] : null;
+    $passenger_lift   = !empty($data['passenger_lift']) ? (int)$data['passenger_lift'] : 0;
+    $cargo_lift       = !empty($data['cargo_lift']) ? (int)$data['cargo_lift'] : 0;
+    $created_by       = !empty($data['created_by']) ? (int)$data['created_by'] : null;
+    $car_parking      = !empty($data['car_parking']) ? (int)$data['car_parking'] : 0;
+    
+    // Checkbox Handling (0 or 1)
+    $rooftop_gardening  = isset($data['rooftop_gardening']) ? (int)$data['rooftop_gardening'] : 0;
+    $swimming_pool      = isset($data['swimming_pool']) ? (int)$data['swimming_pool'] : 0;
+    $convention         = isset($data['convention']) ? (int)$data['convention'] : 0;
+    $electricity_backup = isset($data['electricity_backup']) ? (int)$data['electricity_backup'] : 0;
 
-        if (!$stmt) {
-            setError($this->db->error);
-            return false;
-        }
+    // ======================
+    // Insert Query (Total 35 Columns)
+    // ======================
+    $sql = "INSERT INTO projects (
+                name, slug, location_id, community_id, building_type, 
+                total_share, unit_per_floor, floor_wise_unit_meta, types, image, 
+                image2, image3, front_road, price_range, hover_text, 
+                plot_size, plot_no, block_no, brochure_link, description, 
+                apartment_count, amenities_details, amenities_image, map_image, map_link, 
+                project_map_location, passenger_lift, cargo_lift, created_by, rooftop_gardening, 
+                swimming_pool, convention, electricity_backup, car_parking, project_sale_status
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-        $stmt->bind_param(
-            "sssssssssssssssssssssssssssssssisss",
-            $data['name'],
-            $data['slug'],
-            $data['location_id'],
-            $data['community_id'],
-            $data['plot_no'],
-            $data['block_no'],
-            $data['building_type'],
-            $data['total_share'],
-            $data['unit_per_floor'],
-            $data['types'],
-            $data['front_road'],
-            $data['hover_text'],
-            $data['price_range'],
-            $data['plot_size'],
-            $data['brochure_link'],
-            $data['description'],
-            $data['apartment_count'],
-            $data['amenities_details'],
-            $amenities_image,
-            $map_image,
-            $data['map_link'],
-            $data['passenger_lift'],
-            $data['cargo_lift'],
-            $data['rooftop_gardening'],
-            $data['swimming_pool'],
-            $data['convention'],
-            $data['electricity_backup'],
-            $image,
-            $image2,
-            $image3,
-            $data['car_parking'],
-            $data['created_by'],
-            $data['floor_wise_unit_meta'],
-            $data['project_map_location'],
-            $data['project_sale_status']
-        );
+    $stmt = $this->db->prepare($sql);
 
-        return $stmt->execute();
+    if (!$stmt) {
+        setError($this->db->error);
+        return false;
     }
+
+    // Types Definition (Total 35): 
+    // s (string), i (integer), d (double/float)
+    // Counting: 
+    // name(s), slug(s), loc_id(i), com_id(i), build_type(s), 
+    // share(i), floor_unit(i), meta(s), types(s), img1(s), 
+    // img2(s), img3(s), road(s), price(s), hover(s), 
+    // size(d), plot_no(s), block_no(s), brochure(s), desc(s), 
+    // count(i), amen_det(s), amen_img(s), map_img(s), map_link(s), 
+    // map_loc(s), p_lift(i), c_lift(i), created_by(i), roof(i), 
+    // pool(i), conv(i), elec(i), parking(i), status(s)
+    
+    $types = "ssiisiiisssssss dssssisssssiiiiiiiis"; 
+    // স্পেসগুলো শুধু গুনার সুবিধার জন্য দিয়েছি, কোড এ কাজ করবে না। নিচে সলিড স্ট্রিং দিচ্ছি।
+    $bindTypes = "ssiisiiisssssssissssisssssiiiiiiiis";
+
+    $stmt->bind_param(
+        $bindTypes,
+        $data['name'],                  // 1
+        $data['slug'],                  // 2
+        $location_id,                   // 3 (i)
+        $community_id,                  // 4 (i)
+        $data['building_type'],         // 5
+        $total_share,                   // 6 (i)
+        $unit_per_floor,                // 7 (i)
+        $data['floor_wise_unit_meta'],  // 8
+        $data['types'],                 // 9
+        $image,                         // 10
+        $image2,                        // 11
+        $image3,                        // 12
+        $data['front_road'],            // 13
+        $data['price_range'],           // 14
+        $data['hover_text'],            // 15
+        $data['plot_size'],             // 16 (d/s)
+        $data['plot_no'],               // 17
+        $data['block_no'],              // 18
+        $data['brochure_link'],         // 19
+        $data['description'],           // 20
+        $apartment_count,               // 21 (i)
+        $data['amenities_details'],     // 22
+        $amenities_image,               // 23
+        $map_image,                     // 24
+        $data['map_link'],              // 25
+        $data['project_map_location'],  // 26
+        $passenger_lift,                // 27 (i)
+        $cargo_lift,                    // 28 (i)
+        $created_by,                    // 29 (i)
+        $rooftop_gardening,             // 30 (i)
+        $swimming_pool,                 // 31 (i)
+        $convention,                    // 32 (i)
+        $electricity_backup,            // 33 (i)
+        $car_parking,                   // 34 (i)
+        $data['project_sale_status']    // 35
+    );
+
+    return $stmt->execute();
+}
 
 
     /* =========================
