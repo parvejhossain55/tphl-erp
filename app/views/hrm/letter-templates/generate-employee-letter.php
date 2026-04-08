@@ -1,4 +1,13 @@
 
+<!-- DEBUG: Show what's in letters array -->
+<?php if (!empty($letters)): ?>
+    <!-- DEBUG DATA (remove later) -->
+    <div style="display:none;">
+        <?php foreach ($letters as $letter): ?>
+            <!-- id=<?= isset($letter['id']) ? $letter['id'] : 'NOT SET' ?>, employee_id=<?= $letter['employee_id'] ?>, type=<?= $letter['letter_type'] ?> -->
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
 
 <div class="row">
     <div class="card__wrapper">
@@ -16,7 +25,7 @@
             <form method="GET" action="" class="card__wrapper mb-20">
                 <div class="row g-20 gy-20 align-items-end">
 
-                    <div class="col-lg-4">
+                    <div class="col-lg-4 d-none">
                         <div class="from__input-box">
                             <div class="form__input-title">
                                 <label for="filter_designation">Designation</label>
@@ -72,6 +81,7 @@
                             <tr>
                                 <th>#</th>
                                 <th>Employee</th>
+                                <th>Designation</th>
                                 <th>Letter Type</th>
                                 <th>Subject</th>
                                 <th>Letter Date</th>
@@ -88,6 +98,7 @@
                                         <strong><?= $letter['full_name'] ?></strong><br>
                                         <small class="text-muted"><?= $letter['employee_code'] ?></small>
                                     </td>
+                                    <td><?= $letter['designation_name'] ?></td>
                                     <td>
                                         <span class="badge 
                                             <?php

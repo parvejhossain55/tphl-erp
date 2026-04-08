@@ -66,7 +66,11 @@ class Letter extends Model
 
     public function getAllWithDetails($designation_id = null, $letter_type = null)
     {
-        $sql = "SELECT l.*, e.full_name, e.employee_id as employee_code, d.name as designation_name, dept.name as department_name 
+        $sql = "SELECT l.id, l.employee_id, l.designation_id, l.department_id, l.letter_type, l.template_id,
+                       l.subject, l.body, l.letter_date, l.ref_number, l.joining_date, l.effective_date,
+                       l.current_salary, l.revised_salary, l.new_designation, l.signatory_name, l.signatory_title,
+                       l.cc_email, l.send_to_email, l.status, l.created_at, l.updated_at,
+                       e.full_name, e.employee_id as employee_code, d.name as designation_name, dept.name as department_name
                 FROM letters l
                 LEFT JOIN employees e ON l.employee_id = e.id
                 LEFT JOIN designations d ON l.designation_id = d.id
@@ -81,14 +85,18 @@ class Letter extends Model
         }
 
         $sql .= " ORDER BY l.id DESC";
-        
+
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
     public function find($id)
     {
         $stmt = $this->db->prepare("
-            SELECT l.*, e.full_name, e.employee_id as employee_code, e.address, d.name as designation_name, dept.name as department_name 
+            SELECT l.id, l.employee_id, l.designation_id, l.department_id, l.letter_type, l.template_id,
+                   l.subject, l.body, l.letter_date, l.ref_number, l.joining_date, l.effective_date,
+                   l.current_salary, l.revised_salary, l.new_designation, l.signatory_name, l.signatory_title,
+                   l.cc_email, l.send_to_email, l.status, l.created_at, l.updated_at,
+                   e.full_name, e.employee_id as employee_code, e.address, d.name as designation_name, dept.name as department_name
             FROM letters l
             LEFT JOIN employees e ON l.employee_id = e.id
             LEFT JOIN designations d ON l.designation_id = d.id

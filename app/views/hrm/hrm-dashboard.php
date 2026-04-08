@@ -388,7 +388,7 @@
                     <div class="cal-header">
                         <div class="cal-title"><?= $monthName ?> <?= $year ?></div>
 
-                        <div class="cal-nav">
+                        <div class="cal-nav d-none">
                             <button class="cal-btn cal-nav-btn" data-dir="prev">
                                 <i class="fas fa-chevron-left"></i>
                             </button>
@@ -411,8 +411,14 @@
                             <div class="cal-day-label"><?= $dayLabel ?></div>
                         <?php endforeach; ?>
 
-                        <!-- Empty cells before month starts -->
+                        <!--  Empty cells BEFORE month starts -->
+                        <?php for ($i = 0; $i < $firstDayOfWeek; $i++): ?>
+                            <div class="cal-cell other-month"></div>
+                        <?php endfor; ?>
+
+                        <!-- Days of month -->
                         <?php for ($day = 1; $day <= $daysInMonth; $day++):
+
                             $dateStr = sprintf("%04d-%02d-%02d", $year, $month, $day);
                             $classes = "cal-cell";
 
@@ -429,22 +435,21 @@
                             // tooltip
                             $title = isset($holidays[$day]) ? implode(', ', $holidays[$day]) : '';
                         ?>
-                            <div class="<?= $classes ?>" title="<?= $title ?>">
+                            <div class="<?= $classes ?>" title="<?= htmlspecialchars($title) ?>">
                                 <?= $day ?>
                             </div>
                         <?php endfor; ?>
 
-                        <!-- Fill remaining cells to complete last week -->
+                        <!--  remaining cells -->
                         <?php
                         $totalCells = $firstDayOfWeek + $daysInMonth;
-                        $remaining = 7 - ($totalCells % 7);
-                        if ($remaining < 7) {
-                            for ($i = 0; $i < $remaining; $i++): ?>
-                                <div class="cal-cell other-month"></div>
-                        <?php endfor;
-                        }
-                        ?>
-                    </div><!-- /cal-grid -->
+                        $remaining = (7 - ($totalCells % 7)) % 7;
+
+                        for ($i = 0; $i < $remaining; $i++): ?>
+                            <div class="cal-cell other-month"></div>
+                        <?php endfor; ?>
+
+                    </div>
 
                     <!-- Legend -->
                     <div class="legend">
@@ -860,6 +865,8 @@
         });
     });
 </script>
+
+<!-- // Calendar Navigation -->
 
 <script>
     $(document).on("click", ".cal-nav-btn", function() {

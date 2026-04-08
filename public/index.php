@@ -225,6 +225,8 @@ $routes = [
     "create-letter-template" => ["controller" => "LetterTemplateController", "method" => "create"],
     "store-generate-letter" => ["controller" => "LetterTemplateController", "method" => "store"],
     "get-employee-info-ajax" => ["controller" => "LetterTemplateController", "method" => "getEmployeeInfo"],
+    "get-templates-for-type" => ["controller" => "LetterTemplateController", "method" => "getTemplatesForType"],
+    "get-template" => ["controller" => "LetterTemplateController", "method" => "getTemplate"],
     "view-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "viewLetter"],
     "print-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "printLetter"],
     "pdf-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "generatePDFLetter"],

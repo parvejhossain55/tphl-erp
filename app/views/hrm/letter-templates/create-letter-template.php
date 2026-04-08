@@ -16,31 +16,38 @@
 
                     <div class="row g-20 gy-20">
 
+                        <!-- Employee Select -->
                         <div class="col-lg-6">
                             <div class="from__input-box">
                                 <div class="form__input-title">
-                                    <label for="employee_select">Select Employee <span>*</span></label>
+                                    <label for="employee_id">Select Employee <span>*</span></label>
                                 </div>
                                 <div class="form__input">
                                     <select name="employee_id" id="employee_id" class="form-control" onchange="autoSelectDeptDesig()">
                                         <option value="">Select Employee</option>
-                                        <?php foreach ($employees as $emp): ?>
-                                            <option value="<?= $emp['id'] ?>">
-                                                <?= $emp['full_name'] ?>
-                                            </option>
-                                        <?php endforeach; ?>
+                                        <?php if (!empty($employees)): ?>
+                                            <?php foreach ($employees as $emp): ?>
+                                                <option
+                                                    value="<?= $emp['id'] ?>"
+                                                    data-designation="<?= $emp['designation_id'] ?>"
+                                                    data-department="<?= $emp['department_id'] ?>">
+                                                    <?= $emp['full_name'] ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </select>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Letter Type -->
                         <div class="col-lg-6">
                             <div class="from__input-box">
                                 <div class="form__input-title">
                                     <label for="letter_type">Letter Type <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <select class="form-control" name="letter_type" id="letter_type" required>
+                                    <select class="form-control" name="letter_type" id="letter_type" >
                                         <option value="">— Select Letter Type —</option>
                                         <option value="appointment">Appointment Letter</option>
                                         <option value="joining">Joining Letter</option>
@@ -53,6 +60,7 @@
                             </div>
                         </div>
 
+                        <!-- Designation Select -->
                         <div class="col-lg-6">
                             <div class="from__input-box">
                                 <div class="form__input-title">
@@ -61,14 +69,17 @@
                                 <div class="form__input">
                                     <select class="form-control" name="designation_id" id="designation_id" required>
                                         <option value="">— Select Designation —</option>
-                                        <?php foreach ($designations as $designation): ?>
-                                            <option value="<?= $designation['id'] ?>"><?= $designation['designation_name'] ?></option>
-                                        <?php endforeach ?>
+                                        <?php if (!empty($designations)): ?>
+                                            <?php foreach ($designations as $desig): ?>
+                                                <option value="<?= $desig['id'] ?>"><?= $desig['designation_name'] ?></option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </select>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Department Select -->
                         <div class="col-lg-6">
                             <div class="from__input-box">
                                 <div class="form__input-title">
@@ -77,15 +88,19 @@
                                 <div class="form__input">
                                     <select class="form-control" name="department_id" id="department_id" required>
                                         <option value="">— Select Department —</option>
-                                        <?php foreach ($departments as $department): ?>
-                                            <option value="<?= $department['id'] ?>"><?= $department['name'] ?></option>
-                                        <?php endforeach ?>
+                                        <?php if (!empty($departments)): ?>
+                                            <?php foreach ($departments as $dept): ?>
+                                                <option value="<?= $dept['id'] ?>"><?= $dept['name'] ?></option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </select>
                                 </div>
                             </div>
                         </div>
 
                     </div>
+
+
                 </div>
 
                 <!-- Section: Letter Details -->
@@ -124,7 +139,7 @@
                                     <label for="joining_date">Joining Date <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="joining_date" id="joining_date" type="date" required>
+                                    <input class="form-control" name="joining_date" id="joining_date" type="date" >
                                 </div>
                             </div>
                         </div>
@@ -143,22 +158,21 @@
 
                         <div class="col-lg-6">
                             <label>Subject *</label>
-                            <input type="text" name="subject" class="form-control" required>
+                            <input type="text" name="subject" id="subject" class="form-control" required>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <label>Select Template <span class="text-muted">Optional</span></label>
+                            <select name="template_id" id="template_id" class="form-control" onchange="loadTemplate()">
+                                <option value="">— No Template —</option>
+                            </select>
                         </div>
 
                         <div class="col-md-12">
                             <label>Letter Body *</label>
-                            <textarea name="letter_body" class="form-control" required></textarea>
-                        </div>
-
-                        <div class="col-lg-6">
-                            <label>Template</label>
-                            <select name="template_id" class="form-control">
-                                <option value="">Select Template</option>
-                                <?php foreach ($templates as $t): ?>
-                                    <option value="<?= $t['id'] ?>"><?= $t['name'] ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <div class="from__input-box">
+                                <textarea class="form-control" id="tinymce_simple_textarea" name="letter_body" rows="4" placeholder="Enter key responsibilities..."></textarea>
+                            </div>
                         </div>
 
                     </div>
@@ -294,35 +308,74 @@
 </div>
 
 <script>
-    function autoSelectDeptDesig() {
-        var empSelect = document.getElementById('employee_id');
-        if (!empSelect || empSelect.selectedIndex === -1) return;
+  function autoSelectDeptDesig() {
+    var empSelect = document.getElementById('employee_id');
+    var selected = empSelect.options[empSelect.selectedIndex];
 
-        var empId = empSelect.value;
-        if (!empId) {
-            var deptSelect = document.getElementById('department_id');
-            var desigSelect = document.getElementById('designation_id');
-            if (deptSelect) deptSelect.value = '';
-            if (desigSelect) desigSelect.value = '';
+    if (!selected || !selected.value) {
+        document.getElementById('designation_id').value = '';
+        document.getElementById('department_id').value = '';
+        return;
+    }
+
+    // Use data attributes directly from the <option>
+    var desigId = selected.dataset.designation || '';
+    var deptId = selected.dataset.department || '';
+
+    document.getElementById('designation_id').value = desigId;
+    document.getElementById('department_id').value = deptId;
+}
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var letterTypeSelect = document.getElementById('letter_type');
+        if (letterTypeSelect) {
+            letterTypeSelect.addEventListener('change', loadTemplatesForType);
+        }
+    });
+
+    function loadTemplatesForType() {
+        var letterType = document.getElementById('letter_type').value;
+        var templateSelect = document.getElementById('template_id');
+
+        if (!letterType) {
+            templateSelect.innerHTML = '<option value="">— No Template —</option>';
             return;
         }
 
-        // Fetch via AJAX
-        fetch('<?= $GLOBALS['base_url'] ?>/get-employee-info-ajax?employee_id=' + empId)
+        fetch('<?= $GLOBALS['base_url'] ?>/get-templates-for-type?type=' + encodeURIComponent(letterType))
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    var deptSelect = document.getElementById('department_id');
-                    var desigSelect = document.getElementById('designation_id');
-
-                    if (deptSelect && data.department_id) {
-                        deptSelect.value = data.department_id;
-                    }
-                    if (desigSelect && data.designation_id) {
-                        desigSelect.value = data.designation_id;
-                    }
+                if (data.success && data.templates) {
+                    let html = '<option value="">— No Template —</option>';
+                    data.templates.forEach(template => {
+                        html += '<option value="' + template.id + '">' + template.name + '</option>';
+                    });
+                    templateSelect.innerHTML = html;
+                } else {
+                    templateSelect.innerHTML = '<option value="">— No Template —</option>';
                 }
             })
-            .catch(error => console.error('Error fetching employee info:', error));
+            .catch(error => {
+                console.error('Error loading templates:', error);
+                templateSelect.innerHTML = '<option value="">— No Template —</option>';
+            });
+    }
+
+    function loadTemplate() {
+        var templateId = document.getElementById('template_id').value;
+
+        if (!templateId) {
+            return;
+        }
+
+        fetch('<?= $GLOBALS['base_url'] ?>/get-template?id=' + encodeURIComponent(templateId))
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.template) {
+                    document.getElementById('subject').value = data.template.subject || '';
+                    document.getElementById('letter_body').value = data.template.body || '';
+                }
+            })
+            .catch(error => console.error('Error loading template:', error));
     }
 </script>
