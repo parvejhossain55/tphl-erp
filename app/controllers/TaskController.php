@@ -93,7 +93,7 @@ class TaskController extends Controller
         $stmt2->execute();
         $assignedBy = $stmt2->get_result()->fetch_assoc();
 
-        // মেইল পাঠানোর চেষ্টা (Data save করার আগে বা পরে করতে পারেন)
+        // 
         if ($user && !empty($user['email'])) {
             try {
                 sendMail(
