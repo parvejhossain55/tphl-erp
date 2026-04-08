@@ -515,7 +515,7 @@
                             <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
                             <span class="sidebar__menu-label">Generate Employee Letter</span>
                         </a>
-                        <a href="<?= $base_url ?>/letter-templates" class="sidebar__menu-item <?= isActive('letter-templates', $current_route) ?>">
+                        <a href="<?= $base_url ?>/letter-templates" class="d-none sidebar__menu-item <?= isActive('letter-templates', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
                             <span class="sidebar__menu-label">Generate Template</span>
                         </a>

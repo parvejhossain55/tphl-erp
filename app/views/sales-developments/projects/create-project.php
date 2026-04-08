@@ -122,12 +122,12 @@ $show_breadcrumb = true;
                     </select>
                 </div>
                 <!-- Front Road -->
-                <div class="col-xxl-4 col-md-6 col-12">
+                <div class="col-xxl-6 col-md-6 col-12">
                     <label>Front Road</label>
                     <input type="text" name="front_road" class="form-control" placeholder="In Feet">
                 </div>
                 <!-- Apartment Count -->
-                <div class="col-xxl-4 col-md-6 col-12">
+                <div class="col-xxl-6 col-md-6 col-12">
                     <label>Apartment Count</label>
                     <input type="number" name="apartment_count" class="form-control">
                 </div>

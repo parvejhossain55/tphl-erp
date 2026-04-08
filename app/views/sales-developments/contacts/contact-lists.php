@@ -12,14 +12,13 @@ $show_breadcrumb = False;
         Contact Management
     </h4>
 
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 d-none">
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewcommunity">Add community</button>
     </div>
 
 </div>
 
 <div class="row">
-
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">

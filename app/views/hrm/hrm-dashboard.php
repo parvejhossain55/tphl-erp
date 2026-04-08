@@ -175,7 +175,7 @@
                 <div class="d-flex align-items-center gap-sm">
                     <div class="card__icon"><span><i class="fa-regular fa-clock"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Today Late</h6>
+                        <h6 class="card__sub-title mb-10">Today Late %</h6>
                         <h4 class="card__title text-break text-success mb-10"><?= $latePercent ?></h4>
                     </div>
                 </div>
