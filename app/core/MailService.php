@@ -13,7 +13,7 @@ class MailService
     private $senderName = 'TPHL ERP Notification';
     private $clientId = '893215055562-pbt3j7lg7ufqju370ltss46kh7pati3n.apps.googleusercontent.com';
     private $clientSecret = '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';
-    private $refreshToken = '1//04U0yYBeGze58CgYIARAAGAQSNwF-L9IrB2c0mUYOOa5wH2wI2KHy0tf1yHvQWFQYMRke8H83crH1D-6odDR89rLarFq60YPt9bs'; // Must be permanent, Playground token won't work
+    private $refreshToken = '1//04tQCZJUfNcm7CgYIARAAGAQSNwF-L9IrFjuXh9BJ80IcIEKsg8h5m5TFRRQS6BQTt-wwIvtJKnUHd4sAtITIw8QJ0pgbijIOF0w'; // Must be permanent, Playground token won't work
 
 public function sendMail($toEmail, $subject, $link, $assignedBy)
 {

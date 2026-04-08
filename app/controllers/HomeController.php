@@ -332,7 +332,7 @@ class HomeController extends Controller
 
 
     // Partial approve
-    public function approvePartial1($id)
+    public function approvePartial($id)
     {
         $this->db->begin_transaction();
 

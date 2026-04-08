@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../models/CashoutRequest.php';
 require_once __DIR__ . '/../models/CashoutPayment.php';
 require_once __DIR__ . '/../models/ApprovalRequest.php';
+require_once __DIR__ . '/../views/accounts/AccountMailService.php';
 
 class CashoutRequestController extends Controller
 {
@@ -9,6 +10,7 @@ class CashoutRequestController extends Controller
     protected $cashoutModel;
     protected $paymentModel;
     protected $approvalModel;
+    protected $mailService;
     protected $userRole;
     protected $userId;
 
@@ -18,6 +20,7 @@ class CashoutRequestController extends Controller
         $this->cashoutModel = new CashoutRequest($this->db);
         $this->paymentModel = new CashoutPayment($this->db);
         $this->approvalModel = new ApprovalRequest($this->db);
+        $this->mailService = new AccountMailService($this->db);
 
         // Start session if not started
         if (session_status() === PHP_SESSION_NONE) {
@@ -37,6 +40,9 @@ class CashoutRequestController extends Controller
     // Dashboard - User view
     public function index()
     {
+        // Passively check and send any missing emails for requests recently approved via Home dashboard
+        $this->syncApprovalsSilently();
+        
         if (!$this->isAdminUser()) {
             $requests = $this->cashoutModel->getUserRequests($this->userId);
             $statistics = $this->cashoutModel->getStatistics($this->userId);
@@ -58,6 +64,9 @@ class CashoutRequestController extends Controller
     // Admin view
     public function adminIndex()
     {
+        // Passively check and send any missing emails for requests recently approved via Home dashboard
+        $this->syncApprovalsSilently();
+        
         if (!$this->isAdminUser()) {
             setError("You are not authorized to access this page.");
             header("Location: {$GLOBALS['base_url']}/cashout-requests");
@@ -168,6 +177,9 @@ class CashoutRequestController extends Controller
         $result = $this->cashoutModel->createRequest($data);
 
         if ($result['success']) {
+            // Trigger Email Notification ON SUBMISSION
+            $this->mailService->sendOnSubmission($data);
+            
             setSuccess($result['message']);
             header("Location: {$GLOBALS['base_url']}/cashout-requests");
         } else {
@@ -394,6 +406,10 @@ class CashoutRequestController extends Controller
         $result = $this->cashoutModel->updateStatus($requestId, 'approved', $this->userId);
 
         if ($result) {
+            // Trigger Email Notification ON APPROVAL
+            $freshRequest = $this->cashoutModel->getRequestById($requestId);
+            $this->mailService->sendOnApproval($freshRequest, 'approved', $this->userId);
+            
             setSuccess("Request approved successfully! Ready for payment processing.");
         } else {
             setError("Failed to approve request.");
@@ -439,12 +455,19 @@ class CashoutRequestController extends Controller
         exit;
     }
 
-    // Sync with approval system
     private function syncWithApprovalSystem($cashoutId)
     {
         $approvalRequest = $this->cashoutModel->getApprovalRequest($cashoutId);
 
         if ($approvalRequest && in_array($approvalRequest['status'], ['approved', 'partial', 'rejected'])) {
+            // Check old status to prevent duplicate sending if already synced
+            $currentData = $this->cashoutModel->getRequestById($cashoutId);
+            
+            // If the Home module directly inserted 'partial' (an invalid ENUM string in the cashout_requests table), 
+            // the database converted it to an empty string ''. We treat an empty string as a valid transition state
+            // that hasn't fired an email yet, acting essentially exactly like 'pending'.
+            $wasPending = ($currentData && in_array($currentData['status'], ['pending', '']));
+
             $cashoutData = [
                 'status'        => $approvalRequest['status'] == 'partial' ? 'approved' : $approvalRequest['status'],
                 'approved_amount' => $approvalRequest['approved_amount'] ?? null,
@@ -462,7 +485,7 @@ class CashoutRequestController extends Controller
                 WHERE id = ?";
 
             $stmt   = $this->db->prepare($sql);
-            $status = $cashoutData['status'] == 'partial' ? 'approved' : $cashoutData['status'];
+            $status = $cashoutData['status'];
             $stmt->bind_param(
                 "sssisi",
                 $status,
@@ -473,7 +496,18 @@ class CashoutRequestController extends Controller
                 $cashoutId
             );
 
-            return $stmt->execute();
+            $executed = $stmt->execute();
+            
+            // Only fire if we transitioned from pending successfully to an approved/partial state
+            if ($executed && $wasPending && in_array($status, ['approved'])) {
+                // Fetch fresh joined data for email context
+                $freshRequest = $this->cashoutModel->getRequestById($cashoutId);
+                if ($freshRequest && $this->mailService) {
+                    $this->mailService->sendOnApproval($freshRequest, $approvalRequest['status'], $cashoutData['approved_by']);
+                }
+            }
+
+            return $executed;
         }
 
         return false;
@@ -741,6 +775,22 @@ class CashoutRequestController extends Controller
 
         header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
         exit;
+    }
+
+    // Passively run sync logic for un-synced requests without redirecting, so emails are correctly dispatched
+    private function syncApprovalsSilently()
+    {
+        $sql = "SELECT cr.id FROM cashout_requests cr
+                LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
+                WHERE (cr.status = 'pending' OR cr.status = '') 
+                AND ar.status IN ('approved', 'partial', 'rejected')";
+
+        $result = $this->db->query($sql);
+        if ($result && $result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $this->syncWithApprovalSystem($row['id']);
+            }
+        }
     }
 
     public function getAllProjects()
