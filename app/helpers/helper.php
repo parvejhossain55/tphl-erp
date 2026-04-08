@@ -1034,6 +1034,7 @@ function renderApprovalContext(array $req)
 if (!function_exists('sendMail')) {
     function sendMail($email, $title, $link, $assignedBy)
     {
+            // echo "Helper called"; die;
         // require_once 'path/to/MailService.php'; 
         $mail = new MailService();
         return $mail->sendMail($email, $title, $link, $assignedBy);

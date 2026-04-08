@@ -93,23 +93,23 @@ class TaskController extends Controller
         $stmt2->execute();
         $assignedBy = $stmt2->get_result()->fetch_assoc();
 
-        // মেইল পাঠানোর চেষ্টা (Data save করার আগে বা পরে করতে পারেন)
-        // if ($user && !empty($user['email'])) {
-        //     try {
-        //         sendMail(
-        //             $user['email'],
-        //             'New Task Assigned: ' . $data['title'],
-        //             'https://thepremiumhomesltd.com/TPHL-ERP/admin-login',
-        //             $assignedBy
-        //         );
-        //         echo "<p style='color:green'>Email sent successfully to " . htmlspecialchars($user['email']) . "</p>";
-        //         exit;
-        //     } catch (\Throwable $th) {
-        //         error_log("Mail Sending Failed: " . $th->getMessage());
-        //     }
-        // }
+        // 
+        if ($user && !empty($user['email'])) {
+            try {
+                sendMail(
+                    $user['email'],
+                    'New Task Assigned: ' . $data['title'],
+                    'https://thepremiumhomesltd.com/TPHL-ERP/admin-login',
+                    $assignedBy
+                );
+                // echo "<p style='color:green'>Email sent successfully to " . htmlspecialchars($user['email']) . "</p>";
+                // exit;
+            } catch (\Throwable $th) {
+                error_log("Mail Sending Failed: " . $th->getMessage());
+            }
+        }
 
-        // ডাটাবেসে টাস্ক সেভ করা
+        // save task data to database
         if ($this->taskModel->create($data)) {
             $taskId = $this->db->insert_id;
 

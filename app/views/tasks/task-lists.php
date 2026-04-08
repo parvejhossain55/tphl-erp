@@ -130,3 +130,11 @@
           </div>
       <?php endforeach ?>
   </div>
+  <!-- Pagination -->
+<div class="row my-4">
+    <div class="col-12 d-flex justify-content-center">
+        <?= paginateLinksSecondary($base_url . "/task-lists", $currentPage, $totalPages); ?>
+
+
+    </div>
+</div>

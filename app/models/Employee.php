@@ -65,6 +65,7 @@ class Employee extends Model
             e.employee_id,  
             desg.name AS designation_name,
             desg.id As designation_id, 
+            dept.id AS department_id,
             dept.name AS department_name
         FROM employees AS e
         LEFT JOIN designations AS desg ON e.designation_id = desg.id

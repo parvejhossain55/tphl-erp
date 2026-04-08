@@ -37,6 +37,42 @@ class LetterTemplateController extends Controller
         }
     }
 
+    public function getTemplatesForType()
+    {
+        $type = $_GET['type'] ?? null;
+
+        if (!$type) {
+            echo json_encode(['success' => false]);
+            return;
+        }
+
+        $templates = $this->templateModel->getByType($type);
+        echo json_encode([
+            'success' => true,
+            'templates' => $templates
+        ]);
+    }
+
+    public function getTemplate()
+    {
+        $id = $_GET['id'] ?? null;
+
+        if (!$id) {
+            echo json_encode(['success' => false]);
+            return;
+        }
+
+        $template = $this->templateModel->find($id);
+        if ($template) {
+            echo json_encode([
+                'success' => true,
+                'template' => $template
+            ]);
+        } else {
+            echo json_encode(['success' => false]);
+        }
+    }
+
     public function generateLetter()
     {
         $designation_id = $_GET['designation_id'] ?? null;
@@ -47,6 +83,9 @@ class LetterTemplateController extends Controller
         require_once __DIR__ . '/../models/Designation.php';
         $designationModel = new Designation($this->db);
         $designations = $designationModel->getAll();
+
+        // DEBUG: If only 1 letter and id looks wrong, add this to see
+        // echo '<pre>'; var_dump($letters); echo '</pre>'; exit;
 
         $this->view("hrm/letter-templates/generate-employee-letter", [
             "letters" => $letters,
@@ -148,7 +187,6 @@ class LetterTemplateController extends Controller
 
         $templates = $this->templateModel->getAll($designation_id, $type);
 
-        require_once __DIR__ . '/../models/Designation.php';
         $designationModel = new Designation($this->db);
         $designations = $designationModel->getAll();
 

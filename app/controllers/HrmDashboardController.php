@@ -169,7 +169,9 @@ class HrmDashboardController extends Controller
         }
 
         // holiday count (month base)
-        $holidayCount = $this->holidayModel->holidayCount($year, $month);
+        // $holidayCount = $this->holidayModel->holidayCount($year, $month);
+        // year base
+        $holidayCount = $this->holidayModel->holidayCount($year);
 
         // Month name
         $monthName = date('F', strtotime($startOfMonth));

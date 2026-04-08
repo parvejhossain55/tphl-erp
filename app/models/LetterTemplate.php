@@ -15,6 +15,14 @@ class LetterTemplate extends Model
         return $this->db->query("SELECT * FROM letter_templates ORDER BY id DESC")->fetch_all(MYSQLI_ASSOC);
     }
 
+    public function getByType($type)
+    {
+        $stmt = $this->db->prepare("SELECT id, name, type, subject, body FROM letter_templates WHERE type = ? ORDER BY name ASC");
+        $stmt->bind_param("s", $type);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
     public function find($id)
     {
         $stmt = $this->db->prepare("SELECT * FROM letter_templates WHERE id = ?");
