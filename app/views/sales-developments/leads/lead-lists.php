@@ -170,12 +170,14 @@ $show_breadcrumb = true;
                         <label class="fw-bold mb-0">Assign Selected Leads to: <span id="selectedCount" class="badge bg-primary ms-2">0</span></label>
 
                         <select id="assignUserSelect"
-                            class="form-select form-select-sm"
-                            style="min-width:200px; width:auto;">
-                            <option value="">Assigned User</option>
+                            class="form-select form-select-sm select2"
+                            style="min-width:200px; width:100%;">
+
+                            <option value=""></option> <!-- important for placeholder -->
+
                             <?php foreach ($assignedUsers as $user): ?>
                                 <option value="<?= $user['id'] ?>">
-                                    <?= htmlspecialchars($user['full_name']) ?>-<?= htmlspecialchars($user['role_name']) ?>
+                                    <?= htmlspecialchars($user['full_name']) ?> - <?= htmlspecialchars($user['role_name']) ?>
                                 </option>
                             <?php endforeach ?>
                         </select>
@@ -328,7 +330,7 @@ $show_breadcrumb = true;
                                     <td><?= $lead['agent_name'] ?? 'No Agent Assigned' ?></td>
 
                                     <td>
-                                        <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 5 || $_SESSION['user']['role_id'] == 1 || $_SESSION['user']['role_id'] == 3 || $_SESSION['user']['role_id'] == 9 ): ?>
+                                        <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 5 || $_SESSION['user']['role_id'] == 1 || $_SESSION['user']['role_id'] == 3 || $_SESSION['user']['role_id'] == 9): ?>
                                             <div class="d-flex align-items-center gap-2 flex-wrap">
 
                                                 <!-- Follow Up -->

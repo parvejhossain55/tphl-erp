@@ -120,29 +120,41 @@
             </script>
         <?php unset($_SESSION['flash_error']);
         endif; ?>
-
         <!-- JS -->
         <!-- Footer Scripts -->
 
-        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/calendar-activision.js"></script>
+        <!-- ✅ jQuery FIRST (MOST IMPORTANT) -->
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/jquery-3.7.0.js"></script>
-        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/isotope.pkgd.js"></script>
+
+        <!-- ✅ Core JS -->
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/bootstrap.bundle.min.js"></script>
+        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/popper.min.js"></script>
+
+        <!-- ✅ Select2 (RIGHT AFTER jQuery) -->
+        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/select2.full.min.js"></script>
+
+        <!-- ✅ Other plugins -->
+        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/calendar-activision.js"></script>
+        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/isotope.pkgd.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/magnific-popup.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/ajax-form.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/jquery.repeater.js"></script>
+
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/waypoints.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/dayjs.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/loader.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/jsvectormap.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/world-merc.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/swiper-bundle.min.js"></script>
-        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/popper.min.js"></script>
+
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/simplebar.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/simplebar-active.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/backtotop.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/smooth-scrollbar.js"></script>
+
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/cleave.min.js"></script>
+
+        <!-- ✅ Datatable -->
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/datatables.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/jquery.dataTables.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/dataTables.bootstrap5.min.js"></script>
@@ -153,22 +165,28 @@
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/buttons.html5.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/buttons.print.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/buttons.colVis.min.js"></script>
+
+        <!-- ✅ Forms & UI -->
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/steps-form.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/dropify.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/dropzone.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/tinymce.min.js"></script>
-        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/custom.js"></script>
+
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/typeahead.bundle.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/bloodhound.js"></script>
-        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/select2.full.min.js"></script>
+
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/jquery.timepicker.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/flatpickr.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/tagify.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/jquery-ui.min.js"></script>
+
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/sweetalert2.all.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/apexcharts.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/fullcalendar.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/ion.rangeSlider.min.js"></script>
+
+        <!-- ✅ Custom scripts LAST -->
+        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/custom.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/custom-tagify.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/height-equal.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/custom-chart.js"></script>
@@ -178,10 +196,31 @@
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/main.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/sidebar.js"></script>
 
+        <!-- ✅ Select2 Init -->
+        <script>
+            function initSelect2(parent = document) {
+    if (!$.fn.select2) return;
 
+    $(parent).find('.select2').each(function () {
+        if ($(this).hasClass('select2-hidden-accessible')) return;
 
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.14.0-beta3/js/bootstrap-select.min.js"></script>
+        $(this).select2({
+            placeholder: "Select User",
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $(this).parent() // 🔥 IMPORTANT
+        });
+    });
+}
+         
 
+            /**
+             * Auto init on page load
+             */
+            $(document).ready(function() {
+                initSelect2();
+            });
+        </script>
 
         <script>
             document.addEventListener("DOMContentLoaded", function() {
@@ -338,7 +377,7 @@
         </script>
 
 
- <!-- sales overview chart -->
+        <!-- sales overview chart -->
 
         <script>
             document.addEventListener("DOMContentLoaded", function() {
