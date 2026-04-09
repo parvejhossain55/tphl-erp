@@ -223,4 +223,34 @@ class DigitalMarketingController extends Controller
         header("Location:{$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
         exit;
     }
+
+    public function deletePermanentMultiple()
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $_SESSION['error'] = "Invalid Request";
+        header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+        exit;
+    }
+
+    $ids = $_POST['ids'] ?? [];
+
+    if (empty($ids)) {
+        $_SESSION['error'] = "No leads selected";
+        header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+        exit;
+    }
+
+    try {
+        foreach ($ids as $id) {
+            $this->leadModel->permanentDelete((int)$id);
+        }
+
+        $_SESSION['success'] = "Selected leads deleted successfully!";
+    } catch (\Throwable $th) {
+        $_SESSION['error'] = "Error: " . $th->getMessage();
+    }
+
+    header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+    exit;
+}
 }

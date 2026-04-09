@@ -24,7 +24,10 @@
             <!-- Employee Select -->
             <div class="col-6 col-sm-6 col-md-3">
                 <label for="executiveSelect" class="form-label">Select Sales Executive</label>
-                <select id="executiveSelect" name="executive" class="form-select">
+
+
+
+                <select id="executiveSelect" name="executive" class="form-select select2">
                     <option value="">-- Select Sales Executive --</option>
                     <?php foreach ($allSalesTeams as $team): ?>
                         <option value="<?= $team['id'] ?>" <?= ($executiveId == $team['id']) ? 'selected' : '' ?>>
@@ -448,12 +451,12 @@
                                 <tr>
                                     <td><?= $key + 1 ?></td>
                                     <td><?= htmlspecialchars($followUp['full_name']) ?></td>
-                                    <td><?= htmlspecialchars($followUp['project_name']) ?></td>
-                                    <td><?= htmlspecialchars($followUp['flat_name']) ?></td>
-                                    <td><?= htmlspecialchars($followUp['assigned_with_name']) ?></td>
+                                    <td><?= htmlspecialchars($followUp['project_name'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($followUp['flat_name'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($followUp['assigned_with_name'] ?? 'N/A') ?></td>
                                     <td><?= date('d M, Y H:i', strtotime($followUp['follow_up_date'] . ' ' . $followUp['follow_up_time'])) ?></td>
-                                    <td><?= date('d M, Y H:i', strtotime($followUp['next_follow_up_date'])) ?></td>
-                                    <td><?= htmlspecialchars($followUp['discussion_note']) ?></td>
+                                    <td><?= date('d M, Y H:i', strtotime($followUp['next_follow_up_date'] ?? 'N/A')) ?></td>
+                                    <td><?= htmlspecialchars($followUp['discussion_note'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($followUp['next_action'] ?? 'N/A') ?></td>
                                 </tr>
                             <?php endforeach; ?>

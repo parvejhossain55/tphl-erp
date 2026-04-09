@@ -366,7 +366,6 @@ class FollowUp extends Model
         WHERE DATE(f.next_follow_up_date) = '{$today}'
           AND f.assigned_with = {$userId}
           AND f.deleted_at IS NULL
-          AND f.status = 'pending'
         ORDER BY f.follow_up_date DESC, f.follow_up_time DESC
     ";
 
@@ -474,7 +473,6 @@ class FollowUp extends Model
         LEFT JOIN users usr ON f.created_by = usr.id
         LEFT JOIN users aw ON f.assigned_with = aw.id
         WHERE f.deleted_at IS NULL
-          AND f.status = 'pending'
           AND f.assigned_with = ?
           AND f.next_follow_up_date > CURDATE()
           AND f.next_follow_up_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)

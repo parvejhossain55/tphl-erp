@@ -296,6 +296,7 @@ $routes = [
     "digital-marketing-dashboard" => ["controller" => "DigitalMarketingController", "method" => "index"],
     "digital-marketing-executive-dashboard" => ["controller" => "DigitalMarketingController", "method" => "executiveDashboard"],
     "delete-lead-permanent" => ["controller" => "DigitalMarketingController", "method" => "deletePermanent"],
+    "delete-leads-permanent-multiple" => ["controller" => "DigitalMarketingController",   "method" => "deletePermanentMultiple"],
     "store-platform-budget" => ["controller" => "DigitalMarketingController", "method" => "storeBudget"],
 
     // == access onboard clients ==

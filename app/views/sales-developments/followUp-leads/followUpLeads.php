@@ -103,7 +103,7 @@ $show_breadcrumb = true;
                     </div>
                     <div class="col-lg-6">
                         <label class="form__input-title">Assign user For follow up*</label>
-                        <select name="assigned_with" class="form-select">
+                        <select name="assigned_with" class="form-select select2" required>
                             <option value="">Select User</option>
                             <?php foreach ($assignedUsers as $user): ?>
                                 <option value="<?= $user['id'] ?>">

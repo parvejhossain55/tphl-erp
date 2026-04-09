@@ -333,7 +333,6 @@ function getFollowUpCount(int $userId, string $type = 'today'): int
             SELECT COUNT(*) AS total
             FROM lead_follow_ups
             WHERE deleted_at IS NULL
-              AND status = 'pending'
               AND assigned_with = ?
               AND DATE(next_follow_up_date) = CURDATE()
         ";
@@ -343,7 +342,6 @@ function getFollowUpCount(int $userId, string $type = 'today'): int
             SELECT COUNT(*) AS total
             FROM lead_follow_ups
             WHERE deleted_at IS NULL
-              AND status = 'pending'
               AND assigned_with = ?
               AND DATE(next_follow_up_date) > CURDATE()
               AND DATE(next_follow_up_date) <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
@@ -1043,4 +1041,90 @@ if (!function_exists('sendMail')) {
 
 function generateVerificationCode($length = 6) {
     return str_pad(rand(0, pow(10, $length)-1), $length, '0', STR_PAD_LEFT);
+}
+
+// upload webp image
+function uploadProjectImage($inputName, $quality = 75, $maxWidth = 1000)
+{
+    // 1. Check file
+    if (!isset($_FILES[$inputName]) || $_FILES[$inputName]['error'] !== UPLOAD_ERR_OK) {
+        return null;
+    }
+
+    $tmpPath = $_FILES[$inputName]['tmp_name'];
+
+    // 2. Folder (project specific)
+    $uploadDir = dirname(__DIR__, 2) . "/public/uploads/projects/";
+
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+
+    // 3. File name (always webp)
+    $fileName = uniqid('project_') . '.webp';
+    $destination = $uploadDir . $fileName;
+
+    // 4. Get image info
+    $imageInfo = getimagesize($tmpPath);
+    if (!$imageInfo) return null;
+
+    $mime = $imageInfo['mime'];
+
+    // 5. Create source image
+    switch ($mime) {
+        case 'image/jpeg':
+            $src = imagecreatefromjpeg($tmpPath);
+            break;
+
+        case 'image/png':
+            $src = imagecreatefrompng($tmpPath);
+            imagepalettetotruecolor($src);
+            imagealphablending($src, true);
+            imagesavealpha($src, true);
+            break;
+
+        case 'image/gif':
+            $src = imagecreatefromgif($tmpPath);
+            break;
+
+        case 'image/webp':
+            $src = imagecreatefromwebp($tmpPath);
+            break;
+
+        default:
+            return null;
+    }
+
+    if (!$src) return null;
+
+    // 6. Resize (keep ratio)
+    $width  = imagesx($src);
+    $height = imagesy($src);
+
+    // যদি image already ছোট হয় → resize না
+    if ($width > $maxWidth) {
+        $newWidth  = $maxWidth;
+        $newHeight = ($height / $width) * $newWidth;
+
+        $dst = imagecreatetruecolor($newWidth, $newHeight);
+
+        // transparency support
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+    } else {
+        $dst = $src; // no resize
+    }
+
+    // 7. Convert to WebP
+    imagewebp($dst, $destination, $quality);
+
+    // 8. Clean memory
+    imagedestroy($src);
+    if ($dst !== $src) {
+        imagedestroy($dst);
+    }
+
+    return $fileName;
 }
