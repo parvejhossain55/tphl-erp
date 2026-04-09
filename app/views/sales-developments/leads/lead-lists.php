@@ -136,6 +136,18 @@ $show_breadcrumb = true;
                             <option value="cancel" <?= ($selectedAction ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
                         </select>
                     </div>
+                    <!-- Assigned Filter -->
+                    <div class="col-auto col-sm-6 col-md-auto">
+                        <select class="form-select form-select-sm filter-select" name="assigned">
+                            <option value="">Assigned: All</option>
+                            <option value="assigned" <?= ($selectedAssigned ?? '') == 'assigned'   ? 'selected' : '' ?>>
+                                Assigned
+                            </option>
+                            <option value="unassigned" <?= ($selectedAssigned ?? '') == 'unassigned' ? 'selected' : '' ?>>
+                                Not Assigned
+                            </option>
+                        </select>
+                    </div>
 
                     <!-- Action Buttons -->
                     <div class="col-auto ms-auto d-flex gap-2 flex-wrap">
@@ -326,15 +338,35 @@ $show_breadcrumb = true;
                                                 : 'No Schedule' ?>
                                         </div>
                                     </td>
-
                                     <td>
                                         <div class="d-flex align-items-center gap-2 flex-nowrap">
                                             <span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">
                                                 <?= $lead['agent_name'] ?? 'No Agent Assigned' ?>
                                             </span>
 
-                                            <span class="bd-badge bg-success text-truncate" style="max-width: 200px;">
-                                             <?= $lead['call_note'] ?? 'No note available' ?>
+                                            <?php
+                                            $note      = $lead['call_note'] ?? 'No note';
+                                            $words     = explode(' ', trim($note));
+                                            $isLong    = count($words) > 10;
+                                            $shortNote = $isLong ? implode(' ', array_slice($words, 0, 10)) . '...' : $note;
+                                            ?>
+
+                                            <span class="bd-badge bg-success"
+                                                style="white-space:normal; max-width:250px; word-break:break-word;">
+
+                                                <?php if (!empty($lead['call_note'])): ?>
+                                                    <button type="button"
+                                                        class="btn btn-sm  p-0 px-1 note-view-btn"
+                                                        style="font-size:11px; vertical-align:baseline; color:#fff;"
+                                                        data-note="<?= htmlspecialchars($lead['call_note'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#viewNoteModal">
+                                                        View Note
+                                                    </button>
+                                                <?php else: ?>
+                                                    No Note 
+                                                <?php endif; ?>
+
                                             </span>
                                         </div>
                                     </td>
@@ -444,6 +476,22 @@ $show_breadcrumb = true;
 
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <div id="viewNoteModal" class="modal custom-modal fade">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Call Note</h5>
+                            <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                                <i class="fa-solid fa-xmark-large"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <textarea id="view_note_text" class="form-control" rows="4" readonly></textarea>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -774,7 +822,14 @@ $show_breadcrumb = true;
 
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>";
-    // Disable right-click context menu
+
+    document.querySelectorAll('.note-view-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.getElementById('view_note_text').value = this.getAttribute('data-note');
+        });
+    });
+
+    // Disable right-click
     document.addEventListener('contextmenu', function(e) {
         e.preventDefault();
     });
@@ -788,27 +843,29 @@ $show_breadcrumb = true;
         }
     });
 
-    // Optional: Disable drag
+    // Disable drag
     document.addEventListener('dragstart', function(e) {
         e.preventDefault();
     });
 
-
+    // Reset button (null check added)
     const form = document.querySelector('form');
-    const resetBtn = form.querySelector('button[type="reset"]');
-
-    resetBtn.addEventListener('click', function(e) {
-        e.preventDefault(); // avoid default reset
-        // Clear all inputs
-        form.querySelectorAll('input, select').forEach(function(el) {
-            if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
-            else el.value = ''; // input clear
-        });
-    });
-
+    if (form) {
+        const resetBtn = form.querySelector('button[type="reset"]');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                form.querySelectorAll('input, select').forEach(function(el) {
+                    if (el.tagName === 'SELECT') el.selectedIndex = 0;
+                    else el.value = '';
+                });
+            });
+        }
+    }
 
     // campaign full show
 </script>
+
 <!-- Lead Selection & Assignment Logic -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {

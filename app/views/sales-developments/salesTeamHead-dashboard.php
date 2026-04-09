@@ -222,15 +222,15 @@
                             <?php foreach ($todayFollowUpData as $key => $followUp): ?>
                                 <tr>
                                     <td><?= $key + 1 ?></td>
-                                    <td><?= date('d M, Y', strtotime($followUp['follow_up_date'])) ?></td>
-                                    <td><?= htmlspecialchars($followUp['full_name']) ?></td>
-                                    <td><?= htmlspecialchars($followUp['project_name']) ?></td>
-                                    <td><?= htmlspecialchars($followUp['flat_name']) ?></td>
-                                    <td><?= htmlspecialchars($followUp['assigned_with_name']) ?></td>
-                                    <td><?= date('d M, Y H:i', strtotime($followUp['follow_up_date'] . ' ' . $followUp['follow_up_time'])) ?></td>
-                                    <td><?= date('d M, Y H:i', strtotime($followUp['next_follow_up_date'])) ?></td>
-                                    <td><?= htmlspecialchars($followUp['discussion_note']) ?></td>
-                                    <td><?= htmlspecialchars($followUp['next_action']) ?></td>
+                                    <td><?= date('d M, Y', strtotime($followUp['follow_up_date'] ?? '')) ?></td>
+                                    <td><?= htmlspecialchars($followUp['full_name'] ?? '') ?></td>
+                                    <td><?= htmlspecialchars($followUp['project_name'] ?? '') ?></td>
+                                    <td><?= htmlspecialchars($followUp['flat_name'] ?? '') ?></td>
+                                    <td><?= htmlspecialchars($followUp['assigned_with_name'] ?? '') ?></td>
+                                    <td><?= date('d M, Y H:i', strtotime($followUp['follow_up_date'] ?? '' . ' ' . $followUp['follow_up_time'] ?? '')) ?></td>
+                                    <td><?= date('d M, Y H:i', strtotime($followUp['next_follow_up_date'] ?? '')) ?></td>
+                                    <td><?= htmlspecialchars($followUp['discussion_note'] ?? '') ?></td>
+                                    <td><?= htmlspecialchars($followUp['next_action'] ?? '') ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>

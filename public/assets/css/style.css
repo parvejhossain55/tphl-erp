@@ -26,12 +26,12 @@
   border: 1px solid #dfdede;
 }
 
-.no-select {
+/* .no-select {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
-}
+} */
 .no-copy {
   -webkit-user-select: none;
   -moz-user-select: none;
