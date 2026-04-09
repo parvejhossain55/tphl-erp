@@ -59,11 +59,18 @@ public function create($data)
     // ======================
     // Image Uploads
     // ======================
-    $image = !empty($_FILES['image']['name']) ? uploadImage('image', 'projects', 'fixed') : null;
-    $image2 = !empty($_FILES['image2']['name']) ? uploadImage('image2', 'projects', 'fixed') : null;
-    $image3 = !empty($_FILES['image3']['name']) ? uploadImage('image3', 'projects', 'fixed') : null;
-    $map_image = !empty($_FILES['map_image']['name']) ? uploadImage('map_image', 'projects', 'fixed') : null;
-    $amenities_image = !empty($_FILES['amenities_image']['name']) ? uploadImage('amenities_image', 'projects', 'fixed') : null;
+    // $image = !empty($_FILES['image']['name']) ? uploadImage('image', 'projects', 'fixed') : null;
+    // $image2 = !empty($_FILES['image2']['name']) ? uploadImage('image2', 'projects', 'fixed') : null;
+    // $image3 = !empty($_FILES['image3']['name']) ? uploadImage('image3', 'projects', 'fixed') : null;
+    // $map_image = !empty($_FILES['map_image']['name']) ? uploadImage('map_image', 'projects', 'fixed') : null;
+    // $amenities_image = !empty($_FILES['amenities_image']['name']) ? uploadImage('amenities_image', 'projects', 'fixed') : null;
+    $fields = ['image', 'image2', 'image3', 'map_image', 'amenities_image'];
+
+foreach ($fields as $field) {
+    $$field = !empty($_FILES[$field]['name']) 
+        ? uploadProjectImage($field) 
+        : null;
+}
 
     // ======================
     // Data Formatting (যাতে Integer কলামে Empty String না যায়)
@@ -104,19 +111,9 @@ public function create($data)
         return false;
     }
 
-    // Types Definition (Total 35): 
-    // s (string), i (integer), d (double/float)
-    // Counting: 
-    // name(s), slug(s), loc_id(i), com_id(i), build_type(s), 
-    // share(i), floor_unit(i), meta(s), types(s), img1(s), 
-    // img2(s), img3(s), road(s), price(s), hover(s), 
-    // size(d), plot_no(s), block_no(s), brochure(s), desc(s), 
-    // count(i), amen_det(s), amen_img(s), map_img(s), map_link(s), 
-    // map_loc(s), p_lift(i), c_lift(i), created_by(i), roof(i), 
-    // pool(i), conv(i), elec(i), parking(i), status(s)
     
     $types = "ssiisiiisssssss dssssisssssiiiiiiiis"; 
-    // স্পেসগুলো শুধু গুনার সুবিধার জন্য দিয়েছি, কোড এ কাজ করবে না। নিচে সলিড স্ট্রিং দিচ্ছি।
+    // only for testing use space param 
     $bindTypes = "ssiisiiisssssssissssisssssiiiiiiiis";
 
     $stmt->bind_param(

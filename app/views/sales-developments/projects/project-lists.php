@@ -51,10 +51,10 @@ $show_breadcrumb = true;
                                 </td>
                                 <td><?= htmlspecialchars($project['location_name'] ?? '') ?></td>
                                 <td><?= htmlspecialchars($project['community_name'] ?? '') ?> </td>
-                                <td><?= htmlspecialchars($project['building_type']) ?></td>
-                                <td><?= htmlspecialchars($project['total_share']) ?></td>
-                                <td><?= htmlspecialchars($project['unit_per_floor']) ?></td>
-                                <td class="d-none"><?= htmlspecialchars($project['types']) ?></td>
+                                <td><?= htmlspecialchars($project['building_type'] ?? 'N/A') ?></td>
+                                <td><?= htmlspecialchars($project['total_share'] ?? 0) ?></td>
+                                <td><?= htmlspecialchars($project['unit_per_floor'] ?? 0) ?></td>
+                                <td class="d-none"><?= htmlspecialchars($project['types'] ?? 'N/A') ?></td>
                             
 
                                 <td>

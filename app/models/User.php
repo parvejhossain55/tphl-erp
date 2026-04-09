@@ -11,7 +11,13 @@ class User extends Model
     {
         $this->db = $db;
     }
-
+    private function baseUserQuery()
+    {
+        return "FROM users u
+        LEFT JOIN employees e ON e.user_id = u.id
+        LEFT JOIN designations d ON d.id = u.designation_id
+        LEFT JOIN roles r ON r.id = u.role_id";
+    }
     // Get all users with paginate
     public function getPaginated($limit, $offset, $search = '', $role = '')
     {
@@ -22,10 +28,7 @@ class User extends Model
                 e.make_user,
                 d.name AS designation_name,
                 r.name AS role_name
-            FROM users u
-            LEFT JOIN employees e ON e.user_id = u.id
-            LEFT JOIN designations AS d ON d.id = u.designation_id
-            LEFT JOIN roles AS r ON r.id = u.role_id
+            " . $this->baseUserQuery() . "
             WHERE 1=1";
 
         $params = [];
@@ -33,9 +36,7 @@ class User extends Model
 
         if ($search) {
             $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
+            $params = array_merge($params, ["%$search%", "%$search%", "%$search%"]);
             $types .= "sss";
         }
 
@@ -67,21 +68,15 @@ class User extends Model
                 e.make_user,
                 d.name AS designation_name,
                 r.name AS role_name
-            FROM users u
-            LEFT JOIN employees e ON e.user_id = u.id
-            LEFT JOIN designations AS d ON d.id = u.designation_id
-            LEFT JOIN roles AS r ON r.id = u.role_id
-            WHERE r.name IN ('Sales Manager', 'Sales Executive')
-            ";
+            " . $this->baseUserQuery() . "
+            WHERE u.role_id IN (5, 8)";
 
         $params = [];
         $types = "";
 
         if ($search) {
             $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
+            $params = array_merge($params, ["%$search%", "%$search%", "%$search%"]);
             $types .= "sss";
         }
 
@@ -102,7 +97,7 @@ class User extends Model
 
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
-    public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $role = '')
+    public function getPaginatedWithSalesExecutive($limit, $offset, $search = '')
     {
         $sql = "SELECT
                 u.*,
@@ -111,28 +106,16 @@ class User extends Model
                 e.make_user,
                 d.name AS designation_name,
                 r.name AS role_name
-            FROM users u
-            LEFT JOIN employees e ON e.user_id = u.id
-            LEFT JOIN designations AS d ON d.id = u.designation_id
-            LEFT JOIN roles AS r ON r.id = u.role_id
-            WHERE r.name  = 'Sales Executive'
-            ";
+            " . $this->baseUserQuery() . "
+            WHERE u.role_id = 8";
 
         $params = [];
         $types = "";
 
         if ($search) {
             $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
+            $params = array_merge($params, ["%$search%", "%$search%", "%$search%"]);
             $types .= "sss";
-        }
-
-        if ($role) {
-            $sql .= " AND u.role_id = ?";
-            $params[] = $role;
-            $types .= "i";
         }
 
         $sql .= " ORDER BY u.id DESC LIMIT ? OFFSET ?";
@@ -149,24 +132,18 @@ class User extends Model
 
     public function countAllForSales($search = '', $role = '')
     {
-        $sql = "SELECT COUNT(*) as total
-            FROM users u
-            LEFT JOIN roles r ON r.id = u.role_id
-            WHERE 1";
+        $sql = "SELECT COUNT(*) as total FROM users u WHERE 1";
 
         $params = [];
         $types = "";
 
-        // Default: count only Sales Head + Sales Executive
         if (!$role) {
-            $sql .= " AND r.name IN ('Sales Manager', 'Sales Executive')";
+            $sql .= " AND u.role_id IN (5, 8)";
         }
 
         if ($search) {
             $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
+            $params = array_merge($params, ["%$search%", "%$search%", "%$search%"]);
             $types .= "sss";
         }
 
@@ -181,37 +158,29 @@ class User extends Model
             $stmt->bind_param($types, ...$params);
         }
         $stmt->execute();
-        $result = $stmt->get_result()->fetch_assoc();
-        return $result['total'];
+
+        return $stmt->get_result()->fetch_assoc()['total'];
     }
     public function countAllForSalesExecutive($search = '')
     {
-        $sql = "SELECT COUNT(*) as total
-            FROM users u
-            LEFT JOIN roles r ON r.id = u.role_id
-            WHERE r.name = 'Sales Executive'";
+        $sql = "SELECT COUNT(*) as total FROM users u WHERE u.role_id = 8";
 
         $params = [];
         $types = "";
 
         if ($search) {
             $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
+            $params = array_merge($params, ["%$search%", "%$search%", "%$search%"]);
             $types .= "sss";
         }
 
         $stmt = $this->db->prepare($sql);
-
         if ($params) {
             $stmt->bind_param($types, ...$params);
         }
 
         $stmt->execute();
-        $result = $stmt->get_result()->fetch_assoc();
-
-        return $result['total'];
+        return $stmt->get_result()->fetch_assoc()['total'];
     }
 
     // for sales team Head
@@ -252,9 +221,10 @@ class User extends Model
             LEFT JOIN designations AS d ON d.id = u.designation_id
             LEFT JOIN teams AS t ON t.id = u.team_id
             LEFT JOIN roles AS r ON r.id = u.role_id
-           WHERE r.name IS NOT NULL AND r.name IN('Sales Executive','Sales Manager','Sales Team Head')
+           WHERE r.id IS NOT NULL AND r.id IN(5,8,9) 
+        
 
-    ");
+    "); // Sales Manager = 5, Sales Executive = 8,sales Team head = 9
         if (!$sql->execute()) {
             return []; // Error handle koro
         }
@@ -580,7 +550,7 @@ class User extends Model
 
     public function countSalesTeams()
     {
-        $sql = $this->db->prepare("SELECT COUNT(*) as total FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name IN ('Sales Manager', 'Sales Executive')");
+        $sql = $this->db->prepare("SELECT COUNT(*) as total FROM users u JOIN roles r ON u.role_id = r.id WHERE r.id IN (5, 8)");
         $sql->execute();
         $result = $sql->get_result()->fetch_assoc();
         return $result['total'];
@@ -591,16 +561,14 @@ class User extends Model
     //     $result = $sql->get_result();
     //     return $result->fetch_all(MYSQLI_ASSOC);
     // }
-    public function getSalesTeams()
-    {
-        // Only fetch users with role_id = 8 (executives)
-        $sql = $this->db->prepare("
-        SELECT u.id, u.full_name, u.role_id 
-        FROM users u
-        WHERE u.role_id IN(8, 5)
+public function getSalesTeams()
+{
+    $sql = $this->db->prepare("
+        SELECT id, full_name, role_id 
+        FROM users 
+        WHERE role_id IN (5, 8)
     ");
-        $sql->execute();
-        $result = $sql->get_result();
-        return $result->fetch_all(MYSQLI_ASSOC);
-    }
+    $sql->execute();
+    return $sql->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 }

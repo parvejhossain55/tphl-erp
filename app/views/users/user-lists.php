@@ -106,8 +106,6 @@ $show_breadcrumb = false;
 <div class="row my-4">
     <div class="col-12 d-flex justify-content-center">
         <?= paginateLinksSecondary($base_url . "/user-lists", $currentPage, $totalPages); ?>
-
-
     </div>
 </div>
 <script>

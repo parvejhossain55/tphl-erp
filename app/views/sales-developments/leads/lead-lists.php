@@ -224,7 +224,7 @@ $show_breadcrumb = true;
                                 <th>Project Campaign</th>
                                 <th>Status</th>
                                 <th>Next Follow-Up</th>
-                                <th>Sales Executive</th>
+                                <th>Sales Executive & Note</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -327,7 +327,17 @@ $show_breadcrumb = true;
                                         </div>
                                     </td>
 
-                                    <td><?= $lead['agent_name'] ?? 'No Agent Assigned' ?></td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                            <span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">
+                                                <?= $lead['agent_name'] ?? 'No Agent Assigned' ?>
+                                            </span>
+
+                                            <span class="bd-badge bg-success text-truncate" style="max-width: 200px;">
+                                             <?= $lead['call_note'] ?? 'No note available' ?>
+                                            </span>
+                                        </div>
+                                    </td>
 
                                     <td>
                                         <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 5 || $_SESSION['user']['role_id'] == 1 || $_SESSION['user']['role_id'] == 3 || $_SESSION['user']['role_id'] == 9): ?>
@@ -362,6 +372,7 @@ $show_breadcrumb = true;
                                                         <span class="action-badge">0</span>
                                                     <?php endif; ?>
                                                 </a>
+
 
                                                 <!-- 3 Dot Dropdown -->
                                                 <div class="dropdown">
@@ -419,6 +430,7 @@ $show_breadcrumb = true;
                                                         <?= $bookingCount[$lead['id']] ?? 0 ?>
                                                     </span>
                                                 </button>
+
 
                                                 <!-- No Dropdown for non-admin -->
 

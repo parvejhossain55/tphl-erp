@@ -152,14 +152,42 @@ class UserDashboardController extends Controller
         }
 
         $followUpId  = (int) ($_POST['id'] ?? 0);
+        $leadId      = (int) ($_POST['lead_id'] ?? 0);
         $status      = $_POST['status'] ?? null;
         $nextAction  = $_POST['next_action'] ?? null;
         $note        = trim($_POST['discussion_note'] ?? '');
 
-        if (!$followUpId) {
+        if (!$followUpId && !$leadId) {
             http_response_code(400);
-            echo json_encode(['error' => 'Missing ID']);
+            echo json_encode(['error' => 'Missing follow-up or lead ID']);
             exit;
+        }
+
+        // If no followUpId but we have leadId, create a new follow-up first
+        if (!$followUpId && $leadId) {
+            $createStmt = $this->db->prepare("
+                INSERT INTO lead_follow_ups 
+                (lead_id, follow_up_date, status, discussion_note, next_action, created_by)
+                VALUES (?, CURDATE(), ?, ?, ?, ?)
+            ");
+            
+            if (!$createStmt) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Failed to create follow-up: ' . $this->db->error]);
+                exit;
+            }
+            
+            $defaultStatus = $status ?? 'pending';
+            $createStmt->bind_param("isssi", $leadId, $defaultStatus, $note, $nextAction, $userId);
+            
+            if (!$createStmt->execute()) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Failed to create follow-up: ' . $createStmt->error]);
+                exit;
+            }
+            
+            $followUpId = $this->db->insert_id;
+            $createStmt->close();
         }
 
         //  Dynamic update
@@ -203,6 +231,48 @@ class UserDashboardController extends Controller
         $stmt->bind_param($types, ...$params);
 
         if ($stmt->execute()) {
+            // ==============================
+            // AUTO UPDATE LEADS TABLE STATUS
+            // ==============================
+            $leadAction = null;
+            
+            // Get follow-up type for the current follow-up
+            $getFollowUp = $this->db->prepare("SELECT follow_up_type FROM lead_follow_ups WHERE id = ?");
+            $getFollowUp->bind_param("i", $followUpId);
+            $getFollowUp->execute();
+            $followUpResult = $getFollowUp->get_result();
+            $followUpData = $followUpResult->fetch_assoc();
+            $followUpType = $followUpData['follow_up_type'] ?? null;
+            $getFollowUp->close();
+
+            // Determine lead action based on follow-up type and status
+            if ($followUpType === 'visit' && $status === 'completed') {
+                $leadAction = 'visited';
+            } elseif ($status === 'pending') {
+                $leadAction = 'follow up';
+            } elseif ($status === 'canceled' || $status === 'canceld') {
+                $leadAction = 'cancel';
+            }
+
+            // Update leads table if action determined
+            if ($leadAction !== null) {
+                $updateLead = $this->db->prepare("
+                    UPDATE leads 
+                    SET last_lead_action = ?
+                    WHERE id = ?
+                ");
+                
+                if ($updateLead) {
+                    $updateLead->bind_param(
+                        "si",
+                        $leadAction,
+                        $leadId
+                    );
+                    $updateLead->execute();
+                    $updateLead->close();
+                }
+            }
+
             echo json_encode([
                 'success' => true,
                 'message' => 'Follow-up updated successfully'

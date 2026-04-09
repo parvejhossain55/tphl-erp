@@ -599,12 +599,13 @@
           <div class="col-md-2 col-6">
             <label class="form-label small text-muted fw-semibold d-block">Duplicates</label>
             <div class="form-check form-switch">
-               <input class="form-check-input" type="checkbox" name="duplicates_only" id="duplicates_only" value="1" <?= ($duplicates_only ?? false) ? 'checked' : '' ?>>
-              <label class="form-check-label fw-bold small text-muted" for="duplicates_only">Show Duplicates Only</label>
+              <input class="form-check-input" type="checkbox" name="duplicates_only" id="duplicates_only" value="1" <?= ($duplicates_only ?? false) ? 'checked' : '' ?>>
+              <label c
+              lass="form-check-label fw-bold small text-muted" for="duplicates_only">Show Duplicates Only</label>
             </div>
           </div>
 
-          <!-- 🔥 Small Duplicate Count UI -->
+          <!--  Small Duplicate Count UI -->
           <div class="col-md-2 col-6 d-flex align-items-end">
             <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard?duplicates_only=1&date_age=all"
               class="text-decoration-none w-100">
@@ -630,15 +631,18 @@
               <i class="bi bi-filter me-1"></i> Apply
             </button>
 
-            <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-dashboard"
+            <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard"
               class="btn btn-outline-secondary btn-sm">
               <i class="bi bi-arrow-clockwise"></i>
             </a>
+
+
           </div>
 
         </div>
 
       </form>
+ 
     </div>
   </div>
 
@@ -663,9 +667,19 @@
             <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($leads) ?> Leads Shown</span>
           </div>
           <div class="table__wrapper table-responsive my-3">
+            <!-- Bulk Delete Button -->
+            <div class="mb-2">
+              <button id="bulkDeleteBtn" class="btn btn-danger btn-sm">
+                <i class="bi bi-trash"></i> Delete Selected
+              </button>
+            </div>
+
             <table class="table no-border-table mt-20 multiple_tables">
               <thead class="py-3">
                 <tr>
+                  <th class="text-center">
+                    <input type="checkbox" id="selectAll">
+                  </th>
                   <th class="ps-4">Lead Name</th>
                   <th>Contact Info</th>
                   <th>Platform & Campaign</th>
@@ -678,7 +692,7 @@
               <tbody>
                 <?php if (empty($leads)): ?>
                   <tr>
-                    <td colspan="5" class="text-center py-5">
+                    <td colspan="8" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                         No leads uploaded in the last 7 days.
@@ -688,10 +702,16 @@
                 <?php else: ?>
                   <?php foreach ($leads as $lead): ?>
                     <tr>
+                      <!-- Checkbox for each row -->
+                      <td class="text-center">
+                        <input type="checkbox" class="rowCheckbox" value="<?= $lead['id'] ?>">
+                      </td>
+
                       <td class="ps-4">
                         <div class="fw-bold text-dark"><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></div>
                         <small class="text-muted"><?= htmlspecialchars($lead['job_title'] ?? 'N/A') ?></small>
                       </td>
+
                       <td>
                         <div class="d-flex flex-column">
                           <?php
@@ -703,31 +723,33 @@
                           <small class="text-muted"><i class="bi bi-envelope me-2"></i><?= htmlspecialchars($lead['email'] ?? 'N/A') ?></small>
                         </div>
                       </td>
+
                       <td>
                         <span class="badge bg-info-soft text-info mb-1 d-inline-block"><?= htmlspecialchars($lead['platform'] ?? 'N/A') ?></span>
                         <div class="small text-muted"><?= htmlspecialchars($lead['campaign_name'] ?? 'N/A') ?></div>
                       </td>
+
                       <td>
                         <span class="text-dark"><?= htmlspecialchars($lead['team_name'] ?? 'N/A') ?></span>
                       </td>
+
                       <td>
-                        <div class="fw-bold text-primary">
-                          <?= htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') ?>
-                        </div>
+                        <div class="fw-bold text-primary"><?= htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') ?></div>
                       </td>
+
                       <td class="pe-4 text-end">
                         <div class="fw-semibold"><?= date('M d, Y', strtotime($lead['created_at'])) ?></div>
                         <small class="text-muted"><?= date('h:i A', strtotime($lead['created_at'])) ?></small>
                       </td>
-                      <td class="pe-4 text-center">
 
+                      <td class="pe-4 text-center">
+                        <!-- Single delete button -->
                         <button type="button" class="btn btn-sm btn-outline-danger removeBtnCust cursor"
                           data-name="<?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?>"
                           data-action="delete-lead-permanent"
                           data-id="<?= $lead['id'] ?>">
                           <i class="bi bi-trash me-2"></i> Delete
                         </button>
-
                       </td>
                     </tr>
                   <?php endforeach; ?>
@@ -791,5 +813,45 @@
       e.preventDefault(); // ensures no form submit
       // Bootstrap modal opens automatically via data-bs-toggle="modal"
     });
+  });
+</script>
+
+<script>
+  // Select all checkbox
+  document.getElementById('selectAll').addEventListener('click', function() {
+    let checkboxes = document.querySelectorAll('.rowCheckbox');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+  });
+
+  // Bulk delete
+  document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
+    let selected = [];
+
+    document.querySelectorAll('.rowCheckbox:checked').forEach(cb => {
+      selected.push(cb.value);
+    });
+
+    if (selected.length === 0) {
+      alert("Please select at least one lead");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to delete selected leads?")) return;
+
+    // Send via form
+    let form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '<?= $GLOBALS['base_url'] ?>/delete-leads-permanent-multiple';
+
+    selected.forEach(id => {
+      let input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'ids[]';
+      input.value = id;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
   });
 </script>

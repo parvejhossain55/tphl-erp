@@ -35,7 +35,18 @@
                     </li>
                 <?php endif; ?>
                 <!-- Sales Manager CATEGORY -->
+                <?php
+                // Ensure $db is initialized
+                // $db = db(); // call your db() function that returns mysqli connection
 
+                // user id
+                $userId = $_SESSION['user']['id'] ?? 0;
+
+                // call the global helper function
+                $todayCount = getFollowUpCount($userId, 'today');
+
+                $upcomingCount = getFollowUpCount($userId, 'upcoming');
+                ?>
                 <?php if (hasPermission("sales & business")):  ?>
 
                     <!--Sales CATEGORY -->
@@ -95,10 +106,10 @@
                                 </a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $base_url ?>/today-follow-up" class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today Follow Up </a>
+                                <a href="<?= $base_url ?>/today-follow-up" class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today Follow Up <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $base_url ?>/upcoming-follow-up" class="sidebar__menu-item <?= isActive('overdue-next-followup', $current_route) ?>"> Upcoming Follow Up</span></a>
+                                <a href="<?= $base_url ?>/upcoming-follow-up" class="sidebar__menu-item <?= isActive('overdue-next-followup', $current_route) ?>">  Upcoming Follow Up<span class="ms-2 badge bg-warning"><?= $upcomingCount ?></span></a>
                             </li>
 
                             <li class="slide">
@@ -151,7 +162,7 @@
                             <span class="sidebar__menu-label">Project Wise Inventory</span>
                         </a>
                     </li>
-            
+
                     <!-- Executive Team  -->
                     <!--target set-sales-target show here for sales executiive team  -->
                     <li class="slide ">
@@ -396,7 +407,7 @@
                         </a>
 
                     </li>
-             
+
 
                     <li class="slide child2">
                         <a href="<?= $base_url ?>/project-lists" class="sidebar__menu-item <?= isActive('project-lists', $current_route) ?>">
@@ -553,7 +564,7 @@
                         </ul>
                     </li>
 
-                  
+
                     <li class="sidebar__menu-category d-none">
                         <span class="category-name">Report</span>
                     </li>
@@ -601,7 +612,7 @@
                 <?php endif; ?>
 
                 <?php if (hasPermission("Sales team Performance")):  ?>
-                            <!-- Sales Team Performance-->
+                    <!-- Sales Team Performance-->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/sales-team-performance" class="sidebar__menu-item <?= isActive('sales-team-performance', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>

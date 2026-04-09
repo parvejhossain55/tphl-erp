@@ -323,9 +323,9 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null)
-    {
-        $sql = "SELECT leads.*, 
+public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null)
+{
+    $sql = "SELECT leads.*, 
         lf.next_action,
         lf.follow_up_type,
         p.name AS project_name,
@@ -346,39 +346,60 @@ class Lead extends Model
     LEFT JOIN flats AS f ON lf.flat_id = f.id
     WHERE leads.assigned_id = ?";
 
-        $params = [$userId];
-        $types  = "i";
+    $params = [$userId];
+    $types  = "i";
 
-        if (!empty($year)) {
-            $sql .= " AND YEAR(leads.created_at) = ?";
-            $params[] = (int)$year;
-            $types .= "i";
-        }
-
-        if (!empty($month)) {
-            $sql .= " AND MONTH(leads.created_at) = ?";
-            $params[] = (int)$month;
-            $types .= "i";
-        }
-
-        if (!empty($lastAction)) {
-            $sql .= " AND leads.last_lead_action = ?";
-            $params[] = $lastAction;
-            $types .= "s";
-        }
-
-        $sql .= " ORDER BY leads.id DESC";
-
-        $stmt = $this->db->prepare($sql);
-        if (!$stmt) return [];
-
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-
-        $result = $stmt->get_result();
-        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    if (!empty($year)) {
+        $sql .= " AND YEAR(leads.created_at) = ?";
+        $params[] = (int)$year;
+        $types .= "i";
     }
 
+    if (!empty($month)) {
+        $sql .= " AND MONTH(leads.created_at) = ?";
+        $params[] = (int)$month;
+        $types .= "i";
+    }
+
+    if (!empty($lastAction)) {
+        $sql .= " AND leads.last_lead_action = ?";
+        $params[] = $lastAction;
+        $types .= "s";
+    }
+
+    // Try sorting by created_at instead
+    $sql .= " ORDER BY leads.created_at DESC, leads.id DESC";
+    
+    // Log the final SQL for debugging
+    error_log("Final SQL: " . $sql);
+    error_log("Params: " . print_r($params, true));
+
+    $stmt = $this->db->prepare($sql);
+    if (!$stmt) {
+        error_log("SQL Prepare Error: " . $this->db->error);
+        return [];
+    }
+
+    $stmt->bind_param($types, ...$params);
+    
+    if (!$stmt->execute()) {
+        error_log("SQL Execute Error: " . $stmt->error);
+        return [];
+    }
+
+    $result = $stmt->get_result();
+    $leads = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    
+    // Debug output
+    if (!empty($leads)) {
+        echo "<!-- DEBUG: First lead ID: " . $leads[0]['id'] . " -->";
+        echo "<!-- DEBUG: Last lead ID: " . $leads[count($leads)-1]['id'] . " -->";
+    }
+    
+    $stmt->close();
+    
+    return $leads;
+}
 
     public function getSalesTeamKpiData(array $options = [])
     {
