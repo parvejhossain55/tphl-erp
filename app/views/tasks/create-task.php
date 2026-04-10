@@ -34,7 +34,7 @@
                                                   <label for="user_id" class="form-label">Assigned Employee <span>*</span></label>
                                               </div>
                                               <div class="form__input">
-                                                  <select id="user_id" name="user_id" class="form-select select2" required>
+                                                  <select id="user_id" name="user_id" class="form-select " required>
                                                       <?php foreach ($users as $user): ?>
                                                           <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?> - <?= $user['designation_name'] ?? 'N/A' ?></option>
                                                       <?php endforeach; ?>

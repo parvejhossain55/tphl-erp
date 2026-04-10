@@ -514,7 +514,7 @@
                 <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
                     <div class="flex-grow-1 overflow-hidden">
                         <span class="lead-name text-truncate"><?= $lead['full_name'] ?></span>
-                        <div class="lead-phone text-truncate small"><?= $lead['phone'] ?></div>
+                        <div class="lead-phone text-truncate small"><?= $lead['phone'] ??  $lead['phone_number']  ?></div>
                     </div>
                 </div>
 

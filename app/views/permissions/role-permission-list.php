@@ -80,7 +80,7 @@ $show_breadcrumb = true;
 
                         <div class="mb-3">
                             <label>Permissions</label>
-                            <select multiple name="permissions[]" class="selectpicker w-100" data-live-search="true">
+                            <select multiple name="permissions[]" class="select2 w-100" data-live-search="true">
                                 <?php foreach ($permissions as $perm): ?>
                                     <option value="<?= $perm['id'] ?>"
                                         <?= in_array($perm['id'], $role['permissions']) ? 'selected' : '' ?>>
