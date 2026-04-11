@@ -358,8 +358,9 @@ class UserDashboardController extends Controller
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
         $lastAction = $_GET['last_action'] ?? null;
+        $call_status = $_GET['call_status'] ?? null;
         $myAssignedClients = $this->leadModel
-            ->getAllMyLeads($userId, $year, $month);
+            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status);
 
         $this->view('sales-executive/my-assigned-leads', [
             'page_title' => 'My Assigned Leads',
@@ -368,6 +369,7 @@ class UserDashboardController extends Controller
             'bookingCount' => $bookingCount,
             'followUpCounts' => $followUpCounts,
             'selectedAction' => $lastAction,
+            'selectedCallStatus' => $call_status,
         ]);
     }
     public function myUpcomingFollowLeads()

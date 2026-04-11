@@ -135,7 +135,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 </div>
 
                 <div class="mt-4">
-                    <button type="submit" class="btn btn-success">Confirm Booking</button>
+                    <button type="submit" class="btn btn-success">Locked Booking</button>
                 </div>
 
             </form>

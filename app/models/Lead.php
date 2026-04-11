@@ -107,7 +107,7 @@ class Lead extends Model
     }
 
 
-public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null)
+    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null,   $date = null)
     {
         $sql = "SELECT 
         l.*,
@@ -159,18 +159,26 @@ public function getAllWithFilter($year = null, $month = null, $lastAction = null
             $types .= "i";
         }
 
-        //  Year filter
-        if (!empty($year)) {
-            $sql .= " AND YEAR(l.created_at) = ?";
-            $params[] = $year;
-            $types .= "i";
-        }
+        // Date filter (priority)
+        if (!empty($date)) {
+            $sql .= " AND DATE(l.created_at) = ?";
+            $params[] = $date;
+            $types .= "s";
+        } else {
 
-        // 📅 Month filter
-        if (!empty($month)) {
-            $sql .= " AND MONTH(l.created_at) = ?";
-            $params[] = $month;
-            $types .= "i";
+            // Year filter
+            if (!empty($year)) {
+                $sql .= " AND YEAR(l.created_at) = ?";
+                $params[] = $year;
+                $types .= "i";
+            }
+
+            // Month filter
+            if (!empty($month)) {
+                $sql .= " AND MONTH(l.created_at) = ?";
+                $params[] = $month;
+                $types .= "i";
+            }
         }
 
         //  Last action filter
@@ -188,9 +196,17 @@ public function getAllWithFilter($year = null, $month = null, $lastAction = null
                 $sql .= " AND l.assigned_id IS NULL";
             }
         }
+        // Assigned User filter
+      if (isset($assigned_user) && $assigned_user !== '') {
+    $sql .= " AND l.assigned_id = ?";
+    $params[] = $assigned_user;
+    $types .= "i";
+}
 
-        //  Order
-        $sql .= " ORDER BY l.id DESC";
+
+
+        //  Order by created_at DESC for latest leads first
+        $sql .= " ORDER BY l.created_at DESC, l.id DESC";
 
         $stmt = $this->db->prepare($sql);
 
@@ -332,7 +348,7 @@ public function getAllWithFilter($year = null, $month = null, $lastAction = null
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null)
+    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null)
     {
         $sql = "SELECT leads.*, 
         lf.next_action,
@@ -374,6 +390,11 @@ public function getAllWithFilter($year = null, $month = null, $lastAction = null
             $sql .= " AND leads.last_lead_action = ?";
             $params[] = $lastAction;
             $types .= "s";
+        }
+        if (!empty($call_status)) {
+                $sql .= " AND leads.call_status = ?";
+                $params[] = $call_status;
+                $types .= "s";
         }
 
         // Try sorting by created_at instead

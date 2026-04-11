@@ -12,10 +12,12 @@ class Employee extends Model
     {
         $sql = "SELECT e.*, 
                    desg.name AS designation_name, 
-                   dept.name AS department_name  
+                   dept.name AS department_name ,
+                     t.name AS team_name
             FROM employees AS e
             LEFT JOIN designations AS desg ON e.designation_id = desg.id
            LEFT JOIN departments AS dept ON e.department_id = dept.id
+           LEFT JOIN teams AS t ON e.team_id = t.id
             WHERE 1";
 
         $params = [];

@@ -184,14 +184,14 @@ class SalesDashboardController extends Controller
         }
 
 
-        $totalSalesTeams = $this->userModel->countSalesTeams();
+        $totalSalesTeams = $this->userModel->countSalesTeams($roleId, $teamId);
 
         $weeklyData = $this->salesTargetModel->getExecutiveBookingStats('weekly');
         $monthlyData = $this->salesTargetModel->getExecutiveBookingStats('monthly');
         $yearlyData = $this->salesTargetModel->getExecutiveBookingStats('yearly');
         $fullData = $this->salesTargetModel->getExecutiveBookingStats('fullData');
-
-        $allSalesTeams = $this->userModel->getSalesTeams();
+      $userTeamId = $_SESSION['user']['team_id'] ?? null;
+        $allSalesTeams = $this->userModel->getSalesTeams($userTeamId);
         $executiveId = $_GET['executive'] ?? null;
         $month       = $_GET['month'] ?? null;
         $year        = $_GET['year'] ?? null;

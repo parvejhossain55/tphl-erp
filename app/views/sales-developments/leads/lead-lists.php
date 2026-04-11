@@ -124,6 +124,20 @@ $show_breadcrumb = true;
                             <option>Oceanview Residences</option>
                         </select>
                     </div>
+                    <div class="col-auto col-sm-6 col-md-auto ">
+                        <select class="form-select form-select-sm filter-select select2" name="assigned_user">
+                            <option value="">Select Sales Executive</option>
+                            <?php foreach ($assignedUsers as $user): ?>
+                                <option value="<?= $user['id'] ?>" <?= ($selectedAssignedUser ?? '') == $user['id'] ? 'selected' : '' ?>>
+                                    <?= $user['full_name'] ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-auto col-sm-6 col-md-auto">
+                        <input type="date" name="date" class="form-control form-control-sm"
+                            value="<?= $_GET['date'] ?? '' ?>">
+                    </div>
 
                     <!-- Last Action Select -->
                     <div class="col-auto col-sm-6 col-md-auto">
@@ -364,7 +378,7 @@ $show_breadcrumb = true;
                                                         View Note
                                                     </button>
                                                 <?php else: ?>
-                                                    No Note 
+                                                    No Note
                                                 <?php endif; ?>
 
                                             </span>
@@ -502,30 +516,39 @@ $show_breadcrumb = true;
     <div class="mobile-only">
         <!-- Filter & Sort Button -->
 
-        <!-- Filter Toggle Button -->
-        <button class="filter-button w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#mobileFilterCollapse" aria-expanded="false" aria-controls="mobileFilterCollapse">
+        <!-- Mobile Filter Button -->
+        <button class="filter-button w-100 mb-2 btn btn-outline-primary"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#mobileFilterCollapse"
+            aria-expanded="false"
+            aria-controls="mobileFilterCollapse">
             <i class="bi bi-funnel"></i> Filter & Sort
         </button>
 
-        <!-- Collapsible Filter Section -->
+        <!-- Mobile Filter -->
         <div class="collapse" id="mobileFilterCollapse">
-            <form action="" method="get" class="p-2 border rounded ">
+
+            <form action="" method="get" class="p-3 border rounded bg-white shadow-sm">
+
                 <div class="d-flex flex-column gap-2">
 
-                    <!-- Year Select -->
+                    <!-- Year -->
                     <?php
                     $currentYear = date('Y');
-                    $startYear   = $currentYear - 10;
-                    $selectedYear = $slectedYear ?? '';
+                    $startYear = $currentYear - 10;
+                    $selectedYear = $_GET['year'] ?? '';
                     ?>
-                    <select class="form-control form-select-sm" name="year">
-                        <option value="">Year Select</option>
-                        <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
-                            <option value="<?= $year ?>" <?= $selectedYear == $year ? 'selected' : '' ?>><?= $year ?></option>
+                    <select class="form-select form-select-sm" name="year">
+                        <option value="">Select Year</option>
+                        <?php for ($y = $currentYear; $y >= $startYear; $y--): ?>
+                            <option value="<?= $y ?>" <?= $selectedYear == $y ? 'selected' : '' ?>>
+                                <?= $y ?>
+                            </option>
                         <?php endfor; ?>
                     </select>
 
-                    <!-- Month Select -->
+                    <!-- Month -->
                     <?php
                     $months = [
                         1 => 'January',
@@ -543,31 +566,69 @@ $show_breadcrumb = true;
                     ];
                     $selectedMonth = $_GET['month'] ?? '';
                     ?>
-                    <select class="form-control form-select-sm" name="month">
-                        <option value="">Month Select</option>
+                    <select class="form-select form-select-sm" name="month">
+                        <option value="">Select Month</option>
                         <?php foreach ($months as $id => $name): ?>
-                            <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>><?= $name ?></option>
+                            <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
+                                <?= $name ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
 
-                    <!-- Status Select -->
-                    <select class="form-select form-select-sm" name="last_action">
-                        <option value="">Status: All</option>
-                        <option value="new" <?= ($selectedAction ?? '') == 'new' ? 'selected' : '' ?>>New</option>
-                        <option value="booked" <?= ($selectedAction ?? '') == 'booked' ? 'selected' : '' ?>>Booked</option>
-                        <option value="follow up" <?= ($selectedAction ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
-                        <option value="visited" <?= ($selectedAction ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
-                        <option value="cancel" <?= ($selectedAction ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                    <!-- Date -->
+                    <input type="date"
+                        name="date"
+                        class="form-control form-control-sm"
+                        value="<?= $_GET['date'] ?? '' ?>">
+
+                    <!-- Assigned User -->
+                    <select class="form-select form-select-sm select2" name="assigned_user">
+                        <option value="">Select Sales Executive</option>
+                        <?php foreach ($assignedUsers as $user): ?>
+                            <option value="<?= $user['id'] ?>"
+                                <?= ($_GET['assigned_user'] ?? '') == $user['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($user['full_name']) ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
 
-                    <!-- Action Buttons -->
-                    <div class="d-flex flex-wrap gap-2 mt-2">
-                        <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1">Search</button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm flex-grow-1">Reset</a>
-                        <button type="button" class="btn btn-outline-secondary btn-sm flex-grow-1" data-bs-toggle="modal" data-bs-target="#importCsvModal">Import CSV</button>
+                    <!-- Status -->
+                    <select class="form-select form-select-sm" name="last_action">
+                        <option value="">Status: All</option>
+                        <option value="new" <?= ($_GET['last_action'] ?? '') == 'new' ? 'selected' : '' ?>>New</option>
+                        <option value="booked" <?= ($_GET['last_action'] ?? '') == 'booked' ? 'selected' : '' ?>>Booked</option>
+                        <option value="follow up" <?= ($_GET['last_action'] ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
+                        <option value="visited" <?= ($_GET['last_action'] ?? '') == 'visited' ? 'selected' : '' ?>>Visited</option>
+                        <option value="cancel" <?= ($_GET['last_action'] ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                    </select>
 
+                    <!-- Assigned / Unassigned -->
+                    <select class="form-select form-select-sm" name="assigned">
+                        <option value="">Assigned: All</option>
+                        <option value="assigned" <?= ($_GET['assigned'] ?? '') == 'assigned' ? 'selected' : '' ?>>
+                            Assigned
+                        </option>
+                        <option value="unassigned" <?= ($_GET['assigned'] ?? '') == 'unassigned' ? 'selected' : '' ?>>
+                            Not Assigned
+                        </option>
+                    </select>
 
-                        <a href="<?= $GLOBALS['base_url'] ?>/create-lead" class="btn btn-primary btn-sm flex-grow-1"><i class="bi bi-plus-lg"></i> Add Lead</a>
+                    <!-- Buttons -->
+                    <div class="d-flex flex-column gap-2 mt-2">
+
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            Search
+                        </button>
+
+                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists"
+                            class="btn btn-outline-secondary btn-sm w-100">
+                            Reset
+                        </a>
+
+                        <a href="<?= $GLOBALS['base_url'] ?>/create-lead"
+                            class="btn btn-success btn-sm w-100">
+                            <i class="bi bi-plus-lg"></i> Add Lead
+                        </a>
 
                     </div>
 
@@ -576,14 +637,14 @@ $show_breadcrumb = true;
         </div>
 
         <!-- Mobile Assign Card (sticky bottom) -->
-        <div class="mobile-only" id="assignCardMobile"
+        <div class="mobile-only mb-2" id="assignCardMobile"
             style="display:none; position:sticky; bottom:0; z-index:1000; background:#fff; padding:10px; border-top:1px solid #ccc;">
             <div class="text-center small mb-1 fw-bold text-primary">Selected: <span id="selectedCountMobile">0</span> leads</div>
             <div class="d-flex flex-column gap-2">
 
                 <!-- User Select -->
                 <select id="assignUserSelectMobile"
-                    class="form-select form-select-sm">
+                    class="form-select form-select-sm select2">
                     <option value="">Select User</option>
                     <?php foreach ($assignedUsers as $user): ?>
                         <option value="<?= $user['id'] ?>">
@@ -613,7 +674,7 @@ $show_breadcrumb = true;
             </div>
         </div>
 
-        <div class="row g-3">
+        <div class="">
             <?php foreach ($leads as $key => $lead): ?>
                 <?php
                 $displayName = !empty($lead['campaign_name'])

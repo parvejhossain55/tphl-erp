@@ -232,12 +232,24 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
+
+                    <!-- Call Status Select -->
+                    <div class="col-auto col-sm-6 col-md-auto">
+                        <select class="form-select form-select-sm" name="call_status">
+                            <option value="">Call Status: All</option>
+                            <option value="not_called" <?= ($selectedCallStatus ?? '') == 'not_called' ? 'selected' : '' ?>>Not Called</option>
+                            <option value="called" <?= ($selectedCallStatus ?? '') == 'called' ? 'selected' : '' ?>>Called</option>
+                            <option value="received" <?= ($selectedCallStatus ?? '') == 'received' ? 'selected' : '' ?>>Received</option>
+                            <option value="not_received" <?= ($selectedCallStatus ?? '') == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+                        </select>
+                    </div>
+
                     <!-- Search & Reset Buttons Next to Select -->
                     <div class="col-auto d-flex align-items-center gap-2 flex-wrap">
                         <button type="submit" class="btn btn-outline-secondary btn-sm py-1">
                             Search
                         </button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm">
+                        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="btn btn-primary btn-sm">
                             Reset
                         </a>
                     </div>
@@ -253,6 +265,10 @@
                     <table class="table no-border-table mb-20 multiple_tables">
                         <thead>
                             <tr class="table__title table__sort">
+                                <th style="min-width:60px;">
+                                    <input type="checkbox" id="selectAllLeads" title="Select All">
+                                    S/L
+                                </th>
                                 <th style="min-width: 120px;">Lead Date</th>
                                 <th style="min-width: 160px;">Lead Name</th>
                                 <th style="min-width: 180px;">Project Campaign</th>
@@ -268,6 +284,10 @@
                         <tbody>
                             <?php foreach ($myAllleads as $key => $lead): ?>
                                 <tr data-id="<?= $lead['id'] ?>">
+                                    <td>
+                                        <input type="checkbox" class="me-2 selectedId" data-id="<?= $lead['id'] ?>">
+                                        <?= $key + 1 ?>
+                                    </td>
                                     <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
                                     <td><strong><?= $lead['full_name'] ?? '' ?></strong>
                                         <p><?= $lead['phone_number'] ?? $lead['phone']  ?></p>
@@ -358,14 +378,27 @@
                                         </form>
                                     </td>
                                     <!-- Communicate Type -->
+                                    <?php
+                                    $status = $lead['call_status'] ?? 'not_called';
+
+                                    $statusClass = '';
+                                    if ($status == 'received') {
+                                        $statusClass = 'bg-received';
+                                    } elseif ($status == 'not_received') {
+                                        $statusClass = 'bg-not-received';
+                                    }
+                                    ?>
+
                                     <td class="call-status-cell">
                                         <select
-                                            class="call-status"
+                                            class="call-status <?= $statusClass ?>"
                                             data-id="<?= $lead['id'] ?>">
-                                            <option value="not_called" <?= ($lead['call_status'] ?? 'not_called') == 'not_called' ? 'selected' : '' ?>>Not Called</option>
-                                            <option value="called" <?= ($lead['call_status'] ?? '') == 'called' ? 'selected' : '' ?>>Called</option>
-                                            <option value="received" <?= ($lead['call_status'] ?? '') == 'received' ? 'selected' : '' ?>>Received</option>
-                                            <option value="not_received" <?= ($lead['call_status'] ?? '') == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+
+                                            <option value="not_called" <?= $status == 'not_called' ? 'selected' : '' ?>>Not Called</option>
+                                            <option value="called" <?= $status == 'called' ? 'selected' : '' ?>>Called</option>
+                                            <option value="received" <?= $status == 'received' ? 'selected' : '' ?>>Received</option>
+                                            <option value="not_received" <?= $status == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+
                                         </select>
                                     </td>
 
@@ -501,7 +534,7 @@
                     <!-- Action Buttons -->
                     <div class="d-flex flex-wrap gap-2 mt-2">
                         <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1">Search</button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm flex-grow-1">Reset</a>
+                        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="btn btn-primary btn-sm flex-grow-1">Reset</a>
 
                     </div>
 

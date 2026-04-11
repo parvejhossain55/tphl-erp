@@ -766,6 +766,18 @@ h6{
   transition: all 0.2s ease;
 }
 
+.call-status.bg-received {
+  background-color: #28a745 !important; /* green */
+  color: #fff !important;
+  border: 1px solid #28a745 !important;
+}
+
+.call-status.bg-not-received {
+  background-color: #dc3545 !important; /* red */
+  color: #fff !important;
+  border: 1px solid #dc3545 !important;
+}
+
 /* Hover */
 .call-status:hover {
   border-color: #0d6efd;

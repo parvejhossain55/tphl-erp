@@ -28,11 +28,29 @@ class LeadController extends Controller
     public function index()
     {
 
-        $assignedUsers = $this->userModel->getAllRoleUser();
+        // $assignedUsers = $this->userModel->getAllRoleUser();
+        $userRoleId = $_SESSION['user']['role_id'] ?? null;
+        $userTeamId = $_SESSION['user']['team_id'] ?? null;
+
+        if (in_array($userRoleId, [5, 9])) {
+
+            if (!empty($userTeamId)) {
+                // team wise users
+                $assignedUsers = $this->userModel->getUsersByTeamAndRole($userTeamId);
+            } else {
+                // no team → global sales users
+                $assignedUsers = $this->userModel->getAllRoleUser();
+            }
+        } else {
+            // admin / others
+            $assignedUsers = $this->userModel->getAllRoleUser();
+        }
+        $date = $_GET['date'] ?? null;
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
         $lastAction = $_GET['last_action'] ?? null;
         $assigned   = $_GET['assigned']    ?? null; // new filter for assigned leads
+        $assigned_user = $_GET['assigned_user'] ?? null; // new filter for assigned user
         $owners = $this->userModel->getAll();
 
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
@@ -40,13 +58,13 @@ class LeadController extends Controller
         $totalTodayFollowUps = array_sum($todayFollowUp);
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
-        $userRoleId = $_SESSION['user']['role_id'] ?? null;
-        $userTeamId = $_SESSION['user']['team_id'] ?? null;
+
+
 
         // echo "Role: " . $_SESSION['user']['role_id'];
         // echo "<br>Team: " . $_SESSION['user']['team_id'];
         // die();
-    $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date);
         $leadCounts = count($leads);
 
         if (session_status() === PHP_SESSION_NONE) {
@@ -95,6 +113,7 @@ class LeadController extends Controller
             "totalHotLeads" => $totalHotLeads,
             "selectedAction" => $lastAction,
             "selectedAssigned" => $assigned,
+            "selectedAssignedUser" => $assigned_user,
 
 
         ]);
