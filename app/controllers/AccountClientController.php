@@ -1200,7 +1200,24 @@ public function viewClientStatement($bookingId = null)
         }
 
         $label = ($action === 'verify') ? 'verified' : 'rejected';
-        echo json_encode(['success' => true, 'message' => "Payment {$label} successfully", 'status' => $newStatus]);
+
+        // Fetch verifier's name so the front-end can show it without a page reload
+        $verifierName = '';
+        $nameStmt = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
+        if ($nameStmt) {
+            $nameStmt->bind_param("i", $userId);
+            $nameStmt->execute();
+            $nameResult = $nameStmt->get_result();
+            $nameRow = $nameResult ? $nameResult->fetch_assoc() : null;
+            $verifierName = $nameRow['full_name'] ?? '';
+        }
+
+        echo json_encode([
+            'success'          => true,
+            'message'          => "Payment {$label} successfully",
+            'status'           => $newStatus,
+            'verified_by_name' => $verifierName
+        ]);
         exit;
     }
 

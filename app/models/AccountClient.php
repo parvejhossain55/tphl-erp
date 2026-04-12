@@ -898,6 +898,7 @@ ORDER BY lb.booking_date DESC
                 f.flat_name as unit_name,
                 CONCAT(f.flat_name, ' - FLOOR ', f.floor_no) as flat_no,
                 u.full_name as created_by_name,
+                uv.full_name as verified_by_name,
                 es.emi_no,
                 es.emi_amount,
                 es.due_emi_amount,
@@ -937,6 +938,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN projects p ON p.id = lb.project_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN users u ON u.id = lp.created_by
+            LEFT JOIN users uv ON uv.id = lp.verified_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             WHERE lp.booking_id = ?
             ORDER BY lp.payment_date DESC, lp.id DESC

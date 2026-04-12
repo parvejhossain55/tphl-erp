@@ -349,6 +349,7 @@ $show_breadcrumb = true;
                                 <th>Trx ID</th>
                                 <th>Status</th>
                                 <th>Verification</th>
+                                <th>Verified By</th>
                                 <th>Added By</th>
                                 <th>Actions</th>
                             </tr>
@@ -363,7 +364,20 @@ $show_breadcrumb = true;
                                         </span>
                                     </td>
                                     <td><?php echo $transaction['payment_details']; ?></td>
-                                    <td>TK.<?php echo number_format($transaction['amount'], 2); ?></td>
+                                    <td>
+                                        <?php
+                                            $isEmi       = ($transaction['payment_type'] === 'emi');
+                                            $grossAmount = (float)($transaction['amount'] ?? 0);
+                                            $serviceFee  = (float)($transaction['service_fee'] ?? 0);
+                                            $netAmount   = $isEmi ? ($grossAmount - $serviceFee) : $grossAmount;
+                                        ?>
+                                        TK.<?= number_format($netAmount, 2) ?>
+                                        <?php if ($isEmi && $serviceFee > 0): ?>
+                                            <br><span class="text-muted" style="font-size:11px;">
+                                                Gross: TK.<?= number_format($grossAmount, 2) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
                                     <!-- ADD THIS -->
                                      <td>
                                          <?php if (!empty($transaction['due_emi_amount']) && $transaction['due_emi_amount'] > 0): ?>
@@ -425,6 +439,14 @@ $show_breadcrumb = true;
                                                     <i class="fa-light fa-times"></i> Reject
                                                 </button>
                                             </div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <!-- VERIFIED BY -->
+                                    <td id="verified-by-<?= $transaction['id'] ?>">
+                                        <?php if (!empty($transaction['verified_by_name'])): ?>
+                                            <?= htmlspecialchars($transaction['verified_by_name']) ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">-</span>
                                         <?php endif; ?>
                                     </td>
                                     <td>
@@ -576,12 +598,27 @@ $show_breadcrumb = true;
                 .then(r => r.json())
                 .then(res => {
                     if (res.success) {
-                        // Update badge live
+                        // Update verification badge live
                         if (cell) {
                             if (res.status === 'verified') {
                                 cell.innerHTML = '<span class="badge bg-success ver-badge"><i class="fa-light fa-check-circle me-1"></i>Verified</span>';
                             } else {
                                 cell.innerHTML = '<span class="badge bg-danger ver-badge"><i class="fa-light fa-times-circle me-1"></i>Rejected</span>';
+                            }
+                        }
+                        // Update "Verified By" cell with the verifier name
+                        const vbCell = document.getElementById('verified-by-' + paymentId);
+                        if (vbCell && res.verified_by_name) {
+                            vbCell.textContent = res.verified_by_name;
+                        }
+                        // Update status badge to Paid when verified
+                        if (res.status === 'verified') {
+                            const row = cell ? cell.closest('tr') : null;
+                            if (row) {
+                                const statusCell = row.querySelector('td:nth-child(10)');
+                                if (statusCell) {
+                                    statusCell.innerHTML = '<span class="badge bg-success">Paid</span>';
+                                }
                             }
                         }
                         // Update invoice button state for this row

@@ -327,6 +327,8 @@ $show_breadcrumb = true;
                                 <th>Method</th>
                                 <th>Trx ID</th>
                                 <th>Status</th>
+                                <th>Verification</th>
+                                <th>Verified By</th>
                                 <th>Added By</th>
                             </tr>
                         </thead>
@@ -373,6 +375,33 @@ $show_breadcrumb = true;
                                         <span class="badge <?php echo $transaction['status_class']; ?>">
                                             <?php echo $transaction['status_text']; ?>
                                         </span>
+                                    </td>
+                                    <!-- VERIFICATION STATUS -->
+                                    <td>
+                                        <?php
+                                            $vs = $transaction['verification_status'] ?? 'pending';
+                                            if ($vs === 'verified'):
+                                        ?>
+                                            <span class="badge bg-success">
+                                                <i class="fa-light fa-check-circle me-1"></i>Verified
+                                            </span>
+                                        <?php elseif ($vs === 'rejected'): ?>
+                                            <span class="badge bg-danger">
+                                                <i class="fa-light fa-times-circle me-1"></i>Rejected
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fa-light fa-clock me-1"></i>Pending
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <!-- VERIFIED BY -->
+                                    <td>
+                                        <?php if (!empty($transaction['verified_by_name'])): ?>
+                                            <?= htmlspecialchars($transaction['verified_by_name']) ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">-</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?>
