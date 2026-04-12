@@ -308,7 +308,6 @@ class CashoutRequestController extends Controller
         header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
         exit;
     }
-
     // Add payment — roles 1, 3 (full admin) and 6, 10 (accounts, payment only)
     public function addPayment()
     {
@@ -331,22 +330,62 @@ class CashoutRequestController extends Controller
             exit;
         }
 
+        // --- Mandatory disbursement proof upload ---
+        $proofPaths = [];
+        if (!empty($_FILES['disbursement_proof']['name'][0])) {
+            foreach ($_FILES['disbursement_proof']['tmp_name'] as $idx => $tmpName) {
+                if ($_FILES['disbursement_proof']['error'][$idx] !== UPLOAD_ERR_OK) continue;
+                $file = [
+                    'name'     => $_FILES['disbursement_proof']['name'][$idx],
+                    'tmp_name' => $tmpName,
+                    'size'     => $_FILES['disbursement_proof']['size'][$idx],
+                    'error'    => $_FILES['disbursement_proof']['error'][$idx],
+                ];
+                $res = $this->handleFileUpload($file);
+                if ($res['success']) {
+                    $proofPaths[] = $res['file_path'];
+                } else {
+                    setError($res['message']);
+                    header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id={$requestId}");
+                    exit;
+                }
+            }
+        }
+
+        if (empty($proofPaths)) {
+            setError("Disbursement proof document is required. Please upload at least one file.");
+            header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id={$requestId}");
+            exit;
+        }
+
+        // Resolve bank name from Bank Registry if bank_id is provided
+        $bankId   = !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null;
+        $bankName = $_POST['bank_name'] ?? null;
+        if ($bankId) {
+            $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', branch_name) as label FROM banks WHERE id = {$bankId} LIMIT 1");
+            if ($bRow && $bData = $bRow->fetch_assoc()) {
+                $bankName = $bData['label'];
+            }
+        }
+
         $data = [
             'cashout_request_id' => $requestId,
             'amount'             => $_POST['amount'] ?? 0,
             'payment_method'     => $_POST['payment_method'] ?? 'cash',
             'transaction_ref'    => trim($_POST['transaction_ref'] ?? ''),
             'payment_date'       => $_POST['payment_date'] ?? date('Y-m-d'),
-            'bank_name'          => $_POST['bank_name'] ?? null,
+            'bank_id'            => $bankId,
+            'bank_name'          => $bankName,
             'bank_account_no'    => $_POST['bank_account_no'] ?? null,
             'cheque_no'          => $_POST['cheque_no'] ?? null,
             'online_type'        => $_POST['online_type'] ?? null,
+            'disbursement_proof' => json_encode($proofPaths),
             'created_by'         => $this->userId
         ];
 
         if ($data['amount'] <= 0) {
             setError("Please enter a valid amount.");
-            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+            header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
             exit;
         }
 
@@ -370,7 +409,7 @@ class CashoutRequestController extends Controller
             setError($result['message']);
         }
 
-        header("Location: {$GLOBALS['base_url']}/cashout-requests?id=" . $requestId);
+        header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
         exit;
     }
 
