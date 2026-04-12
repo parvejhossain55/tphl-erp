@@ -9,19 +9,38 @@ $finalAmount = !empty($booking['approved_amount'])
     ? $booking['agreement_value'] - $booking['approved_amount']
     : $booking['agreement_value'];
 
-$paid = 0;
-$pending_and_paid = 0;
+$booking_paid = 0;
+$booking_pending_and_paid = 0;
+$has_registration = false;
+
 foreach ($payments as $p) {
-    if ($p['verification_status'] == 'verified') {
-        $paid += $p['amount'];
-    }
-    if (in_array($p['verification_status'], ['verified', 'pending'])) {
-        $pending_and_paid += $p['amount'];
+    if ($p['payment_type'] === 'booking_money') {
+        if ($p['verification_status'] == 'verified') {
+            $booking_paid += $p['amount'];
+        }
+        if (in_array($p['verification_status'], ['verified', 'pending'])) {
+            $booking_pending_and_paid += $p['amount'];
+        }
+    } elseif ($p['payment_type'] === 'registration') {
+        if (in_array($p['verification_status'], ['verified', 'pending'])) {
+            $has_registration = true;
+        }
     }
 }
 
-$remaining = $finalAmount - $pending_and_paid;
-$showBookingForm = ($remaining > 0);
+$remaining = $finalAmount - $booking_pending_and_paid;
+$is_booking_fully_paid = ($remaining <= 0);
+
+$showBookingForm = false;
+$form_mode = 'booking_money';
+
+if (!$is_booking_fully_paid) {
+    $showBookingForm = true;
+    $form_mode = 'booking_money';
+} elseif (!$has_registration) {
+    $showBookingForm = true;
+    $form_mode = 'registration';
+}
 ?>
 
 <!-- booking_money type select kore rakhte hobe   -->
@@ -30,7 +49,7 @@ $showBookingForm = ($remaining > 0);
     <div class="row mb-4" id="bookingPayment">
         <div class="col-xxl-12">
             <div class="card__wrapper p-3">
-                <h5>Add Payment for <?= $booking['full_name'] ?? 'Lead' ?></h5>
+                <h5><?= $form_mode === 'registration' ? 'Add Registration Payment for' : 'Add Booking Payment for' ?> <?= $booking['full_name'] ?? 'Lead' ?></h5>
 
                 <form action="<?= $GLOBALS['base_url'] ?>/payment-booking-store" method="POST" enctype="multipart/form-data">
                     <div class="row gy-3">
@@ -77,47 +96,50 @@ $showBookingForm = ($remaining > 0);
                             </div>
                             <input type="text" class="form-control" value="<?= $booking['sqft'] ?>" readonly>
                         </div>
-                        <div class="col-lg-6">
-                            <div class="form__input-title">
-
-                                <label class="form__input-title">Project Share Value</label>
-                            </div>
-                            <input type="text" class="form-control" value="<?= number_format($booking['price_value'], 2) ?>" readonly>
-                        </div>
-                        <div class="col-lg-6">
-                            <div class="form__input-title">
-
-                                <label class="form__input-title">Agreement Value</label>
-                            </div>
-                            <input type="text" class="form-control" value="<?= number_format($booking['agreement_value'], 2) ?>" readonly>
-                        </div>
-                        <?php if ($booking['approved_amount'] > 0): ?>
+                        <?php if ($form_mode !== 'registration'): ?>
                             <div class="col-lg-6">
                                 <div class="form__input-title">
-
-                                    <label class="form__input-title">Discount Value</label>
+                                    <label class="form__input-title">Project Share Value</label>
                                 </div>
-                                <input type="text" class="form-control" value="<?= number_format($booking['approved_amount'] ?? 0, 2) ?>" readonly>
+                                <input type="text" class="form-control" value="<?= number_format($booking['price_value'], 2) ?>" readonly>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="form__input-title">
+                                    <label class="form__input-title">Agreement Value</label>
+                                </div>
+                                <input type="text" class="form-control" value="<?= number_format($booking['agreement_value'], 2) ?>" readonly>
+                            </div>
+                            <?php if ($booking['approved_amount'] > 0): ?>
+                                <div class="col-lg-6">
+                                    <div class="form__input-title">
+                                        <label class="form__input-title">Discount Value</label>
+                                    </div>
+                                    <input type="text" class="form-control" value="<?= number_format($booking['approved_amount'] ?? 0, 2) ?>" readonly>
+                                </div>
+                            <?php endif; ?>
+                            <div class="col-lg-6">
+                                <div class="form__input-title">
+                                    <label class="form__input-title">Total EMI Number</label>
+                                </div>
+                                <input type="number" name="total_emi_no" class="form-control" value="">
                             </div>
                         <?php endif; ?>
-                        <div class="col-lg-6">
-                            <div class="form__input-title">
-
-                                <label class="form__input-title">Total EMI Number</label>
-                            </div>
-                            <input type="number" name="total_emi_no" class="form-control" value="">
-                        </div>
 
                         <!-- Payment Type -->
                         <div class="col-lg-6">
                             <div class="form__input-title">
-
                                 <label class="form__input-title">Payment Type *</label>
                             </div>
-                            <select name="payment_type" class="form-select" required>
-
-                                <option value="booking_money">Booking</option>
-                            </select>
+                            <?php if ($form_mode === 'registration'): ?>
+                                <select name="payment_type_view" class="form-select" disabled>
+                                    <option value="registration" selected>Registration</option>
+                                </select>
+                                <input type="hidden" name="payment_type" value="registration">
+                            <?php else: ?>
+                                <select name="payment_type" class="form-select" required>
+                                    <option value="booking_money" selected>Booking</option>
+                                </select>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Payment Method -->
@@ -167,13 +189,16 @@ $showBookingForm = ($remaining > 0);
                             <input type="text" name="online_type" class="form-control" placeholder="Enter Online Type (Bkash, Nagad, etc)">
                         </div>
                         <?php
-                        $placeholderText = "";
-                        if ($pending_and_paid == 0) {
-                            $placeholderText = ($booking['approved_amount'] > 0)
-                                ? "After Discount: " . number_format($finalAmount, 2)
-                                : "Final Amount: " . number_format($finalAmount, 2);
+                        if ($form_mode === 'registration') {
+                            $placeholderText = "Enter Registration Amount";
                         } else {
-                            $placeholderText = "Remaining: " . number_format($remaining, 2);
+                            if ($booking_pending_and_paid == 0) {
+                                $placeholderText = ($booking['approved_amount'] > 0)
+                                    ? "After Discount: " . number_format($finalAmount, 2)
+                                    : "Final Amount: " . number_format($finalAmount, 2);
+                            } else {
+                                $placeholderText = "Remaining: " . number_format($remaining, 2);
+                            }
                         }
                         ?>
 
@@ -185,7 +210,7 @@ $showBookingForm = ($remaining > 0);
                             <input type="number" step="0.01" name="amount"
                                 class="form-control"
                                 placeholder="<?= $placeholderText ?>"
-                                max="<?= $remaining ?>"
+                                <?= $form_mode === 'booking_money' ? 'max="' . $remaining . '"' : '' ?>
                                 required>
                         </div>
 

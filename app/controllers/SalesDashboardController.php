@@ -309,33 +309,41 @@ class SalesDashboardController extends Controller
         ]);
     }
 
-    public function salesTeam()
-    {
-        $searchTerm = $_GET['q'] ?? '';
-        $roleFilter = $_GET['role'] ?? '';
+public function salesTeam()
+{
+    $searchTerm = $_GET['q'] ?? '';
 
-        $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
-        $perPage = 10;
-        $offset = ($currentPage - 1) * $perPage;
+    $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
+    $perPage = 10;
+    $offset = ($currentPage - 1) * $perPage;
 
-        // Total user count with filters
-        $totalUsers = $this->userModel->countAllForSalesExecutive($searchTerm);
-        $totalPages = ceil($totalUsers / $perPage);
+    $roleId = $_SESSION['user']['role_id'] ?? null;
+    $teamId = $_SESSION['user']['team_id'] ?? null;
 
-        // Get paginated users with search & role filter
-        $salesUsers = $this->userModel->getPaginatedWithSalesExecutive($perPage, $offset, $searchTerm, $roleFilter);
+    // count
+    $totalUsers = $this->userModel->countAllForSalesExecutive($searchTerm, $roleId, $teamId);
+    $totalPages = ceil($totalUsers / $perPage);
 
-        // Roles for filter dropdown
-        $roles = $this->roleModel->getAll();
-        $this->view('sales-developments/sales-executive-teams', [
-            "current_route" => "sales-executive-teams",
-            "page_title" => "Sales Executive Team",
-            'salesUsers' => $salesUsers,
-            'roles' => $roles,
-            'currentPage' => $currentPage,
-            'totalPages' => $totalPages,
-        ]);
-    }
+    // data
+    $salesUsers = $this->userModel->getPaginatedWithSalesExecutive(
+        $perPage,
+        $offset,
+        $searchTerm,
+        $roleId,
+        $teamId
+    );
+
+    $roles = $this->roleModel->getAll();
+
+    $this->view('sales-developments/sales-executive-teams', [
+        "current_route" => "sales-executive-teams",
+        "page_title" => "Sales Executive Team",
+        'salesUsers' => $salesUsers,
+        'roles' => $roles,
+        'currentPage' => $currentPage,
+        'totalPages' => $totalPages,
+    ]);
+}
 
     public function salesTarget($id)
     {

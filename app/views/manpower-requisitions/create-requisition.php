@@ -97,7 +97,7 @@
                             <span>Project Based</span>
                         </label>
                         <label class="recruit-option">
-                            <input type="checkbox" name="req_replacement" value="1" />
+                            <input type="checkbox" name="req_replacement" id="req_replacement" value="1" onchange="toggleReplacementField()" />
                             <span>Replacement</span>
                         </label>
                         <label class="recruit-option">
@@ -119,10 +119,15 @@
                     </div>
                 </div>
 
-                <div class="field-row">
+                <div class="field-row replacement-for-row" style="display:none;">
                     <div class="field-cell" style="flex:1">
                         <label class="field-label">Replacement For</label>
-                        <input type="text" name="replacement_for" class="form-control-plain" placeholder="Name of person being replaced" />
+                        <select name="replacement_for_id" class="form-control-plain">
+                            <option value="">Select Employee</option>
+                            <?php foreach ($employees as $emp): ?>
+                                <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['full_name']) ?> (<?= htmlspecialchars($emp['designation_name'] ?? 'N/A') ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
 
@@ -202,11 +207,15 @@
                 document.querySelector('form').reset();
             }
         }
-    </script>
-</div>
-
-                    else el.value = '';
-                });
+        function toggleReplacementField() {
+            const checkbox = document.getElementById('req_replacement');
+            const row = document.querySelector('.replacement-for-row');
+            if (checkbox && checkbox.checked) {
+                row.style.display = 'flex';
+            } else {
+                row.style.display = 'none';
+                row.querySelector('select').value = '';
             }
         }
     </script>
+</div>
