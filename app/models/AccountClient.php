@@ -225,13 +225,7 @@ class AccountClient extends Model
         LEFT JOIN projects p ON lb.project_id = p.id
         LEFT JOIN flats f ON lb.flat_id = f.id
  WHERE lb.lead_id = ?
-AND (
-    SELECT COUNT(*) 
-    FROM lead_payments lp 
-    WHERE lp.booking_id = lb.id 
-    AND lp.payment_type = 'booking_money'
-    AND lp.payment_status = 'paid'
-) > 0
+AND lb.booking_status != 'cancelled'
 ORDER BY lb.booking_date DESC
     ");
 
@@ -1409,7 +1403,6 @@ ORDER BY lb.booking_date DESC
             FROM lead_payments 
             WHERE booking_id = ? 
             AND payment_type = 'booking_money'
-            AND payment_status = 'paid'
         ");
 
         $stmt->bind_param("i", $bookingId);
