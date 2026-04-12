@@ -195,10 +195,11 @@ class PaymentBookingController extends Controller
             exit;
         }
 
-        // verify payment
+        // verify payment AND set payment_status to 'paid'
         $stmt = $this->db->prepare("
         UPDATE lead_payments 
         SET verification_status='verified',
+            payment_status='paid',
             verified_by = ?,
             verified_at = NOW()
         WHERE id = ?
