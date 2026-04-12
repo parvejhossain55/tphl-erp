@@ -267,6 +267,152 @@ public function indexTwoView($bookingId = null)
         "paymentSummary" => $paymentSummary
     ]);
 }
+
+/**
+ * CED: Show add-transaction form (Development Charges & EMI only)
+ */
+public function showCedTransactionForm($bookingId = null)
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if (!$bookingId) {
+        $bookingId = $_GET['booking_id'] ?? null;
+    }
+
+    if (!$bookingId) {
+        setError("No booking ID provided");
+        header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
+        exit;
+    }
+
+    $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+
+    if (!$clientDetails) {
+        setError("Client not found");
+        header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
+        exit;
+    }
+
+    $this->view("ced/ced-cash-in-form", [
+        "current_route" => "ced-add-transaction-form",
+        "page_title"    => "CED Add Transaction - " . $clientDetails['client_name'],
+        "clientDetails" => $clientDetails,
+        "bookingId"     => $bookingId
+    ]);
+}
+
+/**
+ * CED: Process add-transaction POST (restricted to development_charge & emi)
+ */
+public function addCedTransaction()
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
+        exit;
+    }
+
+    $bookingId = $_POST['booking_id'] ?? null;
+
+    if (!$bookingId) {
+        setError("Invalid booking ID");
+        header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
+        exit;
+    }
+
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    $paymentType = $_POST['payment_type'] ?? '';
+
+    // CED can only add development_charge or emi
+    if (!in_array($paymentType, ['development_charge', 'emi'])) {
+        setError("CED can only add Development Charges or EMI transactions.");
+        header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+        exit;
+    }
+
+    // Registration must be paid
+    if (!$this->clientModel->isRegistrationPaid($bookingId)) {
+        setError("Registration payment must be made before adding transactions.");
+        header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+        exit;
+    }
+
+    // EMI requires land share completed
+    if ($paymentType === 'emi') {
+        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+        if (empty($paymentSummary['is_land_share_completed'])) {
+            setError("Land share must be fully paid before adding EMI transactions.");
+            header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+            exit;
+        }
+    }
+
+    // Handle multi-file proof uploads
+    $uploadedPaths = [];
+    if (!empty($_FILES['proof_files']['name'][0])) {
+        $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/transactions/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+        $allowedTypes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
+        $maxSize = 5 * 1024 * 1024;
+        foreach ($_FILES['proof_files']['tmp_name'] as $idx => $tmpName) {
+            if (!is_uploaded_file($tmpName)) continue;
+            if (!in_array(mime_content_type($tmpName), $allowedTypes)) continue;
+            if ($_FILES['proof_files']['size'][$idx] > $maxSize) continue;
+            $ext = pathinfo(basename($_FILES['proof_files']['name'][$idx]), PATHINFO_EXTENSION);
+            $name = 'proof_' . uniqid() . '.' . $ext;
+            if (move_uploaded_file($tmpName, $uploadDir . $name)) {
+                $uploadedPaths[] = 'uploads/transactions/' . $name;
+            }
+        }
+    }
+
+    // Prepare transaction data
+    $transactionData = [
+        'booking_id'      => $bookingId,
+        'payment_type'    => $paymentType,
+        'amount'          => $_POST['amount'] ?? 0,
+        'payment_method'  => $_POST['payment_method'] ?? 'cash',
+        'payment_status'  => $_POST['payment_status'] ?? 'paid',
+        'payment_date'    => $_POST['payment_date'] ?? date('Y-m-d'),
+        'transaction_ref' => $_POST['transaction_ref'] ?? null,
+        'bank_id'         => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
+        'bank_account_no' => $_POST['bank_account_no'] ?? null,
+        'cheque_no'       => $_POST['cheque_no'] ?? null,
+        'online_type'     => $_POST['online_type'] ?? null,
+        'attachment_paths' => $uploadedPaths ?: null,
+        'created_by'      => $_SESSION['user']['id'] ?? 1
+    ];
+
+    // EMI schedule data
+    $emiScheduleData = null;
+    if ($paymentType === 'emi') {
+        $emiScheduleData = [
+            'due_emi_amount' => $_POST['due_emi_amount'] ?? 0
+        ];
+
+        if ($transactionData['payment_status'] === 'partially_paid') {
+            if ($emiScheduleData['due_emi_amount'] <= 0) {
+                setError("Partially Paid status requires a due amount greater than 0");
+                header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+                exit;
+            }
+        }
+    }
+
+    // Add transaction (same model method as Accounts)
+    $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
+
+    if ($result['success']) {
+        setSuccess($result['message'] . " — Pending verification by Accounts.");
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
+        exit;
+    } else {
+        setError($result['message']);
+        header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+        exit;
+    }
+}
+
 /**
  * View booking money invoice/receipt
  */

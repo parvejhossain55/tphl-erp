@@ -639,6 +639,11 @@ $routes = [
     // ==================== CED PAYMENT TRACKING ====================
     'ced-payment-tracking'       => ['controller' => 'AccountClientController', 'method' => 'cedPaymentTracking'],
 
+    // ==================== CED ADD TRANSACTION ====================
+    'ced-add-transaction-form'       => ['controller' => 'AccountClientController', 'method' => 'showCedTransactionForm'],
+    'ced-add-transaction-form/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'showCedTransactionForm'],
+    'ced-add-transaction'            => ['controller' => 'AccountClientController', 'method' => 'addCedTransaction'],
+
 ];
 
 $route = trim(strtok($_SERVER["REQUEST_URI"], '?'), '/');

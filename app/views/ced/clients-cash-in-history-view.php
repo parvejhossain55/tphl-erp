@@ -2,6 +2,10 @@
 $page_title = "Clients Cash in History";
 $page = 'Clients';
 $show_breadcrumb = true;
+
+// Check if registration is paid (enables Add Transaction for dev charges & EMI)
+$accountModel = new AccountClient();
+$isRegistrationPaid = $accountModel->isRegistrationPaid($clientDetails['booking_id'] ?? 0);
 ?>
 
 <div class="row">
@@ -308,11 +312,17 @@ $show_breadcrumb = true;
                 <h5 class="card__title mb-2">Transaction History</h5>
             </div>
             <div class="col-xxl-12 mb-4">
-                <!-- <div class="mt-3 d-flex gap-2 position ">
-                    <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
-                        <i class="fa-light fa-file-invoice me-2"></i> Get Statement
-                    </a>
-                </div> -->
+                <div class="mt-3 d-flex gap-2 justify-content-end">
+                    <?php if ($isRegistrationPaid): ?>
+                        <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
+                            <i class="fa-light fa-plus me-2"></i> Add Transaction
+                        </a>
+                    <?php else: ?>
+                        <button class="btn btn-secondary mb-3" disabled title="Registration must be paid before adding transactions">
+                            <i class="fa-light fa-lock me-2"></i> Add Transaction (Requires Registration)
+                        </button>
+                    <?php endif; ?>
+                </div>
                 <div class="table__wrapper table-responsive">
                     <table class="table table-hover">
                         <thead>
