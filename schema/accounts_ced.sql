@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS `banks` (
     `id`             INT(10) UNSIGNED     NOT NULL AUTO_INCREMENT,
     `bank_name`      VARCHAR(255)         NOT NULL,
     `branch_name`    VARCHAR(255)         NOT NULL,
+    `account_number` VARCHAR(255)         NOT NULL,
     `routing_number` VARCHAR(150)         DEFAULT NULL,
     `status`         ENUM('active','inactive') NOT NULL DEFAULT 'active',
     `created_by`     INT(11)              DEFAULT NULL,
