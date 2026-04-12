@@ -54,7 +54,7 @@ class Lead extends Model
         $stmt = $this->db->prepare($sqlQuery);
 
         if (!empty($params)) {
-             $stmt->bind_param($types, ...$params);
+            $stmt->bind_param($types, ...$params);
         }
 
         $stmt->execute();
@@ -107,7 +107,7 @@ class Lead extends Model
     }
 
 
-    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null)
+    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null,   $date = null)
     {
         $sql = "SELECT 
         l.*,
@@ -159,18 +159,26 @@ class Lead extends Model
             $types .= "i";
         }
 
-        //  Year filter
-        if (!empty($year)) {
-            $sql .= " AND YEAR(l.created_at) = ?";
-            $params[] = $year;
-            $types .= "i";
-        }
+        // Date filter (priority)
+        if (!empty($date)) {
+            $sql .= " AND DATE(l.created_at) = ?";
+            $params[] = $date;
+            $types .= "s";
+        } else {
 
-        // 📅 Month filter
-        if (!empty($month)) {
-            $sql .= " AND MONTH(l.created_at) = ?";
-            $params[] = $month;
-            $types .= "i";
+            // Year filter
+            if (!empty($year)) {
+                $sql .= " AND YEAR(l.created_at) = ?";
+                $params[] = $year;
+                $types .= "i";
+            }
+
+            // Month filter
+            if (!empty($month)) {
+                $sql .= " AND MONTH(l.created_at) = ?";
+                $params[] = $month;
+                $types .= "i";
+            }
         }
 
         //  Last action filter
@@ -180,8 +188,25 @@ class Lead extends Model
             $types .= "s";
         }
 
-        //  Order
-        $sql .= " ORDER BY l.id DESC";
+        // Assigned filter
+        if (isset($assigned) && $assigned !== '') {
+            if ($assigned === 'assigned') {
+                $sql .= " AND l.assigned_id IS NOT NULL";
+            } elseif ($assigned === 'unassigned') {
+                $sql .= " AND l.assigned_id IS NULL";
+            }
+        }
+        // Assigned User filter
+      if (isset($assigned_user) && $assigned_user !== '') {
+    $sql .= " AND l.assigned_id = ?";
+    $params[] = $assigned_user;
+    $types .= "i";
+}
+
+
+
+        //  Order by created_at DESC for latest leads first
+        $sql .= " ORDER BY l.created_at DESC, l.id DESC";
 
         $stmt = $this->db->prepare($sql);
 
@@ -323,9 +348,9 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null)
-{
-    $sql = "SELECT leads.*, 
+    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null)
+    {
+        $sql = "SELECT leads.*, 
         lf.next_action,
         lf.follow_up_type,
         p.name AS project_name,
@@ -346,60 +371,65 @@ public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAct
     LEFT JOIN flats AS f ON lf.flat_id = f.id
     WHERE leads.assigned_id = ?";
 
-    $params = [$userId];
-    $types  = "i";
+        $params = [$userId];
+        $types  = "i";
 
-    if (!empty($year)) {
-        $sql .= " AND YEAR(leads.created_at) = ?";
-        $params[] = (int)$year;
-        $types .= "i";
+        if (!empty($year)) {
+            $sql .= " AND YEAR(leads.created_at) = ?";
+            $params[] = (int)$year;
+            $types .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(leads.created_at) = ?";
+            $params[] = (int)$month;
+            $types .= "i";
+        }
+
+        if (!empty($lastAction)) {
+            $sql .= " AND leads.last_lead_action = ?";
+            $params[] = $lastAction;
+            $types .= "s";
+        }
+        if (!empty($call_status)) {
+                $sql .= " AND leads.call_status = ?";
+                $params[] = $call_status;
+                $types .= "s";
+        }
+
+        // Try sorting by created_at instead
+        $sql .= " ORDER BY leads.created_at DESC, leads.id DESC";
+
+        // Log the final SQL for debugging
+        error_log("Final SQL: " . $sql);
+        error_log("Params: " . print_r($params, true));
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Prepare Error: " . $this->db->error);
+            return [];
+        }
+
+        $stmt->bind_param($types, ...$params);
+
+        if (!$stmt->execute()) {
+            error_log("SQL Execute Error: " . $stmt->error);
+            return [];
+        }
+
+        $result = $stmt->get_result();
+        $leads = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Debug output
+        if (!empty($leads)) {
+            echo "<!-- DEBUG: First lead ID: " . $leads[0]['id'] . " -->";
+            echo "<!-- DEBUG: Last lead ID: " . $leads[count($leads) - 1]['id'] . " -->";
+        }
+
+        $stmt->close();
+
+        return $leads;
     }
-
-    if (!empty($month)) {
-        $sql .= " AND MONTH(leads.created_at) = ?";
-        $params[] = (int)$month;
-        $types .= "i";
-    }
-
-    if (!empty($lastAction)) {
-        $sql .= " AND leads.last_lead_action = ?";
-        $params[] = $lastAction;
-        $types .= "s";
-    }
-
-    // Try sorting by created_at instead
-    $sql .= " ORDER BY leads.created_at DESC, leads.id DESC";
-    
-    // Log the final SQL for debugging
-    error_log("Final SQL: " . $sql);
-    error_log("Params: " . print_r($params, true));
-
-    $stmt = $this->db->prepare($sql);
-    if (!$stmt) {
-        error_log("SQL Prepare Error: " . $this->db->error);
-        return [];
-    }
-
-    $stmt->bind_param($types, ...$params);
-    
-    if (!$stmt->execute()) {
-        error_log("SQL Execute Error: " . $stmt->error);
-        return [];
-    }
-
-    $result = $stmt->get_result();
-    $leads = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-    
-    // Debug output
-    if (!empty($leads)) {
-        echo "<!-- DEBUG: First lead ID: " . $leads[0]['id'] . " -->";
-        echo "<!-- DEBUG: Last lead ID: " . $leads[count($leads)-1]['id'] . " -->";
-    }
-    
-    $stmt->close();
-    
-    return $leads;
-}
 
     public function getSalesTeamKpiData(array $options = [])
     {
@@ -988,21 +1018,21 @@ public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAct
 
         return $stats;
     }
-public function getLeadsByCreatedByLast7Days(int $userId)
-{
-    return $this->getMarketingLeadsFlexible($userId, null, '7days', 'DESC');
-}
+    public function getLeadsByCreatedByLast7Days(int $userId)
+    {
+        return $this->getMarketingLeadsFlexible($userId, null, '7days', 'DESC');
+    }
 
-/**
- * Flexible marketing lead fetcher
- * @param int|null $userId
- * @param int|null $teamId
- * @param string $dateFilter 'today', 'old', '7days', 'all'
- * @param string $sortOrder 'ASC', 'DESC'
- */
-public function getMarketingLeadsFlexible($userId = null, $teamId = null, $dateFilter = 'all', $sortOrder = 'DESC')
-{
-    $sql = "
+    /**
+     * Flexible marketing lead fetcher
+     * @param int|null $userId
+     * @param int|null $teamId
+     * @param string $dateFilter 'today', 'old', '7days', 'all'
+     * @param string $sortOrder 'ASC', 'DESC'
+     */
+    public function getMarketingLeadsFlexible($userId = null, $teamId = null, $dateFilter = 'all', $sortOrder = 'DESC')
+    {
+        $sql = "
         SELECT 
             l.*,
             ls.name AS source_name,
@@ -1020,49 +1050,49 @@ public function getMarketingLeadsFlexible($userId = null, $teamId = null, $dateF
         WHERE l.deleted_at IS NULL
     ";
 
-    $params = [];
-    $types = "";
+        $params = [];
+        $types = "";
 
-    if ($userId) {
-        $sql .= " AND l.created_by = ?";
-        $params[] = $userId;
-        $types .= "i";
+        if ($userId) {
+            $sql .= " AND l.created_by = ?";
+            $params[] = $userId;
+            $types .= "i";
+        }
+
+        if ($teamId) {
+            $sql .= " AND l.team_id = ?";
+            $params[] = $teamId;
+            $types .= "i";
+        }
+
+        // Date filtering
+        if ($dateFilter === 'today') {
+            $sql .= " AND DATE(l.created_at) = CURDATE()";
+        } elseif ($dateFilter === 'old') {
+            $sql .= " AND DATE(l.created_at) < CURDATE()";
+        } elseif ($dateFilter === '7days') {
+            $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        }
+
+        // Sorting
+        $order = ($sortOrder === 'ASC') ? 'ASC' : 'DESC';
+        $sql .= " ORDER BY l.created_at $order";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) die($this->db->error);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-    if ($teamId) {
-        $sql .= " AND l.team_id = ?";
-        $params[] = $teamId;
-        $types .= "i";
-    }
-
-    // Date filtering
-    if ($dateFilter === 'today') {
-        $sql .= " AND DATE(l.created_at) = CURDATE()";
-    } elseif ($dateFilter === 'old') {
-        $sql .= " AND DATE(l.created_at) < CURDATE()";
-    } elseif ($dateFilter === '7days') {
-        $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-    }
-
-    // Sorting
-    $order = ($sortOrder === 'ASC') ? 'ASC' : 'DESC';
-    $sql .= " ORDER BY l.created_at $order";
-
-    $stmt = $this->db->prepare($sql);
-    if (!$stmt) die($this->db->error);
-
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-
-    $stmt->execute();
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
-
-public function getLeadsByTeamId($teamId)
-{
-    $stmt = $this->db->prepare("
+    public function getLeadsByTeamId($teamId)
+    {
+        $stmt = $this->db->prepare("
         SELECT 
             l.*,
             ls.name AS source_name,
@@ -1082,16 +1112,16 @@ public function getLeadsByTeamId($teamId)
         ORDER BY l.created_at DESC
     ");
 
-    $stmt->bind_param("i", $teamId);
-    $stmt->execute();
+        $stmt->bind_param("i", $teamId);
+        $stmt->execute();
 
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
 
-public function getAllMarketingLeads(int $days = 30)
-{
-    $stmt = $this->db->prepare("
+    public function getAllMarketingLeads(int $days = 30)
+    {
+        $stmt = $this->db->prepare("
         SELECT 
             l.*,
             ls.name AS source_name,
@@ -1111,11 +1141,10 @@ public function getAllMarketingLeads(int $days = 30)
         ORDER BY l.created_at DESC
     ");
 
-    $stmt->bind_param("i", $days);
-    $stmt->execute();
+        $stmt->bind_param("i", $days);
+        $stmt->execute();
 
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-}
-
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
 }

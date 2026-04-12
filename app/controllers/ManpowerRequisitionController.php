@@ -45,13 +45,21 @@ class ManpowerRequisitionController extends Controller
         $projects = $this->projectModel->getAll();
         $users = $this->userModel->getAll();
         $designations = $this->designationModel->getAll();
+        
+        $employees = $this->db->query("
+            SELECT e.id, e.full_name, d.name AS designation_name
+            FROM employees e
+            LEFT JOIN designations d ON e.designation_id = d.id
+            ORDER BY e.full_name ASC
+        ")->fetch_all(MYSQLI_ASSOC);
 
         return $this->view('manpower-requisitions/create-requisition', [
             'current_route' => 'create-requisition',
             'page_title' => 'Create Manpower Requisition',
             'projects' => $projects,
             'users' => $users,
-            'designations' => $designations
+            'designations' => $designations,
+            'employees' => $employees
         ]);
     }
 
@@ -87,6 +95,7 @@ class ManpowerRequisitionController extends Controller
             'report_to'               => $_POST['report_to'] ?? 0,
             'requirement_type'        => $reqTypeString,
             'project_id'              => $_POST['project_id'] ?? null,
+            'replacement_for_id'      => $_POST['replacement_for_id'] ?? null,
             'reason'                  => $_POST['reason'] ?? '',
             'job_description'         => $jdString,
             'education_qualification' => $_POST['education_qualification'] ?? '',
@@ -131,12 +140,14 @@ class ManpowerRequisitionController extends Controller
                    d.name AS department_name, 
                    des.name AS designation_name,
                    p.name AS project_name,
-                   u.full_name AS requested_by_name
+                   u.full_name AS requested_by_name,
+                   e.full_name AS replacement_for_name
             FROM manpower_requisitions mr
             LEFT JOIN departments d ON mr.department_id = d.id
             LEFT JOIN designations des ON mr.designation_id = des.id
             LEFT JOIN projects p ON mr.project_id = p.id
             LEFT JOIN users u ON mr.created_by = u.id
+            LEFT JOIN employees e ON mr.replacement_for_id = e.id
             WHERE mr.id = " . (int)$id
         )->fetch_assoc();
 

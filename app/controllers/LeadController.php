@@ -28,11 +28,29 @@ class LeadController extends Controller
     public function index()
     {
 
-        $assignedUsers = $this->userModel->getAllRoleUser();
+        // $assignedUsers = $this->userModel->getAllRoleUser();
+        $userRoleId = $_SESSION['user']['role_id'] ?? null;
+        $userTeamId = $_SESSION['user']['team_id'] ?? null;
+
+        if (in_array($userRoleId, [5, 9])) {
+
+            if (!empty($userTeamId)) {
+                // team wise users
+                $assignedUsers = $this->userModel->getUsersByTeamAndRole($userTeamId);
+            } else {
+                // no team → global sales users
+                $assignedUsers = $this->userModel->getAllRoleUser();
+            }
+        } else {
+            // admin / others
+            $assignedUsers = $this->userModel->getAllRoleUser();
+        }
+        $date = $_GET['date'] ?? null;
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
         $lastAction = $_GET['last_action'] ?? null;
-
+        $assigned   = $_GET['assigned']    ?? null; // new filter for assigned leads
+        $assigned_user = $_GET['assigned_user'] ?? null; // new filter for assigned user
         $owners = $this->userModel->getAll();
 
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
@@ -40,13 +58,13 @@ class LeadController extends Controller
         $totalTodayFollowUps = array_sum($todayFollowUp);
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
-        $userRoleId = $_SESSION['user']['role_id'] ?? null;
-        $userTeamId = $_SESSION['user']['team_id'] ?? null;
+
+
 
         // echo "Role: " . $_SESSION['user']['role_id'];
         // echo "<br>Team: " . $_SESSION['user']['team_id'];
         // die();
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date);
         $leadCounts = count($leads);
 
         if (session_status() === PHP_SESSION_NONE) {
@@ -94,6 +112,9 @@ class LeadController extends Controller
             "conversionRate" => $conversionRate,
             "totalHotLeads" => $totalHotLeads,
             "selectedAction" => $lastAction,
+            "selectedAssigned" => $assigned,
+            "selectedAssignedUser" => $assigned_user,
+
 
         ]);
     }
@@ -429,86 +450,86 @@ class LeadController extends Controller
     }
 
 
-public function importCsv()
-{
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-
-    if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
-        setError("CSV upload failed");
-        return;
-    }
-
-    // FORM থেকে team_id
-    $team_id = $_POST['team_id'] ?? null;
-
-    if (!$team_id) {
-        setError("Please select a team");
-        return;
-    }
-
-    $fileTmp = $_FILES['csv_file']['tmp_name'];
-    $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
-
-    if ($ext !== 'csv') {
-        setError("Only CSV files allowed");
-        return;
-    }
-
-    if (($handle = fopen($fileTmp, "r")) !== false) {
-
-        //  HEADER read + encoding fix
-        $header = fgetcsv($handle);
-        $header = array_map(function ($value) {
-            return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
-        }, $header);
-
-        while (($row = fgetcsv($handle, 1000, ",")) !== false) {
-
-            //  ROW encoding fix
-            $row = array_map(function ($value) {
-                return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
-            }, $row);
-
-            // skip empty row
-            if (count(array_filter($row)) === 0) {
-                continue;
-            }
-
-            // header mismatch safe check
-            if (count($header) !== count($row)) {
-                continue;
-            }
-
-            $data = array_combine($header, $row);
-
-            // default / required fields
-            $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
-            $data['status'] = 'active';
-            $data['visibility'] = $data['visibility'] ?? 'public';
-            $data['team_id'] = (int)$team_id;
-            $data['created_by'] = $_SESSION['user']['id'] ?? null;
-
-            try {
-                $this->leadModel->create($data);
-            } catch (Exception $e) {
-                // optional: log error instead of breaking পুরো import
-                error_log("CSV Import Error: " . $e->getMessage());
-                continue;
-            }
+    public function importCsv()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
         }
 
-        fclose($handle);
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
+            setError("CSV upload failed");
+            return;
+        }
 
-        setSuccess("CSV imported successfully");
-        header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
-        exit;
-    } else {
-        setError("Unable to read CSV file");
-        return;
+        // FORM থেকে team_id
+        $team_id = $_POST['team_id'] ?? null;
+
+        if (!$team_id) {
+            setError("Please select a team");
+            return;
+        }
+
+        $fileTmp = $_FILES['csv_file']['tmp_name'];
+        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+
+        if ($ext !== 'csv') {
+            setError("Only CSV files allowed");
+            return;
+        }
+
+        if (($handle = fopen($fileTmp, "r")) !== false) {
+
+            //  HEADER read + encoding fix
+            $header = fgetcsv($handle);
+            $header = array_map(function ($value) {
+                return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+            }, $header);
+
+            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+
+                //  ROW encoding fix
+                $row = array_map(function ($value) {
+                    return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+                }, $row);
+
+                // skip empty row
+                if (count(array_filter($row)) === 0) {
+                    continue;
+                }
+
+                // header mismatch safe check
+                if (count($header) !== count($row)) {
+                    continue;
+                }
+
+                $data = array_combine($header, $row);
+
+                // default / required fields
+                $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
+                $data['status'] = 'active';
+                $data['visibility'] = $data['visibility'] ?? 'public';
+                $data['team_id'] = (int)$team_id;
+                $data['created_by'] = $_SESSION['user']['id'] ?? null;
+
+                try {
+                    $this->leadModel->create($data);
+                } catch (Exception $e) {
+                    // optional: log error instead of breaking পুরো import
+                    error_log("CSV Import Error: " . $e->getMessage());
+                    continue;
+                }
+            }
+
+            fclose($handle);
+
+            setSuccess("CSV imported successfully");
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
+        } else {
+            setError("Unable to read CSV file");
+            return;
+        }
     }
-}
 
 
     // Get single lead by ID

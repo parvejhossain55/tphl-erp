@@ -37,20 +37,18 @@ class PaymentBookingController extends Controller
         $payments = $this->paymentModel->getByBooking($booking_id);
 
         // Check if booking payment already done
-        $existingBookingPayment = $this->paymentModel->getByBookingType($booking_id, 'booking_money');
+        // $existingBookingPayment = $this->paymentModel->getByBookingType($booking_id, 'booking_money');
 
-        // Form show/hide
-        $showBookingForm = empty($existingBookingPayment); // true = show, false = hide
+        // // Form show/hide
+        // $showBookingForm = empty($existingBookingPayment); // true = show, false = hide
 
         $this->view("sales-developments/payments/payment-bookings", [
             "booking" => $booking,
             "payments" => $payments,
-            "showBookingForm" => $showBookingForm,
             "current_route" => "payments-booking",
             "page_title" => "Booking Payment",
         ]);
     }
-
 
     public function store()
     {
@@ -58,7 +56,7 @@ class PaymentBookingController extends Controller
 
         $data = [
             'booking_id' => $_POST['booking_id'] ?? 0,
-            'payment_type' => $_POST['payment_type'] ?? 'booking_money',
+            'payment_type' => $_POST['payment_type'] ?? 'booking_money', //  ADD THIS
             'amount' => floatval($_POST['amount'] ?? 0),
             'payment_method' => $_POST['payment_method'] ?? 'cash',
             'payment_status' => $_POST['payment_status'] ?? 'paid',
@@ -70,28 +68,159 @@ class PaymentBookingController extends Controller
             'cheque_no' => $_POST['cheque_no'] ?? null,
             'online_type' => $_POST['online_type'] ?? null,
             'created_by' => $_SESSION['user']['id'] ?? 1,
+            'verification_status' => 'pending', // always pending
         ];
 
-        // Validate required fields
+        // Handle attachment upload
+        if (isset($_FILES['attachment_image']) && $_FILES['attachment_image']['error'] === UPLOAD_ERR_OK) {
+            $uploadedFileName = uploadImage('attachment_image', 'payments');
+            if ($uploadedFileName) {
+                $data['attachment_image'] = $uploadedFileName;
+            }
+        }
+
+        //  VALIDATION
         if (!$data['booking_id'] || !$data['amount'] || !$data['payment_type']) {
             setError("Required data missing!");
             header("Location: {$GLOBALS['base_url']}/payments-booking/" . ($data['booking_id'] ?? 0));
             exit;
         }
 
+        //  IMPORTANT: ekhane kono flat booking logic thakbe na
+
         $created = $this->paymentModel->create($data);
 
         if ($created !== false) {
-            setSuccess("Payment created successfully!");
+            setSuccess("Payment created successfully! Waiting for verification.");
         } else {
             setError("Failed to create payment!");
         }
 
-        // Redirect must be before any output
         header("Location: {$GLOBALS['base_url']}/payments-booking/" . $data['booking_id']);
         exit;
     }
 
+    private function updateBookingPaymentStatus($bookingId)
+    {
+        // booking info
+        $booking = $this->db->query("
+        SELECT agreement_value, approved_amount 
+        FROM lead_bookings 
+        WHERE id = $bookingId
+    ")->fetch_assoc();
+
+        $finalAmount = !empty($booking['approved_amount'])
+            ? $booking['approved_amount']
+            : $booking['agreement_value'];
+
+        // sum verified only for booking money
+        $sum = $this->db->query("
+        SELECT SUM(amount) as total 
+        FROM lead_payments 
+        WHERE booking_id = $bookingId 
+        AND verification_status='verified'
+        AND payment_type='booking_money'
+    ")->fetch_assoc();
+
+        $paid = $sum['total'] ?? 0;
+
+        if ($paid <= 0) {
+            $status = 'unpaid';
+        } elseif ($paid < $finalAmount) {
+            $status = 'partial';
+        } else {
+            $status = 'paid';
+        }
+
+        $this->db->query("
+        UPDATE lead_bookings 
+        SET payment_status = '$status'
+        WHERE id = $bookingId
+    ");
+    }
+    private function handleFlatBooking($bookingId)
+    {
+        $stmt = $this->db->prepare("
+        UPDATE flats f
+        LEFT JOIN lead_bookings b ON b.flat_id = f.id
+        SET f.is_booked = 1,
+            f.status = 'booked',
+            b.booking_status = 'completed'
+        WHERE b.id = ?
+    ");
+
+        $stmt->bind_param("i", $bookingId);
+        $stmt->execute();
+
+        // follow up update
+        $stmt2 = $this->db->prepare("
+        UPDATE lead_follow_ups lf
+        INNER JOIN lead_bookings b ON lf.lead_id = b.lead_id
+        SET lf.status = 'completed'
+        WHERE b.id = ? AND lf.status = 'pending'
+    ");
+        $stmt2->bind_param("i", $bookingId);
+        $stmt2->execute();
+
+        // lead update
+        $stmt3 = $this->db->prepare("
+        UPDATE leads l
+        INNER JOIN lead_bookings b ON l.id = b.lead_id
+        SET l.last_lead_action = 'booked'
+        WHERE b.id = ?
+    ");
+        $stmt3->bind_param("i", $bookingId);
+        $stmt3->execute();
+    }
+
+    public function verify($id)
+    {
+        session_start();
+
+        if ($_SESSION['user']['role'] != 'accounts') {
+            setError("Unauthorized!");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        // get payment
+        $stmt = $this->db->prepare("SELECT * FROM lead_payments WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $payment = $stmt->get_result()->fetch_assoc();
+
+        if (!$payment || $payment['verification_status'] == 'verified') {
+            setError("Invalid or already verified!");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        // verify payment AND set payment_status to 'paid'
+        $stmt = $this->db->prepare("
+        UPDATE lead_payments 
+        SET verification_status='verified',
+            payment_status='paid',
+            verified_by = ?,
+            verified_at = NOW()
+        WHERE id = ?
+    ");
+        $stmt->bind_param("ii", $_SESSION['user']['id'], $id);
+        $stmt->execute();
+
+        $bookingId = $payment['booking_id'];
+
+        //  update payment status
+        $this->updateBookingPaymentStatus($bookingId);
+
+        //  flat booking ONLY if booking_money
+        if ($payment['payment_type'] === 'booking_money') {
+            $this->handleFlatBooking($bookingId);
+        }
+
+        setSuccess("Payment verified!");
+        header("Location: " . $_SERVER['HTTP_REFERER']);
+        exit;
+    }
 
 
     public function invoice($payment_id)

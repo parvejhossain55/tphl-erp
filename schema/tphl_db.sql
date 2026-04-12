@@ -2164,3 +2164,17 @@ CREATE TABLE platform_budgets (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+
+
+
+
+---- alter table lead_bookings add column
+ALTER TABLE lead_bookings 
+ADD payment_status ENUM('unpaid','partial','paid') DEFAULT 'unpaid',
+
+-- alter table lead_payments add column
+ALTER TABLE lead_payments 
+ADD verification_status ENUM('pending','verified','rejected') DEFAULT 'pending',
+ADD verified_by INT NULL,
+ADD verified_at TIMESTAMP NULL;

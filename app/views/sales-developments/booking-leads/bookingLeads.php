@@ -135,7 +135,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 </div>
 
                 <div class="mt-4">
-                    <button type="submit" class="btn btn-success">Confirm Booking</button>
+                    <button type="submit" class="btn btn-success">Locked Booking</button>
                 </div>
 
             </form>
@@ -228,10 +228,17 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                 $or['approval_status'] === 'not_required'||
                                                 $or['approval_status'] === 'partial'
                                             ): ?>
-                                                <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>"
-                                                    class="btn btn-sm btn-success">
-                                                    Payments
-                                                </a>
+                                                <?php if (isset($or['payment_status']) && $or['payment_status'] === 'paid'): ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>"
+                                                        class="btn btn-sm btn-info">
+                                                        Registration Payment
+                                                    </a>
+                                                <?php else: ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>"
+                                                        class="btn btn-sm btn-success">
+                                                        Booking Payment
+                                                    </a>
+                                                <?php endif; ?>
 
                                             <?php elseif ($or['approval_status'] === 'pending'): ?>
                                                 <button class="btn btn-sm btn-secondary" disabled

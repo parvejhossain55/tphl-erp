@@ -16,6 +16,7 @@ class User extends Model
         return "FROM users u
         LEFT JOIN employees e ON e.user_id = u.id
         LEFT JOIN designations d ON d.id = u.designation_id
+        LEFT JOIN teams t ON t.id = u.team_id
         LEFT JOIN roles r ON r.id = u.role_id";
     }
     // Get all users with paginate
@@ -27,7 +28,8 @@ class User extends Model
                 e.photo AS employee_photo,
                 e.make_user,
                 d.name AS designation_name,
-                r.name AS role_name
+                r.name AS role_name,
+                t.name AS team_name
             " . $this->baseUserQuery() . "
             WHERE 1=1";
 
@@ -97,9 +99,9 @@ class User extends Model
 
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
-    public function getPaginatedWithSalesExecutive($limit, $offset, $search = '')
-    {
-        $sql = "SELECT
+public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $roleId = null, $teamId = null)
+{
+    $sql = "SELECT
                 u.*,
                 e.id AS employee_id,
                 e.photo AS employee_photo,
@@ -107,28 +109,43 @@ class User extends Model
                 d.name AS designation_name,
                 r.name AS role_name
             " . $this->baseUserQuery() . "
-            WHERE u.role_id = 8";
+            WHERE u.role_id IN (5,8)"; // important change
 
-        $params = [];
-        $types = "";
+    $params = [];
+    $types = "";
 
-        if ($search) {
-            $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-            $params = array_merge($params, ["%$search%", "%$search%", "%$search%"]);
-            $types .= "sss";
-        }
-
-        $sql .= " ORDER BY u.id DESC LIMIT ? OFFSET ?";
-        $params[] = $limit;
-        $params[] = $offset;
-        $types .= "ii";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    // 🔥 TEAM FILTER LOGIC
+    if ($roleId == 5 && !empty($teamId)) {
+        $sql .= " AND u.team_id = ?";
+        $params[] = $teamId;
+        $types .= "i";
     }
+    // else → show all (no condition)
+
+    // 🔍 Search filter
+    if (!empty($search)) {
+        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $types .= "sss";
+    }
+
+    $sql .= " ORDER BY u.id DESC LIMIT ? OFFSET ?";
+    $params[] = $limit;
+    $params[] = $offset;
+    $types .= "ii";
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 
     public function countAllForSales($search = '', $role = '')
     {
@@ -161,27 +178,37 @@ class User extends Model
 
         return $stmt->get_result()->fetch_assoc()['total'];
     }
-    public function countAllForSalesExecutive($search = '')
-    {
-        $sql = "SELECT COUNT(*) as total FROM users u WHERE u.role_id = 8";
+   public function countAllForSalesExecutive($search = '', $roleId = null, $teamId = null)
+{
+    $sql = "SELECT COUNT(*) as total FROM users u WHERE u.role_id IN (5,8)";
 
-        $params = [];
-        $types = "";
+    $params = [];
+    $types = "";
 
-        if ($search) {
-            $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-            $params = array_merge($params, ["%$search%", "%$search%", "%$search%"]);
-            $types .= "sss";
-        }
-
-        $stmt = $this->db->prepare($sql);
-        if ($params) {
-            $stmt->bind_param($types, ...$params);
-        }
-
-        $stmt->execute();
-        return $stmt->get_result()->fetch_assoc()['total'];
+    if ($roleId == 5 && !empty($teamId)) {
+        $sql .= " AND u.team_id = ?";
+        $params[] = $teamId;
+        $types .= "i";
     }
+
+    if (!empty($search)) {
+        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $types .= "sss";
+    }
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+
+    return $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+}
 
     // for sales team Head
     public function getAll()
@@ -232,6 +259,37 @@ class User extends Model
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+
+
+    //for sales team head to get team members
+
+
+
+public function getUsersByTeamAndRole($teamId)
+{
+    $sql = "SELECT 
+                u.*,
+                e.id AS employee_id,
+                e.photo AS employee_photo,
+                e.make_user,
+                d.name AS designation_name,
+                r.name AS role_name,
+                t.name AS team_name
+            FROM users u
+            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN designations d ON d.id = u.designation_id
+            LEFT JOIN teams t ON t.id = u.team_id
+            LEFT JOIN roles r ON r.id = u.role_id
+            WHERE u.team_id = ? 
+            AND u.role_id IN (5, 8)";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param("i", $teamId);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
 
 
     public function create($data)
@@ -548,27 +606,82 @@ class User extends Model
 
 
 
-    public function countSalesTeams()
-    {
-        $sql = $this->db->prepare("SELECT COUNT(*) as total FROM users u JOIN roles r ON u.role_id = r.id WHERE r.id IN (5, 8)");
-        $sql->execute();
-        $result = $sql->get_result()->fetch_assoc();
-        return $result['total'];
+public function countSalesTeams($roleId = null, $teamId = null)
+{
+    $sql = "SELECT COUNT(*) as total 
+            FROM users 
+            WHERE role_id IN (5, 8)";
+
+    $params = [];
+    $types  = "";
+
+    // Case 1: Role 5 or 9 AND has team → filter by team
+    if (in_array($roleId, [5, 9]) && !empty($teamId)) {
+        $sql .= " AND team_id = ?";
+        $params[] = $teamId;
+        $types .= "i";
     }
+
+    // Case 2: Role 5 or 9 BUT NO team → show ALL (no filter)
+    // (do nothing extra → default query already correct)
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+
+    $result = $stmt->get_result()->fetch_assoc();
+    return $result['total'] ?? 0;
+}
+    
     // public function getSalesTeams(){
     //     $sql = $this->db->prepare("SELECT * FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name IN ('Sales Manager', 'Sales Executive')");
     //     $sql->execute();
     //     $result = $sql->get_result();
     //     return $result->fetch_all(MYSQLI_ASSOC);
     // }
-public function getSalesTeams()
+public function getSalesTeams($roleId = null, $teamId = null)
 {
-    $sql = $this->db->prepare("
-        SELECT id, full_name, role_id 
-        FROM users 
-        WHERE role_id IN (5, 8)
-    ");
-    $sql->execute();
-    return $sql->get_result()->fetch_all(MYSQLI_ASSOC);
+    $sql = "SELECT 
+                u.*,
+                e.id AS employee_id,
+                e.photo AS employee_photo,
+                e.make_user,
+                d.name AS designation_name,
+                r.name AS role_name,
+                t.name AS team_name
+            FROM users u
+            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN designations d ON d.id = u.designation_id
+            LEFT JOIN teams t ON t.id = u.team_id
+            LEFT JOIN roles r ON r.id = u.role_id
+            WHERE u.role_id IN (5, 8)";
+
+    $params = [];
+    $types  = "";
+
+    //  CASE: Role 5 or 9 AND has team → filter by team
+    if (in_array($roleId, [5, 9]) && !empty($teamId)) {
+        $sql .= " AND u.team_id = ?";
+        $params[] = $teamId;
+        $types .= "i";
+    }
+
+    //  CASE: Role 5 or 9 BUT NO team → show ALL sales users (no extra filter)
+    // (do nothing)
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }
 }

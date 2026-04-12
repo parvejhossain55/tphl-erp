@@ -84,7 +84,11 @@ $show_breadcrumb = true;
                             <h4 class="mb-8"><a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['id'] ?>"><?= $employee['full_name'] ?? '' ?></a></h4>
                             <p><?= $employee['department_name'] ?> - <strong><?= $employee['designation_name'] ?? '' ?></strong></p>
 
-                            <p>Employee ID - <?= $employee['employee_id'] ?></p>
+                            <p>Employee ID - <?= $employee['employee_id'] ?> 
+                            <?php if (!empty($employee['team_name'])): ?>
+                               - <strong><?= $employee['team_name'] ?></strong>
+                            <?php endif; ?>
+                            </p>
                         </div>
                         <div class="common-social mb-20">
                             <a href="<?= formatUrl($employee['social_media1']) ?>"><i class="fa-brands fa-facebook-f"></i></a>

@@ -26,12 +26,12 @@
   border: 1px solid #dfdede;
 }
 
-.no-select {
+/* .no-select {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
-}
+} */
 .no-copy {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -764,6 +764,18 @@ h6{
   background-color: #f8f9fa;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.call-status.bg-received {
+  background-color: #28a745 !important; /* green */
+  color: #fff !important;
+  border: 1px solid #28a745 !important;
+}
+
+.call-status.bg-not-received {
+  background-color: #dc3545 !important; /* red */
+  color: #fff !important;
+  border: 1px solid #dc3545 !important;
 }
 
 /* Hover */

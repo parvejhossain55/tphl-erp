@@ -59,12 +59,13 @@ class ManpowerRequisition extends Model
             report_to,
             requirement_type,
             project_id,
+            replacement_for_id,
             reason,
             job_description,
             education_qualification,
             special_skills,
             status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
@@ -84,6 +85,7 @@ class ManpowerRequisition extends Model
         $report_to               = (int)($data['report_to'] ?? 0);
         $requirement_type        = $data['requirement_type'] ?? '';
         $project_id              = ($data['project_id'] && (int)$data['project_id'] > 0) ? (int)$data['project_id'] : null;
+        $replacement_for_id      = ($data['replacement_for_id'] && (int)$data['replacement_for_id'] > 0) ? (int)$data['replacement_for_id'] : null;
         $reason                  = $data['reason'] ?? '';
         $job_description         = $data['job_description'] ?? '';
         $education_qualification = $data['education_qualification'] ?? '';
@@ -91,7 +93,7 @@ class ManpowerRequisition extends Model
         $status                  = $data['status'] ?? 'pending';
 
         $stmt->bind_param(
-            "iiisisssisisssss",
+            "iiisisssisiisssss",
             $created_by,
             $department_id,
             $designation_id,
@@ -103,6 +105,7 @@ class ManpowerRequisition extends Model
             $report_to,
             $requirement_type,
             $project_id,
+            $replacement_for_id,
             $reason,
             $job_description,
             $education_qualification,
