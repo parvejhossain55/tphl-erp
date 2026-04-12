@@ -348,6 +348,7 @@ $show_breadcrumb = true;
                                 <th>Method</th>
                                 <th>Trx ID</th>
                                 <th>Status</th>
+                                <th>Verification</th>
                                 <th>Added By</th>
                                 <th>Actions</th>
                             </tr>
@@ -396,6 +397,19 @@ $show_breadcrumb = true;
                                             <?php echo $transaction['status_text']; ?>
                                         </span>
                                     </td>
+                                    <!-- VERIFICATION BADGE -->
+                                    <td>
+                                        <?php
+                                            $vs = $transaction['verification_status'] ?? 'pending';
+                                            if ($vs === 'verified') {
+                                                echo '<span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i>Verified</span>';
+                                            } elseif ($vs === 'rejected') {
+                                                echo '<span class="badge bg-danger"><i class="fa-light fa-times-circle me-1"></i>Rejected</span>';
+                                            } else {
+                                                echo '<span class="badge bg-warning text-dark"><i class="fa-light fa-clock me-1"></i>Pending</span>';
+                                            }
+                                        ?>
+                                    </td>
                                     <td>
                                         <?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?>
                                     </td>
@@ -403,7 +417,9 @@ $show_breadcrumb = true;
                                         
                                         <div class="d-flex align-items-center justify-content-start gap-10">
                                             <?php if (!empty($transaction['id']) && strpos($transaction['id'], 'booking-') === false): ?>
-                                                <!-- INVOICE BUTTON -->
+                                                <?php $isVerified = ($transaction['verification_status'] ?? 'pending') === 'verified'; ?>
+                                                <!-- INVOICE BUTTON — disabled when not verified -->
+                                                <?php if ($isVerified): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $transaction['id'] ?>"
                                                     class="table__icon invoice"
                                                     style="color: #fff; background-color: #6c5ffc;"
@@ -411,6 +427,13 @@ $show_breadcrumb = true;
                                                     target="_blank">
                                                     <i class="fa-light fa-file-invoice"></i>
                                                 </a>
+                                                <?php else: ?>
+                                                <span class="table__icon disabled"
+                                                    title="Invoice disabled — payment not yet verified"
+                                                    style="background-color: #fef3cd; color: #856404; cursor: not-allowed;">
+                                                    <i class="fa-light fa-file-invoice"></i>
+                                                </span>
+                                                <?php endif; ?>
                                                 <!-- EDIT BUTTON -->
                                                 <?php if ($transaction['payment_type'] !== 'booking_money'): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/edit-client-cash-in/<?= $transaction['id'] ?>"
@@ -423,7 +446,7 @@ $show_breadcrumb = true;
                                                     <i class="fa-regular fa-lock"></i>
                                                 </span>
                                                 <?php endif; ?>
-                                                <!-- DELETE BUTTON - FIXED -->
+                                                <!-- DELETE BUTTON -->
                                                 <a href="#" class="removeBtn table__icon delete"
                                                     onclick="deleteTransaction(<?= $transaction['id'] ?>); return false;"
                                                     title="Delete">

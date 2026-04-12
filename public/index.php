@@ -624,6 +624,20 @@ $routes = [
 
     //rafi End
 
+    // ==================== FINANCIAL VERIFICATION GATEWAY ====================
+    'verify-payment'             => ['controller' => 'AccountClientController', 'method' => 'verifyPayment'],
+    'get-banks'                  => ['controller' => 'AccountClientController', 'method' => 'getBanks'],
+    'upload-transaction-proof'   => ['controller' => 'AccountClientController', 'method' => 'uploadTransactionProof'],
+
+    // ==================== BANK REGISTRY ====================
+    'bank-registry'              => ['controller' => 'BankRegistryController', 'method' => 'index'],
+    'store-bank'                 => ['controller' => 'BankRegistryController', 'method' => 'store'],
+    'update-bank'                => ['controller' => 'BankRegistryController', 'method' => 'update'],
+    'delete-bank'                => ['controller' => 'BankRegistryController', 'method' => 'delete'],
+    'toggle-bank-status'         => ['controller' => 'BankRegistryController', 'method' => 'toggleStatus'],
+
+    // ==================== CED PAYMENT TRACKING ====================
+    'ced-payment-tracking'       => ['controller' => 'AccountClientController', 'method' => 'cedPaymentTracking'],
 
 ];
 

@@ -141,6 +141,7 @@ class CentralStatement extends Model
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE lp.payment_date BETWEEN ? AND ?
             AND lp.payment_status = 'paid'
+            AND lp.verification_status = 'verified'
             AND lp.payment_type = ?
         ";
 
@@ -168,6 +169,7 @@ class CentralStatement extends Model
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE lp.payment_date BETWEEN ? AND ?
             AND lp.payment_status = 'paid'
+            AND lp.verification_status = 'verified'
             AND lp.payment_type = 'land_share'
         ";
 
@@ -196,6 +198,7 @@ class CentralStatement extends Model
         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
         WHERE lp.payment_date BETWEEN ? AND ?
         AND lp.payment_status = 'paid'
+        AND lp.verification_status = 'verified'
         AND lp.payment_type = 'booking_money'
     ";
 
@@ -258,6 +261,7 @@ class CentralStatement extends Model
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE lp.payment_date BETWEEN ? AND ?
             AND lp.payment_status = 'paid'
+            AND lp.verification_status = 'verified'
         ";
 
         if ($projectId) {
@@ -722,6 +726,7 @@ class CentralStatement extends Model
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE DATE(lp.payment_date) BETWEEN ? AND ?
             AND lp.payment_status = 'paid'
+            AND lp.verification_status = 'verified'
             AND lp.payment_type = ?
         ";
 
@@ -791,6 +796,7 @@ private function getDailyBookingMoney($startDate, $endDate, $projectId = null)
         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
         WHERE DATE(lp.payment_date) BETWEEN ? AND ?
         AND lp.payment_status = 'paid'
+        AND lp.verification_status = 'verified'
         AND lp.payment_type = 'booking_money'
     ";
 

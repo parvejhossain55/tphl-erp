@@ -411,20 +411,40 @@ public function addTransaction()
             }
         }
 
+        // Handle multi-file proof uploads (before insert so paths are stored atomically)
+        $uploadedPaths = [];
+        if (!empty($_FILES['proof_files']['name'][0])) {
+            $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/transactions/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $allowedTypes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
+            $maxSize = 5 * 1024 * 1024;
+            foreach ($_FILES['proof_files']['tmp_name'] as $idx => $tmpName) {
+                if (!is_uploaded_file($tmpName)) continue;
+                if (!in_array(mime_content_type($tmpName), $allowedTypes)) continue;
+                if ($_FILES['proof_files']['size'][$idx] > $maxSize) continue;
+                $ext = pathinfo(basename($_FILES['proof_files']['name'][$idx]), PATHINFO_EXTENSION);
+                $name = 'proof_' . uniqid() . '.' . $ext;
+                if (move_uploaded_file($tmpName, $uploadDir . $name)) {
+                    $uploadedPaths[] = 'uploads/transactions/' . $name;
+                }
+            }
+        }
+
         // Prepare transaction data
         $transactionData = [
-            'booking_id' => $bookingId,
-            'payment_type' => $paymentType,
-            'amount' => $_POST['amount'] ?? 0,
+            'booking_id'     => $bookingId,
+            'payment_type'   => $paymentType,
+            'amount'         => $_POST['amount'] ?? 0,
             'payment_method' => $_POST['payment_method'] ?? 'cash',
             'payment_status' => $_POST['payment_status'] ?? 'paid',
-            'payment_date' => $_POST['payment_date'] ?? date('Y-m-d'),
-            'transaction_ref' => $_POST['transaction_ref'] ?? null,
-            'bank_name' => $_POST['bank_name'] ?? null,
-            'bank_account_no' => $_POST['bank_account_no'] ?? null,
-            'cheque_no' => $_POST['cheque_no'] ?? null,
-            'online_type' => $_POST['online_type'] ?? null,
-            'created_by' => $_SESSION['user']['id'] ?? 1
+            'payment_date'   => $_POST['payment_date'] ?? date('Y-m-d'),
+            'transaction_ref'=> $_POST['transaction_ref'] ?? null,
+            'bank_id'        => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
+            'bank_account_no'=> $_POST['bank_account_no'] ?? null,
+            'cheque_no'      => $_POST['cheque_no'] ?? null,
+            'online_type'    => $_POST['online_type'] ?? null,
+            'attachment_paths' => $uploadedPaths ?: null,
+            'created_by'     => $_SESSION['user']['id'] ?? 1
         ];
 
         // EMI schedule data (only if payment type is EMI)
@@ -1113,4 +1133,157 @@ public function viewClientStatement($bookingId = null)
     include $viewPath;
     exit;
 }
+
+    /**
+     * Verify or reject a payment (Accounts team action)
+     * POST: payment_id, action (verify|reject), rejection_reason (optional)
+     */
+    public function verifyPayment()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+
+        $paymentId      = (int)($_POST['payment_id'] ?? 0);
+        $action         = $_POST['action'] ?? '';          // 'verify' or 'reject'
+        $userId         = $_SESSION['user']['id'] ?? 0;
+        $rejectionReason = trim($_POST['rejection_reason'] ?? '');
+
+        if (!$paymentId || !in_array($action, ['verify', 'reject'])) {
+            echo json_encode(['success' => false, 'message' => 'Invalid parameters']);
+            exit;
+        }
+
+        if ($action === 'reject' && $rejectionReason === '') {
+            echo json_encode(['success' => false, 'message' => 'Rejection reason is required']);
+            exit;
+        }
+
+        $newStatus = ($action === 'verify') ? 'verified' : 'rejected';
+
+        $stmt = $this->db->prepare("
+            UPDATE lead_payments
+            SET    verification_status = ?,
+                   verified_by         = ?,
+                   verified_at         = NOW()
+            WHERE  id = ?
+            AND    verification_status = 'pending'
+        ");
+
+        if (!$stmt) {
+            echo json_encode(['success' => false, 'message' => 'DB prepare error']);
+            exit;
+        }
+
+        $stmt->bind_param("sii", $newStatus, $userId, $paymentId);
+
+        if (!$stmt->execute()) {
+            echo json_encode(['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
+            exit;
+        }
+
+        if ($stmt->affected_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Payment not found or already processed']);
+            exit;
+        }
+
+        $label = ($action === 'verify') ? 'verified' : 'rejected';
+        echo json_encode(['success' => true, 'message' => "Payment {$label} successfully", 'status' => $newStatus]);
+        exit;
+    }
+
+    /**
+     * AJAX: Get all active banks for dynamic dropdown
+     */
+    public function getBanks()
+    {
+        header('Content-Type: application/json');
+        $stmt = $this->db->prepare("
+            SELECT id, bank_name, branch_name, routing_number
+            FROM   banks
+            WHERE  status = 'active'
+            ORDER BY bank_name, branch_name
+        ");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $banks  = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        echo json_encode(['success' => true, 'banks' => $banks]);
+        exit;
+    }
+
+    /**
+     * Handle multi-file proof-of-payment upload for a lead_payment record
+     * Called after addTransaction saves the payment, or as a standalone AJAX call.
+     */
+    public function uploadTransactionProof()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        $paymentId = (int)($_POST['payment_id'] ?? 0);
+        if (!$paymentId) {
+            echo json_encode(['success' => false, 'message' => 'Missing payment ID']);
+            exit;
+        }
+
+        $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/transactions/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $uploadedPaths = [];
+        $files = $_FILES['proof_files'] ?? null;
+
+        if (!$files || empty($files['name'][0])) {
+            echo json_encode(['success' => false, 'message' => 'No files received']);
+            exit;
+        }
+
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+        $maxSize      = 5 * 1024 * 1024; // 5 MB
+
+        foreach ($files['tmp_name'] as $idx => $tmpName) {
+            if (!is_uploaded_file($tmpName)) continue;
+
+            $mimeType = mime_content_type($tmpName);
+            if (!in_array($mimeType, $allowedTypes)) continue;
+            if ($files['size'][$idx] > $maxSize) continue;
+
+            $originalName = basename($files['name'][$idx]);
+            $safeExt      = pathinfo($originalName, PATHINFO_EXTENSION);
+            $uniqueName   = 'proof_' . $paymentId . '_' . uniqid() . '.' . $safeExt;
+            $destination  = $uploadDir . $uniqueName;
+
+            if (move_uploaded_file($tmpName, $destination)) {
+                $uploadedPaths[] = 'uploads/transactions/' . $uniqueName;
+            }
+        }
+
+        if (empty($uploadedPaths)) {
+            echo json_encode(['success' => false, 'message' => 'No valid files uploaded']);
+            exit;
+        }
+
+        // Merge with any existing paths
+        $existingRow = $this->db->query("SELECT attachment_paths FROM lead_payments WHERE id = {$paymentId}");
+        $existing    = $existingRow ? $existingRow->fetch_assoc() : null;
+        $allPaths    = [];
+        if ($existing && !empty($existing['attachment_paths'])) {
+            $decoded = json_decode($existing['attachment_paths'], true);
+            if (is_array($decoded)) $allPaths = $decoded;
+        }
+        $allPaths = array_merge($allPaths, $uploadedPaths);
+
+        $jsonPaths = json_encode($allPaths);
+        $stmt = $this->db->prepare("UPDATE lead_payments SET attachment_paths = ? WHERE id = ?");
+        $stmt->bind_param("si", $jsonPaths, $paymentId);
+        $stmt->execute();
+
+        echo json_encode(['success' => true, 'paths' => $uploadedPaths, 'all_paths' => $allPaths]);
+        exit;
+    }
 }

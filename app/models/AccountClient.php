@@ -31,6 +31,7 @@ class AccountClient extends Model
             l.phone,
             l.email,
             l.designation,
+            l.company,
             (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
              FROM lead_bookings lb_sub
              INNER JOIN lead_payments lp_sub ON lp_sub.booking_id = lb_sub.id AND lp_sub.payment_type = 'booking_money'
@@ -39,6 +40,22 @@ class AccountClient extends Model
             ) AS agent_name,
             COUNT(lb.id) AS total_bookings,
             SUM(lb.agreement_value) AS total_agreement_value,
+            -- First booking's project and flat for quick context
+            (SELECT p2.name FROM lead_bookings lb2
+             INNER JOIN projects p2 ON lb2.project_id = p2.id
+             WHERE lb2.lead_id = l.id AND lb2.booking_status != 'cancelled'
+             ORDER BY lb2.created_at DESC LIMIT 1) AS project_name,
+            (SELECT CONCAT(f2.flat_name, ' - Floor ', f2.floor_no)
+             FROM lead_bookings lb2
+             INNER JOIN flats f2 ON lb2.flat_id = f2.id
+             WHERE lb2.lead_id = l.id AND lb2.booking_status != 'cancelled'
+             ORDER BY lb2.created_at DESC LIMIT 1) AS flat_no,
+            -- Latest verification status across all this client's payments
+            (SELECT lp.verification_status
+             FROM lead_payments lp
+             INNER JOIN lead_bookings lb3 ON lb3.id = lp.booking_id
+             WHERE lb3.lead_id = l.id AND lb3.booking_status != 'cancelled'
+             ORDER BY lp.created_at DESC LIMIT 1) AS latest_verification_status,
             COALESCE(
                 (SELECT SUM(lp.amount)
                  FROM lead_payments lp
@@ -729,21 +746,31 @@ ORDER BY lb.booking_date DESC
                     break;
             }
 
-            // Insert payment record
+            // Insert payment record (verification_status defaults to 'pending' via DB default)
+            $bankId          = !empty($transactionData['bank_id']) ? (int)$transactionData['bank_id'] : null;
+            $attachmentPaths = !empty($transactionData['attachment_paths']) ? json_encode($transactionData['attachment_paths']) : null;
+
             $stmt = $this->db->prepare("
                 INSERT INTO lead_payments (
                     booking_id, payment_type, amount, land_share_amount, service_fee,
                     payment_method, payment_status, payment_date, transaction_ref, 
-                    bank_name, bank_account_no, cheque_no, online_type, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    bank_id, bank_name, bank_account_no, cheque_no, online_type,
+                    attachment_paths, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             if (!$stmt) {
                 throw new Exception("Prepare failed: " . $this->db->error);
             }
 
+            $bankNameLookup = '';
+            if ($bankId) {
+                $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', branch_name) as label FROM banks WHERE id = {$bankId}");
+                if ($bRow) { $bData = $bRow->fetch_assoc(); $bankNameLookup = $bData['label'] ?? ''; }
+            }
+
             $stmt->bind_param(
-                "isdddsdssssssi",
+                "isdddsdsssisssi",
                 $bookingId,
                 $paymentType,
                 $amount,
@@ -753,10 +780,12 @@ ORDER BY lb.booking_date DESC
                 $transactionData['payment_status'],
                 $transactionData['payment_date'] ?? date('Y-m-d'),
                 $transactionData['transaction_ref'] ?? '',
-                $transactionData['bank_name'] ?? '',
+                $bankId,
+                $bankNameLookup,
                 $transactionData['bank_account_no'] ?? '',
                 $transactionData['cheque_no'] ?? '',
                 $transactionData['online_type'] ?? '',
+                $attachmentPaths,
                 $transactionData['created_by'] ?? 0
             );
 

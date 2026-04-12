@@ -1,7 +1,6 @@
 <?php
 $page_title = "Clients Cash in";
 $page = 'Clients';
-$addPage = 'add transaction';
 $addPage = true;
 $show_breadcrumb = true;
 ?>
@@ -54,43 +53,89 @@ $show_breadcrumb = true;
         </div>
     </div>
 
+    <!-- Pending Verification Card -->
+    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+        <div class="card__wrapper" style="border-left: 4px solid #f59e0b;">
+            <div class="d-flex align-items-center gap-sm">
+                <div class="card__icon">
+                    <span style="color:#f59e0b; background:rgba(245,158,11,0.1);"><i class="fa-light fa-clock"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-10">Pending Verification</h6>
+                    <div class="d-flex flex-wrap align-items-end gap-10">
+                        <h4 class="card__title" id="pendingVerificationCount">–</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="col-xxl-12">
         <div class="card__wrapper">
-            <div class="d-flex justify-content-between mb-20">
+            <div class="d-flex justify-content-between align-items-center mb-20">
                 <h4>Clients Information</h4>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="badge bg-warning text-dark me-1"><i class="fa-light fa-clock me-1"></i> Pending Verification</span>
+                    <span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i> Verified</span>
+                </div>
             </div>
 
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables">
+                <table class="table mb-20 multiple_tables" id="clientsTable">
                     <thead>
                         <tr class="table__title table__sort">
                             <th>Client Name</th>
                             <th>Company</th>
                             <th>Phone</th>
                             <th>Email</th>
+                            <th>Project</th>
+                            <th>Flat</th>
                             <th>Booking Agent(s)</th>
-                            <th>Designation</th>
                             <th>Total Paid</th>
-                            <th>Last Payment Date</th>
+                            <th>Last Payment</th>
+                            <th>Verification</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody class="table__body">
                         <?php if (!empty($clients)): ?>
                             <?php foreach ($clients as $client): ?>
-                                <tr>
+                                <?php
+                                    // Determine verification status based on latest payment
+                                    $verStatus    = $client['latest_verification_status'] ?? 'pending';
+                                    $rowClass     = ($verStatus === 'pending')  ? 'table-warning'  : '';
+                                    $rowClass     = ($verStatus === 'rejected') ? 'table-danger'   : $rowClass;
+                                    $badgeClass   = ($verStatus === 'verified') ? 'bg-success'     : 'bg-warning text-dark';
+                                    $badgeIcon    = ($verStatus === 'verified') ? 'fa-check-circle' : 'fa-clock';
+                                    if ($verStatus === 'rejected') { $badgeClass = 'bg-danger'; $badgeIcon = 'fa-times-circle'; }
+                                ?>
+                                <tr class="<?= $rowClass ?>">
                                     <td><?= htmlspecialchars($client['client_name']) ?></td>
                                     <td><?= htmlspecialchars($client['company'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['phone'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['email'] ?? 'N/A') ?></td>
+                                    <td>
+                                        <span class="text-muted small">
+                                            <i class="fa-light fa-building me-1"></i>
+                                            <?= htmlspecialchars($client['project_name'] ?? '—') ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted small">
+                                            <i class="fa-light fa-home me-1"></i>
+                                            <?= htmlspecialchars($client['flat_no'] ?? '—') ?>
+                                        </span>
+                                    </td>
                                     <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['designation'] ?? 'N/A') ?></td>
-
-                                  
                                     <td>TK.<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
                                     <td>
                                         <?= $client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment' ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge <?= $badgeClass ?>">
+                                            <i class="fa-light <?= $badgeIcon ?> me-1"></i>
+                                            <?= ucfirst($verStatus) ?>
+                                        </span>
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center justify-content-start gap-10">
@@ -104,9 +149,7 @@ $show_breadcrumb = true;
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <!-- <tr>
-                                <td colspan="11" class="text-center">No clients found</td>
-                            </tr> -->
+                            <tr><td colspan="11" class="text-center text-muted py-4">No clients found</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -175,81 +218,39 @@ $show_breadcrumb = true;
 
     document.addEventListener('DOMContentLoaded', function () {
         projectsModal = new bootstrap.Modal(document.getElementById('projectsModal'));
+
+        // Count pending verification rows
+        const pending = document.querySelectorAll('#clientsTable tbody tr.table-warning').length;
+        const el = document.getElementById('pendingVerificationCount');
+        if (el) el.textContent = pending;
     });
 
     function openProjectsModal(leadId, clientName) {
-        console.log('Opening modal for lead ID:', leadId);
-        console.log('Client name:', clientName);
-
-        // Set client name
         document.getElementById('modal_client_name').textContent = clientName;
-
-        // Reset modal state
         document.getElementById('projects_loading').style.display = 'block';
         document.getElementById('projects_content').style.display = 'none';
         document.getElementById('projects_error').style.display = 'none';
-
-        // Show modal
         projectsModal.show();
 
-        // Construct URL
         const url = '<?= $GLOBALS['base_url'] ?>/get-client-lands?lead_id=' + leadId;
-        console.log('Fetching from URL:', url);
-
-        // Fetch projects
         fetch(url)
-            .then(response => {
-                console.log('Response status:', response.status);
-                console.log('Response ok:', response.ok);
-
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-
-                return response.text(); // First get as text to see what we're getting
-            })
-            .then(text => {
-                console.log('Response text:', text);
-
-                // Try to parse as JSON
-                try {
-                    const data = JSON.parse(text);
-                    console.log('Parsed data:', data);
-
-                    if (data.success) {
-                        if (data.lands && data.lands.length > 0) {
-                            displayProjects(data.lands);
-                        } else {
-                            showError('No land shares found for this client');
-                        }
-                    } else {
-                        showError(data.message || 'Failed to load land shares');
-                    }
-                } catch (e) {
-                    console.error('JSON parse error:', e);
-                    console.error('Response was:', text);
-                    showError('Invalid response from server. Please check console for details.');
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.lands && data.lands.length > 0) {
+                    displayProjects(data.lands);
+                } else {
+                    showError(data.message || 'No land shares found for this client');
                 }
             })
-            .catch(error => {
-                console.error('Fetch error:', error);
-                showError('Failed to load land shares: ' + error.message);
-            });
+            .catch(err => showError('Failed to load: ' + err.message));
     }
 
     function displayProjects(lands) {
-        console.log('Displaying projects:', lands);
-
         const tbody = document.getElementById('projects_table_body');
         tbody.innerHTML = '';
 
         lands.forEach(land => {
             const row = document.createElement('tr');
-
-            // Calculate due amount
-            const dueAmount = (parseFloat(land.total_price) || 0) - (parseFloat(land.total_paid) || 0);
-
-            // Determine status classes
             const bookingStatusClass = getStatusClass(land.booking_status);
             const landshareStatusClass = getStatusClass(land.landshare_status);
 
@@ -262,39 +263,22 @@ $show_breadcrumb = true;
             <td>TK.${Number(land.agreement_value).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
             <td>TK.${Number(land.total_paid || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
             <td>
-                <div>
-                    <strong>Fee:</strong> TK.${Number(land.total_service_fee || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}
-                </div>
-                <div class="text-muted small">
-                    <strong>Balance:</strong> TK.${Number(land.service_fee_balance || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}
-                </div>
+                <div><strong>Fee:</strong> TK.${Number(land.total_service_fee || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</div>
+                <div class="text-muted small"><strong>Balance:</strong> TK.${Number(land.service_fee_balance || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}</div>
             </td>
-            <td>
-                <span class="bd-badge ${bookingStatusClass}">
-                    ${escapeHtml(land.booking_status || 'N/A')}
-                </span>
-            </td>
-            <td>
-                <span class="bd-badge ${landshareStatusClass}">
-                    ${escapeHtml(land.landshare_status || 'N/A')}
-                </span>
-            </td>
-            <td>
-                ${land.last_payment_date ? formatDate(land.last_payment_date) : 'No Payment'}
-            </td>
+            <td><span class="bd-badge ${bookingStatusClass}">${escapeHtml(land.booking_status || 'N/A')}</span></td>
+            <td><span class="bd-badge ${landshareStatusClass}">${escapeHtml(land.landshare_status || 'N/A')}</span></td>
+            <td>${land.last_payment_date ? formatDate(land.last_payment_date) : 'No Payment'}</td>
             <td>
                 <a class="table__icon download"
                     href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history/${land.booking_id}"
                     title="View Transaction History">
                     <i class="fa-regular fa-eye"></i>
                 </a>
-            </td>
-        `;
-
+            </td>`;
             tbody.appendChild(row);
         });
 
-        // Show content, hide loading
         document.getElementById('projects_loading').style.display = 'none';
         document.getElementById('projects_content').style.display = 'block';
     }
@@ -307,142 +291,37 @@ $show_breadcrumb = true;
 
     function getStatusClass(status) {
         if (!status) return 'bg-secondary';
-
         status = status.toLowerCase();
-
-        if (status === 'booked' || status === 'active' || status === 'approved' || status === 'paid') {
-            return 'bg-success';
-        } else if (status === 'pending') {
-            return 'bg-warning';
-        } else if (status === 'cancelled' || status === 'rejected') {
-            return 'bg-danger';
-        } else {
-            return 'bg-info';
-        }
+        if (['booked','active','approved','paid'].includes(status)) return 'bg-success';
+        if (status === 'pending') return 'bg-warning';
+        if (['cancelled','rejected'].includes(status)) return 'bg-danger';
+        return 'bg-info';
     }
 
     function formatDate(dateString) {
         const date = new Date(dateString);
-        const options = { day: '2-digit', month: 'short', year: 'numeric' };
-        return date.toLocaleDateString('en-GB', options);
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
     function escapeHtml(text) {
         if (!text) return '';
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
         return text.toString().replace(/[&<>"']/g, m => map[m]);
     }
 </script>
-
 
 <style>
     .card__icon span {
         color: var(--clr-theme-primary);
         background: rgba(108, 95, 252, 0.1);
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        text-align: center;
-        justify-content: center;
-        align-items: center;
-        font-size: 16px;
+        width: 40px; height: 40px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center; font-size: 16px;
     }
-
-    .card__title {
-        font-size: 1.25rem;
-    }
-
+    .card__title { font-size: 1.25rem; }
+    /* Amber highlight for provisional / pending rows */
+    tr.table-warning td { background-color: rgba(245, 158, 11, 0.08) !important; }
+    tr.table-danger  td { background-color: rgba(220, 53, 69, 0.06) !important; }
     @media (max-width: 575px) {
-        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
-            font-size: 12px;
-            padding: 6px 8px;
-        }
-
-        .dataTables_wrapper .dataTables_paginate .paginate_button {
-            font-size: 12px;
-            padding: 6px 16px;
-        }
-    }
-
-    /* Modal styles */
-    .modal-lg {
-        max-width: 900px;
-    }
-
-    .land-item {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 12px;
-        transition: all 0.3s;
-        background-color: #fff;
-    }
-
-    .land-item:hover {
-        background-color: #f8f9fa;
-        border-color: var(--clr-theme-primary);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-
-    .land-status {
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        display: inline-block;
-    }
-
-    .status-active {
-        background-color: #d4edda;
-        color: #155724;
-    }
-
-    .status-completed {
-        background-color: #cce5ff;
-        color: #004085;
-    }
-
-    .status-cancelled {
-        background-color: #f8d7da;
-        color: #721c24;
-    }
-
-    .land-details {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 8px;
-        margin-top: 10px;
-    }
-
-    .land-detail-item {
-        font-size: 13px;
-        color: #666;
-    }
-
-    .land-detail-item strong {
-        color: #333;
-        display: block;
-        margin-bottom: 2px;
-        font-size: 12px;
-    }
-
-    .loading-spinner {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 40px;
-    }
-
-    .loading-spinner i {
-        font-size: 36px;
-        margin-bottom: 10px;
+        .dataTables_wrapper .dataTables_paginate .paginate_button { font-size: 12px; padding: 6px 8px; }
     }
 </style>

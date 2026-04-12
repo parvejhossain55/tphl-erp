@@ -45,7 +45,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                 <?php endif; ?>
 
                 <!-- Transaction Form -->
-                <form action="<?= $GLOBALS['base_url'] ?>/add-transaction" method="post" id="transactionForm">
+                <form action="<?= $GLOBALS['base_url'] ?>/add-transaction" method="post" id="transactionForm" enctype="multipart/form-data">
                     <input type="hidden" name="booking_id" value="<?= $bookingId ?>">
 
                     <div class="row gy-20">
@@ -164,11 +164,14 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                             </div>
                         </div>
 
-                        <!-- Bank Details (Visible only for bank/cheque) -->
-                        <div class="col-md-6 bank-fields" style="display: none;">
+                        <!-- Bank Fields (Visible only for bank/cheque) -->
+                        <div class="col-md-12 bank-fields" style="display: none;">
                             <div class="from__input-box">
-                                <label class="form__input-title">Bank Name <span>*</span></label>
-                                <input type="text" name="bank_name" class="form-control" placeholder="Bank Name">
+                                <label class="form__input-title">Bank / Branch <span>*</span></label>
+                                <select name="bank_id" id="bankSelect" class="form-select">
+                                    <option value="">-- Loading banks... --</option>
+                                </select>
+                                <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/bank-registry" target="_blank">Bank Registry</a></small>
                             </div>
                         </div>
 
@@ -221,6 +224,19 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                                     <option value="pending">Pending</option>
                                     <option value="failed">Failed</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        <!-- Proof of Payment Documents (multi-file upload) -->
+                        <div class="col-md-12">
+                            <div class="from__input-box">
+                                <label class="form__input-title">
+                                    <i class="fa-light fa-paperclip me-1"></i>Proof of Payment
+                                    <span class="text-muted small ms-1">(JPG, PNG, PDF — max 5 MB each)</span>
+                                </label>
+                                <input type="file" name="proof_files[]" id="proofFiles"
+                                    class="form-control" multiple accept="image/*,application/pdf">
+                                <div id="filePreview" class="d-flex flex-wrap gap-2 mt-2"></div>
                             </div>
                         </div>
 
@@ -532,6 +548,52 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
         // Trigger payment method change to set initial state
         if (paymentMethod) {
             paymentMethod.dispatchEvent(new Event('change'));
+        }
+
+        // Load banks from Bank Registry for AJAX dropdown
+        fetch('<?= $GLOBALS['base_url'] ?>/get-banks')
+            .then(r => r.json())
+            .then(data => {
+                const sel = document.getElementById('bankSelect');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">-- Select Bank / Branch --</option>';
+                (data.banks || []).forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.id;
+                    opt.textContent = b.bank_name + ' — ' + b.branch_name;
+                    opt.dataset.routing = b.routing_number || '';
+                    sel.appendChild(opt);
+                });
+            })
+            .catch(() => {
+                const sel = document.getElementById('bankSelect');
+                if (sel) sel.innerHTML = '<option value="">Bank Registry unavailable</option>';
+            });
+
+        // File preview thumbnails
+        const proofFilesInput = document.getElementById('proofFiles');
+        const filePreview = document.getElementById('filePreview');
+        if (proofFilesInput && filePreview) {
+            proofFilesInput.addEventListener('change', function() {
+                filePreview.innerHTML = '';
+                Array.from(this.files).forEach(file => {
+                    const thumb = document.createElement('div');
+                    thumb.className = 'border rounded p-1 text-center';
+                    thumb.style.cssText = 'width:80px;font-size:11px;overflow:hidden;';
+                    if (file.type.startsWith('image/')) {
+                        const img = document.createElement('img');
+                        img.style.cssText = 'width:68px;height:52px;object-fit:cover;border-radius:4px;';
+                        img.src = URL.createObjectURL(file);
+                        thumb.appendChild(img);
+                    } else {
+                        thumb.innerHTML = '<i class="fa-light fa-file-pdf fa-2x text-danger"></i>';
+                    }
+                    const name = document.createElement('div');
+                    name.textContent = file.name.length > 10 ? file.name.substr(0,10)+'…' : file.name;
+                    thumb.appendChild(name);
+                    filePreview.appendChild(thumb);
+                });
+            });
         }
     });
 </script>
