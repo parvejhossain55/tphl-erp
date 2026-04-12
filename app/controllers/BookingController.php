@@ -144,8 +144,8 @@ class BookingController extends Controller
         // Update lead_bookings table
         if ($this->bookingModel->update($bookingData, $id)) {
 
-            // Update lead_payments table automatically
-            $this->bookingModel->updateBookingPaymentAmount($id, $bookingData['agreement_value']);
+            // Removed automatic update of lead_payments because there can be multiple payments
+            // and this would incorrectly overwrite them with the full agreement value.
 
             setSuccess("Booking updated successfully!");
         } else {

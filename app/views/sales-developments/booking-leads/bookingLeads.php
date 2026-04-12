@@ -230,7 +230,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                             ): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>"
                                                     class="btn btn-sm btn-success">
-                                                    Payments
+                                                    Payments for verified 
                                                 </a>
 
                                             <?php elseif ($or['approval_status'] === 'pending'): ?>

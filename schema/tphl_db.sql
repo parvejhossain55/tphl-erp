@@ -2172,7 +2172,6 @@ CREATE TABLE platform_budgets (
 ---- alter table lead_bookings add column
 ALTER TABLE lead_bookings 
 ADD payment_status ENUM('unpaid','partial','paid') DEFAULT 'unpaid',
-ADD verified_status ENUM('pending','verified','rejected') DEFAULT 'pending';
 
 -- alter table lead_payments add column
 ALTER TABLE lead_payments 

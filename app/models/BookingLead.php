@@ -341,6 +341,15 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
         throw new Exception($stmt->error);
     }
+
+
+    public function getFinalAmount($booking)
+{
+    if (!empty($booking['approved_amount'])) {
+        return $booking['approved_amount'];
+    }
+    return $booking['agreement_value'];
+}
     // Update follow-up by ID
     public function update($data, $id)
     {
