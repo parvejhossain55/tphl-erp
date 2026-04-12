@@ -256,7 +256,8 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                                     <th>Date</th>
                                                     <th>Amount</th>
                                                     <th>Method</th>
-                                                    <th>Reference</th>
+                                                    <th>Bank / Ref</th>
+                                                    <th>Proof</th>
                                                     <th>Recorded By</th>
                                                     <!-- NEW: Project & Office in Payment History -->
                                                     <?php if (!empty($payments[0]['project_name']) || !empty($payments[0]['office'])): ?>
@@ -270,19 +271,61 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                                         <td><?= date('d M, Y', strtotime($payment['payment_date'])) ?></td>
                                                         <td><strong>TK.<?= number_format($payment['amount'], 2) ?></strong></td>
                                                         <td><?= ucfirst($payment['payment_method']) ?></td>
-                                                        <td><?= htmlspecialchars($payment['transaction_ref'] ?? '-') ?></td>
+                                                        <td>
+                                                            <?php if (!empty($payment['bank_name'])): ?>
+                                                                <small class="text-muted d-block"><?= htmlspecialchars($payment['bank_name']) ?></small>
+                                                            <?php endif; ?>
+                                                            <?php if (!empty($payment['bank_account_no'])): ?>
+                                                                <small class="text-muted d-block">Acct: <?= htmlspecialchars($payment['bank_account_no']) ?></small>
+                                                            <?php endif; ?>
+                                                            <?php if (!empty($payment['cheque_no'])): ?>
+                                                                <small class="text-muted d-block">Cheque: <?= htmlspecialchars($payment['cheque_no']) ?></small>
+                                                            <?php endif; ?>
+                                                            <?php if (!empty($payment['online_type'])): ?>
+                                                                <small class="text-muted d-block"><?= htmlspecialchars(ucfirst($payment['online_type'])) ?></small>
+                                                            <?php endif; ?>
+                                                            <?php if (!empty($payment['transaction_ref'])): ?>
+                                                                <small class="text-muted d-block">Ref: <?= htmlspecialchars($payment['transaction_ref']) ?></small>
+                                                            <?php endif; ?>
+                                                            <?php if (empty($payment['bank_name']) && empty($payment['cheque_no']) && empty($payment['online_type']) && empty($payment['transaction_ref'])): ?>
+                                                                <span class="text-muted">—</span>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td>
+                                                            <?php if (!empty($payment['disbursement_proof'])): ?>
+                                                                <?php $proofFiles = json_decode($payment['disbursement_proof'], true) ?: []; ?>
+                                                                <div class="d-flex flex-wrap gap-1">
+                                                                <?php foreach ($proofFiles as $pIdx => $pPath): ?>
+                                                                    <?php $pExt = strtolower(pathinfo($pPath, PATHINFO_EXTENSION)); ?>
+                                                                    <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($pPath) ?>" target="_blank"
+                                                                        class="btn btn-xs btn-outline-success py-0 px-1"
+                                                                        style="font-size:11px;"
+                                                                        title="<?= htmlspecialchars(basename($pPath)) ?>">
+                                                                        <?php if (in_array($pExt, ['jpg','jpeg','png','gif','webp'])): ?>
+                                                                            <i class="fa-light fa-image"></i>
+                                                                        <?php elseif ($pExt === 'pdf'): ?>
+                                                                            <i class="fa-light fa-file-pdf"></i>
+                                                                        <?php else: ?>
+                                                                            <i class="fa-light fa-file"></i>
+                                                                        <?php endif; ?>
+                                                                        <?= $pIdx + 1 ?>
+                                                                    </a>
+                                                                <?php endforeach; ?>
+                                                                </div>
+                                                            <?php else: ?>
+                                                                <span class="text-muted">—</span>
+                                                            <?php endif; ?>
+                                                        </td>
                                                         <td><?= htmlspecialchars($payment['created_by_name'] ?? 'N/A') ?></td>
                                                         <!-- NEW: Display Project/Office in payments -->
                                                         <?php if (!empty($payments[0]['project_name']) || !empty($payments[0]['office'])): ?>
                                                             <td>
                                                                 <?php if (!empty($payment['project_name'])): ?>
                                                                     <small class="text-muted">Project:</small><br>
-                                                                    <span
-                                                                        class="text-info"><?= htmlspecialchars($payment['project_name']) ?></span>
+                                                                    <span class="text-info"><?= htmlspecialchars($payment['project_name']) ?></span>
                                                                 <?php elseif (!empty($payment['office'])): ?>
                                                                     <small class="text-muted">Office:</small><br>
-                                                                    <span
-                                                                        class="text-info"><?= htmlspecialchars($payment['office']) ?></span>
+                                                                    <span class="text-info"><?= htmlspecialchars($payment['office']) ?></span>
                                                                 <?php else: ?>
                                                                     <span class="text-muted">-</span>
                                                                 <?php endif; ?>
@@ -293,12 +336,12 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                             </tbody>
                                             <tfoot>
                                                 <tr>
-                                                    <?php $colspan = !empty($payments[0]['project_name']) || !empty($payments[0]['office']) ? 6 : 5; ?>
-                                                    <td colspan="<?= $colspan - 1 ?>" class="text-end"><strong>Total
-                                                            Paid:</strong></td>
-                                                    <td colspan="1"><strong
-                                                            class="text-success">TK.<?= number_format($total_paid, 2) ?></strong>
-                                                    </td>
+                                                    <?php
+                                                        $hasExtra = !empty($payments[0]['project_name']) || !empty($payments[0]['office']);
+                                                        $colspan = $hasExtra ? 7 : 6;
+                                                    ?>
+                                                    <td colspan="<?= $colspan - 1 ?>" class="text-end"><strong>Total Paid:</strong></td>
+                                                    <td colspan="1"><strong class="text-success">TK.<?= number_format($total_paid, 2) ?></strong></td>
                                                 </tr>
                                             </tfoot>
                                         </table>
@@ -524,63 +567,182 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
 <!-- Add Payment Modal -->
 <?php if ($isAdmin && ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0): ?>
     <div class="modal fade" id="addPaymentModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Payment</h5>
+                    <h5 class="modal-title"><i class="fa-light fa-plus-circle me-2"></i>Add Payment</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form action="<?= $GLOBALS['base_url'] ?>/add-cashout-payment" method="POST">
+                <form action="<?= $GLOBALS['base_url'] ?>/add-cashout-payment" method="POST" enctype="multipart/form-data">
                     <div class="modal-body">
                         <input type="hidden" name="request_id" value="<?= $request['id'] ?>">
 
-                        <div class="mb-3">
-                            <label class="form-label">Amount (TK.): <span class="text-danger">*</span></label>
-                            <?php
-                            // Determine max amount - use approved amount if available, otherwise use due amount
-                            $maxAmount = !empty($request['approved_amount']) ?
-                                min($request['approved_amount'], $request['due_amount']) :
-                                $request['due_amount'];
-                            ?>
-                            <input type="number" name="amount" class="form-control" placeholder="0.00" step="0.01"
-                                min="0.01" max="<?= $maxAmount ?>" value="<?= $maxAmount ?>" required>
-                            <small class="text-muted">
-                                Max: TK.<?= number_format($maxAmount, 2) ?>
-                                <?php if (!empty($request['approved_amount'])): ?>
-                                    <br>Approved Amount: TK.<?= number_format($request['approved_amount'], 2) ?>
-                                <?php endif; ?>
-                            </small>
+                        <div class="alert alert-info">
+                            <strong>Request Amount:</strong> TK.<?= number_format($request['amount'], 2) ?><br>
+                            <strong>Already Paid:</strong> TK.<?= number_format($total_paid ?? 0, 2) ?><br>
+                            <strong>Due Amount:</strong> <span class="text-danger">TK.<?= number_format($request['due_amount'], 2) ?></span>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Payment Date:</label>
-                            <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>"
-                                required>
-                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Amount (TK.): <span class="text-danger">*</span></label>
+                                <?php
+                                $maxAmount = !empty($request['approved_amount'])
+                                    ? min($request['approved_amount'], $request['due_amount'])
+                                    : $request['due_amount'];
+                                ?>
+                                <input type="number" name="amount" class="form-control" placeholder="0.00" step="0.01"
+                                    min="0.01" max="<?= $maxAmount ?>" value="<?= $maxAmount ?>" required>
+                                <small class="text-muted">Max: TK.<?= number_format($maxAmount, 2) ?>
+                                    <?php if (!empty($request['approved_amount'])): ?>
+                                        <br>Approved Amount: TK.<?= number_format($request['approved_amount'], 2) ?>
+                                    <?php endif; ?>
+                                </small>
+                            </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Payment Method:</label>
-                            <select name="payment_method" class="form-control" required>
-                                <option value="cash">Cash</option>
-                                <option value="bank">Bank Transfer</option>
-                                <option value="cheque">Cheque</option>
-                                <option value="online">Online Payment</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Payment Date: <span class="text-danger">*</span></label>
+                                <input type="date" name="payment_date" class="form-control"
+                                    value="<?= date('Y-m-d') ?>" required>
+                            </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Transaction Reference:</label>
-                            <input type="text" name="transaction_ref" class="form-control"
-                                placeholder="e.g., Receipt #, Transaction ID">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Payment Method: <span class="text-danger">*</span></label>
+                                <select name="payment_method" class="form-control" id="vrPaymentMethod" required>
+                                    <option value="cash">Cash</option>
+                                    <option value="bank">Bank Transfer</option>
+                                    <option value="cheque">Cheque</option>
+                                    <option value="online">Online Payment</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Transaction Reference:</label>
+                                <input type="text" name="transaction_ref" class="form-control"
+                                    placeholder="e.g., Receipt #, Transaction ID">
+                            </div>
+
+                            <!-- Bank Transfer Fields -->
+                            <div class="col-md-12 mb-3 vr-bank-fields" style="display:none;">
+                                <label class="form-label">Bank / Branch: <span class="text-danger">*</span></label>
+                                <select name="bank_id" id="vrBankSelect" class="form-control">
+                                    <option value="">-- Loading banks... --</option>
+                                </select>
+                                <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/bank-registry" target="_blank">Bank Registry</a></small>
+                            </div>
+
+                            <div class="col-md-6 mb-3 vr-bank-fields" style="display:none;">
+                                <label class="form-label">Account Number:</label>
+                                <input type="text" name="bank_account_no" class="form-control" placeholder="Enter account number">
+                            </div>
+
+                            <!-- Cheque Fields -->
+                            <div class="col-md-6 mb-3 vr-cheque-fields" style="display:none;">
+                                <label class="form-label">Cheque Number:</label>
+                                <input type="text" name="cheque_no" class="form-control" placeholder="Enter cheque number">
+                            </div>
+
+                            <!-- Online Payment Fields -->
+                            <div class="col-md-6 mb-3 vr-online-fields" style="display:none;">
+                                <label class="form-label">Online Payment Type:</label>
+                                <select name="online_type" class="form-control">
+                                    <option value="">Select type</option>
+                                    <option value="bkash">bKash</option>
+                                    <option value="nagad">Nagad</option>
+                                    <option value="rocket">Rocket</option>
+                                    <option value="upay">Upay</option>
+                                    <option value="paypal">PayPal</option>
+                                    <option value="stripe">Stripe</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+
+                            <!-- Mandatory Disbursement Proof -->
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">
+                                    <i class="fa-light fa-paperclip me-1"></i>
+                                    Disbursement Proof <span class="text-danger">*</span>
+                                    <span class="text-muted small ms-1">(JPG, PNG, PDF, DOC — max 5MB each)</span>
+                                </label>
+                                <input type="file" name="disbursement_proof[]" id="vrProofFiles"
+                                    class="form-control" multiple
+                                    accept="image/*,application/pdf,.doc,.docx" required>
+                                <div id="vrFilePreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+                                <small class="text-danger">Upload at least one proof document (receipt, bank slip, screenshot, etc.)</small>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success">Add Payment</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fa-light fa-check me-1"></i> Add Payment
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const method  = document.getElementById('vrPaymentMethod');
+    const bankF   = document.querySelectorAll('.vr-bank-fields');
+    const chequeF = document.querySelectorAll('.vr-cheque-fields');
+    const onlineF = document.querySelectorAll('.vr-online-fields');
+
+    function toggleFields() {
+        bankF.forEach(el => el.style.display = 'none');
+        chequeF.forEach(el => el.style.display = 'none');
+        onlineF.forEach(el => el.style.display = 'none');
+        if (!method) return;
+        if (method.value === 'bank')   bankF.forEach(el => el.style.display = 'block');
+        if (method.value === 'cheque') chequeF.forEach(el => el.style.display = 'block');
+        if (method.value === 'online') onlineF.forEach(el => el.style.display = 'block');
+    }
+
+    if (method) { method.addEventListener('change', toggleFields); toggleFields(); }
+
+    // Load Bank Registry options via AJAX
+    fetch('<?= $GLOBALS['base_url'] ?>/get-banks')
+        .then(r => r.json())
+        .then(data => {
+            const sel = document.getElementById('vrBankSelect');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">-- Select Bank / Branch --</option>';
+            (data.banks || []).forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.bank_name + ' — ' + b.branch_name;
+                sel.appendChild(opt);
+            });
+        });
+
+    // File thumbnail preview
+    const proofInput = document.getElementById('vrProofFiles');
+    const preview    = document.getElementById('vrFilePreview');
+    if (proofInput && preview) {
+        proofInput.addEventListener('change', function() {
+            preview.innerHTML = '';
+            Array.from(this.files).forEach(file => {
+                const thumb = document.createElement('div');
+                thumb.className = 'border rounded p-1 text-center';
+                thumb.style.cssText = 'width:72px;font-size:10px;overflow:hidden;';
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.style.cssText = 'width:62px;height:46px;object-fit:cover;border-radius:3px;';
+                    img.src = URL.createObjectURL(file);
+                    thumb.appendChild(img);
+                } else {
+                    thumb.innerHTML = '<i class="fa-light fa-file-pdf fa-2x text-danger"></i>';
+                }
+                const n = document.createElement('div');
+                n.textContent = file.name.length > 9 ? file.name.substr(0,9)+'...' : file.name;
+                thumb.appendChild(n);
+                preview.appendChild(thumb);
+            });
+        });
+    }
+});
+</script>
 <?php endif; ?>
