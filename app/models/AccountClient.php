@@ -961,26 +961,32 @@ ORDER BY lb.booking_date DESC
             }
 
             if (isset($transaction['payment_status'])) {
-                switch ($transaction['payment_status']) {
-                    case 'paid':
-                        $transaction['status_class'] = 'bg-success';
-                        $transaction['status_text'] = 'Paid';
-                        break;
-                    case 'partially_paid':
-                        $transaction['status_class'] = 'bg-info';
-                        $transaction['status_text'] = 'Partially Paid';
-                        break;
-                    case 'pending':
-                        $transaction['status_class'] = 'bg-warning';
-                        $transaction['status_text'] = 'Pending';
-                        break;
-                    case 'failed':
-                        $transaction['status_class'] = 'bg-danger';
-                        $transaction['status_text'] = 'Failed';
-                        break;
-                    default:
-                        $transaction['status_class'] = 'bg-secondary';
-                        $transaction['status_text'] = ucfirst(str_replace('_', ' ', $transaction['payment_status']));
+                // If verified by Accounts, always show as Paid regardless of raw payment_status
+                if (($transaction['verification_status'] ?? '') === 'verified') {
+                    $transaction['status_class'] = 'bg-success';
+                    $transaction['status_text']  = 'Paid';
+                } else {
+                    switch ($transaction['payment_status']) {
+                        case 'paid':
+                            $transaction['status_class'] = 'bg-success';
+                            $transaction['status_text'] = 'Paid';
+                            break;
+                        case 'partially_paid':
+                            $transaction['status_class'] = 'bg-info';
+                            $transaction['status_text'] = 'Partially Paid';
+                            break;
+                        case 'pending':
+                            $transaction['status_class'] = 'bg-warning';
+                            $transaction['status_text'] = 'Pending';
+                            break;
+                        case 'failed':
+                            $transaction['status_class'] = 'bg-danger';
+                            $transaction['status_text'] = 'Failed';
+                            break;
+                        default:
+                            $transaction['status_class'] = 'bg-secondary';
+                            $transaction['status_text'] = ucfirst(str_replace('_', ' ', $transaction['payment_status']));
+                    }
                 }
             }
         }
