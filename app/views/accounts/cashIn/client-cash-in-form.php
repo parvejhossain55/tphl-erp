@@ -80,17 +80,14 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyPaid);
                             <select name="payment_type" class="form-control" id="paymentType" required>
                                 <option value="">-- Select Payment Type --</option>
 
-                                <!-- Booking Money — available to Accounts if not yet paid -->
-                                <?php if (($paymentSummary['booking_money_paid'] ?? 0) <= 0): ?>
+                                <!-- Booking Money — payable while not fully settled -->
+                                <?php if (!$isBookingFullyPaid): ?>
                                     <option value="booking_money" data-details="false">
-                                        Booking Money
-                                        <?php if (!empty($paymentSummary['booking_money']) && $paymentSummary['booking_money'] > 0): ?>
-                                            (Agreed: TK.<?= number_format($paymentSummary['booking_money'], 2) ?>)
-                                        <?php endif; ?>
+                                        Booking Money<?php if ($bookingBalance > 0): ?> (Remaining: TK.<?= number_format($bookingBalance, 2) ?>)<?php elseif ($agreementValue > 0): ?> (Agreed: TK.<?= number_format($agreementValue, 2) ?>)<?php endif; ?>
                                     </option>
                                 <?php else: ?>
                                     <option value="booking_money" disabled>
-                                        Booking Money (Already Paid — TK.<?= number_format($paymentSummary['booking_money_paid'], 2) ?>)
+                                        Booking Money (Fully Paid — TK.<?= number_format($bookingMoneyPaid, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
