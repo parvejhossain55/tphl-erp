@@ -36,6 +36,7 @@ class BankRegistryController extends Controller
 
         $bankName      = trim($_POST['bank_name']     ?? '');
         $branchName    = trim($_POST['branch_name']   ?? '');
+        $accountNumber = trim($_POST['account_number'] ?? '');
         $routingNumber = trim($_POST['routing_number'] ?? '');
         $createdBy     = $_SESSION['user']['id'] ?? 0;
 
@@ -44,10 +45,10 @@ class BankRegistryController extends Controller
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO banks (bank_name, branch_name, routing_number, status, created_by)
-            VALUES (?, ?, ?, 'active', ?)
+            INSERT INTO banks (bank_name, branch_name, account_number, routing_number, status, created_by)
+            VALUES (?, ?, ?, ?, 'active', ?)
         ");
-        $stmt->bind_param("sssi", $bankName, $branchName, $routingNumber, $createdBy);
+        $stmt->bind_param("ssssi", $bankName, $branchName, $accountNumber, $routingNumber, $createdBy);
 
         if ($stmt->execute()) {
             echo json_encode([
@@ -72,6 +73,7 @@ class BankRegistryController extends Controller
         $id            = (int)($_POST['id']            ?? 0);
         $bankName      = trim($_POST['bank_name']      ?? '');
         $branchName    = trim($_POST['branch_name']    ?? '');
+        $accountNumber = trim($_POST['account_number'] ?? '');
         $routingNumber = trim($_POST['routing_number'] ?? '');
 
         if (!$id || !$bankName || !$branchName) {
@@ -79,10 +81,10 @@ class BankRegistryController extends Controller
         }
 
         $stmt = $this->db->prepare("
-            UPDATE banks SET bank_name = ?, branch_name = ?, routing_number = ?
+            UPDATE banks SET bank_name = ?, branch_name = ?, account_number = ?, routing_number = ?
             WHERE id = ?
         ");
-        $stmt->bind_param("sssi", $bankName, $branchName, $routingNumber, $id);
+        $stmt->bind_param("ssssi", $bankName, $branchName, $accountNumber, $routingNumber, $id);
 
         if ($stmt->execute()) {
             echo json_encode(['success' => true, 'message' => 'Bank updated successfully']);

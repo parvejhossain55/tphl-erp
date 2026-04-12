@@ -32,6 +32,7 @@ $show_breadcrumb = true;
                             <th>#</th>
                             <th>Bank Name</th>
                             <th>Branch Name</th>
+                            <th>Account Number</th>
                             <th>Routing Number</th>
                             <th>Status</th>
                             <th>Created At</th>
@@ -45,6 +46,7 @@ $show_breadcrumb = true;
                                     <td><?= $i + 1 ?></td>
                                     <td><strong><?= htmlspecialchars($bank['bank_name']) ?></strong></td>
                                     <td><?= htmlspecialchars($bank['branch_name']) ?></td>
+                                    <td><span class="text-muted"><?= htmlspecialchars($bank['account_number'] ?? '—') ?></span></td>
                                     <td><span class="text-muted"><?= htmlspecialchars($bank['routing_number'] ?? '—') ?></span></td>
                                     <td>
                                         <?php if ($bank['status'] === 'active'): ?>
@@ -79,7 +81,7 @@ $show_breadcrumb = true;
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-5">
+                                <td colspan="8" class="text-center text-muted py-5">
                                     <i class="fa-light fa-building-columns fa-2x mb-3 d-block"></i>
                                     No banks registered yet. Click "Add New Bank" to get started.
                                 </td>
@@ -111,6 +113,10 @@ $show_breadcrumb = true;
                     <div class="mb-3">
                         <label class="form-label">Branch Name <span class="text-danger">*</span></label>
                         <input type="text" name="branch_name" class="form-control" placeholder="e.g. Gulshan Branch" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Account Number</label>
+                        <input type="text" name="account_number" class="form-control" placeholder="Account number">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Routing Number</label>
@@ -148,6 +154,10 @@ $show_breadcrumb = true;
                     <div class="mb-3">
                         <label class="form-label">Branch Name <span class="text-danger">*</span></label>
                         <input type="text" name="branch_name" id="edit_branch_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Account Number</label>
+                        <input type="text" name="account_number" id="edit_account_number" class="form-control">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Routing Number</label>
@@ -189,6 +199,7 @@ function openEditModal(bank) {
     document.getElementById('edit_bank_id').value     = bank.id;
     document.getElementById('edit_bank_name').value   = bank.bank_name;
     document.getElementById('edit_branch_name').value = bank.branch_name;
+    document.getElementById('edit_account_number').value = bank.account_number || '';
     document.getElementById('edit_routing_number').value = bank.routing_number || '';
     new bootstrap.Modal(document.getElementById('editBankModal')).show();
 }

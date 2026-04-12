@@ -116,6 +116,12 @@ public function index()
         );
     }
 
+    // Fetch bank transactions for bank_cashin / bank_cashout categories
+    $bankTransactions = [];
+    if (in_array($category, ['bank_cashin', 'bank_cashout']) && $statementStartDate && $statementEndDate) {
+        $bankTransactions = $this->getBankTransactions($category, $statementStartDate, $statementEndDate, $projectId);
+    }
+
     $viewData = [
         'current_route' => 'central-statement',
         'page_title' => 'Central Financial Statement',
@@ -131,7 +137,8 @@ public function index()
         'statement_data' => $statementData,
         'overall_stats' => $overallStats,
         'revenue_data' => $revenueData,
-        'cashout_payment_details' => $cashoutPaymentDetails,  // NEW
+        'cashout_payment_details' => $cashoutPaymentDetails,
+        'bank_transactions' => $bankTransactions,
     ];
 
     $this->view('accounts/central-statement', $viewData);
@@ -353,6 +360,89 @@ private function getCashoutPaymentDetails($start_date, $end_date, $project_id = 
     
     $stmt->close();
     return $payments;
+}
+
+/**
+ * Get bank transactions for bank_cashin or bank_cashout
+ */
+private function getBankTransactions($type, $startDate, $endDate, $projectId = null)
+{
+    $transactions = [];
+
+    if ($type === 'bank_cashin') {
+        // Bank cash-in: payments received via bank from lead_payments
+        $sql = "SELECT 
+                    lp.payment_date,
+                    lp.amount,
+                    b.bank_name,
+                    b.branch_name,
+                    b.routing_number,
+                    b.account_number,
+                    CONCAT(l.full_name, ' — ', UPPER(REPLACE(lp.payment_type, '_', ' '))) as description,
+                    lp.transaction_ref
+                FROM lead_payments lp
+                LEFT JOIN banks b ON b.id = lp.bank_id
+                LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
+                LEFT JOIN leads l ON l.id = lb.lead_id
+                WHERE lp.payment_method = 'bank'
+                AND lp.payment_date BETWEEN ? AND ?
+                AND lp.verification_status = 'verified'";
+        
+        $params = [$startDate, $endDate];
+        $types = "ss";
+        
+        if ($projectId) {
+            $sql .= " AND lb.project_id = ?";
+            $params[] = $projectId;
+            $types .= "i";
+        }
+        
+        $sql .= " ORDER BY lp.payment_date DESC, lp.id DESC";
+
+    } else {
+        // Bank cash-out: payments made via bank from cashout_payments
+        $sql = "SELECT 
+                    cp.payment_date,
+                    cp.amount,
+                    b.bank_name,
+                    b.branch_name,
+                    b.routing_number,
+                    b.account_number,
+                    COALESCE(cr.purpose_paid_to, 'N/A') as description,
+                    cp.transaction_ref
+                FROM cashout_payments cp
+                LEFT JOIN banks b ON b.id = cp.bank_id
+                LEFT JOIN cashout_requests cr ON cr.id = cp.cashout_request_id
+                WHERE cp.payment_method = 'bank'
+                AND cp.payment_date BETWEEN ? AND ?";
+        
+        $params = [$startDate, $endDate];
+        $types = "ss";
+        
+        if ($projectId) {
+            $sql .= " AND cp.project_id = ?";
+            $params[] = $projectId;
+            $types .= "i";
+        }
+        
+        $sql .= " ORDER BY cp.payment_date DESC, cp.id DESC";
+    }
+
+    $stmt = $this->db->prepare($sql);
+    if (!$stmt) {
+        error_log("getBankTransactions prepare error: " . $this->db->error);
+        return [];
+    }
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        $transactions[] = $row;
+    }
+    $stmt->close();
+
+    return $transactions;
 }
 
     /**
