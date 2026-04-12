@@ -345,8 +345,7 @@ ORDER BY lb.booking_date DESC
                  (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
                 WHERE lp.booking_id = lb.id 
-                 AND lp.payment_type = 'booking_money'
-                 AND lp.payment_status = 'paid'), 
+                 AND lp.payment_type = 'booking_money'), 
                  0) AS booking_money,
                 lb.discount_amount,
                 lb.booking_status,
@@ -402,7 +401,6 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'
                      AND lp.payment_type = 'booking_money'), 
                     0
                 ) as booking_money_paid,
