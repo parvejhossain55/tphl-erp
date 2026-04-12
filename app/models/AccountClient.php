@@ -340,6 +340,7 @@ ORDER BY lb.booking_date DESC
                 lb.id as booking_id,
                 lb.lead_id,
                 lb.booking_date,
+                lb.agreement_value,
                 COALESCE(
                  (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
@@ -650,8 +651,8 @@ ORDER BY lb.booking_date DESC
             ];
         }
 
-        // Booking fully paid = total verified/paid booking_money payments >= agreement_value
-        $agreementValue   = (float) ($clientDetails['total_price'] ?? 0);
+        // agreement_value is the contractual booking target from lead_bookings
+        $agreementValue   = (float) ($clientDetails['agreement_value'] ?? 0);
         $bookingMoneyPaid = (float) ($clientDetails['booking_money_paid'] ?? 0);
         $isBookingFullyPaid = ($bookingMoneyPaid >= $agreementValue && $agreementValue > 0);
 
@@ -715,11 +716,12 @@ ORDER BY lb.booking_date DESC
             // Validate based on payment type
             switch ($paymentType) {
                 case 'booking_money':
-                    if ($summary['booking_money_paid'] > 0) {
-                        throw new Exception("Booking money has already been paid for this booking");
+                    if ($summary['is_booking_fully_paid']) {
+                        throw new Exception("Booking money has already been fully paid for this booking.");
                     }
-                    if ($amount > $summary['booking_money']) {
-                        throw new Exception("Booking money amount cannot exceed agreed amount: ৳" . number_format($summary['booking_money'], 2));
+                    $remainingBooking = $summary['agreement_value'] - $summary['booking_money_paid'];
+                    if ($amount > $remainingBooking) {
+                        throw new Exception("Amount exceeds outstanding booking balance: ৳" . number_format($remainingBooking, 2));
                     }
                     $landShareAmount = $amount;
                     break;
