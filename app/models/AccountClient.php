@@ -621,60 +621,69 @@ ORDER BY lb.booking_date DESC
 
         if (!$clientDetails) {
             return [
-                'total_price' => 0,
-                'total_land_share' => 0,
-                'booking_money' => 0,
-                'booking_money_paid' => 0,
-                'additional_land_share_paid' => 0,
-                'total_land_share_paid' => 0,
-                'remaining_land_share' => 0,
-                'discount_amount' => 0,
-                'registration_paid' => 0,
-                'construction_fee' => 0,
-                'construction_fee_paid' => 0,
-                'construction_fee_paid_after_service' => 0,
-                'remaining_construction_fee' => 0,
-                'total_paid' => 0,
-                'total_due' => 0,
-                'total_emi' => 0,
-                'completed_emi' => 0,
-                'pending_emi' => 0,
-                'last_payment_date' => null,
-                'total_service_fee' => 0,
-                'net_received' => 0,
-                'is_land_share_completed' => false,
-                'paid_emi_numbers' => [],
-                'pending_emi_numbers' => []
+                'total_price'                          => 0,
+                'agreement_value'                      => 0,
+                'total_land_share'                     => 0,
+                'booking_money'                        => 0,
+                'booking_money_paid'                   => 0,
+                'is_booking_fully_paid'                => false,
+                'additional_land_share_paid'           => 0,
+                'total_land_share_paid'                => 0,
+                'remaining_land_share'                 => 0,
+                'discount_amount'                      => 0,
+                'registration_paid'                    => 0,
+                'construction_fee'                     => 0,
+                'construction_fee_paid'                => 0,
+                'construction_fee_paid_after_service'  => 0,
+                'remaining_construction_fee'           => 0,
+                'total_paid'                           => 0,
+                'total_due'                            => 0,
+                'total_emi'                            => 0,
+                'completed_emi'                        => 0,
+                'pending_emi'                          => 0,
+                'last_payment_date'                    => null,
+                'total_service_fee'                    => 0,
+                'net_received'                         => 0,
+                'is_land_share_completed'              => false,
+                'paid_emi_numbers'                     => [],
+                'pending_emi_numbers'                  => []
             ];
         }
 
+        // Booking fully paid = total verified/paid booking_money payments >= agreement_value
+        $agreementValue   = (float) ($clientDetails['total_price'] ?? 0);
+        $bookingMoneyPaid = (float) ($clientDetails['booking_money_paid'] ?? 0);
+        $isBookingFullyPaid = ($bookingMoneyPaid >= $agreementValue && $agreementValue > 0);
+
         return [
-            'total_price' => $clientDetails['total_price'],
-            'total_land_share' => $clientDetails['total_land_share'],
-            'booking_money' => $clientDetails['booking_money'],
-            'booking_money_paid' => $clientDetails['booking_money_paid'],
-            'additional_land_share_paid' => $clientDetails['additional_land_share_paid'],
-            'total_land_share_paid' => $clientDetails['total_land_share_paid'],
-            'remaining_land_share' => $clientDetails['remaining_land_share'],
-            'discount_amount' => $clientDetails['discount_amount'],
-            'registration_paid' => $clientDetails['registration_paid'],
-            'registration_money' => $clientDetails['registration_paid'],
-            'development_charge_paid' => $clientDetails['development_charge_paid'] ?? 0,
-            'construction_fee' => $clientDetails['construction_fee'],
-            'construction_fee_paid' => $clientDetails['construction_fee_paid'],
-            'construction_fee_paid_after_service' => $clientDetails['construction_fee_paid_after_service'],
-            'remaining_construction_fee' => $clientDetails['remaining_construction_fee'],
-            'total_paid' => $clientDetails['total_paid'],
-            'total_due' => $clientDetails['total_due'],
-            'total_emi' => $clientDetails['total_emi'],
-            'completed_emi' => $clientDetails['completed_emi'],
-            'pending_emi' => $clientDetails['pending_emi'],
-            'last_payment_date' => $clientDetails['last_payment_date'],
-            'total_service_fee' => $clientDetails['total_service_fee'],
-            'net_received' => $clientDetails['net_received'],
-            'is_land_share_completed' => $clientDetails['is_land_share_completed'],
-            'paid_emi_numbers' => $clientDetails['paid_emi_numbers'],
-            'pending_emi_numbers' => $clientDetails['pending_emi_numbers']
+            'total_price'                          => $clientDetails['total_price'],
+            'agreement_value'                      => $agreementValue,
+            'total_land_share'                     => $clientDetails['total_land_share'],
+            'booking_money'                        => $clientDetails['booking_money'],
+            'booking_money_paid'                   => $clientDetails['booking_money_paid'],
+            'is_booking_fully_paid'                => $isBookingFullyPaid,
+            'additional_land_share_paid'           => $clientDetails['additional_land_share_paid'],
+            'total_land_share_paid'                => $clientDetails['total_land_share_paid'],
+            'remaining_land_share'                 => $clientDetails['remaining_land_share'],
+            'discount_amount'                      => $clientDetails['discount_amount'],
+            'registration_paid'                    => $clientDetails['registration_paid'],
+            'registration_money'                   => $clientDetails['registration_paid'],
+            'development_charge_paid'              => $clientDetails['development_charge_paid'] ?? 0,
+            'construction_fee'                     => $clientDetails['construction_fee'],
+            'construction_fee_paid'                => $clientDetails['construction_fee_paid'],
+            'construction_fee_paid_after_service'  => $clientDetails['construction_fee_paid_after_service'],
+            'remaining_construction_fee'           => $clientDetails['remaining_construction_fee'],
+            'total_paid'                           => $clientDetails['total_paid'],
+            'total_due'                            => $clientDetails['total_due'],
+            'total_emi'                            => $clientDetails['total_emi'],
+            'completed_emi'                        => $clientDetails['completed_emi'],
+            'pending_emi'                          => $clientDetails['pending_emi'],
+            'last_payment_date'                    => $clientDetails['last_payment_date'],
+            'total_service_fee'                    => $clientDetails['total_service_fee'],
+            'net_received'                         => $clientDetails['net_received'],
+            'is_land_share_completed'              => $clientDetails['is_land_share_completed'],
+            'paid_emi_numbers'                     => $clientDetails['paid_emi_numbers'],
+            'pending_emi_numbers'                  => $clientDetails['pending_emi_numbers']
         ];
     }
 
@@ -716,6 +725,10 @@ ORDER BY lb.booking_date DESC
                     break;
 
                 case 'land_share':
+                    // Block land_share until the full agreed booking money has been received
+                    if (empty($summary['is_booking_fully_paid'])) {
+                        throw new Exception("Booking money must be fully settled before land share payments can be recorded.");
+                    }
                     if ($summary['remaining_land_share'] <= 0) {
                         throw new Exception("Land share payment is already completed!");
                     }

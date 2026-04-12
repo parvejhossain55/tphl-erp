@@ -11,9 +11,13 @@ $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
 $accountModel = new AccountClient();
 $paymentSummary = $accountModel->getPaymentSummaryByBookingId($bookingId);
 
-$remainingLandShare = $paymentSummary['remaining_land_share'] ?? 0;
-$isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
-$isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
+$remainingLandShare    = $paymentSummary['remaining_land_share']  ?? 0;
+$isLandShareCompleted  = $paymentSummary['is_land_share_completed'] ?? false;
+$isRegistrationPaid    = $accountModel->isRegistrationPaid($bookingId);
+$isBookingFullyPaid    = $paymentSummary['is_booking_fully_paid']  ?? false;
+$agreementValue        = $paymentSummary['agreement_value']        ?? 0;
+$bookingMoneyPaid      = $paymentSummary['booking_money_paid']     ?? 0;
+$bookingBalance        = max(0, $agreementValue - $bookingMoneyPaid);
 ?>
 
 <div class="row">
@@ -25,6 +29,27 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
             </div>
 
             <div class="card__body">
+
+                <!-- Booking Money Unpaid Alert -->
+                <?php if (($paymentSummary['booking_money_paid'] ?? 0) <= 0 && ($paymentSummary['booking_money'] ?? 0) > 0): ?>
+                    <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+                        <strong><i class="fa-light fa-triangle-exclamation me-1"></i>Booking Money Pending!</strong>
+                        Agreed booking amount of <strong>TK.<?= number_format($paymentSummary['booking_money'], 2) ?></strong>
+                        has not been received yet. Accounts can record it using the <em>Booking Money</em> option below.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!$isBookingFullyPaid && $bookingMoneyPaid > 0): ?>
+                    <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+                        <strong><i class="fa-light fa-triangle-exclamation me-1"></i>Booking Money Partially Paid!</strong>
+                        TK.<?= number_format($bookingMoneyPaid, 2) ?> received out of agreed
+                        TK.<?= number_format($agreementValue, 2) ?>.
+                        <strong>Outstanding balance: TK.<?= number_format($bookingBalance, 2) ?></strong>.
+                        Land Share payments are <strong>locked</strong> until the full booking amount is settled.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
 
                 <!-- Land Share Status Alert -->
                 <?php if ($remainingLandShare <= 0): ?>
@@ -55,6 +80,20 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                             <select name="payment_type" class="form-control" id="paymentType" required>
                                 <option value="">-- Select Payment Type --</option>
 
+                                <!-- Booking Money — available to Accounts if not yet paid -->
+                                <?php if (($paymentSummary['booking_money_paid'] ?? 0) <= 0): ?>
+                                    <option value="booking_money" data-details="false">
+                                        Booking Money
+                                        <?php if (!empty($paymentSummary['booking_money']) && $paymentSummary['booking_money'] > 0): ?>
+                                            (Agreed: TK.<?= number_format($paymentSummary['booking_money'], 2) ?>)
+                                        <?php endif; ?>
+                                    </option>
+                                <?php else: ?>
+                                    <option value="booking_money" disabled>
+                                        Booking Money (Already Paid — TK.<?= number_format($paymentSummary['booking_money_paid'], 2) ?>)
+                                    </option>
+                                <?php endif; ?>
+
                                 <!-- Registration - Only if Land Share is completed -->
                                 <?php if ($isLandShareCompleted): ?>
                                     <option value="registration" data-details="false">
@@ -66,15 +105,19 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- Land Share - Only if not completed -->
-                                <?php if (!$isLandShareCompleted): ?>
+                                <!-- Land Share - Requires booking fully paid AND not yet completed -->
+                                <?php if ($isBookingFullyPaid && !$isLandShareCompleted): ?>
                                     <option value="land_share" data-details="false">
                                         Land Share
                                         <?php echo $remainingLandShare > 0 ? '(Remaining: TK.' . number_format($remainingLandShare, 2) . ')' : ''; ?>
                                     </option>
-                                <?php else: ?>
+                                <?php elseif ($isLandShareCompleted): ?>
                                     <option value="land_share" disabled>
                                         Land Share (Completed)
+                                    </option>
+                                <?php else: ?>
+                                    <option value="land_share" disabled>
+                                        Land Share (Locked — Booking balance: TK.<?= number_format($bookingBalance, 2) ?> outstanding)
                                     </option>
                                 <?php endif; ?>
 
@@ -274,8 +317,10 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
         const chequeFields = document.querySelectorAll('.cheque-fields');
         const onlineFields = document.querySelectorAll('.online-fields');
 
-        const remainingLandShare = <?= json_encode($remainingLandShare) ?>;
-        const isLandShareCompleted = <?= json_encode($isLandShareCompleted) ?>;
+        const remainingLandShare   = <?= json_encode($remainingLandShare) ?>;
+        const isLandShareCompleted  = <?= json_encode($isLandShareCompleted) ?>;
+        const isBookingFullyPaid    = <?= json_encode($isBookingFullyPaid) ?>;
+        const bookingBalance        = <?= json_encode($bookingBalance) ?>;
 
         // Function to update amount field help text and validation
         function updateAmountField() {
@@ -486,6 +531,12 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($bookingId);
 
                 // Validation for land share payments
                 if (paymentTypeValue === 'land_share') {
+                    if (!isBookingFullyPaid) {
+                        e.preventDefault();
+                        alert('Land Share is locked. Full booking amount must be paid first.\nOutstanding balance: TK.' + bookingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+                        return false;
+                    }
+
                     if (remainingLandShare <= 0) {
                         e.preventDefault();
                         alert('Land share payment is already completed!');
