@@ -389,13 +389,29 @@ $statementModel = $statementModel ?? null;
                     elseif ($category === 'registration') $cashinLabel = "Total Registration";
                     elseif ($category === 'agreement') $cashinLabel = "Total Booking";
                     elseif ($category === 'management_cashin') $cashinLabel = "Total Management Cashin";
+                    elseif ($category === 'bank_cashin') $cashinLabel = "Total Bank Cash In";
+                    elseif ($category === 'bank_cashout') $cashinLabel = "Total Bank Cash Out";
                     elseif (in_array($category, ['cashout', 'utilities', 'other'])) $cashinLabel = "Total " . ucfirst($category);
                 }
                 ?>
                 <?= $cashinLabel ?>
             </div>
-            <div class="stat-value <?= (isset($category) && in_array($category, ['cashout', 'utilities', 'other'])) ? 'cash-out' : 'revenue' ?>">
-                TK.<?= number_format((isset($category) && in_array($category, ['cashout', 'utilities', 'other'])) ? $printTotalCashOut : $printTotalCashIn, 2) ?>
+            <div class="stat-value <?= (isset($category) && in_array($category, ['cashout', 'utilities', 'other', 'bank_cashout'])) ? 'cash-out' : 'revenue' ?>">
+                <?php
+                // For bank categories calculate from bank_transactions
+                if (isset($category) && in_array($category, ['bank_cashin', 'bank_cashout'])) {
+                    $bankTotal = 0;
+                    foreach ($bank_transactions ?? [] as $bt) {
+                        $bankTotal += (float)($bt['amount'] ?? 0);
+                    }
+                    $printStatVal = $bankTotal;
+                } elseif (isset($category) && in_array($category, ['cashout', 'utilities', 'other'])) {
+                    $printStatVal = $printTotalCashOut;
+                } else {
+                    $printStatVal = $printTotalCashIn;
+                }
+                ?>
+                TK.<?= number_format($printStatVal, 2) ?>
             </div>
         </div>
         <div class="stat-box">
@@ -421,10 +437,66 @@ $statementModel = $statementModel ?? null;
     <!-- Statement Data -->
 <!-- Statement Data -->
 <div class="period-title">
-    <?= (isset($statementData['daily_data']) && !empty($statementData['daily_data'])) ? 'DAILY STATEMENT' : 'MONTHLY STATEMENT' ?>
+    <?php
+    if (isset($category) && in_array($category, ['bank_cashin', 'bank_cashout'])) {
+        echo $category === 'bank_cashin' ? 'BANK CASH-IN STATEMENT' : 'BANK CASH-OUT STATEMENT';
+    } else {
+        echo (isset($statementData['daily_data']) && !empty($statementData['daily_data'])) ? 'DAILY STATEMENT' : 'MONTHLY STATEMENT';
+    }
+    ?>
 </div>
 
-<?php if (isset($statementData['daily_data']) && !empty($statementData['daily_data'])): ?>
+<?php if (isset($category) && in_array($category, ['bank_cashin', 'bank_cashout']) && !empty($bank_transactions)): ?>
+    <!-- Bank Transactions Print Table -->
+    <table class="statement-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Bank Name</th>
+                <th>Branch</th>
+                <th>Routing No</th>
+                <th>Account No</th>
+                <th><?= $category === 'bank_cashin' ? 'Client / Payment Type' : 'Purpose / Paid To' ?></th>
+                <th class="text-right"><?= $category === 'bank_cashin' ? 'Cash In (TK.)' : 'Withdrawal (TK.)' ?></th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            $printBankTotal = 0;
+            foreach ($bank_transactions as $idx => $bt):
+                $printBankTotal += (float)($bt['amount'] ?? 0);
+            ?>
+                <tr class="avoid-break">
+                    <td><?= $idx + 1 ?></td>
+                    <td><?= htmlspecialchars($bt['payment_date'] ?? '') ?></td>
+                    <td><?= htmlspecialchars($bt['bank_name'] ?? '-') ?></td>
+                    <td><?= htmlspecialchars($bt['branch_name'] ?? '-') ?></td>
+                    <td><?= htmlspecialchars($bt['routing_number'] ?? '-') ?></td>
+                    <td><?= htmlspecialchars($bt['account_number'] ?? '-') ?></td>
+                    <td><?= htmlspecialchars($bt['description'] ?? '-') ?></td>
+                    <td class="text-right <?= $category === 'bank_cashin' ? 'positive' : 'negative' ?>">
+                        TK.<?= number_format($bt['amount'] ?? 0, 2) ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+            <tr style="font-weight:700; border-top:1mm solid #000;">
+                <td colspan="7" class="text-right"><strong>Grand Total:</strong></td>
+                <td class="text-right <?= $category === 'bank_cashin' ? 'positive' : 'negative' ?>">
+                    <strong>TK.<?= number_format($printBankTotal, 2) ?></strong>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+
+<?php elseif (isset($category) && in_array($category, ['bank_cashin', 'bank_cashout']) && empty($bank_transactions ?? [])): ?>
+    <div class="text-center" style="padding: 20mm; font-style: italic; color: #666;">
+        No <?= $category === 'bank_cashin' ? 'bank cash-in' : 'bank cash-out' ?> transactions found for the selected period.
+    </div>
+
+<?php elseif (isset($statementData['daily_data']) && !empty($statementData['daily_data'])): ?>
     <table class="statement-table">
         <thead>
             <tr>
@@ -722,7 +794,7 @@ $statementModel = $statementModel ?? null;
         <div class="summary-title">PERIOD SUMMARY</div>
         <div class="summary-grid">
             <div class="summary-box">
-                <?php if (!isset($category) || in_array($category, ['all', 'emi', 'landshare', 'service_fee', 'registration', 'booking_money', 'agreement', 'management_cashin', 'total_cashin'])): ?>
+                <?php if (!isset($category) || in_array($category, ['all', 'emi', 'landshare', 'service_fee', 'registration', 'booking_money', 'agreement', 'management_cashin', 'total_cashin', 'bank_cashin', 'bank_cashout'])): ?>
                     <div class="summary-row">
                         <span class="summary-label">
                             <?php 
@@ -734,11 +806,13 @@ $statementModel = $statementModel ?? null;
                                 elseif ($category === 'registration') $summaryLabel = "Total Registration";
                                 elseif ($category === 'agreement') $summaryLabel = "Total Booking Money";
                                 elseif ($category === 'management_cashin') $summaryLabel = "Total Management Cashin";
+                                elseif ($category === 'bank_cashin') $summaryLabel = "Total Bank Cash In";
+                                elseif ($category === 'bank_cashout') $summaryLabel = "Total Bank Cash Out";
                             }
                             ?>
                             <?= $summaryLabel ?>:
                         </span>
-                        <span class="summary-value revenue">TK.<?= number_format($printTotalCashIn, 2) ?></span>
+                        <span class="summary-value <?= (isset($category) && $category === 'bank_cashout') ? 'cash-out' : 'revenue' ?>">TK.<?= number_format($printStatVal ?? $printTotalCashIn, 2) ?></span>
                     </div>
                 <?php endif; ?>
                 

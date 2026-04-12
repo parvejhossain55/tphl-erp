@@ -276,11 +276,15 @@ public function printStatement()
     $categoryName = '';
     if ($category !== 'all') {
         $categoryName = ucfirst(str_replace('_', ' ', $category));
-        // Special handling for cashout and utilities
+        // Special handling
         if ($category === 'cashout') {
             $categoryName = 'Cash Out';
         } elseif ($category === 'utilities') {
             $categoryName = 'Utilities (Bill/Electricity/Wifi/etc)';
+        } elseif ($category === 'bank_cashin') {
+            $categoryName = 'Bank Cash In';
+        } elseif ($category === 'bank_cashout') {
+            $categoryName = 'Bank Cash Out';
         }
     }
 
@@ -308,6 +312,11 @@ public function printStatement()
     if ($category === 'utilities') {
         $utilitiesTransactions = $this->statementModel->getUtilitiesTransactions($statementStartDate, $statementEndDate);
         $viewData['utilitiesTransactions'] = $utilitiesTransactions;
+    }
+
+    // Fetch bank transactions for bank_cashin / bank_cashout
+    if (in_array($category, ['bank_cashin', 'bank_cashout']) && $statementStartDate && $statementEndDate) {
+        $viewData['bank_transactions'] = $this->getBankTransactions($category, $statementStartDate, $statementEndDate, $projectId);
     }
 
     // FIXED: Include the print template with all variables
