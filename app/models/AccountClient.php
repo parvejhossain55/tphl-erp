@@ -341,11 +341,20 @@ ORDER BY lb.booking_date DESC
                 lb.lead_id,
                 lb.booking_date,
                 lb.agreement_value,
+                -- booking_money_total: ALL recorded entries regardless of verification (for remaining/dropdown)
                 COALESCE(
                  (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
                 WHERE lp.booking_id = lb.id 
                  AND lp.payment_type = 'booking_money'), 
+                 0) AS booking_money_total,
+                -- booking_money: only VERIFIED entries (for stat cards & land share calc)
+                COALESCE(
+                 (SELECT SUM(lp.amount) 
+                 FROM lead_payments lp 
+                WHERE lp.booking_id = lb.id 
+                 AND lp.payment_type = 'booking_money'
+                 AND lp.verification_status = 'verified'), 
                  0) AS booking_money,
                 lb.discount_amount,
                 lb.booking_status,
@@ -401,7 +410,8 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_type = 'booking_money'), 
+                     AND lp.payment_type = 'booking_money'
+                     AND lp.verification_status = 'verified'), 
                     0
                 ) as booking_money_paid,
                 COALESCE(
@@ -466,7 +476,10 @@ ORDER BY lb.booking_date DESC
             $emiPaid = (float) $clientDetails['emi_paid'];
             $totalServiceFee = (float) $clientDetails['total_service_fee'];
 
-            // CORRECT: Total land share paid = booking money + additional land share payments
+            // booking_money_total: all recorded entries (used for remaining in dropdown)
+            $bookingMoneyTotal = (float) ($clientDetails['booking_money_total'] ?? 0);
+
+            // CORRECT: Total land share paid = verified booking money + additional verified land share payments
             $totalLandSharePaid = $bookingMoney + $additionalLandSharePaid;
 
             // CORRECT: Remaining land share = total land share - total land share paid
@@ -650,16 +663,19 @@ ORDER BY lb.booking_date DESC
         }
 
         // agreement_value is the contractual booking target from lead_bookings
-        $agreementValue   = (float) ($clientDetails['agreement_value'] ?? 0);
-        $bookingMoneyPaid = (float) ($clientDetails['booking_money_paid'] ?? 0);
-        $isBookingFullyPaid = ($bookingMoneyPaid >= $agreementValue && $agreementValue > 0);
+        $agreementValue       = (float) ($clientDetails['agreement_value']      ?? 0);
+        $bookingMoneyTotal   = (float) ($clientDetails['booking_money_total']  ?? 0); // ALL entries
+        $bookingMoneyPaid    = (float) ($clientDetails['booking_money_paid']   ?? 0); // verified only
+        // Fully paid when ALL recorded entries (pending or not) cover the agreement
+        $isBookingFullyPaid  = ($bookingMoneyTotal >= $agreementValue && $agreementValue > 0);
 
         return [
             'total_price'                          => $clientDetails['total_price'],
             'agreement_value'                      => $agreementValue,
             'total_land_share'                     => $clientDetails['total_land_share'],
-            'booking_money'                        => $clientDetails['booking_money'],
-            'booking_money_paid'                   => $clientDetails['booking_money_paid'],
+            'booking_money'                        => $clientDetails['booking_money'],       // verified only (stat cards)
+            'booking_money_total'                  => $bookingMoneyTotal,                    // all entries (dropdown remaining)
+            'booking_money_paid'                   => $bookingMoneyPaid,                     // verified only
             'is_booking_fully_paid'                => $isBookingFullyPaid,
             'additional_land_share_paid'           => $clientDetails['additional_land_share_paid'],
             'total_land_share_paid'                => $clientDetails['total_land_share_paid'],

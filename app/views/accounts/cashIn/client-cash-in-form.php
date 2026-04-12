@@ -16,8 +16,9 @@ $isLandShareCompleted  = $paymentSummary['is_land_share_completed'] ?? false;
 $isRegistrationPaid    = $accountModel->isRegistrationPaid($bookingId);
 $isBookingFullyPaid    = $paymentSummary['is_booking_fully_paid']  ?? false;
 $agreementValue        = $paymentSummary['agreement_value']        ?? 0;
-$bookingMoneyPaid      = $paymentSummary['booking_money_paid']     ?? 0;
-$bookingBalance        = max(0, $agreementValue - $bookingMoneyPaid);
+$bookingMoneyTotal     = $paymentSummary['booking_money_total']    ?? 0; // all entries — for dropdown remaining
+$bookingMoneyPaid      = $paymentSummary['booking_money_paid']     ?? 0; // verified only — for stat display
+$bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // remaining = agreement - all recorded
 ?>
 
 <div class="row">
