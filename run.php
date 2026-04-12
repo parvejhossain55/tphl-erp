@@ -1,0 +1,1 @@
+<?php \ = new mysqli('localhost', 'root', '', 'tphl_erp'); if (\->query('ALTER TABLE manpower_requisitions ADD COLUMN replacement_for_id INT NULL AFTER project_id;')) echo 'Success'; else echo \->error; ?>

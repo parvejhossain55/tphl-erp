@@ -50,7 +50,6 @@ class PaymentBookingController extends Controller
         ]);
     }
 
-
     public function store()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -114,12 +113,13 @@ class PaymentBookingController extends Controller
             ? $booking['approved_amount']
             : $booking['agreement_value'];
 
-        // sum verified
+        // sum verified only for booking money
         $sum = $this->db->query("
         SELECT SUM(amount) as total 
         FROM lead_payments 
         WHERE booking_id = $bookingId 
         AND verification_status='verified'
+        AND payment_type='booking_money'
     ")->fetch_assoc();
 
         $paid = $sum['total'] ?? 0;
@@ -195,10 +195,11 @@ class PaymentBookingController extends Controller
             exit;
         }
 
-        // verify payment
+        // verify payment AND set payment_status to 'paid'
         $stmt = $this->db->prepare("
         UPDATE lead_payments 
         SET verification_status='verified',
+            payment_status='paid',
             verified_by = ?,
             verified_at = NOW()
         WHERE id = ?
@@ -208,10 +209,10 @@ class PaymentBookingController extends Controller
 
         $bookingId = $payment['booking_id'];
 
-        // 🔥 update payment status
+        //  update payment status
         $this->updateBookingPaymentStatus($bookingId);
 
-        // 🔥 flat booking ONLY if booking_money
+        //  flat booking ONLY if booking_money
         if ($payment['payment_type'] === 'booking_money') {
             $this->handleFlatBooking($bookingId);
         }

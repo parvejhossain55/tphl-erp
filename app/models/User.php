@@ -99,9 +99,9 @@ class User extends Model
 
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
-    public function getPaginatedWithSalesExecutive($limit, $offset, $search = '')
-    {
-        $sql = "SELECT
+public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $roleId = null, $teamId = null)
+{
+    $sql = "SELECT
                 u.*,
                 e.id AS employee_id,
                 e.photo AS employee_photo,
@@ -109,28 +109,43 @@ class User extends Model
                 d.name AS designation_name,
                 r.name AS role_name
             " . $this->baseUserQuery() . "
-            WHERE u.role_id = 8";
+            WHERE u.role_id IN (5,8)"; // important change
 
-        $params = [];
-        $types = "";
+    $params = [];
+    $types = "";
 
-        if ($search) {
-            $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-            $params = array_merge($params, ["%$search%", "%$search%", "%$search%"]);
-            $types .= "sss";
-        }
-
-        $sql .= " ORDER BY u.id DESC LIMIT ? OFFSET ?";
-        $params[] = $limit;
-        $params[] = $offset;
-        $types .= "ii";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    // 🔥 TEAM FILTER LOGIC
+    if ($roleId == 5 && !empty($teamId)) {
+        $sql .= " AND u.team_id = ?";
+        $params[] = $teamId;
+        $types .= "i";
     }
+    // else → show all (no condition)
+
+    // 🔍 Search filter
+    if (!empty($search)) {
+        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $types .= "sss";
+    }
+
+    $sql .= " ORDER BY u.id DESC LIMIT ? OFFSET ?";
+    $params[] = $limit;
+    $params[] = $offset;
+    $types .= "ii";
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
 
     public function countAllForSales($search = '', $role = '')
     {
@@ -163,27 +178,37 @@ class User extends Model
 
         return $stmt->get_result()->fetch_assoc()['total'];
     }
-    public function countAllForSalesExecutive($search = '')
-    {
-        $sql = "SELECT COUNT(*) as total FROM users u WHERE u.role_id = 8";
+   public function countAllForSalesExecutive($search = '', $roleId = null, $teamId = null)
+{
+    $sql = "SELECT COUNT(*) as total FROM users u WHERE u.role_id IN (5,8)";
 
-        $params = [];
-        $types = "";
+    $params = [];
+    $types = "";
 
-        if ($search) {
-            $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
-            $params = array_merge($params, ["%$search%", "%$search%", "%$search%"]);
-            $types .= "sss";
-        }
-
-        $stmt = $this->db->prepare($sql);
-        if ($params) {
-            $stmt->bind_param($types, ...$params);
-        }
-
-        $stmt->execute();
-        return $stmt->get_result()->fetch_assoc()['total'];
+    if ($roleId == 5 && !empty($teamId)) {
+        $sql .= " AND u.team_id = ?";
+        $params[] = $teamId;
+        $types .= "i";
     }
+
+    if (!empty($search)) {
+        $sql .= " AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+        $types .= "sss";
+    }
+
+    $stmt = $this->db->prepare($sql);
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+
+    return $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+}
 
     // for sales team Head
     public function getAll()

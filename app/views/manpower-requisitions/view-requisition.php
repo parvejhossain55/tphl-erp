@@ -105,11 +105,11 @@
                     </div>
                 </div>
 
-                <?php if (!empty($requisition['replacement_for'])): ?>
+                <?php if (!empty($requisition['replacement_for_name'])): ?>
                 <div class="field-row">
                     <div class="field-cell" style="flex:1">
                         <label class="field-label">Replacement For</label>
-                        <input type="text" class="form-control-plain" value="<?= esc($requisition['replacement_for']) ?>" readonly />
+                        <input type="text" class="form-control-plain" value="<?= esc($requisition['replacement_for_name']) ?>" readonly />
                     </div>
                 </div>
                 <?php endif; ?>
