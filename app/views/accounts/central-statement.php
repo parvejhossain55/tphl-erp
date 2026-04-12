@@ -303,7 +303,7 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                             <label>Category</label>
                             <select name="category" id="category" class="form-select">
                                 <option value="all" <?= ($category ?? '') === 'all' ? 'selected' : '' ?>>All Categories</option>
-                                <optgroup label="Revenue Categories">
+                                <optgroup label="Cash-in Categories">
                                     <option value="total_cashin" <?= ($category ?? '') === 'total_cashin' ? 'selected' : '' ?>>Total Cash IN (Combined)</option>
                                     <option value="landshare" <?= ($category ?? '') === 'landshare' ? 'selected' : '' ?>>Landshare Only</option>
                                     <option value="service_fee" <?= ($category ?? '') === 'service_fee' ? 'selected' : '' ?>>Service Fee Only</option>
@@ -311,6 +311,10 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                                     <option value="registration" <?= ($category ?? '') === 'registration' ? 'selected' : '' ?>>Registration Only</option>
                                     <option value="booking_money" <?= ($category ?? '') === 'booking_money' ? 'selected' : '' ?>>Booking Money Only</option>
                                     <option value="management_cashin" <?= ($category ?? '') === 'management_cashin' ? 'selected' : '' ?>>Management Cashin Only</option>
+                                </optgroup>
+                                <optgroup label="Bank Categories">
+                                    <option value="bank_cashin" <?= ($category ?? '') === 'bank_cashin' ? 'selected' : '' ?>>Bank Cash In</option>
+                                    <option value="bank_cashout" <?= ($category ?? '') === 'bank_cashout' ? 'selected' : '' ?>>Bank Cash Out</option>
                                 </optgroup>
                                 <optgroup label="Expense Categories">
                                     <option value="cashout" <?= ($category ?? '') === 'cashout' ? 'selected' : '' ?>>Cash Out</option>
@@ -440,6 +444,18 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                         }
                     }
                     $card_label = 'Total Management Cashin';
+                } elseif ($category === 'bank_cashin') {
+                    $card_amount = 0;
+                    foreach ($bank_transactions ?? [] as $bt) {
+                        $card_amount += (float)($bt['amount'] ?? 0);
+                    }
+                    $card_label = 'Total Bank Cash In';
+                } elseif ($category === 'bank_cashout') {
+                    $card_amount = 0;
+                    foreach ($bank_transactions ?? [] as $bt) {
+                        $card_amount += (float)($bt['amount'] ?? 0);
+                    }
+                    $card_label = 'Total Bank Cash Out';
                 } elseif (in_array($category, ['cashout', 'utilities', 'other'])) {
                     $card_amount = $overall_stats['total_cash_out'] ?? 0;
                     $card_label = 'Total ' . ucfirst($category);
@@ -472,6 +488,9 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                     // For 'all' category, revenue is total cashin minus cashout
                     $revenue_amount = ($overall_stats['total_revenue'] ?? 0);
                     $revenue_label = 'Total Revenue';
+                } elseif (in_array($category, ['bank_cashin', 'bank_cashout'])) {
+                    $revenue_amount = $card_amount;
+                    $revenue_label = $category === 'bank_cashin' ? 'Total Bank Cash In' : 'Total Bank Cash Out';
                 } elseif (in_array($category, ['emi', 'landshare', 'service_fee', 'registration', 'booking_money', 'agreement', 'management_cashin', 'total_cashin'])) {
                     // For revenue categories, use the calculated card_amount from the first card
                     $revenue_amount = $card_amount;
@@ -544,6 +563,10 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                 if ($category === 'all') {
                     // For 'all' category: Net Balance = Total Cash IN - Total Cash Out
                     $net_balance = ($overall_stats['total_cashin'] ?? 0) - ($overall_stats['total_cash_out'] ?? 0);
+                } elseif (in_array($category, ['bank_cashin'])) {
+                    $net_balance = $card_amount;
+                } elseif (in_array($category, ['bank_cashout'])) {
+                    $net_balance = -$card_amount;
                 } elseif (in_array($category, ['emi', 'landshare', 'service_fee', 'registration', 'booking_money', 'agreement', 'management_cashin', 'total_cashin'])) {
                     // For revenue categories: Net Balance = Category Amount - 0 (since no cashout for revenue categories)
                     $net_balance = $card_amount;
@@ -566,9 +589,66 @@ $cashout_payment_details = $cashout_payment_details ?? [];
 <div class="col-xxl-12 mb-4">
     <div class="card__wrapper">
         <div class="card__body">
-            <!-- In the daily data table section -->
-            <!-- Update the table structure to handle all categories including Total Cash IN -->
-            <?php if (isset($statement_data['daily_data'])): ?>
+            <!-- Bank Transactions Table (for bank_cashin / bank_cashout) -->
+            <?php if (in_array($category, ['bank_cashin', 'bank_cashout']) && !empty($bank_transactions)): ?>
+                <div class="table__wrapper table-responsive">
+                    <table class="table mb-20 multiple_tables">
+                        <thead>
+                            <tr class="table__title table__sort">
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Bank Name</th>
+                                <th>Branch</th>
+                                <th>Routing No</th>
+                                <th>Account No</th>
+                                <?php if ($category === 'bank_cashin'): ?>
+                                    <th>Client / Payment Type</th>
+                                    <th>Cash In Amount (TK.)</th>
+                                <?php else: ?>
+                                    <th>Purpose / Paid To</th>
+                                    <th>Withdrawal Amount (TK.)</th>
+                                <?php endif; ?>
+                            </tr>
+                        </thead>
+                        <tbody class="table__body">
+                            <?php
+                            $runningTotal = 0;
+                            foreach ($bank_transactions as $idx => $bt):
+                                $runningTotal += (float)($bt['amount'] ?? 0);
+                            ?>
+                                <tr>
+                                    <td><?= $idx + 1 ?></td>
+                                    <td><?= htmlspecialchars($bt['payment_date'] ?? '') ?></td>
+                                    <td><?= htmlspecialchars($bt['bank_name'] ?? '-') ?></td>
+                                    <td><?= htmlspecialchars($bt['branch_name'] ?? '-') ?></td>
+                                    <td><?= htmlspecialchars($bt['routing_number'] ?? '-') ?></td>
+                                    <td><?= htmlspecialchars($bt['account_number'] ?? '-') ?></td>
+                                    <td><?= htmlspecialchars($bt['description'] ?? '-') ?></td>
+                                    <td class="<?= $category === 'bank_cashin' ? 'positive' : 'negative' ?>">
+                                        <strong>৳<?= number_format($bt['amount'] ?? 0, 2) ?></strong>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight:700; border-top:2px solid #555;">
+                                <td colspan="7" class="text-end">Total:</td>
+                                <td class="<?= $category === 'bank_cashin' ? 'positive' : 'negative' ?>">
+                                    <strong>৳<?= number_format($runningTotal, 2) ?></strong>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+            <?php elseif (in_array($category, ['bank_cashin', 'bank_cashout']) && empty($bank_transactions)): ?>
+                <div class="alert alert-info">
+                    <i class="fa-light fa-info-circle me-2"></i>
+                    No <?= $category === 'bank_cashin' ? 'bank cash-in' : 'bank cash-out' ?> transactions found for the selected period.
+                </div>
+
+            <!-- Normal date-aggregate tables for other categories -->
+            <?php elseif (isset($statement_data['daily_data'])): ?>
                 <div class="table__wrapper table-responsive">
                     <table class="table mb-20 multiple_tables">
                         <thead>

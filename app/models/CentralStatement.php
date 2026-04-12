@@ -140,7 +140,8 @@ class CentralStatement extends Model
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE lp.payment_date BETWEEN ? AND ?
-            AND lp.payment_status = 'paid'
+            AND lp.payment_status IN ('paid','partially_paid')
+            AND lp.verification_status = 'verified'
             AND lp.payment_type = ?
         ";
 
@@ -167,7 +168,8 @@ class CentralStatement extends Model
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE lp.payment_date BETWEEN ? AND ?
-            AND lp.payment_status = 'paid'
+            AND lp.payment_status IN ('paid','partially_paid')
+            AND lp.verification_status = 'verified'
             AND lp.payment_type = 'land_share'
         ";
 
@@ -195,7 +197,8 @@ class CentralStatement extends Model
         FROM lead_payments lp
         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
         WHERE lp.payment_date BETWEEN ? AND ?
-        AND lp.payment_status = 'paid'
+        AND lp.payment_status IN ('paid','partially_paid')
+        AND lp.verification_status = 'verified'
         AND lp.payment_type = 'booking_money'
     ";
 
@@ -257,7 +260,8 @@ class CentralStatement extends Model
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE lp.payment_date BETWEEN ? AND ?
-            AND lp.payment_status = 'paid'
+            AND lp.payment_status IN ('paid','partially_paid')
+            AND lp.verification_status = 'verified'
         ";
 
         if ($projectId) {
@@ -376,7 +380,7 @@ class CentralStatement extends Model
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE lp.payment_date BETWEEN ? AND ?
-            AND lp.payment_status = 'paid'
+            AND lp.payment_status IN ('paid','partially_paid')
             AND lp.payment_type = 'land_share'
             AND lp.land_share_amount > 0
         ";
@@ -714,14 +718,15 @@ class CentralStatement extends Model
     }
     private function getDailyPaymentByType($paymentType, $startDate, $endDate, $projectId = null)
     {
-        $query = "
+        $query = " 
             SELECT 
                 DATE(lp.payment_date) as transaction_date,
                 SUM(lp.amount) as total_amount
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE DATE(lp.payment_date) BETWEEN ? AND ?
-            AND lp.payment_status = 'paid'
+            AND lp.payment_status IN ('paid','partially_paid')
+            AND lp.verification_status = 'verified'
             AND lp.payment_type = ?
         ";
 
@@ -790,7 +795,8 @@ private function getDailyBookingMoney($startDate, $endDate, $projectId = null)
         FROM lead_payments lp
         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
         WHERE DATE(lp.payment_date) BETWEEN ? AND ?
-        AND lp.payment_status = 'paid'
+        AND lp.payment_status IN ('paid','partially_paid')
+        AND lp.verification_status = 'verified'
         AND lp.payment_type = 'booking_money'
     ";
 
@@ -1226,7 +1232,7 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE lp.payment_date BETWEEN ? AND ?
-            AND lp.payment_status = 'paid'
+            AND lp.payment_status IN ('paid','partially_paid')
             AND lp.payment_type = ?
         ";
 
@@ -1279,7 +1285,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         FROM lead_payments lp
         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
         WHERE DATE(lp.payment_date) BETWEEN ? AND ?
-        AND lp.payment_status = 'paid'
+        AND lp.payment_status IN ('paid','partially_paid')
         AND lp.payment_type = 'booking_money'
     ";
 
@@ -1631,7 +1637,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE DATE(lp.payment_date) = ?
-            AND lp.payment_status = 'paid'
+            AND lp.payment_status IN ('paid','partially_paid')
             AND lp.payment_type = ?
         ";
 
@@ -1905,7 +1911,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE DATE(lp.payment_date) < ? 
-            AND lp.payment_status = 'paid'
+            AND lp.payment_status IN ('paid','partially_paid')
         ";
 
 
@@ -2022,7 +2028,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             WHERE DATE(lp.payment_date) < ?
-            AND lp.payment_status = 'paid'
+            AND lp.payment_status IN ('paid','partially_paid')
             AND lp.payment_type = ?
         ";
 

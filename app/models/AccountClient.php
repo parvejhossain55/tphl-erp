@@ -31,6 +31,7 @@ class AccountClient extends Model
             l.phone,
             l.email,
             l.designation,
+            l.company,
             (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
              FROM lead_bookings lb_sub
              INNER JOIN lead_payments lp_sub ON lp_sub.booking_id = lb_sub.id AND lp_sub.payment_type = 'booking_money'
@@ -39,12 +40,28 @@ class AccountClient extends Model
             ) AS agent_name,
             COUNT(lb.id) AS total_bookings,
             SUM(lb.agreement_value) AS total_agreement_value,
+            -- First booking's project and flat for quick context
+            (SELECT p2.name FROM lead_bookings lb2
+             INNER JOIN projects p2 ON lb2.project_id = p2.id
+             WHERE lb2.lead_id = l.id AND lb2.booking_status != 'cancelled'
+             ORDER BY lb2.created_at DESC LIMIT 1) AS project_name,
+            (SELECT CONCAT(f2.flat_name, ' - Floor ', f2.floor_no)
+             FROM lead_bookings lb2
+             INNER JOIN flats f2 ON lb2.flat_id = f2.id
+             WHERE lb2.lead_id = l.id AND lb2.booking_status != 'cancelled'
+             ORDER BY lb2.created_at DESC LIMIT 1) AS flat_no,
+            -- Latest verification status across all this client's payments
+            (SELECT lp.verification_status
+             FROM lead_payments lp
+             INNER JOIN lead_bookings lb3 ON lb3.id = lp.booking_id
+             WHERE lb3.lead_id = l.id AND lb3.booking_status != 'cancelled'
+             ORDER BY lp.created_at DESC LIMIT 1) AS latest_verification_status,
             COALESCE(
                 (SELECT SUM(lp.amount)
                  FROM lead_payments lp
                  INNER JOIN lead_bookings lb2 ON lb2.id = lp.booking_id
                  WHERE lb2.lead_id = l.id
-                 AND lp.payment_status = 'paid'),
+                 AND lp.payment_status IN ('paid','partially_paid')),
                 0
             ) AS total_paid,
             (
@@ -52,7 +69,7 @@ class AccountClient extends Model
                 FROM lead_payments lp
                 INNER JOIN lead_bookings lb2 ON lb2.id = lp.booking_id
                 WHERE lb2.lead_id = l.id
-                AND lp.payment_status = 'paid'
+                AND lp.payment_status IN ('paid','partially_paid')
             ) AS last_payment_date
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
@@ -113,14 +130,14 @@ class AccountClient extends Model
                 (SELECT SUM(lp.amount)
                  FROM lead_payments lp
                  WHERE lp.booking_id = lb.id
-                 AND lp.payment_status = 'paid'),
+                 AND lp.payment_status IN ('paid','partially_paid')),
                 0
             ) AS total_paid,
             (
                 SELECT MAX(lp.payment_date)
                 FROM lead_payments lp
                 WHERE lp.booking_id = lb.id
-                AND lp.payment_status = 'paid'
+                AND lp.payment_status IN ('paid','partially_paid')
             ) AS last_payment_date
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
@@ -180,41 +197,35 @@ class AccountClient extends Model
                 (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
                  WHERE lp.booking_id = lb.id 
-                 AND lp.payment_status = 'paid'), 
+                 AND lp.payment_status IN ('paid','partially_paid')), 
                 0
             ) as total_paid,
             COALESCE(
                 (SELECT SUM(lp.land_share_amount) 
                  FROM lead_payments lp 
                  WHERE lp.booking_id = lb.id 
-                 AND lp.payment_status = 'paid'), 
+                 AND lp.payment_status IN ('paid','partially_paid')), 
                 0
             ) as total_land_share_paid,
             COALESCE(
                 (SELECT SUM(lp.service_fee) 
                  FROM lead_payments lp 
                  WHERE lp.booking_id = lb.id 
-                 AND lp.payment_status = 'paid'), 
+                 AND lp.payment_status IN ('paid','partially_paid')), 
                 0
             ) as total_service_fee,
             COALESCE(
                 (SELECT MAX(lp.payment_date) 
                  FROM lead_payments lp 
                  WHERE lp.booking_id = lb.id 
-                 AND lp.payment_status = 'paid'), 
+                 AND lp.payment_status IN ('paid','partially_paid')), 
                 NULL
             ) as last_payment_date
         FROM lead_bookings lb
         LEFT JOIN projects p ON lb.project_id = p.id
         LEFT JOIN flats f ON lb.flat_id = f.id
  WHERE lb.lead_id = ?
-AND (
-    SELECT COUNT(*) 
-    FROM lead_payments lp 
-    WHERE lp.booking_id = lb.id 
-    AND lp.payment_type = 'booking_money'
-    AND lp.payment_status = 'paid'
-) > 0
+AND lb.booking_status != 'cancelled'
 ORDER BY lb.booking_date DESC
     ");
 
@@ -247,20 +258,20 @@ ORDER BY lb.booking_date DESC
                     WHEN (SELECT SUM(lp.amount) 
                           FROM lead_payments lp 
                           WHERE lp.booking_id = lb.id 
-                          AND lp.payment_status = 'paid') >= lb.agreement_value 
+                          AND lp.payment_status IN ('paid','partially_paid')) >= lb.agreement_value 
                     THEN lb.id 
                 END) as full_payment_completed,
                 COUNT(DISTINCT CASE 
                     WHEN (SELECT COUNT(*) 
                           FROM lead_payments lp2 
                           WHERE lp2.booking_id = lb.id 
-                          AND lp2.payment_status = 'paid') > 0
+                          AND lp2.payment_status IN ('paid','partially_paid')) > 0
                     THEN lb.id 
                 END) as approved_bookings,
                 COALESCE(SUM(lp.service_fee), 0) as total_service_fee_collected
             FROM leads l
             INNER JOIN lead_bookings lb ON l.id = lb.lead_id
-            LEFT JOIN lead_payments lp ON lb.id = lp.booking_id AND lp.payment_status = 'paid'
+            LEFT JOIN lead_payments lp ON lb.id = lp.booking_id AND lp.payment_status IN ('paid','partially_paid')
             $whereClause
         ");
 
@@ -329,12 +340,21 @@ ORDER BY lb.booking_date DESC
                 lb.id as booking_id,
                 lb.lead_id,
                 lb.booking_date,
+                lb.agreement_value,
+                -- booking_money_total: ALL recorded entries regardless of verification (for remaining/dropdown)
+                COALESCE(
+                 (SELECT SUM(lp.amount) 
+                 FROM lead_payments lp 
+                WHERE lp.booking_id = lb.id 
+                 AND lp.payment_type = 'booking_money'), 
+                 0) AS booking_money_total,
+                -- booking_money: only VERIFIED entries (for stat cards & land share calc)
                 COALESCE(
                  (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
                 WHERE lp.booking_id = lb.id 
                  AND lp.payment_type = 'booking_money'
-                 AND lp.payment_status = 'paid'), 
+                 AND lp.verification_status = 'verified'), 
                  0) AS booking_money,
                 lb.discount_amount,
                 lb.booking_status,
@@ -360,14 +380,14 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
+                     AND lp.payment_status IN ('paid','partially_paid')), 
                     0
                 ) as total_paid,
                 COALESCE(
                     (SELECT SUM(lp.land_share_amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
+                     AND lp.payment_status IN ('paid','partially_paid')), 
                     0
                 ) as additional_land_share_paid,
                 -- FIXED: Calculate service fee from emi_schedules table instead of lead_payments
@@ -382,7 +402,7 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'
+                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.payment_type = 'registration'), 
                     0
                 ) as registration_paid,
@@ -390,15 +410,15 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'
-                     AND lp.payment_type = 'booking_money'), 
+                     AND lp.payment_type = 'booking_money'
+                     AND lp.verification_status = 'verified'), 
                     0
                 ) as booking_money_paid,
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'
+                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.payment_type = 'emi'), 
                     0
                 ) as emi_paid,
@@ -406,7 +426,7 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'
+                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.payment_type = 'development_charge'), 
                     0
                 ) as development_charge_paid,
@@ -414,7 +434,7 @@ ORDER BY lb.booking_date DESC
                     (SELECT MAX(lp.payment_date) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
+                     AND lp.payment_status IN ('paid','partially_paid')), 
                     NULL
                 ) as last_payment_date
             FROM lead_bookings lb
@@ -456,7 +476,10 @@ ORDER BY lb.booking_date DESC
             $emiPaid = (float) $clientDetails['emi_paid'];
             $totalServiceFee = (float) $clientDetails['total_service_fee'];
 
-            // CORRECT: Total land share paid = booking money + additional land share payments
+            // booking_money_total: all recorded entries (used for remaining in dropdown)
+            $bookingMoneyTotal = (float) ($clientDetails['booking_money_total'] ?? 0);
+
+            // CORRECT: Total land share paid = verified booking money + additional verified land share payments
             $totalLandSharePaid = $bookingMoney + $additionalLandSharePaid;
 
             // CORRECT: Remaining land share = total land share - total land share paid
@@ -536,7 +559,7 @@ ORDER BY lb.booking_date DESC
             FROM emi_schedules es
             INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
             WHERE lp.booking_id = ? 
-            AND lp.payment_status = 'paid'
+            AND lp.payment_status IN ('paid','partially_paid')
             ORDER BY es.emi_no
         ");
         $paidEmiStmt->bind_param("i", $bookingId);
@@ -610,60 +633,72 @@ ORDER BY lb.booking_date DESC
 
         if (!$clientDetails) {
             return [
-                'total_price' => 0,
-                'total_land_share' => 0,
-                'booking_money' => 0,
-                'booking_money_paid' => 0,
-                'additional_land_share_paid' => 0,
-                'total_land_share_paid' => 0,
-                'remaining_land_share' => 0,
-                'discount_amount' => 0,
-                'registration_paid' => 0,
-                'construction_fee' => 0,
-                'construction_fee_paid' => 0,
-                'construction_fee_paid_after_service' => 0,
-                'remaining_construction_fee' => 0,
-                'total_paid' => 0,
-                'total_due' => 0,
-                'total_emi' => 0,
-                'completed_emi' => 0,
-                'pending_emi' => 0,
-                'last_payment_date' => null,
-                'total_service_fee' => 0,
-                'net_received' => 0,
-                'is_land_share_completed' => false,
-                'paid_emi_numbers' => [],
-                'pending_emi_numbers' => []
+                'total_price'                          => 0,
+                'agreement_value'                      => 0,
+                'total_land_share'                     => 0,
+                'booking_money'                        => 0,
+                'booking_money_paid'                   => 0,
+                'is_booking_fully_paid'                => false,
+                'additional_land_share_paid'           => 0,
+                'total_land_share_paid'                => 0,
+                'remaining_land_share'                 => 0,
+                'discount_amount'                      => 0,
+                'registration_paid'                    => 0,
+                'construction_fee'                     => 0,
+                'construction_fee_paid'                => 0,
+                'construction_fee_paid_after_service'  => 0,
+                'remaining_construction_fee'           => 0,
+                'total_paid'                           => 0,
+                'total_due'                            => 0,
+                'total_emi'                            => 0,
+                'completed_emi'                        => 0,
+                'pending_emi'                          => 0,
+                'last_payment_date'                    => null,
+                'total_service_fee'                    => 0,
+                'net_received'                         => 0,
+                'is_land_share_completed'              => false,
+                'paid_emi_numbers'                     => [],
+                'pending_emi_numbers'                  => []
             ];
         }
 
+        // agreement_value is the contractual booking target from lead_bookings
+        $agreementValue       = (float) ($clientDetails['agreement_value']      ?? 0);
+        $bookingMoneyTotal   = (float) ($clientDetails['booking_money_total']  ?? 0); // ALL entries
+        $bookingMoneyPaid    = (float) ($clientDetails['booking_money_paid']   ?? 0); // verified only
+        // Fully paid when ALL recorded entries (pending or not) cover the agreement
+        $isBookingFullyPaid  = ($bookingMoneyTotal >= $agreementValue && $agreementValue > 0);
+
         return [
-            'total_price' => $clientDetails['total_price'],
-            'total_land_share' => $clientDetails['total_land_share'],
-            'booking_money' => $clientDetails['booking_money'],
-            'booking_money_paid' => $clientDetails['booking_money_paid'],
-            'additional_land_share_paid' => $clientDetails['additional_land_share_paid'],
-            'total_land_share_paid' => $clientDetails['total_land_share_paid'],
-            'remaining_land_share' => $clientDetails['remaining_land_share'],
-            'discount_amount' => $clientDetails['discount_amount'],
-            'registration_paid' => $clientDetails['registration_paid'],
-            'registration_money' => $clientDetails['registration_paid'],
-            'development_charge_paid' => $clientDetails['development_charge_paid'] ?? 0,
-            'construction_fee' => $clientDetails['construction_fee'],
-            'construction_fee_paid' => $clientDetails['construction_fee_paid'],
-            'construction_fee_paid_after_service' => $clientDetails['construction_fee_paid_after_service'],
-            'remaining_construction_fee' => $clientDetails['remaining_construction_fee'],
-            'total_paid' => $clientDetails['total_paid'],
-            'total_due' => $clientDetails['total_due'],
-            'total_emi' => $clientDetails['total_emi'],
-            'completed_emi' => $clientDetails['completed_emi'],
-            'pending_emi' => $clientDetails['pending_emi'],
-            'last_payment_date' => $clientDetails['last_payment_date'],
-            'total_service_fee' => $clientDetails['total_service_fee'],
-            'net_received' => $clientDetails['net_received'],
-            'is_land_share_completed' => $clientDetails['is_land_share_completed'],
-            'paid_emi_numbers' => $clientDetails['paid_emi_numbers'],
-            'pending_emi_numbers' => $clientDetails['pending_emi_numbers']
+            'total_price'                          => $clientDetails['total_price'],
+            'agreement_value'                      => $agreementValue,
+            'total_land_share'                     => $clientDetails['total_land_share'],
+            'booking_money'                        => $clientDetails['booking_money'],       // verified only (stat cards)
+            'booking_money_total'                  => $bookingMoneyTotal,                    // all entries (dropdown remaining)
+            'booking_money_paid'                   => $bookingMoneyPaid,                     // verified only
+            'is_booking_fully_paid'                => $isBookingFullyPaid,
+            'additional_land_share_paid'           => $clientDetails['additional_land_share_paid'],
+            'total_land_share_paid'                => $clientDetails['total_land_share_paid'],
+            'remaining_land_share'                 => $clientDetails['remaining_land_share'],
+            'discount_amount'                      => $clientDetails['discount_amount'],
+            'registration_paid'                    => $clientDetails['registration_paid'],
+            'registration_money'                   => $clientDetails['registration_paid'],
+            'development_charge_paid'              => $clientDetails['development_charge_paid'] ?? 0,
+            'construction_fee'                     => $clientDetails['construction_fee'],
+            'construction_fee_paid'                => $clientDetails['construction_fee_paid'],
+            'construction_fee_paid_after_service'  => $clientDetails['construction_fee_paid_after_service'],
+            'remaining_construction_fee'           => $clientDetails['remaining_construction_fee'],
+            'total_paid'                           => $clientDetails['total_paid'],
+            'total_due'                            => $clientDetails['total_due'],
+            'total_emi'                            => $clientDetails['total_emi'],
+            'completed_emi'                        => $clientDetails['completed_emi'],
+            'pending_emi'                          => $clientDetails['pending_emi'],
+            'last_payment_date'                    => $clientDetails['last_payment_date'],
+            'total_service_fee'                    => $clientDetails['total_service_fee'],
+            'net_received'                         => $clientDetails['net_received'],
+            'is_land_share_completed'              => $clientDetails['is_land_share_completed'],
+            'paid_emi_numbers'                     => $clientDetails['paid_emi_numbers'],
+            'pending_emi_numbers'                  => $clientDetails['pending_emi_numbers']
         ];
     }
 
@@ -695,16 +730,21 @@ ORDER BY lb.booking_date DESC
             // Validate based on payment type
             switch ($paymentType) {
                 case 'booking_money':
-                    if ($summary['booking_money_paid'] > 0) {
-                        throw new Exception("Booking money has already been paid for this booking");
+                    if ($summary['is_booking_fully_paid']) {
+                        throw new Exception("Booking money has already been fully paid for this booking.");
                     }
-                    if ($amount > $summary['booking_money']) {
-                        throw new Exception("Booking money amount cannot exceed agreed amount: ৳" . number_format($summary['booking_money'], 2));
+                    $remainingBooking = $summary['agreement_value'] - $summary['booking_money_paid'];
+                    if ($amount > $remainingBooking) {
+                        throw new Exception("Amount exceeds outstanding booking balance: ৳" . number_format($remainingBooking, 2));
                     }
                     $landShareAmount = $amount;
                     break;
 
                 case 'land_share':
+                    // Block land_share until the full agreed booking money has been received
+                    if (empty($summary['is_booking_fully_paid'])) {
+                        throw new Exception("Booking money must be fully settled before land share payments can be recorded.");
+                    }
                     if ($summary['remaining_land_share'] <= 0) {
                         throw new Exception("Land share payment is already completed!");
                     }
@@ -729,21 +769,31 @@ ORDER BY lb.booking_date DESC
                     break;
             }
 
-            // Insert payment record
+            // Insert payment record (verification_status defaults to 'pending' via DB default)
+            $bankId          = !empty($transactionData['bank_id']) ? (int)$transactionData['bank_id'] : null;
+            $attachmentPaths = !empty($transactionData['attachment_paths']) ? json_encode($transactionData['attachment_paths']) : null;
+
             $stmt = $this->db->prepare("
                 INSERT INTO lead_payments (
                     booking_id, payment_type, amount, land_share_amount, service_fee,
                     payment_method, payment_status, payment_date, transaction_ref, 
-                    bank_name, bank_account_no, cheque_no, online_type, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    bank_id, bank_name, bank_account_no, cheque_no, online_type,
+                    attachment_paths, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             if (!$stmt) {
                 throw new Exception("Prepare failed: " . $this->db->error);
             }
 
+            $bankNameLookup = '';
+            if ($bankId) {
+                $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', branch_name) as label FROM banks WHERE id = {$bankId}");
+                if ($bRow) { $bData = $bRow->fetch_assoc(); $bankNameLookup = $bData['label'] ?? ''; }
+            }
+
             $stmt->bind_param(
-                "isdddsdssssssi",
+                "isdddsdsssisssi",
                 $bookingId,
                 $paymentType,
                 $amount,
@@ -753,10 +803,12 @@ ORDER BY lb.booking_date DESC
                 $transactionData['payment_status'],
                 $transactionData['payment_date'] ?? date('Y-m-d'),
                 $transactionData['transaction_ref'] ?? '',
-                $transactionData['bank_name'] ?? '',
+                $bankId,
+                $bankNameLookup,
                 $transactionData['bank_account_no'] ?? '',
                 $transactionData['cheque_no'] ?? '',
                 $transactionData['online_type'] ?? '',
+                $attachmentPaths,
                 $transactionData['created_by'] ?? 0
             );
 
@@ -846,6 +898,7 @@ ORDER BY lb.booking_date DESC
                 f.flat_name as unit_name,
                 CONCAT(f.flat_name, ' - FLOOR ', f.floor_no) as flat_no,
                 u.full_name as created_by_name,
+                uv.full_name as verified_by_name,
                 es.emi_no,
                 es.emi_amount,
                 es.due_emi_amount,
@@ -885,6 +938,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN projects p ON p.id = lb.project_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN users u ON u.id = lp.created_by
+            LEFT JOIN users uv ON uv.id = lp.verified_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             WHERE lp.booking_id = ?
             ORDER BY lp.payment_date DESC, lp.id DESC
@@ -909,26 +963,32 @@ ORDER BY lb.booking_date DESC
             }
 
             if (isset($transaction['payment_status'])) {
-                switch ($transaction['payment_status']) {
-                    case 'paid':
-                        $transaction['status_class'] = 'bg-success';
-                        $transaction['status_text'] = 'Paid';
-                        break;
-                    case 'partially_paid':
-                        $transaction['status_class'] = 'bg-info';
-                        $transaction['status_text'] = 'Partially Paid';
-                        break;
-                    case 'pending':
-                        $transaction['status_class'] = 'bg-warning';
-                        $transaction['status_text'] = 'Pending';
-                        break;
-                    case 'failed':
-                        $transaction['status_class'] = 'bg-danger';
-                        $transaction['status_text'] = 'Failed';
-                        break;
-                    default:
-                        $transaction['status_class'] = 'bg-secondary';
-                        $transaction['status_text'] = ucfirst(str_replace('_', ' ', $transaction['payment_status']));
+                // If verified by Accounts, always show as Paid regardless of raw payment_status
+                if (($transaction['verification_status'] ?? '') === 'verified') {
+                    $transaction['status_class'] = 'bg-success';
+                    $transaction['status_text']  = 'Paid';
+                } else {
+                    switch ($transaction['payment_status']) {
+                        case 'paid':
+                            $transaction['status_class'] = 'bg-success';
+                            $transaction['status_text'] = 'Paid';
+                            break;
+                        case 'partially_paid':
+                            $transaction['status_class'] = 'bg-info';
+                            $transaction['status_text'] = 'Partially Paid';
+                            break;
+                        case 'pending':
+                            $transaction['status_class'] = 'bg-warning';
+                            $transaction['status_text'] = 'Pending';
+                            break;
+                        case 'failed':
+                            $transaction['status_class'] = 'bg-danger';
+                            $transaction['status_text'] = 'Failed';
+                            break;
+                        default:
+                            $transaction['status_class'] = 'bg-secondary';
+                            $transaction['status_text'] = ucfirst(str_replace('_', ' ', $transaction['payment_status']));
+                    }
                 }
             }
         }
@@ -1342,7 +1402,7 @@ ORDER BY lb.booking_date DESC
             FROM lead_payments 
             WHERE booking_id = ? 
             AND payment_type = 'registration' 
-            AND payment_status = 'paid'
+            AND payment_status IN ('paid','partially_paid')
         ");
 
         $stmt->bind_param("i", $bookingId);
@@ -1380,7 +1440,6 @@ ORDER BY lb.booking_date DESC
             FROM lead_payments 
             WHERE booking_id = ? 
             AND payment_type = 'booking_money'
-            AND payment_status = 'paid'
         ");
 
         $stmt->bind_param("i", $bookingId);
@@ -1757,7 +1816,7 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount)
                      FROM lead_payments lp
                      WHERE lp.booking_id = lb.id
-                     AND lp.payment_status = 'paid'), 0
+                     AND lp.payment_status IN ('paid','partially_paid')), 0
                 ) as total_paid,
                 (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
                  FROM lead_payments lp_sub
@@ -1833,7 +1892,7 @@ ORDER BY lb.booking_date DESC
         $stmt = $this->db->prepare("
             SELECT COALESCE(SUM(amount), 0) as total
             FROM lead_payments
-            WHERE payment_status = 'paid'
+            WHERE payment_status IN ('paid','partially_paid')
             AND payment_date BETWEEN ? AND ?
         ");
         $stmt->bind_param("ss", $currentMonthStart, $currentMonthEnd);
@@ -1851,7 +1910,7 @@ ORDER BY lb.booking_date DESC
                 DATE_FORMAT(payment_date, '%Y-%m') as month,
                 SUM(amount) as total
             FROM lead_payments
-            WHERE payment_status = 'paid'
+            WHERE payment_status IN ('paid','partially_paid')
             AND payment_date >= ?
             GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
         ");
@@ -1872,7 +1931,7 @@ ORDER BY lb.booking_date DESC
                 DATE(payment_date) as day_date,
                 SUM(amount) as total
             FROM lead_payments
-            WHERE payment_status = 'paid'
+            WHERE payment_status IN ('paid','partially_paid')
             AND payment_date >= ?
             GROUP BY DATE(payment_date)
         ");

@@ -17,69 +17,60 @@ class CashoutPayment extends Model
             return ['success' => false, 'message' => 'Invalid cashout request ID.'];
         }
 
-        // Always include purpose_paid_to from the request
-        $includePurpose = true;
+        $columns      = "cashout_request_id, office, project_id, purpose_paid_to, amount, payment_method, transaction_ref,
+                payment_date, bank_id, bank_name, bank_account_no, cheque_no, online_type, disbursement_proof, created_by";
+        $placeholders = "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?";
 
-        // Build the SQL dynamically – now purpose_paid_to is always included
-        $columns = "cashout_request_id, office, project_id, purpose_paid_to, amount, payment_method, transaction_ref,
-                payment_date, bank_name, bank_account_no, cheque_no, online_type, created_by";
-        $placeholders = "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?";
-
-        $sql = "INSERT INTO {$this->table} ($columns) VALUES ($placeholders)";
-
+        $sql  = "INSERT INTO {$this->table} ($columns) VALUES ($placeholders)";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             error_log("Prepare failed: " . $this->db->error);
             return ['success' => false, 'message' => 'Database prepare failed.'];
         }
 
-        // Base parameters (13 items including purpose_paid_to)
+        $bankId = isset($data['bank_id']) ? (int)$data['bank_id'] : null;
+
         $params = [
             $data['cashout_request_id'],
             $request['office'],
             $request['project_id'],
-            $request['purpose_paid_to'],          // from the cashout request
+            $request['purpose_paid_to'],
             $data['amount'],
             $data['payment_method'],
             $data['transaction_ref'],
             $data['payment_date'],
+            $bankId,
             $data['bank_name'],
             $data['bank_account_no'],
             $data['cheque_no'],
             $data['online_type'],
+            $data['disbursement_proof'],
             $data['created_by']
         ];
 
-        // Build type string based on parameter types
+        // Build type string
         $types = "";
         foreach ($params as $param) {
-            if (is_int($param)) {
-                $types .= "i";
-            } elseif (is_float($param)) {
-                $types .= "d";
-            } else {
-                $types .= "s"; // includes NULL values
-            }
+            if (is_int($param)) $types .= "i";
+            elseif (is_float($param)) $types .= "d";
+            else $types .= "s";
         }
 
-        // Bind parameters dynamically
         $stmt->bind_param($types, ...$params);
 
-        $result = $stmt->execute();
+        $result   = $stmt->execute();
         $insertId = $this->db->insert_id;
         $stmt->close();
 
         if ($result) {
-            // Update due_amount and status in cashout_requests
             $this->updateRequestDueAmount($data['cashout_request_id']);
-
             return [
                 'success' => true,
                 'message' => 'Payment recorded successfully!',
-                'id' => $insertId
+                'id'      => $insertId
             ];
         } else {
-            error_log("Execute failed: " . $db->error);
+            error_log("Execute failed: " . $this->db->error);
             return ['success' => false, 'message' => 'Failed to record payment.'];
         }
     }

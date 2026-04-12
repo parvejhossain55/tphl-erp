@@ -267,6 +267,152 @@ public function indexTwoView($bookingId = null)
         "paymentSummary" => $paymentSummary
     ]);
 }
+
+/**
+ * CED: Show add-transaction form (Development Charges & EMI only)
+ */
+public function showCedTransactionForm($bookingId = null)
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if (!$bookingId) {
+        $bookingId = $_GET['booking_id'] ?? null;
+    }
+
+    if (!$bookingId) {
+        setError("No booking ID provided");
+        header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
+        exit;
+    }
+
+    $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+
+    if (!$clientDetails) {
+        setError("Client not found");
+        header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
+        exit;
+    }
+
+    $this->view("ced/ced-cash-in-form", [
+        "current_route" => "ced-add-transaction-form",
+        "page_title"    => "CED Add Transaction - " . $clientDetails['client_name'],
+        "clientDetails" => $clientDetails,
+        "bookingId"     => $bookingId
+    ]);
+}
+
+/**
+ * CED: Process add-transaction POST (restricted to development_charge & emi)
+ */
+public function addCedTransaction()
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
+        exit;
+    }
+
+    $bookingId = $_POST['booking_id'] ?? null;
+
+    if (!$bookingId) {
+        setError("Invalid booking ID");
+        header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
+        exit;
+    }
+
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    $paymentType = $_POST['payment_type'] ?? '';
+
+    // CED can only add development_charge or emi
+    if (!in_array($paymentType, ['development_charge', 'emi'])) {
+        setError("CED can only add Development Charges or EMI transactions.");
+        header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+        exit;
+    }
+
+    // Registration must be paid
+    if (!$this->clientModel->isRegistrationPaid($bookingId)) {
+        setError("Registration payment must be made before adding transactions.");
+        header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+        exit;
+    }
+
+    // EMI requires land share completed
+    if ($paymentType === 'emi') {
+        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+        if (empty($paymentSummary['is_land_share_completed'])) {
+            setError("Land share must be fully paid before adding EMI transactions.");
+            header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+            exit;
+        }
+    }
+
+    // Handle multi-file proof uploads
+    $uploadedPaths = [];
+    if (!empty($_FILES['proof_files']['name'][0])) {
+        $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/transactions/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+        $allowedTypes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
+        $maxSize = 5 * 1024 * 1024;
+        foreach ($_FILES['proof_files']['tmp_name'] as $idx => $tmpName) {
+            if (!is_uploaded_file($tmpName)) continue;
+            if (!in_array(mime_content_type($tmpName), $allowedTypes)) continue;
+            if ($_FILES['proof_files']['size'][$idx] > $maxSize) continue;
+            $ext = pathinfo(basename($_FILES['proof_files']['name'][$idx]), PATHINFO_EXTENSION);
+            $name = 'proof_' . uniqid() . '.' . $ext;
+            if (move_uploaded_file($tmpName, $uploadDir . $name)) {
+                $uploadedPaths[] = 'uploads/transactions/' . $name;
+            }
+        }
+    }
+
+    // Prepare transaction data
+    $transactionData = [
+        'booking_id'      => $bookingId,
+        'payment_type'    => $paymentType,
+        'amount'          => $_POST['amount'] ?? 0,
+        'payment_method'  => $_POST['payment_method'] ?? 'cash',
+        'payment_status'  => $_POST['payment_status'] ?? 'paid',
+        'payment_date'    => $_POST['payment_date'] ?? date('Y-m-d'),
+        'transaction_ref' => $_POST['transaction_ref'] ?? null,
+        'bank_id'         => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
+        'bank_account_no' => $_POST['bank_account_no'] ?? null,
+        'cheque_no'       => $_POST['cheque_no'] ?? null,
+        'online_type'     => $_POST['online_type'] ?? null,
+        'attachment_paths' => $uploadedPaths ?: null,
+        'created_by'      => $_SESSION['user']['id'] ?? 1
+    ];
+
+    // EMI schedule data
+    $emiScheduleData = null;
+    if ($paymentType === 'emi') {
+        $emiScheduleData = [
+            'due_emi_amount' => $_POST['due_emi_amount'] ?? 0
+        ];
+
+        if ($transactionData['payment_status'] === 'partially_paid') {
+            if ($emiScheduleData['due_emi_amount'] <= 0) {
+                setError("Partially Paid status requires a due amount greater than 0");
+                header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+                exit;
+            }
+        }
+    }
+
+    // Add transaction (same model method as Accounts)
+    $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
+
+    if ($result['success']) {
+        setSuccess($result['message'] . " — Pending verification by Accounts.");
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
+        exit;
+    } else {
+        setError($result['message']);
+        header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+        exit;
+    }
+}
+
 /**
  * View booking money invoice/receipt
  */
@@ -411,20 +557,40 @@ public function addTransaction()
             }
         }
 
+        // Handle multi-file proof uploads (before insert so paths are stored atomically)
+        $uploadedPaths = [];
+        if (!empty($_FILES['proof_files']['name'][0])) {
+            $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/transactions/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $allowedTypes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
+            $maxSize = 5 * 1024 * 1024;
+            foreach ($_FILES['proof_files']['tmp_name'] as $idx => $tmpName) {
+                if (!is_uploaded_file($tmpName)) continue;
+                if (!in_array(mime_content_type($tmpName), $allowedTypes)) continue;
+                if ($_FILES['proof_files']['size'][$idx] > $maxSize) continue;
+                $ext = pathinfo(basename($_FILES['proof_files']['name'][$idx]), PATHINFO_EXTENSION);
+                $name = 'proof_' . uniqid() . '.' . $ext;
+                if (move_uploaded_file($tmpName, $uploadDir . $name)) {
+                    $uploadedPaths[] = 'uploads/transactions/' . $name;
+                }
+            }
+        }
+
         // Prepare transaction data
         $transactionData = [
-            'booking_id' => $bookingId,
-            'payment_type' => $paymentType,
-            'amount' => $_POST['amount'] ?? 0,
+            'booking_id'     => $bookingId,
+            'payment_type'   => $paymentType,
+            'amount'         => $_POST['amount'] ?? 0,
             'payment_method' => $_POST['payment_method'] ?? 'cash',
             'payment_status' => $_POST['payment_status'] ?? 'paid',
-            'payment_date' => $_POST['payment_date'] ?? date('Y-m-d'),
-            'transaction_ref' => $_POST['transaction_ref'] ?? null,
-            'bank_name' => $_POST['bank_name'] ?? null,
-            'bank_account_no' => $_POST['bank_account_no'] ?? null,
-            'cheque_no' => $_POST['cheque_no'] ?? null,
-            'online_type' => $_POST['online_type'] ?? null,
-            'created_by' => $_SESSION['user']['id'] ?? 1
+            'payment_date'   => $_POST['payment_date'] ?? date('Y-m-d'),
+            'transaction_ref'=> $_POST['transaction_ref'] ?? null,
+            'bank_id'        => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
+            'bank_account_no'=> $_POST['bank_account_no'] ?? null,
+            'cheque_no'      => $_POST['cheque_no'] ?? null,
+            'online_type'    => $_POST['online_type'] ?? null,
+            'attachment_paths' => $uploadedPaths ?: null,
+            'created_by'     => $_SESSION['user']['id'] ?? 1
         ];
 
         // EMI schedule data (only if payment type is EMI)
@@ -1113,4 +1279,182 @@ public function viewClientStatement($bookingId = null)
     include $viewPath;
     exit;
 }
+
+    /**
+     * Verify or reject a payment (Accounts team action)
+     * POST: payment_id, action (verify|reject), rejection_reason (optional)
+     */
+    public function verifyPayment()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+
+        $paymentId      = (int)($_POST['payment_id'] ?? 0);
+        $action         = $_POST['action'] ?? '';          // 'verify' or 'reject'
+        $userId         = $_SESSION['user']['id'] ?? 0;
+        $rejectionReason = trim($_POST['rejection_reason'] ?? '');
+
+        if (!$paymentId || !in_array($action, ['verify', 'reject'])) {
+            echo json_encode(['success' => false, 'message' => 'Invalid parameters']);
+            exit;
+        }
+
+        if ($action === 'reject' && $rejectionReason === '') {
+            echo json_encode(['success' => false, 'message' => 'Rejection reason is required']);
+            exit;
+        }
+
+        $newStatus = ($action === 'verify') ? 'verified' : 'rejected';
+
+        // Build the rejection_reason column dynamically (only relevant for reject action)
+        $rejectionReasonSql = ($action === 'reject') ? ', rejection_reason = ?' : '';
+
+        $stmt = $this->db->prepare("
+            UPDATE lead_payments
+            SET    verification_status = ?,
+                   verified_by         = ?,
+                   verified_at         = NOW()
+                   {$rejectionReasonSql}
+            WHERE  id = ?
+            AND    verification_status = 'pending'
+        ");
+
+        if (!$stmt) {
+            echo json_encode(['success' => false, 'message' => 'DB prepare error']);
+            exit;
+        }
+
+        if ($action === 'reject') {
+            $stmt->bind_param("sisi", $newStatus, $userId, $rejectionReason, $paymentId);
+        } else {
+            $stmt->bind_param("sii", $newStatus, $userId, $paymentId);
+        }
+
+        if (!$stmt->execute()) {
+            echo json_encode(['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
+            exit;
+        }
+
+        if ($stmt->affected_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Payment not found or already processed']);
+            exit;
+        }
+
+        $label = ($action === 'verify') ? 'verified' : 'rejected';
+
+        // Fetch verifier's name so the front-end can show it without a page reload
+        $verifierName = '';
+        $nameStmt = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
+        if ($nameStmt) {
+            $nameStmt->bind_param("i", $userId);
+            $nameStmt->execute();
+            $nameResult = $nameStmt->get_result();
+            $nameRow = $nameResult ? $nameResult->fetch_assoc() : null;
+            $verifierName = $nameRow['full_name'] ?? '';
+        }
+
+        echo json_encode([
+            'success'          => true,
+            'message'          => "Payment {$label} successfully",
+            'status'           => $newStatus,
+            'verified_by_name' => $verifierName
+        ]);
+        exit;
+    }
+
+    /**
+     * AJAX: Get all active banks for dynamic dropdown
+     */
+    public function getBanks()
+    {
+        header('Content-Type: application/json');
+        $stmt = $this->db->prepare("
+            SELECT id, bank_name, branch_name, routing_number
+            FROM   banks
+            WHERE  status = 'active'
+            ORDER BY bank_name, branch_name
+        ");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $banks  = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        echo json_encode(['success' => true, 'banks' => $banks]);
+        exit;
+    }
+
+    /**
+     * Handle multi-file proof-of-payment upload for a lead_payment record
+     * Called after addTransaction saves the payment, or as a standalone AJAX call.
+     */
+    public function uploadTransactionProof()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        $paymentId = (int)($_POST['payment_id'] ?? 0);
+        if (!$paymentId) {
+            echo json_encode(['success' => false, 'message' => 'Missing payment ID']);
+            exit;
+        }
+
+        $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/transactions/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $uploadedPaths = [];
+        $files = $_FILES['proof_files'] ?? null;
+
+        if (!$files || empty($files['name'][0])) {
+            echo json_encode(['success' => false, 'message' => 'No files received']);
+            exit;
+        }
+
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+        $maxSize      = 5 * 1024 * 1024; // 5 MB
+
+        foreach ($files['tmp_name'] as $idx => $tmpName) {
+            if (!is_uploaded_file($tmpName)) continue;
+
+            $mimeType = mime_content_type($tmpName);
+            if (!in_array($mimeType, $allowedTypes)) continue;
+            if ($files['size'][$idx] > $maxSize) continue;
+
+            $originalName = basename($files['name'][$idx]);
+            $safeExt      = pathinfo($originalName, PATHINFO_EXTENSION);
+            $uniqueName   = 'proof_' . $paymentId . '_' . uniqid() . '.' . $safeExt;
+            $destination  = $uploadDir . $uniqueName;
+
+            if (move_uploaded_file($tmpName, $destination)) {
+                $uploadedPaths[] = 'uploads/transactions/' . $uniqueName;
+            }
+        }
+
+        if (empty($uploadedPaths)) {
+            echo json_encode(['success' => false, 'message' => 'No valid files uploaded']);
+            exit;
+        }
+
+        // Merge with any existing paths
+        $existingRow = $this->db->query("SELECT attachment_paths FROM lead_payments WHERE id = {$paymentId}");
+        $existing    = $existingRow ? $existingRow->fetch_assoc() : null;
+        $allPaths    = [];
+        if ($existing && !empty($existing['attachment_paths'])) {
+            $decoded = json_decode($existing['attachment_paths'], true);
+            if (is_array($decoded)) $allPaths = $decoded;
+        }
+        $allPaths = array_merge($allPaths, $uploadedPaths);
+
+        $jsonPaths = json_encode($allPaths);
+        $stmt = $this->db->prepare("UPDATE lead_payments SET attachment_paths = ? WHERE id = ?");
+        $stmt->bind_param("si", $jsonPaths, $paymentId);
+        $stmt->execute();
+
+        echo json_encode(['success' => true, 'paths' => $uploadedPaths, 'all_paths' => $allPaths]);
+        exit;
+    }
 }

@@ -2,6 +2,10 @@
 $page_title = "Clients Cash in History";
 $page = 'Clients';
 $show_breadcrumb = true;
+
+// Check if registration is paid (enables Add Transaction for dev charges & EMI)
+$accountModel = new AccountClient();
+$isRegistrationPaid = $accountModel->isRegistrationPaid($clientDetails['booking_id'] ?? 0);
 ?>
 
 <div class="row">
@@ -141,6 +145,23 @@ $show_breadcrumb = true;
                         <h6 class="card__sub-title mb-10">Registration Money</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title">TK.<?= number_format($paymentSummary['registration_money'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Development Charges Paid Card -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-hammer"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Development Charges Paid</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['development_charge_paid'] ?? 0, 2) ?></h4>
                         </div>
                     </div>
                 </div>
@@ -308,11 +329,17 @@ $show_breadcrumb = true;
                 <h5 class="card__title mb-2">Transaction History</h5>
             </div>
             <div class="col-xxl-12 mb-4">
-                <!-- <div class="mt-3 d-flex gap-2 position ">
-                    <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
-                        <i class="fa-light fa-file-invoice me-2"></i> Get Statement
-                    </a>
-                </div> -->
+                <div class="mt-3 d-flex gap-2 justify-content-end">
+                    <?php if ($isRegistrationPaid): ?>
+                        <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
+                            <i class="fa-light fa-plus me-2"></i> Add Transaction
+                        </a>
+                    <?php else: ?>
+                        <button class="btn btn-secondary mb-3" disabled title="Registration must be paid before adding transactions">
+                            <i class="fa-light fa-lock me-2"></i> Add Transaction (Requires Registration)
+                        </button>
+                    <?php endif; ?>
+                </div>
                 <div class="table__wrapper table-responsive">
                     <table class="table table-hover">
                         <thead>
@@ -327,6 +354,8 @@ $show_breadcrumb = true;
                                 <th>Method</th>
                                 <th>Trx ID</th>
                                 <th>Status</th>
+                                <th>Verification</th>
+                                <th>Verified By</th>
                                 <th>Added By</th>
                             </tr>
                         </thead>
@@ -373,6 +402,33 @@ $show_breadcrumb = true;
                                         <span class="badge <?php echo $transaction['status_class']; ?>">
                                             <?php echo $transaction['status_text']; ?>
                                         </span>
+                                    </td>
+                                    <!-- VERIFICATION STATUS -->
+                                    <td>
+                                        <?php
+                                            $vs = $transaction['verification_status'] ?? 'pending';
+                                            if ($vs === 'verified'):
+                                        ?>
+                                            <span class="badge bg-success">
+                                                <i class="fa-light fa-check-circle me-1"></i>Verified
+                                            </span>
+                                        <?php elseif ($vs === 'rejected'): ?>
+                                            <span class="badge bg-danger">
+                                                <i class="fa-light fa-times-circle me-1"></i>Rejected
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fa-light fa-clock me-1"></i>Pending
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <!-- VERIFIED BY -->
+                                    <td>
+                                        <?php if (!empty($transaction['verified_by_name'])): ?>
+                                            <?= htmlspecialchars($transaction['verified_by_name']) ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">-</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?>

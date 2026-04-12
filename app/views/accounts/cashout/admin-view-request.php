@@ -255,12 +255,29 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                     
                     <?php if (!empty($request['attachment_path'])): ?>
                         <div class="col-md-12">
-                            <div class="info-label">Attachment</div>
+                            <div class="info-label">Requester's Documents</div>
                             <div class="info-value">
-                                <a href="<?= $GLOBALS['base_url'] ?>/download-cashout-attachment?id=<?= $request['id'] ?>" 
-                                   class="btn btn-outline-primary">
-                                    <i class="fa-light fa-download me-2"></i> Download File
-                                </a>
+                                <?php
+                                    $attachPaths = json_decode($request['attachment_path'], true);
+                                    if (!is_array($attachPaths)) $attachPaths = [$request['attachment_path']];
+                                ?>
+                                <div class="d-flex flex-wrap gap-2">
+                                <?php foreach ($attachPaths as $idx => $path): ?>
+                                    <?php $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION)); ?>
+                                    <a href="<?= $GLOBALS['base_url'] ?>/download-cashout-attachment?id=<?= $request['id'] ?>&file=<?= $idx ?>"
+                                        class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                                        title="<?= htmlspecialchars(basename($path)) ?>">
+                                        <?php if (in_array($ext, ['jpg','jpeg','png','gif','webp'])): ?>
+                                            <i class="fa-light fa-image"></i>
+                                        <?php elseif ($ext === 'pdf'): ?>
+                                            <i class="fa-light fa-file-pdf"></i>
+                                        <?php else: ?>
+                                            <i class="fa-light fa-file"></i>
+                                        <?php endif; ?>
+                                        File <?= $idx + 1 ?>
+                                    </a>
+                                <?php endforeach; ?>
+                                </div>
                             </div>
                         </div>
                     <?php endif; ?>
@@ -314,7 +331,8 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                                     <th>Payment Date</th>
                                     <th>Amount</th>
                                     <th>Method</th>
-                                    <th>Reference</th>
+                                    <th>Bank / Ref</th>
+                                    <th>Proof</th>
                                     <th>Added By</th>
                                     <th>Added On</th>
                                     <?php if ($userRole == 3): // Super Admin ?>
@@ -328,7 +346,51 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                                         <td><?= date('d M, Y', strtotime($payment['payment_date'])) ?></td>
                                         <td><strong class="text-success">TK.<?= number_format($payment['amount'], 2) ?></strong></td>
                                         <td><span class="badge bg-info"><?= ucfirst($payment['payment_method']) ?></span></td>
-                                        <td><?= htmlspecialchars($payment['transaction_ref'] ?? 'N/A') ?></td>
+                                        <td>
+                                            <?php if (!empty($payment['bank_name'])): ?>
+                                                <small class="text-muted d-block"><?= htmlspecialchars($payment['bank_name']) ?></small>
+                                            <?php endif; ?>
+                                            <?php if (!empty($payment['bank_account_no'])): ?>
+                                                <small class="text-muted d-block">Acct: <?= htmlspecialchars($payment['bank_account_no']) ?></small>
+                                            <?php endif; ?>
+                                            <?php if (!empty($payment['cheque_no'])): ?>
+                                                <small class="text-muted d-block">Cheque: <?= htmlspecialchars($payment['cheque_no']) ?></small>
+                                            <?php endif; ?>
+                                            <?php if (!empty($payment['online_type'])): ?>
+                                                <small class="text-muted d-block"><?= htmlspecialchars(ucfirst($payment['online_type'])) ?></small>
+                                            <?php endif; ?>
+                                            <?php if (!empty($payment['transaction_ref'])): ?>
+                                                <small class="text-muted d-block">Ref: <?= htmlspecialchars($payment['transaction_ref']) ?></small>
+                                            <?php endif; ?>
+                                            <?php if (empty($payment['bank_name']) && empty($payment['cheque_no']) && empty($payment['online_type']) && empty($payment['transaction_ref'])): ?>
+                                                <span class="text-muted">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($payment['disbursement_proof'])): ?>
+                                                <?php $proofFiles = json_decode($payment['disbursement_proof'], true) ?: []; ?>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                <?php foreach ($proofFiles as $pIdx => $pPath): ?>
+                                                    <?php $pExt = strtolower(pathinfo($pPath, PATHINFO_EXTENSION)); ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($pPath) ?>" target="_blank"
+                                                        class="btn btn-xs btn-outline-success py-0 px-1"
+                                                        style="font-size:11px;"
+                                                        title="<?= htmlspecialchars(basename($pPath)) ?>">
+                                                        <?php if (in_array($pExt, ['jpg','jpeg','png','gif','webp'])): ?>
+                                                            <i class="fa-light fa-image"></i>
+                                                        <?php elseif ($pExt === 'pdf'): ?>
+                                                            <i class="fa-light fa-file-pdf"></i>
+                                                        <?php else: ?>
+                                                            <i class="fa-light fa-file"></i>
+                                                        <?php endif; ?>
+                                                        <?= $pIdx + 1 ?>
+                                                    </a>
+                                                <?php endforeach; ?>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="text-muted">—</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?= htmlspecialchars($payment['created_by_name'] ?? 'N/A') ?></td>
                                         <td>
                                             <?= date('d M, Y', strtotime($payment['created_at'])) ?><br>
@@ -351,7 +413,7 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                                 <tr class="table-light">
                                     <td colspan="1"><strong>Total Paid:</strong></td>
                                     <td><strong class="text-success">TK.<?= number_format($total_paid ?? 0, 2) ?></strong></td>
-                                    <td colspan="<?= $userRole == 3 ? 5 : 4 ?>"></td>
+                                    <td colspan="<?= $userRole == 3 ? 7 : 6 ?>"></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -652,7 +714,7 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="<?= $GLOBALS['base_url'] ?>/add-cashout-payment" method="POST">
+            <form action="<?= $GLOBALS['base_url'] ?>/add-cashout-payment" method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
                     <input type="hidden" name="request_id" value="<?= $request['id'] ?>">
                     
@@ -679,7 +741,7 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                         
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Payment Method: <span class="text-danger">*</span></label>
-                            <select name="payment_method" class="form-control" id="paymentMethod" required>
+                            <select name="payment_method" class="form-control" id="coPaymentMethod" required>
                                 <option value="cash">Cash</option>
                                 <option value="bank">Bank Transfer</option>
                                 <option value="cheque">Cheque</option>
@@ -695,27 +757,27 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                         </div>
                         
                         <!-- Bank Transfer Fields -->
-                        <div class="col-md-6 mb-3 bank-fields" style="display: none;">
-                            <label class="form-label">Bank Name:</label>
-                            <input type="text" name="bank_name" class="form-control" 
-                                   placeholder="Enter bank name">
+                        <div class="col-md-12 mb-3 co-bank-fields" style="display:none;">
+                            <label class="form-label">Bank / Branch: <span class="text-danger">*</span></label>
+                            <select name="bank_id" id="coBankSelect" class="form-control">
+                                <option value="">-- Loading banks... --</option>
+                            </select>
+                            <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/bank-registry" target="_blank">Bank Registry</a></small>
                         </div>
                         
-                        <div class="col-md-6 mb-3 bank-fields" style="display: none;">
+                        <div class="col-md-6 mb-3 co-bank-fields" style="display:none;">
                             <label class="form-label">Account Number:</label>
-                            <input type="text" name="bank_account_no" class="form-control" 
-                                   placeholder="Enter account number">
+                            <input type="text" name="bank_account_no" class="form-control" placeholder="Enter account number">
                         </div>
                         
                         <!-- Cheque Fields -->
-                        <div class="col-md-6 mb-3 cheque-fields" style="display: none;">
+                        <div class="col-md-6 mb-3 co-cheque-fields" style="display:none;">
                             <label class="form-label">Cheque Number:</label>
-                            <input type="text" name="cheque_no" class="form-control" 
-                                   placeholder="Enter cheque number">
+                            <input type="text" name="cheque_no" class="form-control" placeholder="Enter cheque number">
                         </div>
                         
                         <!-- Online Payment Fields -->
-                        <div class="col-md-6 mb-3 online-fields" style="display: none;">
+                        <div class="col-md-6 mb-3 co-online-fields" style="display:none;">
                             <label class="form-label">Online Payment Type:</label>
                             <select name="online_type" class="form-control">
                                 <option value="">Select type</option>
@@ -727,6 +789,20 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                                 <option value="stripe">Stripe</option>
                                 <option value="other">Other</option>
                             </select>
+                        </div>
+
+                        <!-- Mandatory Disbursement Proof -->
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">
+                                <i class="fa-light fa-paperclip me-1"></i>
+                                Disbursement Proof <span class="text-danger">*</span>
+                                <span class="text-muted small ms-1">(JPG, PNG, PDF, DOC — max 5MB each)</span>
+                            </label>
+                            <input type="file" name="disbursement_proof[]" id="coProofFiles"
+                                class="form-control" multiple
+                                accept="image/*,application/pdf,.doc,.docx" required>
+                            <div id="coFilePreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+                            <small class="text-danger">Upload at least one proof document (receipt, bank slip, screenshot, etc.)</small>
                         </div>
                     </div>
                 </div>
@@ -745,26 +821,61 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const paymentMethod = document.getElementById('paymentMethod');
-    const bankFields = document.querySelectorAll('.bank-fields');
-    const chequeFields = document.querySelectorAll('.cheque-fields');
-    const onlineFields = document.querySelectorAll('.online-fields');
-    
-    if (paymentMethod) {
-        paymentMethod.addEventListener('change', function() {
-            // Hide all conditional fields
-            bankFields.forEach(field => field.style.display = 'none');
-            chequeFields.forEach(field => field.style.display = 'none');
-            onlineFields.forEach(field => field.style.display = 'none');
-            
-            // Show relevant fields based on selection
-            if (this.value === 'bank') {
-                bankFields.forEach(field => field.style.display = 'block');
-            } else if (this.value === 'cheque') {
-                chequeFields.forEach(field => field.style.display = 'block');
-            } else if (this.value === 'online') {
-                onlineFields.forEach(field => field.style.display = 'block');
-            }
+    const method    = document.getElementById('coPaymentMethod');
+    const bankF     = document.querySelectorAll('.co-bank-fields');
+    const chequeF   = document.querySelectorAll('.co-cheque-fields');
+    const onlineF   = document.querySelectorAll('.co-online-fields');
+
+    function toggleFields() {
+        bankF.forEach(el => el.style.display = 'none');
+        chequeF.forEach(el => el.style.display = 'none');
+        onlineF.forEach(el => el.style.display = 'none');
+        if (!method) return;
+        if (method.value === 'bank')   bankF.forEach(el => el.style.display = 'block');
+        if (method.value === 'cheque') chequeF.forEach(el => el.style.display = 'block');
+        if (method.value === 'online') onlineF.forEach(el => el.style.display = 'block');
+    }
+
+    if (method) { method.addEventListener('change', toggleFields); toggleFields(); }
+
+    // Load Bank Registry options
+    fetch('<?= $GLOBALS['base_url'] ?>/get-banks')
+        .then(r => r.json())
+        .then(data => {
+            const sel = document.getElementById('coBankSelect');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">-- Select Bank / Branch --</option>';
+            (data.banks || []).forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.bank_name + ' — ' + b.branch_name;
+                sel.appendChild(opt);
+            });
+        });
+
+    // File preview
+    const proofInput = document.getElementById('coProofFiles');
+    const preview    = document.getElementById('coFilePreview');
+    if (proofInput && preview) {
+        proofInput.addEventListener('change', function() {
+            preview.innerHTML = '';
+            Array.from(this.files).forEach(file => {
+                const thumb = document.createElement('div');
+                thumb.className = 'border rounded p-1 text-center';
+                thumb.style.cssText = 'width:72px;font-size:10px;overflow:hidden;';
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.style.cssText = 'width:62px;height:46px;object-fit:cover;border-radius:3px;';
+                    img.src = URL.createObjectURL(file);
+                    thumb.appendChild(img);
+                } else {
+                    thumb.innerHTML = '<i class="fa-light fa-file-pdf fa-2x text-danger"></i>';
+                }
+                const n = document.createElement('div');
+                n.textContent = file.name.length > 9 ? file.name.substr(0,9)+'…' : file.name;
+                thumb.appendChild(n);
+                preview.appendChild(thumb);
+            });
         });
     }
 });
