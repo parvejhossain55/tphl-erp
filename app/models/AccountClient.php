@@ -61,7 +61,7 @@ class AccountClient extends Model
                  FROM lead_payments lp
                  INNER JOIN lead_bookings lb2 ON lb2.id = lp.booking_id
                  WHERE lb2.lead_id = l.id
-                 AND lp.payment_status = 'paid'),
+                 AND lp.payment_status IN ('paid','partially_paid')),
                 0
             ) AS total_paid,
             (
@@ -69,7 +69,7 @@ class AccountClient extends Model
                 FROM lead_payments lp
                 INNER JOIN lead_bookings lb2 ON lb2.id = lp.booking_id
                 WHERE lb2.lead_id = l.id
-                AND lp.payment_status = 'paid'
+                AND lp.payment_status IN ('paid','partially_paid')
             ) AS last_payment_date
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
@@ -130,14 +130,14 @@ class AccountClient extends Model
                 (SELECT SUM(lp.amount)
                  FROM lead_payments lp
                  WHERE lp.booking_id = lb.id
-                 AND lp.payment_status = 'paid'),
+                 AND lp.payment_status IN ('paid','partially_paid')),
                 0
             ) AS total_paid,
             (
                 SELECT MAX(lp.payment_date)
                 FROM lead_payments lp
                 WHERE lp.booking_id = lb.id
-                AND lp.payment_status = 'paid'
+                AND lp.payment_status IN ('paid','partially_paid')
             ) AS last_payment_date
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
@@ -197,28 +197,28 @@ class AccountClient extends Model
                 (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
                  WHERE lp.booking_id = lb.id 
-                 AND lp.payment_status = 'paid'), 
+                 AND lp.payment_status IN ('paid','partially_paid')), 
                 0
             ) as total_paid,
             COALESCE(
                 (SELECT SUM(lp.land_share_amount) 
                  FROM lead_payments lp 
                  WHERE lp.booking_id = lb.id 
-                 AND lp.payment_status = 'paid'), 
+                 AND lp.payment_status IN ('paid','partially_paid')), 
                 0
             ) as total_land_share_paid,
             COALESCE(
                 (SELECT SUM(lp.service_fee) 
                  FROM lead_payments lp 
                  WHERE lp.booking_id = lb.id 
-                 AND lp.payment_status = 'paid'), 
+                 AND lp.payment_status IN ('paid','partially_paid')), 
                 0
             ) as total_service_fee,
             COALESCE(
                 (SELECT MAX(lp.payment_date) 
                  FROM lead_payments lp 
                  WHERE lp.booking_id = lb.id 
-                 AND lp.payment_status = 'paid'), 
+                 AND lp.payment_status IN ('paid','partially_paid')), 
                 NULL
             ) as last_payment_date
         FROM lead_bookings lb
@@ -258,20 +258,20 @@ ORDER BY lb.booking_date DESC
                     WHEN (SELECT SUM(lp.amount) 
                           FROM lead_payments lp 
                           WHERE lp.booking_id = lb.id 
-                          AND lp.payment_status = 'paid') >= lb.agreement_value 
+                          AND lp.payment_status IN ('paid','partially_paid')) >= lb.agreement_value 
                     THEN lb.id 
                 END) as full_payment_completed,
                 COUNT(DISTINCT CASE 
                     WHEN (SELECT COUNT(*) 
                           FROM lead_payments lp2 
                           WHERE lp2.booking_id = lb.id 
-                          AND lp2.payment_status = 'paid') > 0
+                          AND lp2.payment_status IN ('paid','partially_paid')) > 0
                     THEN lb.id 
                 END) as approved_bookings,
                 COALESCE(SUM(lp.service_fee), 0) as total_service_fee_collected
             FROM leads l
             INNER JOIN lead_bookings lb ON l.id = lb.lead_id
-            LEFT JOIN lead_payments lp ON lb.id = lp.booking_id AND lp.payment_status = 'paid'
+            LEFT JOIN lead_payments lp ON lb.id = lp.booking_id AND lp.payment_status IN ('paid','partially_paid')
             $whereClause
         ");
 
@@ -380,14 +380,14 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
+                     AND lp.payment_status IN ('paid','partially_paid')), 
                     0
                 ) as total_paid,
                 COALESCE(
                     (SELECT SUM(lp.land_share_amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
+                     AND lp.payment_status IN ('paid','partially_paid')), 
                     0
                 ) as additional_land_share_paid,
                 -- FIXED: Calculate service fee from emi_schedules table instead of lead_payments
@@ -402,7 +402,7 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'
+                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.payment_type = 'registration'), 
                     0
                 ) as registration_paid,
@@ -418,7 +418,7 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'
+                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.payment_type = 'emi'), 
                     0
                 ) as emi_paid,
@@ -426,7 +426,7 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'
+                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.payment_type = 'development_charge'), 
                     0
                 ) as development_charge_paid,
@@ -434,7 +434,7 @@ ORDER BY lb.booking_date DESC
                     (SELECT MAX(lp.payment_date) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status = 'paid'), 
+                     AND lp.payment_status IN ('paid','partially_paid')), 
                     NULL
                 ) as last_payment_date
             FROM lead_bookings lb
@@ -559,7 +559,7 @@ ORDER BY lb.booking_date DESC
             FROM emi_schedules es
             INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
             WHERE lp.booking_id = ? 
-            AND lp.payment_status = 'paid'
+            AND lp.payment_status IN ('paid','partially_paid')
             ORDER BY es.emi_no
         ");
         $paidEmiStmt->bind_param("i", $bookingId);
@@ -1402,7 +1402,7 @@ ORDER BY lb.booking_date DESC
             FROM lead_payments 
             WHERE booking_id = ? 
             AND payment_type = 'registration' 
-            AND payment_status = 'paid'
+            AND payment_status IN ('paid','partially_paid')
         ");
 
         $stmt->bind_param("i", $bookingId);
@@ -1816,7 +1816,7 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount)
                      FROM lead_payments lp
                      WHERE lp.booking_id = lb.id
-                     AND lp.payment_status = 'paid'), 0
+                     AND lp.payment_status IN ('paid','partially_paid')), 0
                 ) as total_paid,
                 (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
                  FROM lead_payments lp_sub
@@ -1892,7 +1892,7 @@ ORDER BY lb.booking_date DESC
         $stmt = $this->db->prepare("
             SELECT COALESCE(SUM(amount), 0) as total
             FROM lead_payments
-            WHERE payment_status = 'paid'
+            WHERE payment_status IN ('paid','partially_paid')
             AND payment_date BETWEEN ? AND ?
         ");
         $stmt->bind_param("ss", $currentMonthStart, $currentMonthEnd);
@@ -1910,7 +1910,7 @@ ORDER BY lb.booking_date DESC
                 DATE_FORMAT(payment_date, '%Y-%m') as month,
                 SUM(amount) as total
             FROM lead_payments
-            WHERE payment_status = 'paid'
+            WHERE payment_status IN ('paid','partially_paid')
             AND payment_date >= ?
             GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
         ");
@@ -1931,7 +1931,7 @@ ORDER BY lb.booking_date DESC
                 DATE(payment_date) as day_date,
                 SUM(amount) as total
             FROM lead_payments
-            WHERE payment_status = 'paid'
+            WHERE payment_status IN ('paid','partially_paid')
             AND payment_date >= ?
             GROUP BY DATE(payment_date)
         ");
