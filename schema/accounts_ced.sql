@@ -34,6 +34,9 @@ ALTER TABLE `lead_payments`
     ADD COLUMN IF NOT EXISTS `attachment_paths` TEXT DEFAULT NULL
         COMMENT 'JSON array of proof-of-payment file paths'
         AFTER `verified_at`,
+    ADD COLUMN IF NOT EXISTS `rejection_reason` TEXT DEFAULT NULL
+        COMMENT 'Reason provided by Accounts when rejecting a payment'
+        AFTER `attachment_paths`,
     ADD COLUMN IF NOT EXISTS `bank_id` INT(10) UNSIGNED DEFAULT NULL
         COMMENT 'FK to banks table when payment_method = bank'
         AFTER `bank_name`;

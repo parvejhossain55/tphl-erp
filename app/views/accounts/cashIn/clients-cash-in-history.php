@@ -397,18 +397,35 @@ $show_breadcrumb = true;
                                             <?php echo $transaction['status_text']; ?>
                                         </span>
                                     </td>
-                                    <!-- VERIFICATION BADGE -->
-                                    <td>
+                                    <!-- VERIFICATION CONTROL -->
+                                    <td class="ver-cell" id="ver-cell-<?= $transaction['id'] ?>">
                                         <?php
                                             $vs = $transaction['verification_status'] ?? 'pending';
-                                            if ($vs === 'verified') {
-                                                echo '<span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i>Verified</span>';
-                                            } elseif ($vs === 'rejected') {
-                                                echo '<span class="badge bg-danger"><i class="fa-light fa-times-circle me-1"></i>Rejected</span>';
-                                            } else {
-                                                echo '<span class="badge bg-warning text-dark"><i class="fa-light fa-clock me-1"></i>Pending</span>';
-                                            }
+                                            if ($vs === 'verified'):
                                         ?>
+                                            <span class="badge bg-success ver-badge">
+                                                <i class="fa-light fa-check-circle me-1"></i>Verified
+                                            </span>
+                                        <?php elseif ($vs === 'rejected'): ?>
+                                            <span class="badge bg-danger ver-badge">
+                                                <i class="fa-light fa-times-circle me-1"></i>Rejected
+                                            </span>
+                                        <?php else: /* pending */ ?>
+                                            <div class="d-flex gap-1">
+                                                <button type="button"
+                                                    class="btn btn-sm btn-verify"
+                                                    onclick="verifyPayment(<?= $transaction['id'] ?>, 'verify')"
+                                                    title="Verify this payment">
+                                                    <i class="fa-light fa-check"></i> Verify
+                                                </button>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-reject"
+                                                    onclick="openRejectModal(<?= $transaction['id'] ?>)"
+                                                    title="Reject this payment">
+                                                    <i class="fa-light fa-times"></i> Reject
+                                                </button>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?>
@@ -467,19 +484,133 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
+<!-- ===== REJECTION REASON MODAL ===== -->
+<div class="modal fade" id="rejectReasonModal" tabindex="-1" aria-labelledby="rejectReasonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom: 2px solid #fee2e2;">
+                <h5 class="modal-title" id="rejectReasonModalLabel" style="color:#b91c1c;">
+                    <i class="fa-light fa-times-circle me-2"></i>Reject Payment
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">
+                    <i class="fa-light fa-info-circle me-1"></i>
+                    Please provide a reason for rejecting this payment. This will be recorded for audit purposes.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Rejection Reason <span class="text-danger">*</span></label>
+                    <textarea id="rejectReasonInput"
+                        class="form-control"
+                        rows="3"
+                        placeholder="e.g. Cheque bounced, account number mismatch, insufficient proof of payment…"
+                        style="resize: vertical;"></textarea>
+                    <div id="rejectReasonError" class="text-danger small mt-1" style="display:none;">
+                        <i class="fa-light fa-exclamation-circle me-1"></i>Rejection reason is required.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #f1f5f9;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fa-light fa-arrow-left me-1"></i> Cancel
+                </button>
+                <button type="button" id="confirmRejectBtn" class="btn"
+                    style="background:#dc2626; color:#fff; border:none;">
+                    <i class="fa-light fa-times-circle me-1"></i> Confirm Rejection
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
     <script>
-        //  FIXED: Changed from $clientDetails['id'] to $clientDetails['booking_id']
+        const BASE_URL = '<?= $GLOBALS['base_url'] ?>';
+
+        // ─── Delete ──────────────────────────────────────
         function deleteTransaction(transactionId) {
             if (confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
                 let currentBookingId = <?= $clientDetails['booking_id'] ?? 'null' ?>;
-
                 if (currentBookingId) {
-                    window.location.href = '<?= $GLOBALS['base_url'] ?>/delete-transaction?payment_id=' + transactionId + '&booking_id=' + currentBookingId;
+                    window.location.href = BASE_URL + '/delete-transaction?payment_id=' + transactionId + '&booking_id=' + currentBookingId;
                 } else {
                     alert('Cannot delete: Missing booking information');
                 }
             }
+        }
+
+        // ─── Rejection modal ─────────────────────────────
+        let _rejectPaymentId = null;
+        function openRejectModal(paymentId) {
+            _rejectPaymentId = paymentId;
+            document.getElementById('rejectReasonInput').value = '';
+            document.getElementById('rejectReasonError').style.display = 'none';
+            new bootstrap.Modal(document.getElementById('rejectReasonModal')).show();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const confirmRejectBtn = document.getElementById('confirmRejectBtn');
+            if (confirmRejectBtn) {
+                confirmRejectBtn.addEventListener('click', function () {
+                    const reason = document.getElementById('rejectReasonInput').value.trim();
+                    if (!reason) {
+                        document.getElementById('rejectReasonError').style.display = 'block';
+                        return;
+                    }
+                    verifyPayment(_rejectPaymentId, 'reject', reason);
+                    bootstrap.Modal.getInstance(document.getElementById('rejectReasonModal')).hide();
+                });
+            }
+        });
+
+        // ─── Core verify/reject AJAX ─────────────────────
+        function verifyPayment(paymentId, action, rejectionReason = '') {
+            const cell = document.getElementById('ver-cell-' + paymentId);
+            if (cell) cell.innerHTML = '<span class="text-muted small"><i class="fa-light fa-spinner fa-spin"></i> Processing…</span>';
+
+            const body = new URLSearchParams({ payment_id: paymentId, action, rejection_reason: rejectionReason });
+
+            fetch(BASE_URL + '/verify-payment', { method: 'POST', body })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        // Update badge live
+                        if (cell) {
+                            if (res.status === 'verified') {
+                                cell.innerHTML = '<span class="badge bg-success ver-badge"><i class="fa-light fa-check-circle me-1"></i>Verified</span>';
+                            } else {
+                                cell.innerHTML = '<span class="badge bg-danger ver-badge"><i class="fa-light fa-times-circle me-1"></i>Rejected</span>';
+                            }
+                        }
+                        // Update invoice button state for this row
+                        const invoiceBtn = document.getElementById('invoice-btn-' + paymentId);
+                        if (invoiceBtn && res.status === 'verified') {
+                            invoiceBtn.outerHTML = invoiceBtn.outerHTML
+                                .replace('span', 'a')
+                                .replace('disabled-invoice', 'table__icon invoice');
+                        }
+                        showVerificationToast(res.message, 'success');
+                    } else {
+                        if (cell) cell.innerHTML = '<span class="badge bg-warning text-dark"><i class="fa-light fa-clock me-1"></i>Pending</span>';
+                        showVerificationToast(res.message || 'Action failed', 'danger');
+                    }
+                })
+                .catch(() => {
+                    if (cell) cell.innerHTML = '<span class="badge bg-warning text-dark"><i class="fa-light fa-clock me-1"></i>Pending</span>';
+                    showVerificationToast('Network error. Please try again.', 'danger');
+                });
+        }
+
+        // ─── Toast ───────────────────────────────────────
+        function showVerificationToast(msg, type) {
+            const toast = document.createElement('div');
+            toast.className = 'alert alert-' + type + ' position-fixed shadow-sm ver-toast';
+            toast.style.cssText = 'top:20px;right:20px;z-index:9999;min-width:280px;';
+            toast.innerHTML = '<i class="fa-light fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + ' me-2"></i>' + msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
     </script>
 
@@ -487,70 +618,52 @@ $show_breadcrumb = true;
         .card__icon span {
             color: var(--clr-theme-primary);
             background: rgba(108, 95, 252, 0.1);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            text-align: center;
-            justify-content: center;
-            align-items: center;
-            font-size: 16px;
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 16px;
         }
+        .card__title { font-size: 1.25rem; }
 
-        .card__title {
-            font-size: 1.25rem;
+        /* Verify / Reject inline buttons */
+        .btn-verify {
+            background: #dcfce7; color: #15803d;
+            border: 1px solid #86efac;
+            font-size: 11px; padding: 3px 8px; border-radius: 6px;
+            font-weight: 600; white-space: nowrap;
+            transition: background .15s;
+        }
+        .btn-verify:hover { background: #16a34a; color: #fff; }
+
+        .btn-reject {
+            background: #fee2e2; color: #b91c1c;
+            border: 1px solid #fca5a5;
+            font-size: 11px; padding: 3px 8px; border-radius: 6px;
+            font-weight: 600; white-space: nowrap;
+            transition: background .15s;
+        }
+        .btn-reject:hover { background: #dc2626; color: #fff; }
+
+        .ver-toast { animation: slideInRight .3s ease; }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(40px); }
+            to   { opacity: 1; transform: translateX(0); }
         }
 
         @media (min-width: 975px) {
             .dataTables_wrapper .dataTables_filter input[type=search] {
-                border: 1px solid var(--clr-border-1);
-                color: var(--clr-text-body);
-                padding: 0 10px;
-                margin-inline-start: 10px;
-                height: 36px;
-                border-radius: 6px;
-                width: 380px;
+                border: 1px solid var(--clr-border-1); color: var(--clr-text-body);
+                padding: 0 10px; margin-inline-start: 10px;
+                height: 36px; border-radius: 6px; width: 380px;
             }
         }
-
         @media (max-width: 975px) {
-            .card__wrapper .card__body h3 {
-                font-size: 1.3rem;
-            }
-
-            .card__title {
-                font-size: 1rem;
-            }
+            .card__wrapper .card__body h3 { font-size: 1.3rem; }
+            .card__title { font-size: 1rem; }
         }
-
-        @media (max-width: 768px) {
-            .btn {
-                font-size: 14px;
-                padding: 6px 24px;
-            }
-        }
-
-        @media (min-width: 575px) {
-            .position {
-                justify-content: end !important;
-            }
-        }
-
+        @media (max-width: 768px) { .btn { font-size: 14px; padding: 6px 24px; } }
+        @media (min-width: 575px) { .position { justify-content: end !important; } }
         @media (max-width: 480px) {
-            .btn {
-                font-size: 16px;
-                padding: 6px 21px;
-            }
-
-            .position {
-                justify-content: start !important;
-            }
+            .btn { font-size: 16px; padding: 6px 21px; }
+            .position { justify-content: start !important; }
         }
-
-        @media (max-width: 400px) {
-            .btn {
-                font-size: 14px;
-                padding: 6px 14px;
-            }
-        }
+        @media (max-width: 400px) { .btn { font-size: 14px; padding: 6px 14px; } }
     </style>

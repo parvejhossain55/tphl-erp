@@ -1165,11 +1165,15 @@ public function viewClientStatement($bookingId = null)
 
         $newStatus = ($action === 'verify') ? 'verified' : 'rejected';
 
+        // Build the rejection_reason column dynamically (only relevant for reject action)
+        $rejectionReasonSql = ($action === 'reject') ? ', rejection_reason = ?' : '';
+
         $stmt = $this->db->prepare("
             UPDATE lead_payments
             SET    verification_status = ?,
                    verified_by         = ?,
                    verified_at         = NOW()
+                   {$rejectionReasonSql}
             WHERE  id = ?
             AND    verification_status = 'pending'
         ");
@@ -1179,7 +1183,11 @@ public function viewClientStatement($bookingId = null)
             exit;
         }
 
-        $stmt->bind_param("sii", $newStatus, $userId, $paymentId);
+        if ($action === 'reject') {
+            $stmt->bind_param("sisi", $newStatus, $userId, $rejectionReason, $paymentId);
+        } else {
+            $stmt->bind_param("sii", $newStatus, $userId, $paymentId);
+        }
 
         if (!$stmt->execute()) {
             echo json_encode(['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
