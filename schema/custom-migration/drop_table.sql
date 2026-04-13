@@ -59,3 +59,4 @@ DROP TABLE IF EXISTS manpower_requisitions;
 DROP TABLE IF EXISTS teams;
 DROP TABLE IF EXISTS platform_budgets;
 DROP TABLE IF EXISTS units;
+DROP TABLE IF EXISTS banks;
