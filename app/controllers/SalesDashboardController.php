@@ -190,8 +190,10 @@ class SalesDashboardController extends Controller
         $monthlyData = $this->salesTargetModel->getExecutiveBookingStats('monthly');
         $yearlyData = $this->salesTargetModel->getExecutiveBookingStats('yearly');
         $fullData = $this->salesTargetModel->getExecutiveBookingStats('fullData');
-      $userTeamId = $_SESSION['user']['team_id'] ?? null;
-        $allSalesTeams = $this->userModel->getSalesTeams($userTeamId);
+        // $userTeamId = $_SESSION['user']['team_id'] ?? null;
+
+
+        $allSalesTeams = $this->userModel->getSalesTeams($roleId, $teamId);
         $executiveId = $_GET['executive'] ?? null;
         $month       = $_GET['month'] ?? null;
         $year        = $_GET['year'] ?? null;
@@ -199,7 +201,7 @@ class SalesDashboardController extends Controller
         $singleData = [
             'site_visit_target'   => 0,
             'booking_target'      => 0,
-            'booking_value_target'=> 0,
+            'booking_value_target' => 0,
             'visit_completed'     => 0,
             'booking_completed'   => 0,
             'total_booking_money' => 0,
@@ -270,7 +272,7 @@ class SalesDashboardController extends Controller
 
                 $showCards = true;
             }
-}
+        }
 
 
 
@@ -309,41 +311,41 @@ class SalesDashboardController extends Controller
         ]);
     }
 
-public function salesTeam()
-{
-    $searchTerm = $_GET['q'] ?? '';
+    public function salesTeam()
+    {
+        $searchTerm = $_GET['q'] ?? '';
 
-    $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
-    $perPage = 10;
-    $offset = ($currentPage - 1) * $perPage;
+        $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        $perPage = 10;
+        $offset = ($currentPage - 1) * $perPage;
 
-    $roleId = $_SESSION['user']['role_id'] ?? null;
-    $teamId = $_SESSION['user']['team_id'] ?? null;
+        $roleId = $_SESSION['user']['role_id'] ?? null;
+        $teamId = $_SESSION['user']['team_id'] ?? null;
 
-    // count
-    $totalUsers = $this->userModel->countAllForSalesExecutive($searchTerm, $roleId, $teamId);
-    $totalPages = ceil($totalUsers / $perPage);
+        // count
+        $totalUsers = $this->userModel->countAllForSalesExecutive($searchTerm, $roleId, $teamId);
+        $totalPages = ceil($totalUsers / $perPage);
 
-    // data
-    $salesUsers = $this->userModel->getPaginatedWithSalesExecutive(
-        $perPage,
-        $offset,
-        $searchTerm,
-        $roleId,
-        $teamId
-    );
+        // data
+        $salesUsers = $this->userModel->getPaginatedWithSalesExecutive(
+            $perPage,
+            $offset,
+            $searchTerm,
+            $roleId,
+            $teamId
+        );
 
-    $roles = $this->roleModel->getAll();
+        $roles = $this->roleModel->getAll();
 
-    $this->view('sales-developments/sales-executive-teams', [
-        "current_route" => "sales-executive-teams",
-        "page_title" => "Sales Executive Team",
-        'salesUsers' => $salesUsers,
-        'roles' => $roles,
-        'currentPage' => $currentPage,
-        'totalPages' => $totalPages,
-    ]);
-}
+        $this->view('sales-developments/sales-executive-teams', [
+            "current_route" => "sales-executive-teams",
+            "page_title" => "Sales Executive Team",
+            'salesUsers' => $salesUsers,
+            'roles' => $roles,
+            'currentPage' => $currentPage,
+            'totalPages' => $totalPages,
+        ]);
+    }
 
     public function salesTarget($id)
     {
