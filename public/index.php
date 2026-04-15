@@ -628,6 +628,7 @@ $routes = [
     'verify-payment'             => ['controller' => 'AccountClientController', 'method' => 'verifyPayment'],
     'get-banks'                  => ['controller' => 'AccountClientController', 'method' => 'getBanks'],
     'upload-transaction-proof'   => ['controller' => 'AccountClientController', 'method' => 'uploadTransactionProof'],
+    'get-transaction-attachments' => ['controller' => 'AccountClientController', 'method' => 'getTransactionAttachments'],
 
     // ==================== BANK REGISTRY ====================
     'bank-registry'              => ['controller' => 'BankRegistryController', 'method' => 'index'],

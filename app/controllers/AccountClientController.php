@@ -1289,6 +1289,17 @@ public function viewClientStatement($bookingId = null)
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
 
+        // ── ACCOUNTS-ONLY GATE ────────────────────────────────────────────────
+        // role_id 1 = Super Admin, 3 = Admin, 6 = Accounts
+        $userRoleId     = (int)($_SESSION['user']['role_id'] ?? 0);
+        $allowedRoleIds = [1, 3, 6];
+        if (!in_array($userRoleId, $allowedRoleIds)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: Accounts module access only']);
+            exit;
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             echo json_encode(['success' => false, 'message' => 'Invalid request method']);
             exit;
@@ -1455,6 +1466,86 @@ public function viewClientStatement($bookingId = null)
         $stmt->execute();
 
         echo json_encode(['success' => true, 'paths' => $uploadedPaths, 'all_paths' => $allPaths]);
+        exit;
+    }
+
+    /**
+     * AJAX: Get attachment metadata for a single lead_payment (read-only).
+     * Called by: CED history view "View Document" button.
+     * Access: Any authenticated user — read-only, no DB writes.
+     * Route:  GET /get-transaction-attachments?payment_id=X
+     */
+    public function getTransactionAttachments()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        $paymentId = (int)($_GET['payment_id'] ?? 0);
+        if (!$paymentId) {
+            echo json_encode(['success' => false, 'message' => 'Missing payment_id']);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT
+                lp.id,
+                lp.payment_type,
+                lp.amount,
+                lp.payment_date,
+                lp.verification_status,
+                lp.attachment_paths,
+                lp.attachment_image,
+                lp.rejection_reason,
+                uv.full_name AS verified_by_name,
+                lp.verified_at
+            FROM lead_payments lp
+            LEFT JOIN users uv ON uv.id = lp.verified_by
+            WHERE lp.id = ?
+            LIMIT 1
+        ");
+
+        if (!$stmt) {
+            echo json_encode(['success' => false, 'message' => 'DB prepare error']);
+            exit;
+        }
+
+        $stmt->bind_param('i', $paymentId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+
+        if (!$row) {
+            echo json_encode(['success' => false, 'message' => 'Payment not found']);
+            exit;
+        }
+
+        // Normalise: merge JSON attachment_paths + legacy attachment_image column
+        $files = [];
+        if (!empty($row['attachment_paths'])) {
+            $decoded = json_decode($row['attachment_paths'], true);
+            if (is_array($decoded)) {
+                $files = array_merge($files, $decoded);
+            }
+        }
+        if (!empty($row['attachment_image'])) {
+            $legacyPath = 'uploads/payments/' . $row['attachment_image'];
+            if (!in_array($legacyPath, $files)) {
+                $files[] = $legacyPath;
+            }
+        }
+
+        echo json_encode([
+            'success'              => true,
+            'payment_id'          => $row['id'],
+            'payment_type'        => $row['payment_type'],
+            'amount'              => $row['amount'],
+            'payment_date'        => $row['payment_date'],
+            'verification_status' => $row['verification_status'] ?? 'pending',
+            'rejection_reason'    => $row['rejection_reason'] ?? '',
+            'verified_by_name'    => $row['verified_by_name'] ?? '',
+            'verified_at'         => $row['verified_at'] ?? '',
+            'files'               => $files,
+            'file_count'          => count($files),
+        ]);
         exit;
     }
 }
