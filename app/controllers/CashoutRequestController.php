@@ -113,12 +113,22 @@ class CashoutRequestController extends Controller
             'Zonal Office '  => 'Zonal Office'
         ];
 
+        // Fetch active banks for bank transfer dropdown
+        $banks = [];
+        $bankResult = $this->db->query("SELECT id, bank_name, branch_name FROM banks WHERE status = 'active' ORDER BY bank_name");
+        if ($bankResult) {
+            while ($row = $bankResult->fetch_assoc()) {
+                $banks[] = $row;
+            }
+        }
+
         $this->view("accounts/cashout/create-request", [
             "current_route" => "create-cashout-request",
             "page_title"    => "Request Cashout",
             "isAdmin"       => $this->isAdminUser(),
             "projects"      => $projects,
-            "officeOptions" => $officeOptions
+            "officeOptions" => $officeOptions,
+            "banks"         => $banks
         ]);
     }
 
@@ -166,6 +176,7 @@ class CashoutRequestController extends Controller
             'attachment_path' => !empty($attachmentPaths) ? json_encode($attachmentPaths) : null,
             'project_id'     => !empty($_POST['project_id']) ? implode(',', array_map('intval', (array)$_POST['project_id'])) : null,
             'office'         => !empty($_POST['office']) ? implode(',', array_map('trim', (array)$_POST['office'])) : null,
+            'bank_id'        => (!empty($_POST['bank_id']) && $_POST['payment_method'] === 'bank') ? (int)$_POST['bank_id'] : null,
         ];
 
         if (empty($data['purpose_paid_to']) || $data['amount'] <= 0) {
@@ -409,7 +420,7 @@ class CashoutRequestController extends Controller
             setError($result['message']);
         }
 
-        header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
+        header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
         exit;
     }
 
