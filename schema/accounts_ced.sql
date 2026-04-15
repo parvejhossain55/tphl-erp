@@ -187,6 +187,24 @@ VALUES
 
 
 -- ============================================================
+-- 8.  Legacy attachment_image → attachment_paths bridge
+--     Migrates single-file legacy payments (written by
+--     PaymentBookingController) into the JSON array format
+--     so all documents are visible via one code path.
+--     SAFE TO RE-RUN: WHERE guard prevents double-migration.
+-- ============================================================
+UPDATE lead_payments
+SET attachment_paths = JSON_ARRAY(CONCAT('uploads/payments/', attachment_image))
+WHERE attachment_image IS NOT NULL
+  AND attachment_image != ''
+  AND (attachment_paths IS NULL OR attachment_paths = '' OR attachment_paths = '[]');
+
+-- Composite index improves verification dashboard & history queries
+ALTER TABLE lead_payments
+    ADD INDEX IF NOT EXISTS `idx_lp_booking_vstatus` (booking_id, verification_status);
+
+
+-- ============================================================
 -- 7.  Verification  — quick sanity check (optional, read-only)
 -- ============================================================
 -- Run these to confirm all columns are in place after migration:
