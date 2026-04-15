@@ -97,9 +97,8 @@ class CentralStatement extends Model
         $totalCashin = $landsharePayments + $registrationPayments +
             $totalBookingMoney + $emiPayments + $totalManagementCashin + $developmentChargePayments; // ADDED management_cashin and development_charge
 
-        // Calculate revenue according to formula (REMOVED discount from revenue)
-        // NEW: Remove discount from revenue calculation
-        $totalRevenue = $totalLandShare + $totalBookingMoney + $totalServiceFee + $developmentChargePayments; // REMOVED - $totalDiscount, ADDED development charge
+        // Calculate revenue — includes land share, booking money, service fee, development charges, AND registration
+        $totalRevenue = $totalLandShare + $totalBookingMoney + $totalServiceFee + $developmentChargePayments + $registrationPayments; // registration is now revenue
 
         // Additional breakdowns
         $paymentBreakdown = $this->getPaymentBreakdown($startDate, $endDate, $projectId);
@@ -652,8 +651,8 @@ class CentralStatement extends Model
             $totalCashin = $totals['landshare_payments'] + $totals['registration_payments'] +
                 $totals['booking_money'] + $totals['emi_payments'] + $totals['management_cashin'] + $totals['development_charge']; // ADDED management_cashin and development_charge
 
-            // Remove discount from revenue calculation
-            $totalRevenue = $totals['landshare_payments'] + $totals['booking_money'] + $totals['service_fee'] + $totals['development_charge']; // REMOVED - $totals['discount']
+            // Include registration payments in revenue
+            $totalRevenue = $totals['landshare_payments'] + $totals['booking_money'] + $totals['service_fee'] + $totals['development_charge'] + $totals['registration_payments']; // registration is revenue
         } elseif ($category === 'development_charge') {
             $totalCashin = $totals['development_charge'];
             $totalRevenue = $totals['development_charge'];

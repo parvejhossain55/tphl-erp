@@ -540,18 +540,20 @@ public function addTransaction()
 
         $paymentType = $_POST['payment_type'] ?? '';
         
-        // CHECK 0: Ensure land share is completed before other payments
+        // CHECK 0: Land share must be complete before most payment types
+        // Exceptions: land_share, booking_money, and registration are always allowed
         $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
-        if ($paymentType !== 'land_share' && $paymentType !== 'booking_money' && empty($paymentSummary['is_land_share_completed'])) {
-            setError("Land share must be fully paid before adding other payments.");
+        $landShareExempt = ['land_share', 'booking_money', 'registration'];
+        if (!in_array($paymentType, $landShareExempt) && empty($paymentSummary['is_land_share_completed'])) {
+            setError("Land share must be fully paid before adding " . ucfirst(str_replace('_', ' ', $paymentType)) . " payments.");
             header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
             exit;
         }
 
-        // SIMPLE CHECK: If EMI is selected, verify registration is paid
+        // CHECK: EMI requires land share to be fully completed
         if ($paymentType === 'emi') {
-            if (!$this->clientModel->isRegistrationPaid($bookingId)) {
-                setError("Registration payment must be made before adding EMI transactions.");
+            if (empty($paymentSummary['is_land_share_completed'])) {
+                setError("Land share must be fully completed before adding EMI payments.");
                 header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
                 exit;
             }
