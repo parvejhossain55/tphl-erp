@@ -1176,10 +1176,41 @@
 
 
                 <?php endif; ?>
-                <!-- End other permission -->
+                <!-- ==================== PHASE 2: CONSTRUCTION MANAGEMENT ==================== -->
+                <li class="sidebar__menu-category">
+                    <span class="category-name">Construction Management</span>
+                </li>
 
+                <!-- Pre-Construction -->
+                <li class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests'], $current_route) ? 'active' : '' ?>">
+                    <a href="javascript:void(0);"
+                        class="sidebar__menu-item <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests'], $current_route) ? 'active' : '' ?>">
+                        <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        <div class="side-menu__icon">
+                            <i class="bi bi-building"></i>
+                        </div>
+                        <span class="sidebar__menu-label">Pre-Construction</span>
+                    </a>
 
-
+                    <ul class="sidebar-menu child1" <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests'], $current_route) ? 'style="display:block;"' : '' ?>>
+                        <li class="slide <?= isActive('con-land-visibility-studies', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('con-land-visibility-studies', $current_route) ?>" href="<?= $base_url ?>/con-land-visibility-studies">Land Visibility Study</a>
+                        </li>
+                        <li class="slide <?= isActive('con-architect-engineering', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('con-architect-engineering', $current_route) ?>" href="<?= $base_url ?>/con-architect-engineering">Architect & Engineering</a>
+                        </li>
+                        <li class="slide <?= isActive('con-design-types', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('con-design-types', $current_route) ?>" href="<?= $base_url ?>/con-design-types">Design Types</a>
+                        </li>
+                        <li class="slide <?= isActive('con-project-drawings', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('con-project-drawings', $current_route) ?>" href="<?= $base_url ?>/con-project-drawings">Project Drawings</a>
+                        </li>
+                        <li class="slide <?= isActive('con-soil-tests', $current_route) ?>">
+                            <a class="sidebar__menu-item <?= isActive('con-soil-tests', $current_route) ?>" href="<?= $base_url ?>/con-soil-tests">Soil Tests</a>
+                        </li>
+                    </ul>
+                </li>
+                <!-- ==================== END PHASE 2 ==================== -->
 
                 <li class="slide ">
                     <a class="sidebar__menu-item " href="<?= $GLOBALS['base_url']  ?>/logout"><svg width="18" height="18" viewBox="0 0 18 18"
