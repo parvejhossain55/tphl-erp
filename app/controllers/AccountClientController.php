@@ -1345,6 +1345,45 @@ public function viewClientStatement($bookingId = null)
             exit;
         }
 
+        // ====== SYNC BOOKING & PAYMENT STATUS ======
+        if ($action === 'verify') {
+            $getBookingIdStmt = $this->db->prepare("SELECT booking_id FROM lead_payments WHERE id = ?");
+            if ($getBookingIdStmt) {
+                $getBookingIdStmt->bind_param("i", $paymentId);
+                $getBookingIdStmt->execute();
+                $bookingRes = $getBookingIdStmt->get_result();
+                if ($bookingRow = $bookingRes->fetch_assoc()) {
+                    $bookingId = (int)$bookingRow['booking_id'];
+
+                    require_once dirname(__DIR__) . '/controllers/PaymentBookingController.php';
+                    $paymentController = new PaymentBookingController($this->db);
+                    $newBookingStatus = $paymentController->updateBookingPaymentStatus($bookingId);
+
+                    $paymentStatusMap = [
+                        'paid'    => 'paid',
+                        'partial' => 'partially_paid',
+                        'unpaid'  => 'pending',
+                    ];
+                    $newPaymentStatus = $paymentStatusMap[$newBookingStatus] ?? 'paid';
+
+                    $updatePaymentStmt = $this->db->prepare("
+                        UPDATE lead_payments
+                        SET payment_status = ?
+                        WHERE id = ?
+                    ");
+                    if ($updatePaymentStmt) {
+                        $updatePaymentStmt->bind_param('si', $newPaymentStatus, $paymentId);
+                        $updatePaymentStmt->execute();
+                    }
+
+                    if ($newBookingStatus === 'paid') {
+                        $paymentController->handleFlatBooking($bookingId);
+                    }
+                }
+            }
+        }
+        // ===========================================
+
         $label = ($action === 'verify') ? 'verified' : 'rejected';
 
         // Fetch verifier's name so the front-end can show it without a page reload

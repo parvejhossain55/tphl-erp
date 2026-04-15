@@ -55,20 +55,20 @@ class PaymentBookingController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $data = [
-            'booking_id' => $_POST['booking_id'] ?? 0,
-            'payment_type' => $_POST['payment_type'] ?? 'booking_money', //  ADD THIS
-            'amount' => floatval($_POST['amount'] ?? 0),
-            'payment_method' => $_POST['payment_method'] ?? 'cash',
-            'payment_status' => $_POST['payment_status'] ?? 'paid',
-            'payment_date' => $_POST['payment_date'] ?? date('Y-m-d'),
-            'transaction_ref' => $_POST['transaction_ref'] ?? null,
-            'bank_name' => $_POST['bank_name'] ?? null,
-            'bank_account_no' => $_POST['bank_account_no'] ?? null,
-            'total_emi_no' => $_POST['total_emi_no'] ?? null,
-            'cheque_no' => $_POST['cheque_no'] ?? null,
-            'online_type' => $_POST['online_type'] ?? null,
-            'created_by' => $_SESSION['user']['id'] ?? 1,
-            'verification_status' => 'pending', // always pending
+            'booking_id'          => $_POST['booking_id'] ?? 0,
+            'payment_type'        => $_POST['payment_type'] ?? 'booking_money',
+            'amount'              => floatval($_POST['amount'] ?? 0),
+            'payment_method'      => $_POST['payment_method'] ?? 'cash',
+            'payment_status'      => 'pending', // always pending — verified by accounts before becoming paid
+            'payment_date'        => $_POST['payment_date'] ?? date('Y-m-d'),
+            'transaction_ref'     => $_POST['transaction_ref'] ?? null,
+            'bank_name'           => $_POST['bank_name'] ?? null,
+            'bank_account_no'     => $_POST['bank_account_no'] ?? null,
+            'total_emi_no'        => $_POST['total_emi_no'] ?? null,
+            'cheque_no'           => $_POST['cheque_no'] ?? null,
+            'online_type'         => $_POST['online_type'] ?? null,
+            'created_by'          => $_SESSION['user']['id'] ?? 1,
+            'verification_status' => 'pending', // always pending until accounts verifies
         ];
 
         // Handle attachment upload
@@ -100,45 +100,68 @@ class PaymentBookingController extends Controller
         exit;
     }
 
-    private function updateBookingPaymentStatus($bookingId)
+    /**
+     * Recalculates and updates lead_bookings.payment_status
+     * based on SUM of ALL verified payments vs final agreed amount.
+     *
+     * Final amount logic:
+     *   - If approved_amount is set (discount approved) → use approved_amount
+     *   - Else → agreement_value - discount_amount
+     *
+     * Returns the new booking payment status string.
+     */
+    public function updateBookingPaymentStatus($bookingId)
     {
-        // booking info
+        // Get booking financial info
         $booking = $this->db->query("
-        SELECT agreement_value, approved_amount 
-        FROM lead_bookings 
-        WHERE id = $bookingId
-    ")->fetch_assoc();
+            SELECT agreement_value, discount_amount, approved_amount
+            FROM lead_bookings
+            WHERE id = {$bookingId}
+        ")->fetch_assoc();
 
-        $finalAmount = !empty($booking['approved_amount'])
-            ? $booking['approved_amount']
-            : $booking['agreement_value'];
-
-        // sum verified only for booking money
-        $sum = $this->db->query("
-        SELECT SUM(amount) as total 
-        FROM lead_payments 
-        WHERE booking_id = $bookingId 
-        AND verification_status='verified'
-        AND payment_type='booking_money'
-    ")->fetch_assoc();
-
-        $paid = $sum['total'] ?? 0;
-
-        if ($paid <= 0) {
-            $status = 'unpaid';
-        } elseif ($paid < $finalAmount) {
-            $status = 'partial';
-        } else {
-            $status = 'paid';
+        // Final payable amount:
+        // Use agreement_value minus approved_amount (discount)
+        $agreementValue = (float)($booking['agreement_value'] ?? 0);
+        $discountApproved = !empty($booking['approved_amount']) ? (float)$booking['approved_amount'] : 0;
+        
+        $finalAmount = $agreementValue - $discountApproved;
+        
+        if ($finalAmount <= 0) {
+            $finalAmount = $agreementValue;
         }
 
-        $this->db->query("
-        UPDATE lead_bookings 
-        SET payment_status = '$status'
-        WHERE id = $bookingId
-    ");
+        // SUM of ALL verified payments (all payment types)
+        $sum = $this->db->query("
+            SELECT COALESCE(SUM(amount), 0) AS total
+            FROM lead_payments
+            WHERE booking_id = {$bookingId}
+              AND verification_status = 'verified'
+        ")->fetch_assoc();
+
+        $totalPaid = (float) ($sum['total'] ?? 0);
+
+        // Determine booking payment_status
+        if ($totalPaid <= 0) {
+            $bookingStatus = 'unpaid';
+        } elseif ($totalPaid < $finalAmount) {
+            $bookingStatus = 'partial';
+        } else {
+            $bookingStatus = 'paid';
+        }
+
+        // Update lead_bookings
+        $stmt = $this->db->prepare("
+            UPDATE lead_bookings
+            SET payment_status = ?,
+                updated_at     = NOW()
+            WHERE id = ?
+        ");
+        $stmt->bind_param('si', $bookingStatus, $bookingId);
+        $stmt->execute();
+
+        return $bookingStatus;
     }
-    private function handleFlatBooking($bookingId)
+    public function handleFlatBooking($bookingId)
     {
         $stmt = $this->db->prepare("
         UPDATE flats f
@@ -183,41 +206,59 @@ class PaymentBookingController extends Controller
             exit;
         }
 
-        // get payment
+        // Get payment record
         $stmt = $this->db->prepare("SELECT * FROM lead_payments WHERE id = ?");
-        $stmt->bind_param("i", $id);
+        $stmt->bind_param('i', $id);
         $stmt->execute();
         $payment = $stmt->get_result()->fetch_assoc();
 
-        if (!$payment || $payment['verification_status'] == 'verified') {
+        if (!$payment || $payment['verification_status'] === 'verified') {
             setError("Invalid or already verified!");
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;
         }
 
-        // verify payment AND set payment_status to 'paid'
+        $bookingId = (int) $payment['booking_id'];
+
+        // Step 1: Mark this payment as verified (payment_status set after recalc below)
         $stmt = $this->db->prepare("
-        UPDATE lead_payments 
-        SET verification_status='verified',
-            payment_status='paid',
-            verified_by = ?,
-            verified_at = NOW()
-        WHERE id = ?
-    ");
-        $stmt->bind_param("ii", $_SESSION['user']['id'], $id);
+            UPDATE lead_payments
+            SET verification_status = 'verified',
+                verified_by         = ?,
+                verified_at         = NOW()
+            WHERE id = ?
+        ");
+        $stmt->bind_param('ii', $_SESSION['user']['id'], $id);
         $stmt->execute();
 
-        $bookingId = $payment['booking_id'];
+        // Step 2: Recalculate booking payment status based on all verified payments
+        $newBookingStatus = $this->updateBookingPaymentStatus($bookingId);
 
-        //  update payment status
-        $this->updateBookingPaymentStatus($bookingId);
+        // Step 3: Update THIS payment's payment_status based on booking result
+        //   - If booking is now 'paid'     → this payment = 'paid'
+        //   - If booking is 'partial'      → this payment = 'partially_paid'
+        //   - If booking is 'unpaid'       → this payment stays 'pending' (edge case)
+        $paymentStatusMap = [
+            'paid'    => 'paid',
+            'partial' => 'partially_paid',
+            'unpaid'  => 'pending',
+        ];
+        $newPaymentStatus = $paymentStatusMap[$newBookingStatus] ?? 'paid';
 
-        //  flat booking ONLY if booking_money
-        if ($payment['payment_type'] === 'booking_money') {
+        $stmt2 = $this->db->prepare("
+            UPDATE lead_payments
+            SET payment_status = ?
+            WHERE id = ?
+        ");
+        $stmt2->bind_param('si', $newPaymentStatus, $id);
+        $stmt2->execute();
+
+        // Step 4: If booking is now fully paid → handle flat booking
+        if ($newBookingStatus === 'paid') {
             $this->handleFlatBooking($bookingId);
         }
 
-        setSuccess("Payment verified!");
+        setSuccess("Payment verified! Booking status: " . ucfirst($newBookingStatus));
         header("Location: " . $_SERVER['HTTP_REFERER']);
         exit;
     }

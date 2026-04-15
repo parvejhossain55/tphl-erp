@@ -99,10 +99,13 @@ public function create($data)
     public function getByBooking($booking_id)
     {
         $stmt = $this->db->prepare("
-            SELECT p.*, u.full_name AS created_by_name
+            SELECT p.*, u.full_name AS created_by_name,lb.agreement_value,lb.discount_amount,us.full_name AS verified_by_name
             FROM lead_payments p
             LEFT JOIN users u ON p.created_by = u.id
+            LEFT JOIN lead_bookings lb ON p.booking_id = lb.id
+            LEFT JOIN users us On us.id = p.verified_by
             WHERE p.booking_id = ?
+
             ORDER BY p.id DESC
         ");
         $stmt->bind_param("i", $booking_id);
