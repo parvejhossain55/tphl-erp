@@ -265,7 +265,7 @@ ORDER BY lb.booking_date DESC
                     WHEN (SELECT COUNT(*) 
                           FROM lead_payments lp2 
                           WHERE lp2.booking_id = lb.id 
-                          AND lp2.payment_status IN ('paid','partially_paid')) > 0
+                          AND lp2.payment_status = 'paid') > 0
                     THEN lb.id 
                 END) as approved_bookings,
                 COALESCE(SUM(lp.service_fee), 0) as total_service_fee_collected
@@ -1402,7 +1402,7 @@ ORDER BY lb.booking_date DESC
             FROM lead_payments 
             WHERE booking_id = ? 
             AND payment_type = 'registration' 
-            AND payment_status IN ('paid','partially_paid')
+            AND payment_status = 'paid'
         ");
 
         $stmt->bind_param("i", $bookingId);
@@ -1892,7 +1892,7 @@ ORDER BY lb.booking_date DESC
         $stmt = $this->db->prepare("
             SELECT COALESCE(SUM(amount), 0) as total
             FROM lead_payments
-            WHERE payment_status IN ('paid','partially_paid')
+            WHERE payment_status = 'paid'
             AND payment_date BETWEEN ? AND ?
         ");
         $stmt->bind_param("ss", $currentMonthStart, $currentMonthEnd);
@@ -1910,7 +1910,7 @@ ORDER BY lb.booking_date DESC
                 DATE_FORMAT(payment_date, '%Y-%m') as month,
                 SUM(amount) as total
             FROM lead_payments
-            WHERE payment_status IN ('paid','partially_paid')
+            WHERE payment_status = 'paid'
             AND payment_date >= ?
             GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
         ");
@@ -1931,7 +1931,7 @@ ORDER BY lb.booking_date DESC
                 DATE(payment_date) as day_date,
                 SUM(amount) as total
             FROM lead_payments
-            WHERE payment_status IN ('paid','partially_paid')
+            WHERE payment_status = 'paid'
             AND payment_date >= ?
             GROUP BY DATE(payment_date)
         ");

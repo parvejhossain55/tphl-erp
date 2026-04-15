@@ -350,6 +350,7 @@ $show_breadcrumb = true;
                                 <th>Status</th>
                                 <th>Verification</th>
                                 <th>Verified By</th>
+                                <th>Document</th>
                                 <th>Added By</th>
                                 <th>Actions</th>
                             </tr>
@@ -425,6 +426,11 @@ $show_breadcrumb = true;
                                                 <i class="fa-light fa-times-circle me-1"></i>Rejected
                                             </span>
                                         <?php else: /* pending */ ?>
+                                            <?php
+                                                // ── ACCOUNTS-ONLY: show action buttons only to Accounts/Admin ──
+                                                $canVerify = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6]);
+                                            ?>
+                                            <?php if ($canVerify): ?>
                                             <div class="d-flex gap-1">
                                                 <button type="button"
                                                     class="btn btn-sm btn-verify"
@@ -439,6 +445,11 @@ $show_breadcrumb = true;
                                                     <i class="fa-light fa-times"></i> Reject
                                                 </button>
                                             </div>
+                                            <?php else: ?>
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fa-light fa-clock me-1"></i>Pending
+                                            </span>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     </td>
                                     <!-- VERIFIED BY -->
@@ -447,6 +458,33 @@ $show_breadcrumb = true;
                                             <?= htmlspecialchars($transaction['verified_by_name']) ?>
                                         <?php else: ?>
                                             <span class="text-muted">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <!-- DOCUMENT COLUMN — visible regardless of verification_status -->
+                                    <td>
+                                        <?php
+                                            $docFiles = [];
+                                            if (!empty($transaction['attachment_paths'])) {
+                                                $decoded = json_decode($transaction['attachment_paths'], true);
+                                                if (is_array($decoded)) $docFiles = $decoded;
+                                            }
+                                            if (!empty($transaction['attachment_image'])) {
+                                                $legacyPath = 'uploads/payments/' . $transaction['attachment_image'];
+                                                if (!in_array($legacyPath, $docFiles)) $docFiles[] = $legacyPath;
+                                            }
+                                            $docCount = count($docFiles);
+                                        ?>
+                                        <?php if ($docCount > 0 && is_numeric($transaction['id'])): ?>
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-outline-primary"
+                                                onclick="openDocumentModal(<?= (int)$transaction['id'] ?>)"
+                                                title="View <?= $docCount ?> document(s)">
+                                                <i class="fa-light fa-file-image me-1"></i>
+                                                <?= $docCount ?> File<?= $docCount > 1 ? 's' : '' ?>
+                                            </button>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
                                         <?php endif; ?>
                                     </td>
                                     <td>
@@ -548,19 +586,158 @@ $show_breadcrumb = true;
     </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════
+     Document Preview Modal  (Accounts view)
+     ═══════════════════════════════════════════════════════ -->
+<div class="modal fade" id="accDocumentModal" tabindex="-1" aria-labelledby="accDocumentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="accDocumentModalLabel">
+                    <i class="fa-light fa-file-image me-2"></i>Transaction Documents
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="accDocumentModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <script>
         const BASE_URL = '<?= $GLOBALS['base_url'] ?>';
 
+        // ─── Document Modal ───────────────────────────────────────────────────
+        function openDocumentModal(paymentId) {
+            const modal = new bootstrap.Modal(document.getElementById('accDocumentModal'));
+            const body  = document.getElementById('accDocumentModalBody');
+
+            body.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Loading documents…</p>
+                </div>`;
+            modal.show();
+
+            fetch(BASE_URL + '/get-transaction-attachments?payment_id=' + paymentId)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) {
+                        body.innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
+                        return;
+                    }
+                    const vsBadges = {
+                        'verified': '<span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i>Verified</span>',
+                        'rejected': '<span class="badge bg-danger"><i class="fa-light fa-times-circle me-1"></i>Rejected</span>',
+                        'pending':  '<span class="badge bg-warning text-dark"><i class="fa-light fa-clock me-1"></i>Pending</span>',
+                    };
+                    const vsBadge = vsBadges[data.verification_status] || vsBadges['pending'];
+
+                    let html = `
+                        <div class="d-flex flex-wrap gap-3 mb-3 align-items-center">
+                            <div><strong>Payment ID:</strong> #${data.payment_id}</div>
+                            <div><strong>Type:</strong> ${(data.payment_type||'').replace(/_/g,' ').toUpperCase()}</div>
+                            <div><strong>Amount:</strong> TK.${parseFloat(data.amount||0).toLocaleString('en-BD',{minimumFractionDigits:2})}</div>
+                            <div><strong>Date:</strong> ${data.payment_date||'-'}</div>
+                            <div><strong>Status:</strong> ${vsBadge}</div>
+                            ${data.verified_by_name ? '<div><strong>Verified By:</strong> '+data.verified_by_name+'</div>' : ''}
+                            ${data.rejection_reason ? '<div class="w-100"><div class="alert alert-danger py-2 mb-0"><strong>Rejection Reason:</strong> '+data.rejection_reason+'</div></div>' : ''}
+                        </div><hr>`;
+
+                    if (!data.files || data.files.length === 0) {
+                        html += `<div class="alert alert-info"><i class="fa-light fa-info-circle me-1"></i>No documents attached to this transaction.</div>`;
+                    } else {
+                        html += `<div class="row g-3">`;
+                        data.files.forEach((filePath, idx) => {
+                            const fullUrl  = BASE_URL + '/public/' + filePath;
+                            const ext      = filePath.split('.').pop().toLowerCase();
+                            const isImage  = ['jpg','jpeg','png','gif','webp'].includes(ext);
+                            const isPDF    = ext === 'pdf';
+                            const fileName = filePath.split('/').pop();
+                            if (isImage) {
+                                html += `
+                                <div class="col-md-4 col-sm-6">
+                                    <div class="card h-100">
+                                        <a href="${fullUrl}" target="_blank">
+                                            <img src="${fullUrl}" class="card-img-top"
+                                                 style="height:200px;object-fit:contain;background:#f8f9fa;padding:8px;"
+                                                 alt="Document ${idx+1}"
+                                                 onerror="this.src='${BASE_URL}/public/assets/img/no-image.png'">
+                                        </a>
+                                        <div class="card-body p-2 d-flex justify-content-between align-items-center">
+                                            <small class="text-muted text-truncate" style="max-width:70%" title="${fileName}">${fileName}</small>
+                                            <a href="${fullUrl}" target="_blank" download class="btn btn-sm btn-outline-secondary">
+                                                <i class="fa-light fa-download"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>`;
+                            } else if (isPDF) {
+                                html += `
+                                <div class="col-md-6">
+                                    <div class="card h-100 text-center p-3">
+                                        <i class="fa-light fa-file-pdf" style="font-size:3rem;color:#dc3545"></i>
+                                        <p class="mt-2 mb-2 text-truncate" title="${fileName}"><strong>${fileName}</strong></p>
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <a href="${fullUrl}" target="_blank" class="btn btn-sm btn-outline-danger">
+                                                <i class="fa-light fa-eye me-1"></i>View PDF
+                                            </a>
+                                            <a href="${fullUrl}" download class="btn btn-sm btn-outline-secondary">
+                                                <i class="fa-light fa-download"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>`;
+                            } else {
+                                html += `
+                                <div class="col-md-4 col-sm-6">
+                                    <div class="card h-100 text-center p-3">
+                                        <i class="fa-light fa-file" style="font-size:3rem;color:#6c757d"></i>
+                                        <p class="mt-2 mb-2 text-truncate" title="${fileName}">${fileName}</p>
+                                        <a href="${fullUrl}" download class="btn btn-sm btn-outline-secondary">
+                                            <i class="fa-light fa-download me-1"></i>Download
+                                        </a>
+                                    </div>
+                                </div>`;
+                            }
+                        });
+                        html += `</div>`;
+                    }
+                    body.innerHTML = html;
+                })
+                .catch(() => {
+                    body.innerHTML = `<div class="alert alert-danger">Failed to load documents. Please try again.</div>`;
+                });
+        }
+
         // ─── Delete ──────────────────────────────────────
+        // ─── Delete (SweetAlert confirm) ──────────────────────────────────────────
         function deleteTransaction(transactionId) {
-            if (confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
-                let currentBookingId = <?= $clientDetails['booking_id'] ?? 'null' ?>;
-                if (currentBookingId) {
-                    window.location.href = BASE_URL + '/delete-transaction?payment_id=' + transactionId + '&booking_id=' + currentBookingId;
-                } else {
-                    alert('Cannot delete: Missing booking information');
+            const currentBookingId = <?= $clientDetails['booking_id'] ?? 'null' ?>;
+            Swal.fire({
+                title: 'Delete Transaction?',
+                text: 'This action cannot be undone.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fa-light fa-trash me-1"></i> Yes, Delete',
+                cancelButtonText: 'Cancel',
+            }).then(result => {
+                if (result.isConfirmed) {
+                    if (currentBookingId) {
+                        window.location.href = BASE_URL + '/delete-transaction?payment_id=' + transactionId + '&booking_id=' + currentBookingId;
+                    } else {
+                        Swal.fire('Error', 'Missing booking information.', 'error');
+                    }
                 }
-            }
+            });
         }
 
         // ─── Rejection modal ─────────────────────────────
@@ -587,8 +764,31 @@ $show_breadcrumb = true;
             }
         });
 
-        // ─── Core verify/reject AJAX ─────────────────────
+        // ─── Core verify/reject AJAX (with SweetAlert2) ────────────────────
         function verifyPayment(paymentId, action, rejectionReason = '') {
+            // ── Pre-confirm for Verify action only
+            if (action === 'verify') {
+                Swal.fire({
+                    title: 'Verify Payment?',
+                    text: 'This will mark the payment as verified. This action cannot be undone.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#16a34a',
+                    cancelButtonColor:  '#6c757d',
+                    confirmButtonText:  '<i class="fa-light fa-check me-1"></i> Yes, Verify',
+                    cancelButtonText:   'Cancel',
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        _doVerifyRequest(paymentId, action, rejectionReason);
+                    }
+                });
+            } else {
+                // Reject flows through the rejection-reason modal first, then calls here directly
+                _doVerifyRequest(paymentId, action, rejectionReason);
+            }
+        }
+
+        function _doVerifyRequest(paymentId, action, rejectionReason) {
             const cell = document.getElementById('ver-cell-' + paymentId);
             if (cell) cell.innerHTML = '<span class="text-muted small"><i class="fa-light fa-spinner fa-spin"></i> Processing…</span>';
 
@@ -606,7 +806,7 @@ $show_breadcrumb = true;
                                 cell.innerHTML = '<span class="badge bg-danger ver-badge"><i class="fa-light fa-times-circle me-1"></i>Rejected</span>';
                             }
                         }
-                        // Update "Verified By" cell with the verifier name
+                        // Update "Verified By" cell
                         const vbCell = document.getElementById('verified-by-' + paymentId);
                         if (vbCell && res.verified_by_name) {
                             vbCell.textContent = res.verified_by_name;
@@ -621,29 +821,36 @@ $show_breadcrumb = true;
                                 }
                             }
                         }
-                        // Update invoice button state for this row
-                        const invoiceBtn = document.getElementById('invoice-btn-' + paymentId);
-                        if (invoiceBtn && res.status === 'verified') {
-                            invoiceBtn.outerHTML = invoiceBtn.outerHTML
-                                .replace('span', 'a')
-                                .replace('disabled-invoice', 'table__icon invoice');
-                        }
-                        showVerificationToast(res.message, 'success');
+                        // SweetAlert2 success popup
+                        Swal.fire({
+                            icon: res.status === 'verified' ? 'success' : 'info',
+                            title: res.status === 'verified' ? 'Payment Verified!' : 'Payment Rejected',
+                            text:  res.message,
+                            timer: 2500,
+                            timerProgressBar: true,
+                            showConfirmButton: false,
+                        });
                     } else {
                         if (cell) cell.innerHTML = '<span class="badge bg-warning text-dark"><i class="fa-light fa-clock me-1"></i>Pending</span>';
-                        showVerificationToast(res.message || 'Action failed', 'danger');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Action Failed',
+                            text:  res.message || 'Something went wrong. Please try again.',
+                        });
                     }
                 })
                 .catch(() => {
                     if (cell) cell.innerHTML = '<span class="badge bg-warning text-dark"><i class="fa-light fa-clock me-1"></i>Pending</span>';
-                    showVerificationToast('Network error. Please try again.', 'danger');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Network Error',
+                        text:  'Could not reach the server. Please check your connection and try again.',
+                    });
                 });
         }
 
-        // ─── Toast ───────────────────────────────────────
+        // ─── SweetAlert2 helper (replaces old toast) ───────────────────────
         function showVerificationToast(msg, type) {
-            const toast = document.createElement('div');
-            toast.className = 'alert alert-' + type + ' position-fixed shadow-sm ver-toast';
             toast.style.cssText = 'top:20px;right:20px;z-index:9999;min-width:280px;';
             toast.innerHTML = '<i class="fa-light fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + ' me-2"></i>' + msg;
             document.body.appendChild(toast);

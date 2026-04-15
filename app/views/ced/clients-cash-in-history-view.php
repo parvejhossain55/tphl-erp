@@ -356,6 +356,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($clientDetails['booking_
                                 <th>Status</th>
                                 <th>Verification</th>
                                 <th>Verified By</th>
+                                <th>Document</th>
                                 <th>Added By</th>
                             </tr>
                         </thead>
@@ -430,6 +431,33 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($clientDetails['booking_
                                             <span class="text-muted">-</span>
                                         <?php endif; ?>
                                     </td>
+                                    <!-- DOCUMENT COLUMN — visible regardless of verification_status -->
+                                    <td>
+                                        <?php
+                                            $docFiles = [];
+                                            if (!empty($transaction['attachment_paths'])) {
+                                                $decoded = json_decode($transaction['attachment_paths'], true);
+                                                if (is_array($decoded)) $docFiles = $decoded;
+                                            }
+                                            if (!empty($transaction['attachment_image'])) {
+                                                $legacyPath = 'uploads/payments/' . $transaction['attachment_image'];
+                                                if (!in_array($legacyPath, $docFiles)) $docFiles[] = $legacyPath;
+                                            }
+                                            $docCount = count($docFiles);
+                                        ?>
+                                        <?php if ($docCount > 0 && is_numeric($transaction['id'])): ?>
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-outline-primary"
+                                                onclick="openDocumentModal(<?= (int)$transaction['id'] ?>)"
+                                                title="View <?= $docCount ?> document(s)">
+                                                <i class="fa-light fa-file-image me-1"></i>
+                                                <?= $docCount ?> File<?= $docCount > 1 ? 's' : '' ?>
+                                            </button>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?>
                                     </td>
@@ -442,18 +470,153 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($clientDetails['booking_
         </div>
     </div>
 
+<!-- ═══════════════════════════════════════════════════════
+     Document Preview Modal  (CED — Read-Only)
+     ═══════════════════════════════════════════════════════ -->
+<div class="modal fade" id="cedDocumentModal" tabindex="-1" aria-labelledby="cedDocumentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cedDocumentModalLabel">
+                    <i class="fa-light fa-file-image me-2"></i>Transaction Documents
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="cedDocumentModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <span class="text-muted small">
+                    <i class="fa-light fa-lock me-1"></i>
+                    Read-only view. Verification is managed by the Accounts module.
+                </span>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <script>
-        //  FIXED: Changed from $clientDetails['id'] to $clientDetails['booking_id']
+        const BASE_URL_CED = '<?= $GLOBALS['base_url'] ?>';
+
+        // ─── Delete ──────────────────────────────────────────────────────────
         function deleteTransaction(transactionId) {
             if (confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
                 let currentBookingId = <?= $clientDetails['booking_id'] ?? 'null' ?>;
-
                 if (currentBookingId) {
-                    window.location.href = '<?= $GLOBALS['base_url'] ?>/delete-transaction?payment_id=' + transactionId + '&booking_id=' + currentBookingId;
+                    window.location.href = BASE_URL_CED + '/delete-transaction?payment_id=' + transactionId + '&booking_id=' + currentBookingId;
                 } else {
                     alert('Cannot delete: Missing booking information');
                 }
             }
+        }
+
+        // ─── Document Modal ───────────────────────────────────────────────────
+        function openDocumentModal(paymentId) {
+            const modal = new bootstrap.Modal(document.getElementById('cedDocumentModal'));
+            const body  = document.getElementById('cedDocumentModalBody');
+
+            body.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Loading documents…</p>
+                </div>`;
+            modal.show();
+
+            fetch(BASE_URL_CED + '/get-transaction-attachments?payment_id=' + paymentId)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) {
+                        body.innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
+                        return;
+                    }
+
+                    const vsBadges = {
+                        'verified': '<span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i>Verified</span>',
+                        'rejected': '<span class="badge bg-danger"><i class="fa-light fa-times-circle me-1"></i>Rejected</span>',
+                        'pending':  '<span class="badge bg-warning text-dark"><i class="fa-light fa-clock me-1"></i>Pending Verification</span>',
+                    };
+                    const vsBadge = vsBadges[data.verification_status] || vsBadges['pending'];
+
+                    let html = `
+                        <div class="d-flex flex-wrap gap-3 mb-3 align-items-center">
+                            <div><strong>Payment ID:</strong> #${data.payment_id}</div>
+                            <div><strong>Type:</strong> ${(data.payment_type || '').replace(/_/g,' ').toUpperCase()}</div>
+                            <div><strong>Amount:</strong> TK.${parseFloat(data.amount || 0).toLocaleString('en-BD', {minimumFractionDigits:2})}</div>
+                            <div><strong>Date:</strong> ${data.payment_date || '-'}</div>
+                            <div><strong>Status:</strong> ${vsBadge}</div>
+                            ${data.verified_by_name ? '<div><strong>Verified By:</strong> ' + data.verified_by_name + '</div>' : ''}
+                            ${data.rejection_reason ? '<div class="w-100"><div class="alert alert-danger py-2 mb-0"><strong>Rejection Reason:</strong> ' + data.rejection_reason + '</div></div>' : ''}
+                        </div><hr>`;
+
+                    if (!data.files || data.files.length === 0) {
+                        html += `<div class="alert alert-info"><i class="fa-light fa-info-circle me-1"></i>No documents attached to this transaction.</div>`;
+                    } else {
+                        html += `<div class="row g-3">`;
+                        data.files.forEach((filePath, idx) => {
+                            const fullUrl  = BASE_URL_CED + '/public/' + filePath;
+                            const ext      = filePath.split('.').pop().toLowerCase();
+                            const isImage  = ['jpg','jpeg','png','gif','webp'].includes(ext);
+                            const isPDF    = ext === 'pdf';
+                            const fileName = filePath.split('/').pop();
+
+                            if (isImage) {
+                                html += `
+                                <div class="col-md-4 col-sm-6">
+                                    <div class="card h-100">
+                                        <a href="${fullUrl}" target="_blank" title="Open full size">
+                                            <img src="${fullUrl}"
+                                                 class="card-img-top"
+                                                 style="height:200px;object-fit:contain;background:#f8f9fa;padding:8px;"
+                                                 alt="Document ${idx+1}"
+                                                 onerror="this.src='${BASE_URL_CED}/public/assets/img/no-image.png'">
+                                        </a>
+                                        <div class="card-body p-2 d-flex justify-content-between align-items-center">
+                                            <small class="text-muted text-truncate" style="max-width:70%" title="${fileName}">${fileName}</small>
+                                            <a href="${fullUrl}" target="_blank" download class="btn btn-sm btn-outline-secondary">
+                                                <i class="fa-light fa-download"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>`;
+                            } else if (isPDF) {
+                                html += `
+                                <div class="col-md-6">
+                                    <div class="card h-100 text-center p-3">
+                                        <i class="fa-light fa-file-pdf" style="font-size:3rem;color:#dc3545"></i>
+                                        <p class="mt-2 mb-2 text-truncate" title="${fileName}"><strong>${fileName}</strong></p>
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <a href="${fullUrl}" target="_blank" class="btn btn-sm btn-outline-danger">
+                                                <i class="fa-light fa-eye me-1"></i>View PDF
+                                            </a>
+                                            <a href="${fullUrl}" download class="btn btn-sm btn-outline-secondary">
+                                                <i class="fa-light fa-download"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>`;
+                            } else {
+                                html += `
+                                <div class="col-md-4 col-sm-6">
+                                    <div class="card h-100 text-center p-3">
+                                        <i class="fa-light fa-file" style="font-size:3rem;color:#6c757d"></i>
+                                        <p class="mt-2 mb-2 text-truncate" title="${fileName}">${fileName}</p>
+                                        <a href="${fullUrl}" download class="btn btn-sm btn-outline-secondary">
+                                            <i class="fa-light fa-download me-1"></i>Download
+                                        </a>
+                                    </div>
+                                </div>`;
+                            }
+                        });
+                        html += `</div>`;
+                    }
+                    body.innerHTML = html;
+                })
+                .catch(() => {
+                    body.innerHTML = `<div class="alert alert-danger">Failed to load documents. Check your connection and try again.</div>`;
+                });
         }
     </script>
 
