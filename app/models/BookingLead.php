@@ -343,13 +343,35 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     }
 
 
+    /**
+     * Get the final payable amount for a booking.
+     * Priority: approved_amount > (agreement_value - discount_amount)
+     */
     public function getFinalAmount($booking)
-{
-    if (!empty($booking['approved_amount'])) {
-        return $booking['approved_amount'];
+    {
+        if (!empty($booking['approved_amount'])) {
+            return (float) $booking['approved_amount'];
+        }
+        $discount = (float) ($booking['discount_amount'] ?? 0);
+        return (float) $booking['agreement_value'] - $discount;
     }
-    return $booking['agreement_value'];
-}
+
+    /**
+     * Directly update payment_status on lead_bookings.
+     */
+    public function updatePaymentStatus($bookingId, $status)
+    {
+        $allowed = ['unpaid', 'partial', 'paid'];
+        if (!in_array($status, $allowed)) return false;
+
+        $stmt = $this->db->prepare("
+            UPDATE lead_bookings
+            SET payment_status = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->bind_param('si', $status, $bookingId);
+        return $stmt->execute();
+    }
     // Update follow-up by ID
     public function update($data, $id)
     {

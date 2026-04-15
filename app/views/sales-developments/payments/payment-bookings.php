@@ -43,6 +43,8 @@ if (!$is_booking_fully_paid) {
 }
 ?>
 
+
+
 <!-- booking_money type select kore rakhte hobe   -->
 <?php if ($showBookingForm): ?>
 
@@ -230,7 +232,7 @@ if (!$is_booking_fully_paid) {
                             </div>
                             <input type="text" name="transaction_ref" class="form-control" placeholder="Required reference number" required>
                         </div>
-                        
+
                         <!-- Attachment Image -->
                         <div class="col-lg-6">
                             <div class="form__input-title">
@@ -271,9 +273,11 @@ if (!$is_booking_fully_paid) {
                 <table class="table table-bordered table-striped align-middle">
                     <thead>
                         <tr>
-                            <th>#</th>
+                            <th># Payment Date</th>
                             <th>Type</th>
-                            <th>Amount</th>
+                            <th>Total Booking Money</th>
+                            <th>Paid Amount</th>
+                            <th>Remaining Amount</th>
                             <th>Method</th>
                             <th>Status</th>
                             <th>Payment Date</th>
@@ -286,17 +290,61 @@ if (!$is_booking_fully_paid) {
                     </thead>
                     <tbody>
                         <?php if (!empty($payments)): ?>
+
+                            <?php
+                            // Step 1: calculate final agreement value
+                            $finalAmount = !empty($booking['approved_amount'])
+                                ? $booking['agreement_value'] - $booking['approved_amount']
+                                : $booking['agreement_value'];
+
+                            // Step 2: running total for ledger style remaining
+                            $running_paid = 0;
+                            ?>
+
                             <?php foreach ($payments as $index => $p): ?>
+
+                                <?php
+                                // Only verified payments affect balance
+                                if (
+                                    $p['payment_type'] === 'booking_money' &&
+                                    $p['verification_status'] === 'verified'
+                                ) {
+                                    $running_paid += $p['amount'];
+                                }
+
+                                $row_remaining = $finalAmount - $running_paid;
+                                ?>
+
                                 <tr>
-                                    <td><?= $index + 1 ?></td>
+                                    <td>
+                                        (<?= $index + 1 ?>) <?= date('d M Y', strtotime($p['payment_date'])) ?>
+                                    </td>
+
                                     <td><?= ucfirst($p['payment_type']) ?></td>
+
+                                    <td><?= number_format($p['agreement_value'], 2) ?></td>
+
                                     <td><?= number_format($p['amount'], 2) ?></td>
+
+                                    <!--  Correct Remaining (ledger style) -->
+                                    <td>
+                                        <?= ($p['payment_type'] === 'booking_money')
+                                            ? number_format($row_remaining, 2)
+                                            : '-' ?>
+                                    </td>
+
                                     <td><?= ucfirst($p['payment_method']) ?></td>
+
                                     <td><?= ucfirst($p['payment_status']) ?></td>
+
                                     <td><?= date('d M Y', strtotime($p['payment_date'])) ?></td>
+
                                     <td><?= $p['transaction_ref'] ?? '-' ?></td>
+
                                     <td><?= $p['created_by_name'] ?? '-' ?></td>
-                                    <td><?= $p['verified_by'] ?? '-' ?></td>
+
+                                    <td><?= $p['verified_by_name'] ?? '-' ?></td>
+
                                     <td>
                                         <?php if ($p['verification_status'] == 'verified'): ?>
                                             <span class="badge bg-success">Verified</span>
@@ -304,18 +352,27 @@ if (!$is_booking_fully_paid) {
                                             <span class="badge bg-warning">Pending</span>
                                         <?php endif; ?>
                                     </td>
+
                                     <td>
-                                        <a target="_blank"
-                                            href="<?= $GLOBALS['base_url'] ?>/payment-booking-invoice/<?= $p['id'] ?>"
-                                            class="btn btn-success btn-sm">
-                                            Print Booking Invoice
-                                        </a>
+                                        <?php if ($p['verification_status'] == 'verified'): ?>
+                                            <a target="_blank"
+                                                href="<?= $GLOBALS['base_url'] ?>/payment-booking-invoice/<?= $p['id'] ?>"
+                                                class="btn btn-success btn-sm">
+                                                Print Booking Invoice
+                                            </a>
+                                        <?php else: ?>
+                                            <button class="btn btn-secondary btn-sm" disabled>
+                                                Print Booking Invoice
+                                            </button>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
+
                             <?php endforeach; ?>
+
                         <?php else: ?>
                             <tr>
-                                <td colspan="9" class="text-center">No payments found for this onboarding.</td>
+                                <td colspan="13" class="text-center">No payments found for this onboarding.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
