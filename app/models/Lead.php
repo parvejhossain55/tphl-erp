@@ -1147,4 +1147,42 @@ class Lead extends Model
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+
+    /**
+     * Get lead counts grouped by raw platform strings for CPL reporting
+     */
+    public function getMarketingPlatformLeadCounts($monthFilter = null)
+    {
+        $sql = "
+            SELECT 
+                LOWER(TRIM(platform)) as raw_platform,
+                COUNT(id) as total_leads
+            FROM leads 
+            WHERE deleted_at IS NULL 
+              AND platform IS NOT NULL 
+              AND platform != ''
+        ";
+        
+        $params = [];
+        $types = "";
+
+        if ($monthFilter) {
+            // Month filter is expected in 'YYYY-MM-01' format. We extract 'YYYY-MM' to match the leads
+            $yearMonth = substr($monthFilter, 0, 7);
+            $sql .= " AND DATE_FORMAT(created_at, '%Y-%m') = ?";
+            $params[] = $yearMonth;
+            $types .= "s";
+        }
+        
+        $sql .= " GROUP BY raw_platform ORDER BY total_leads DESC";
+        
+        $stmt = $this->db->prepare($sql);
+        if ($monthFilter) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
 }
