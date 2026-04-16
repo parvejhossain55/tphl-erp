@@ -146,23 +146,40 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
                 </div>
 
-                <!-- Project Wise  Tag -->
+                <!-- Project Wise Tag -->
                 <div class="col-xl-4">
-                    <label>Project Current Status</label>
+                    <label>Project Sale Status</label>
                   <select name="project_sale_status" class="form-control">
                         <?php
                         $tags = ["Sold Out", "On Sale", "Upcoming"];
                         foreach ($tags as $tag):
                         ?>
-                              <option value="">Select Project Status</option>
+                              <option value="">Select Sale Status</option>
                             <option value="<?= $tag ?>"
                                 <?= (($project['project_sale_status'] ?? '') === $tag) ? 'selected' : '' ?>>
                                 <?= $tag ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
-
                 </div>
+
+                <!-- Project Construction Status -->
+                <div class="col-xl-4">
+                    <label>Project Construction Status</label>
+                    <select name="project_status" class="form-control" id="project_status_edit">
+                        <option value="">Select Construction Status</option>
+                        <?php
+                        $statuses = ['Planning', 'In Progress', 'On Hold', 'Completed', 'Cancelled', 'Delayed'];
+                        foreach ($statuses as $status):
+                        ?>
+                            <option value="<?= $status ?>"
+                                <?= (($project['project_status'] ?? '') === $status) ? 'selected' : '' ?>>
+                                <?= $status ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
                 <!-- Front Road -->
                 <div class="col-xl-4">
                     <label>Front Road</label>

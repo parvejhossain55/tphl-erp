@@ -33,13 +33,31 @@
                                  <td><?= $key + 1 ?></td>
                                  <td><?= date('d M, Y', strtotime($followUp['follow_up_date'])) ?></td>
                                  <td><?= htmlspecialchars($followUp['full_name'] ?? 'N/A') ?></td>
-                                 <td><?= htmlspecialchars($followUp['phone_number'] ?? $followUp['phone'] ?? 'N/A') ?></td>
+                                 <?php
+                                    $phone = $followUp['phone_number'] ?? $followUp['phone'] ?? '';
+                                    $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+
+                                    // convert 01 → 8801
+                                    if (substr($cleanPhone, 0, 2) === '01') {
+                                        $cleanPhone = '880' . substr($cleanPhone, 1);
+                                    }
+                                    ?>
+
+                                 <td>
+                                     <?php if (!empty($cleanPhone)): ?>
+                                         <a href="https://wa.me/<?= $cleanPhone ?>" target="_blank">
+                                             <?= htmlspecialchars($phone) ?>
+                                         </a>
+                                     <?php else: ?>
+                                         N/A
+                                     <?php endif; ?>
+                                 </td>
                                  <td><?= htmlspecialchars($followUp['project_name'] ?? 'N/A') ?></td>
                                  <td><?= htmlspecialchars($followUp['flat_name'] ?? 'N/A') ?></td>
                                  <td><?= htmlspecialchars($followUp['discussion_note'] ?? 'N/A') ?></td>
                                  <td class="call-status-cell">
                                      <select class="next-action" data-id="<?= $followUp['id'] ?>">
-                                        <option value="">Select Client Action</option>
+                                         <option value="">Select Client Action</option>
                                          <option value="site visit" <?= $followUp['next_action'] == 'site visit' ? 'selected' : '' ?>>Site visit</option>
                                          <option value="booking" <?= $followUp['next_action'] == 'booking' ? 'selected' : '' ?>>Booking</option>
                                          <option value="call_back" <?= $followUp['next_action'] == 'call_back' ? 'selected' : '' ?>>Call back</option>

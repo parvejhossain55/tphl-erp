@@ -48,7 +48,7 @@ class Con_DashboardController extends Controller
             LIMIT 5
         ")->fetch_all(MYSQLI_ASSOC);
 
-        $this->view('phase2/dashboard/index', [
+        $this->view('phase2/dashboard/cons-dashboard', [
             'current_route' => 'con-dashboard',
             'page_title'    => 'Construction Dashboard',
             'stats'         => $stats,

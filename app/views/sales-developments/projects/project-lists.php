@@ -39,6 +39,8 @@ $show_breadcrumb = true;
                             <th>Total Share</th>
                             <th>Unit Per Floor</th>
                             <th class="d-none">Type</th>
+                            <th>Sale Status</th>
+                            <th>Con. Status</th>
                             <th>Brochure</th>
                             <th>Actions</th>
                         </tr>
@@ -55,7 +57,45 @@ $show_breadcrumb = true;
                                 <td><?= htmlspecialchars($project['total_share'] ?? 0) ?></td>
                                 <td><?= htmlspecialchars($project['unit_per_floor'] ?? 0) ?></td>
                                 <td class="d-none"><?= htmlspecialchars($project['types'] ?? 'N/A') ?></td>
-                            
+
+                                <!-- Sale Status -->
+                                <td>
+                                    <?php
+                                    $ss = $project['project_sale_status'] ?? null;
+                                    $ssColor = match($ss) {
+                                        'On Sale'  => 'success',
+                                        'Sold Out' => 'danger',
+                                        'Upcoming' => 'warning',
+                                        default    => 'secondary'
+                                    };
+                                    ?>
+                                    <?php if ($ss): ?>
+                                        <span class="badge bg-<?= $ssColor ?>"><?= $ss ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+
+                                <!-- Construction Status -->
+                                <td>
+                                    <?php
+                                    $cs = $project['project_status'] ?? null;
+                                    $csColor = match($cs) {
+                                        'Planning'    => 'info',
+                                        'In Progress' => 'primary',
+                                        'On Hold'     => 'warning',
+                                        'Completed'   => 'success',
+                                        'Cancelled'   => 'danger',
+                                        'Delayed'     => 'secondary',
+                                        default       => 'light'
+                                    };
+                                    ?>
+                                    <?php if ($cs): ?>
+                                        <span class="badge bg-<?= $csColor ?>"><?= $cs ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
 
                                 <td>
                                     <?php if (!empty($project['brochure_link'])): ?>

@@ -19,12 +19,10 @@
     </div>
 
     <!-- MAIN BODY -->
-    <section class="section">
-        <div class="row">
             <div class="col-12">
                 <div class="card__wrapper shadow-sm">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-striped custom-table mb-0">
+                    <div class="table__wrapper">
+                        <table class="table mb-20 multiple_tables">
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
@@ -41,22 +39,21 @@
                                             <td><?= $index + 1 ?></td>
                                             <td><?= htmlspecialchars($row['project_name']) ?></td>
                                             <td><?= htmlspecialchars($row['user_name']) ?></td>
-                                            <td><?= $row['full_architecture_design_link'] ? '<a href="'.htmlspecialchars($row['full_architecture_design_link']).'" target="_blank">View</a>' : 'N/A' ?></td>
+                                            <td><?= $row['full_architecture_design_link'] ? '<a href="' . htmlspecialchars($row['full_architecture_design_link']) . '" target="_blank">View</a>' : 'N/A' ?></td>
                                             <td>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/con-architect-engineering/edit?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
-                                    <tr><td colspan="5" class="text-center text-muted">No records found.</td></tr>
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">No records found.</td>
+                                    </tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
-            </div>
-        </div>
+          
     </section>
 </main>
-
-<?php require_once 'app/views/layouts/footer.php'; ?>

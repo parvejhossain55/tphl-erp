@@ -290,7 +290,18 @@
                                     </td>
                                     <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
                                     <td><strong><?= $lead['full_name'] ?? '' ?></strong>
-                                        <p><?= $lead['phone_number'] ?? $lead['phone']  ?></p>
+                                        <?php
+                                        $phone = $lead['phone_number'] ?? $lead['phone'] ?? '';
+                                        $phone = preg_replace('/[^0-9]/', '', $phone);
+
+                                        if (substr($phone, 0, 2) === '01') {
+                                            $phone = '880' . substr($phone, 1);
+                                        }
+                                        ?>
+
+                                        <a href="https://wa.me/<?= $phone ?>" target="_blank">
+                                            <?= $phone ?>
+                                        </a>
                                     </td>
 
                                     <?php

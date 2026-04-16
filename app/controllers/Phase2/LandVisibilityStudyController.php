@@ -3,14 +3,17 @@ namespace Phase2;
 
 use Controller;
 use Con_LandVisibilityStudy;
+use Project;
 
 class LandVisibilityStudyController extends Controller {
     protected $db;
     protected $model;
+    protected $projectModel;
 
     public function __construct($db) {
         $this->db = $db;
         $this->model = new Con_LandVisibilityStudy($db);
+        $this->projectModel = new Project($db);
         
         if (!isset($_SESSION['user'])) {
             header("Location: " . $GLOBALS['base_url'] . "/login");
@@ -22,6 +25,7 @@ class LandVisibilityStudyController extends Controller {
         $studies = $this->model->getAll();
         
         $this->view('phase2/land_visibility_study/land-visibility-study', [
+            'current_route' => 'con-land-visibility-studies',
             'studies' => $studies,
             'title' => 'Land Visibility Study'
         ]);
@@ -29,11 +33,11 @@ class LandVisibilityStudyController extends Controller {
 
     public function create() {
         // Fetch dependencies like projects if needed
-        $projectsQuery = "SELECT id, name FROM projects ORDER BY name ASC";
-        $projects = $this->db->query($projectsQuery)->fetch_all(MYSQLI_ASSOC);
+      $projects= $this->projectModel->getAll();
 
         $this->view('phase2/land_visibility_study/create-land-visibility-study', [
-            'title' => 'Add Land Visibility Study',
+            'current_route' => 'con-land-visibility-studies',
+            'title'    => 'Add Land Visibility Study',
             'projects' => $projects
         ]);
     }
@@ -73,8 +77,9 @@ class LandVisibilityStudyController extends Controller {
         $projects = $this->db->query($projectsQuery)->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/land_visibility_study/edit-land-visibility-study', [
-            'title' => 'Edit Land Visibility Study',
-            'study' => $study,
+            'current_route' => 'con-land-visibility-studies',
+            'title'    => 'Edit Land Visibility Study',
+            'study'    => $study,
             'projects' => $projects
         ]);
     }

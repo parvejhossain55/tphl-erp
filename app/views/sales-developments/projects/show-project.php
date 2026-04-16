@@ -114,7 +114,57 @@ $show_breadcrumb = true;
                         <p class="mb-0 fw-bold"><?= $project['apartment_count'] ?? 'N/A' ?></p>
                     </div>
                 </div>
+
+                <!-- Sale Status Badge -->
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="info-box p-3 border rounded">
+                        <label class="text-muted mb-1"><small>Sale Status</small></label>
+                        <p class="mb-0">
+                            <?php
+                            $saleStatus = $project['project_sale_status'] ?? null;
+                            $saleBadge = match($saleStatus) {
+                                'On Sale'  => 'success',
+                                'Sold Out' => 'danger',
+                                'Upcoming' => 'warning',
+                                default    => 'secondary'
+                            };
+                            ?>
+                            <?php if ($saleStatus): ?>
+                                <span class="badge bg-<?= $saleBadge ?> px-3 py-2 fs-6"><?= $saleStatus ?></span>
+                            <?php else: ?>
+                                <span class="text-muted">N/A</span>
+                            <?php endif; ?>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Construction Status Badge -->
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="info-box p-3 border rounded">
+                        <label class="text-muted mb-1"><small>Construction Status</small></label>
+                        <p class="mb-0">
+                            <?php
+                            $conStatus = $project['project_status'] ?? null;
+                            $conBadge = match($conStatus) {
+                                'Planning'    => 'info',
+                                'In Progress' => 'primary',
+                                'On Hold'     => 'warning',
+                                'Completed'   => 'success',
+                                'Cancelled'   => 'danger',
+                                'Delayed'     => 'secondary',
+                                default       => 'light'
+                            };
+                            ?>
+                            <?php if ($conStatus): ?>
+                                <span class="badge bg-<?= $conBadge ?> px-3 py-2 fs-6"><?= $conStatus ?></span>
+                            <?php else: ?>
+                                <span class="text-muted">N/A</span>
+                            <?php endif; ?>
+                        </p>
+                    </div>
+                </div>
             </div>
+
 
             <!-- Property Details -->
             <div class="row m-3">

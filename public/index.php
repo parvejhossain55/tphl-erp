@@ -662,42 +662,41 @@ $route = trim($route, '/');
 // =============================================================================
 // PHASE 2 — CONSTRUCTION MANAGEMENT ROUTES
 // =============================================================================
-
 // ── Module 1: Pre-Construction ──────────────────────────────────────────────
 $routes['con-land-visibility-studies'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'index'];
 $routes['con-land-visibility-studies/create'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'create'];
 $routes['con-land-visibility-studies/store'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'store'];
 $routes['con-land-visibility-studies/edit'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'edit'];
 $routes['con-land-visibility-studies/update'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'update'];
-$routes['con-land-visibility-studies/delete'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'delete'];
+$routes['delete-land-visibility-study']         = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'delete'];
 
 $routes['con-architect-engineering'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'index'];
 $routes['con-architect-engineering/create'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'create'];
 $routes['con-architect-engineering/store'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'store'];
 $routes['con-architect-engineering/edit'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'edit'];
 $routes['con-architect-engineering/update'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'update'];
-$routes['con-architect-engineering/delete'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'delete'];
+$routes['delete-architect-engineering']         = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'delete'];
 
 $routes['con-design-types'] = ['controller' => 'Phase2\DesignTypeController', 'method' => 'index'];
 $routes['con-design-types/create'] = ['controller' => 'Phase2\DesignTypeController', 'method' => 'create'];
 $routes['con-design-types/store'] = ['controller' => 'Phase2\DesignTypeController', 'method' => 'store'];
 $routes['con-design-types/edit'] = ['controller' => 'Phase2\DesignTypeController', 'method' => 'edit'];
 $routes['con-design-types/update'] = ['controller' => 'Phase2\DesignTypeController', 'method' => 'update'];
-$routes['con-design-types/delete'] = ['controller' => 'Phase2\DesignTypeController', 'method' => 'delete'];
+$routes['delete-design-type']                   = ['controller' => 'Phase2\DesignTypeController', 'method' => 'delete'];
 
 $routes['con-project-drawings'] = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'index'];
 $routes['con-project-drawings/create'] = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'create'];
 $routes['con-project-drawings/store'] = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'store'];
 $routes['con-project-drawings/edit'] = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'edit'];
 $routes['con-project-drawings/update'] = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'update'];
-$routes['con-project-drawings/delete'] = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'delete'];
+$routes['delete-project-drawing']               = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'delete'];
 
 $routes['con-soil-tests'] = ['controller' => 'Phase2\SoilTestController', 'method' => 'index'];
 $routes['con-soil-tests/create'] = ['controller' => 'Phase2\SoilTestController', 'method' => 'create'];
 $routes['con-soil-tests/store'] = ['controller' => 'Phase2\SoilTestController', 'method' => 'store'];
 $routes['con-soil-tests/edit'] = ['controller' => 'Phase2\SoilTestController', 'method' => 'edit'];
 $routes['con-soil-tests/update'] = ['controller' => 'Phase2\SoilTestController', 'method' => 'update'];
-$routes['con-soil-tests/delete'] = ['controller' => 'Phase2\SoilTestController', 'method' => 'delete'];
+$routes['delete-soil-test']                     = ['controller' => 'Phase2\SoilTestController', 'method' => 'delete'];
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
 $routes['con-dashboard'] = ['controller' => 'Con_DashboardController', 'method' => 'index'];

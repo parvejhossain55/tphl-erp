@@ -1178,7 +1178,7 @@
                 <?php endif; ?>
                 <!-- ==================== PHASE 2: CONSTRUCTION MANAGEMENT ==================== -->
                 <li class="sidebar__menu-category">
-                    <span class="category-name">Construction Management</span>
+                    <span class="category-name">Construction </span>
                 </li>
 
                 <!-- Pre-Construction -->
@@ -1192,7 +1192,7 @@
                         <span class="sidebar__menu-label">Pre-Construction</span>
                     </a>
 
-                    <ul class="sidebar-menu child1" <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests'], $current_route) ? 'style="display:block;"' : '' ?>>
+                    <ul class="sidebar-menu child1" style="display:block;">
                         <li class="slide <?= isActive('con-land-visibility-studies', $current_route) ?>">
                             <a class="sidebar__menu-item <?= isActive('con-land-visibility-studies', $current_route) ?>" href="<?= $base_url ?>/con-land-visibility-studies">Land Visibility Study</a>
                         </li>
