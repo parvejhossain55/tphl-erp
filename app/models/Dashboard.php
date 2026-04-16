@@ -351,8 +351,8 @@ class Dashboard extends Model
         $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] +
             $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['total_development_charge'] + $stats['management_cashin'];
 
-        // Calculate Total Revenue
-        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + $stats['total_development_charge'];
+        // Calculate Total Revenue (includes registration — mirrors Central Statement formula)
+        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + $stats['total_development_charge'] + $stats['total_registration'];
 
         // Get Cash Out with project filtering
         $sqlCashOut = "
@@ -723,8 +723,8 @@ class Dashboard extends Model
         // total_amount = all lead payments + management cash in (no discount subtraction)
         $stats['total_amount'] = $stats['lead_payments'] + $stats['management_cashin'];
 
-        // Calculate total revenue (development charges included as revenue)
-        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + ($stats['development_charges'] ?? 0);
+        // Calculate total revenue (development charges + registration included as revenue — mirrors Central Statement)
+        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + ($stats['development_charges'] ?? 0) + $stats['total_registration'];
 
         // Get cashin by project (only if no specific project is selected)
         if (!$projectId) {
