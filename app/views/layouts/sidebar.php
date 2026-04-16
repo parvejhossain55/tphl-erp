@@ -1178,7 +1178,7 @@
                 <?php endif; ?>
                 <!-- ==================== PHASE 2: CONSTRUCTION MANAGEMENT ==================== -->
                 <li class="sidebar__menu-category">
-                    <span class="category-name">Construction </span>
+                    <span class="category-name">Construction Management</span>
                 </li>
 
                 <!-- Pre-Construction -->
@@ -1210,6 +1210,49 @@
                         </li>
                     </ul>
                 </li>
+                       <!-- Module 2: Operators / Contractors -->
+                    <li class="slide has-sub <?= isActive(['con-operators','con-operator-create'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-operators','con-operator-create'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-person-digging"></i></div>
+                            <span class="sidebar__menu-label">Operators</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-operators" class="sidebar__menu-item <?= isActive('con-operators', $current_route) ?>">Operator List</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-operator-create" class="sidebar__menu-item <?= isActive('con-operator-create', $current_route) ?>">Add Operator</a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Module 3: Materials & Inventory -->
+                    <li class="slide has-sub <?= isActive(['con-materials','con-material-create','con-warehouses','con-warehouse-create','con-stocks'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-materials','con-material-create','con-warehouses','con-warehouse-create','con-stocks'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                            <span class="sidebar__menu-label">Materials & Inventory</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-materials" class="sidebar__menu-item <?= isActive('con-materials', $current_route) ?>">Material Master</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-material-create" class="sidebar__menu-item <?= isActive('con-material-create', $current_route) ?>">Add Material</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-warehouses" class="sidebar__menu-item <?= isActive('con-warehouses', $current_route) ?>">Warehouses</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-warehouse-create" class="sidebar__menu-item <?= isActive('con-warehouse-create', $current_route) ?>">Add Warehouse</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-stocks" class="sidebar__menu-item <?= isActive('con-stocks', $current_route) ?>">Stock Levels</a>
+                            </li>
+                        </ul>
+                    </li>
+
                 <!-- ==================== END PHASE 2 ==================== -->
 
                 <li class="slide ">

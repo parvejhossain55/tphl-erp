@@ -27,7 +27,7 @@ class LandVisibilityStudyController extends Controller {
         $this->view('phase2/land_visibility_study/land-visibility-study', [
             'current_route' => 'con-land-visibility-studies',
             'studies' => $studies,
-            'title' => 'Land Visibility Study'
+            'page_title' => 'Land Visibility Study'
         ]);
     }
 
@@ -37,7 +37,7 @@ class LandVisibilityStudyController extends Controller {
 
         $this->view('phase2/land_visibility_study/create-land-visibility-study', [
             'current_route' => 'con-land-visibility-studies',
-            'title'    => 'Add Land Visibility Study',
+            'page_title'    => 'Add Land Visibility Study',
             'projects' => $projects
         ]);
     }
@@ -78,7 +78,7 @@ class LandVisibilityStudyController extends Controller {
 
         $this->view('phase2/land_visibility_study/edit-land-visibility-study', [
             'current_route' => 'con-land-visibility-studies',
-            'title'    => 'Edit Land Visibility Study',
+            'page_title'    => 'Edit Land Visibility Study',
             'study'    => $study,
             'projects' => $projects
         ]);

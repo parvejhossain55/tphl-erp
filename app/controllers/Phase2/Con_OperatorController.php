@@ -1,4 +1,8 @@
 <?php
+namespace Phase2;
+
+use Controller;
+use Con_Operator;
 
 class Con_OperatorController extends Controller
 {
@@ -20,7 +24,7 @@ class Con_OperatorController extends Controller
 
         $operators = $this->operatorModel->getAll();
 
-        $this->view('phase2/operators/index', [
+        $this->view('phase2/operators/operators-list', [
             'current_route' => 'con-operators',
             'page_title'    => 'Operators & Contractors',
             'operators'     => $operators,
@@ -32,7 +36,7 @@ class Con_OperatorController extends Controller
     ====================== */
     public function create()
     {
-        $this->view('phase2/operators/create', [
+        $this->view('phase2/operators/create-operator', [
             'current_route' => 'con-operators',
             'page_title'    => 'Add Operator / Contractor',
         ]);
@@ -86,7 +90,7 @@ class Con_OperatorController extends Controller
             exit;
         }
 
-        $this->view('phase2/operators/edit', [
+        $this->view('phase2/operators/edit-operator', [
             'current_route' => 'con-operators',
             'page_title'    => 'Edit Operator',
             'operator'      => $operator,

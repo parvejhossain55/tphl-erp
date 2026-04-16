@@ -24,7 +24,7 @@ class ArchitectEngineeringController extends Controller {
         $this->view('phase2/architect_engineering/architect-engineering', [
             'current_route' => 'con-architect-engineering',
             'records' => $records,
-            'title'   => 'Architect & Engineering'
+            'page_title'   => 'Architect & Engineering'
         ]);
     }
 
@@ -34,7 +34,7 @@ class ArchitectEngineeringController extends Controller {
 
         $this->view('phase2/architect_engineering/create-architect-engineering', [
             'current_route' => 'con-architect-engineering',
-            'title'    => 'Add Architect & Engineering',
+            'page_title'    => 'Add Architect & Engineering',
             'projects' => $projects,
             'users'    => $users,
         ]);
@@ -73,7 +73,7 @@ class ArchitectEngineeringController extends Controller {
 
         $this->view('phase2/architect_engineering/edit-architect-engineering', [
             'current_route' => 'con-architect-engineering',
-            'title'    => 'Edit Architect & Engineering',
+            'page_title'    => 'Edit Architect & Engineering',
             'record'   => $record,
             'projects' => $projects,
             'users'    => $users,

@@ -643,7 +643,7 @@ public function countSalesTeams($roleId = null, $teamId = null)
     //     $result = $sql->get_result();
     //     return $result->fetch_all(MYSQLI_ASSOC);
     // }
-public function getSalesTeams($roleId = null, $teamId = null)
+public function getSalesTeams($roleId = null, $teamId = null, $userId = null)
 {
     $sql = "SELECT 
                 u.*,
@@ -663,15 +663,19 @@ public function getSalesTeams($roleId = null, $teamId = null)
     $params = [];
     $types  = "";
 
-    //  CASE: Role 5 or 9 AND has team → filter by team
-    if (in_array($roleId, [5, 9]) && !empty($teamId)) {
+    // 🔥 Role ভিত্তিক filter
+ if (in_array($roleId, [5, 8]) && !empty($teamId)) {
+    $sql .= " AND u.team_id = ?";
+    $params[] = $teamId;
+    $types .= "i";
+}
+    elseif ($roleId == 8) {
+        // Manager → শুধু নিজের team
         $sql .= " AND u.team_id = ?";
         $params[] = $teamId;
         $types .= "i";
     }
-
-    //  CASE: Role 5 or 9 BUT NO team → show ALL sales users (no extra filter)
-    // (do nothing)
+    // role 9 → no filter (সব দেখবে)
 
     $stmt = $this->db->prepare($sql);
 
@@ -681,7 +685,6 @@ public function getSalesTeams($roleId = null, $teamId = null)
 
     $stmt->execute();
 
-    $result = $stmt->get_result();
-    return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 }

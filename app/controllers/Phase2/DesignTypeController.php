@@ -24,13 +24,13 @@ class DesignTypeController extends Controller {
         $this->view('phase2/design_types/design-types', [
             'current_route' => 'con-design-types',
             'records' => $records,
-            'title'   => 'Design Types'
+            'page_title'   => 'Design Types'
         ]);
     }
 
     public function create() {
         $this->view('phase2/design_types/create-design-type', [
-            'title' => 'Add Design Type'
+            'page_title' => 'Add Design Type'
         ]);
     }
 
@@ -67,7 +67,7 @@ class DesignTypeController extends Controller {
         }
 
         $this->view('phase2/design_types/edit-design-type', [
-            'title'  => 'Edit Design Type',
+            'page_title'  => 'Edit Design Type',
             'record' => $record,
         ]);
     }

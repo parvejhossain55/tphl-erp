@@ -1,4 +1,8 @@
 <?php
+namespace Phase2;
+
+use Controller;
+use Con_Material;
 
 class Con_MaterialController extends Controller
 {
@@ -17,7 +21,7 @@ class Con_MaterialController extends Controller
 
         $materials = $this->materialModel->getAll();
 
-        $this->view('phase2/materials/index', [
+        $this->view('phase2/materials/con-materials', [
             'current_route' => 'con-materials',
             'page_title'    => 'Construction Materials',
             'materials'     => $materials,
@@ -26,7 +30,7 @@ class Con_MaterialController extends Controller
 
     public function create()
     {
-        $this->view('phase2/materials/create', [
+        $this->view('phase2/materials/create-material', [
             'current_route' => 'con-materials',
             'page_title'    => 'Add Material',
         ]);
@@ -63,7 +67,7 @@ class Con_MaterialController extends Controller
     public function edit($id)
     {
         $material = $this->materialModel->find($id);
-        $this->view('phase2/materials/edit', [
+        $this->view('phase2/materials/edit-material', [
             'current_route' => 'con-materials',
             'page_title'    => 'Edit Material',
             'material'      => $material,
@@ -86,5 +90,22 @@ class Con_MaterialController extends Controller
 
         header("Location: {$GLOBALS['base_url']}/con-materials");
         exit;
+    }
+
+    /* =====================
+       Inventory Stocks View
+    ====================== */
+    public function stocks()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        $stockModel = new \Con_Stock($this->db);
+        $stocks = $stockModel->getCurrentStock();
+
+        $this->view('phase2/stocks/con-stocks', [
+            'current_route' => 'con-stocks',
+            'page_title'    => 'Inventory Stock Levels',
+            'stocks'        => $stocks,
+        ]);
     }
 }

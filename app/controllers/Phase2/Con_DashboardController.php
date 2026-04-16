@@ -1,4 +1,7 @@
 <?php
+namespace Phase2;
+
+use Controller;
 
 class Con_DashboardController extends Controller
 {

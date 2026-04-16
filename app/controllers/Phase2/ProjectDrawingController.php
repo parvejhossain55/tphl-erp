@@ -24,7 +24,7 @@ class ProjectDrawingController extends Controller {
         $this->view('phase2/project_drawings/project-drawings', [
             'current_route' => 'con-project-drawings',
             'records' => $records,
-            'title'   => 'Project Drawings'
+            'page_title'   => 'Project Drawings'
         ]);
     }
 
@@ -35,7 +35,7 @@ class ProjectDrawingController extends Controller {
 
         $this->view('phase2/project_drawings/create-project-drawing', [
             'current_route' => 'con-project-drawings',
-            'title'        => 'Add Project Drawing',
+            'page_title'        => 'Add Project Drawing',
             'projects'     => $projects,
             'design_types' => $design_types,
             'users'        => $users,
@@ -82,7 +82,7 @@ class ProjectDrawingController extends Controller {
 
         $this->view('phase2/project_drawings/edit-project-drawing', [
             'current_route' => 'con-project-drawings',
-            'title'        => 'Edit Project Drawing',
+            'page_title'        => 'Edit Project Drawing',
             'record'       => $record,
             'projects'     => $projects,
             'design_types' => $design_types,
