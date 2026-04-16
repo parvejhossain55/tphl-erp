@@ -229,7 +229,7 @@ $cashout_payment_details = $cashout_payment_details ?? [];
 </script>
 <div class="row">
     <!-- Filter Controls -->
-    <div class="col-xxl-12 mb-4">
+    <div class="col-xxl-12 ">
         <div class="card__wrapper">
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title" style="margin-top: -13px;">Filter Statement</h5>
@@ -351,7 +351,7 @@ $cashout_payment_details = $cashout_payment_details ?? [];
     </div>
 
 <!-- Update the summary cards to show proper labels for each category -->
-<div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
+<div class="mt-2 col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
     <div class="card__wrapper stat-card cash-in">
         <div class="d-flex align-items-center gap-1">
             <div class="card__icon">
@@ -472,7 +472,7 @@ $cashout_payment_details = $cashout_payment_details ?? [];
 
 
 
-<div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
+<div class="mt-2 col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
     <div class="card__wrapper stat-card revenue">
         <div class="d-flex align-items-center gap-1">
             <div class="card__icon">
@@ -510,7 +510,7 @@ $cashout_payment_details = $cashout_payment_details ?? [];
     </div>
 </div>
 
-<div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
+<div class="mt-2 col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
     <div class="card__wrapper stat-card cash-out">
         <div class="d-flex align-items-center gap-1">
             <div class="card__icon">
@@ -548,7 +548,7 @@ $cashout_payment_details = $cashout_payment_details ?? [];
     </div>
 </div>
 
-<div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
+<div class="mt-2 col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
     <div class="card__wrapper stat-card net-balance">
         <div class="d-flex align-items-center gap-1">
             <div class="card__icon">
@@ -586,7 +586,7 @@ $cashout_payment_details = $cashout_payment_details ?? [];
 
 
     <!-- Statement Data -->
-<div class="col-xxl-12 mb-4">
+<div class="col-xxl-12 mb-4 mt-4">
     <div class="card__wrapper">
         <div class="card__body">
             <!-- Bank Transactions Table (for bank_cashin / bank_cashout) -->
