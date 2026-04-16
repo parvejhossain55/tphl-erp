@@ -46,7 +46,19 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
   
 
                 <!-- Transaction Form -->
-                <form action="<?= $GLOBALS['base_url'] ?>/update-transaction" method="post" id="transactionForm">
+                <?php
+                    // Resolve existing attached files for pre-fill
+                    $existingFiles = [];
+                    if (!empty($transaction['attachment_paths'])) {
+                        $decoded = json_decode($transaction['attachment_paths'], true);
+                        if (is_array($decoded)) $existingFiles = $decoded;
+                    }
+                    if (!empty($transaction['attachment_image'])) {
+                        $legacyPath = 'uploads/payments/' . $transaction['attachment_image'];
+                        if (!in_array($legacyPath, $existingFiles)) $existingFiles[] = $legacyPath;
+                    }
+                ?>
+                <form action="<?= $GLOBALS['base_url'] ?>/update-transaction" method="post" id="transactionForm" enctype="multipart/form-data">
                     <input type="hidden" name="payment_id" value="<?= $transaction['id'] ?? '' ?>">
                     <input type="hidden" name="booking_id" value="<?= $bookingId ?>">
 
@@ -187,6 +199,74 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                     <option value="pending" <?= ($transaction['payment_status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
                                     <option value="failed" <?= ($transaction['payment_status'] ?? '') === 'failed' ? 'selected' : '' ?>>Failed</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        <!-- ── Existing Documents (pre-filled) ── -->
+                        <?php if (!empty($existingFiles)): ?>
+                        <div class="col-md-12">
+                            <div class="from__input-box">
+                                <label class="form__input-title">
+                                    <i class="fa-light fa-paperclip me-1"></i>Current Attachments
+                                    <span class="text-muted small ms-1">(click to view)</span>
+                                </label>
+                                <div class="d-flex flex-wrap gap-2 mt-1" id="existingFilePreviews">
+                                    <?php foreach ($existingFiles as $idx => $filePath): ?>
+                                        <?php
+                                            $fileUrl = ($GLOBALS['base_url'] ?? '') . '/public/' . $filePath;
+                                            $ext     = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                                            $isImage = in_array($ext, ['jpg','jpeg','png','gif','webp']);
+                                            $isPDF   = ($ext === 'pdf');
+                                            $fname   = basename($filePath);
+                                        ?>
+                                        <!-- preserve path so controller can keep it -->
+                                        <input type="hidden" name="existing_files[]" value="<?= htmlspecialchars($filePath) ?>">
+                                        <div class="border rounded p-1 text-center position-relative"
+                                             style="width:90px;font-size:11px;overflow:hidden;">
+                                            <?php if ($isImage): ?>
+                                                <a href="<?= htmlspecialchars($fileUrl) ?>" target="_blank">
+                                                    <img src="<?= htmlspecialchars($fileUrl) ?>"
+                                                         style="width:74px;height:56px;object-fit:cover;border-radius:4px;"
+                                                         alt="<?= htmlspecialchars($fname) ?>"
+                                                         onerror="this.src='<?= $GLOBALS['base_url'] ?>/public/assets/img/no-image.png'">
+                                                </a>
+                                            <?php elseif ($isPDF): ?>
+                                                <a href="<?= htmlspecialchars($fileUrl) ?>" target="_blank" class="text-danger">
+                                                    <i class="fa-light fa-file-pdf" style="font-size:2.4rem;"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="<?= htmlspecialchars($fileUrl) ?>" target="_blank" class="text-secondary">
+                                                    <i class="fa-light fa-file" style="font-size:2.4rem;"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                            <div class="text-truncate mt-1" title="<?= htmlspecialchars($fname) ?>">
+                                                <?= htmlspecialchars(strlen($fname) > 12 ? substr($fname, 0, 12) . '…' : $fname) ?>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- ── New File Upload ── -->
+                        <div class="col-md-12">
+                            <div class="from__input-box">
+                                <label class="form__input-title">
+                                    <i class="fa-light fa-upload me-1"></i>
+                                    <?= !empty($existingFiles) ? 'Add / Replace Documents' : 'Proof of Payment' ?>
+                                    <span class="text-muted small ms-1">(JPG, PNG, PDF — max 5 MB each)</span>
+                                </label>
+                                <input type="file" name="proof_files[]" id="proofFiles"
+                                       class="form-control" multiple accept="image/*,application/pdf">
+                                <div id="newFilePreviews" class="d-flex flex-wrap gap-2 mt-2"></div>
+                                <?php if (!empty($existingFiles)): ?>
+                                    <small class="text-muted">
+                                        <i class="fa-light fa-info-circle me-1"></i>
+                                        Uploading new files will be <strong>added</strong> to existing ones.
+                                        Leave empty to keep current attachments.
+                                    </small>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -406,5 +486,33 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initial call to set the correct state on page load
     controlPartiallyPaidStatus();
+
+    // New-file preview thumbnails
+    const proofFilesInput = document.getElementById('proofFiles');
+    const newFilePreviews  = document.getElementById('newFilePreviews');
+    if (proofFilesInput && newFilePreviews) {
+        proofFilesInput.addEventListener('change', function () {
+            newFilePreviews.innerHTML = '';
+            Array.from(this.files).forEach(file => {
+                const thumb = document.createElement('div');
+                thumb.className = 'border rounded p-1 text-center';
+                thumb.style.cssText = 'width:90px;font-size:11px;overflow:hidden;';
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.style.cssText = 'width:74px;height:56px;object-fit:cover;border-radius:4px;';
+                    img.src = URL.createObjectURL(file);
+                    thumb.appendChild(img);
+                } else {
+                    thumb.innerHTML = '<i class="fa-light fa-file-pdf fa-2x text-danger"></i>';
+                }
+                const name = document.createElement('div');
+                name.className = 'text-truncate mt-1';
+                name.title = file.name;
+                name.textContent = file.name.length > 12 ? file.name.substr(0, 12) + '…' : file.name;
+                thumb.appendChild(name);
+                newFilePreviews.appendChild(thumb);
+            });
+        });
+    }
 });
 </script>

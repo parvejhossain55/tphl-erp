@@ -350,7 +350,7 @@ public function addCedTransaction()
     // Handle multi-file proof uploads
     $uploadedPaths = [];
     if (!empty($_FILES['proof_files']['name'][0])) {
-        $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/transactions/';
+        $uploadDir = dirname(dirname(__DIR__)) . '/public/uploads/transactions/';
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
         $allowedTypes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
         $maxSize = 5 * 1024 * 1024;
@@ -562,7 +562,7 @@ public function addTransaction()
         // Handle multi-file proof uploads (before insert so paths are stored atomically)
         $uploadedPaths = [];
         if (!empty($_FILES['proof_files']['name'][0])) {
-            $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/transactions/';
+            $uploadDir = dirname(dirname(__DIR__)) . '/public/uploads/transactions/';
             if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
             $allowedTypes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
             $maxSize = 5 * 1024 * 1024;
@@ -718,20 +718,47 @@ public function updateTransaction()
 
         error_log("Old Due Amount: " . $oldDueAmount);
 
+        // ── Handle file uploads: start from existing files sent back via hidden inputs ──
+        $mergedPaths = [];
+        if (!empty($_POST['existing_files']) && is_array($_POST['existing_files'])) {
+            foreach ($_POST['existing_files'] as $ep) {
+                $ep = trim($ep);
+                if ($ep !== '') $mergedPaths[] = $ep;
+            }
+        }
+        // Append any newly uploaded files
+        if (!empty($_FILES['proof_files']['name'][0])) {
+            $uploadDir    = dirname(dirname(__DIR__)) . '/public/uploads/transactions/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $allowedTypes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf'];
+            $maxSize      = 5 * 1024 * 1024;
+            foreach ($_FILES['proof_files']['tmp_name'] as $idx => $tmpName) {
+                if (!is_uploaded_file($tmpName)) continue;
+                if (!in_array(mime_content_type($tmpName), $allowedTypes)) continue;
+                if ($_FILES['proof_files']['size'][$idx] > $maxSize) continue;
+                $ext  = pathinfo(basename($_FILES['proof_files']['name'][$idx]), PATHINFO_EXTENSION);
+                $name = 'proof_' . uniqid() . '.' . $ext;
+                if (move_uploaded_file($tmpName, $uploadDir . $name)) {
+                    $mergedPaths[] = 'uploads/transactions/' . $name;
+                }
+            }
+        }
+
         // Prepare transaction data
         $transactionData = [
-            'payment_id' => $paymentId,
-            'booking_id' => $bookingId,
-            'payment_type' => $_POST['payment_type'] ?? 'emi',
-            'amount' => $_POST['amount'] ?? 0,
-            'payment_method' => $_POST['payment_method'] ?? 'cash',
-            'payment_status' => $_POST['payment_status'] ?? 'paid',
-            'payment_date' => $_POST['payment_date'] ?? date('Y-m-d'),
-            'transaction_ref' => $_POST['transaction_ref'] ?? null,
-            'bank_name' => $_POST['bank_name'] ?? null,
-            'bank_account_no' => $_POST['bank_account_no'] ?? null,
-            'cheque_no' => $_POST['cheque_no'] ?? null,
-            'online_type' => $_POST['online_type'] ?? null
+            'payment_id'       => $paymentId,
+            'booking_id'       => $bookingId,
+            'payment_type'     => $_POST['payment_type'] ?? 'emi',
+            'amount'           => $_POST['amount'] ?? 0,
+            'payment_method'   => $_POST['payment_method'] ?? 'cash',
+            'payment_status'   => $_POST['payment_status'] ?? 'paid',
+            'payment_date'     => $_POST['payment_date'] ?? date('Y-m-d'),
+            'transaction_ref'  => $_POST['transaction_ref'] ?? null,
+            'bank_name'        => $_POST['bank_name'] ?? null,
+            'bank_account_no'  => $_POST['bank_account_no'] ?? null,
+            'cheque_no'        => $_POST['cheque_no'] ?? null,
+            'online_type'      => $_POST['online_type'] ?? null,
+            'attachment_paths' => !empty($mergedPaths) ? $mergedPaths : null,
         ];
 
         error_log("Transaction Data for update: " . print_r($transactionData, true));

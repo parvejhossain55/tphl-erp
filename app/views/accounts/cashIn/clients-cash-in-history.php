@@ -338,21 +338,21 @@ $show_breadcrumb = true;
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th>Date</th>
+                                <th style="white-space:nowrap;">Date</th>
                                 <th>Payment Type</th>
                                 <th>Details</th>
-                                <th>Amount</th>
-                                <th>Due Amount</th> 
-                                <th>Land Share</th>
-                                <th>Service Fee</th>
+                                <th style="white-space:nowrap;">Amount</th>
+                                <th style="white-space:nowrap;">Due Amount</th>
+                                <th style="white-space:nowrap;">Land Share</th>
+                                <th style="white-space:nowrap;">Service Fee</th>
                                 <th>Method</th>
                                 <th>Trx ID</th>
                                 <th>Status</th>
                                 <th>Verification</th>
                                 <th>Verified By</th>
-                                <th>Document</th>
+                                <th style="white-space:nowrap;min-width:90px;">Document</th>
                                 <th>Added By</th>
-                                <th>Actions</th>
+                                <th style="white-space:nowrap;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -365,7 +365,7 @@ $show_breadcrumb = true;
                                         </span>
                                     </td>
                                     <td><?php echo $transaction['payment_details']; ?></td>
-                                    <td>
+                                    <td style="white-space:nowrap;">
                                         <?php
                                             $isEmi       = ($transaction['payment_type'] === 'emi');
                                             $grossAmount = (float)($transaction['amount'] ?? 0);
@@ -374,27 +374,27 @@ $show_breadcrumb = true;
                                         ?>
                                         TK.<?= number_format($netAmount, 2) ?>
                                         <?php if ($isEmi && $serviceFee > 0): ?>
-                                            <br><span class="text-muted" style="font-size:11px;">
+                                            <br><span class="text-muted" style="font-size:11px;white-space:nowrap;">
                                                 Gross: TK.<?= number_format($grossAmount, 2) ?>
                                             </span>
                                         <?php endif; ?>
                                     </td>
-                                    <!-- ADD THIS -->
-                                     <td>
+                                    <!-- Due Amount -->
+                                     <td style="white-space:nowrap;">
                                          <?php if (!empty($transaction['due_emi_amount']) && $transaction['due_emi_amount'] > 0): ?>
                                              TK.<?php echo number_format($transaction['due_emi_amount'], 2); ?>
                                          <?php else: ?>
                                              <span class="text-muted">-</span>
                                          <?php endif; ?>
                                      </td>
-                                    <td>
+                                    <td style="white-space:nowrap;">
                                         <?php if ($transaction['land_share_amount'] > 0): ?>
                                             TK.<?php echo number_format($transaction['land_share_amount'], 2); ?>
                                         <?php else: ?>
                                             <span class="text-muted">-</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td>
+                                    <td style="white-space:nowrap;">
                                         <?php if ($transaction['service_fee'] > 0): ?>
                                             TK.<?php echo number_format($transaction['service_fee'], 2); ?>
                                         <?php else: ?>
@@ -461,7 +461,7 @@ $show_breadcrumb = true;
                                         <?php endif; ?>
                                     </td>
                                     <!-- DOCUMENT COLUMN — visible regardless of verification_status -->
-                                    <td>
+                                    <td style="white-space:nowrap;">
                                         <?php
                                             $docFiles = [];
                                             if (!empty($transaction['attachment_paths'])) {
@@ -477,11 +477,13 @@ $show_breadcrumb = true;
                                         <?php if ($docCount > 0 && is_numeric($transaction['id'])): ?>
                                             <button
                                                 type="button"
-                                                class="btn btn-sm btn-outline-primary"
+                                                class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                                                style="white-space:nowrap;"
                                                 onclick="openDocumentModal(<?= (int)$transaction['id'] ?>)"
                                                 title="View <?= $docCount ?> document(s)">
-                                                <i class="fa-light fa-file-image me-1"></i>
-                                                <?= $docCount ?> File<?= $docCount > 1 ? 's' : '' ?>
+                                                <i class="fa-light fa-file-image"></i>
+                                                <span class="badge bg-primary rounded-pill" style="font-size:11px;"><?= $docCount ?></span>
+                                                <?= $docCount > 1 ? 'Files' : 'File' ?>
                                             </button>
                                         <?php else: ?>
                                             <span class="text-muted">—</span>
@@ -734,8 +736,12 @@ $show_breadcrumb = true;
                     if (currentBookingId) {
                         window.location.href = BASE_URL + '/delete-transaction?payment_id=' + transactionId + '&booking_id=' + currentBookingId;
                     } else {
-                        Swal.fire('Error', 'Missing booking information.', 'error');
+                        Swal.fire('Error', 'Missing booking information.', 'error')
+                            .then(() => location.reload());
                     }
+                } else {
+                    // User dismissed (Cancel / Esc) — reload to stay in sync
+                    location.reload();
                 }
             });
         }
@@ -780,6 +786,9 @@ $show_breadcrumb = true;
                 }).then(result => {
                     if (result.isConfirmed) {
                         _doVerifyRequest(paymentId, action, rejectionReason);
+                    } else {
+                        // User dismissed (Cancel / Esc) — reload to stay in sync
+                        location.reload();
                     }
                 });
             } else {
@@ -821,7 +830,7 @@ $show_breadcrumb = true;
                                 }
                             }
                         }
-                        // SweetAlert2 success popup
+                        // SweetAlert2 success popup — reload after it closes
                         Swal.fire({
                             icon: res.status === 'verified' ? 'success' : 'info',
                             title: res.status === 'verified' ? 'Payment Verified!' : 'Payment Rejected',
@@ -829,14 +838,14 @@ $show_breadcrumb = true;
                             timer: 2500,
                             timerProgressBar: true,
                             showConfirmButton: false,
-                        });
+                        }).then(() => location.reload());
                     } else {
                         if (cell) cell.innerHTML = '<span class="badge bg-warning text-dark"><i class="fa-light fa-clock me-1"></i>Pending</span>';
                         Swal.fire({
                             icon: 'error',
                             title: 'Action Failed',
                             text:  res.message || 'Something went wrong. Please try again.',
-                        });
+                        }).then(() => location.reload());
                     }
                 })
                 .catch(() => {
@@ -845,7 +854,7 @@ $show_breadcrumb = true;
                         icon: 'error',
                         title: 'Network Error',
                         text:  'Could not reach the server. Please check your connection and try again.',
-                    });
+                    }).then(() => location.reload());
                 });
         }
 
