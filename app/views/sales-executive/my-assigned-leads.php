@@ -435,37 +435,30 @@
 
 
                                     <td>
-                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                          <div class="d-flex align-items-center gap-1">
 
-                                            <!-- Follow Up -->
-                                            <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
-                                                class="btn btn-primary">
+    <!-- Follow Up -->
+    <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
+        class="btn btn-primary btn-sm position-relative"
+        style="white-space:nowrap;">
+        Follow Up
+        <?php if (!empty($followUpCounts[$lead['id']])): ?>
+            <span class="action-badge" style="">
+                <?= $followUpCounts[$lead['id']] ?>
+            </span>
+        <?php endif; ?>
+    </a>
 
-                                                <span>Follow Up</span>
-
-                                                <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                                    <span class="action-badge">
-                                                        <?= $followUpCounts[$lead['id']] ?>
-                                                    </span>
-                                                <?php endif; ?>
-                                            </a>
-
-                                            <!-- Booking -->
-                                            <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
-                                                class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
-                                                <?php if (!empty($bookingCount[$lead['id']])): ?>
-                                                    <span>Booked </span>
-                                                    <span class="followup-badge">
-                                                        <?= $bookingCount[$lead['id']] ?>
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span>Booking </span>
-                                                    <span class="followup-badge">0</span>
-                                                <?php endif ?>
-                                            </a>
-
-
-                                        </div>
+    <!-- Booking -->
+    <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
+        class="btn btn-secondary btn-sm position-relative"
+        style="white-space:nowrap;">
+        <?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?>
+        <span class="action-badge" style="">
+            <?= $bookingCount[$lead['id']] ?? 0 ?>
+        </span>
+    </a>
+        </div>
                                     </td>
 
 
@@ -733,23 +726,23 @@
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>";
     // Disable right-click context menu
-    document.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-    });
+    // document.addEventListener('contextmenu', function(e) {
+    //     e.preventDefault();
+    // });
 
-    // Disable Ctrl+C, Ctrl+X, Ctrl+V
-    document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey && e.key === 'c') ||
-            (e.ctrlKey && e.key === 'x') ||
-            (e.ctrlKey && e.key === 'v')) {
-            e.preventDefault();
-        }
-    });
+    // // Disable Ctrl+C, Ctrl+X, Ctrl+V
+    // document.addEventListener('keydown', function(e) {
+    //     if ((e.ctrlKey && e.key === 'c') ||
+    //         (e.ctrlKey && e.key === 'x') ||
+    //         (e.ctrlKey && e.key === 'v')) {
+    //         e.preventDefault();
+    //     }
+    // });
 
-    // Optional: Disable drag
-    document.addEventListener('dragstart', function(e) {
-        e.preventDefault();
-    });
+    // // Optional: Disable drag
+    // document.addEventListener('dragstart', function(e) {
+    //     e.preventDefault();
+    // });
 
 
     const form = document.querySelector('form');

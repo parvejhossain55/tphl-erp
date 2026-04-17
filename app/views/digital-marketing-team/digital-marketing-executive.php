@@ -658,7 +658,7 @@
               $headerText = "Uploaded Leads";
               if ($date_age == 'today') $headerText = "Today's Uploaded Leads";
               elseif ($date_age == 'old') $headerText = "Old Uploaded Leads";
-              elseif ($date_age == '7days') $headerText = "Recent Uploaded Leads (Last 7 Days)";
+              elseif ($date_age == '7days') $headerText = "Recent Uploaded Leads (Last 15 Days)";
 
               if ($duplicates_only) $headerText .= " (Duplicates Only)";
               echo $headerText;

@@ -1053,11 +1053,11 @@ class Lead extends Model
         $params = [];
         $types = "";
 
-        if ($userId) {
-            $sql .= " AND l.created_by = ?";
-            $params[] = $userId;
-            $types .= "i";
-        }
+        // if ($userId) {
+        //     $sql .= " AND l.created_by = ?";
+        //     $params[] = $userId;
+        //     $types .= "i";
+        // }
 
         if ($teamId) {
             $sql .= " AND l.team_id = ?";
@@ -1070,9 +1070,12 @@ class Lead extends Model
             $sql .= " AND DATE(l.created_at) = CURDATE()";
         } elseif ($dateFilter === 'old') {
             $sql .= " AND DATE(l.created_at) < CURDATE()";
-        } elseif ($dateFilter === '7days') {
-            $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-        }
+        } elseif ($dateFilter === '15days') {
+    $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 15 DAY)";
+}
+        // elseif ($dateFilter === '7days') {
+        //     $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        // }
 
         // Sorting
         $order = ($sortOrder === 'ASC') ? 'ASC' : 'DESC';
