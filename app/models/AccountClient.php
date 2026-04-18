@@ -341,12 +341,13 @@ ORDER BY lb.booking_date DESC
                 lb.lead_id,
                 lb.booking_date,
                 lb.agreement_value,
-                -- booking_money_total: ALL recorded entries regardless of verification (for remaining/dropdown)
+                -- booking_money_total: all NON-REJECTED entries (pending + verified) — for remaining balance in dropdown
                 COALESCE(
                  (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
                 WHERE lp.booking_id = lb.id 
-                 AND lp.payment_type = 'booking_money'), 
+                 AND lp.payment_type = 'booking_money'
+                 AND lp.verification_status != 'rejected'), 
                  0) AS booking_money_total,
                 -- booking_money: only VERIFIED entries (for stat cards & land share calc)
                 COALESCE(
@@ -664,10 +665,13 @@ ORDER BY lb.booking_date DESC
 
         // agreement_value is the contractual booking target from lead_bookings
         $agreementValue       = (float) ($clientDetails['agreement_value']      ?? 0);
-        $bookingMoneyTotal   = (float) ($clientDetails['booking_money_total']  ?? 0); // ALL entries
-        $bookingMoneyPaid    = (float) ($clientDetails['booking_money_paid']   ?? 0); // verified only
-        // Fully paid when ALL recorded entries (pending or not) cover the agreement
-        $isBookingFullyPaid  = ($bookingMoneyTotal >= $agreementValue && $agreementValue > 0);
+        // booking_money_total: non-rejected entries (pending + verified) — used to compute remaining balance shown in form
+        $bookingMoneyTotal   = (float) ($clientDetails['booking_money_total']  ?? 0);
+        // booking_money_paid: VERIFIED-ONLY entries — the real "confirmed received" amount
+        $bookingMoneyPaid    = (float) ($clientDetails['booking_money_paid']   ?? 0);
+        // Booking is fully paid ONLY when verified amount covers the full agreement.
+        // Rejected or pending payments must NOT count toward this flag.
+        $isBookingFullyPaid  = ($bookingMoneyPaid >= $agreementValue && $agreementValue > 0);
 
         return [
             'total_price'                          => $clientDetails['total_price'],
@@ -793,7 +797,7 @@ ORDER BY lb.booking_date DESC
             }
 
             $stmt->bind_param(
-                "isdddsdsssisssi",
+                "isdddsdsssissssi",
                 $bookingId,
                 $paymentType,
                 $amount,
@@ -1168,6 +1172,14 @@ ORDER BY lb.booking_date DESC
                 $serviceFee = $newAmount * 0.10;
             }
 
+            // Encode attachment_paths for storage
+            $attachmentPathsJson = null;
+            if (!empty($transactionData['attachment_paths'])) {
+                $attachmentPathsJson = is_array($transactionData['attachment_paths'])
+                    ? json_encode($transactionData['attachment_paths'])
+                    : $transactionData['attachment_paths'];
+            }
+
             $stmt = $this->db->prepare("
                 UPDATE lead_payments SET
                     payment_type = ?,
@@ -1181,12 +1193,13 @@ ORDER BY lb.booking_date DESC
                     bank_name = ?,
                     bank_account_no = ?,
                     cheque_no = ?,
-                    online_type = ?
+                    online_type = ?,
+                    attachment_paths = ?
                 WHERE id = ?
             ");
 
             $stmt->bind_param(
-                "sdddssssssssi",
+                "sdddsssssssssi",  // 14: s d d d s s s s s s s s s i
                 $newPaymentType,
                 $newAmount,
                 $landShareAmount,
@@ -1199,6 +1212,7 @@ ORDER BY lb.booking_date DESC
                 $transactionData['bank_account_no'],
                 $transactionData['cheque_no'],
                 $transactionData['online_type'],
+                $attachmentPathsJson,
                 $paymentId
             );
 
@@ -1475,33 +1489,60 @@ ORDER BY lb.booking_date DESC
                 }
             }
 
+            // Encode attachment paths for storage
+            $attachmentPathsJson = null;
+            if (!empty($transactionData['attachment_paths'])) {
+                $attachmentPathsJson = is_array($transactionData['attachment_paths'])
+                    ? json_encode($transactionData['attachment_paths'])
+                    : $transactionData['attachment_paths'];
+            }
+
             $stmt = $this->db->prepare("
                 INSERT INTO lead_payments (
-                    booking_id, payment_type, amount, land_share_amount,
-                    payment_method, payment_status, payment_date, transaction_ref, 
-                    bank_name, bank_account_no, cheque_no, online_type, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    booking_id, payment_type, amount, land_share_amount, service_fee,
+                    payment_method, payment_status, payment_date, transaction_ref,
+                    bank_name, bank_account_no, cheque_no, online_type,
+                    attachment_paths, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             if (!$stmt) {
                 throw new Exception("Prepare failed: " . $this->db->error);
             }
 
+            // Extract to plain variables — bind_param needs pass-by-reference
+            $p_bookingId     = (int)   $transactionData['booking_id'];
+            $p_paymentType   =         $transactionData['payment_type'];
+            $p_amount        = (float) $transactionData['amount'];
+            $p_landShare     = (float) $landShareAmount;
+            $p_serviceFee    = (float) $serviceFee;
+            $p_method        =         $transactionData['payment_method']   ?? 'cash';
+            $p_status        =         $transactionData['payment_status']   ?? 'paid';
+            $p_date          =         $transactionData['payment_date']     ?? date('Y-m-d');
+            $p_txRef         =         $transactionData['transaction_ref']  ?? '';
+            $p_bankName      =         $transactionData['bank_name']        ?? '';
+            $p_bankAccNo     =         $transactionData['bank_account_no']  ?? '';
+            $p_chequeNo      =         $transactionData['cheque_no']        ?? '';
+            $p_onlineType    =         $transactionData['online_type']      ?? '';
+            $p_createdBy     = (int)   $transactionData['created_by'];
+
             $stmt->bind_param(
-                "isddssssssssi",
-                $transactionData['booking_id'],
-                $transactionData['payment_type'],
-                $transactionData['amount'],
-                $landShareAmount,
-                $transactionData['payment_method'],
-                $transactionData['payment_status'],
-                $transactionData['payment_date'],
-                $transactionData['transaction_ref'],
-                $transactionData['bank_name'],
-                $transactionData['bank_account_no'],
-                $transactionData['cheque_no'],
-                $transactionData['online_type'],
-                $transactionData['created_by']
+                "isdddsssssssssi",  // 15: i s d d d s s s s s s s s s i
+                $p_bookingId,
+                $p_paymentType,
+                $p_amount,
+                $p_landShare,
+                $p_serviceFee,
+                $p_method,
+                $p_status,
+                $p_date,
+                $p_txRef,
+                $p_bankName,
+                $p_bankAccNo,
+                $p_chequeNo,
+                $p_onlineType,
+                $attachmentPathsJson,
+                $p_createdBy
             );
 
             if (!$stmt->execute()) {
@@ -1601,6 +1642,14 @@ ORDER BY lb.booking_date DESC
                 $finalServiceFee = $finalAmount * 0.10;
             }
 
+            // Encode attachment paths
+            $attachmentPathsJson = null;
+            if (!empty($transactionData['attachment_paths'])) {
+                $attachmentPathsJson = is_array($transactionData['attachment_paths'])
+                    ? json_encode($transactionData['attachment_paths'])
+                    : $transactionData['attachment_paths'];
+            }
+
             $stmt = $this->db->prepare("
                 UPDATE lead_payments SET
                     payment_type = ?,
@@ -1613,7 +1662,8 @@ ORDER BY lb.booking_date DESC
                     bank_name = ?,
                     bank_account_no = ?,
                     cheque_no = ?,
-                    online_type = ?
+                    online_type = ?,
+                    attachment_paths = ?
                 WHERE id = ?
             ");
 
@@ -1621,20 +1671,35 @@ ORDER BY lb.booking_date DESC
                 throw new Exception("Prepare failed: " . $this->db->error);
             }
 
+            // Extract to plain variables — bind_param needs pass-by-reference
+            $u_paymentType  =         $transactionData['payment_type'];
+            $u_amount       = (float) $finalAmount;
+            $u_landShare    = (float) $landShareAmount;
+            $u_method       =         $transactionData['payment_method']   ?? 'cash';
+            $u_status       =         $transactionData['payment_status']   ?? 'paid';
+            $u_date         =         $transactionData['payment_date']     ?? date('Y-m-d');
+            $u_txRef        =         $transactionData['transaction_ref']  ?? '';
+            $u_bankName     =         $transactionData['bank_name']        ?? '';
+            $u_bankAccNo    =         $transactionData['bank_account_no']  ?? '';
+            $u_chequeNo     =         $transactionData['cheque_no']        ?? '';
+            $u_onlineType   =         $transactionData['online_type']      ?? '';
+            $u_paymentId    = (int)   $transactionData['payment_id'];
+
             $stmt->bind_param(
-                "sddssssssssi",
-                $transactionData['payment_type'],
-                $finalAmount,
-                $landShareAmount,
-                $transactionData['payment_method'],
-                $transactionData['payment_status'],
-                $transactionData['payment_date'],
-                $transactionData['transaction_ref'],
-                $transactionData['bank_name'],
-                $transactionData['bank_account_no'],
-                $transactionData['cheque_no'],
-                $transactionData['online_type'],
-                $transactionData['payment_id']
+                "sddsssssssssi",  // 13: s d d s s s s s s s s s i
+                $u_paymentType,
+                $u_amount,
+                $u_landShare,
+                $u_method,
+                $u_status,
+                $u_date,
+                $u_txRef,
+                $u_bankName,
+                $u_bankAccNo,
+                $u_chequeNo,
+                $u_onlineType,
+                $attachmentPathsJson,
+                $u_paymentId
             );
 
             if (!$stmt->execute()) {

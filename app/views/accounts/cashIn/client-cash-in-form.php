@@ -92,16 +92,14 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // rema
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- Registration - Only if Land Share is completed -->
-                                <?php if ($isLandShareCompleted): ?>
-                                    <option value="registration" data-details="false">
-                                        Registration
-                                    </option>
-                                <?php else: ?>
-                                    <option value="registration" disabled>
-                                        Registration (Requires: Land Share Completed)
-                                    </option>
-                                <?php endif; ?>
+                                <!-- Registration – always available -->
+                                <option value="registration" data-details="false"
+                                    <?= (isset($_POST['payment_type']) && $_POST['payment_type'] === 'registration') ? 'selected' : '' ?>>
+                                    Registration
+                                    <?php if ($isRegistrationPaid): ?>
+                                        (Already Paid)
+                                    <?php endif; ?>
+                                </option>
 
                                 <!-- Land Share - Requires booking fully paid AND not yet completed -->
                                 <?php if ($isBookingFullyPaid && !$isLandShareCompleted): ?>
@@ -130,14 +128,14 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // rema
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- EMI - Only if registration is paid AND land share is completed -->
-                                <?php if ($isRegistrationPaid && $isLandShareCompleted): ?>
+                                <!-- EMI - Only requires land share completed (no registration prerequisite) -->
+                                <?php if ($isLandShareCompleted): ?>
                                     <option value="emi" data-details="true">
                                         EMI (Construction Fee)
                                     </option>
                                 <?php else: ?>
                                     <option value="emi" disabled>
-                                        EMI (Requires: Registration Paid)
+                                        EMI (Requires: Land Share Completed)
                                     </option>
                                 <?php endif; ?>
                             </select>
@@ -147,17 +145,12 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // rema
                                 <?php if (!$isLandShareCompleted): ?>
                                     <span class="text-warning">
                                         <i class="fa-light fa-exclamation-triangle"></i>
-                                        Remaining Land Share: TK.<?= number_format($remainingLandShare, 2) ?>
-                                    </span>
-                                <?php elseif (!$isRegistrationPaid): ?>
-                                    <span class="text-warning">
-                                        <i class="fa-light fa-exclamation-triangle"></i>
-                                        Registration must be paid first before EMI
+                                        Remaining Land Share: TK.<?= number_format($remainingLandShare, 2) ?> — EMI will be enabled once completed
                                     </span>
                                 <?php else: ?>
                                     <span class="text-success">
                                         <i class="fa-light fa-circle-check"></i>
-                                        Ready for development charges and construction fee payments
+                                        Land Share completed. All payment types are available.
                                     </span>
                                 <?php endif; ?>
                             </small>
