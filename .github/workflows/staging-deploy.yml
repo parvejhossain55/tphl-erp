@@ -49,9 +49,9 @@ jobs:
 
              
             # Project upload in Main From Staging
-            rm -rf /var/www/html/TPHL-ERP/*
-            cp -r /var/www/staging/TPHL-ERP/* /var/www/html/TPHL-ERP/
-            cp -r /var/www/staging/TPHL-ERP/.htaccess /var/www/html/TPHL-ERP/
+            # rm -rf /var/www/html/TPHL-ERP/*
+            # cp -r /var/www/staging/TPHL-ERP/* /var/www/html/TPHL-ERP/
+            # cp -r /var/www/staging/TPHL-ERP/.htaccess /var/www/html/TPHL-ERP/
 
             echo "Deployment completed successfully"
 

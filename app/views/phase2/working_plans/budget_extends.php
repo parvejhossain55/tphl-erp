@@ -79,13 +79,7 @@
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="6" class="text-center py-5">
-                                            <div class="text-muted mb-2"><i class="fa-solid fa-folder-open fa-2x"></i></div>
-                                            No budget extension requests found.
-                                        </td>
-                                    </tr>
+                               
                                 <?php endif; ?>
                             </tbody>
                         </table>
