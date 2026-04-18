@@ -85,6 +85,11 @@ $routes = [
     "my-dashboard" => ["controller" => "UserDashboardController", "method" => "dashboard"],
     "today-leads" => ["controller" => "UserDashboardController", "method" => "todayLead"],
     "update-call-status" => ["controller" => "UserDashboardController", "method" => "updateCallStatus"],
+    "update-communication-type" => ["controller" => "UserDashboardController", "method" => "updateCommunicationStatus"],
+    "update-lead-quality" => [
+        "controller" => "UserDashboardController",
+        "method" => "updateLeadQuality"
+    ],
     "update-call-notes" => ["controller" => "UserDashboardController", "method" => "updateCallNote"],
     "today-follow-up" => ["controller" => "UserDashboardController", "method" => "todayFollowUp"],
     "upcoming-follow-up" => ["controller" => "UserDashboardController", "method" => "myUpcomingFollowLeads"],
@@ -817,9 +822,34 @@ $routes['con-land-study-store']        = ['controller' => 'Phase2\Con_PreConstru
 $routes['con-drawing-store']           = ['controller' => 'Phase2\Con_PreConstructionController', 'method' => 'storeDrawing'];
 $routes['con-soil-test-store']         = ['controller' => 'Phase2\Con_PreConstructionController', 'method' => 'storeSoilTest'];
 
+// ── Initial Estimate Budgets ──────────────────────────────────────────────
+$routes['con-estimates']              = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'index'];
+$routes['con-estimate-create']        = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'create'];
+$routes['con-estimate-store']         = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'store'];
+$routes['con-estimate-show/(\d+)']    = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'show'];
+$routes['con-estimate-edit/(\d+)']    = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'edit'];
+$routes['con-estimate-update/(\d+)']  = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'update'];
+$routes['con-estimate-approve/(\d+)'] = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'approveBudget'];
+$routes['con-estimate-cancel/(\d+)']  = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'cancelBudget'];
+
 // =============================================================================
 // END PHASE 2 ROUTES
 // =============================================================================
+
+// ── Working Plans ─────────────────────────────────────────────────────────────
+$routes['con-working-plans']              = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'index'];
+$routes['con-working-plan-create']        = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'create'];
+$routes['con-working-plan-store']         = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'store'];
+$routes['con-working-plan-edit/(\d+)']    = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'edit'];
+$routes['con-working-plan-update/(\d+)']  = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'update'];
+$routes['con-working-plan-delete/(\d+)']  = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'delete'];
+
+// ── Budget Extension Requests ─────────────────────────────────────────────────
+$routes['con-budget-extends']             = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtends'];
+$routes['con-budget-extend-create']       = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtendCreate'];
+$routes['con-budget-extend-store']        = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtendStore'];
+$routes['con-budget-extend-approve/(\d+)']= ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'approveExtend'];
+$routes['con-budget-extend-reject/(\d+)'] = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'rejectExtend'];
 
 $public_routes = [
     '',

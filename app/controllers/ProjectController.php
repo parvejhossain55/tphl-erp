@@ -78,7 +78,9 @@ class ProjectController extends Controller
             'unit_per_floor'    => $_POST['unit_per_floor'] ?? null,
             'front_road'        => $_POST['front_road'] ?? null,
             'types'             => $_POST['types'] ?? null,
-            'price_range'       => $_POST['price_range'] ?? null,
+            'price_range' => isset($_POST['price_range']) && trim($_POST['price_range']) !== ''
+                ? trim($_POST['price_range'])
+                : null,
             'project_sale_status'       => $_POST['project_sale_status'] ?? null,
             'project_status'           => $_POST['project_status'] ?? null,
             'apartment_count'   => $_POST['apartment_count'] ?? null,

@@ -16,12 +16,12 @@
                <div class="col-xxl-12">
                    <div class="card__wrapper">
                        <div class="table__wrapper table-responsive">
-                           <table class="table mb-20 multiple_tables">
+                           <table class="table mb-20 ">
                                <thead>
                                    <tr class="table__title table__sort">
 
 
-                                       <th style="min-width:60px;">S/L</th> 
+                                       <th style="min-width:60px;">S/L</th>
                                        <th class="th_1">Client/Lead Name</th>
 
                                        <!-- <th>Source Type</th> -->
@@ -34,6 +34,9 @@
                                        <th class="d-none">Interested Apartment Size</th>
                                        <th class="d-none">Interset Floor for Shop</th>
                                        <th>Best Time to Contact</th>
+                                       <th class="text-center">Call Type</th>
+                                       <th class="text-center">Communicate Type</th>
+                                       <th class="text-center">Lead Quality</th>
                                        <th class="text-center">Communicate Type</th>
                                        <th class="text-center">Note</th>
                                        <th class="text-center">Show</th>
@@ -147,6 +150,46 @@
                                                    <option value="called" <?= $lead['call_status'] == 'called' ? 'selected' : '' ?>>Called</option>
                                                    <option value="received" <?= $lead['call_status'] == 'received' ? 'selected' : '' ?>>Received</option>
                                                    <option value="not_received" <?= $lead['call_status'] == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+                                               </select>
+                                           </td>
+                                           <?php
+                                            $status = $lead['communication_type'] ?? 'Not Select';
+
+                                            $statusClass = '';
+                                            if ($status == 'WA Messaging') {
+                                                $statusClass = 'bg-received';
+                                            } elseif ($status == 'WA Conversion') {
+                                                $statusClass = 'bg-not-received';
+                                            }
+                                            ?>
+                                           <td class="call-status-cell">
+                                               <select
+                                                   class="communication-status <?= $statusClass ?> form-select form-control"
+                                                   data-id="<?= $lead['id'] ?>">
+                                                   <option value="">Select type</option>
+                                                   <option value="WA Messaging" <?= $status == 'WA Messaging' ? 'selected' : '' ?>>WA Messaging</option>
+                                                   <option value="WA Conversion" <?= $status == 'WA Conversion' ? 'selected' : '' ?>>WA conversation</option>
+
+                                               </select>
+                                           </td>
+                                           <?php
+                                            $quality = $lead['lead_quality'] ?? 'Pending';
+
+                                            $class = '';
+                                            if ($quality == 'Prospect') {
+                                                $class = 'bg-received';
+                                            } elseif ($quality == 'Not Interested') {
+                                                $class = 'bg-not-received';
+                                            }
+                                            ?>
+
+                                           <td>
+                                               <select
+                                                   class="lead-quality <?= $class ?> form-control select-form"
+                                                   data-id="<?= $lead['id'] ?>">
+                                                   <option value="Pending" <?= $quality == 'Pending' ? 'selected' : '' ?>>Pending</option>
+                                                   <option value="Prospect" <?= $quality == 'Prospect' ? 'selected' : '' ?>>Prospect</option>
+                                                   <option value="Not Interested" <?= $quality == 'Not Interested' ? 'selected' : '' ?>>Not Interested</option>
                                                </select>
                                            </td>
 
@@ -316,6 +359,7 @@
        });
    </script>
    <script>
+       const base_url = "<?= $GLOBALS['base_url'] ?>";
        document.querySelectorAll('.call-btn').forEach(btn => {
            btn.addEventListener('click', function() {
                let leadId = this.dataset.id;
@@ -345,6 +389,40 @@
                    },
                    body: 'lead_id=' + this.dataset.id + '&call_status=' + this.value
                });
+           });
+       });
+       // Communication type update
+       document.querySelectorAll('.communication-status').forEach(select => {
+           select.addEventListener('change', function() {
+               fetch(base_url + '/update-communication-type', {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/x-www-form-urlencoded'
+                   },
+                   body: 'lead_id=' + this.dataset.id + '&communication_type=' + this.value
+               });
+           });
+       });
+
+       // lead quality
+       document.querySelectorAll('.lead-quality').forEach(select => {
+           select.addEventListener('change', function() {
+
+               fetch(base_url + '/update-lead-quality', {
+                       method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/x-www-form-urlencoded'
+                       },
+                       body: 'lead_id=' + this.dataset.id + '&lead_quality=' + encodeURIComponent(this.value)
+                   })
+                   .then(res => res.json())
+                   .then(data => {
+                       console.log(data);
+                   })
+                   .catch(err => {
+                       console.error(err);
+                   });
+
            });
        });
 

@@ -40,9 +40,13 @@ if (!empty($show_breadcrumb) && $show_breadcrumb === true) {
 
 <?php require __DIR__ . "/footer.php"; ?>
 
+<?php if (!empty($page_script)): ?>
+    <script>
+        <?= $page_script ?>
+    </script>
+<?php endif; ?>
 
-?>
+<?php ?>
 <script>
  const base_url = "<?= $GLOBALS['base_url'] ?>"; 
-
 </script>

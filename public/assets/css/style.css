@@ -754,7 +754,8 @@ h6{
 
 /* Base dropdown */
 .call-status,
-.next-action {
+.next-action,
+.communication-type {
   height: 32px;
   padding: 0 28px 0 10px;
   font-size: 12px;

@@ -1253,6 +1253,57 @@
                         </ul>
                     </li>
 
+                    <!-- Module 2.0: Initial Estimate Budgets -->
+                    <li class="slide has-sub <?= isActive(['con-estimates','con-estimate-create'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-estimates','con-estimate-create'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-calculator"></i></div>
+                            <span class="sidebar__menu-label">Initial Estimate</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-estimates" class="sidebar__menu-item <?= isActive('con-estimates', $current_route) ?>">Estimate List</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-estimate-create" class="sidebar__menu-item <?= isActive('con-estimate-create', $current_route) ?>">New Estimate</a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Module 2.1: Working Plans -->
+                    <li class="slide has-sub <?= isActive(['con-working-plans','con-working-plan-create'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-working-plans','con-working-plan-create'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-calendar-check"></i></div>
+                            <span class="sidebar__menu-label">Working Plans</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-working-plans" class="sidebar__menu-item <?= isActive('con-working-plans', $current_route) ?>">Plan List</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-working-plan-create" class="sidebar__menu-item <?= isActive('con-working-plan-create', $current_route) ?>">New Plan Entry</a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Module 2.2: Budget Extension Requests -->
+                    <li class="slide has-sub <?= isActive(['con-budget-extends','con-budget-extend-create'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-budget-extends','con-budget-extend-create'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-coins"></i></div>
+                            <span class="sidebar__menu-label">Budget Extensions</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-budget-extends" class="sidebar__menu-item <?= isActive('con-budget-extends', $current_route) ?>">Extension Requests</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-budget-extend-create" class="sidebar__menu-item <?= isActive('con-budget-extend-create', $current_route) ?>">New Request</a>
+                            </li>
+                        </ul>
+                    </li>
+
                 <!-- ==================== END PHASE 2 ==================== -->
 
                 <li class="slide ">

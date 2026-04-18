@@ -90,7 +90,7 @@ foreach ($fields as $field) {
     $swimming_pool      = isset($data['swimming_pool']) ? (int)$data['swimming_pool'] : 0;
     $convention         = isset($data['convention']) ? (int)$data['convention'] : 0;
     $electricity_backup = isset($data['electricity_backup']) ? (int)$data['electricity_backup'] : 0;
-
+$price_range = !empty($data['price_range']) ? $data['price_range'] : null;
     // ======================
     // Insert Query (Total 35 Columns)
     // ======================
@@ -131,7 +131,7 @@ foreach ($fields as $field) {
         $image2,                        // 11
         $image3,                        // 12
         $data['front_road'],            // 13
-        $data['price_range'],           // 14
+        $price_range,           // 14
         $data['hover_text'],            // 15
         $data['plot_size'],             // 16 (d/s)
         $data['plot_no'],               // 17
