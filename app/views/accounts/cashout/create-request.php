@@ -55,7 +55,7 @@ $show_breadcrumb = true;
                         <!-- Project Selection (Optional) -->
                         <div class="col-md-6 mb-3">
                             <label class="form-label" for="project_id">Project(s) (Optional)</label>
-                            <select class="form-control select2" data-live-search="true" id="project_id" name="project_id[]" multiple title="Select Project(s)">
+                            <select class="form-control select2" data-placeholder="Select Project(s)" id="project_id" name="project_id[]" multiple>
                                 <?php if (!empty($projects)): ?>
                                     <?php foreach ($projects as $project): ?>
                                         <option value="<?= $project['id'] ?>" 
@@ -72,7 +72,7 @@ $show_breadcrumb = true;
                         <!-- Office Selection (Optional) -->
                         <div class="col-md-6 mb-3">
                             <label class="form-label" for="office">Office(s) (Optional)</label>
-                            <select class="form-control select2" id="office" name="office[]" multiple title="Select Office(s)">
+                            <select class="form-control select2" data-placeholder="Select Office(s)" id="office" name="office[]" multiple>
                                 <?php if (!empty($officeOptions)): ?>
                                     <?php foreach ($officeOptions as $value => $label): ?>
                                         <?php if ($value !== ''): ?>
@@ -98,12 +98,30 @@ $show_breadcrumb = true;
                         <!-- Payment Method -->
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Preferred Payment Method:</label>
-                            <select name="payment_method" class="form-control">
+                            <select name="payment_method" id="payment_method" class="form-control">
                                 <option value="cash" <?= (isset($_POST['payment_method']) && $_POST['payment_method'] == 'cash') ? 'selected' : '' ?>>Cash</option>
                                 <option value="bank" <?= (isset($_POST['payment_method']) && $_POST['payment_method'] == 'bank') ? 'selected' : '' ?>>Bank Transfer</option>
                                 <option value="cheque" <?= (isset($_POST['payment_method']) && $_POST['payment_method'] == 'cheque') ? 'selected' : '' ?>>Cheque</option>
                                 <option value="online" <?= (isset($_POST['payment_method']) && $_POST['payment_method'] == 'online') ? 'selected' : '' ?>>Online Payment</option>
                                 <option value="other" <?= (isset($_POST['payment_method']) && $_POST['payment_method'] == 'other') ? 'selected' : '' ?>>Other</option>
+                            </select>
+                        </div>
+
+                        <!-- Bank Selection (shown only for Bank Transfer) -->
+                        <div class="col-md-6 mb-3" id="bank_field" style="display:none;">
+                            <label class="form-label">Select Bank: <span class="text-danger">*</span></label>
+                            <select name="bank_id" id="bank_id" class="form-control" data-placeholder="Select Bank">
+                                <option value="">-- Select Bank --</option>
+                                <?php if (!empty($banks)): ?>
+                                    <?php foreach ($banks as $bank): ?>
+                                        <option value="<?= $bank['id'] ?>"
+                                            <?= (isset($_POST['bank_id']) && $_POST['bank_id'] == $bank['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($bank['bank_name'] . ' - ' . $bank['branch_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <option value="" disabled>No banks available</option>
+                                <?php endif; ?>
                             </select>
                         </div>
 
@@ -158,16 +176,41 @@ $show_breadcrumb = true;
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('.select2').select2({
-            placeholder: "Select options",
-            allowClear: true,
-            width: '100%'
-        });
+
+    // ── Bank field toggle ──────────────────────────────────────────────────────
+    // Uses pure JS for show/hide (jQuery not yet loaded at DOMContentLoaded time).
+    // select2 is lazily initialized later via window load event (jQuery guaranteed).
+    var paymentMethodSel = document.getElementById('payment_method');
+    var bankField        = document.getElementById('bank_field');
+    var bankSelectEl     = document.getElementById('bank_id');
+
+    window.__bankSelect2Ready = false;
+
+    function toggleBankField() {
+        if (!paymentMethodSel || !bankField) return;
+        var isBank = paymentMethodSel.value === 'bank';
+
+        if (isBank) {
+            bankField.style.display = '';
+            bankSelectEl.required   = true;
+        } else {
+            bankField.style.display = 'none';
+            bankSelectEl.required   = false;
+            // Reset: use select2 API if already inited, else native
+            if (window.__bankSelect2Ready && typeof $ !== 'undefined') {
+                $(bankSelectEl).val(null).trigger('change');
+            } else {
+                bankSelectEl.value = '';
+            }
+        }
     }
 
-    // Payment method → transaction ref placeholder
+    if (paymentMethodSel) {
+        paymentMethodSel.addEventListener('change', toggleBankField);
+        toggleBankField(); // restore POST state on load
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     const paymentMethodSelect = document.querySelector('select[name="payment_method"]');
     const transactionRefInput = document.querySelector('input[name="transaction_ref"]');
 
@@ -282,6 +325,57 @@ document.addEventListener('DOMContentLoaded', function () {
             attachmentInput.files = allFiles.files;
             renderPreview();
         }
+    }
+});
+</script>
+
+<script>
+// This block runs after jQuery + select2 are loaded (footer scripts come after view content).
+// Use window.addEventListener('load') to guarantee jQuery is fully available.
+window.addEventListener('load', function () {
+    if (typeof $ === 'undefined' || !$.fn.select2) return;
+
+    var paymentMethodSel = document.getElementById('payment_method');
+    var bankField        = document.getElementById('bank_field');
+    var bankSelectEl     = document.getElementById('bank_id');
+
+    // Re-init project/office select2 with correct width (they were inited by footer already,
+    // but re-triggering ensures correct width after layout stabilises).
+    $('#project_id, #office').each(function () {
+        if (!$(this).hasClass('select2-hidden-accessible')) {
+            $(this).select2({
+                placeholder: $(this).data('placeholder') || 'Select option(s)',
+                allowClear : true,
+                width      : '100%'
+            });
+        }
+    });
+
+    // Lazy-init bank select2 only when field becomes visible (to avoid width=0 bug)
+    function initBankSelect2IfNeeded() {
+        if (!bankField || bankField.style.display === 'none') return;
+        if ($(bankSelectEl).hasClass('select2-hidden-accessible')) return;
+
+        $(bankSelectEl).select2({
+            placeholder: 'Select Bank',
+            allowClear : true,
+            width      : '100%'
+        });
+        window.__bankSelect2Ready = true;
+    }
+
+    if (paymentMethodSel) {
+        // If bank is already selected on page load (e.g. POST fail), init immediately
+        if (paymentMethodSel.value === 'bank') {
+            initBankSelect2IfNeeded();
+        }
+
+        paymentMethodSel.addEventListener('change', function () {
+            if (this.value === 'bank') {
+                // Small delay so display:'' has applied before select2 measures width
+                setTimeout(initBankSelect2IfNeeded, 50);
+            }
+        });
     }
 });
 </script>

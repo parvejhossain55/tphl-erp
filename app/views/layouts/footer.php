@@ -185,6 +185,7 @@
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/fullcalendar.min.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/ion.rangeSlider.min.js"></script>
 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.14.0-beta3/js/bootstrap-select.min.js"></script>
         <!-- ✅ Custom scripts LAST -->
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/plugins/custom.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/custom-tagify.js"></script>
@@ -204,8 +205,10 @@
     $(parent).find('.select2').each(function () {
         if ($(this).hasClass('select2-hidden-accessible')) return;
 
+        var placeholder = $(this).data('placeholder') || 'Select option';
+
         $(this).select2({
-            placeholder: "Select User",
+            placeholder: placeholder,
             allowClear: true,
             width: '100%',
             dropdownParent: $(this).parent() // 🔥 IMPORTANT

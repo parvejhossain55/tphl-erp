@@ -23,8 +23,8 @@ public function createRequest($data)
         // Insert into cashout_requests
         $sql = "INSERT INTO {$this->table} 
                 (requested_by, purpose_paid_to, amount, description, payment_method, 
-                 transaction_ref, due_amount, status, attachment_path, project_id, office, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                 transaction_ref, due_amount, status, attachment_path, project_id, office, bank_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
         $stmt = $this->db->prepare($sql);
 
@@ -35,10 +35,11 @@ public function createRequest($data)
         // Prepare parameters - ensure null values are handled correctly
         $projectId = !empty($data['project_id']) ? $data['project_id'] : null;
         $office = !empty($data['office']) ? $data['office'] : null;
+        $bankId = !empty($data['bank_id']) ? (int)$data['bank_id'] : null;
         
-        // Bind parameters including project_id and office
+        // Bind parameters including project_id, office and bank_id
         $stmt->bind_param(
-            "isdssssssss",
+            "isdssssssssi",
             $data['requested_by'],
             $data['purpose_paid_to'],
             $data['amount'],
@@ -49,7 +50,8 @@ public function createRequest($data)
             $status,
             $data['attachment_path'],
             $projectId,
-            $office
+            $office,
+            $bankId
         );
 
         if (!$stmt->execute()) {
