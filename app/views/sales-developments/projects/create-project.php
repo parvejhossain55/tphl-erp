@@ -113,14 +113,29 @@ $show_breadcrumb = true;
                 </div>
             <!-- Project wise Status -->
                 <div class="col-xl-6">
-                    <label>Project Current Status</label>
+                    <label>Project Sale Status</label>
                     <select name="project_sale_status" class="form-control">
-                        <option value="">Select Project Current Status</option>
+                        <option value="">Select Sale Status</option>
                         <option value="Sold Out">Sold Out</option>
                         <option value="On Sale">On Sale</option>
                         <option value="Upcoming">Upcoming</option>
                     </select>
                 </div>
+
+                <!-- Project Construction Status -->
+                <div class="col-xl-6">
+                    <label>Project Construction Status</label>
+                    <select name="project_status" class="form-control" id="project_status_create">
+                        <option value="">Select Construction Status</option>
+                        <option value="Planning">Planning</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="On Hold">On Hold</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Delayed">Delayed</option>
+                    </select>
+                </div>
+
                 <!-- Front Road -->
                 <div class="col-xxl-6 col-md-6 col-12">
                     <label>Front Road</label>

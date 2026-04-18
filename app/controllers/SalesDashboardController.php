@@ -30,7 +30,9 @@ class SalesDashboardController extends Controller
     }
 
     public function index()
+
     {
+        
         $roleId = $_SESSION['user']['role_id'] ?? null;
         $teamId = $_SESSION['user']['team_id'] ?? null;
 

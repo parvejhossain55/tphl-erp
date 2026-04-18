@@ -105,8 +105,7 @@ public function create($data)
             LEFT JOIN lead_bookings lb ON p.booking_id = lb.id
             LEFT JOIN users us On us.id = p.verified_by
             WHERE p.booking_id = ?
-
-            ORDER BY p.id DESC
+            ORDER BY p.id ASC
         ");
         $stmt->bind_param("i", $booking_id);
         $stmt->execute();

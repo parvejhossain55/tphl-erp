@@ -373,7 +373,7 @@
         <div class="col-xxl-2 col-md-3 col-lg-3 col-sm-4 col-6">
           <div class="plat-card">
             <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="fw-semibold" style="font-size:.85rem;"><?= htmlspecialchars($pb['source_name'] ?? 'Unknown Platform') ?></span>
+              <span class="fw-semibold" style="font-size:.85rem;"><?= htmlspecialchars($pb['platform_name'] ?? 'Unknown Platform') ?></span>
             </div>
             <div class="plat-budget">৳<?= number_format($pb['budget']) ?></div>
             <div class="plat-meta">Spent: ৳<?= number_format($pb['spent']) ?> (<?= $percent ?>%)</div>
@@ -384,51 +384,118 @@
         </div>
       <?php endforeach; ?>
     </div>
+    <!-- CPL Breakdown Section -->
+    <div class="row mt-4 mb-2">
+      <div class="col-12">
+        <div class="card__wrapper shadow-sm border-0" style="background:#fff;">
+          <div class="section-title mb-4" style="color:#1a2744; border-bottom:1px solid #e8ecf3; padding-bottom:12px;">
+            <i class="bi bi-funnel-fill me-2 text-primary" style="font-size:1.1rem;"></i>Cost Per Lead (CPL) & Source Breakdown
+          </div>
+          
+          <div class="row g-4">
+            <?php if (!empty($cplData)): ?>
+              <?php foreach ($cplData as $parent => $cpl): ?>
+                <?php if (empty($cpl['budget']) && empty($cpl['total_leads']) && $parent !== 'Other') continue; ?>
+                <?php if ($parent === 'Other' && empty($cpl['total_leads'])) continue; ?>
+                
+                <div class="col-md-6 col-lg-4">
+                  <div class="p-3 rounded-3 hover-shadow transition-all" style="border:1px solid #e8ecf3; background:#fbfcfe;">
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h6 class="mb-0 fw-bold d-flex align-items-center gap-2" style="font-size:.95rem;">
+                         <?php 
+                          $icon = '<i class="bi bi-controller text-secondary"></i>';
+                          if($parent === 'Meta') $icon = '<i class="bi bi-meta text-primary"></i>';
+                          elseif($parent === 'Google') $icon = '<i class="bi bi-google text-danger"></i>';
+                          elseif($parent === 'LinkedIn') $icon = '<i class="bi bi-linkedin text-info"></i>';
+                          echo $icon . htmlspecialchars($parent);
+                         ?>
+                      </h6>
+                      <span class="badge bg-primary-soft text-primary px-2 py-1" style="font-size:.75rem;">
+                        ৳ <?= htmlspecialchars($cpl['cpl']) ?> / lead
+                      </span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center small text-muted mb-3 pb-2" style="border-bottom:1px dashed #cfd8dc;">
+                      <div><i class="bi bi-cash me-1"></i>Spent: <strong class="text-dark">৳<?= number_format($cpl['spent'] ?? 0) ?></strong></div>
+                      <div><i class="bi bi-people me-1"></i>Leads: <strong class="text-dark"><?= $cpl['total_leads'] ?></strong></div>
+                    </div>
+
+                    <div class="source-list ps-1">
+                      <?php if (empty($cpl['sources'])): ?>
+                        <div class="text-muted small text-center py-2"><i class="bi bi-info-circle me-1"></i>No leads generated yet.</div>
+                      <?php else: ?>
+                        <div class="mb-2 text-muted fw-bold" style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em;">Platform Sources</div>
+                        <?php foreach ($cpl['sources'] as $src): ?>
+                          <div class="d-flex justify-content-between align-items-center mb-1 py-1 px-2 rounded" style="background:#fff; border:1px solid #f0f3f8;">
+                            <span class="small fw-semibold text-secondary" style="text-transform: capitalize; font-size:.78rem;">
+                              <?= htmlspecialchars($src['raw_platform']) ?>
+                            </span>
+                            <span class="badge bg-light text-dark border shadow-sm"><?= $src['leads'] ?></span>
+                          </div>
+                        <?php endforeach; ?>
+                      <?php endif; ?>
+                    </div>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            <?php else: ?>
+                <div class="col-12 text-center text-muted py-4">No CPL Data or Budget recorded for this month.</div>
+            <?php endif; ?>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+
   </div><!-- /tab-platform -->
 
   <!-- ── TAB: Add Budget ── -->
-  <div id="tab-add" style="display:none;">
+<div id="tab-add" style="display:none;">
     <div class="card__wrapper mb-4">
-      <div class="section-title mb-3"><i class="bi bi-plus-circle-fill me-2 text-primary"></i>Add / Update Platform Budget</div>
-      <form action="<?= $GLOBALS['base_url'] ?>/store-platform-budget" method="POST">
-        <div class="row g-2 add-row align-items-end">
-          <div class="col-xl-3 col-md-3 col-6">
-            <label class="form-label fw-semibold" style="font-size:.78rem;">Platform Source</label>
-            <select class="form-select w-100" name="source_id" required>
-              <option value="">Select Platform</option>
-              <?php foreach ($sources as $source): ?>
-                <option value="<?= $source['id'] ?>"><?= htmlspecialchars($source['name']) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="col-xl-3 col-md-3 col-6">
-            <label class="form-label fw-semibold" style="font-size:.78rem;">Select Month</label>
-            <input type="month" name="month" class="form-control" value="<?= htmlspecialchars($budget_month) ?>" required />
-          </div>
-          <div class="col-xl-2 col-md-2 col-6">
-            <label class="form-label fw-semibold" style="font-size:.78rem;">Budget Limit (৳)</label>
-            <input type="number" name="budget" step="0.01" class="form-control" placeholder="e.g. 150000" required />
-          </div>
-          <div class="col-xl-2 col-md-2 col-6">
-            <label class="form-label fw-semibold" style="font-size:.78rem;">Spent Amount (৳)</label>
-            <input type="number" name="spent" step="0.01" class="form-control" placeholder="e.g. 80000" required />
-          </div>
-          <div class="col-xl-2 col-md-2 col-12">
-            <button type="submit" class="btn-brand w-100" style="padding:8px 0;border-radius:8px;font-size:.82rem;font-weight:600;background:#1a2744;color:#fff;border:none;cursor:pointer;">
-              <i class="bi bi-plus-lg me-1"></i>Add Budget
-            </button>
-          </div>
+        <div class="section-title mb-3">
+            <i class="bi bi-plus-circle-fill me-2 text-primary"></i>Add / Update Platform Budget
         </div>
-      </form>
+        
+        <!-- Add New Budget Form -->
+        <form action="<?= $GLOBALS['base_url'] ?>/store-platform-budget" method="POST">
+            <div class="row g-2 add-row align-items-end">
+                <div class="col-xl-3 col-md-3 col-6">
+                    <label class="form-label fw-semibold" style="font-size:.78rem;">Platform Name</label>
+                    <select class="form-select w-100" name="platform_name" required>
+                        <option value="">Select Platform</option>
+                        <option value="Meta">Meta (Facebook/Instagram)</option>
+                        <option value="Google">Google (Ads/YouTube)</option>
+                        <option value="LinkedIn">LinkedIn</option>
+                    </select>
+                </div>
+                <div class="col-xl-3 col-md-3 col-6">
+                    <label class="form-label fw-semibold" style="font-size:.78rem;">Select Month</label>
+                    <input type="month" name="month" class="form-control" value="<?= htmlspecialchars($budget_month) ?>" required />
+                </div>
+                <div class="col-xl-2 col-md-2 col-6">
+                    <label class="form-label fw-semibold" style="font-size:.78rem;">Budget Limit (৳)</label>
+                    <input type="number" name="budget" step="0.01" class="form-control" placeholder="e.g. 150000" required />
+                </div>
+                <div class="col-xl-2 col-md-2 col-6">
+                    <label class="form-label fw-semibold" style="font-size:.78rem;">Spent Amount (৳)</label>
+                    <input type="number" name="spent" step="0.01" class="form-control" placeholder="e.g. 80000" required />
+                </div>
+                <div class="col-xl-2 col-md-2 col-12">
+                    <button type="submit" class="btn-brand w-100" style="padding:8px 0;border-radius:8px;font-size:.82rem;font-weight:600;background:#1a2744;color:#fff;border:none;cursor:pointer;">
+                        <i class="bi bi-plus-lg me-1"></i>Add Budget
+                    </button>
+                </div>
+            </div>
+        </form>
     </div>
-  </div><!-- /tab-add -->
-
+</div>
   <!-- ── TAB: Budget Log ── -->
-  <div id="tab-log" style="display:none;">
+<div id="tab-log" style="display:none;">
     <div class="card border-0 shadow-sm mb-4" style="border-radius:var(--card-radius);">
       <div class="card-header bg-white border-bottom fw-bold d-flex justify-content-between align-items-center py-3">
         <span style="font-size:.88rem;color:#1a2744;"><i class="bi bi-clock-history me-2 text-primary"></i>Monthly Budget Log</span>
-        <span class="badge bg-primary-soft text-primary rounded-pill">8 Entries</span>
+        <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($platformBudgets ?? []) ?> Entries</span>
       </div>
       <div class="table__wrapper table-responsive">
         <table class="table mb-0">
@@ -455,14 +522,34 @@
                 $badgeClass = 'bg-success-soft text-success-dark';
                 if ($percent > 85) $badgeClass = 'bg-danger-soft text-danger-dark';
                 elseif ($percent > 60) $badgeClass = 'bg-warn-soft text-warn-dark';
+                
+                // Platform icon based on platform_name
+                $platformIcon = '';
+                switch($pb['platform_name']) {
+                    case 'Meta':
+                        $platformIcon = '<i class="bi bi-meta me-1"></i>';
+                        break;
+                    case 'Google':
+                        $platformIcon = '<i class="bi bi-google me-1"></i>';
+                        break;
+                    case 'LinkedIn':
+                        $platformIcon = '<i class="bi bi-linkedin me-1"></i>';
+                        break;
+                    default:
+                        $platformIcon = '<i class="bi bi-graph-up me-1"></i>';
+                }
                 ?>
                 <tr>
-                  <td><?= htmlspecialchars($pb['source_name'] ?? 'Unknown Platform') ?></td>
+                  <td><?= $platformIcon ?> <?= htmlspecialchars($pb['platform_name'] ?? 'Unknown Platform') ?></td>
                   <td><?= date('F Y', strtotime($pb['month'])) ?></td>
                   <td class="text-end fw-semibold"><?= number_format($pb['budget']) ?></td>
                   <td class="text-end"><?= number_format($pb['spent']) ?></td>
-                  <td class="text-end text-success fw-semibold"><?= number_format($rem) ?></td>
-                  <td class="text-end pe-4"><span class="badge <?= $badgeClass ?> px-2 py-1 rounded-pill" style="font-size:.72rem;"><?= $percent ?>% used</span></td>
+                  <td class="text-end <?= $rem < 0 ? 'text-danger' : 'text-success' ?> fw-semibold"><?= number_format($rem) ?></td>
+                  <td class="text-end pe-4">
+                    <span class="badge <?= $badgeClass ?> px-2 py-1 rounded-pill" style="font-size:.72rem;">
+                      <?= $percent ?>% used
+                    </span>
+                  </td>
                 </tr>
               <?php endforeach; ?>
             <?php endif; ?>

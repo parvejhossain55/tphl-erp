@@ -804,7 +804,7 @@
                         </div>
 
                         <div class="field-group">
-                            <label class="field-label">Land Share Price</label>
+                            <label class="field-label">Unit price (BDT)(Approx.changable)</label>
                             <input type="text" class="field-input numeric" value="<?= number_format($invoice['price_value'], 2) ?>">
                         </div>
 
