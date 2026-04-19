@@ -26,7 +26,7 @@
 --   2.  Operations Operators      (contractors / workers — no system login)
 --   3.  Materials & Inventory     (materials, warehouses, stocks, stock_movements)
 --   4.  BOQ                       (boq_master, boq_items)
---   5.  Working Plan & Budget     (project_working_plan, budget_extend_requests)
+--   5.  Working Plan & Budget     (project_working_plans, budget_extend_requests)
 --   6a. Procurement — Vendors     (vendors)
 --   6b. Purchase Requests         (purchase_requests, purchase_request_items)
 --   6c. Quotations / RFQ          (quotations, quotation_items)
@@ -638,6 +638,8 @@ CREATE TABLE IF NOT EXISTS `con_material_issue_items` (
 CREATE TABLE IF NOT EXISTS `target_fixed` (
   `id`                   INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `project_id`           INT(11)          NOT NULL,
+  `work_plan_id`         INT(11)          NOT NULL,
+  `target_title`         VARCHAR(255)     NOT NULL,
   `user_id`              INT(11)          NOT NULL,
   `year`                 SMALLINT UNSIGNED NOT NULL,
   `month`                TINYINT UNSIGNED  NOT NULL,
