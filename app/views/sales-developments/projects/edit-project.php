@@ -146,6 +146,13 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
                 </div>
 
+                <!-- Service Charge Per EMI -->
+                <div class="col-xl-6">
+                    <label>Service Charge <span class="text-muted">(per EMI %)</span></label>
+                    <input type="number" step="0.01" min="0" name="service_charge_per_emi" class="form-control"
+                        value="<?= $project['service_charge_per_emi'] ?? '' ?>" placeholder="e.g. 1.5">
+                </div>
+
                 <!-- Project Wise Tag -->
                 <div class="col-xl-4">
                     <label>Project Sale Status</label>
@@ -158,23 +165,6 @@ if (!empty($project['floor_wise_unit_meta'])) {
                             <option value="<?= $tag ?>"
                                 <?= (($project['project_sale_status'] ?? '') === $tag) ? 'selected' : '' ?>>
                                 <?= $tag ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <!-- Project Construction Status -->
-                <div class="col-xl-4">
-                    <label>Project Construction Status</label>
-                    <select name="project_status" class="form-control" id="project_status_edit">
-                        <option value="">Select Construction Status</option>
-                        <?php
-                        $statuses = ['Planning', 'In Progress', 'On Hold', 'Completed', 'Cancelled', 'Delayed'];
-                        foreach ($statuses as $status):
-                        ?>
-                            <option value="<?= $status ?>"
-                                <?= (($project['project_status'] ?? '') === $status) ? 'selected' : '' ?>>
-                                <?= $status ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

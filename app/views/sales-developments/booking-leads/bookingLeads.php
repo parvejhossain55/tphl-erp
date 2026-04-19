@@ -223,11 +223,12 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                             </button>
 
                                             <!-- Payments -->
-                                            <?php if (
-                                                $or['approval_status'] === 'approved' ||
-                                                $or['approval_status'] === 'not_required'||
-                                                $or['approval_status'] === 'partial'
-                                            ): ?>
+                                            <?php if ($or['approval_status'] === 'rejected'): ?>
+                                                <button class="btn btn-sm btn-danger" disabled
+                                                    title="Discount rejected by management">
+                                                    Rejected
+                                                </button>
+                                            <?php else: ?>
                                                 <?php if (isset($or['payment_status']) && $or['payment_status'] === 'paid'): ?>
                                                     <a href="<?= $GLOBALS['base_url'] ?>/payments-booking/<?= $or['id'] ?>"
                                                         class="btn btn-sm btn-info">
@@ -239,18 +240,11 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                         Booking Payment
                                                     </a>
                                                 <?php endif; ?>
-
-                                            <?php elseif ($or['approval_status'] === 'pending'): ?>
-                                                <button class="btn btn-sm btn-secondary" disabled
-                                                    title="Waiting for management approval">
-                                                    Payments Locked
-                                                </button>
-
-                                            <?php elseif ($or['approval_status'] === 'rejected'): ?>
-                                                <button class="btn btn-sm btn-danger" disabled
-                                                    title="Discount rejected by management">
-                                                    Rejected
-                                                </button>
+                                                <?php if ($or['approval_status'] === 'pending'): ?>
+                                                    <br><small class="text-warning mt-1 d-block" style="font-size:11px;">
+                                                        <i class="fa-solid fa-clock"></i> Discount Pending Approval
+                                                    </small>
+                                                <?php endif; ?>
                                             <?php endif; ?>
 
                                         </div>

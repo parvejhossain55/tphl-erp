@@ -93,14 +93,17 @@ public function indexTwo($bookingId = null)
     }
 
     // Get payment summary statistics
-    $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+    $paymentSummary  = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+    $outstandingDues = $this->clientModel->getOutstandingEmiDues($bookingId);
 
     $this->view("accounts/cashIn/clients-cash-in-history", [
-        "current_route" => "clients-cash-in-history",
-        "page_title" => "Transaction History - " . $clientDetails['client_name'],
-        "clientDetails" => $clientDetails,
-        "transactions" => $transactions,
-        "paymentSummary" => $paymentSummary
+        "current_route"   => "clients-cash-in-history",
+        "page_title"      => "Transaction History - " . $clientDetails['client_name'],
+        "clientDetails"   => $clientDetails,
+        "transactions"    => $transactions,
+        "paymentSummary"  => $paymentSummary,
+        "outstandingDues" => $outstandingDues,
+        "accountModel"    => $this->clientModel
     ]);
 }
  public function getClientLands($leadId = null)
@@ -380,6 +383,7 @@ public function addCedTransaction()
         'cheque_no'       => $_POST['cheque_no'] ?? null,
         'online_type'     => $_POST['online_type'] ?? null,
         'attachment_paths' => $uploadedPaths ?: null,
+        'bulk_emi_discount'=> isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
         'created_by'      => $_SESSION['user']['id'] ?? 1
     ];
 
@@ -543,11 +547,21 @@ public function addTransaction()
         // CHECK 0: Land share must be complete before most payment types
         // Exceptions: land_share, booking_money, and registration are always allowed
         $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
-        $landShareExempt = ['land_share', 'booking_money', 'registration'];
+        $landShareExempt = ['land_share', 'booking_money', 'registration', 'emi_due_settlement'];
         if (!in_array($paymentType, $landShareExempt) && empty($paymentSummary['is_land_share_completed'])) {
             setError("Land share must be fully paid before adding " . ucfirst(str_replace('_', ' ', $paymentType)) . " payments.");
             header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
             exit;
+        }
+
+        // CHECK: EMI due settlement requires a parent payment ID
+        if ($paymentType === 'emi_due_settlement') {
+            $parentPaymentId = !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : 0;
+            if (!$parentPaymentId) {
+                setError("EMI settlement requires selecting the original EMI payment.");
+                header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
+                exit;
+            }
         }
 
         // CHECK: EMI requires land share to be fully completed
@@ -580,41 +594,40 @@ public function addTransaction()
 
         // Prepare transaction data
         $transactionData = [
-            'booking_id'     => $bookingId,
-            'payment_type'   => $paymentType,
-            'amount'         => $_POST['amount'] ?? 0,
-            'payment_method' => $_POST['payment_method'] ?? 'cash',
-            'payment_status' => $_POST['payment_status'] ?? 'paid',
-            'payment_date'   => $_POST['payment_date'] ?? date('Y-m-d'),
-            'transaction_ref'=> $_POST['transaction_ref'] ?? null,
-            'bank_id'        => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
-            'bank_account_no'=> $_POST['bank_account_no'] ?? null,
-            'cheque_no'      => $_POST['cheque_no'] ?? null,
-            'online_type'    => $_POST['online_type'] ?? null,
+            'booking_id'       => $bookingId,
+            'payment_type'     => $paymentType,
+            'amount'           => $_POST['amount'] ?? 0,
+            'payment_method'   => $_POST['payment_method'] ?? 'cash',
+            'payment_status'   => $_POST['payment_status'] ?? 'paid',
+            'payment_date'     => $_POST['payment_date'] ?? date('Y-m-d'),
+            'transaction_ref'  => $_POST['transaction_ref'] ?? null,
+            'bank_id'          => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
+            'bank_account_no'  => $_POST['bank_account_no'] ?? null,
+            'cheque_no'        => $_POST['cheque_no'] ?? null,
+            'online_type'      => $_POST['online_type'] ?? null,
             'attachment_paths' => $uploadedPaths ?: null,
-            'created_by'     => $_SESSION['user']['id'] ?? 1
+            'due_emi_amount'   => isset($_POST['due_emi_amount']) ? (float)$_POST['due_emi_amount'] : 0,
+            'parent_payment_id'=> !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null,
+            'settlement_type'  => !empty($_POST['settlement_type']) ? $_POST['settlement_type'] : null,
+            'bulk_emi_discount'=> isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
+            'created_by'       => $_SESSION['user']['id'] ?? 1
         ];
 
-        // EMI schedule data (only if payment type is EMI)
+        // EMI schedule data (only if payment type is EMI, not settlement)
         $emiScheduleData = null;
         if ($transactionData['payment_type'] === 'emi') {
             $emiScheduleData = [
-                'due_emi_amount' => $_POST['due_emi_amount'] ?? 0
+                'due_emi_amount' => $transactionData['due_emi_amount']
             ];
-
-            // UPDATED VALIDATION: Only require due amount for partially_paid status
-            if ($transactionData['payment_status'] === 'partially_paid') {
-                if ( $emiScheduleData['due_emi_amount'] <= 0) {
-                    setError("Partially Paid status requires a due amount greater than 0");
-                    header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
-                    exit;
-                }
-            }
-            // For 'paid' status, due_emi_amount can be 0 or null - no validation needed
         }
 
-        // Add transaction with EMI schedule if applicable
-        $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
+        // Route to correct model method
+        if ($transactionData['payment_type'] === 'emi_due_settlement') {
+            // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id are handled
+            $result = $this->clientModel->addTransaction($transactionData, null);
+        } else {
+            $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
+        }
 
         if ($result['success']) {
             setSuccess($result['message']);
@@ -818,24 +831,52 @@ public function updateTransaction()
 }
 
     /**
-     * Delete transaction
+     * Delete a transaction (and its EMI schedule row if applicable).
+     * Accessible from both Accounts and CED history pages.
      */
     public function deleteTransaction()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
-        $paymentId = $_GET['payment_id'] ?? null;
-        $bookingId = $_GET['booking_id'] ?? null;
+        $paymentId = isset($_GET['payment_id']) ? (int) $_GET['payment_id'] : 0;
+        $bookingId = isset($_GET['booking_id']) ? (int) $_GET['booking_id'] : 0;
 
         if (!$paymentId || !$bookingId) {
-            setError("Invalid payment or booking ID");
+            setError("Invalid request: missing payment or booking ID.");
             header("Location: {$GLOBALS['base_url']}/clients-cash-in");
             exit;
         }
 
-        $result = $this->clientModel->deleteTransaction($paymentId);
+        // Determine redirect based on role
+        $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        $isCED = ($roleId === 5);
+        $isAccounts = in_array($roleId, [1, 3, 6]);
+        $redirectUrl = $isCED
+            ? "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}"
+            : "{$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}";
+
+        if (!$isCED && !$isAccounts) {
+            setError("You do not have permission to delete transactions.");
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        // CED can only delete their own unverified entries
+        if ($isCED) {
+            $tx = $this->clientModel->getTransactionById($paymentId);
+            if (!$tx) {
+                setError("Transaction not found.");
+                header("Location: {$redirectUrl}");
+                exit;
+            }
+            if (($tx['verification_status'] ?? '') === 'verified') {
+                setError("Cannot delete a verified transaction. Contact Accounts.");
+                header("Location: {$redirectUrl}");
+                exit;
+            }
+        }
+
+        $result = $this->clientModel->deleteTransactionWithCleanup($paymentId, $bookingId);
 
         if ($result['success']) {
             setSuccess($result['message']);
@@ -843,7 +884,7 @@ public function updateTransaction()
             setError($result['message']);
         }
 
-        header("Location: {$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}");
+        header("Location: {$redirectUrl}");
         exit;
     }
 

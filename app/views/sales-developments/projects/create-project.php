@@ -111,6 +111,12 @@ $show_breadcrumb = true;
                         <option value="Above 5 Crore BDT">Above 5 Crore BDT</option>
                     </select>
                 </div>
+
+                <!-- Service Charge Per EMI -->
+                <div class="col-xl-6">
+                    <label>Service Charge <span class="text-muted">(per EMI %)</span></label>
+                    <input type="number" step="0.01" min="0" name="service_charge_per_emi" class="form-control" placeholder="e.g. 1.5">
+                </div>
             <!-- Project wise Status -->
                 <div class="col-xl-6">
                     <label>Project Sale Status</label>
@@ -119,20 +125,6 @@ $show_breadcrumb = true;
                         <option value="Sold Out">Sold Out</option>
                         <option value="On Sale">On Sale</option>
                         <option value="Upcoming">Upcoming</option>
-                    </select>
-                </div>
-
-                <!-- Project Construction Status -->
-                <div class="col-xl-6">
-                    <label>Project Construction Status</label>
-                    <select name="project_status" class="form-control" id="project_status_create">
-                        <option value="">Select Construction Status</option>
-                        <option value="Planning">Planning</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="On Hold">On Hold</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                        <option value="Delayed">Delayed</option>
                     </select>
                 </div>
 

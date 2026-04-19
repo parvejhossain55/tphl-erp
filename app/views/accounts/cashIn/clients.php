@@ -148,8 +148,8 @@ $show_breadcrumb = true;
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr><td colspan="11" class="text-center text-muted py-4">No clients found</td></tr>
+
+                
                         <?php endif; ?>
                     </tbody>
                 </table>
