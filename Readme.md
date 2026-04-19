@@ -578,6 +578,7 @@ CREATE TABLE IF NOT EXISTS `vendor_penalties` (
   `id`                     INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `vendor_id`              INT(11) UNSIGNED NOT NULL,
   `is_deducted_from_bill`        TINYINT(1)       NOT NULL DEFAULT 0,    
+  `payment_request_id`      INT(11) UNSIGNED NOT NULL,
   `purchase_order_id`      INT(11) UNSIGNED NOT NULL,
   `receiving_id`           INT(11) UNSIGNED DEFAULT NULL COMMENT 'Link to specific delivery',
   `penalty_category`       ENUM('Late Delivery', 'Quality Issue', 'Shortage', 'Others') NOT NULL,
@@ -608,6 +609,8 @@ CREATE TABLE IF NOT EXISTS `vendor_ratings` (
 CREATE TABLE `con_material_issues` (
   `id`            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `project_id`    INT NOT NULL,
+  `target_id`     INT UNSIGNED NOT NULL,
+  `work_plan_id`  INT UNSIGNED NOT NULL,
   `warehouse_id`  INT UNSIGNED NOT NULL,
   `material_id`   INT UNSIGNED NOT NULL,
   `quantity`      DECIMAL(12,3) NOT NULL,
@@ -695,6 +698,7 @@ CREATE TABLE IF NOT EXISTS `daily_progress_reports` (
 CREATE TABLE IF NOT EXISTS `contractor_bill_requests` (
   `id`               INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `project_id`       INT(11)          NOT NULL,
+  `target_id`        INT(11)          NOT NULL,
   `operator_id`      INT(11) UNSIGNED NOT NULL,
   `created_by`       INT(11)          NOT NULL,
   `bill_date`        DATE             NOT NULL,
@@ -721,24 +725,28 @@ CREATE TABLE IF NOT EXISTS `contractor_bill_requests` (
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS `vendor_payment_requests` (
-  `id`                INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `vendor_id`         INT(11) UNSIGNED NOT NULL,
-  `purchase_order_id` INT(11) UNSIGNED NOT NULL,
-  `created_by`        INT(11)          NOT NULL,
-  `invoice_number`    VARCHAR(100)     DEFAULT NULL,
-  `invoice_amount`    DECIMAL(16,4)    NOT NULL,
-  `delivery_verified` TINYINT(1)       NOT NULL DEFAULT 0,
-  `qc_verified`       TINYINT(1)       NOT NULL DEFAULT 0,
-  `status`            ENUM('Draft','Submitted','Approved','Rejected','Paid') NOT NULL DEFAULT 'Draft',
-  `approved_amount`   DECIMAL(16,4)    DEFAULT NULL,
-  `created_at`        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`        TIMESTAMP        NULL ON UPDATE CURRENT_TIMESTAMP,
+  `id`                 INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `vendor_id`          INT(11) UNSIGNED NOT NULL,
+  `purchase_order_id`  INT(11) UNSIGNED NOT NULL,
+  `invoice_number`     VARCHAR(100)     DEFAULT NULL,
+  `invoice_amount`     DECIMAL(16,4)    NOT NULL COMMENT 'Vendor actual bill',
+  
+  -- পেনাল্টি অ্যাডজাস্টমেন্ট
+  `penalty_amount`     DECIMAL(16,4)    DEFAULT 0.0000 COMMENT 'Sum of all adjusted penalties',
+  `net_payable_amount` DECIMAL(16,4)    DEFAULT 0.0000 COMMENT 'invoice_amount - penalty_amount',
+  
+  `delivery_verified`  TINYINT(1)       NOT NULL DEFAULT 0,
+  `qc_verified`        TINYINT(1)       NOT NULL DEFAULT 0,
+  `status`             ENUM('Draft','Submitted','Approved','Rejected','Paid') NOT NULL DEFAULT 'Draft',
+  `approved_amount`    DECIMAL(16,4)    DEFAULT NULL COMMENT 'Final amount approved by Accounts',
+  
+  `created_by`         INT(11)          NOT NULL,
+  `created_at`         TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`         TIMESTAMP        NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_vpr_vendor`     (`vendor_id`),
-  KEY `idx_vpr_po`         (`purchase_order_id`),
-  KEY `idx_vpr_created_by` (`created_by`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
+  KEY `idx_vpr_po`         (`purchase_order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 -- =============================================================================
 -- 13. OPERATIONAL FUND REQUESTS
 -- =============================================================================

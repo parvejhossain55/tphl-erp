@@ -628,73 +628,8 @@ Next Step:
 * Notification System
 
 ---
-
-
-অপারেশন হেড হিসেবে একটি রিয়েল এস্টেট কোম্পানির পুরো প্রসেসটি কন্ট্রোল করা এবং আপনার দেওয়া টেবিলগুলোর মধ্যে লজিক্যাল চেইন বজায় রাখার জন্য আমি একটি "End-to-End Operational Workflow" সাজিয়ে দিচ্ছি।
-
-আপনার চাহিদা অনুযায়ী Working Plan থেকে শুরু করে Target Fixed, Material Issue, এবং Payment পর্যন্ত সবকিছুর সঠিক ফ্লো নিচে দেওয়া হলো:
-
-১. অপারেশন্স মাস্টার ফ্লো (Step-by-Step Process)
-ধাপ ১: মাস্টার শিডিউলিং (Yearly & Monthly Plan)
-টেবিল: project_working_plans
-
-কাজ: প্রজেক্টের শুরুতে initial_estimate_budgets এর ওপর ভিত্তি করে পুরো বছরকে মাসে ভাগ করা হয়। এখানে work_description এ লেখা থাকবে কোন মাসে কী বড় কাজ (যেমন: জানুয়ারি-ফেব্রুয়ারি ২০২৬: পাইলিং)।
-
-কন্ট্রোল: এখান থেকে সিস্টেম জানবে এই মাসে আপনার কত টাকা খরচ করার অনুমতি আছে।
-
-ধাপ ২: মাইক্রো-টার্গেট ফিক্সিং (Weekly Targets)
-টেবিল: target_fixed
-
-কাজ: মাসের শুরুতে অপারেশন হেড বা প্রজেক্ট ম্যানেজার ওই মাসের কাজকে ৪টি সপ্তাহে ভাগ করবেন।
-
-লজিক: week_number অনুযায়ী নির্দিষ্ট টার্গেট পারসেন্টেজ (যেমন: ১ম সপ্তাহে ২০%) সেট করা হবে। এটি আপনার work_plan_id এর সাথে সরাসরি লিঙ্ক থাকবে।
-
-ধাপ ৩: মেটেরিয়াল রিকোয়েস্ট ও প্রকিউরমেন্ট
-টেবিল: purchase_requests -> purchase_orders -> material_receiving
-
-কাজ: টার্গেট পূরণ করতে মালামাল লাগবে। সাইট থেকে PR আসবে, যা আপনার project_working_plans_id এর সাথে ট্যাগ করা থাকবে। মাল রিসিভ হলে সরাসরি con_stocks এ ঢুকবে।
-
-ধাপ ৪: মেটেরিয়াল ইস্যু (Consumption)
-টেবিল: con_material_issues & con_material_issue_items
-
-কাজ: টার্গেট অনুযায়ী কাজ শুরু হলে গুদাম থেকে মাল বের হবে।
-
-লজিক: এখানে material_id এবং quantity ইনপুট দিলে con_stocks থেকে মাল কমে যাবে। এটি টার্গেটের সাথে মেলালে বোঝা যাবে কতটুকু মাল ব্যবহারের বিপরীতে কতটুকু কাজ সম্পন্ন হয়েছে।
-
-ধাপ ৫: ডেইলি প্রোগ্রেস ও পেমেন্ট রিকোয়েস্ট
-টেবিল: daily_progress_reports & contractor_bill_requests
-
-কাজ: প্রতিদিনের কাজ শেষে DPR সাবমিট হবে। মাস শেষে বা নির্দিষ্ট কাজ শেষে কন্ট্রাক্টর বিল সাবমিট করবে।
-
-কন্ট্রোল: অপারেশন হেড বিল চেক করবেন gain_percentage দেখে। যদি টার্গেট ছিল ৮০% আর অর্জন হয়েছে ৬০%, তবে বিল সেই অনুযায়ী অ্যাডজাস্ট হবে।
-
-২. অপারেশনাল চেইন ও ডাটাবেজ ইন্টিগ্রেশন ডায়াগ্রাম
-৩. আপনার সিস্টেমে যা যা এখনো বাকি আছে (Critical Gaps)
-অপারেশন হেড হিসেবে আপনি নিখুঁতভাবে সব কন্ট্রোল করতে চাইলে নিচের টেবিল বা কলামগুলো প্রয়োজন:
-
-ক) con_material_issue_items এ টার্গেট রেফারেন্স
-মেটেরিয়াল ইস্যু করার সময় সেটি কোন টার্গেটের জন্য নেওয়া হচ্ছে তা ট্র্যাক করার জন্য একটি target_id কলাম থাকা উচিত।
-
-কেন: তাহলে আপনি দেখতে পারবেন: "এই সপ্তাহের ২০% টার্গেটের জন্য ৫০০ ব্যাগ সিমেন্ট নেওয়ার কথা ছিল, কিন্তু কেন ৭০০ ব্যাগ নেওয়া হলো?"
-
-খ) contractor_bill_requests এ টার্গেট ভেরিফিকেশন
-বিলের টেবিলে টার্গেটের একটা যোগসূত্র থাকতে হবে।
-
-প্রস্তাবিত কলাম: target_id অথবা work_plan_id বিল রিকোয়েস্ট টেবিলে যোগ করুন।
-
-গ) vendor_payment_requests এর সাথে পেনাল্টি কানেকশন
-ভেন্ডরকে পেমেন্ট দেওয়ার আগে vendor_penalties চেক করার একটি অটোমেটেড সিস্টেম লাগবে। পেমেন্ট রিকোয়েস্ট টেবিলে total_penalty_deduction নামক একটি কলাম রাখা ভালো।
-
-৪. অপারেশনাল লজিক চেকিস্ট (Rules of Thumb)
-Stock Validation: con_material_issues টেবিলে ডাটা সেভ করার আগে চেক করতে হবে con_stocks এ পর্যাপ্ত ব্যালেন্স আছে কি না।
-
-Budget Lock: purchase_requests এ মালামাল কেনার আগে চেক করতে হবে সেটি project_working_plans এর ওই মাসের বাজেটের ভেতরে আছে কি না।
-
-Payment Lock: কন্ট্রাক্টর বিল অ্যাপ্রুভ করার আগে daily_progress_reports এর গড় প্রোগ্রেস টার্গেটের সাথে মিলছে কি না তা অটোমেটিক ড্যাশবোর্ডে দেখাতে হবে।
-
-৫. পরবর্তী পদক্ষেপ (Next Step for Claude)
-আপনি ক্লাউডকে বলতে পারেন:
-
-"Now implement the Daily Progress vs Weekly Target reporting logic. Ensure that when a contractor submits a bill (contractor_bill_requests), the system automatically fetches the gain_percentage from the target_fixed table for the respective period to verify the work done."
-
-এই প্রসেসটি ফলো করলে আপনার কোম্পানিতে কোনো টাকা বা মালামাল নয়ছয় হওয়ার সুযোগ থাকবে না। আপনি কি এখন বিলিং এবং পেমেন্ট মডিউল নিয়ে কাজ শুরু করতে চান?
+table alter con_material_issues add target_id, add work_plan_id
+table alter contractor_bill_requests add target_id
+table alter vendor_payment_requests add penalty_amount, add net_payable_amount
+ALTER TABLE `vendor_penalties` 
+ADD COLUMN `payment_request_id` INT(11) UNSIGNED DEFAULT NULL AFTER `receiving_id`;
