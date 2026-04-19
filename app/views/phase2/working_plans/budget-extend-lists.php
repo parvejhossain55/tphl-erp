@@ -91,6 +91,7 @@
                             <th>Budget Ref.</th>
                             <th class="text-end">Amount (৳)</th>
                             <th>Requested By</th>
+                            <th>Docs</th>
                             <th>Status</th>
                             <th class="text-center">Action</th>
                         </tr>
@@ -116,6 +117,35 @@
                                     +৳ <?= number_format($item['amount'], 2) ?>
                                 </td>
                                 <td><?= htmlspecialchars($item['requested_by_name']) ?></td>
+
+                                <!-- Docs: attachment + cloud link -->
+                                <td class="text-center" style="white-space:nowrap;">
+                                    <?php
+                                    $hasFile = !empty($item['attachment_file']);
+                                    $hasLink = !empty($item['docs_link']);
+                                    ?>
+                                    <?php if ($hasFile): ?>
+                                        <a href="<?= $base_url ?>/public/uploads/budget_extends/<?= htmlspecialchars($item['attachment_file']) ?>"
+                                           target="_blank"
+                                           title="View Attachment: <?= htmlspecialchars($item['attachment_file']) ?>"
+                                           class="btn btn-sm btn-outline-secondary me-1">
+                                            <i class="bi bi-file-earmark-arrow-down"></i>
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if ($hasLink): ?>
+                                        <a href="<?= htmlspecialchars($item['docs_link']) ?>"
+                                           target="_blank"
+                                           rel="noopener noreferrer"
+                                           title="Open Cloud Link"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-link-45deg"></i>
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if (!$hasFile && !$hasLink): ?>
+                                        <span class="text-muted small">—</span>
+                                    <?php endif; ?>
+                                </td>
+
                                 <td>
                                     <?php
                                     $badge = match($item['status']) {
@@ -161,7 +191,7 @@
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="8" class="text-center py-4 text-muted">
+                                <td colspan="9" class="text-center py-4 text-muted">
                                     No budget extension requests yet.
                                     <a href="<?= $base_url ?>/con-budget-extend-create" class="ms-2">Submit one →</a>
                                 </td>
@@ -173,6 +203,7 @@
         </div>
     </div>
 </section>
+
 
 <!-- ================================================================ -->
 <!-- Approve Modal                                                      -->

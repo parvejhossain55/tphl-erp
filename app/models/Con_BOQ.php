@@ -1,78 +1,246 @@
 <?php
-class Con_BOQ extends Model {
+/**
+ * Con_BOQ Model
+ * Tables: boq_master, boq_items
+ *
+ * Schema:
+ * boq_master: id, project_id, version, status(Draft/Submitted/Approved/Rejected),
+ *             approved_by, approved_at, created_by, created_at, updated_at
+ * boq_items:  id, boq_id, material_id, quantity, unit_cost, total_cost(GENERATED)
+ */
+class Con_BOQ extends Model
+{
     protected $db;
+    protected $masterTable = 'boq_master';
+    protected $itemTable   = 'boq_items';
 
-    public function __construct($db = null) {
+    public function __construct($db = null)
+    {
         parent::__construct($db);
         $this->db = $db ?? $GLOBALS['db'];
     }
 
-    public function getAll() {
-        $sql = "SELECT b.*, p.name as project_name, u.full_name as created_by_name
-                FROM boq_master b
-                LEFT JOIN projects p ON b.project_id = p.id
-                LEFT JOIN users u ON b.created_by = u.id
+    // =========================================================================
+    // BOQ MASTER — READ
+    // =========================================================================
+
+    /** All BOQ masters with project + user info */
+    public function getAll()
+    {
+        $sql = "SELECT b.*, p.name AS project_name, u.full_name AS created_by_name,
+                       a.full_name AS approved_by_name
+                FROM {$this->masterTable} b
+                LEFT JOIN projects p ON p.id = b.project_id
+                LEFT JOIN users    u ON u.id = b.created_by
+                LEFT JOIN users    a ON a.id = b.approved_by
                 ORDER BY b.id DESC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-    public function find($id) {
-        $stmt = $this->db->prepare("
-            SELECT b.*, p.name as project_name 
-            FROM boq_master b 
-            JOIN projects p ON b.project_id = p.id 
-            WHERE b.id = ?
-        ");
-        $stmt->bind_param("i", $id);
+    /** Single BOQ master with project name */
+    public function find($id)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT b.*, p.name AS project_name, u.full_name AS created_by_name,
+                    a.full_name AS approved_by_name
+             FROM {$this->masterTable} b
+             LEFT JOIN projects p ON p.id = b.project_id
+             LEFT JOIN users    u ON u.id = b.created_by
+             LEFT JOIN users    a ON a.id = b.approved_by
+             WHERE b.id = ?"
+        );
+        $stmt->bind_param('i', $id);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
     }
 
-    public function getItems($boqId) {
-        $stmt = $this->db->prepare("
-            SELECT i.*, m.name as material_name, m.unit 
-            FROM boq_items i 
-            JOIN con_materials m ON i.material_id = m.id 
-            WHERE i.boq_id = ?
-        ");
-        $stmt->bind_param("i", $boqId);
+    /** All BOQs for a specific project */
+    public function getByProject($projectId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT b.*, p.name AS project_name
+             FROM {$this->masterTable} b
+             LEFT JOIN projects p ON p.id = b.project_id
+             WHERE b.project_id = ?
+             ORDER BY b.id DESC"
+        );
+        $stmt->bind_param('i', $projectId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function createMaster($data) {
-        $stmt = $this->db->prepare("
-            INSERT INTO boq_master (project_id, version, status, created_by) 
-            VALUES (?, ?, ?, ?)
-        ");
-        $stmt->bind_param("issi", $data['project_id'], $data['version'], $data['status'], $data['created_by']);
+    // =========================================================================
+    // BOQ ITEMS — READ
+    // =========================================================================
+
+    /** All items for a BOQ with material details */
+    public function getItems($boqId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT i.*, m.name AS material_name, m.unit
+             FROM {$this->itemTable} i
+             JOIN con_materials m ON m.id = i.material_id
+             WHERE i.boq_id = ?
+             ORDER BY i.id ASC"
+        );
+        $stmt->bind_param('i', $boqId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Remaining BOQ balance per material for a project.
+     * Returns: material_id, material_name, unit, boq_qty, ordered_qty, remaining_qty
+     *
+     * Used by Purchase Requests to validate against BOQ limits.
+     */
+public function getRemainingBOQ($projectId) {
+    $sql = "SELECT 
+                bi.material_id, 
+                m.name as material_name,
+                bi.quantity as total_boq_qty,
+                COALESCE((
+                    SELECT SUM(pri.quantity) 
+                    FROM purchase_request_items pri
+                    JOIN purchase_requests pr ON pr.id = pri.request_id
+                    WHERE pr.project_id = ? AND pri.material_id = bi.material_id
+                    AND pr.status != 'Rejected'
+                ), 0) as used_qty,
+                (bi.quantity - COALESCE((
+                    SELECT SUM(pri.quantity) 
+                    FROM purchase_request_items pri
+                    JOIN purchase_requests pr ON pr.id = pri.request_id
+                    WHERE pr.project_id = ? AND pri.material_id = bi.material_id
+                    AND pr.status != 'Rejected'
+                ), 0)) as remaining_qty
+            FROM boq_items bi
+            JOIN boq_master bm ON bm.id = bi.boq_id
+            JOIN con_materials m ON m.id = bi.material_id
+            WHERE bm.project_id = ? AND bm.status = 'Approved'"; // Approved BOQ theke ashbe
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param('iii', $projectId, $projectId, $projectId);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+    // =========================================================================
+    // BOQ MASTER — WRITE
+    // =========================================================================
+
+    /** Create a new BOQ master, returns insert_id or false */
+    public function createMaster($data)
+    {
+        $stmt = $this->db->prepare(
+            "INSERT INTO {$this->masterTable} (project_id, version, status, created_by)
+             VALUES (?, ?, ?, ?)"
+        );
+        $stmt->bind_param(
+            'issi',
+            $data['project_id'],
+            $data['version'],
+            $data['status'],
+            $data['created_by']
+        );
         if ($stmt->execute()) {
             return $this->db->insert_id;
         }
         return false;
     }
 
-    public function addItems($boqId, $items) {
-        // Clear existing if any (for simple update/replace logic)
-        $this->db->query("DELETE FROM boq_items WHERE boq_id = $boqId");
+    /** Update BOQ master header (project, version) */
+    public function updateMaster($id, $data)
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->masterTable}
+             SET project_id = ?, version = ?
+             WHERE id = ? AND status IN ('Draft','Submitted')"
+        );
+        $stmt->bind_param(
+            'isi',
+            $data['project_id'],
+            $data['version'],
+            $id
+        );
+        return $stmt->execute() && $stmt->affected_rows >= 0;
+    }
 
-        $stmt = $this->db->prepare("
-            INSERT INTO boq_items (boq_id, material_id, quantity, unit_cost) 
-            VALUES (?, ?, ?, ?)
-        ");
+    /** Update BOQ status (Submit / Approve / Reject) */
+    public function updateStatus($id, $status, $userId = null)
+    {
+        if ($status === 'Approved') {
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->masterTable}
+                 SET status = ?, approved_by = ?, approved_at = NOW()
+                 WHERE id = ?"
+            );
+            $stmt->bind_param('sii', $status, $userId, $id);
+        } else {
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->masterTable} SET status = ? WHERE id = ?"
+            );
+            $stmt->bind_param('si', $status, $id);
+        }
+        return $stmt->execute();
+    }
+
+    // =========================================================================
+    // BOQ ITEMS — WRITE
+    // =========================================================================
+
+    /** Replace all items for a BOQ (delete + insert) */
+    public function addItems($boqId, $items)
+    {
+        // Clear existing
+        $del = $this->db->prepare("DELETE FROM {$this->itemTable} WHERE boq_id = ?");
+        $del->bind_param('i', $boqId);
+        $del->execute();
+
+        $stmt = $this->db->prepare(
+            "INSERT INTO {$this->itemTable} (boq_id, material_id, quantity, unit_cost)
+             VALUES (?, ?, ?, ?)"
+        );
 
         foreach ($items as $item) {
-            $stmt->bind_param("iidd", $boqId, $item['material_id'], $item['quantity'], $item['unit_cost']);
+            $stmt->bind_param(
+                'iidd',
+                $boqId,
+                $item['material_id'],
+                $item['quantity'],
+                $item['unit_cost']
+            );
             $stmt->execute();
         }
         return true;
     }
 
-    public function delete($id) {
-        $this->db->query("DELETE FROM boq_items WHERE boq_id = $id");
-        $stmt = $this->db->prepare("DELETE FROM boq_master WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        return $stmt->execute();
+    // =========================================================================
+    // BOQ — DELETE
+    // =========================================================================
+
+    /** Delete a BOQ and its items (only Draft/Submitted) */
+    public function delete($id)
+    {
+        $boq = $this->find($id);
+        if (!$boq || in_array($boq['status'], ['Approved'])) {
+            return false;
+        }
+        $this->db->begin_transaction();
+        try {
+            $del1 = $this->db->prepare("DELETE FROM {$this->itemTable} WHERE boq_id = ?");
+            $del1->bind_param('i', $id);
+            $del1->execute();
+
+            $del2 = $this->db->prepare("DELETE FROM {$this->masterTable} WHERE id = ?");
+            $del2->bind_param('i', $id);
+            $del2->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            return false;
+        }
     }
 }

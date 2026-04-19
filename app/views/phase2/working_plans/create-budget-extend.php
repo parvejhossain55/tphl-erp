@@ -1,6 +1,6 @@
 <div class="pagetitle d-flex justify-content-between align-items-center">
-    <div>
-        <h1><?= htmlspecialchars($page_title) ?></h1>
+    <div class="mb-4">
+        <h4><?= htmlspecialchars($page_title) ?></h4>
         <nav>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
@@ -24,9 +24,12 @@
                     </h6>
                 </div>
                 <div class="card__body p-4">
-                    <form action="<?= $base_url ?>/con-budget-extend-store" method="POST">
+                    <form action="<?= $base_url ?>/con-budget-extend-store"
+                          method="POST"
+                          enctype="multipart/form-data">
 
-                        <div class="row  mb-3">
+                        <!-- Project + Budget -->
+                        <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
                                 <select name="project_id" class="form-select" required>
@@ -52,6 +55,7 @@
                             </div>
                         </div>
 
+                        <!-- Title -->
                         <div class="mb-3">
                             <label class="form-label fw-bold">
                                 Subject / Title <span class="text-danger">*</span>
@@ -61,6 +65,7 @@
                                    required>
                         </div>
 
+                        <!-- Amount -->
                         <div class="mb-3">
                             <label class="form-label fw-bold">
                                 Extension Amount (৳) <span class="text-danger">*</span>
@@ -72,13 +77,48 @@
                             </div>
                         </div>
 
-                        <div class="mb-4">
+                        <!-- Reason -->
+                        <div class="mb-3">
                             <label class="form-label fw-bold">
                                 Reason / Justification <span class="text-danger">*</span>
                             </label>
                             <textarea name="reason" class="form-control" rows="4" required
                                       placeholder="Explain why the additional budget is needed…"></textarea>
                         </div>
+
+                        <!-- ── Supporting Docs: Attachment + Cloud Link ── -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-paperclip me-1 text-secondary"></i>
+                                    Attachment
+                                    <span class="text-muted fw-normal small">(optional)</span>
+                                </label>
+                                <input type="file"
+                                       name="attachment_file"
+                                       id="attachment_file"
+                                       class="form-control"
+                                       accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xlsx">
+                                <div class="form-text text-muted">
+                                    Accepted: PDF, JPG, PNG, WEBP, DOC, XLSX
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-link-45deg me-1 text-secondary"></i>
+                                    Cloud / Docs Link
+                                    <span class="text-muted fw-normal small">(optional)</span>
+                                </label>
+                                <input type="url"
+                                       name="docs_link"
+                                       class="form-control"
+                                       placeholder="https://drive.google.com/…">
+                                <div class="form-text text-muted">
+                                    Google Drive, Dropbox, OneDrive, etc.
+                                </div>
+                            </div>
+                        </div>
+                        <!-- ── End Supporting Docs ── -->
 
                         <div class="alert alert-info py-2 small mb-4">
                             <i class="bi bi-info-circle me-1"></i>

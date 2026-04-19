@@ -59,11 +59,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- =============================================================================
 
 -- Add `phase` to projects so construction projects can be flagged
-ALTER TABLE `projects`
-  ADD COLUMN IF NOT EXISTS `phase`
-    ENUM('sales','construction','both') NOT NULL DEFAULT 'sales'
-    COMMENT 'sales=Phase1 only | construction=Phase2 | both=shared'
-  AFTER `status`;
+ALTER TABLE `projects` ADD `project_status` ENUM('Planning','In Progress','On Hold','Completed','Cancelled','Delayed') NULL DEFAULT NULL AFTER `project_sale_status`;
 
 -- Add new Construction roles (INSERT — do NOT re-create the roles table)
 -- Run only once; use INSERT IGNORE to avoid duplicates
@@ -169,6 +165,8 @@ CREATE TABLE IF NOT EXISTS `soil_tests` (
   KEY `idx_st_created_by` (`created_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+
+
 -- =============================================================================
 -- 2. OPERATIONS OPERATORS
 -- =============================================================================
@@ -244,7 +242,110 @@ CREATE TABLE IF NOT EXISTS `con_stock_movements` (
   KEY `idx_sm_ref`       (`ref_type`, `ref_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+
+
+--=============================================================================
+-- 2.0. Initial Estimate Budgets From Estimator
+--=============================================================================
+-- ১. মেইন বাজেট সামারি টেবিল
+CREATE TABLE IF NOT EXISTS `initial_estimate_budgets` (
+  `id`                    INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `project_id`            INT(11)          NOT NULL,
+  `architecture_id`       INT(11) UNSIGNED NOT NULL,
+  `total_area_sqft`       DECIMAL(12,2)    DEFAULT NULL,
+  `material_cost_total`   DECIMAL(15,2)    DEFAULT 0.00 COMMENT 'Sum of all design items',
+  `labor_cost_total`      DECIMAL(15,2)    DEFAULT 0.00 COMMENT 'Sum of all design labors',
+  `other_costs`           DECIMAL(15,2)    DEFAULT 0.00,
+  `total_estimated_cost`  DECIMAL(15,2)    DEFAULT 0.00 COMMENT 'Grand Total',
+  `status`                ENUM('pending', 'approved', 'cancelled') DEFAULT 'pending',
+  `approved_by`           INT(11)          NULL,
+  `approval_date`         TIMESTAMP        NULL,
+  `created_by`            INT(11)          NOT NULL,
+  `created_at`            TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`            TIMESTAMP        NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ২. মেটেরিয়াল আইটেম টেবিল (ডিজাইন ভিত্তিক)
+CREATE TABLE IF NOT EXISTS `initial_estimate_items` (
+  `id`                INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `budget_id`         INT(11) UNSIGNED NOT NULL,
+  `design_type_id`    INT(11) UNSIGNED NOT NULL COMMENT '1=Construction, 2=Electrical, 3=Plumbing',
+  `material_id`       INT(11) UNSIGNED NOT NULL,
+  `material_unit`     VARCHAR(50)      NOT NULL,
+  `estimated_qty`     DECIMAL(12,3)    NOT NULL DEFAULT 0.000,
+  `unit_cost_approx`  DECIMAL(12,2)    NOT NULL DEFAULT 0.00,
+  `subtotal`          DECIMAL(15,2)    AS (estimated_qty * unit_cost_approx) VIRTUAL,
+  `remarks`           VARCHAR(255)     DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_iei_budget` FOREIGN KEY (`budget_id`) REFERENCES `initial_estimate_budgets` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ৩. লেবার কস্ট টেবিল (ডিজাইন ভিত্তিক)
+CREATE TABLE IF NOT EXISTS `initial_estimate_labors` (
+  `id`               INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `budget_id`        INT(11) UNSIGNED NOT NULL,
+  `design_type_id`   INT(11) UNSIGNED NOT NULL COMMENT '1=Construction, 2=Electrical, 3=Plumbing',
+  `labor_type_name`  VARCHAR(100)     NOT NULL,
+  `rate_per_sqft`    DECIMAL(10,2)    NOT NULL DEFAULT 0.00,
+  `area_sqft`        DECIMAL(12,2)    NOT NULL,
+  `subtotal`         DECIMAL(15,2)    AS (rate_per_sqft * area_sqft) VIRTUAL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_iel_budget` FOREIGN KEY (`budget_id`) REFERENCES `initial_estimate_budgets` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-
 -- =============================================================================
+-- 5. WORKING PLAN & BUDGET CONTROL
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS `project_working_plans` (
+  `id`                INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `project_id`        INT(11)          NOT NULL,
+  `initial_budget_id`         INT(11) UNSIGNED NOT NULL,
+  `design_type_id`    INT(11) UNSIGNED NOT NULL COMMENT '1=Construction, 2=Electrical, etc.',
+  `year`              SMALLINT UNSIGNED NOT NULL,
+  `month`             TINYINT UNSIGNED  NOT NULL,
+  
+  -- কাজের বিবরণ যোগ করা হয়েছে
+  `work_description`  TEXT             NOT NULL COMMENT 'কী কী কাজ করা হবে তার বিস্তারিত',
+  
+  `planned_quantity`  DECIMAL(12,3)    DEFAULT 0.000 COMMENT 'ঐ মাসে কতটুকু মেটেরিয়াল লাগবে (ঐচ্ছিক)',
+  `estimated_cost`    DECIMAL(16,2)    NOT NULL DEFAULT 0.00 COMMENT 'ঐ মাসের আনুমানিক খরচ',
+  
+  `created_by`        INT(11)          NOT NULL,
+  `created_at`        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        TIMESTAMP        NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_pwp_budget` FOREIGN KEY (`initial_budget_id`) REFERENCES `initial_estimate_budgets` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `budget_extend_requests` (
+  `id`           INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `project_id`   INT(11)          NOT NULL,
+  `initial_budget_id` INT(11) UNSIGNED NOT NULL,
+  `requested_by` INT(11)          NOT NULL,
+  `title`        VARCHAR(255)     NOT NULL,
+  `amount`       DECIMAL(16,4)    NOT NULL,
+  -- নতুন যুক্ত করা কলামসমূহ
+  `attachment_file`   VARCHAR(255)     DEFAULT NULL COMMENT 'File path for uploaded evidence (PDF/Images)',
+  `docs_link`         VARCHAR(500)     DEFAULT NULL COMMENT 'External cloud link for supporting docs',
+  `reason`       TEXT             NOT NULL,
+  `status`       ENUM('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
+  `approved_by`  INT(11)          DEFAULT NULL,
+  `approved_at`  TIMESTAMP        NULL DEFAULT NULL,
+  `remarks`      TEXT             DEFAULT NULL,
+  `created_at`   TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`   TIMESTAMP        NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_ber_project`      (`project_id`),
+  KEY `idx_ber_requested_by` (`requested_by`),
+  KEY `idx_ber_approved_by`  (`approved_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+- =============================================================================
 -- 4. BILL OF QUANTITIES (BOQ)
 -- =============================================================================
 
@@ -275,45 +376,6 @@ CREATE TABLE IF NOT EXISTS `boq_items` (
   KEY `idx_boqi_material` (`material_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- =============================================================================
--- 5. WORKING PLAN & BUDGET CONTROL
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS `project_working_plan` (
-  `id`               INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `project_id`       INT(11)          NOT NULL,
-  `material_id`      INT(11) UNSIGNED NOT NULL,
-  `year`             SMALLINT UNSIGNED NOT NULL,
-  `month`            TINYINT UNSIGNED  NOT NULL,
-  `planned_quantity` DECIMAL(12,3)    NOT NULL,
-  `estimated_cost`   DECIMAL(16,4)    NOT NULL,
-  `created_by`       INT(11)          NOT NULL,
-  `created_at`       TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`       TIMESTAMP        NULL ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_pwp_project_material_ym` (`project_id`, `material_id`, `year`, `month`),
-  KEY `idx_pwp_material`   (`material_id`),
-  KEY `idx_pwp_created_by` (`created_by`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-CREATE TABLE IF NOT EXISTS `budget_extend_requests` (
-  `id`           INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `project_id`   INT(11)          NOT NULL,
-  `requested_by` INT(11)          NOT NULL,
-  `title`        VARCHAR(255)     NOT NULL,
-  `amount`       DECIMAL(16,4)    NOT NULL,
-  `reason`       TEXT             NOT NULL,
-  `status`       ENUM('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
-  `approved_by`  INT(11)          DEFAULT NULL,
-  `approved_at`  TIMESTAMP        NULL DEFAULT NULL,
-  `remarks`      TEXT             DEFAULT NULL,
-  `created_at`   TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`   TIMESTAMP        NULL ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_ber_project`      (`project_id`),
-  KEY `idx_ber_requested_by` (`requested_by`),
-  KEY `idx_ber_approved_by`  (`approved_by`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- =============================================================================
 -- 6a. PROCUREMENT — VENDORS
@@ -323,6 +385,8 @@ CREATE TABLE IF NOT EXISTS `vendors` (
   `id`         INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name`       VARCHAR(255)     NOT NULL,
   `phone`      VARCHAR(30)      DEFAULT NULL,
+  `trade_license_no` VARCHAR(255)     DEFAULT NULL,
+  `tin_no` VARCHAR(255)     DEFAULT NULL,
   `email`      VARCHAR(191)     DEFAULT NULL,
   `address`    TEXT             DEFAULT NULL,
   `rating`     DECIMAL(3,2)     NOT NULL DEFAULT 5.00,
@@ -341,6 +405,7 @@ CREATE TABLE IF NOT EXISTS `vendors` (
 CREATE TABLE IF NOT EXISTS `purchase_requests` (
   `id`         INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `project_id` INT(11)          NOT NULL,
+  `project_working_plans_id` INT(11) UNSIGNED NOT NULL,
   `created_by` INT(11)          NOT NULL,
   `status`     ENUM('Draft','Submitted','Approved','Rejected','PO Issued') NOT NULL DEFAULT 'Draft',
   `notes`      TEXT             DEFAULT NULL,
@@ -434,6 +499,7 @@ CREATE TABLE IF NOT EXISTS `purchase_orders` (
   `created_by` INT(11)          NOT NULL,
   `status`     ENUM('Draft','Issued','Partially Received','Fully Received','Cancelled') NOT NULL DEFAULT 'Draft',
   `order_date` DATE             NOT NULL,
+  `delivery_deadline` Date NOT NULL,
   `created_at` TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP        NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -474,6 +540,7 @@ CREATE TABLE IF NOT EXISTS `material_receiving` (
   `qc_photo`          VARCHAR(500)     DEFAULT NULL,
   `overall_status`    ENUM('Pending QC','Accepted','Partially Accepted','Rejected') NOT NULL DEFAULT 'Pending QC',
   `created_by`        INT(11)          NOT NULL,
+  `warehouse_id`      INT(11)          NOT NULL, 
   `created_at`        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`        TIMESTAMP        NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -490,6 +557,8 @@ CREATE TABLE IF NOT EXISTS `material_receiving_items` (
   `ordered_quantity`       DECIMAL(12,3)    NOT NULL,
   `received_quantity`      DECIMAL(12,3)    NOT NULL DEFAULT 0.000,
   `status`                 ENUM('Accepted','Partially Accepted','Rejected','Pending QC') NOT NULL DEFAULT 'Pending QC',
+  `return_quantity`        DECIMAL(12,3)    NOT NULL DEFAULT 0.000,
+  `penalty_applied`        TINYINT(1)       NOT NULL DEFAULT 0,
   `site_engineer_checked`  TINYINT(1)       NOT NULL DEFAULT 0,
   `qc_checked`             TINYINT(1)       NOT NULL DEFAULT 0,
   `issue_reason`           TEXT             DEFAULT NULL,
@@ -508,17 +577,21 @@ CREATE TABLE IF NOT EXISTS `material_receiving_items` (
 CREATE TABLE IF NOT EXISTS `vendor_penalties` (
   `id`                     INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `vendor_id`              INT(11) UNSIGNED NOT NULL,
-  `purchase_order_item_id` INT(11) UNSIGNED NOT NULL,
-  `penalty_type`           VARCHAR(100)     NOT NULL,
-  `penalty_amount`         DECIMAL(14,4)    NOT NULL DEFAULT 0.0000,
-  `reason`                 TEXT             DEFAULT NULL,
-  `attachment`             VARCHAR(500)     DEFAULT NULL,
-  `created_by`             INT(11)          DEFAULT NULL,
+  `is_deducted_from_bill`        TINYINT(1)       NOT NULL DEFAULT 0,    
+  `purchase_order_id`      INT(11) UNSIGNED NOT NULL,
+  `receiving_id`           INT(11) UNSIGNED DEFAULT NULL COMMENT 'Link to specific delivery',
+  `penalty_category`       ENUM('Late Delivery', 'Quality Issue', 'Shortage', 'Others') NOT NULL,
+  `penalty_amount`         DECIMAL(14,2)    NOT NULL DEFAULT 0.00,
+  `is_fixed_amount`        TINYINT(1)       DEFAULT 1 COMMENT '1=Fixed, 0=Percentage of bill',
+  `reason`                 TEXT             NOT NULL,
+  `action_taken`           ENUM('Deduct from Bill', 'Replacement Taken', 'Fine Paid') DEFAULT 'Deduct from Bill',
+  `penalty_status`         ENUM('Pending', 'Approved', 'Rejected') NOT NULL DEFAULT 'Pending',   
+  `attachment`             VARCHAR(500)     DEFAULT NULL COMMENT 'Photo of bad material',
+  `created_by`             INT(11)          NOT NULL,
   `created_at`             TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_vp_vendor` (`vendor_id`),
-  KEY `idx_vp_poi`    (`purchase_order_item_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  CONSTRAINT `fk_vp_vendor` FOREIGN KEY (`vendor_id`) REFERENCES `vendors` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `vendor_ratings` (
   `id`         INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -531,6 +604,32 @@ CREATE TABLE IF NOT EXISTS `vendor_ratings` (
   KEY `idx_vr_vendor`   (`vendor_id`),
   KEY `idx_vr_rated_by` (`rated_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `con_material_issues` (
+  `id`            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `project_id`    INT NOT NULL,
+  `warehouse_id`  INT UNSIGNED NOT NULL,
+  `material_id`   INT UNSIGNED NOT NULL,
+  `quantity`      DECIMAL(12,3) NOT NULL,
+  `issued_to`     VARCHAR(255) DEFAULT NULL COMMENT 'Person/contractor name',
+  `purpose`       TEXT DEFAULT NULL,
+  `issued_by`     INT NOT NULL,
+  `issue_date`    DATE NOT NULL,
+  `created_at`    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- 2. Items Table: Material Issue Items
+CREATE TABLE IF NOT EXISTS `con_material_issue_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `issue_id` INT NOT NULL,
+    `material_id` INT NOT NULL,
+    `quantity` DECIMAL(15, 3) NOT NULL DEFAULT 0.000,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Foreign keys
+    CONSTRAINT fk_items_issue_header FOREIGN KEY (issue_id) 
+        REFERENCES `con_material_issues` (`id`) ON DELETE CASCADE
+    -- CONSTRAINT fk_items_material FOREIGN KEY (material_id) REFERENCES con_materials(id)
+)
 
 -- =============================================================================
 -- 9. TARGET FIXED (Weekly/Monthly QC Progress Targets)
@@ -585,23 +684,7 @@ CREATE TABLE IF NOT EXISTS `daily_progress_reports` (
   KEY `idx_dpr_created_by` (`created_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE IF NOT EXISTS `material_usage_logs` (
-  `id`            INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `project_id`    INT(11)          NOT NULL,
-  `material_id`   INT(11) UNSIGNED NOT NULL,
-  `warehouse_id`  INT(11) UNSIGNED NOT NULL,
-  `quantity_used` DECIMAL(12,3)    NOT NULL,
-  `used_by`       INT(11)          NOT NULL,
-  `used_date`     DATE             NOT NULL,
-  `notes`         TEXT             DEFAULT NULL,
-  `created_by`    INT(11)          NOT NULL,
-  `created_at`    TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_mul_project`    (`project_id`),
-  KEY `idx_mul_material`   (`material_id`),
-  KEY `idx_mul_warehouse`  (`warehouse_id`),
-  KEY `idx_mul_created_by` (`created_by`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 
 -- =============================================================================
 -- 11. CONTRACTOR BILL REQUESTS

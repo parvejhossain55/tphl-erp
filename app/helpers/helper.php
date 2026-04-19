@@ -121,6 +121,55 @@ function getImage($module, $filename)
 }
 
 
+/**
+ * Upload a document/file (PDF, images) without resizing.
+ *
+ * @param string $input     HTML file input name
+ * @param string $module    Folder name inside public/uploads/  (e.g. 'budget_extends')
+ * @return string|null      Saved filename on success, null on failure / no file
+ */
+function uploadFile($input, $module = 'general')
+{
+    // No file uploaded or upload error → skip silently
+    if (!isset($_FILES[$input]) || $_FILES[$input]['error'] !== UPLOAD_ERR_OK) {
+        return null;
+    }
+
+    $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'doc', 'docx', 'xlsx', 'xls'];
+    $ext     = strtolower(pathinfo($_FILES[$input]['name'], PATHINFO_EXTENSION));
+
+    if (!in_array($ext, $allowed)) {
+        return null;
+    }
+
+    $uploadPath = dirname(__DIR__, 2) . "/public/uploads/{$module}/";
+    if (!is_dir($uploadPath)) {
+        mkdir($uploadPath, 0777, true);
+    }
+
+    $fileName = uniqid($module . '_') . '.' . $ext;
+    $target   = $uploadPath . $fileName;
+
+    return move_uploaded_file($_FILES[$input]['tmp_name'], $target) ? $fileName : null;
+}
+
+
+/**
+ * Return a public URL for a file uploaded via uploadFile().
+ *
+ * @param string $module    Folder name (same as used in uploadFile)
+ * @param string|null $filename
+ * @return string|null
+ */
+function getFileUrl($module, $filename)
+{
+    if (!$filename) {
+        return null;
+    }
+    return $GLOBALS['base_url'] . "/public/uploads/{$module}/{$filename}";
+}
+
+
 function paginateLinksSecondary($route, $currentPage, $totalPages)
 {
     $currentPage = intval($currentPage);

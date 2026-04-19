@@ -330,19 +330,25 @@ class Con_WorkingPlan extends Model
 
     public function createBudgetRequest($data)
     {
+        $attachmentFile = $data['attachment_file'] ?? null;
+        $docsLink       = $data['docs_link']       ?? null;
+
         $stmt = $this->db->prepare(
             "INSERT INTO {$this->extendTable}
-                 (project_id, initial_budget_id, requested_by, title, amount, reason)
-             VALUES (?, ?, ?, ?, ?, ?)"
+                 (project_id, initial_budget_id, requested_by, title, amount, reason,
+                  attachment_file, docs_link)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->bind_param(
-            'iiisds',
+            'iiisdsss',
             $data['project_id'],
             $data['initial_budget_id'],
             $data['requested_by'],
             $data['title'],
             $data['amount'],
-            $data['reason']
+            $data['reason'],
+            $attachmentFile,
+            $docsLink
         );
         return $stmt->execute();
     }

@@ -6,7 +6,7 @@ class Con_Stock extends Model
 
     public function getCurrentStock($material_id = null, $warehouse_id = null)
     {
-        $sql = "SELECT s.*, m.name AS material_name, m.unit, w.name AS warehouse_name
+        $sql = "SELECT s.*, m.name AS material_name, m.unit, m.min_stock_level, w.name AS warehouse_name
                 FROM {$this->table} s
                 JOIN con_materials m ON m.id = s.material_id
                 JOIN con_warehouses w ON w.id = s.warehouse_id

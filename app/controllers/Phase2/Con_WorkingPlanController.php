@@ -50,7 +50,7 @@ class Con_WorkingPlanController extends Controller
         $designTypes = $this->designTypeModel->getAll();
 
         $this->view('phase2/working_plans/create-working-plan', [
-            'current_route' => 'con-working-plans',
+            'current_route' => 'con-working-plan-create',
             'page_title'    => 'New Working Plan Entry',
             'projects'      => $projects,
             'budgets'       => $budgets,
@@ -217,6 +217,7 @@ class Con_WorkingPlanController extends Controller
             'title'             =>          trim($_POST['title']         ?? ''),
             'amount'            => (float) ($_POST['amount']            ?? 0),
             'reason'            =>          trim($_POST['reason']        ?? ''),
+            'docs_link'         =>          trim($_POST['docs_link']     ?? ''),
         ];
 
         if (!$data['project_id'] || !$data['initial_budget_id'] || empty($data['title']) || $data['amount'] <= 0) {
@@ -224,6 +225,9 @@ class Con_WorkingPlanController extends Controller
             header("Location: {$GLOBALS['base_url']}/con-budget-extend-create");
             exit;
         }
+
+        // Handle file upload (PDF/Image evidence)
+        $data['attachment_file'] = uploadFile('attachment_file', 'budget_extends');
 
         if ($this->model->createBudgetRequest($data)) {
             setSuccess('Budget extension request submitted successfully.');

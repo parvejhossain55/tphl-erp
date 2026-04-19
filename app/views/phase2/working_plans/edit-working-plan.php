@@ -1,6 +1,6 @@
 <div class="pagetitle d-flex justify-content-between align-items-center">
-    <div>
-        <h1><?= htmlspecialchars($page_title) ?></h1>
+    <div class="mb-4">
+        <h4><?= htmlspecialchars($page_title) ?></h4>
         <nav>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
@@ -26,7 +26,7 @@
                 <div class="card__body p-4">
                     <form action="<?= $base_url ?>/con-working-plan-update/<?= $plan['id'] ?>" method="POST">
 
-                        <div class="row g-3 mb-3">
+                        <div class="row  mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
                                 <select name="project_id" id="projectSelect" class="form-select" required>
@@ -55,7 +55,7 @@
                             </div>
                         </div>
 
-                        <div class="row g-3 mb-3">
+                        <div class="row  mb-3">
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Design Type <span class="text-danger">*</span></label>
                                 <select name="design_type_id" class="form-select" required>
@@ -96,7 +96,7 @@
                                       placeholder="এই মাসে কী কী কাজ করা হবে..."><?= htmlspecialchars($plan['work_description'] ?? '') ?></textarea>
                         </div>
 
-                        <div class="row g-3 mb-4">
+                        <div class="row  mb-4">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Planned Quantity</label>
                                 <input type="number" step="0.001" name="planned_quantity"

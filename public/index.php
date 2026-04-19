@@ -749,6 +749,7 @@ $routes['con-vendor-store']            = ['controller' => 'Phase2\Con_VendorCont
 $routes['con-vendor-edit/(\d+)']       = ['controller' => 'Phase2\Con_VendorController', 'method' => 'edit'];
 $routes['con-vendor-update/(\d+)']     = ['controller' => 'Phase2\Con_VendorController', 'method' => 'update'];
 $routes['con-vendor/(\d+)']            = ['controller' => 'Phase2\Con_VendorController', 'method' => 'show'];
+$routes['con-vendor-delete']           = ['controller' => 'Phase2\Con_VendorController', 'method' => 'delete'];
 
 // ── Purchase Requests ──────────────────────────────────────────────────────
 $routes['con-purchase-requests']       = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'index'];
@@ -756,6 +757,7 @@ $routes['con-purchase-request-create'] = ['controller' => 'Phase2\Con_PurchaseRe
 $routes['con-purchase-request-store']  = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'store'];
 $routes['con-purchase-request/(\d+)']  = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'show'];
 $routes['con-purchase-request-approve/(\d+)'] = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'approve'];
+$routes['con-boq-remaining/(\d+)']    = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'boqRemaining'];
 
 // ── Quotations & CST ──────────────────────────────────────────────────────
 $routes['con-quotation-create/(\d+)']  = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'create'];
@@ -769,24 +771,22 @@ $routes['con-purchase-order/(\d+)']    = ['controller' => 'Phase2\Con_PurchaseOr
 $routes['con-purchase-order-generate/(\d+)'] = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'generate'];
 
 // ── Material Receiving / GRN ───────────────────────────────────────────────
-$routes['con-material-receivings']           = ['controller' => 'Con_MaterialReceivingController', 'method' => 'index'];
-$routes['con-material-receiving-create/(\d+)'] = ['controller' => 'Con_MaterialReceivingController', 'method' => 'create'];
-$routes['con-material-receiving-store']      = ['controller' => 'Con_MaterialReceivingController', 'method' => 'store'];
-$routes['con-material-receiving-qc/(\d+)']   = ['controller' => 'Con_MaterialReceivingController', 'method' => 'qcReview'];
+$routes['con-material-receivings']             = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'index'];
+$routes['con-material-receiving-create/(\d+)'] = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'create'];
+$routes['con-material-receiving-store']        = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'store'];
+$routes['con-material-receiving-qc/(\d+)']     = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'qcReview'];
 
 // ── BOQ ───────────────────────────────────────────────────────────────────
 $routes['con-boq']                     = ['controller' => 'Phase2\Con_BOQController', 'method' => 'index'];
 $routes['con-boq-create']              = ['controller' => 'Phase2\Con_BOQController', 'method' => 'create'];
 $routes['con-boq-store']               = ['controller' => 'Phase2\Con_BOQController', 'method' => 'store'];
 $routes['con-boq-show/(\d+)']          = ['controller' => 'Phase2\Con_BOQController', 'method' => 'show'];
+$routes['con-boq-edit/(\d+)']          = ['controller' => 'Phase2\Con_BOQController', 'method' => 'edit'];
+$routes['con-boq-update/(\d+)']        = ['controller' => 'Phase2\Con_BOQController', 'method' => 'update'];
+$routes['con-boq-approve/(\d+)']       = ['controller' => 'Phase2\Con_BOQController', 'method' => 'approve'];
 $routes['con-boq-delete']              = ['controller' => 'Phase2\Con_BOQController', 'method' => 'delete'];
 
-// ── Working Plan + Budget ─────────────────────────────────────────────────
-$routes['con-working-plans']           = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'index'];
-$routes['con-working-plan-create']     = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'create'];
-$routes['con-working-plan-store']      = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'store'];
-$routes['con-budget-extends']          = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtends'];
-$routes['con-budget-extend-store']     = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtendStore'];
+// (Working Plan + Budget routes moved below to avoid duplicates — see lines 839+)
 
 // ── Target Fixed ──────────────────────────────────────────────────────────
 $routes['con-targets']                 = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'index'];
@@ -831,6 +831,18 @@ $routes['con-estimate-edit/(\d+)']    = ['controller' => 'Phase2\Con_InitialEsti
 $routes['con-estimate-update/(\d+)']  = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'update'];
 $routes['con-estimate-approve/(\d+)'] = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'approveBudget'];
 $routes['con-estimate-cancel/(\d+)']  = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'cancelBudget'];
+
+// ── Material Issues (Stock OUT) ───────────────────────────────────────────
+$routes['con-material-issues']               = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'index'];
+$routes['con-material-issue-create']         = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'create'];
+$routes['con-material-issue-store']          = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'store'];
+$routes['con-material-issue/(\d+)']          = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'show'];
+
+// ── Vendor Penalties ──────────────────────────────────────────────────────
+$routes['con-vendor-penalties']              = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'index'];
+$routes['con-vendor-penalty-create']         = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'create'];
+$routes['con-vendor-penalty-store']          = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'store'];
+$routes['con-vendor-penalty-delete']         = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'delete'];
 
 // =============================================================================
 // END PHASE 2 ROUTES
