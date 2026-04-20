@@ -53,13 +53,25 @@ class Con_MaterialIssueController extends Controller
         $materials  = $this->materialModel->getAll();
         $stocks     = $this->stockModel->getCurrentStock();
 
+        // Fetch Working Plans and Targets
+        $workingPlanModel = new \Con_WorkingPlan($this->db);
+        $workPlans = $workingPlanModel->getAll();
+        
+        $targets = [];
+        try {
+            $tRes = $this->db->query("SELECT * FROM target_fixed ORDER BY id DESC");
+            if ($tRes) $targets = $tRes->fetch_all(MYSQLI_ASSOC);
+        } catch (\Exception $e) {}
+
         $this->view('phase2/material-issues/create-issue', [
-            'current_route' => 'con-material-issues',
+            'current_route' => 'con-material-issues-create',
             'page_title'    => 'New Material Issue',
             'projects'      => $projects,
             'warehouses'    => $warehouses,
             'materials'     => $materials,
             'stocks'        => $stocks,
+            'workPlans'     => $workPlans,
+            'targets'       => $targets,
         ]);
     }
 
@@ -82,6 +94,8 @@ class Con_MaterialIssueController extends Controller
             'purpose'      => trim($_POST['purpose'] ?? ''),
             'issued_by'    => $userId,
             'issue_date'   => $_POST['issue_date'] ?? date('Y-m-d'),
+            'target_id'    => !empty($_POST['target_id']) ? (int)$_POST['target_id'] : null,
+            'work_plan_id' => !empty($_POST['work_plan_id']) ? (int)$_POST['work_plan_id'] : null,
         ];
 
         if (empty($data['material_id']) || $data['quantity'] <= 0) {

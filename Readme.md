@@ -256,6 +256,8 @@ CREATE TABLE IF NOT EXISTS `initial_estimate_budgets` (
   `material_cost_total`   DECIMAL(15,2)    DEFAULT 0.00 COMMENT 'Sum of all design items',
   `labor_cost_total`      DECIMAL(15,2)    DEFAULT 0.00 COMMENT 'Sum of all design labors',
   `other_costs`           DECIMAL(15,2)    DEFAULT 0.00,
+  `start_date`           Date Default Null,
+  `end_date`          Date Default Null,
   `total_estimated_cost`  DECIMAL(15,2)    DEFAULT 0.00 COMMENT 'Grand Total',
   `status`                ENUM('pending', 'approved', 'cancelled') DEFAULT 'pending',
   `approved_by`           INT(11)          NULL,
@@ -734,7 +736,7 @@ CREATE TABLE IF NOT EXISTS `vendor_payment_requests` (
   -- পেনাল্টি অ্যাডজাস্টমেন্ট
   `penalty_amount`     DECIMAL(16,4)    DEFAULT 0.0000 COMMENT 'Sum of all adjusted penalties',
   `net_payable_amount` DECIMAL(16,4)    DEFAULT 0.0000 COMMENT 'invoice_amount - penalty_amount',
-  
+  `payment_type` ENUM('Advance', 'Partial', 'Final') NOT NULL DEFAULT 'Final'
   `delivery_verified`  TINYINT(1)       NOT NULL DEFAULT 0,
   `qc_verified`        TINYINT(1)       NOT NULL DEFAULT 0,
   `status`             ENUM('Draft','Submitted','Approved','Rejected','Paid') NOT NULL DEFAULT 'Draft',

@@ -8,6 +8,7 @@ use Con_InitialEstimate;
 use Con_DesignType;
 
 class Con_WorkingPlanController extends Controller
+
 {
     protected $db;
     protected $model;
@@ -284,6 +285,61 @@ class Con_WorkingPlanController extends Controller
             setError($result['error']);
         }
         header("Location: {$GLOBALS['base_url']}/con-budget-extends");
+        exit;
+    }
+
+    // =========================================================================
+    // AJAX — Project Data (working plans + budgets for a given project)
+    // GET: ?project_id=N
+    // Returns JSON: { work_plans: [...], budgets: [...] }
+    // =========================================================================
+
+    public function ajaxGetProjectData()
+    {
+        header('Content-Type: application/json');
+        $projectId = (int)($_GET['project_id'] ?? 0);
+
+        if (!$projectId) {
+            echo json_encode(['work_plans' => [], 'budgets' => []]);
+            exit;
+        }
+
+        // Working plans for this project
+        $plans = $this->model->getByProject($projectId);
+        $workPlans = array_map(function ($p) {
+            return [
+                'id'                => $p['id'],
+                'initial_budget_id' => $p['initial_budget_id'],
+                'label'             => ($p['year'] ?? '') . '/' . str_pad($p['month'] ?? '', 2, '0', STR_PAD_LEFT)
+                                       . ' — ' . ($p['design_type_name'] ?? 'Plan')
+                                       . ' — ' . mb_substr($p['work_description'] ?? '', 0, 40),
+                'budget_label'      => '৳ ' . number_format($p['budget_total'] ?? 0, 2),
+                'estimated_cost'    => $p['estimated_cost'] ?? 0,
+                'work_description'  => $p['work_description'] ?? '',
+                'design_type'       => $p['design_type_name'] ?? '',
+            ];
+        }, $plans);
+
+        // Approved budgets for this project
+        $stmt = $this->db->prepare(
+            "SELECT id, total_estimated_cost, status
+             FROM initial_estimate_budgets
+             WHERE project_id = ? AND status = 'approved'
+             ORDER BY id DESC"
+        );
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $rawBudgets = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $budgets = array_map(function ($b) {
+            return [
+                'id'    => $b['id'],
+                'label' => 'Budget #' . $b['id'] . ' — ৳ ' . number_format($b['total_estimated_cost'], 2),
+                'total' => $b['total_estimated_cost'],
+            ];
+        }, $rawBudgets);
+
+        echo json_encode(['work_plans' => $workPlans, 'budgets' => $budgets]);
         exit;
     }
 }

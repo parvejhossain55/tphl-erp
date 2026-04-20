@@ -78,6 +78,26 @@ class Con_WorkingPlan extends Model
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    /** All working plans for a specific project (with budget total + design type) */
+    public function getByProject($projectId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT w.*,
+                    p.name  AS project_name,
+                    b.total_estimated_cost AS budget_total,
+                    dt.name AS design_type_name
+             FROM {$this->planTable} w
+             LEFT JOIN projects                 p  ON p.id  = w.project_id
+             LEFT JOIN initial_estimate_budgets b  ON b.id  = w.initial_budget_id
+             LEFT JOIN design_types             dt ON dt.id = w.design_type_id
+             WHERE w.project_id = ?
+             ORDER BY w.year ASC, w.month ASC"
+        );
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
     // =========================================================================
     // BUDGET SUMMARY CALCULATIONS
     // =========================================================================

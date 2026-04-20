@@ -46,7 +46,7 @@ class Con_BOQController extends Controller
         $materials = $this->materialModel->getAll();
 
         $this->view('phase2/boq/create-boq', [
-            'current_route' => 'con-boq',
+            'current_route' => 'con-boq-create',
             'page_title'    => 'New Bill of Quantities',
             'projects'      => $projects,
             'materials'     => $materials,

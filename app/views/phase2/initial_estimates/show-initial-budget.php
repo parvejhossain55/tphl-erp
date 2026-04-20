@@ -33,13 +33,23 @@
                 <div class="fw-bold"><?= htmlspecialchars($budget['project_name']) ?></div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
+        <div class="col-sm-6 col-xl-2">
             <div class="p-3 border rounded bg-light text-center h-100">
                 <div class="text-muted small mb-1">Total Area</div>
                 <div class="fw-bold"><?= number_format($budget['total_area_sqft'] ?? 0, 2) ?> sqft</div>
             </div>
         </div>
         <div class="col-sm-6 col-xl-3">
+            <div class="p-3 border rounded bg-light text-center h-100">
+                <div class="text-muted small mb-1">Duration</div>
+                <div class="fw-bold text-dark">
+                    <?= !empty($budget['start_date']) ? date('M d, Y', strtotime($budget['start_date'])) : '—' ?> 
+                    <i class="bi bi-arrow-right mx-1"></i> 
+                    <?= !empty($budget['end_date']) ? date('M d, Y', strtotime($budget['end_date'])) : '—' ?>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-2">
             <div class="p-3 border rounded bg-light text-center h-100">
                 <div class="text-muted small mb-1">Grand Total Estimate</div>
                 <div class="fw-bold fs-5 text-primary">৳ <?= number_format($budget['total_estimated_cost'], 2) ?></div>

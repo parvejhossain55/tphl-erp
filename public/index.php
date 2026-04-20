@@ -776,6 +776,14 @@ $routes['con-material-receiving-create/(\d+)'] = ['controller' => 'Phase2\Con_Ma
 $routes['con-material-receiving-store']        = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'store'];
 $routes['con-material-receiving-qc/(\d+)']     = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'qcReview'];
 
+// ── Vendor Payment Requests (New Module) ───────────────────────────────────
+$routes['con-vendor-payment-requests'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'index'];
+$routes['con-vendor-payment-create']   = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'create'];
+$routes['con-vendor-payment-store']    = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'store'];
+$routes['con-vendor-payment-show/(\d+)'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'];
+$routes['con-vendor-payment-approve/(\d+)'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'approve'];
+$routes['con-vendor-payment-ajax-penalty'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'];
+
 // ── BOQ ───────────────────────────────────────────────────────────────────
 $routes['con-boq']                     = ['controller' => 'Phase2\Con_BOQController', 'method' => 'index'];
 $routes['con-boq-create']              = ['controller' => 'Phase2\Con_BOQController', 'method' => 'create'];
@@ -844,6 +852,18 @@ $routes['con-vendor-penalty-create']         = ['controller' => 'Phase2\Con_Vend
 $routes['con-vendor-penalty-store']          = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'store'];
 $routes['con-vendor-penalty-delete']         = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'delete'];
 
+// ── Target Fixed — missing routes ─────────────────────────────────────────
+$routes['con-target-edit/(\d+)']       = ['controller' => 'Phase2\\Con_TargetFixedController', 'method' => 'edit'];
+$routes['con-target-update/(\d+)']     = ['controller' => 'Phase2\\Con_TargetFixedController', 'method' => 'update'];
+$routes['con-target-gain/(\d+)']       = ['controller' => 'Phase2\\Con_TargetFixedController', 'method' => 'updateGain'];
+
+// ── Financial Transactions ─────────────────────────────────────────────────
+$routes['con-transactions']               = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'index'];
+$routes['con-pending-payments']           = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'pendingList'];
+$routes['con-process-payment/([^/]+)/(\d+)'] = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'process'];
+$routes['con-payment-store']              = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'store'];
+$routes['con-transaction/(\d+)']          = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'show'];
+
 // =============================================================================
 // END PHASE 2 ROUTES
 // =============================================================================
@@ -862,6 +882,12 @@ $routes['con-budget-extend-create']       = ['controller' => 'Phase2\Con_Working
 $routes['con-budget-extend-store']        = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtendStore'];
 $routes['con-budget-extend-approve/(\d+)']= ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'approveExtend'];
 $routes['con-budget-extend-reject/(\d+)'] = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'rejectExtend'];
+
+// ── AJAX: Cascade project → plans + budgets ───────────────────────────────
+$routes['con-ajax-project-data']           = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'ajaxGetProjectData'];
+// ── AJAX: Cascade project → targets ──────────────────────────────────────
+$routes['con-ajax-project-targets']        = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'ajaxGetProjectTargets'];
+
 
 $public_routes = [
     '',

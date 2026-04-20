@@ -53,13 +53,14 @@ class Con_ContractorBill extends Model
     public function create($data)
     {
         $sql = "INSERT INTO {$this->table}
-                (project_id, operator_id, bill_date, work_description, bill_amount, attachment_path, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                (project_id, operator_id, target_id, bill_date, work_description, bill_amount, attachment_path, status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iissdss i',
+            'iiissdss i',
             $data['project_id'],
             $data['operator_id'],
+            $data['target_id'],
             $data['bill_date'],
             $data['work_description'],
             $data['bill_amount'],
@@ -106,6 +107,20 @@ class Con_ContractorBill extends Model
                 ORDER BY cbr.created_at DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('s', $status);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function getByTarget($targetId)
+    {
+        $sql = "SELECT cbr.*, oo.name AS operator_name, p.name AS project_name
+                FROM {$this->table} cbr
+                LEFT JOIN operations_operators oo ON oo.id = cbr.operator_id
+                LEFT JOIN projects p ON p.id = cbr.project_id
+                WHERE cbr.target_id = ?
+                ORDER BY cbr.created_at DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $targetId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }

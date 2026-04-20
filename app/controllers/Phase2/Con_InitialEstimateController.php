@@ -75,6 +75,8 @@ class Con_InitialEstimateController extends Controller
         $header = [
             'project_id'       => (int)   ($_POST['project_id']       ?? 0),
             'architecture_id'  => (int)   ($_POST['architecture_id']  ?? 0),
+            'start_date'       =>         ($_POST['start_date']       ?? null),
+            'end_date'         =>         ($_POST['end_date']         ?? null),
             'total_area_sqft'  => (float) ($_POST['total_area_sqft']  ?? 0),
             'other_costs'      => (float) ($_POST['other_costs']      ?? 0),
             'created_by'       => (int)   ($_SESSION['user']['id']    ?? 0),
@@ -231,6 +233,8 @@ class Con_InitialEstimateController extends Controller
         $header = [
             'project_id'      => (int)   ($_POST['project_id']      ?? 0),
             'architecture_id' => (int)   ($_POST['architecture_id'] ?? 0),
+            'start_date'      =>         ($_POST['start_date']      ?? null),
+            'end_date'        =>         ($_POST['end_date']        ?? null),
             'total_area_sqft' => (float) ($_POST['total_area_sqft'] ?? 0),
             'other_costs'     => (float) ($_POST['other_costs']     ?? 0),
         ];

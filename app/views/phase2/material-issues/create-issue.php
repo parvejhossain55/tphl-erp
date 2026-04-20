@@ -58,6 +58,34 @@
                             </div>
                         </div>
 
+                        <!-- Row 1.5: Target + Work Plan + Design Type Form -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Target <span class="text-muted">(Optional)</span></label>
+                                <select name="target_id" class="form-select">
+                                    <option value="">-- Select Target --</option>
+                                    <?php foreach ($targets as $t): ?>
+                                        <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['title'] ?? 'Target #'.$t['id']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Working Plan <span class="text-muted">(Optional)</span></label>
+                                <select name="work_plan_id" id="issueWorkPlan" class="form-select">
+                                    <option value="">-- Select Plan --</option>
+                                    <?php foreach ($workPlans as $wp): ?>
+                                        <option value="<?= $wp['id'] ?>" data-design="<?= $wp['design_type_name'] ?? '' ?>">
+                                            <?= htmlspecialchars(date('M Y', strtotime($wp['year'].'-'.$wp['month'].'-01')) . ' - ' . $wp['work_description']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Design Type</label>
+                                <input type="text" id="autoDesignType" class="form-control bg-light" readonly placeholder="Auto-selected based on plan...">
+                            </div>
+                        </div>
+
                         <!-- Row 2: Material + Qty -->
                         <div class="row  mb-3">
                             <div class="col-md-5">
@@ -152,5 +180,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     warehouseSel.addEventListener('change', updateAvailable);
     materialSel.addEventListener('change', updateAvailable);
+
+    // Auto-select Design Type based on Working Plan
+    var workPlanSel = document.getElementById('issueWorkPlan');
+    var designTypeDisplay = document.getElementById('autoDesignType');
+
+    workPlanSel.addEventListener('change', function() {
+        var opt = workPlanSel.options[workPlanSel.selectedIndex];
+        if (opt && opt.value) {
+            var design = opt.getAttribute('data-design') || 'Not specified';
+            designTypeDisplay.value = design;
+        } else {
+            designTypeDisplay.value = '';
+        }
+    });
+
 });
 </script>

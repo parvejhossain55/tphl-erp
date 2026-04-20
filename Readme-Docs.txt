@@ -629,7 +629,11 @@ Next Step:
 
 ---
 table alter con_material_issues add target_id, add work_plan_id
+table alter initial_estimate_budgets add start_date, add end_date
+table alter con_material_issues add target_id, add work_plan_id
 table alter contractor_bill_requests add target_id
 table alter vendor_payment_requests add penalty_amount, add net_payable_amount
 ALTER TABLE `vendor_penalties` 
 ADD COLUMN `payment_request_id` INT(11) UNSIGNED DEFAULT NULL AFTER `receiving_id`;
+ALTER TABLE `vendor_payment_requests` 
+ADD COLUMN `payment_type` ENUM('Advance', 'Partial', 'Final') NOT NULL DEFAULT 'Final' AFTER `purchase_order_id`;

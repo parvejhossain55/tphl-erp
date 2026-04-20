@@ -190,13 +190,15 @@ class Con_InitialEstimate extends Model
     public function createBudget($data)
     {
         $sql = "INSERT INTO {$this->budgetTable}
-                    (project_id, architecture_id, total_area_sqft, other_costs, status, created_by)
-                VALUES (?, ?, ?, ?, 'pending', ?)";
+                    (project_id, architecture_id, start_date, end_date, total_area_sqft, other_costs, status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiddi',
+            'iissddi',
             $data['project_id'],
             $data['architecture_id'],
+            $data['start_date'],
+            $data['end_date'],
             $data['total_area_sqft'],
             $data['other_costs'],
             $data['created_by']
@@ -373,13 +375,15 @@ class Con_InitialEstimate extends Model
 
         $stmt = $this->db->prepare(
             "UPDATE {$this->budgetTable}
-             SET project_id = ?, architecture_id = ?, total_area_sqft = ?, other_costs = ?
+             SET project_id = ?, architecture_id = ?, start_date = ?, end_date = ?, total_area_sqft = ?, other_costs = ?
              WHERE id = ? AND status = 'pending'"
         );
         $stmt->bind_param(
-            'iiddi',
+            'iissddi',
             $data['project_id'],
             $data['architecture_id'],
+            $data['start_date'],
+            $data['end_date'],
             $data['total_area_sqft'],
             $data['other_costs'],
             $id

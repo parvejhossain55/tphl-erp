@@ -49,6 +49,16 @@
                         </select>
                     </div>
                     <div class="col-md-2">
+                        <label class="form-label fw-bold">Start Date</label>
+                        <input type="date" name="start_date" class="form-control"
+                               value="<?= htmlspecialchars($budget['start_date'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">End Date</label>
+                        <input type="date" name="end_date" class="form-control"
+                               value="<?= htmlspecialchars($budget['end_date'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-2">
                         <label class="form-label fw-bold">Total Area (sqft)</label>
                         <input type="number" step="0.01" name="total_area_sqft" id="totalAreaSqft"
                                class="form-control"

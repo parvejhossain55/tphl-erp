@@ -31,7 +31,7 @@ class Con_MaterialController extends Controller
     public function create()
     {
         $this->view('phase2/materials/create-material', [
-            'current_route' => 'con-materials',
+            'current_route' => 'con-material-create',
             'page_title'    => 'Add Material',
         ]);
     }
