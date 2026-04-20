@@ -170,22 +170,22 @@ class UserDashboardController extends Controller
                 (lead_id, follow_up_date, status, discussion_note, next_action, created_by)
                 VALUES (?, CURDATE(), ?, ?, ?, ?)
             ");
-            
+
             if (!$createStmt) {
                 http_response_code(500);
                 echo json_encode(['error' => 'Failed to create follow-up: ' . $this->db->error]);
                 exit;
             }
-            
+
             $defaultStatus = $status ?? 'pending';
             $createStmt->bind_param("isssi", $leadId, $defaultStatus, $note, $nextAction, $userId);
-            
+
             if (!$createStmt->execute()) {
                 http_response_code(500);
                 echo json_encode(['error' => 'Failed to create follow-up: ' . $createStmt->error]);
                 exit;
             }
-            
+
             $followUpId = $this->db->insert_id;
             $createStmt->close();
         }
@@ -235,7 +235,7 @@ class UserDashboardController extends Controller
             // AUTO UPDATE LEADS TABLE STATUS
             // ==============================
             $leadAction = null;
-            
+
             // Get follow-up type for the current follow-up
             $getFollowUp = $this->db->prepare("SELECT follow_up_type FROM lead_follow_ups WHERE id = ?");
             $getFollowUp->bind_param("i", $followUpId);
@@ -261,7 +261,7 @@ class UserDashboardController extends Controller
                     SET last_lead_action = ?
                     WHERE id = ?
                 ");
-                
+
                 if ($updateLead) {
                     $updateLead->bind_param(
                         "si",
@@ -287,10 +287,57 @@ class UserDashboardController extends Controller
     {
         $id = $_POST['lead_id'];
         $status = $_POST['call_status'];
+        $stmt = $this->db->prepare("UPDATE leads SET call_status=? WHERE id=?");
+        $stmt->bind_param("si", $status, $id);
+        $stmt->execute();
+    }
+    public function updateCommunicationStatus()
+    {
+        $id = $_POST['lead_id'];
+        $status = $_POST['communication_type'];
+        $stmt = $this->db->prepare("UPDATE leads SET communication_type=? WHERE id=?");
+        $stmt->bind_param("si", $status, $id);
+        $stmt->execute();
+    }
+    public function updateLeadQuality()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed']);
+            exit;
+        }
 
-        $this->db->query(
-            "UPDATE leads SET call_status='$status' WHERE id=$id"
-        );
+        if (!isset($_POST['lead_id'], $_POST['lead_quality'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing data']);
+            exit;
+        }
+
+        $id = (int) $_POST['lead_id'];
+        $quality = $_POST['lead_quality'];
+
+        // Optional: whitelist validation
+        $allowed = ['Not Interested', 'Prospect', 'Pending'];
+        if (!in_array($quality, $allowed)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid quality']);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("UPDATE leads SET lead_quality=? WHERE id=?");
+        $stmt->bind_param("si", $quality, $id);
+
+        if ($stmt->execute()) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Lead quality updated'
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Update failed']);
+        }
+
+        $stmt->close();
     }
 
 

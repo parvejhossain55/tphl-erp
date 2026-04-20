@@ -6,7 +6,11 @@ class Con_Vendor extends Model
 
     public function getAll()
     {
-        $sql = "SELECT v.*, u.full_name AS created_by_name
+        $sql = "SELECT v.*, u.full_name AS created_by_name,
+                       (SELECT COUNT(*) FROM purchase_order_items poi
+                        JOIN purchase_orders po ON po.id = poi.purchase_order_id
+                        WHERE poi.selected_vendor_id = v.id) AS total_orders,
+                       (SELECT COUNT(*) FROM vendor_penalties vp WHERE vp.vendor_id = v.id) AS penalty_count
                 FROM {$this->table} v
                 LEFT JOIN users u ON u.id = v.created_by
                 ORDER BY v.name ASC";
@@ -53,4 +57,84 @@ class Con_Vendor extends Model
         );
         return $stmt->execute();
     }
+
+    public function delete($id)
+    {
+        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ?");
+        $stmt->bind_param('i', $id);
+        return $stmt->execute();
+    }
+
+    /** Get all penalties for a vendor */
+    public function getPenalties($vendorId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT vp.*, u.full_name AS created_by_name
+             FROM vendor_penalties vp
+             LEFT JOIN users u ON u.id = vp.created_by
+             WHERE vp.vendor_id = ?
+             ORDER BY vp.id DESC"
+        );
+        $stmt->bind_param('i', $vendorId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /** Get PO items history for a vendor */
+    public function getPurchaseHistory($vendorId)
+    {
+        $sql = "SELECT poi.*, po.id AS po_id, po.order_date, po.status AS po_status,
+                       m.name AS material_name, m.unit, p.name AS project_name
+                FROM purchase_order_items poi
+                JOIN purchase_orders po ON po.id = poi.purchase_order_id
+                JOIN purchase_requests pr ON pr.id = po.request_id
+                JOIN con_materials m ON m.id = poi.material_id
+                LEFT JOIN projects p ON p.id = pr.project_id
+                WHERE poi.selected_vendor_id = ?
+                ORDER BY po.order_date DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $vendorId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /** Get quick stats for vendor profile */
+    public function getStats($vendorId)
+    {
+        // Total PO value
+        $stmt = $this->db->prepare(
+            "SELECT COALESCE(SUM(poi.quantity * poi.unit_price), 0) AS total_value,
+                    COUNT(DISTINCT poi.purchase_order_id) AS po_count
+             FROM purchase_order_items poi
+             WHERE poi.selected_vendor_id = ?"
+        );
+        $stmt->bind_param('i', $vendorId);
+        $stmt->execute();
+        $poStats = $stmt->get_result()->fetch_assoc();
+
+        // Penalty count + total amount
+        $stmt2 = $this->db->prepare(
+            "SELECT COUNT(*) AS penalty_count, COALESCE(SUM(amount), 0) AS penalty_total
+             FROM vendor_penalties WHERE vendor_id = ?"
+        );
+        $stmt2->bind_param('i', $vendorId);
+        $stmt2->execute();
+        $penaltyStats = $stmt2->get_result()->fetch_assoc();
+
+        // Accepted / Rejected items
+        $stmt3 = $this->db->prepare(
+            "SELECT
+                COALESCE(SUM(CASE WHEN mri.status = 'Accepted' THEN 1 ELSE 0 END), 0) AS accepted_items,
+                COALESCE(SUM(CASE WHEN mri.status = 'Rejected' THEN 1 ELSE 0 END), 0) AS rejected_items
+             FROM material_receiving_items mri
+             JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+             WHERE poi.selected_vendor_id = ?"
+        );
+        $stmt3->bind_param('i', $vendorId);
+        $stmt3->execute();
+        $qcStats = $stmt3->get_result()->fetch_assoc();
+
+        return array_merge($poStats, $penaltyStats, $qcStats);
+    }
 }
+

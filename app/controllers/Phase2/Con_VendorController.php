@@ -1,4 +1,8 @@
 <?php
+namespace Phase2;
+
+use Controller;
+use Con_Vendor;
 
 class Con_VendorController extends Controller
 {
@@ -17,7 +21,7 @@ class Con_VendorController extends Controller
 
         $vendors = $this->vendorModel->getAll();
 
-        $this->view('phase2/vendors/index', [
+        $this->view('phase2/vendors/vendor-lists', [
             'current_route' => 'con-vendors',
             'page_title'    => 'Vendors & Suppliers',
             'vendors'       => $vendors,
@@ -26,7 +30,7 @@ class Con_VendorController extends Controller
 
     public function create()
     {
-        $this->view('phase2/vendors/create', [
+        $this->view('phase2/vendors/create-vendor', [
             'current_route' => 'con-vendors',
             'page_title'    => 'Add Vendor',
         ]);
@@ -66,7 +70,14 @@ class Con_VendorController extends Controller
     public function edit($id)
     {
         $vendor = $this->vendorModel->find($id);
-        $this->view('phase2/vendors/edit', [
+
+        if (!$vendor) {
+            setError('Vendor not found.');
+            header("Location: {$GLOBALS['base_url']}/con-vendors");
+            exit;
+        }
+
+        $this->view('phase2/vendors/edit-vendor', [
             'current_route' => 'con-vendors',
             'page_title'    => 'Edit Vendor',
             'vendor'        => $vendor,
@@ -75,6 +86,8 @@ class Con_VendorController extends Controller
 
     public function update($id)
     {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
         $data = [
             'name'    => trim($_POST['name'] ?? ''),
             'phone'   => $_POST['phone'] ?? null,
@@ -83,12 +96,53 @@ class Con_VendorController extends Controller
             'status'  => $_POST['status'] ?? 'active',
         ];
 
+        if (empty($data['name'])) {
+            setError('Vendor name is required.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-edit/{$id}");
+            exit;
+        }
+
         if ($this->vendorModel->update($id, $data)) {
-            setSuccess('Vendor updated!');
+            setSuccess('Vendor updated successfully!');
         } else {
             setError('Update failed.');
         }
 
+        header("Location: {$GLOBALS['base_url']}/con-vendors");
+        exit;
+    }
+
+    public function show($id)
+    {
+        $vendor = $this->vendorModel->find($id);
+        if (!$vendor) {
+            setError('Vendor not found.');
+            header("Location: {$GLOBALS['base_url']}/con-vendors");
+            exit;
+        }
+
+        $stats     = $this->vendorModel->getStats($id);
+        $penalties = $this->vendorModel->getPenalties($id);
+        $poHistory = $this->vendorModel->getPurchaseHistory($id);
+
+        $this->view('phase2/vendors/show-vendor', [
+            'current_route' => 'con-vendors',
+            'page_title'    => 'Vendor Profile — ' . $vendor['name'],
+            'vendor'        => $vendor,
+            'stats'         => $stats,
+            'penalties'     => $penalties,
+            'poHistory'     => $poHistory,
+        ]);
+    }
+
+    public function delete()
+    {
+        $id = (int)($_POST['id'] ?? 0);
+        if ($this->vendorModel->delete($id)) {
+            setSuccess('Vendor deleted.');
+        } else {
+            setError('Failed to delete vendor.');
+        }
         header("Location: {$GLOBALS['base_url']}/con-vendors");
         exit;
     }

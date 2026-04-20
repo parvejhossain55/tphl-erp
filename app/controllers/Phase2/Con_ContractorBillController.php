@@ -1,11 +1,20 @@
 <?php
+namespace Phase2;
+
+use Controller;
+use Con_ContractorBill;
+use Con_Operator;
+use ApprovalRequest;
+use Con_TargetFixed;
 
 class Con_ContractorBillController extends Controller
+
 {
     protected $db;
     protected $billModel;
     protected $operatorModel;
     protected $approvalModel;
+    protected $targetModel;
 
     public function __construct($db)
     {
@@ -13,6 +22,7 @@ class Con_ContractorBillController extends Controller
         $this->billModel     = new Con_ContractorBill($this->db);
         $this->operatorModel = new Con_Operator($this->db);
         $this->approvalModel = new ApprovalRequest($this->db);
+        $this->targetModel   = new Con_TargetFixed($this->db);
     }
 
     /* =====================
@@ -24,7 +34,7 @@ class Con_ContractorBillController extends Controller
 
         $bills = $this->billModel->getAllWithRelations();
 
-        $this->view('phase2/contractor-bills/index', [
+        $this->view('phase2/contractor-bills/bill-lists', [
             'current_route' => 'con-contractor-bills',
             'page_title'    => 'Contractor Bill Requests',
             'bills'         => $bills,
@@ -40,12 +50,14 @@ class Con_ContractorBillController extends Controller
 
         $operators = $this->operatorModel->getActiveContractors();
         $projects  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name")->fetch_all(MYSQLI_ASSOC);
+        $targets   = $this->targetModel->getAll();
 
-        $this->view('phase2/contractor-bills/create', [
+        $this->view('phase2/contractor-bills/create-bill', [
             'current_route' => 'con-contractor-bills',
             'page_title'    => 'New Contractor Bill',
             'operators'     => $operators,
             'projects'      => $projects,
+            'targets'       => $targets,
         ]);
     }
 
@@ -60,6 +72,7 @@ class Con_ContractorBillController extends Controller
         $data = [
             'project_id'       => $_POST['project_id'] ?? null,
             'operator_id'      => $_POST['operator_id'] ?? null,
+            'target_id'        => !empty($_POST['target_id']) ? $_POST['target_id'] : null,
             'bill_date'        => $_POST['bill_date'] ?? date('Y-m-d'),
             'work_description' => trim($_POST['work_description'] ?? ''),
             'bill_amount'      => $_POST['bill_amount'] ?? 0,
@@ -126,7 +139,7 @@ class Con_ContractorBillController extends Controller
             exit;
         }
 
-        $this->view('phase2/contractor-bills/show', [
+        $this->view('phase2/contractor-bills/show-bill', [
             'current_route' => 'con-contractor-bills',
             'page_title'    => 'Contractor Bill Detail',
             'bill'          => $bill,

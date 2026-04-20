@@ -1,0 +1,102 @@
+<?php
+$base_url = $GLOBALS['base_url'];
+$page_title = $page_title ?? 'Site Targets';
+?>
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
+        <div class="my-auto">
+            <h4 class="page-title fw-semibold fs-18 mb-0"><?= $page_title ?></h4>
+            <div class="d-flex">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Site Targets</li>
+                </ol>
+            </div>
+        </div>
+        <div class="my-auto">
+            <a href="<?= $base_url ?>/con-target-create" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle me-1"></i> New Target
+            </a>
+        </div>
+    </div>
+
+    <!-- Card -->
+    <div class="card custom-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="card-title mb-0"><i class="bi bi-bullseye me-2 text-primary"></i> All Site Targets</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="targetTable" class="table table-bordered table-hover text-nowrap">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#</th>
+                            <th>Project</th>
+                            <th>Target Title</th>
+                            <th>Design Type</th>
+                            <th>Year/Month</th>
+                            <th>Week</th>
+                            <th>Target %</th>
+                            <th>Gain %</th>
+                            <th>QC Approval</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!empty($targets)): ?>
+                            <?php foreach ($targets as $i => $t): ?>
+                                <?php
+                                $totalApprovals = (int)$t['approved_by_site_eng']
+                                                + (int)$t['approved_by_qc']
+                                                + (int)$t['approved_by_pc']
+                                                + (int)$t['approved_by_pd']
+                                                + (int)$t['approved_by_manager'];
+                                if ($totalApprovals >= 5) $badge = 'success';
+                                elseif ($totalApprovals > 0) $badge = 'warning';
+                                else $badge = 'secondary';
+                                ?>
+                                <tr>
+                                    <td><?= $i + 1 ?></td>
+                                    <td><?= htmlspecialchars($t['project_name'] ?? '-') ?></td>
+                                    <td><?= htmlspecialchars($t['target_title']) ?></td>
+                                    <td><?= htmlspecialchars($t['design_type_name'] ?? '-') ?></td>
+                                    <td><?= $t['year'] ?>/<?= str_pad($t['month'], 2, '0', STR_PAD_LEFT) ?></td>
+                                    <td><?= $t['week_number'] ? 'Week '.$t['week_number'] : '-' ?></td>
+                                    <td>
+                                        <span class="badge bg-info"><?= number_format($t['target_percentage'], 1) ?>%</span>
+                                    </td>
+                                    <td>
+                                        <?php $gain = (float)$t['gain_percentage']; ?>
+                                        <span class="badge bg-<?= $gain >= (float)$t['target_percentage'] ? 'success' : ($gain > 0 ? 'warning' : 'secondary') ?>">
+                                            <?= number_format($gain, 1) ?>%
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-<?= $badge ?>"><?= $totalApprovals ?>/5 Approved</span>
+                                    </td>
+                                    <td>
+                                        <a href="<?= $base_url ?>/con-target/<?= $t['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="<?= $base_url ?>/con-target-edit/<?= $t['id'] ?>" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr><td colspan="10" class="text-center text-muted">No targets found. <a href="<?= $base_url ?>/con-target-create">Create one</a></td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function () {
+    $('#targetTable').DataTable({ responsive: true, pageLength: 25 });
+});
+</script>

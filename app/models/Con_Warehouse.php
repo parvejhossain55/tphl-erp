@@ -6,7 +6,7 @@ class Con_Warehouse extends Model
 
     public function getAll()
     {
-        $sql = "SELECT w.*, p.project_name, u.full_name AS created_by_name
+        $sql = "SELECT w.*, p.name as project_name, u.full_name AS created_by_name
                 FROM {$this->table} w
                 LEFT JOIN projects p ON p.id = w.project_id
                 LEFT JOIN users u ON u.id = w.created_by

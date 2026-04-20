@@ -1,6 +1,13 @@
 <?php
+namespace Phase2;
+
+use Controller;
+use Con_FundRequest;
+use Con_Operator;
+use ApprovalRequest;
 
 class Con_FundRequestController extends Controller
+
 {
     protected $db;
     protected $fundModel;
@@ -24,7 +31,7 @@ class Con_FundRequestController extends Controller
 
         $requests = $this->fundModel->getAllWithRelations();
 
-        $this->view('phase2/fund-requests/index', [
+        $this->view('phase2/fund-requests/fund-lists', [
             'current_route' => 'con-fund-requests',
             'page_title'    => 'Operational Fund Requests',
             'requests'      => $requests,
@@ -41,7 +48,7 @@ class Con_FundRequestController extends Controller
         $operators = $this->operatorModel->getAll();
         $projects  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 
-        $this->view('phase2/fund-requests/create', [
+        $this->view('phase2/fund-requests/create-fund', [
             'current_route' => 'con-fund-requests',
             'page_title'    => 'New Fund Request',
             'operators'     => $operators,
@@ -59,12 +66,13 @@ class Con_FundRequestController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $data = [
-            'project_id'   => $_POST['project_id'] ?? null,
+            'project_id'   => $_POST['project_id']  ?? null,
+            'work_plan_id' => !empty($_POST['work_plan_id']) ? (int)$_POST['work_plan_id'] : null,
             'requester_id' => $_SESSION['user']['id'] ?? null,
             'operator_id'  => !empty($_POST['operator_id']) ? $_POST['operator_id'] : null,
-            'amount'       => $_POST['amount'] ?? 0,
+            'amount'       => $_POST['amount']       ?? 0,
             'purpose'      => trim($_POST['purpose'] ?? ''),
-            'fund_date'    => $_POST['fund_date'] ?? date('Y-m-d'),
+            'fund_date'    => $_POST['fund_date']    ?? date('Y-m-d'),
             'status'       => 'pending',
             'created_by'   => $_SESSION['user']['id'] ?? null,
         ];
@@ -116,7 +124,7 @@ class Con_FundRequestController extends Controller
             exit;
         }
 
-        $this->view('phase2/fund-requests/show', [
+        $this->view('phase2/fund-requests/show-fund', [
             'current_route' => 'con-fund-requests',
             'page_title'    => 'Fund Request Detail',
             'request'       => $request,
