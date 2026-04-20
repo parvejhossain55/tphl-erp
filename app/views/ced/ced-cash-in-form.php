@@ -342,7 +342,7 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         amountField.removeAttribute('disabled');
                     } else {
                         helpText = perEmi > 0 ? 'Suggested: TK.' + perEmi.toLocaleString('en-IN', {minimumFractionDigits:2}) + '.' + dueNote + ' Enter any amount — system allocates automatically.' : 'Enter EMI amount';
-                        amountField.removeAttribute('max');
+                        amountField.setAttribute('max', Math.round(cedRemainingCF));
                         amountField.removeAttribute('disabled');
                     }
                     break;

@@ -460,7 +460,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         } else {
                             helpText = 'Suggested: TK.' + perEmiAmount.toLocaleString('en-IN', {minimumFractionDigits:2}) + svcPct + '.' + dueNote + ' Enter any amount — system allocates automatically.';
                             amountField.setAttribute('placeholder', 'Suggested EMI: TK.' + perEmiAmount.toLocaleString('en-IN', {minimumFractionDigits:2}));
-                            amountField.removeAttribute('max');
+                            amountField.setAttribute('max', Math.round(remainingCF));
                         }
                         amountField.removeAttribute('disabled');
                     } else {
@@ -470,8 +470,13 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     break;
 
                 case 'registration':
-                    helpText = 'Registration fee amount';
-                    amountField.removeAttribute('max');
+                    if (remainingLandShare > 0) {
+                        helpText = 'Registration fee (Max: TK.' + Math.round(remainingLandShare).toLocaleString('en-IN') + ')';
+                        amountField.setAttribute('max', Math.round(remainingLandShare));
+                    } else {
+                        helpText = 'Land share fully paid — registration not needed.';
+                        amountField.setAttribute('disabled', 'disabled');
+                    }
                     amountField.removeAttribute('disabled');
                     break;
 
@@ -511,11 +516,12 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                 return;
             }
             const entered = parseFloat(amountField?.value) || 0;
-            // If this payment covers the entire remaining CF, no real due
             const cfRemainAfter = Math.max(0, remainingCF - entered);
             let due = 0;
             if (cfRemainAfter > 0) {
-                due = perEmiAmount > 0 && entered < perEmiAmount ? Math.round(perEmiAmount - entered) : 0;
+                // Expected for this installment is capped at actual remaining CF
+                const expectedForThis = perEmiAmount > 0 ? Math.min(perEmiAmount, remainingCF) : 0;
+                due = expectedForThis > 0 && entered < expectedForThis ? Math.round(expectedForThis - entered) : 0;
             }
             if (dueEmiHidden)  dueEmiHidden.value  = due.toFixed(2);
             if (dueEmiDisplay) dueEmiDisplay.value  = due > 0 ? 'TK. ' + due.toLocaleString('en-IN') : 'TK. 0.00';

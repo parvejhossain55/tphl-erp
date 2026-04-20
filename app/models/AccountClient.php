@@ -891,8 +891,10 @@ ORDER BY lb.booking_date DESC
                         // This payment completes or exceeds the construction fee — NO due
                         $dueEmiAmount = 0;
                     } else {
-                        $dueEmiAmount = ($perEmiSuggested > 0 && $amount < $perEmiSuggested)
-                                        ? round($perEmiSuggested - $amount)
+                        // The "expected" amount for this installment is capped at actual remaining
+                        $expectedForThisEmi = ($perEmiSuggested > 0) ? min($perEmiSuggested, $effectiveCFRemaining) : 0;
+                        $dueEmiAmount = ($expectedForThisEmi > 0 && $amount < $expectedForThisEmi)
+                                        ? round($expectedForThisEmi - $amount)
                                         : 0;
                     }
 
@@ -1293,7 +1295,8 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
                     WHEN lp.payment_type = 'development_charge' THEN 'Development Charge'
                     ELSE 'Other Payment'
-                END as payment_details
+                END as payment_details,
+                b.bank_name as bank_display_name
             FROM lead_payments lp
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
@@ -1302,6 +1305,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN users uv ON uv.id = lp.verified_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+            LEFT JOIN banks b ON b.id = lp.bank_id
             WHERE lp.booking_id = ?
             ORDER BY lp.payment_date DESC, lp.id DESC
         ");
@@ -1404,7 +1408,8 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
                     WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
                     ELSE 'Other Payment'
-                END as payment_details
+                END as payment_details,
+                b.bank_name as bank_display_name
             FROM lead_payments lp
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
@@ -1412,6 +1417,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+            LEFT JOIN banks b ON b.id = lp.bank_id
             WHERE lp.booking_id = ?
         ";
 
@@ -2021,12 +2027,17 @@ ORDER BY lb.booking_date DESC
 
                 // Calculate remaining CF after ALL installments so far (including this one)
                 // If this payment fully covers the remaining CF, there's no real due
-                $cfRemainingAfterThis = max(0, $effectiveCF - $emiPaidSoFar - $totalAllocated - $thisEmi);
+                $cfRemainingBeforeThis = max(0, $effectiveCF - $emiPaidSoFar - $totalAllocated);
+                $cfRemainingAfterThis = max(0, $cfRemainingBeforeThis - $thisEmi);
                 if ($cfRemainingAfterThis <= 0) {
                     // Last installment — no due even if less than per EMI
                     $thisDue = 0;
                 } else {
-                    $thisDue = ($perEmiAmount > 0) ? max(0, round($perEmiAmount - $thisEmi)) : 0;
+                    // Expected for this installment is capped at what's actually remaining
+                    $expectedForThis = ($perEmiAmount > 0) ? min($perEmiAmount, $cfRemainingBeforeThis) : 0;
+                    $thisDue = ($expectedForThis > 0 && $thisEmi < $expectedForThis)
+                               ? max(0, round($expectedForThis - $thisEmi))
+                               : 0;
                 }
                 $thisStatus = ($thisDue > 0) ? 'partially_paid' : 'paid';
 

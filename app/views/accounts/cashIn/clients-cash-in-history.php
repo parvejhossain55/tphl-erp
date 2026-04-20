@@ -411,6 +411,7 @@ $show_breadcrumb = true;
                                 <th style="white-space:nowrap;">Land Share</th>
                                 <th style="white-space:nowrap;">Service Fee</th>
                                 <th>Method</th>
+                                <th>Bank</th>
                                 <th>Trx ID</th>
                                 <th>Status</th>
                                 <th>Verification</th>
@@ -473,6 +474,15 @@ $show_breadcrumb = true;
                                     </td>
                                     <td>
                                         <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $transaction['payment_method'] ?? 'N/A'))); ?>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($transaction['bank_display_name'])): ?>
+                                            <span class="text-primary" style="font-size:12px;">
+                                                <i class="fa-light fa-building-columns me-1"></i><?= htmlspecialchars($transaction['bank_display_name']) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted">-</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php echo !empty($transaction['transaction_ref']) ? htmlspecialchars($transaction['transaction_ref']) : '<span class="text-muted">-</span>'; ?>
