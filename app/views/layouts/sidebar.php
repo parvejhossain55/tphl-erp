@@ -1205,6 +1205,16 @@
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-vendor-create" class="sidebar__menu-item <?= isActive('con-vendor-create', $current_route) ?>">Add Vendor</a>
                             </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-vendor-payment-requests" class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
+                                    <i class="bi bi-wallet2 me-1"></i> Payment Requests
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-vendor-payment-create" class="sidebar__menu-item <?= isActive('con-vendor-payment-create', $current_route) ?>">
+                                    + New Payment Request
+                                </a>
+                            </li>
                         </ul>
                     </li>
 

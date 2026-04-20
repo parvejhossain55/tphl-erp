@@ -216,29 +216,22 @@ ALTER TABLE lead_payments
 -- ============================================================
 -- ============================================================
 -- 18 April ,2026
+/* 19 April 2026 */
+
+ALTER TABLE `lead_payments`
+ADD COLUMN `bulk_emi_discount` DECIMAL(15, 2) DEFAULT 0.00 AFTER `amount`;
+
 ALTER TABLE `flats`
-ADD COLUMN `development_charges` DECIMAL(15, 2) DEFAULT NULL
-AFTER `land_share_value`;
+ADD COLUMN `development_charges` DECIMAL(15, 2) DEFAULT NULL AFTER `land_share_value`;
 
 ALTER TABLE `projects`
-ADD COLUMN `service_charge_per_emi` DECIMAL(8, 2) DEFAULT NULL
-AFTER `project_sale_status`;
+ADD COLUMN `service_charge_per_emi` DECIMAL(8, 2) DEFAULT NULL AFTER `project_sale_status`;
 
+ALTER TABLE `lead_payments`
+ADD COLUMN `parent_payment_id` INT NULL COMMENT 'References the original EMI this settles',
+ADD COLUMN `settlement_type` VARCHAR(50) NULL COMMENT 'emi_due_settlement',
+ADD INDEX `idx_parent_payment_id` (`parent_payment_id`);
 
-ALTER TABLE lead_payments
-    ADD COLUMN parent_payment_id INT NULL COMMENT 'References the original EMI this settles',
-    ADD COLUMN settlement_type VARCHAR(50) NULL COMMENT 'emi_due_settlement',
-    ADD INDEX idx_parent_payment_id (parent_payment_id);
-
-
--- emi schedules table
-ALTER TABLE emi_schedules 
-    ADD COLUMN IF NOT EXISTS overdue_since DATE NULL AFTER due_emi_amount,
-    ADD COLUMN IF NOT EXISTS is_overdue TINYINT(1) NOT NULL DEFAULT 0 AFTER overdue_since;
-
---==============================================================
- -- =====================================
- -- 19 April ,2026
- ALTER TABLE `lead_payments`
-ADD COLUMN `bulk_emi_discount` DECIMAL(15, 2) DEFAULT 0.00
-AFTER `amount`;
+ALTER TABLE `emi_schedules`
+ADD COLUMN `overdue_since` DATE NULL,
+ADD COLUMN `is_overdue` TINYINT(1) NOT NULL DEFAULT 0;
