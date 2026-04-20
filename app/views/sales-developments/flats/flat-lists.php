@@ -78,6 +78,7 @@ $show_breadcrumb = false;
                             <th>Facing Site</th>
                             <th>Sqft</th>
                             <th>Land Share Value</th>
+                            <th>Dev. Charges</th>
                             <th>Price</th>
                             <th>Facilities</th>
                             <th>Available/Booked </th>
@@ -95,6 +96,7 @@ $show_breadcrumb = false;
                                 <td><?= htmlspecialchars($flat['facing_site']) ?></td>
                                 <td><?= htmlspecialchars($flat['sqft']) ?></td>
                                 <td><?= format_bdt($flat['land_share_value']) ?? 'N/A' ?></td>
+                                <td><?= !empty($flat['development_charges']) ? format_bdt($flat['development_charges']) : 'N/A' ?></td>
                                 <td><?= format_bdt($flat['price_value']) ?></td>
                                 <td><?= htmlspecialchars($flat['facilities']) ?></td>
                                 <td>

@@ -7,18 +7,32 @@ $show_breadcrumb = true;
 // Get booking ID from URL or session
 $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
 
-// Get payment summary to check land share status
-$accountModel = new AccountClient();
-$paymentSummary = $accountModel->getPaymentSummaryByBookingId($bookingId);
+// Get payment summary to check all gating flags
+$accountModel     = new AccountClient();
+$paymentSummary   = $accountModel->getPaymentSummaryByBookingId($bookingId);
+$outstandingDues  = $accountModel->getOutstandingEmiDues($bookingId);
 
-$remainingLandShare    = $paymentSummary['remaining_land_share']  ?? 0;
-$isLandShareCompleted  = $paymentSummary['is_land_share_completed'] ?? false;
-$isRegistrationPaid    = $accountModel->isRegistrationPaid($bookingId);
-$isBookingFullyPaid    = $paymentSummary['is_booking_fully_paid']  ?? false;
-$agreementValue        = $paymentSummary['agreement_value']        ?? 0;
-$bookingMoneyTotal     = $paymentSummary['booking_money_total']    ?? 0; // all entries — for dropdown remaining
-$bookingMoneyPaid      = $paymentSummary['booking_money_paid']     ?? 0; // verified only — for stat display
-$bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // remaining = agreement - all recorded
+$remainingLandShare      = $paymentSummary['remaining_land_share']       ?? 0;
+$isLandShareCompleted    = $paymentSummary['is_land_share_completed']    ?? false;
+$isDevChargeCompleted    = $paymentSummary['is_dev_charge_completed']    ?? false;
+$isBookingFullyPaid      = $paymentSummary['is_booking_fully_paid']      ?? false;
+$agreementValue          = $paymentSummary['agreement_value']            ?? 0;
+$effectiveBookingTarget  = $paymentSummary['effective_booking_target']   ?? $agreementValue;
+$bookingMoneyTotal       = $paymentSummary['booking_money_total']        ?? 0;
+$bookingMoneyPaid        = $paymentSummary['booking_money_paid']         ?? 0;
+$bookingBalance          = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
+$perEmiAmount         = $paymentSummary['per_emi_amount']          ?? 0;
+$serviceChargeRate    = $paymentSummary['service_charge_per_emi']  ?? 0;
+$flatDevCharges       = $paymentSummary['flat_development_charges'] ?? 0;
+$devChargePaid        = $paymentSummary['development_charge_paid'] ?? 0;
+$totalEmiDue          = $paymentSummary['total_emi_due']           ?? 0;
+$hasOutstandingDues   = count($outstandingDues) > 0;
+// isRegistrationPaid is now tied to is_land_share_completed (same gate)
+$isRegistrationPaid   = $paymentSummary['is_registration_paid']   ?? false;
+$remainingCF          = (float)($paymentSummary['remaining_construction_fee'] ?? 0);
+$totalBulkDiscount    = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0);
+$constructionFee      = (float)($paymentSummary['construction_fee'] ?? 0);
+$emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 ?>
 
 <div class="row">
@@ -31,7 +45,6 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // rema
 
             <div class="card__body">
 
-                <!-- Booking Money Unpaid Alert -->
                 <?php if (($paymentSummary['booking_money_paid'] ?? 0) <= 0 && ($paymentSummary['booking_money'] ?? 0) > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
                         <strong><i class="fa-light fa-triangle-exclamation me-1"></i>Booking Money Pending!</strong>
@@ -52,20 +65,23 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // rema
                     </div>
                 <?php endif; ?>
 
-                <!-- Land Share Status Alert -->
-                <?php if ($remainingLandShare <= 0): ?>
+                <?php if ($isLandShareCompleted): ?>
                     <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
-                        <strong>Land Share Completed!</strong> All land share payments have been made. You can now add
-                        construction fee/EMI payments.
+                        <strong><i class="fa-light fa-circle-check me-1"></i>Land Share &amp; Registration Completed!</strong>
+                        All land share and registration payments are done.
+                        <?php if (!$isDevChargeCompleted && $flatDevCharges > 0): ?>
+                            Development Charge is next (<?= number_format($devChargePaid, 2) ?> / <?= number_format($flatDevCharges, 2) ?> paid).
+                        <?php elseif ($isDevChargeCompleted): ?>
+                            EMI payments are now available.
+                        <?php endif; ?>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 <?php endif; ?>
 
-                <!-- Registration Required Alert -->
-                <?php if (!$isRegistrationPaid): ?>
-                    <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
-                        <strong>Registration Required!</strong> Registration payment must be completed before adding EMI
-                        payments.
+                <?php if ($hasOutstandingDues): ?>
+                    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                        <strong><i class="fa-light fa-exclamation-circle me-1"></i>Outstanding EMI Due: TK.<?= number_format($totalEmiDue, 2) ?></strong>
+                        — Select <em>"Settle EMI Due"</em> below to clear the balance.
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 <?php endif; ?>
@@ -81,76 +97,92 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // rema
                             <select name="payment_type" class="form-control" id="paymentType" required>
                                 <option value="">-- Select Payment Type --</option>
 
-                                <!-- Booking Money — payable while not fully settled -->
+                                <!-- Booking Money -->
                                 <?php if (!$isBookingFullyPaid): ?>
-                                    <option value="booking_money" data-details="false">
-                                        Booking Money<?php if ($bookingBalance > 0): ?> (Remaining: TK.<?= number_format($bookingBalance, 2) ?>)<?php elseif ($agreementValue > 0): ?> (Agreed: TK.<?= number_format($agreementValue, 2) ?>)<?php endif; ?>
+                                    <option value="booking_money">
+                                        Booking Money<?php if ($bookingBalance > 0): ?> (Remaining: TK.<?= number_format($bookingBalance, 2) ?>)<?php elseif ($effectiveBookingTarget > 0): ?> (Agreed: TK.<?= number_format($effectiveBookingTarget, 2) ?>)<?php endif; ?>
                                     </option>
                                 <?php else: ?>
                                     <option value="booking_money" disabled>
-                                        Booking Money (Fully Paid — TK.<?= number_format($bookingMoneyPaid, 2) ?>)
+                                        Booking Money (Fully Paid — TK.<?= number_format($bookingMoneyPaid, 2) ?> / Target: TK.<?= number_format($effectiveBookingTarget, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- Registration – always available -->
-                                <option value="registration" data-details="false"
-                                    <?= (isset($_POST['payment_type']) && $_POST['payment_type'] === 'registration') ? 'selected' : '' ?>>
-                                    Registration
-                                    <?php if ($isRegistrationPaid): ?>
-                                        (Already Paid)
-                                    <?php endif; ?>
-                                </option>
-
-                                <!-- Land Share - Requires booking fully paid AND not yet completed -->
+                                <!-- Land Share & Registration unlock simultaneously after booking paid, lock simultaneously when landshare target reached -->
                                 <?php if ($isBookingFullyPaid && !$isLandShareCompleted): ?>
-                                    <option value="land_share" data-details="false">
-                                        Land Share
-                                        <?php echo $remainingLandShare > 0 ? '(Remaining: TK.' . number_format($remainingLandShare, 2) . ')' : ''; ?>
+                                    <option value="land_share">
+                                        Land Share (Remaining: TK.<?= number_format($remainingLandShare, 2) ?>)
+                                    </option>
+                                    <option value="registration">
+                                        Registration
                                     </option>
                                 <?php elseif ($isLandShareCompleted): ?>
-                                    <option value="land_share" disabled>
-                                        Land Share (Completed)
-                                    </option>
+                                    <option value="land_share" disabled>Land Share (Completed)</option>
+                                    <option value="registration" disabled>Registration (Completed with Land Share)</option>
                                 <?php else: ?>
-                                    <option value="land_share" disabled>
-                                        Land Share (Locked — Booking balance: TK.<?= number_format($bookingBalance, 2) ?> outstanding)
-                                    </option>
+                                    <option value="land_share" disabled>Land Share (Locked — complete booking first)</option>
+                                    <option value="registration" disabled>Registration (Locked — complete booking first)</option>
                                 <?php endif; ?>
 
-                                <!-- Development Charges - Only if registration is paid -->
-                                <?php if ($isRegistrationPaid): ?>
-                                    <option value="development_charge" data-details="false">
-                                        Development Charges
+                                <!-- Development Charge — requires landshare completed -->
+                                <?php if ($isLandShareCompleted && !$isDevChargeCompleted): ?>
+                                    <option value="development_charge">
+                                        Development Charges (Remaining: TK.<?= number_format(max(0, $flatDevCharges - $devChargePaid), 2) ?>)
+                                    </option>
+                                <?php elseif ($isDevChargeCompleted): ?>
+                                    <option value="development_charge" disabled>
+                                        Development Charges (Fully Paid — TK.<?= number_format($devChargePaid, 2) ?>)
                                     </option>
                                 <?php else: ?>
                                     <option value="development_charge" disabled>
-                                        Development Charges (Requires: Registration Paid)
+                                        Development Charges (Locked — complete land share first)
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- EMI - Only requires land share completed (no registration prerequisite) -->
-                                <?php if ($isLandShareCompleted): ?>
+                                <!-- EMI — requires dev charge completed -->
+                                <?php if ($isDevChargeCompleted && $remainingCF > 0): ?>
                                     <option value="emi" data-details="true">
-                                        EMI (Construction Fee)
+                                        EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?php endif; ?>
+                                    </option>
+                                <?php elseif ($isDevChargeCompleted && $remainingCF <= 0): ?>
+                                    <option value="emi" disabled>
+                                        EMI — All Paid ✓ (Construction Fee Completed)
+                                    </option>
+                                <?php elseif ($isLandShareCompleted): ?>
+                                    <option value="emi" disabled>
+                                        EMI (Locked — pay development charge first)
                                     </option>
                                 <?php else: ?>
                                     <option value="emi" disabled>
-                                        EMI (Requires: Land Share Completed)
+                                        EMI (Locked — complete land share &amp; dev charge first)
                                     </option>
                                 <?php endif; ?>
+
+                                <!-- Settle EMI Due — Advanced fallback (only shown when outstanding dues exist) -->
+                                <?php if ($hasOutstandingDues): ?>
+                                    <option value="emi_due_settlement" data-details="false">
+                                        ⚙ Advanced: Settle Specific EMI Due (Outstanding: TK.<?= number_format($totalEmiDue, 2) ?>)
+                                    </option>
+                                <?php endif; ?>
+
                             </select>
 
-                            <!-- Help text with status -->
+                            <!-- Help text -->
                             <small class="text-muted mt-2 d-block">
                                 <?php if (!$isLandShareCompleted): ?>
                                     <span class="text-warning">
                                         <i class="fa-light fa-exclamation-triangle"></i>
-                                        Remaining Land Share: TK.<?= number_format($remainingLandShare, 2) ?> — EMI will be enabled once completed
+                                        Remaining Land Share: TK.<?= number_format($remainingLandShare, 2) ?> — Land Share &amp; Registration lock together when done
+                                    </span>
+                                <?php elseif (!$isDevChargeCompleted && $flatDevCharges > 0): ?>
+                                    <span class="text-warning">
+                                        <i class="fa-light fa-exclamation-triangle"></i>
+                                        Dev Charge paid: TK.<?= number_format($devChargePaid, 2) ?> / TK.<?= number_format($flatDevCharges, 2) ?> — EMI unlocks after this is complete
                                     </span>
                                 <?php else: ?>
                                     <span class="text-success">
                                         <i class="fa-light fa-circle-check"></i>
-                                        Land Share completed. All payment types are available.
+                                        All prerequisites met. EMI payments available.
                                     </span>
                                 <?php endif; ?>
                             </small>
@@ -160,19 +192,72 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // rema
                         <div class="col-md-6">
                             <div class="from__input-box">
                                 <label class="form__input-title">Paid Amount <span>*</span></label>
-                                <input type="number" name="amount" id="amount" class="form-control" step="0.01"
-                                    min="0.01" required>
+                                <input type="number" name="amount" id="amount" class="form-control" step="1"
+                                    min="1" required placeholder="Enter payment amount">
                                 <small id="amountHelp" class="text-muted"></small>
                             </div>
                         </div>
 
-                        <!-- EMI Fields (hidden by default) -->
-                        <div class="col-md-12 emi-fields" style="display: none;">
-                            <div class="from__input-box">
-                                <label class="form__input-title">Due Amount</label>
-                                <input type="number" name="due_emi_amount" id="dueEmiAmount" class="form-control"
-                                    step="0.01" min="0" placeholder="Enter due amount for this EMI">
-                                <small class="text-muted">This will be added to EMI schedule (optional)</small>
+                        <!-- EMI Info Panel (shown when EMI selected) -->
+                        <div class="col-md-12 emi-fields" style="display:none;">
+                            <div class="from__input-box p-3" style="background:#f8f9fa;border-radius:8px;border:1px solid #dee2e6;">
+                                <label class="form__input-title">EMI Payment Info <small class="text-muted">(Smart Allocation)</small></label>
+                                <div class="d-flex flex-column gap-2">
+                                    <?php if ($totalEmiDue > 0): ?>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-warning text-dark"><i class="fa-light fa-exclamation-triangle me-1"></i>Outstanding Due</span>
+                                            <strong class="text-danger">TK.<?= number_format($totalEmiDue, 2) ?></strong>
+                                            <small class="text-muted">— will be auto-cleared first from your payment (oldest due first)</small>
+                                        </div>
+                                    <?php endif; ?>
+                                    <small class="text-muted">
+                                        <?php if ($perEmiAmount > 0): ?>
+                                            Suggested EMI: <strong>TK.<?= number_format($perEmiAmount, 2) ?></strong>.
+                                            <?php if ($serviceChargeRate > 0): ?>
+                                                Service charge of <strong><?= number_format($serviceChargeRate, 2) ?>%</strong> applies on total amount.
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                        Enter any amount — the system will: ① clear outstanding dues (oldest first) → ② cover current installment → ③ carry surplus to next installment(s).
+                                    </small>
+                                </div>
+                                <input type="hidden" name="due_emi_amount" id="dueEmiAmount" value="0">
+
+                                <!-- Bulk EMI Discount (shown when >= 2 EMIs) -->
+                                <div id="bulkDiscountSection" class="mt-3 p-3" style="display:none;background:rgba(108,95,252,0.07);border-radius:8px;border:1px solid rgba(108,95,252,0.2);">
+                                    <label class="form__input-title" style="color:#6c5ffc;">
+                                        <i class="fa-light fa-tags me-1"></i>Bulk EMI Discount (Optional)
+                                    </label>
+                                    <div class="row align-items-end">
+                                        <div class="col-md-6">
+                                            <input type="number" name="bulk_emi_discount" id="bulkEmiDiscount"
+                                                   class="form-control" step="1" min="0" value="0"
+                                                   placeholder="Enter discount amount">
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settle EMI Due — parent payment selector (shown when emi_due_settlement selected) -->
+                        <div class="col-md-12 settle-due-fields" style="display:none;">
+                            <div class="from__input-box p-3" style="background:#fff3cd;border-radius:8px;border:1px solid #ffc107;">
+                                <label class="form__input-title">Select EMI to Settle <span>*</span></label>
+                                <select name="parent_payment_id" id="parentPaymentId" class="form-control">
+                                    <option value="">-- Select Outstanding EMI --</option>
+                                    <?php foreach ($outstandingDues as $due): ?>
+                                        <option value="<?= $due['id'] ?>"
+                                            data-due="<?= $due['due_emi_amount'] ?>">
+                                            EMI #<?= $due['emi_no'] > 0 ? $due['emi_no'] : '?' ?>
+                                            — Paid: TK.<?= number_format($due['amount'], 2) ?>
+                                            — Due: TK.<?= number_format($due['due_emi_amount'], 2) ?>
+                                            (<?= date('d M Y', strtotime($due['payment_date'])) ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <input type="hidden" name="settlement_type" value="emi_due_settlement">
+                                <small class="text-muted d-block mt-1">Amount field will be auto-capped to the selected EMI's remaining due. Service charge applies on settled amount.</small>
                             </div>
                         </div>
 
@@ -308,24 +393,50 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // rema
         const chequeFields = document.querySelectorAll('.cheque-fields');
         const onlineFields = document.querySelectorAll('.online-fields');
 
-        const remainingLandShare   = <?= json_encode($remainingLandShare) ?>;
-        const isLandShareCompleted  = <?= json_encode($isLandShareCompleted) ?>;
-        const isBookingFullyPaid    = <?= json_encode($isBookingFullyPaid) ?>;
-        const bookingBalance        = <?= json_encode($bookingBalance) ?>;
+        const remainingLandShare    = <?= json_encode($remainingLandShare) ?>;
+        const isLandShareCompleted   = <?= json_encode($isLandShareCompleted) ?>;
+        const isDevChargeCompleted   = <?= json_encode($isDevChargeCompleted) ?>;
+        const isBookingFullyPaid     = <?= json_encode($isBookingFullyPaid) ?>;
+        const bookingBalance         = <?= json_encode((float)$bookingBalance) ?>;
+        const effectiveBookingTarget = <?= json_encode((float)$effectiveBookingTarget) ?>;
+        const perEmiAmount           = <?= json_encode((float)$perEmiAmount) ?>;
+        const serviceChargeRate      = <?= json_encode((float)$serviceChargeRate) ?>;
+        const settleDueFields        = document.querySelectorAll('.settle-due-fields');
+        const parentPaymentIdSelect  = document.getElementById('parentPaymentId');
+        const dueEmiHidden           = document.getElementById('dueEmiAmount');
+        const dueEmiDisplay          = document.getElementById('dueEmiDisplay');
+        // Bulk discount elements
+        const bulkDiscountSection    = document.getElementById('bulkDiscountSection');
+        const bulkDiscountInput      = document.getElementById('bulkEmiDiscount');
+        const remainingCFDisplay     = document.getElementById('remainingCFAfterPayment');
+        const maxDiscountDisplay     = document.getElementById('maxBulkDiscount');
+        const constructionFee        = <?= json_encode((float)$constructionFee) ?>;
+        const emiPaidSoFar           = <?= json_encode((float)$emiPaidSoFar) ?>;
+        const existingBulkDiscount   = <?= json_encode((float)$totalBulkDiscount) ?>;
+        const effectiveCF            = Math.max(0, constructionFee - existingBulkDiscount);
 
-        // Function to update amount field help text and validation
+        // Function to update amount field help text and EMI due calculation
         function updateAmountField() {
             const paymentTypeValue = paymentType.value;
             let helpText = '';
-            let maxAmount = null;
-            let minAmount = 0.01;
 
             switch (paymentTypeValue) {
+                case 'booking_money':
+                    if (bookingBalance > 0) {
+                        helpText = 'Maximum payable: TK.' + Math.round(bookingBalance).toLocaleString('en-IN') + ' (agreement minus discount)';
+                        amountField.setAttribute('max', Math.round(bookingBalance));
+                        amountField.setAttribute('placeholder', 'Max: TK.' + bookingBalance.toLocaleString('en-IN', {minimumFractionDigits:2}));
+                    } else {
+                        helpText = 'Booking already fully paid';
+                        amountField.setAttribute('disabled', 'disabled');
+                    }
+                    amountField.removeAttribute('disabled');
+                    break;
+
                 case 'land_share':
                     if (remainingLandShare > 0) {
-                        helpText = 'Maximum: TK.' + remainingLandShare.toLocaleString('en-IN', { minimumFractionDigits: 2 });
-                        maxAmount = remainingLandShare;
-                        amountField.setAttribute('max', maxAmount);
+                        helpText = 'Maximum: TK.' + Math.round(remainingLandShare).toLocaleString('en-IN');
+                        amountField.setAttribute('max', Math.round(remainingLandShare));
                     } else {
                         helpText = 'Land share already completed';
                         amountField.setAttribute('disabled', 'disabled');
@@ -333,37 +444,112 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // rema
                     break;
 
                 case 'emi':
-                    helpText = 'EMI amount (10% service fee will be calculated)';
+                    const remainingCF = <?= json_encode((float)$remainingCF) ?>;
+                    if (remainingCF <= 0) {
+                        helpText = 'Construction fee fully paid — no more EMI needed.';
+                        amountField.setAttribute('disabled', 'disabled');
+                    } else if (perEmiAmount > 0) {
+                        const svcPct = serviceChargeRate > 0 ? ' + ' + serviceChargeRate + '% service charge' : '';
+                        const totalDue = <?= json_encode((float)$totalEmiDue) ?>;
+                        let dueNote = totalDue > 0 ? ' Outstanding due: TK.' + totalDue.toLocaleString('en-IN', {minimumFractionDigits:2}) + ' (auto-cleared first).' : '';
+                        const effectiveMax = Math.min(perEmiAmount, remainingCF);
+                        if (remainingCF < perEmiAmount) {
+                            helpText = 'Remaining CF: TK.' + Math.round(remainingCF).toLocaleString('en-IN') + ' (less than per EMI).' + svcPct + dueNote;
+                            amountField.setAttribute('placeholder', 'Max: TK.' + Math.round(remainingCF).toLocaleString('en-IN'));
+                            amountField.setAttribute('max', Math.round(remainingCF));
+                        } else {
+                            helpText = 'Suggested: TK.' + perEmiAmount.toLocaleString('en-IN', {minimumFractionDigits:2}) + svcPct + '.' + dueNote + ' Enter any amount — system allocates automatically.';
+                            amountField.setAttribute('placeholder', 'Suggested EMI: TK.' + perEmiAmount.toLocaleString('en-IN', {minimumFractionDigits:2}));
+                            amountField.setAttribute('max', Math.round(remainingCF));
+                        }
+                        amountField.removeAttribute('disabled');
+                    } else {
+                        helpText = 'Enter EMI amount';
+                        amountField.setAttribute('placeholder', 'Enter EMI amount');
+                    }
                     break;
 
                 case 'registration':
-                    helpText = 'Registration fee amount';
-                    break;
-
-                case 'construction_fee':
-                    helpText = 'Construction fee payment';
+                    if (remainingLandShare > 0) {
+                        helpText = 'Registration fee (Max: TK.' + Math.round(remainingLandShare).toLocaleString('en-IN') + ')';
+                        amountField.setAttribute('max', Math.round(remainingLandShare));
+                    } else {
+                        helpText = 'Land share fully paid — registration not needed.';
+                        amountField.setAttribute('disabled', 'disabled');
+                    }
+                    amountField.removeAttribute('disabled');
                     break;
 
                 case 'development_charge':
                     helpText = 'Development charge payment';
+                    amountField.removeAttribute('max');
+                    amountField.removeAttribute('disabled');
+                    break;
+
+                case 'emi_due_settlement':
+                    helpText = 'Select an EMI above, then enter the amount to settle (≤ remaining due).';
+                    amountField.removeAttribute('disabled');
                     break;
 
                 default:
                     helpText = 'Enter payment amount';
+                    amountField.setAttribute('placeholder', 'Enter payment amount');
+                    amountField.removeAttribute('max');
+                    amountField.removeAttribute('disabled');
             }
 
-            amountHelp.textContent = helpText;
+            if (amountHelp) amountHelp.textContent = helpText;
 
-            // Enable field if it was disabled
-            if (paymentTypeValue !== 'land_share' || remainingLandShare > 0) {
-                amountField.removeAttribute('disabled');
-            }
-
-            // Remove any previous validation messages
+            // Clear previous validation
             amountField.classList.remove('is-invalid');
             const invalidFeedback = amountField.nextElementSibling;
             if (invalidFeedback && invalidFeedback.classList.contains('invalid-feedback')) {
                 invalidFeedback.remove();
+            }
+        }
+
+        // Recalculate EMI due based on entered amount vs suggested
+        function recalcEmiDue() {
+            if (paymentType.value !== 'emi') {
+                if (dueEmiHidden) dueEmiHidden.value = '0';
+                if (dueEmiDisplay) dueEmiDisplay.value = '';
+                return;
+            }
+            const entered = parseFloat(amountField?.value) || 0;
+            const cfRemainAfter = Math.max(0, remainingCF - entered);
+            let due = 0;
+            if (cfRemainAfter > 0) {
+                // Expected for this installment is capped at actual remaining CF
+                const expectedForThis = perEmiAmount > 0 ? Math.min(perEmiAmount, remainingCF) : 0;
+                due = expectedForThis > 0 && entered < expectedForThis ? Math.round(expectedForThis - entered) : 0;
+            }
+            if (dueEmiHidden)  dueEmiHidden.value  = due.toFixed(2);
+            if (dueEmiDisplay) dueEmiDisplay.value  = due > 0 ? 'TK. ' + due.toLocaleString('en-IN') : 'TK. 0.00';
+        }
+
+        // Update bulk discount section visibility and limits
+        function updateBulkDiscount() {
+            if (!bulkDiscountSection) return;
+            const amount = parseFloat(amountField?.value) || 0;
+            const isEmi = paymentType.value === 'emi';
+            const coversMultiple = perEmiAmount > 0 && amount >= (perEmiAmount * 2);
+
+            if (isEmi && coversMultiple) {
+                bulkDiscountSection.style.display = 'block';
+                const remainingAfter = Math.max(0, effectiveCF - emiPaidSoFar - amount);
+                const maxDiscount = remainingAfter;
+                if (remainingCFDisplay) remainingCFDisplay.textContent = 'TK.' + remainingAfter.toLocaleString('en-IN', {minimumFractionDigits:2});
+                if (maxDiscountDisplay) maxDiscountDisplay.textContent = 'TK.' + maxDiscount.toLocaleString('en-IN', {minimumFractionDigits:2});
+                if (bulkDiscountInput) {
+                    bulkDiscountInput.setAttribute('max', maxDiscount.toFixed(2));
+                    // Cap current value
+                    if (parseFloat(bulkDiscountInput.value) > maxDiscount) {
+                        bulkDiscountInput.value = maxDiscount.toFixed(2);
+                    }
+                }
+            } else {
+                bulkDiscountSection.style.display = 'none';
+                if (bulkDiscountInput) bulkDiscountInput.value = '0';
             }
         }
 
@@ -399,69 +585,75 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // rema
             }
         }
 
-        // Show/hide EMI fields when payment type changes
+        // Show/hide EMI / Settle-Due fields when payment type changes
         if (paymentType) {
             paymentType.addEventListener('change', function () {
-                const isEMI = this.value === 'emi';
+                const val = this.value;
+                const isEMI        = val === 'emi';
+                const isSettleDue  = val === 'emi_due_settlement';
 
-                if (isEMI) {
-                    emiFields.forEach(field => field.style.display = 'block');
-                } else {
-                    emiFields.forEach(field => field.style.display = 'none');
-                    if (dueEmiAmountField) {
-                        dueEmiAmountField.value = '';
-                    }
+                // Show/hide EMI due panel
+                emiFields.forEach(f => f.style.display = isEMI ? 'block' : 'none');
+
+                // Show/hide settle-due parent selector
+                settleDueFields.forEach(f => f.style.display = isSettleDue ? 'block' : 'none');
+
+                // Reset due fields when not EMI
+                if (!isEMI) {
+                    if (dueEmiHidden)  dueEmiHidden.value  = '0';
+                    if (dueEmiDisplay) dueEmiDisplay.value = '';
                 }
 
-                // Update amount field help text
+                // Update help text
                 updateAmountField();
-
-                // Control partially paid status when payment type changes
                 controlPartiallyPaidStatus();
+                updateBulkDiscount();
             });
         }
 
-        // Validate amount on input
+        // Cap amount when a parent EMI is selected for settlement
+        if (parentPaymentIdSelect) {
+            parentPaymentIdSelect.addEventListener('change', function () {
+                const selectedOption = this.options[this.selectedIndex];
+                const maxDue = parseFloat(selectedOption.dataset.due) || 0;
+                if (maxDue > 0) {
+                    amountField.setAttribute('max', maxDue);
+                    amountField.value = maxDue.toFixed(2);
+                    if (amountHelp) amountHelp.textContent = 'Max: TK.' + maxDue.toFixed(2) + ' (remaining due for this EMI)';
+                } else {
+                    amountField.removeAttribute('max');
+                }
+            });
+        }
+
+        // Live recalculate EMI due when amount changes
         if (amountField) {
             amountField.addEventListener('input', function () {
                 const paymentTypeValue = paymentType.value;
                 const amount = parseFloat(this.value) || 0;
 
+                if (paymentTypeValue === 'emi') {
+                    recalcEmiDue();
+                    // Auto-set payment_status
+                    const due = parseFloat(dueEmiHidden?.value) || 0;
+                    if (paymentStatusSelect) {
+                        paymentStatusSelect.value = due > 0 ? 'partially_paid' : 'paid';
+                    }
+                    if (partiallyPaidOption) {
+                        partiallyPaidOption.disabled = false;
+                    }
+                }
+
                 if (paymentTypeValue === 'land_share') {
                     if (amount > remainingLandShare) {
                         this.classList.add('is-invalid');
-                        const errorMsg = document.createElement('div');
-                        errorMsg.className = 'invalid-feedback';
-                        errorMsg.textContent = 'Amount cannot exceed remaining land share (TK.' +
-                            remainingLandShare.toLocaleString('en-IN', { minimumFractionDigits: 2 }) + ')';
-
-                        // Remove previous error message
-                        const existingError = this.nextElementSibling;
-                        if (existingError && existingError.classList.contains('invalid-feedback')) {
-                            existingError.remove();
-                        }
-
-                        // Insert after input field
-                        this.parentNode.insertBefore(errorMsg, this.nextElementSibling);
                     } else {
                         this.classList.remove('is-invalid');
-                        const invalidFeedback = this.nextElementSibling;
-                        if (invalidFeedback && invalidFeedback.classList.contains('invalid-feedback')) {
-                            invalidFeedback.remove();
-                        }
                     }
                 }
-            });
-        }
 
-        // Listen to due amount field changes
-        if (dueEmiAmountField) {
-            dueEmiAmountField.addEventListener('input', function () {
-                controlPartiallyPaidStatus();
-            });
-
-            dueEmiAmountField.addEventListener('change', function () {
-                controlPartiallyPaidStatus();
+                // Update bulk discount visibility
+                updateBulkDiscount();
             });
         }
 
@@ -520,58 +712,53 @@ $bookingBalance        = max(0, $agreementValue - $bookingMoneyTotal);   // rema
                     existingError.remove();
                 }
 
-                // Validation for land share payments
+                // Validation for EMI due settlement
+                if (paymentTypeValue === 'emi_due_settlement') {
+                    if (!parentPaymentIdSelect || !parentPaymentIdSelect.value) {
+                        e.preventDefault();
+                        alert('Please select the EMI you want to settle.');
+                        return false;
+                    }
+                    const maxDue = parseFloat(parentPaymentIdSelect.options[parentPaymentIdSelect.selectedIndex]?.dataset?.due) || 0;
+                    if (amount <= 0) {
+                        e.preventDefault();
+                        alert('Please enter a valid settlement amount.');
+                        amountField.focus();
+                        return false;
+                    }
+                    if (amount > maxDue + 0.01) {
+                        e.preventDefault();
+                        alert('Settlement amount (TK.' + amount.toFixed(2) + ') cannot exceed remaining due (TK.' + maxDue.toFixed(2) + ').');
+                        amountField.focus();
+                        return false;
+                    }
+                    return true;
+                }
+
+                // Validation for EMI
+                if (paymentTypeValue === 'emi' && amount <= 0) {
+                    e.preventDefault();
+                    alert('Please enter a valid EMI amount.');
+                    amountField.focus();
+                    return false;
+                }
+
+                // Validation for land share
                 if (paymentTypeValue === 'land_share') {
                     if (!isBookingFullyPaid) {
                         e.preventDefault();
-                        alert('Land Share is locked. Full booking amount must be paid first.\nOutstanding balance: TK.' + bookingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+                        alert('Land Share is locked. Full booking amount must be paid first.');
                         return false;
                     }
-
-                    if (remainingLandShare <= 0) {
+                    if (amount > remainingLandShare + 0.01) {
                         e.preventDefault();
-                        alert('Land share payment is already completed!');
-                        return false;
-                    }
-
-                    if (amount > remainingLandShare) {
-                        e.preventDefault();
-                        alert('Land share amount cannot exceed remaining: TK.' +
-                            remainingLandShare.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
-                        amountField.focus();
-                        return false;
-                    }
-
-                    if (amount <= 0) {
-                        e.preventDefault();
-                        alert('Please enter a valid land share amount.');
+                        alert('Land share amount cannot exceed remaining: TK.' + remainingLandShare.toFixed(2));
                         amountField.focus();
                         return false;
                     }
                 }
 
-                // Validation for EMI payments
-                if (paymentTypeValue === 'emi') {
-                    // Only validate due amount if payment status is 'partially_paid'
-                    if (paymentStatus === 'partially_paid' && (!dueAmount || dueAmount <= 0)) {
-                        e.preventDefault();
-                        alert('Partially Paid status requires a due amount greater than 0.');
-                        if (dueEmiAmountField) {
-                            dueEmiAmountField.focus();
-                        }
-                        return false;
-                    }
-
-                    // Check if amount is valid
-                    if (amount <= 0) {
-                        e.preventDefault();
-                        alert('Please enter a valid EMI amount.');
-                        amountField.focus();
-                        return false;
-                    }
-                }
-
-                // General amount validation
+                // General
                 if (amount <= 0) {
                     e.preventDefault();
                     alert('Please enter a valid amount.');

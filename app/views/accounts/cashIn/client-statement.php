@@ -104,9 +104,14 @@ function calculateActualPaidAmount(array $transactions): float
     return round($total, 2);
 }
 
+// Filter out failed, pending, AND rejected (verification_status) transactions
 $validTransactions = array_values(array_filter($transactions, function ($t) {
-    $status = strtolower($t['payment_status'] ?? '');
-    return !in_array($status, ['failed', 'pending'], true);
+    $payStatus = strtolower($t['payment_status'] ?? '');
+    $verStatus = strtolower($t['verification_status'] ?? 'pending');
+    // Exclude failed/pending payment status AND rejected verification
+    if (in_array($payStatus, ['failed', 'pending'], true)) return false;
+    if ($verStatus === 'rejected') return false;
+    return true;
 }));
 
 $actualPaidAmount = calculateActualPaidAmount($validTransactions);
@@ -170,6 +175,14 @@ $amountInWords    = numberToWords($actualPaidAmount);
 
             .transaction-table {
                 font-size: 8pt !important;
+            }
+
+            .transaction-table thead {
+                display: table-header-group;
+            }
+
+            tr.keep-together {
+                page-break-inside: avoid;
             }
         }
 
@@ -688,7 +701,7 @@ $amountInWords    = numberToWords($actualPaidAmount);
             <div class="section-title">
                 Transaction History
                 <span style="float: right; font-weight: normal; font-size: 8pt;">
-                    Total Transactions: <?= count($transactions) ?>
+                    Total Transactions: <?= count($validTransactions) ?>
                 </span>
             </div>
 
@@ -704,28 +717,8 @@ $amountInWords    = numberToWords($actualPaidAmount);
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (!empty($transactions)): ?>
-                        <?php $counter = 0; ?>
-                        <?php foreach ($transactions as $transaction): ?>
-                            <?php $counter++; ?>
-                            <?php if ($counter > 15): ?>
-                </tbody>
-            </table>
-            <div class="page-break"></div>
-            <table class="transaction-table">
-                <thead>
-                    <tr>
-                        <th class="date">Date</th>
-                        <th class="type">Payment Type</th>
-                        <th class="installment">Installment</th>
-                        <th class="method">Method</th>
-                        <th class="status">Status</th>
-                        <th class="amount">Amount (TK.)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php $counter = 1; ?>
-                <?php endif; ?>
+                    <?php if (!empty($validTransactions)): ?>
+                        <?php foreach ($validTransactions as $transaction): ?>
                 <tr class="keep-together">
                     <td class="date">
                         <?php
@@ -782,14 +775,54 @@ $amountInWords    = numberToWords($actualPaidAmount);
 
         <!-- Totals -->
         <div class="totals-section">
+            <?php
+                $totalPrice        = (float)($paymentSummary['total_price'] ?? 0);
+                $bookingDiscount   = (float)($paymentSummary['discount_amount'] ?? 0);
+                $bulkEmiDiscount   = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0);
+                $totalDiscounts    = $bookingDiscount + $bulkEmiDiscount;
+                // Remaining = sum of component-level remaining (already correctly accounts for discounts)
+                $remainingLandShare = (float)($paymentSummary['remaining_land_share'] ?? 0);
+                $remainingCF        = (float)($paymentSummary['remaining_construction_fee'] ?? 0);
+                $remainingBalance   = max(0, $remainingLandShare + $remainingCF);
+            ?>
             <table class="totals-table">
                 <tr>
-                    <td class="totals-label">Subtotal (This Period):</td>
+                    <td class="totals-label">Total Paid (Verified):</td>
                     <td class="totals-value">৳<?= number_format($actualPaidAmount, 2) ?></td>
                 </tr>
+            </table>
+
+            <!-- Balance Summary -->
+            <table class="totals-table" style="margin-top:5px;border-top:1px dashed #333;padding-top:8px;">
+                <tr>
+                    <td class="totals-label" style="font-weight:normal;">Total Price (Agreement):</td>
+                    <td class="totals-value">৳<?= number_format($totalPrice, 2) ?></td>
+                </tr>
+                <tr>
+                    <td class="totals-label" style="font-weight:normal;">Less: Total Paid</td>
+                    <td class="totals-value">(-)  ৳<?= number_format($actualPaidAmount, 2) ?></td>
+                </tr>
+                <?php if ($bookingDiscount > 0): ?>
+                <tr>
+                    <td class="totals-label" style="font-weight:normal;">Less: Booking Discount</td>
+                    <td class="totals-value">(-)  ৳<?= number_format($bookingDiscount, 2) ?></td>
+                </tr>
+                <?php endif; ?>
+                <?php if ($bulkEmiDiscount > 0): ?>
+                <tr>
+                    <td class="totals-label" style="font-weight:normal;">Less: Bulk EMI Discount</td>
+                    <td class="totals-value">(-)  ৳<?= number_format($bulkEmiDiscount, 2) ?></td>
+                </tr>
+                <?php endif; ?>
                 <tr class="grand-total">
-                    <td class="totals-label">TOTAL PAID THIS PERIOD:</td>
-                    <td class="totals-value">৳<?= number_format($actualPaidAmount, 2) ?></td>
+                    <td class="totals-label">REMAINING BALANCE:</td>
+                    <td class="totals-value">
+                        <?php if ($remainingBalance <= 0): ?>
+                            FULLY PAID
+                        <?php else: ?>
+                            ৳<?= number_format($remainingBalance, 2) ?>
+                        <?php endif; ?>
+                    </td>
                 </tr>
             </table>
 
@@ -798,8 +831,11 @@ $amountInWords    = numberToWords($actualPaidAmount);
             </div>
 
             <div class="calculation-note">
-                <strong>Note:</strong> This total represents actual payments received. Pending transactions are excluded,
-                and for partially paid transactions, the due amount has been deducted from the total.
+                <strong>Note:</strong> This statement includes only verified transactions. Rejected and pending transactions are excluded.
+                <?php if ($totalDiscounts > 0): ?>
+                Booking Discount<?= $bookingDiscount > 0 ? ' (৳'.number_format($bookingDiscount,2).')' : '' ?><?= ($bookingDiscount > 0 && $bulkEmiDiscount > 0) ? ' and' : '' ?><?= $bulkEmiDiscount > 0 ? ' Bulk EMI Discount (৳'.number_format($bulkEmiDiscount,2).')' : '' ?>
+                have been deducted from the remaining balance.
+                <?php endif; ?>
             </div>
         </div>
     </div>

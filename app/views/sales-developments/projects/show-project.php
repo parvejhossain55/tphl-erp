@@ -138,32 +138,15 @@ $show_breadcrumb = true;
                     </div>
                 </div>
 
-                <!-- Construction Status Badge -->
+                <!-- Service Charge Per EMI -->
+                <?php if (!empty($project['service_charge_per_emi'])): ?>
                 <div class="col-md-6 col-lg-4 mb-3">
                     <div class="info-box p-3 border rounded">
-                        <label class="text-muted mb-1"><small>Construction Status</small></label>
-                        <p class="mb-0">
-                            <?php
-                            $conStatus = $project['project_status'] ?? null;
-                            $conBadge = match($conStatus) {
-                                'Planning'    => 'info',
-                                'In Progress' => 'primary',
-                                'On Hold'     => 'warning',
-                                'Completed'   => 'success',
-                                'Cancelled'   => 'danger',
-                                'Delayed'     => 'secondary',
-                                default       => 'light'
-                            };
-                            ?>
-                            <?php if ($conStatus): ?>
-                                <span class="badge bg-<?= $conBadge ?> px-3 py-2 fs-6"><?= $conStatus ?></span>
-                            <?php else: ?>
-                                <span class="text-muted">N/A</span>
-                            <?php endif; ?>
-                        </p>
+                        <label class="text-muted mb-1"><small><i class="fa-solid fa-percent me-1"></i>Service Charge (per EMI)</small></label>
+                        <p class="mb-0 fw-bold fs-5"><?= $project['service_charge_per_emi'] ?><span class="fs-6 text-muted ms-1">%</span></p>
                     </div>
                 </div>
-            </div>
+                <?php endif; ?>
 
 
             <!-- Property Details -->

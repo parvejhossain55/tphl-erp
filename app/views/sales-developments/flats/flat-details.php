@@ -62,6 +62,28 @@ $show_breadcrumb = true;
                 </div>
             <?php endif; ?>
 
+            <!-- Land Share & Development Charges -->
+            <?php if (!empty($flat['land_share_value']) || !empty($flat['development_charges'])): ?>
+                <div class="row m-3">
+                    <?php if (!empty($flat['land_share_value'])): ?>
+                        <div class="col-md-6 mb-3">
+                            <div class="info-box p-3 border rounded text-center">
+                                <label class="text-muted mb-1"><small><i class="fa-solid fa-land-mine-on me-1"></i>Land Share Value</small></label>
+                                <p class="mb-0 fw-bold fs-5">৳ <?= format_bdt($flat['land_share_value']) ?></p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($flat['development_charges'])): ?>
+                        <div class="col-md-6 mb-3">
+                            <div class="info-box p-3 border rounded text-center">
+                                <label class="text-muted mb-1"><small><i class="fa-solid fa-hammer me-1"></i>Development Charges</small></label>
+                                <p class="mb-0 fw-bold fs-5">৳ <?= format_bdt($flat['development_charges']) ?></p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
             <!-- Basic Information -->
             <div class="row m-3">
                 <div class="col-12">
@@ -236,6 +258,18 @@ $show_breadcrumb = true;
                                         <li class="mb-2">
                                             <i class="fa-solid fa-check-circle text-success me-2"></i>
                                             <strong>Price:</strong> ৳ <?= format_bdt($flat['price_value']) ?>
+                                        </li>
+                                    <?php endif; ?>
+                                    <?php if (!empty($flat['land_share_value'])): ?>
+                                        <li class="mb-2">
+                                            <i class="fa-solid fa-check-circle text-success me-2"></i>
+                                            <strong>Land Share:</strong> ৳ <?= format_bdt($flat['land_share_value']) ?>
+                                        </li>
+                                    <?php endif; ?>
+                                    <?php if (!empty($flat['development_charges'])): ?>
+                                        <li class="mb-2">
+                                            <i class="fa-solid fa-check-circle text-success me-2"></i>
+                                            <strong>Dev. Charges:</strong> ৳ <?= format_bdt($flat['development_charges']) ?>
                                         </li>
                                     <?php endif; ?>
                                 </ul>

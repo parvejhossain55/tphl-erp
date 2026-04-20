@@ -506,6 +506,10 @@ $routes = [
         "controller" => "AccountClientController",
         "method" => "getClientLands"
     ],
+    "get-client-profile" => [
+        "controller" => "AccountClientController",
+        "method" => "getClientProfile"
+    ],
     // client's cash in history 
     "clients-cash-in-history" => ["controller" => "AccountClientController", "method" => "indexTwo"],
     "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],

@@ -97,10 +97,11 @@ class FlatModel extends Model
         price_value,
         facilities,
         land_share_value,
+        development_charges,
         created_by,
         status,
         is_booked
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 ");
 
         if (!$stmt) {
@@ -108,7 +109,7 @@ class FlatModel extends Model
             return false;
         }
         $stmt->bind_param(
-            "isiiiiiiiisdsdiss",
+            "isiiiiiiiisdsddssi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -123,9 +124,10 @@ class FlatModel extends Model
             $data['price_value'],
             $data['facilities'],
             $data['land_share_value'],
+            $data['development_charges'],
             $data['created_by'],
             $data['status'],
-            $data['is_booked'] //  add
+            $data['is_booked']
         );
 
         return $stmt->execute();
@@ -156,7 +158,7 @@ class FlatModel extends Model
     {
         $sql = "UPDATE flats SET
         project_id = ?,flat_name=?,  sqft = ?, bhk = ?, bedroom = ?, bathroom = ?, balcony = ?,
-        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?,created_by=?,land_share_value=?
+        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?,created_by=?,land_share_value=?,development_charges=?
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -165,7 +167,7 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "isiiiiiiiisdsidi",
+            "isiiiiiiiisdsiddi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -181,6 +183,7 @@ class FlatModel extends Model
             $data['facilities'],
             $data['created_by'],
             $data['land_share_value'],
+            $data['development_charges'],
             $id
         );
 

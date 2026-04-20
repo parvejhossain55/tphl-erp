@@ -40,7 +40,7 @@ $show_breadcrumb = true;
                             <th>Unit Per Floor</th>
                             <th class="d-none">Type</th>
                             <th>Sale Status</th>
-                            <th>Con. Status</th>
+                            <th>Service Charge</th>
                             <th>Brochure</th>
                             <th>Actions</th>
                         </tr>
@@ -76,22 +76,9 @@ $show_breadcrumb = true;
                                     <?php endif; ?>
                                 </td>
 
-                                <!-- Construction Status -->
                                 <td>
-                                    <?php
-                                    $cs = $project['project_status'] ?? null;
-                                    $csColor = match($cs) {
-                                        'Planning'    => 'info',
-                                        'In Progress' => 'primary',
-                                        'On Hold'     => 'warning',
-                                        'Completed'   => 'success',
-                                        'Cancelled'   => 'danger',
-                                        'Delayed'     => 'secondary',
-                                        default       => 'light'
-                                    };
-                                    ?>
-                                    <?php if ($cs): ?>
-                                        <span class="badge bg-<?= $csColor ?>"><?= $cs ?></span>
+                                    <?php if (!empty($project['service_charge_per_emi'])): ?>
+                                        <span class="badge bg-info text-dark"><?= $project['service_charge_per_emi'] ?>%</span>
                                     <?php else: ?>
                                         <span class="text-muted">—</span>
                                     <?php endif; ?>

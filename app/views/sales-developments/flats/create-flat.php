@@ -82,12 +82,19 @@ $show_breadcrumb = true;
                     <input type="text" name="facing_site" class="form-control" placeholder="e.g., North, East">
                 </div>
 
-                <!-- Price Value -->
+                <!-- Land Share Value -->
                 <div class="col-xl-6">
-                    <label>Land Sahre Value (BDT)</label>
+                    <label>Land Share Value (BDT)</label>
                     <input type="number" step="0.01" name="land_share_value" class="form-control">
                 </div>
-                <!--land share -->
+
+                <!-- Development Charges -->
+                <div class="col-xl-6">
+                    <label>Development Charges (BDT)</label>
+                    <input type="number" step="0.01" name="development_charges" class="form-control" placeholder="0.00">
+                </div>
+
+                <!--Price -->
                 <div class="col-xl-6">
                     <label>Price (BDT) <span class="text-danger"> (Approx.Changable)</span></label>
                     <input type="number" step="0.01" name="price_value" class="form-control">
