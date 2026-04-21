@@ -1061,7 +1061,7 @@
                     </ul>
                 </li>
                        <!-- Module 2: Operators / Contractors -->
-                    <li class="slide has-sub <?= isActive(['con-operators','con-operator-create'], $current_route) ? 'active' : '' ?>">
+                    <li class="slide d-none has-sub <?= isActive(['con-operators','con-operator-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-operators','con-operator-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-person-digging"></i></div>
                             <span class="sidebar__menu-label">Operators</span>
