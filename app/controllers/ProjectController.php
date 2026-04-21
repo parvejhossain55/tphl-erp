@@ -91,7 +91,7 @@ class ProjectController extends Controller
             'brochure_link'     => $_POST['brochure_link'] ?? null,
             'passenger_lift'    => $_POST['passenger_lift'] ?? null,
             'cargo_lift'        => $_POST['cargo_lift'] ?? null,
-            // Facilities (checkbox → default 0)
+            // Facilities (checkbox -> default 0)
             'rooftop_gardening' => $_POST['rooftop_gardening'] ?? 0,
             'car_parking'       => $_POST['car_parking'] ?? 0,
             'convention'        => $_POST['convention'] ?? 0,
@@ -99,7 +99,8 @@ class ProjectController extends Controller
             'amenities_details' => $_POST['amenities_details'] ?? null,
             'map_link'          => $_POST['map_link'] ?? null,
             'description'       => $_POST['description'] ?? null,
-            'project_map_location'       => $_POST['project_map_location'] ?? null,
+            'project_map_location' => $_POST['project_map_location'] ?? null,
+            'service_charge_per_emi' => !empty($_POST['service_charge_per_emi']) ? (float)$_POST['service_charge_per_emi'] : null,
             'created_by'        => $_SESSION['user']['id'] ?? null,
         ];
 
@@ -192,7 +193,6 @@ class ProjectController extends Controller
             'types' => $_POST['types'] ?? null,
             'price_range' => $_POST['price_range'] ?? null,
             'project_sale_status' => $_POST['project_sale_status'] ?? null,
-            'project_status'     => $_POST['project_status'] ?? null,
             'apartment_count' => $_POST['apartment_count'] ?? null,
             'front_road' => $_POST['front_road'] ?? null,
             'hover_text' => $_POST['hover_text'] ?? null,
@@ -210,6 +210,7 @@ class ProjectController extends Controller
             'map_link' => $_POST['map_link'] ?? null,
             'description' => $_POST['description'] ?? null,
             'project_map_location' => $_POST['project_map_location'] ?? null,
+            'service_charge_per_emi' => !empty($_POST['service_charge_per_emi']) ? (float)$_POST['service_charge_per_emi'] : null,
             'created_by' => $_SESSION['user']['id'] ?? null,
         ];
 

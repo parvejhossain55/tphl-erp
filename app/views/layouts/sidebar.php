@@ -1061,7 +1061,7 @@
                     </ul>
                 </li>
                        <!-- Module 2: Operators / Contractors -->
-                    <li class="slide has-sub <?= isActive(['con-operators','con-operator-create'], $current_route) ? 'active' : '' ?>">
+                    <li class="slide d-none has-sub <?= isActive(['con-operators','con-operator-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-operators','con-operator-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-person-digging"></i></div>
                             <span class="sidebar__menu-label">Operators</span>
@@ -1204,6 +1204,16 @@
                             </li>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-vendor-create" class="sidebar__menu-item <?= isActive('con-vendor-create', $current_route) ?>">Add Vendor</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-vendor-payment-requests" class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
+                                    <i class="bi bi-wallet2 me-1"></i> Payment Requests
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-vendor-payment-create" class="sidebar__menu-item <?= isActive('con-vendor-payment-create', $current_route) ?>">
+                                    + New Payment Request
+                                </a>
                             </li>
                         </ul>
                     </li>

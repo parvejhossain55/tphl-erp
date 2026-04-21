@@ -5,7 +5,8 @@
  *
  * Schema:
  * id, ref_type (contractor_bill|operational_fund|vendor_payment),
- * ref_id, project_id, amount, payment_method (Cash|Cheque|BankTransfer|MobileWallet),
+ * ref_id, project_id, amount, payment_type (Advance|Partial|Full|Refund),
+ * payment_method (Cash|Cheque|BankTransfer|MobileWallet),
  * payment_date, reference_no, notes, processed_by, created_at
  */
 class Con_FinancialTransaction extends Model
@@ -69,8 +70,10 @@ class Con_FinancialTransaction extends Model
     }
 
     /**
-     * Get approved (but not yet paid) contractor bills and fund requests
-     * These are pending payment processing
+     * Get approved (but not yet paid) records pending payment:
+     * - contractor_bill_requests (status='approved')
+     * - operational_fund_requests (status='approved')
+     * - vendor_payment_requests (status='Approved')
      */
     public function getPendingApprovals()
     {
@@ -79,12 +82,13 @@ class Con_FinancialTransaction extends Model
                     cbr.id            AS ref_id,
                     cbr.project_id,
                     p.name            AS project_name,
-                    CONCAT('Contractor Bill - ', oo.name) AS description,
+                    CONCAT('Contractor Bill #', cbr.id) AS description,
                     cbr.bill_amount   AS amount,
+                    'Full'            AS payment_type,
+                    NULL              AS vpr_status,
                     cbr.created_at
                 FROM contractor_bill_requests cbr
                 LEFT JOIN projects p ON p.id = cbr.project_id
-                LEFT JOIN operations_operators oo ON oo.id = cbr.operator_id
                 WHERE cbr.status = 'approved'
 
                 UNION ALL
@@ -96,10 +100,29 @@ class Con_FinancialTransaction extends Model
                     p.name             AS project_name,
                     CONCAT('Fund Request - ', ofr.purpose) AS description,
                     COALESCE(ofr.approved_amount, ofr.amount) AS amount,
+                    'Full'             AS payment_type,
+                    NULL               AS vpr_status,
                     ofr.created_at
                 FROM operational_fund_requests ofr
                 LEFT JOIN projects p ON p.id = ofr.project_id
                 WHERE ofr.status = 'approved'
+
+                UNION ALL
+
+                SELECT
+                    'vendor_payment'  AS ref_type,
+                    vpr.id            AS ref_id,
+                    vpr.project_id,
+                    p.name            AS project_name,
+                    CONCAT(vpr.payment_type, ' Payment — ', v.name) AS description,
+                    vpr.net_payable   AS amount,
+                    vpr.payment_type  AS payment_type,
+                    vpr.status        AS vpr_status,
+                    vpr.created_at
+                FROM vendor_payment_requests vpr
+                LEFT JOIN projects p ON p.id  = vpr.project_id
+                LEFT JOIN vendors  v ON v.id  = vpr.vendor_id
+                WHERE vpr.status IN ('Submitted', 'Approved')
 
                 ORDER BY created_at DESC";
         $result = $this->db->query($sql);
@@ -127,25 +150,30 @@ class Con_FinancialTransaction extends Model
     // =========================================================================
 
     /**
-     * Create a transaction and mark the source record as 'paid'
-     * @param array $data [ref_type, ref_id, project_id, amount, payment_method, payment_date, reference_no, notes, processed_by]
+     * Create a transaction and mark the source record as 'paid' (or 'Paid').
+     *
+     * @param array $data [ref_type, ref_id, project_id, amount, payment_type,
+     *                     payment_method, payment_date, reference_no, notes, processed_by]
      */
     public function create($data)
     {
         $this->db->begin_transaction();
         try {
+            $paymentType = $data['payment_type'] ?? 'Full';
+
             // 1. Insert transaction record
             $sql = "INSERT INTO {$this->table}
-                    (ref_type, ref_id, project_id, amount, payment_method,
+                    (ref_type, ref_id, project_id, amount, payment_type, payment_method,
                      payment_date, reference_no, notes, processed_by, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $stmt = $this->db->prepare($sql);
             $stmt->bind_param(
-                'siidssss i',
+                'siidsssssi',
                 $data['ref_type'],
                 $data['ref_id'],
                 $data['project_id'],
                 $data['amount'],
+                $paymentType,
                 $data['payment_method'],
                 $data['payment_date'],
                 $data['reference_no'],
@@ -155,7 +183,7 @@ class Con_FinancialTransaction extends Model
             $stmt->execute();
             $txnId = $stmt->insert_id;
 
-            // 2. Mark source record as 'paid'
+            // 2. Mark source record based on type
             if ($data['ref_type'] === 'contractor_bill') {
                 $this->db->query(
                     "UPDATE contractor_bill_requests SET status='paid' WHERE id=" . (int)$data['ref_id']
@@ -164,12 +192,18 @@ class Con_FinancialTransaction extends Model
                 $this->db->query(
                     "UPDATE operational_fund_requests SET status='paid' WHERE id=" . (int)$data['ref_id']
                 );
+            } elseif ($data['ref_type'] === 'vendor_payment') {
+                // Advance stays visible for future Final deduction — status becomes 'Paid'
+                $this->db->query(
+                    "UPDATE vendor_payment_requests SET status='Paid' WHERE id=" . (int)$data['ref_id']
+                );
             }
 
             $this->db->commit();
             return $txnId;
         } catch (Exception $e) {
             $this->db->rollback();
+            error_log("Financial transaction create failed: " . $e->getMessage());
             return false;
         }
     }

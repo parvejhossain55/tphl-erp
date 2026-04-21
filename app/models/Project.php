@@ -101,7 +101,8 @@ $price_range = !empty($data['price_range']) ? $data['price_range'] : null;
                 plot_size, plot_no, block_no, brochure_link, description, 
                 apartment_count, amenities_details, amenities_image, map_image, map_link, 
                 project_map_location, passenger_lift, cargo_lift, created_by, rooftop_gardening, 
-                swimming_pool, convention, electricity_backup, car_parking, project_sale_status, project_status
+                swimming_pool, convention, electricity_backup, car_parking, project_sale_status,
+                service_charge_per_emi
             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
     $stmt = $this->db->prepare($sql);
@@ -112,9 +113,7 @@ $price_range = !empty($data['price_range']) ? $data['price_range'] : null;
     }
 
     
-    $types = "ssiisiiisssssss dssssisssssiiiiiiiis"; 
-    // only for testing use space param 
-    $bindTypes = "ssiisiiisssssssissssisssssiiiiiiiiss";
+    $bindTypes = "ssiisiiisssssssissssisssssiiiiiiiissd";
 
     $stmt->bind_param(
         $bindTypes,
@@ -133,7 +132,7 @@ $price_range = !empty($data['price_range']) ? $data['price_range'] : null;
         $data['front_road'],            // 13
         $price_range,           // 14
         $data['hover_text'],            // 15
-        $data['plot_size'],             // 16 (d/s)
+        $data['plot_size'],             // 16 (s)
         $data['plot_no'],               // 17
         $data['block_no'],              // 18
         $data['brochure_link'],         // 19
@@ -152,8 +151,8 @@ $price_range = !empty($data['price_range']) ? $data['price_range'] : null;
         $convention,                    // 32 (i)
         $electricity_backup,            // 33 (i)
         $car_parking,                   // 34 (i)
-        $data['project_sale_status'],    // 35
-        $data['project_status']          // 36
+        $data['project_sale_status'],    // 35 (s)
+        $data['service_charge_per_emi']  // 36 (d)
     );
 
     return $stmt->execute();
@@ -262,7 +261,7 @@ $plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
         floor_wise_unit_meta = ?,
         project_map_location = ?,
         project_sale_status = ?,
-        project_status = ?
+        service_charge_per_emi = ?
     WHERE id = ?
 ");
 
@@ -272,7 +271,7 @@ $plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
             return false;
         }
         $stmt->bind_param(
-            "sssssssssssssssssssssssssssssssissssi",
+            "sssssssssssssssssssssssssssssssisssdi",
             $data['name'],
             $data['slug'],
             $data['location_id'],
@@ -309,7 +308,7 @@ $plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
             $data['floor_wise_unit_meta'],
             $data['project_map_location'],
             $data['project_sale_status'],
-            $data['project_status'],
+            $data['service_charge_per_emi'],
             $id
         );
 

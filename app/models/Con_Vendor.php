@@ -4,18 +4,38 @@ class Con_Vendor extends Model
 {
     protected $table = 'vendors';
 
-    public function getAll()
-    {
-        $sql = "SELECT v.*, u.full_name AS created_by_name,
-                       (SELECT COUNT(*) FROM purchase_order_items poi
-                        JOIN purchase_orders po ON po.id = poi.purchase_order_id
-                        WHERE poi.selected_vendor_id = v.id) AS total_orders,
-                       (SELECT COUNT(*) FROM vendor_penalties vp WHERE vp.vendor_id = v.id) AS penalty_count
-                FROM {$this->table} v
-                LEFT JOIN users u ON u.id = v.created_by
-                ORDER BY v.name ASC";
-        return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
-    }
+public function getAll()
+{
+    $sql = "SELECT 
+                v.*, 
+                u.full_name AS created_by_name,
+
+                COUNT(DISTINCT po.id) AS total_orders,
+
+                COUNT(DISTINCT CASE 
+                    WHEN vp.penalty_status = 'Approved' THEN vp.id 
+                END) AS penalty_count
+
+            FROM vendors v
+
+            LEFT JOIN users u 
+                ON u.id = v.created_by
+
+            LEFT JOIN purchase_order_items poi 
+                ON poi.selected_vendor_id = v.id
+
+            LEFT JOIN purchase_orders po 
+                ON po.id = poi.purchase_order_id
+
+            LEFT JOIN vendor_penalties vp 
+                ON vp.vendor_id = v.id
+
+            GROUP BY v.id
+
+            ORDER BY v.name ASC";
+
+    return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+}
 
     public function find($id)
     {
@@ -114,7 +134,7 @@ class Con_Vendor extends Model
 
         // Penalty count + total amount
         $stmt2 = $this->db->prepare(
-            "SELECT COUNT(*) AS penalty_count, COALESCE(SUM(amount), 0) AS penalty_total
+            "SELECT COUNT(*) AS penalty_count, COALESCE(SUM(penalty_amount), 0) AS penalty_total
              FROM vendor_penalties WHERE vendor_id = ?"
         );
         $stmt2->bind_param('i', $vendorId);

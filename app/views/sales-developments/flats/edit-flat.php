@@ -87,10 +87,16 @@ $flatNameValue = $_SESSION['old']['flat_name'] ?? $flat['flat_name'] ?? '';
                     <label>Facing Site</label>
                     <input type="text" name="facing_site" class="form-control" value="<?= $flat['facing_site'] ?? '' ?>">
                 </div>
-                  <!--Land Share Price Value -->
+                <!--Land Share Price Value -->
                 <div class="col-xl-6">
                     <label>Land Share Value (BDT)</label>
                     <input type="number" step="0.01" name="land_share_value" class="form-control" value="<?= $flat['land_share_value'] ?? '' ?>">
+                </div>
+
+                <!-- Development Charges -->
+                <div class="col-xl-6">
+                    <label>Development Charges (BDT)</label>
+                    <input type="number" step="0.01" name="development_charges" class="form-control" value="<?= $flat['development_charges'] ?? '' ?>" placeholder="0.00">
                 </div>
 
                 <!-- Price Value -->

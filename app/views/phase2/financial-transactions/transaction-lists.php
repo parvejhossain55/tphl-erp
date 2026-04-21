@@ -27,7 +27,7 @@ $page_title = $page_title ?? 'Financial Transactions Ledger';
     $totalCount = count($transactions ?? []);
     $refTypes   = array_count_values(array_column($transactions ?? [], 'ref_type'));
     ?>
-    <div class="row g-3 mb-4">
+    <div class="row  mb-4">
         <div class="col-xl-3 col-md-6">
             <div class="card custom-card border-0 bg-primary bg-opacity-10">
                 <div class="card-body py-3">

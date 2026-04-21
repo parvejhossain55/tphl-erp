@@ -14,6 +14,17 @@ $paymentSummary = $accountModel->getPaymentSummaryByBookingId($bookingId);
 $isLandShareCompleted  = $paymentSummary['is_land_share_completed'] ?? false;
 $isRegistrationPaid    = $accountModel->isRegistrationPaid($bookingId);
 $devChargePaid         = $paymentSummary['development_charge_paid'] ?? 0;
+$flatDevCharges        = (float)($paymentSummary['flat_development_charges'] ?? 0);
+$isDevChargeCompleted  = !empty($paymentSummary['is_dev_charge_completed']);
+$perEmiAmount          = (float)($paymentSummary['per_emi_amount'] ?? 0);
+$serviceChargeRate     = (float)($paymentSummary['service_charge_per_emi'] ?? 0);
+$totalEmiDue           = (float)($paymentSummary['total_emi_due'] ?? 0);
+$outstandingDues       = $accountModel->getOutstandingEmiDues($bookingId);
+$hasOutstandingDues    = count($outstandingDues) > 0;
+$remainingCF           = (float)($paymentSummary['remaining_construction_fee'] ?? 0);
+$totalBulkDiscount     = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0);
+$constructionFee       = (float)($paymentSummary['construction_fee'] ?? 0);
+$emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 ?>
 
 <div class="row">
@@ -56,15 +67,33 @@ $devChargePaid         = $paymentSummary['development_charge_paid'] ?? 0;
                             <select name="payment_type" class="form-control" id="paymentType" required>
                                 <option value="">-- Select Payment Type --</option>
 
-                                <!-- Development Charges - always available when registration paid -->
-                                <option value="development_charge" data-details="false">
-                                    Development Charges
-                                </option>
+                                <!-- Development Charges — requires landshare completed -->
+                                <?php if ($isLandShareCompleted && !$isDevChargeCompleted): ?>
+                                    <option value="development_charge" data-details="false">
+                                        Development Charges (Remaining: TK.<?= number_format(max(0, $flatDevCharges - $devChargePaid), 2) ?>)
+                                    </option>
+                                <?php elseif ($isDevChargeCompleted): ?>
+                                    <option value="development_charge" disabled>
+                                        Development Charges — Fully Paid ✓ (TK.<?= number_format($devChargePaid, 2) ?>)
+                                    </option>
+                                <?php else: ?>
+                                    <option value="development_charge" disabled>
+                                        Development Charges (Locked — complete land share first)
+                                    </option>
+                                <?php endif; ?>
 
                                 <!-- EMI - Only if land share is completed -->
-                                <?php if ($isLandShareCompleted): ?>
+                                <?php if ($isLandShareCompleted && $isDevChargeCompleted && $remainingCF > 0): ?>
                                     <option value="emi" data-details="true">
-                                        EMI (Construction Fee)
+                                        EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?php endif; ?>
+                                    </option>
+                                <?php elseif ($isLandShareCompleted && $isDevChargeCompleted && $remainingCF <= 0): ?>
+                                    <option value="emi" disabled>
+                                        EMI — All Paid ✓ (Construction Fee Completed)
+                                    </option>
+                                <?php elseif ($isLandShareCompleted): ?>
+                                    <option value="emi" disabled>
+                                        EMI (Locked — pay development charge first)
                                     </option>
                                 <?php else: ?>
                                     <option value="emi" disabled>
@@ -93,19 +122,59 @@ $devChargePaid         = $paymentSummary['development_charge_paid'] ?? 0;
                         <div class="col-md-6">
                             <div class="from__input-box">
                                 <label class="form__input-title">Paid Amount <span>*</span></label>
-                                <input type="number" name="amount" id="amount" class="form-control" step="0.01"
-                                    min="0.01" required>
+                                <input type="number" name="amount" id="amount" class="form-control" step="1"
+                                    min="1" required>
                                 <small id="amountHelp" class="text-muted"></small>
                             </div>
                         </div>
 
-                        <!-- EMI Fields (hidden by default) -->
+                        <!-- EMI Info Panel (shown when EMI selected) -->
                         <div class="col-md-12 emi-fields" style="display: none;">
-                            <div class="from__input-box">
-                                <label class="form__input-title">Due Amount</label>
-                                <input type="number" name="due_emi_amount" id="dueEmiAmount" class="form-control"
-                                    step="0.01" min="0" placeholder="Enter due amount for this EMI">
-                                <small class="text-muted">This will be added to EMI schedule (optional)</small>
+                            <div class="from__input-box p-3" style="background:#f8f9fa;border-radius:8px;border:1px solid #dee2e6;">
+                                <label class="form__input-title">EMI Payment Info <small class="text-muted">(Smart Allocation)</small></label>
+                                <div class="d-flex flex-column gap-2">
+                                    <?php if ($totalEmiDue > 0): ?>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-warning text-dark"><i class="fa-light fa-exclamation-triangle me-1"></i>Outstanding Due</span>
+                                            <strong class="text-danger">TK.<?= number_format($totalEmiDue, 2) ?></strong>
+                                            <small class="text-muted">— will be auto-cleared first from your payment (oldest due first)</small>
+                                        </div>
+                                    <?php endif; ?>
+                                    <small class="text-muted">
+                                        <?php if ($perEmiAmount > 0): ?>
+                                            Suggested EMI: <strong>TK.<?= number_format($perEmiAmount, 2) ?></strong>.
+                                            <?php if ($serviceChargeRate > 0): ?>
+                                                Service charge of <strong><?= number_format($serviceChargeRate, 2) ?>%</strong> applies on total amount.
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                        Enter any amount — the system will: ① clear outstanding dues (oldest first) → ② cover current installment → ③ carry surplus to next installment(s).
+                                    </small>
+                                </div>
+                                <input type="hidden" name="due_emi_amount" id="dueEmiAmount" value="0">
+
+                                <!-- Bulk EMI Discount (shown when >= 2 EMIs) -->
+                                <div id="bulkDiscountSection" class="mt-3 p-3" style="display:none;background:rgba(108,95,252,0.07);border-radius:8px;border:1px solid rgba(108,95,252,0.2);">
+                                    <label class="form__input-title" style="color:#6c5ffc;">
+                                        <i class="fa-light fa-tags me-1"></i>Bulk EMI Discount (Optional)
+                                    </label>
+                                    <div class="row align-items-end">
+                                        <div class="col-md-6">
+                                            <input type="number" name="bulk_emi_discount" id="bulkEmiDiscount"
+                                                   class="form-control" step="1" min="0" value="0"
+                                                   placeholder="Enter discount amount">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                Remaining CF after payment: <strong id="remainingCFAfterPayment">—</strong><br>
+                                                Max discount: <strong id="maxBulkDiscount">—</strong>
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fa-light fa-info-circle me-1"></i>
+                                        This discount reduces the <strong>total construction fee</strong> (separate from booking discount). Applied after verification.
+                                    </small>
+                                </div>
                             </div>
                         </div>
 
@@ -240,6 +309,17 @@ $devChargePaid         = $paymentSummary['development_charge_paid'] ?? 0;
         const chequeFields = document.querySelectorAll('.cheque-fields');
         const onlineFields = document.querySelectorAll('.online-fields');
 
+        // Bulk discount elements
+        const bulkDiscountSection  = document.getElementById('bulkDiscountSection');
+        const bulkDiscountInput    = document.getElementById('bulkEmiDiscount');
+        const remainingCFDisplay   = document.getElementById('remainingCFAfterPayment');
+        const maxDiscountDisplay   = document.getElementById('maxBulkDiscount');
+        const perEmiAmountVal      = <?= json_encode((float)$perEmiAmount) ?>;
+        const constructionFee      = <?= json_encode((float)$constructionFee) ?>;
+        const emiPaidSoFar         = <?= json_encode((float)$emiPaidSoFar) ?>;
+        const existingBulkDiscount = <?= json_encode((float)$totalBulkDiscount) ?>;
+        const effectiveCF          = Math.max(0, constructionFee - existingBulkDiscount);
+
         // Function to update amount field help text
         function updateAmountField() {
             if (!paymentType) return;
@@ -248,7 +328,23 @@ $devChargePaid         = $paymentSummary['development_charge_paid'] ?? 0;
 
             switch (paymentTypeValue) {
                 case 'emi':
-                    helpText = 'EMI amount (10% service fee will be calculated)';
+                    var perEmi = <?= json_encode($perEmiAmount) ?>;
+                    var cedRemainingCF = <?= json_encode((float)$remainingCF) ?>;
+                    var totalDue = <?= json_encode($totalEmiDue) ?>;
+                    var dueNote = totalDue > 0 ? ' Outstanding due: TK.' + totalDue.toLocaleString('en-IN', {minimumFractionDigits:2}) + ' (auto-cleared first).' : '';
+                    if (cedRemainingCF <= 0) {
+                        helpText = 'Construction fee fully paid — no more EMI needed.';
+                        amountField.setAttribute('disabled', 'disabled');
+                    } else if (perEmi > 0 && cedRemainingCF < perEmi) {
+                        helpText = 'Remaining CF: TK.' + cedRemainingCF.toLocaleString('en-IN', {minimumFractionDigits:2}) + ' (less than per EMI).' + dueNote;
+                        amountField.setAttribute('placeholder', 'Max: TK.' + Math.round(cedRemainingCF).toLocaleString('en-IN'));
+                        amountField.setAttribute('max', Math.round(cedRemainingCF));
+                        amountField.removeAttribute('disabled');
+                    } else {
+                        helpText = perEmi > 0 ? 'Suggested: TK.' + perEmi.toLocaleString('en-IN', {minimumFractionDigits:2}) + '.' + dueNote + ' Enter any amount — system allocates automatically.' : 'Enter EMI amount';
+                        amountField.setAttribute('max', Math.round(cedRemainingCF));
+                        amountField.removeAttribute('disabled');
+                    }
                     break;
                 case 'development_charge':
                     helpText = 'Development charge payment';
@@ -286,6 +382,31 @@ $devChargePaid         = $paymentSummary['development_charge_paid'] ?? 0;
             }
         }
 
+        // Update bulk discount section visibility and limits
+        function updateBulkDiscount() {
+            if (!bulkDiscountSection) return;
+            const amount = parseFloat(amountField?.value) || 0;
+            const isEmi = paymentType && paymentType.value === 'emi';
+            const coversMultiple = perEmiAmountVal > 0 && amount >= (perEmiAmountVal * 2);
+
+            if (isEmi && coversMultiple) {
+                bulkDiscountSection.style.display = 'block';
+                const remainingAfter = Math.max(0, effectiveCF - emiPaidSoFar - amount);
+                const maxDiscount = remainingAfter;
+                if (remainingCFDisplay) remainingCFDisplay.textContent = 'TK.' + remainingAfter.toLocaleString('en-IN', {minimumFractionDigits:2});
+                if (maxDiscountDisplay) maxDiscountDisplay.textContent = 'TK.' + maxDiscount.toLocaleString('en-IN', {minimumFractionDigits:2});
+                if (bulkDiscountInput) {
+                    bulkDiscountInput.setAttribute('max', maxDiscount.toFixed(2));
+                    if (parseFloat(bulkDiscountInput.value) > maxDiscount) {
+                        bulkDiscountInput.value = maxDiscount.toFixed(2);
+                    }
+                }
+            } else {
+                bulkDiscountSection.style.display = 'none';
+                if (bulkDiscountInput) bulkDiscountInput.value = '0';
+            }
+        }
+
         // Show/hide EMI fields when payment type changes
         if (paymentType) {
             paymentType.addEventListener('change', function () {
@@ -300,6 +421,14 @@ $devChargePaid         = $paymentSummary['development_charge_paid'] ?? 0;
 
                 updateAmountField();
                 controlPartiallyPaidStatus();
+                updateBulkDiscount();
+            });
+        }
+
+        // Live amount input: update bulk discount visibility
+        if (amountField) {
+            amountField.addEventListener('input', function () {
+                updateBulkDiscount();
             });
         }
 

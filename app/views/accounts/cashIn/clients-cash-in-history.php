@@ -34,8 +34,16 @@ $show_breadcrumb = true;
     </div>
 
     <!-- Summary Cards -->
+    <?php
+        $devTarget = (float)($paymentSummary['flat_development_charges'] ?? 0);
+        $devPaid   = (float)($paymentSummary['development_charge_paid']  ?? 0);
+        $devRemain = max(0, $devTarget - $devPaid);
+        $svcRate   = (float)($paymentSummary['service_charge_per_emi']   ?? 0);
+        $landRemain= (float)($paymentSummary['remaining_land_share']     ?? 0);
+    ?>
     <div class="row">
 
+        <!-- 1. Total Price -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -43,7 +51,7 @@ $show_breadcrumb = true;
                         <span><i class="fa-light fa-money-bill"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Price</h6>
+                        <h6 class="card__sub-title mb-10">Total Value</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title">TK.<?= number_format($paymentSummary['total_price'] ?? 0, 2) ?></h4>
                         </div>
@@ -51,30 +59,31 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-        <!-- Total Land Share Card -->
-<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon" >
-                <span><i class="fa-light fa-landmark"></i></span>
-            </div>
-            <div class="card__title-wrap">
-                <h6 class="card__sub-title mb-10">Total Land Share</h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share'] ?? 0, 2) ?></h4>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
+        <!-- 2. Total Land Share (fixed flat value) -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon">
-                        <span><i class="fa-light fa-hand-holding-usd"></i></span>
+                        <span><i class="fa-light fa-map-marker-alt"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Booking Money</h6>
+                        <h6 class="card__sub-title mb-10">Total Land Share Value</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Booking Money Paid -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-handshake"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Booking Money Paid</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title">TK.<?= number_format($paymentSummary['booking_money'] ?? 0, 2) ?></h4>
                         </div>
@@ -82,47 +91,12 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-<!-- Paid Land Share Card -->
-<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon" >
-                <span><i class="fa-light fa-hand-holding-usd"></i></span>
-            </div>
-            <div class="card__title-wrap">
-                <h6 class="card__sub-title mb-10"> Land Share Paid</h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- Remaining Land Share Card -->
-<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon" >
-                <span><i class="fa-light fa-scale-balanced"></i></span>
-            </div>
-            <div class="card__title-wrap">
-                <h6 class="card__sub-title mb-10">Remaining Land Share</h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title">TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?></h4>
-                </div>
 
-
-            </div>
-        </div>
-    </div>
-</div>
-        <!-- NEW: DISCOUNT CARD -->
+        <!-- Discount Amount -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-tag"></i></span> <!-- Changed icon -->
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-tag"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Discount Amount</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -133,22 +107,88 @@ $show_breadcrumb = true;
             </div>
         </div>
 
+        <!-- Registration Paid -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-file-certificate"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-file-contract"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Registration Money</h6>
+                        <h6 class="card__sub-title mb-10">Registration Paid</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['registration_money'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['registration_paid'] ?? 0, 2) ?></h4>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-landmark"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Landshare Paid</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['landshare_paid'] ?? $paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Remaining Land Share -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-hourglass-half"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Remaining Land Share</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title <?= $landRemain > 0 ? 'text-danger' : 'text-success' ?>">
+                                TK.<?= number_format($landRemain, 2) ?>
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Construction Fee -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-building"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Construction Fee</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['construction_fee'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+                <!-- Dev. Charges Target -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-wrench"></i></span>
+                    </div>
+                    
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Development Charges</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($devTarget, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 6. Dev. Charges (target vs paid) -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -156,25 +196,34 @@ $show_breadcrumb = true;
                         <span><i class="fa-light fa-tools"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Development Charges</h6>
+                        <h6 class="card__sub-title mb-10">Dev. Charges Paid</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['development_charge_paid'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title">TK.<?= number_format($devPaid, 2) ?></h4>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+
+
+        <!-- Dev. Charges Remaining -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon">
-                        <span><i class="fa-light fa-building"></i></span>
+                        <span style="color:<?= $devRemain > 0 ? '#e74c3c' : '#27ae60' ?>;"><i class="fa-light fa-hourglass-end"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Construction Fee</h6>
+                        <h6 class="card__sub-title mb-10">Dev. Charges Remaining</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['construction_fee'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title" style="color:<?= $devRemain > 0 ? '#e74c3c' : '#27ae60' ?>;">
+                                <?php if ($devRemain <= 0): ?>
+                                    Fully Paid ✓
+                                <?php else: ?>
+                                    TK.<?= number_format($devRemain, 2) ?>
+                                <?php endif; ?>
+                            </h4>
                         </div>
                     </div>
                 </div>
@@ -197,73 +246,48 @@ $show_breadcrumb = true;
             </div>
         </div>
 
+        <!-- Remaining Construction Fee -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon">
-                        <span><i class="fa-light fa-hand-holding-dollar"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Service Fee (10%)</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_service_fee'] ?? 0, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-money-check-dollar"></i></span>
+                        <span style="color:#e74c3c;"><i class="fa-light fa-hourglass-half"></i></span>
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Remaining Construction Fee</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['remaining_construction_fee'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title" style="color:<?= ($paymentSummary['remaining_construction_fee'] ?? 0) <= 0 ? '#27ae60' : '#e74c3c' ?>;">
+                                <?php if (($paymentSummary['remaining_construction_fee'] ?? 0) <= 0): ?>
+                                    Fully Paid ✓
+                                <?php else: ?>
+                                    TK.<?= number_format($paymentSummary['remaining_construction_fee'], 2) ?>
+                                <?php endif; ?>
+                            </h4>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- REMOVED: Average EMI Amount Card -->
-        <!--
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-calculator"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Average EMI Amount</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">TK.<?= number_format($paymentSummary['avg_emi_amount'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    -->
-
+        <!-- 9. Per EMI Amount -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon">
-                        <span><i class="fa-light fa-list-ol"></i></span>
+                        <span><i class="fa-light fa-calculator"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total EMI</h6>
+                        <h6 class="card__sub-title mb-10">Per EMI Amount</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $paymentSummary['total_emi'] ?? 0 ?> </h4>
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['per_emi_amount'] ?? 0, 2) ?></h4>
                         </div>
+                       
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- 10. Completed EMI -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -273,29 +297,14 @@ $show_breadcrumb = true;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Completed EMI</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $paymentSummary['completed_emi'] ?? 0 ?></h4>
+                            <h4 class="card__title"><?= $paymentSummary['completed_emi'] ?? 0 ?> / <?= $paymentSummary['total_emi'] ?? 0 ?></h4>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-clock"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Pending EMI</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $paymentSummary['pending_emi'] ?? 0 ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+        <!-- 11. Last Payment -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -317,7 +326,50 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
+
+        <?php if (($paymentSummary['total_bulk_emi_discount'] ?? 0) > 0): ?>
+        <!-- Bulk EMI Discount -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span style="color:#6c5ffc;"><i class="fa-light fa-tags"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Bulk EMI Discount</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title" style="color:#6c5ffc;">
+                                TK.<?= number_format($paymentSummary['total_bulk_emi_discount'], 2) ?>
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
+
+    <!-- Outstanding EMI Due Alert -->
+    <?php
+        $totalEmiDue = $paymentSummary['total_emi_due'] ?? 0;
+    ?>
+    <?php if ($totalEmiDue > 0): ?>
+    <div class="col-xxl-12 mb-3">
+        <div class="d-flex align-items-center justify-content-between mb-0 p-3"
+             style="border-radius:10px;background:rgba(108,95,252,0.1);border:1px solid rgba(108,95,252,0.25);box-shadow:0 2px 10px rgba(108,95,252,0.1);">
+            <div>
+                <i class="fa-light fa-info-circle me-2" style="color:#6c5ffc;"></i>
+                <strong style="color:#6c5ffc;">Outstanding EMI Due: TK.<?= number_format($totalEmiDue, 2) ?></strong>
+                &mdash; <?= count($outstandingDues) ?> EMI payment(s) have unpaid balances.
+                <small class="d-block mt-1 text-muted">This will be <strong>automatically cleared</strong> from your next EMI payment (oldest due first).</small>
+            </div>
+            <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['booking_id'] ?>"
+               class="btn btn-sm text-white" style="background:#6c5ffc;border-color:#6c5ffc;">
+                <i class="fa-light fa-plus me-1"></i> Add EMI Payment
+            </a>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Transaction History Table -->
     <div class="col-xxl-12">
@@ -334,8 +386,21 @@ $show_breadcrumb = true;
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
                 </div>
+
+                <!-- Payment Type Filter -->
+                <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+                    <span class="text-muted me-1" style="font-size:13px;font-weight:600;">Filter:</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary payment-filter active" data-filter="all">All</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary payment-filter" data-filter="booking_money">Booking Money</button>
+                    <button type="button" class="btn btn-sm btn-outline-info payment-filter" data-filter="registration">Registration</button>
+                    <button type="button" class="btn btn-sm btn-outline-success payment-filter" data-filter="land_share">Land Share</button>
+                    <button type="button" class="btn btn-sm btn-outline-warning payment-filter" data-filter="development_charge">Dev. Charge</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger payment-filter" data-filter="emi">EMI</button>
+                    <button type="button" class="btn btn-sm btn-outline-dark payment-filter" data-filter="emi_due_settlement">EMI Settlement</button>
+                </div>
+
                 <div class="table__wrapper table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover" id="transactionTable">
                         <thead>
                             <tr>
                                 <th style="white-space:nowrap;">Date</th>
@@ -346,6 +411,7 @@ $show_breadcrumb = true;
                                 <th style="white-space:nowrap;">Land Share</th>
                                 <th style="white-space:nowrap;">Service Fee</th>
                                 <th>Method</th>
+                                <th>Bank</th>
                                 <th>Trx ID</th>
                                 <th>Status</th>
                                 <th>Verification</th>
@@ -357,14 +423,19 @@ $show_breadcrumb = true;
                         </thead>
                         <tbody>
                             <?php foreach ($transactions as $transaction): ?>
-                                <tr>
+                                <tr data-payment-type="<?= htmlspecialchars($transaction['payment_type'] ?? '') ?>">
                                     <td><?php echo $transaction['formatted_date']; ?></td>
                                     <td>
                                         <span class="badge bg-primary">
                                             <?php echo $transaction['installment_label']; ?>
                                         </span>
+                                        <?php if (!empty($transaction['bulk_emi_discount']) && $transaction['bulk_emi_discount'] > 0): ?>
+                                            <br><span class="badge mt-1" style="background:#6c5ffc;font-size:10px;">
+                                                <i class="fa-light fa-tags me-1"></i>Discount: TK.<?= number_format($transaction['bulk_emi_discount'], 2) ?>
+                                            </span>
+                                        <?php endif; ?>
                                     </td>
-                                    <td><?php echo $transaction['payment_details']; ?></td>
+                                    <td><?php echo htmlspecialchars($transaction['payment_details'] ?? '', ENT_QUOTES); ?></td>
                                     <td style="white-space:nowrap;">
                                         <?php
                                             $isEmi       = ($transaction['payment_type'] === 'emi');
@@ -405,6 +476,15 @@ $show_breadcrumb = true;
                                         <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $transaction['payment_method'] ?? 'N/A'))); ?>
                                     </td>
                                     <td>
+                                        <?php if (!empty($transaction['bank_display_name'])): ?>
+                                            <span class="text-primary" style="font-size:12px;">
+                                                <i class="fa-light fa-building-columns me-1"></i><?= htmlspecialchars($transaction['bank_display_name']) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
                                         <?php echo !empty($transaction['transaction_ref']) ? htmlspecialchars($transaction['transaction_ref']) : '<span class="text-muted">-</span>'; ?>
                                     </td>
                                     <td>
@@ -425,6 +505,13 @@ $show_breadcrumb = true;
                                             <span class="badge bg-danger ver-badge">
                                                 <i class="fa-light fa-times-circle me-1"></i>Rejected
                                             </span>
+                                            <?php if (!empty($transaction['rejection_reason'])): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-danger ms-1 py-0 px-1"
+                                                onclick="showRejectionReason('<?= htmlspecialchars(addslashes($transaction['rejection_reason']), ENT_QUOTES) ?>')"
+                                                title="View rejection reason" style="font-size:11px;">
+                                                <i class="fa-light fa-comment-exclamation"></i>
+                                            </button>
+                                            <?php endif; ?>
                                         <?php else: /* pending */ ?>
                                             <?php
                                                 // ── ACCOUNTS-ONLY: show action buttons only to Accounts/Admin ──
@@ -513,7 +600,8 @@ $show_breadcrumb = true;
                                                     <i class="fa-light fa-file-invoice"></i>
                                                 </span>
                                                 <?php endif; ?>
-                                                <!-- EDIT BUTTON -->
+                                                <!-- EDIT BUTTON — hidden when verified -->
+                                                <?php if (!$isVerified): ?>
                                                 <?php if ($transaction['payment_type'] !== 'booking_money'): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/edit-client-cash-in/<?= $transaction['id'] ?>"
                                                     class="table__icon edit"
@@ -525,12 +613,17 @@ $show_breadcrumb = true;
                                                     <i class="fa-regular fa-lock"></i>
                                                 </span>
                                                 <?php endif; ?>
-                                                <!-- DELETE BUTTON -->
+                                                <!-- DELETE BUTTON — hidden when verified -->
                                                 <a href="#" class="removeBtn table__icon delete"
                                                     onclick="deleteTransaction(<?= $transaction['id'] ?>); return false;"
                                                     title="Delete">
                                                     <i class="fa-regular fa-trash"></i>
                                                 </a>
+                                                <?php else: ?>
+                                                <span class="table__icon disabled" title="Verified — cannot edit or delete" style="background-color: #d4edda; color: #155724;">
+                                                    <i class="fa-regular fa-lock"></i>
+                                                </span>
+                                                <?php endif; ?>
                                             <?php else: ?>
                                                 <span class="table__icon disabled" title="System Generated">
                                                     <i class="fa-regular fa-lock"></i>
@@ -612,9 +705,38 @@ $show_breadcrumb = true;
     </div>
 </div>
 
+<!-- ===== REJECTION REASON VIEW MODAL ===== -->
+<div class="modal fade" id="viewRejectionReasonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:12px; overflow:hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #dc2626, #b91c1c); color:#fff; border:0;">
+                <h5 class="modal-title">
+                    <i class="fa-light fa-comment-exclamation me-2"></i>Rejection Reason
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger mb-0" style="border-radius:8px;">
+                    <i class="fa-light fa-quote-left me-1 text-danger"></i>
+                    <span id="rejectionReasonText"></span>
+                    <i class="fa-light fa-quote-right ms-1 text-danger"></i>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #f0f0f0;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <script>
         const BASE_URL = '<?= $GLOBALS['base_url'] ?>';
 
+        // ─── Show Rejection Reason Modal ───────────────────────────────────
+        function showRejectionReason(reason) {
+            document.getElementById('rejectionReasonText').textContent = reason;
+            new bootstrap.Modal(document.getElementById('viewRejectionReasonModal')).show();
+        }
         // ─── Document Modal ───────────────────────────────────────────────────
         function openDocumentModal(paymentId) {
             const modal = new bootstrap.Modal(document.getElementById('accDocumentModal'));
@@ -919,4 +1041,37 @@ $show_breadcrumb = true;
             .position { justify-content: start !important; }
         }
         @media (max-width: 400px) { .btn { font-size: 14px; padding: 6px 14px; } }
+
+        /* Filter button active states */
+        .payment-filter.active { font-weight: 600; }
+        .payment-filter[data-filter="all"].active { background:#6c757d; color:#fff; border-color:#6c757d; }
+        .payment-filter[data-filter="booking_money"].active { background:#0d6efd; color:#fff; border-color:#0d6efd; }
+        .payment-filter[data-filter="registration"].active { background:#0dcaf0; color:#fff; border-color:#0dcaf0; }
+        .payment-filter[data-filter="land_share"].active { background:#198754; color:#fff; border-color:#198754; }
+        .payment-filter[data-filter="development_charge"].active { background:#ffc107; color:#000; border-color:#ffc107; }
+        .payment-filter[data-filter="emi"].active { background:#dc3545; color:#fff; border-color:#dc3545; }
+        .payment-filter[data-filter="emi_due_settlement"].active { background:#212529; color:#fff; border-color:#212529; }
     </style>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var filters = document.querySelectorAll('.payment-filter');
+        var rows = document.querySelectorAll('#transactionTable tbody tr[data-payment-type]');
+
+        filters.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                filters.forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+
+                var filter = btn.getAttribute('data-filter');
+                rows.forEach(function(row) {
+                    if (filter === 'all' || row.getAttribute('data-payment-type') === filter) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        });
+    });
+    </script>

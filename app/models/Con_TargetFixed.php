@@ -120,8 +120,10 @@ class Con_TargetFixed extends Model
                  lab_test_result, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0.00, NULL, NULL, NULL, NOW())";
         $stmt = $this->db->prepare($sql);
+        // i=project_id, i=work_plan_id, s=target_title, i=user_id,
+        // i=year, i=month, i=week_number, d=target_percentage
         $stmt->bind_param(
-            'iiisiiii d',
+            'iiisiiid',
             $data['project_id'],
             $data['work_plan_id'],
             $data['target_title'],
@@ -149,8 +151,10 @@ class Con_TargetFixed extends Model
                     updated_at        = NOW()
                 WHERE id = ?";
         $stmt = $this->db->prepare($sql);
+        // i=project_id, i=work_plan_id, s=target_title,
+        // i=year, i=month, i=week_number, d=target_percentage, i=id
         $stmt->bind_param(
-            'iiisiiidi',
+            'iiisiidi',
             $data['project_id'],
             $data['work_plan_id'],
             $data['target_title'],

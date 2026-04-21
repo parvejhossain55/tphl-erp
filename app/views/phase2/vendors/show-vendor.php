@@ -61,8 +61,8 @@
 
                         <!-- Stats Cards -->
                         <div class="col-md-7">
-                            <div class="row g-3">
-                                <div class="col-6">
+                            <div class="row ">
+                                <div class="col-6 mb-3">
                                     <div class="border rounded p-3 text-center">
                                         <div class="fs-3 fw-bold text-primary"><?= $stats['po_count'] ?? 0 ?></div>
                                         <div class="small text-muted">Purchase Orders</div>

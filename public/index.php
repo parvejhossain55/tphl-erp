@@ -506,6 +506,10 @@ $routes = [
         "controller" => "AccountClientController",
         "method" => "getClientLands"
     ],
+    "get-client-profile" => [
+        "controller" => "AccountClientController",
+        "method" => "getClientProfile"
+    ],
     // client's cash in history 
     "clients-cash-in-history" => ["controller" => "AccountClientController", "method" => "indexTwo"],
     "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],
@@ -776,13 +780,15 @@ $routes['con-material-receiving-create/(\d+)'] = ['controller' => 'Phase2\Con_Ma
 $routes['con-material-receiving-store']        = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'store'];
 $routes['con-material-receiving-qc/(\d+)']     = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'qcReview'];
 
-// ── Vendor Payment Requests (New Module) ───────────────────────────────────
-$routes['con-vendor-payment-requests'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'index'];
-$routes['con-vendor-payment-create']   = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'create'];
-$routes['con-vendor-payment-store']    = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'store'];
-$routes['con-vendor-payment-show/(\d+)'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'];
-$routes['con-vendor-payment-approve/(\d+)'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'approve'];
-$routes['con-vendor-payment-ajax-penalty'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'];
+// ── Vendor Payment Requests ────────────────────────────────────────────────
+$routes['con-vendor-payment-requests']          = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'index'];
+$routes['con-vendor-payment-create']            = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'create'];
+$routes['con-vendor-payment-store']             = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'store'];
+$routes['con-vendor-payment-show/(\d+)']        = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'];
+$routes['con-vendor-payment-approve/(\d+)']     = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'approve'];
+$routes['con-vendor-payment-reject/(\d+)']      = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'reject'];
+$routes['con-vendor-payment-ajax-penalty']      = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'];
+$routes['con-vendor-payment-ajax-advance']      = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetAdvanceSummary'];
 
 // ── BOQ ───────────────────────────────────────────────────────────────────
 $routes['con-boq']                     = ['controller' => 'Phase2\Con_BOQController', 'method' => 'index'];
@@ -815,10 +821,10 @@ $routes['con-usage-log-create']        = ['controller' => 'Phase2\Con_MaterialUs
 $routes['con-usage-log-store']         = ['controller' => 'Phase2\Con_MaterialUsageController', 'method' => 'store'];
 
 // ── Vendor Payments ───────────────────────────────────────────────────────
-$routes['con-vendor-payments']              = ['controller' => 'Phase2\Con_VendorPaymentController', 'method' => 'index'];
-$routes['con-vendor-payment-create']        = ['controller' => 'Phase2\Con_VendorPaymentController', 'method' => 'create'];
-$routes['con-vendor-payment-store']         = ['controller' => 'Phase2\Con_VendorPaymentController', 'method' => 'store'];
-$routes['con-vendor-payment/(\d+)']         = ['controller' => 'Phase2\Con_VendorPaymentController', 'method' => 'show'];
+$routes['con-vendor-payments']              = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'index'];
+$routes['con-vendor-payment-create']        = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'create'];
+$routes['con-vendor-payment-store']         = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'store'];
+$routes['con-vendor-payment/(\d+)']         = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'];
 
 // ── Financial Ledger ──────────────────────────────────────────────────────
 $routes['con-ledger']                  = ['controller' => 'Phase2\Con_FinancialLedgerController', 'method' => 'index'];

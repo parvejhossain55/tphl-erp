@@ -24,7 +24,8 @@
                     <thead class="table-light">
                         <tr>
                             <th>Req ID</th>
-                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Created</th>
                             <th>Project</th>
                             <th>Vendor</th>
                             <th class="text-end">Invoice (৳)</th>
@@ -39,22 +40,32 @@
                         <?php foreach ($requests as $req): ?>
                         <tr>
                             <td class="fw-bold">VPR-<?= $req['id'] ?></td>
-                            <td><?= date('d M Y', strtotime($req['payment_date'])) ?></td>
-                            <td><?= htmlspecialchars($req['project_name']) ?></td>
-                            <td><span class="badge bg-secondary"><?= htmlspecialchars($req['vendor_name']) ?></span></td>
-                            
-                            <td class="text-end"><?= number_format($req['invoice_amount'], 2) ?></td>
-                            <td class="text-end text-danger"><?= number_format($req['penalty_deducted'], 2) ?></td>
-                            <td class="text-end fw-bold text-success"><?= number_format($req['net_payable'], 2) ?></td>
-                            
                             <td>
-                                <?php if($req['status'] === 'Approved'): ?>
-                                    <span class="badge bg-success">Approved</span>
-                                <?php elseif($req['status'] === 'Rejected'): ?>
-                                    <span class="badge bg-danger">Rejected</span>
-                                <?php else: ?>
-                                    <span class="badge bg-warning text-dark">Pending</span>
-                                <?php endif; ?>
+                                <?php
+                                $pt = $req['payment_type'] ?? 'Final';
+                                $ptClass = $pt === 'Advance' ? 'bg-primary' : ($pt === 'Partial' ? 'bg-warning text-dark' : 'bg-success');
+                                ?>
+                                <span class="badge <?= $ptClass ?>"><?= $pt ?></span>
+                            </td>
+                            <td><?= !empty($req['created_at']) ? date('d M Y', strtotime($req['created_at'])) : '—' ?></td>
+                            <td><?= htmlspecialchars($req['project_name'] ?? '—') ?></td>
+                            <td><span class="badge bg-secondary"><?= htmlspecialchars($req['vendor_name'] ?? '—') ?></span></td>
+
+                            <td class="text-end"><?= number_format((float)($req['invoice_amount'] ?? 0), 2) ?></td>
+                            <td class="text-end text-danger"><?= number_format((float)($req['penalty_amount'] ?? 0), 2) ?></td>
+                            <td class="text-end fw-bold text-success"><?= number_format((float)($req['net_payable'] ?? 0), 2) ?></td>
+
+                            <td>
+                                <?php
+                                $badge = match($req['status'] ?? '') {
+                                    'Approved'  => 'bg-success',
+                                    'Rejected'  => 'bg-danger',
+                                    'Paid'      => 'bg-dark',
+                                    'Submitted' => 'bg-info',
+                                    default     => 'bg-warning text-dark',
+                                };
+                                ?>
+                                <span class="badge <?= $badge ?>"><?= htmlspecialchars($req['status'] ?? 'Draft') ?></span>
                             </td>
                             <td><small><?= htmlspecialchars($req['created_by_name'] ?? '') ?></small></td>
                             <td class="text-center">

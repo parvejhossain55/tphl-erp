@@ -114,7 +114,7 @@ class Con_DPR extends Model
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iisdssi i',
+            'iisdssii',
             $data['project_id'],
             $data['site_engineer_id'],
             $data['work_done'],
