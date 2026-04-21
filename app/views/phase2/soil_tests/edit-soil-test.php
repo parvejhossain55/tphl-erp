@@ -34,9 +34,10 @@
                 <input type="url" name="lab_test_document_link" class="form-control"
                     value="<?= htmlspecialchars($record['lab_test_document_link'] ?? '') ?>" placeholder="https://...">
             </div>
-            <div class="col-12">
-                <label>Field Data / Notes</label>
-                <textarea name="field_data" class="form-control" rows="4"><?= htmlspecialchars($record['field_data'] ?? '') ?></textarea>
+            <div class="col-xl-6">
+                <label>Field Test Document Link</label>
+                <input type="url" name="field_test_doc_link" class="form-control"
+                    value="<?= htmlspecialchars($record['field_test_doc_link'] ?? '') ?>" placeholder="https://...">
             </div>
             <div class="col-12 text-center mt-4">
                 <button type="submit" class="btn btn-primary px-5">Update Soil Test</button>

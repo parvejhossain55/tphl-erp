@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS `soil_tests` (
 -- 2. OPERATIONS OPERATORS
 -- =============================================================================
 
-CREATE TABLE IF NOT EXISTS `operations_operators` (
+CREATE TABLE IF NOT EXISTS `operations_contractors` (
   `id`          INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name`        VARCHAR(255)     NOT NULL,
   `role`        ENUM('Contractor','Subcontractor','Supervisor','Worker') NOT NULL DEFAULT 'Contractor',

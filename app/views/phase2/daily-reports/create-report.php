@@ -18,7 +18,7 @@
                     <h6 class="card-title mb-0"><i class="bi bi-journal-plus me-2 text-primary"></i> Daily Progress Report</h6>
                 </div>
                 <div class="card-body">
-                    <form action="<?= $base_url ?>/con-daily-report-store" method="POST">
+                    <form action="<?= $base_url ?>/con-daily-report-store" method="POST" enctype="multipart/form-data">
 
                         <div class="row  mb-3">
                             <!-- Project -->
@@ -90,6 +90,31 @@
                                       placeholder="Describe today's work in detail..."></textarea>
                         </div>
 
+                        <!-- Progress Image Upload -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold"><i class="fal fa-image me-1 text-primary"></i>Progress Image <span class="text-muted small">(optional)</span></label>
+                            <div id="dprImageDropZone" style="
+                                border: 2px dashed rgba(99,102,241,.4);
+                                border-radius: 12px;
+                                padding: 28px 20px;
+                                text-align: center;
+                                cursor: pointer;
+                                transition: border-color .2s, background .2s;
+                                background: rgba(99,102,241,.03);
+                            " onclick="document.getElementById('progress_image').click()" ondragover="event.preventDefault();this.style.borderColor='#6366f1'" ondragleave="this.style.borderColor='rgba(99,102,241,.4)'" ondrop="handleDrop(event)">
+                                <div id="dprImagePreviewWrap" style="display:none;margin-bottom:12px">
+                                    <img id="dprImagePreview" src="" alt="Preview" style="max-width:100%;max-height:220px;border-radius:8px;object-fit:cover;box-shadow:0 4px 12px rgba(0,0,0,.12)">
+                                </div>
+                                <div id="dprImagePlaceholder">
+                                    <i class="fal fa-cloud-upload-alt" style="font-size:32px;color:#6366f1;margin-bottom:8px;display:block"></i>
+                                    <div style="font-size:13px;font-weight:600;color:#6366f1">Click or drag &amp; drop to upload</div>
+                                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px">JPG, PNG, WebP, GIF — max 5MB</div>
+                                </div>
+                                <div id="dprImageFileName" style="font-size:12px;margin-top:8px;color:var(--text-muted)"></div>
+                            </div>
+                            <input type="file" id="progress_image" name="progress_image" accept="image/*" style="display:none" onchange="previewImage(event)">
+                        </div>
+
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save me-1"></i> Save Report
@@ -149,4 +174,37 @@ document.getElementById('work_plan_id').addEventListener('change', function () {
         infoBox.classList.add('d-none');
     }
 });
+
+// ── Progress Image Upload Preview ──────────────────────────────────
+function previewImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    showPreview(file);
+}
+
+function handleDrop(event) {
+    event.preventDefault();
+    document.getElementById('dprImageDropZone').style.borderColor = 'rgba(99,102,241,.4)';
+    const file = event.dataTransfer.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('progress_image').files = dt.files;
+    showPreview(file);
+}
+
+function showPreview(file) {
+    if (file.size > 5 * 1024 * 1024) {
+        alert('File too large! Maximum size is 5MB.');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('dprImagePreview').src              = e.target.result;
+        document.getElementById('dprImagePreviewWrap').style.display = 'block';
+        document.getElementById('dprImagePlaceholder').style.display = 'none';
+        document.getElementById('dprImageFileName').textContent      = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+    };
+    reader.readAsDataURL(file);
+}
 </script>

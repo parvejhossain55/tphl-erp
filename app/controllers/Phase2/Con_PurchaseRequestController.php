@@ -50,7 +50,7 @@ class Con_PurchaseRequestController extends Controller
         $materials = $this->materialModel->getAll();
 
         $this->view('phase2/purchase-requests/create-purchase-request', [
-            'current_route' => 'con-purchase-requests',
+            'current_route' => 'con-purchase-request-create',
             'page_title'    => 'New Purchase Request',
             'projects'      => $projects,
             'materials'     => $materials,

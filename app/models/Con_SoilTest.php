@@ -27,8 +27,8 @@ class Con_SoilTest extends Model {
     public function create($data) {
         $stmt = $this->db->prepare("
             INSERT INTO soil_tests 
-            (project_id, site_engineer_id, field_data, lab_test_document_link, test_date, created_by) 
-            VALUES (?, ?, ?, ?, ?, ?)
+            (project_id, site_engineer_id, field_data, lab_test_document_link, field_test_doc_link, test_date, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
         
         $params = [
@@ -36,18 +36,19 @@ class Con_SoilTest extends Model {
             $data['site_engineer_id'],
             $data['field_data'] ?? null,
             $data['lab_test_document_link'] ?? null,
+            $data['field_test_doc_link'] ?? null,
             $data['test_date'] ?? null,
             $data['created_by']
         ];
         
-        $stmt->bind_param("iisssi", ...$params);
+        $stmt->bind_param("iissssi", ...$params);
         return $stmt->execute();
     }
 
     public function update($id, $data) {
         $stmt = $this->db->prepare("
             UPDATE soil_tests 
-            SET project_id = ?, site_engineer_id = ?, field_data = ?, lab_test_document_link = ?, test_date = ? 
+            SET project_id = ?, site_engineer_id = ?, field_data = ?, lab_test_document_link = ?, field_test_doc_link = ?, test_date = ? 
             WHERE id = ?
         ");
         
@@ -56,6 +57,7 @@ class Con_SoilTest extends Model {
             $data['site_engineer_id'],
             $data['field_data'] ?? null,
             $data['lab_test_document_link'] ?? null,
+            $data['field_test_doc_link'] ?? null,
             $data['test_date'] ?? null,
             $id
         ];

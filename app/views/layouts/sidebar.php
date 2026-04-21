@@ -1031,6 +1031,12 @@
                     <span class="category-name">Construction </span>
                 </li>
 
+                <li class="slide ">
+                    <a href="<?= $base_url ?>/con-dashboard" class="sidebar__menu-item <?= isActive('con-dashboard', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                        <span class="sidebar__menu-label">Constrution Dashboard</span>
+                    </a>
+                </li>
                 <!-- Pre-Construction -->
                 <li class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests'], $current_route) ? 'active' : '' ?>">
                     <a href="javascript:void(0);"
@@ -1060,23 +1066,6 @@
                         </li>
                     </ul>
                 </li>
-                <!-- Module 2: Operators / Contractors -->
-                <li class="slide d-none has-sub <?= isActive(['con-operators', 'con-operator-create'], $current_route) ? 'active' : '' ?>">
-                    <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-operators', 'con-operator-create'], $current_route) ? 'menu-open active' : '' ?>">
-                        <div class="side-menu__icon"><i class="fa-solid fa-person-digging"></i></div>
-                        <span class="sidebar__menu-label">Operators</span>
-                        <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                    </a>
-                    <ul class="sidebar-menu child2" style="display:block;">
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/con-operators" class="sidebar__menu-item <?= isActive('con-operators', $current_route) ?>">Operator List</a>
-                        </li>
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/con-operator-create" class="sidebar__menu-item <?= isActive('con-operator-create', $current_route) ?>">Add Operator</a>
-                        </li>
-                    </ul>
-                </li>
-
 
                 <!-- Module 2.0: Initial Estimate Budgets -->
                 <li class="slide has-sub <?= isActive(['con-estimates', 'con-estimate-create'], $current_route) ? 'active' : '' ?>">
@@ -1111,6 +1100,29 @@
                     </ul>
                 </li>
 
+
+                <!-- ====== Site Operations (Batch 1 NEW) ====== -->
+                <li class="slide has-sub <?= isActive(['con-targets', 'con-target-create', 'con-daily-reports', 'con-daily-report-create'], $current_route) ? 'active' : '' ?>">
+                    <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-targets', 'con-target-create', 'con-daily-reports', 'con-daily-report-create'], $current_route) ? 'menu-open active' : '' ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
+                        <span class="sidebar__menu-label">Site Operations</span>
+                        <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                    </a>
+                    <ul class="sidebar-menu child2" style="display:block;">
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/con-targets" class="sidebar__menu-item <?= isActive('con-targets', $current_route) ?>">
+                                <i class="bi bi-bullseye me-1"></i> Target Fixed
+                            </a>
+                        </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/con-target-create" class="sidebar__menu-item <?= isActive('con-target-create', $current_route) ?>">
+                                + New Target
+                            </a>
+                        </li>
+                    
+                    </ul>
+                </li>
+                
                 <!-- Module 2.2: Budget Extension Requests -->
                 <li class="slide has-sub <?= isActive(['con-budget-extends', 'con-budget-extend-create'], $current_route) ? 'active' : '' ?>">
                     <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-budget-extends', 'con-budget-extend-create'], $current_route) ? 'menu-open active' : '' ?>">
@@ -1127,6 +1139,26 @@
                         </li>
                     </ul>
                 </li>
+                <!-- ====== END Site Operations ====== -->
+
+
+                <!-- Module 2: Operators / Contractors -->
+                <li class="slide has-sub <?= isActive(['con-contractors', 'con-contractor-create'], $current_route) ? 'active' : '' ?>">
+                    <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-contractors', 'con-contractor-create'], $current_route) ? 'menu-open active' : '' ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-person-digging"></i></div>
+                        <span class="sidebar__menu-label">Contractors</span>
+                        <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                    </a>
+                    <ul class="sidebar-menu child2" style="display:block;">
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/con-contractors" class="sidebar__menu-item <?= isActive('con-contractors', $current_route) ?>">Constractor List</a>
+                        </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/con-contractor-create" class="sidebar__menu-item <?= isActive('con-contractor-create', $current_route) ?>">Add contractor</a>
+                        </li>
+                    </ul>
+                </li>
+
                 <!-- Module 4: BOQ (Bill of Quantities) -->
                 <li class="slide has-sub <?= isActive(['con-boq', 'con-boq-create'], $current_route) ? 'active' : '' ?>">
                     <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-boq', 'con-boq-create'], $current_route) ? 'menu-open active' : '' ?>">
@@ -1271,37 +1303,6 @@
                     </ul>
                 </li>
 
-                <!-- ====== Site Operations (Batch 1 NEW) ====== -->
-                <li class="slide has-sub <?= isActive(['con-targets', 'con-target-create', 'con-daily-reports', 'con-daily-report-create'], $current_route) ? 'active' : '' ?>">
-                    <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-targets', 'con-target-create', 'con-daily-reports', 'con-daily-report-create'], $current_route) ? 'menu-open active' : '' ?>">
-                        <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
-                        <span class="sidebar__menu-label">Site Operations</span>
-                        <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                    </a>
-                    <ul class="sidebar-menu child2" style="display:block;">
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/con-targets" class="sidebar__menu-item <?= isActive('con-targets', $current_route) ?>">
-                                <i class="bi bi-bullseye me-1"></i> Target Fixed
-                            </a>
-                        </li>
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/con-target-create" class="sidebar__menu-item <?= isActive('con-target-create', $current_route) ?>">
-                                + New Target
-                            </a>
-                        </li>
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/con-daily-reports" class="sidebar__menu-item <?= isActive('con-daily-reports', $current_route) ?>">
-                                <i class="bi bi-journal-text me-1"></i> Daily Reports (DPR)
-                            </a>
-                        </li>
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/con-daily-report-create" class="sidebar__menu-item <?= isActive('con-daily-report-create', $current_route) ?>">
-                                + New DPR
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                <!-- ====== END Site Operations ====== -->
 
                 <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
                 <li class="slide has-sub <?= isActive(['con-contractor-bills', 'con-contractor-bill-create', 'con-fund-requests', 'con-fund-request-create'], $current_route) ? 'active' : '' ?>">
@@ -1321,19 +1322,20 @@
                                 + New Bill
                             </a>
                         </li>
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/con-fund-requests" class="sidebar__menu-item <?= isActive('con-fund-requests', $current_route) ?>">
+                        <!-- <li class="slide">
+                            <a href="<= $base_url ?>/con-fund-requests" class="sidebar__menu-item <?= isActive('con-fund-requests', $current_route) ?>">
                                 <i class="bi bi-cash-coin me-1"></i> Fund Requests
                             </a>
                         </li>
                         <li class="slide">
-                            <a href="<?= $base_url ?>/con-fund-request-create" class="sidebar__menu-item <?= isActive('con-fund-request-create', $current_route) ?>">
+                            <a href="<= $base_url ?>/con-fund-request-create" class="sidebar__menu-item <?= isActive('con-fund-request-create', $current_route) ?>">
                                 + New Fund Request
                             </a>
-                        </li>
+                        </li> -->
                     </ul>
                 </li>
                 <!-- ====== END Operators & Bills ====== -->
+                 
 
                 <!-- ====== Finance & Accounts (Batch 3 NEW) ====== -->
                 <li class="slide has-sub <?= isActive(['con-transactions', 'con-pending-payments'], $current_route) ? 'active' : '' ?>">
@@ -1351,6 +1353,27 @@
                         <li class="slide">
                             <a href="<?= $base_url ?>/con-pending-payments" class="sidebar__menu-item <?= isActive('con-pending-payments', $current_route) ?>">
                                 <i class="bi bi-clock me-1"></i> Pending Payments
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <!-- ====== END Finance & Accounts ====== -->
+                <!-- ====== Finance & Accounts (Batch 3 NEW) ====== -->
+                <li class="slide has-sub <?= isActive(['con-daily-reports', 'con-daily-report-create'], $current_route) ? 'active' : '' ?>">
+                    <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-daily-reports', 'con-daily-report-create'], $current_route) ? 'menu-open active' : '' ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
+                        <span class="sidebar__menu-label">Reports</span>
+                        <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                    </a>
+                    <ul class="sidebar-menu child2" style="display:block;">
+                          <li class="slide">
+                            <a href="<?= $base_url ?>/con-daily-reports" class="sidebar__menu-item <?= isActive('con-daily-reports', $current_route) ?>">
+                                <i class="bi bi-journal-text me-1"></i> Weekly Reports (DPR)
+                            </a>
+                        </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/con-daily-report-create" class="sidebar__menu-item <?= isActive('con-daily-report-create', $current_route) ?>">
+                                + New DPR
                             </a>
                         </li>
                     </ul>

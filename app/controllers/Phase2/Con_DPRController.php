@@ -57,6 +57,22 @@ class Con_DPRController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        // Handle progress image upload
+        $imagePath = null;
+        if (!empty($_FILES['progress_image']['name'])) {
+            $uploadDir = __DIR__ . '/../../../public/uploads/dpr-images/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+            $allowed  = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $ext      = strtolower(pathinfo($_FILES['progress_image']['name'], PATHINFO_EXTENSION));
+            if (in_array($ext, $allowed) && $_FILES['progress_image']['error'] === UPLOAD_ERR_OK) {
+                $filename  = time() . '_' . uniqid() . '.' . $ext;
+                if (move_uploaded_file($_FILES['progress_image']['tmp_name'], $uploadDir . $filename)) {
+                    $imagePath = 'uploads/dpr-images/' . $filename;
+                }
+            }
+        }
+
         $data = [
             'project_id'          => $_POST['project_id']          ?? null,
             'site_engineer_id'    => $_POST['site_engineer_id']    ?? ($_SESSION['user']['id'] ?? null),
@@ -65,6 +81,7 @@ class Con_DPRController extends Controller
             'report_date'         => $_POST['report_date']         ?? date('Y-m-d'),
             'weather_condition'   => trim($_POST['weather_condition'] ?? ''),
             'manpower_count'      => !empty($_POST['manpower_count']) ? (int)$_POST['manpower_count'] : null,
+            'progress_image'      => $imagePath,
             'created_by'          => $_SESSION['user']['id']       ?? null,
         ];
 

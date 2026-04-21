@@ -2,19 +2,14 @@
 $addPage = true;
 $show_breadcrumb = false;
 ?>
-
-<h4 class="mb-2">Soil Tests</h4>
-
-<div class="row">
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex flex-column flex-sm-row gap-2">
-                <a href="<?= $GLOBALS['base_url'] ?>/con-soil-tests/create" class="btn btn-primary w-100">
+<div class="mb-3 pagetitle d-flex justify-content-between align-items-center">
+    <div class="">
+        <h4 class="">Soil Tests</h4>
+     
+    </div>
+      <a href="<?= $GLOBALS['base_url'] ?>/con-soil-tests/create" class="btn btn-primary ">
                     <i class="fa-light fa-plus me-1"></i> Add Soil Test
                 </a>
-            </div>
-        </div>
-    </div>
 </div>
 
 <div class="row">
@@ -29,7 +24,7 @@ $show_breadcrumb = false;
                             <th>Site Engineer</th>
                             <th>Test Date</th>
                             <th>Lab Document</th>
-                            <th>Field Notes</th>
+                            <th>Field Test Doc</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -51,10 +46,10 @@ $show_breadcrumb = false;
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <?php if (!empty($row['field_data'])): ?>
-                                            <span title="<?= htmlspecialchars($row['field_data']) ?>">
-                                                <?= mb_strimwidth($row['field_data'], 0, 40, '...') ?>
-                                            </span>
+                                        <?php if (!empty($row['field_test_doc_link'])): ?>
+                                            <a href="<?= htmlspecialchars($row['field_test_doc_link']) ?>" target="_blank" class="btn btn-sm btn-outline-success">
+                                                <i class="fa-solid fa-file-lines me-1"></i>View
+                                            </a>
                                         <?php else: ?>
                                             <span class="text-muted">—</span>
                                         <?php endif; ?>

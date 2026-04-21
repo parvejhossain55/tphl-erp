@@ -672,6 +672,7 @@ $route = trim($route, '/');
 // PHASE 2 — CONSTRUCTION MANAGEMENT ROUTES
 // =============================================================================
 // ── Module 1: Pre-Construction ──────────────────────────────────────────────
+$routes['con-dashboard'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'index'];
 $routes['con-land-visibility-studies'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'index'];
 $routes['con-land-visibility-studies/create'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'create'];
 $routes['con-land-visibility-studies/store'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'store'];
@@ -707,16 +708,21 @@ $routes['con-soil-tests/edit'] = ['controller' => 'Phase2\SoilTestController', '
 $routes['con-soil-tests/update'] = ['controller' => 'Phase2\SoilTestController', 'method' => 'update'];
 $routes['delete-soil-test']                     = ['controller' => 'Phase2\SoilTestController', 'method' => 'delete'];
 
-// ── Dashboard ──────────────────────────────────────────────────────────────
-$routes['con-dashboard'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'index'];
+// \u2500\u2500 Dashboard + Project Detail + AJAX Tab Routes \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+$routes['con-dashboard']           = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'index'];
+$routes['con-projects']            = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectsList'];
+$routes['con-project/(\d+)']       = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectDetail'];
+$routes['con-ajax-workplan/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWorkPlan'];
+$routes['con-ajax-targets/(\d+)']  = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxTargets'];
+$routes['con-ajax-weekly/(\d+)']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWeeklyData'];
 
 // ── Operators / Contractors ────────────────────────────────────────────────
-$routes['con-operators']              = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'index'];
-$routes['con-operator-create']        = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'create'];
-$routes['con-operator-store']         = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'store'];
-$routes['con-operator-edit/(\d+)']    = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'edit'];
-$routes['con-operator-update/(\d+)']  = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'update'];
-$routes['con-operator-delete']        = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'delete'];
+$routes['con-contractors']              = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'index'];
+$routes['con-contractor-create']        = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'create'];
+$routes['con-contractor-store']         = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'store'];
+$routes['con-contractor-edit/(\d+)']    = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'edit'];
+$routes['con-contractor-update/(\d+)']  = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'update'];
+$routes['con-contractor-delete']        = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'delete'];
 
 // ── Contractor Bill Requests ───────────────────────────────────────────────
 $routes['con-contractor-bills']              = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'index'];

@@ -1,12 +1,12 @@
-<div class="pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <div class="mb-4">
+<div class="mb-4 pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="">
         <h4><?= htmlspecialchars($page_title) ?></h4>
-        <nav>
+        <!-- <nav>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
                 <li class="breadcrumb-item active">BOQ</li>
             </ol>
-        </nav>
+        </nav> -->
     </div>
     <div class="d-flex gap-2">
         <a href="<?= $base_url ?>/con-boq-create" class="btn btn-primary btn-sm">
@@ -34,45 +34,45 @@
                     <tbody>
                         <?php if (!empty($boqs)): ?>
                             <?php foreach ($boqs as $i => $boq): ?>
-                            <tr>
-                                <td><?= $i + 1 ?></td>
-                                <td class="fw-bold"><?= htmlspecialchars($boq['project_name']) ?></td>
-                                <td>
-                                    <span class="badge bg-light text-dark border">v<?= htmlspecialchars($boq['version']) ?></span>
-                                </td>
-                                <td>
-                                    <?php
-                                    $badge = match($boq['status']) {
-                                        'Approved'  => 'bg-success',
-                                        'Rejected'  => 'bg-danger',
-                                        'Submitted' => 'bg-info',
-                                        default     => 'bg-warning text-dark',
-                                    };
-                                    ?>
-                                    <span class="badge <?= $badge ?>"><?= $boq['status'] ?></span>
-                                </td>
-                                <td><?= htmlspecialchars($boq['created_by_name'] ?? '—') ?></td>
-                                <td class="text-muted small"><?= date('d M Y', strtotime($boq['created_at'])) ?></td>
-                                <td class="text-center" style="white-space:nowrap;">
-                                    <a href="<?= $base_url ?>/con-boq-show/<?= $boq['id'] ?>"
-                                       class="btn btn-sm btn-outline-info" title="View Details">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <?php if ($boq['status'] !== 'Approved'): ?>
-                                        <a href="<?= $base_url ?>/con-boq-edit/<?= $boq['id'] ?>"
-                                           class="btn btn-sm btn-outline-warning ms-1" title="Edit">
-                                            <i class="bi bi-pencil-square"></i>
+                                <tr>
+                                    <td><?= $i + 1 ?></td>
+                                    <td class="fw-bold"><?= htmlspecialchars($boq['project_name']) ?></td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">v<?= htmlspecialchars($boq['version']) ?></span>
+                                    </td>
+                                    <td>
+                                        <?php
+                                        $badge = match ($boq['status']) {
+                                            'Approved'  => 'bg-success',
+                                            'Rejected'  => 'bg-danger',
+                                            'Submitted' => 'bg-info',
+                                            default     => 'bg-warning text-dark',
+                                        };
+                                        ?>
+                                        <span class="badge <?= $badge ?>"><?= $boq['status'] ?></span>
+                                    </td>
+                                    <td><?= htmlspecialchars($boq['created_by_name'] ?? '—') ?></td>
+                                    <td class="text-muted small"><?= date('d M Y', strtotime($boq['created_at'])) ?></td>
+                                    <td class="text-center" style="white-space:nowrap;">
+                                        <a href="<?= $base_url ?>/con-boq-show/<?= $boq['id'] ?>"
+                                            class="btn btn-sm btn-outline-info" title="View Details">
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <button type="button"
+                                        <?php if ($boq['status'] !== 'Approved'): ?>
+                                            <a href="<?= $base_url ?>/con-boq-edit/<?= $boq['id'] ?>"
+                                                class="btn btn-sm btn-outline-warning ms-1" title="Edit">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </a>
+                                            <button type="button"
                                                 class="btn btn-sm btn-outline-danger ms-1 btn-delete-boq"
                                                 data-id="<?= $boq['id'] ?>"
                                                 data-name="<?= htmlspecialchars($boq['project_name']) ?>"
                                                 title="Delete">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
@@ -100,7 +100,7 @@
                 </div>
                 <div class="modal-body">
                     <p>Are you sure you want to delete the BOQ for <strong id="deleteBoqName"></strong>?
-                       All associated items will be removed.</p>
+                        All associated items will be removed.</p>
                     <input type="hidden" name="id" id="deleteBoqId">
                 </div>
                 <div class="modal-footer">
@@ -115,17 +115,17 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // Delete modal — vanilla JS
-    document.querySelectorAll('.btn-delete-boq').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var id   = this.getAttribute('data-id');
-            var name = this.getAttribute('data-name');
-            document.getElementById('deleteBoqId').value = id;
-            document.getElementById('deleteBoqName').textContent = name;
-            var modal = new bootstrap.Modal(document.getElementById('deleteBoqModal'));
-            modal.show();
+    document.addEventListener('DOMContentLoaded', function() {
+        // Delete modal — vanilla JS
+        document.querySelectorAll('.btn-delete-boq').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.getAttribute('data-id');
+                var name = this.getAttribute('data-name');
+                document.getElementById('deleteBoqId').value = id;
+                document.getElementById('deleteBoqName').textContent = name;
+                var modal = new bootstrap.Modal(document.getElementById('deleteBoqModal'));
+                modal.show();
+            });
         });
     });
-});
 </script>

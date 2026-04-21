@@ -1,16 +1,15 @@
 <?php
 $base_url = $GLOBALS['base_url'];
 ?>
-<div class="container-fluid">
-    <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-        <div class="my-auto">
+    <div class="mb-3 d-md-flex d-block align-items-center justify-content-between  page-header-breadcrumb">
+        <div class="">
             <h4 class="page-title fw-semibold fs-18 mb-0">Daily Progress Reports</h4>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
                 <li class="breadcrumb-item active">Daily Reports</li>
             </ol>
         </div>
-        <div class="my-auto">
+        <div class="">
             <a href="<?= $base_url ?>/con-daily-report-create" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-circle me-1"></i> New Report
             </a>
@@ -71,7 +70,6 @@ $base_url = $GLOBALS['base_url'];
             </div>
         </div>
     </div>
-</div>
 <script>
 $(document).ready(function () {
     $('#dprTable').DataTable({ responsive: true, pageLength: 25, order: [[1, 'desc']] });

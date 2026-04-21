@@ -1,8 +1,8 @@
 <?php
 
-class Con_Operator extends Model
+class Con_Contractor extends Model
 {
-    protected $table = 'operations_operators';
+    protected $table = 'contractors';
 
     public function getAll()
     {
