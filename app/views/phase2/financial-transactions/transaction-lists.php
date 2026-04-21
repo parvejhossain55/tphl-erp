@@ -23,7 +23,7 @@ $page_title = $page_title ?? 'Financial Transactions Ledger';
 
     <!-- Summary Cards -->
     <?php
-    $totalPaid  = array_sum(array_column($transactions ?? [], 'amount'));
+    $totalPaid  = array_sum(array_column($transactions ?? [], 'amount_paid'));
     $totalCount = count($transactions ?? []);
     $refTypes   = array_count_values(array_column($transactions ?? [], 'ref_type'));
     ?>
@@ -32,9 +32,7 @@ $page_title = $page_title ?? 'Financial Transactions Ledger';
             <div class="card custom-card border-0 bg-primary bg-opacity-10">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="avatar avatar-md bg-primary rounded-circle">
-                            <i class="bi bi-currency-exchange text-white fs-5"></i>
-                        </div>
+
                         <div>
                             <p class="mb-0 text-muted small">Total Transactions</p>
                             <h5 class="mb-0 fw-bold"><?= number_format($totalCount) ?></h5>
@@ -47,9 +45,7 @@ $page_title = $page_title ?? 'Financial Transactions Ledger';
             <div class="card custom-card border-0 bg-success bg-opacity-10">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="avatar avatar-md bg-success rounded-circle">
-                            <i class="bi bi-cash-stack text-white fs-5"></i>
-                        </div>
+
                         <div>
                             <p class="mb-0 text-muted small">Total Paid</p>
                             <h5 class="mb-0 fw-bold">৳ <?= number_format($totalPaid, 0) ?></h5>
@@ -62,9 +58,6 @@ $page_title = $page_title ?? 'Financial Transactions Ledger';
             <div class="card custom-card border-0 bg-info bg-opacity-10">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="avatar avatar-md bg-info rounded-circle">
-                            <i class="bi bi-receipt text-white fs-5"></i>
-                        </div>
                         <div>
                             <p class="mb-0 text-muted small">Contractor Bills Paid</p>
                             <h5 class="mb-0 fw-bold"><?= $refTypes['contractor_bill'] ?? 0 ?></h5>
@@ -77,9 +70,6 @@ $page_title = $page_title ?? 'Financial Transactions Ledger';
             <div class="card custom-card border-0 bg-warning bg-opacity-10">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="avatar avatar-md bg-warning rounded-circle">
-                            <i class="bi bi-cash-coin text-white fs-5"></i>
-                        </div>
                         <div>
                             <p class="mb-0 text-muted small">Fund Requests Paid</p>
                             <h5 class="mb-0 fw-bold"><?= $refTypes['operational_fund'] ?? 0 ?></h5>
@@ -126,13 +116,13 @@ $page_title = $page_title ?? 'Financial Transactions Ledger';
                                     <td><?= $i + 1 ?></td>
                                     <td><span class="badge bg-<?= $refBadge ?>"><?= $refLabel ?></span></td>
                                     <td><?= htmlspecialchars($t['project_name'] ?? '-') ?></td>
-                                    <td class="text-end fw-semibold text-success">৳ <?= number_format($t['amount'], 2) ?></td>
+                                    <td class="text-end fw-semibold text-success">৳ <?= number_format($t['amount_paid'] ?? 0, 2) ?></td>
                                     <td>
                                         <i class="bi bi-<?= $t['payment_method'] === 'Cash' ? 'cash' : ($t['payment_method'] === 'Cheque' ? 'journal-text' : 'bank') ?> me-1"></i>
                                         <?= htmlspecialchars($t['payment_method']) ?>
                                     </td>
-                                    <td><?= date('d M Y', strtotime($t['payment_date'])) ?></td>
-                                    <td><?= htmlspecialchars($t['reference_no'] ?? '-') ?></td>
+                                    <td><?= date('d M Y', strtotime($t['transaction_date'] ?? $t['created_at'])) ?></td>
+                                    <td><?= htmlspecialchars($t['reference_number'] ?? '-') ?></td>
                                     <td><?= htmlspecialchars($t['processed_by_name'] ?? '-') ?></td>
                                     <td>
                                         <a href="<?= $base_url ?>/con-transaction/<?= $t['id'] ?>" class="btn btn-sm btn-outline-primary">

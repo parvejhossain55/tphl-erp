@@ -1,6 +1,51 @@
-<div class="pagetitle d-flex justify-content-between align-items-center">
-    <div>
-        <h1><?= htmlspecialchars($page_title) ?></h1>
+<?php
+$base_url   = $GLOBALS['base_url'];
+$page_title = $page_title ?? 'Payment Request Details';
+
+$statusMap = [
+    'Draft'          => ['label' => 'Draft',          'color' => 'warning'],
+    'Submitted'      => ['label' => 'Submitted',      'color' => 'info'],
+    'Approved'       => ['label' => 'Approved',       'color' => 'success'],
+    'Rejected'       => ['label' => 'Rejected',       'color' => 'danger'],
+    'Paid'           => ['label' => 'Paid',           'color' => 'secondary'],
+    'Partially_Paid' => ['label' => 'Partially Paid', 'color' => 'info'],
+    'Fully_Paid'     => ['label' => 'Fully Paid',     'color' => 'secondary'],
+];
+$status     = $request['status'] ?? 'Draft';
+$statusInfo = $statusMap[$status] ?? ['label' => str_replace('_', ' ', $status), 'color' => 'secondary'];
+
+$canApproveReq  = $canApprove ?? false;
+$canPayReq      = $canProcessPayment ?? false;
+$userRole       = $userRole ?? null;
+$payments       = $payments ?? [];
+$totalPaid      = $total_paid ?? 0;
+$dueAmount      = $due_amount ?? 0;
+$payableAmount  = $payable_amount ?? 0;
+
+$isSubmitted    = ($status === 'Submitted');
+$isApproved     = in_array($status, ['Approved', 'Partially_Paid']);
+$isRejected     = ($status === 'Rejected');
+$isFullyPaid    = in_array($status, ['Fully_Paid', 'Paid']);
+$canReject      = $canApproveReq && !$isRejected && !$isFullyPaid;
+$showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
+
+// Payment type badge
+$typeBadge = match($request['payment_type'] ?? 'Final') {
+    'Advance' => ['class' => 'bg-primary',  'label' => 'Advance'],
+    'Partial' => ['class' => 'bg-warning text-dark', 'label' => 'Partial'],
+    default   => ['class' => 'bg-success',  'label' => 'Final'],
+};
+
+$penaltyAmt   = (float)($request['penalty_amount'] ?? 0);
+$netPayable   = (float)($request['net_payable'] ?? 0);
+$invoiceAmt   = (float)($request['invoice_amount'] ?? 0);
+$advancePaid  = (float)($advance_paid ?? 0);
+?>
+
+<!-- Header -->
+<div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
+    <div class="my-auto">
+        <h3 class="page-title fw-semibold fs-18 mb-0">Vendor Payment Request #<?= $request['id'] ?></h4>
         <nav>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
@@ -9,128 +54,145 @@
             </ol>
         </nav>
     </div>
-    <div class="d-flex gap-2">
-        <a href="<?= $base_url ?>/con-vendor-payment-requests" class="btn btn-secondary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i> Back to List
+    <div class="d-flex gap-2 align-items-center">
+        <span class="badge bg-<?= $statusInfo['color'] ?> fs-6 px-3 py-2"><?= $statusInfo['label'] ?></span>
+        <span class="badge <?= $typeBadge['class'] ?> fs-6 px-3 py-2"><?= $typeBadge['label'] ?> Payment</span>
+        <a href="<?= $base_url ?>/con-vendor-payment-requests" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back
         </a>
     </div>
 </div>
 
-<?php
-// Payment type badge config
-$typeBadge = match($request['payment_type'] ?? 'Final') {
-    'Advance' => ['class' => 'bg-primary',  'icon' => 'bi-clock',           'label' => 'Advance'],
-    'Partial' => ['class' => 'bg-warning text-dark', 'icon' => 'bi-hourglass-split', 'label' => 'Partial'],
-    default   => ['class' => 'bg-success',  'icon' => 'bi-check-circle',    'label' => 'Final'],
-};
-$statusBadge = match($request['status'] ?? 'Draft') {
-    'Approved'  => 'bg-success',
-    'Submitted' => 'bg-info',
-    'Rejected'  => 'bg-danger',
-    'Paid'      => 'bg-dark',
-    default     => 'bg-warning text-dark',
-};
-
-// Use actual column names from DB
-$penaltyAmt   = (float)($request['penalty_amount']      ?? 0);
-$netPayable   = (float)($request['net_payable']         ?? 0);
-$invoiceAmt   = (float)($request['invoice_amount']      ?? 0);
-$createdAt    = $request['created_at'] ?? null;
-?>
-
-<section class="section">
+<div class="container-fluid">
     <div class="row">
-        <!-- Main Details -->
+        <!-- Main Content (Left) -->
         <div class="col-lg-8">
-            <div class="card__wrapper shadow-sm mb-4">
-                <div class="card__header d-flex justify-content-between align-items-center">
-                    <h6 class="card__title mb-0">
-                        <i class="bi bi-receipt me-2"></i>Request Details (VPR-<?= $request['id'] ?>)
-                    </h6>
-                    <div class="d-flex gap-2">
-                        <span class="badge <?= $typeBadge['class'] ?>">
-                            <i class="bi <?= $typeBadge['icon'] ?> me-1"></i><?= $typeBadge['label'] ?> Payment
-                        </span>
-                        <span class="badge <?= $statusBadge ?>">
-                            <?= htmlspecialchars($request['status'] ?? '') ?>
-                        </span>
-                    </div>
+            <!-- Request Information Card -->
+            <div class="card custom-card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Request Information</h6>
                 </div>
-                <div class="card__body p-4">
-                    <table class="table table-bordered mb-0">
-                        <tbody>
-                            <tr>
-                                <th style="width: 30%" class="">Project</th>
-                                <td class="fw-bold"><?= htmlspecialchars($request['project_name'] ?? '—') ?></td>
-                            </tr>
-                            <tr>
-                                <th class="">Vendor</th>
-                                <td><span class="badge bg-secondary"><?= htmlspecialchars($request['vendor_name'] ?? '—') ?></span></td>
-                            </tr>
-                            <?php if (!empty($request['purchase_order_id']) && $request['purchase_order_id'] > 0): ?>
-                            <tr>
-                                <th class="">Purchase Order</th>
-                                <td>
-                                    <a href="<?= $base_url ?>/con-purchase-order/<?= $request['purchase_order_id'] ?>">
-                                        PO-<?= $request['purchase_order_id'] ?>
-                                    </a>
-                                </td>
-                            </tr>
-                            <?php endif; ?>
-                            <tr>
-                                <th class="">Invoice Number</th>
-                                <td><?= htmlspecialchars($request['invoice_number'] ?? '—') ?></td>
-                            </tr>
-                            <tr>
-                                <th class="">Payment Type</th>
-                                <td>
-                                    <span class="badge <?= $typeBadge['class'] ?>">
-                                        <?= $typeBadge['label'] ?>
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th class="">Delivery Verified</th>
-                                <td>
-                                    <?php if ($request['delivery_verified']): ?>
-                                        <span class="badge bg-success"><i class="bi bi-check me-1"></i>Yes</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-secondary"><i class="bi bi-x me-1"></i>Not Yet</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th class="">QC Verified</th>
-                                <td>
-                                    <?php if ($request['qc_verified']): ?>
-                                        <span class="badge bg-success"><i class="bi bi-check me-1"></i>Yes</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-secondary"><i class="bi bi-x me-1"></i>Not Yet</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th class="">Created By</th>
-                                <td><?= htmlspecialchars($request['created_by_name'] ?? '—') ?>
-                                    <?php if ($createdAt): ?>
-                                        <span class="text-muted small">(<?= date('d M Y H:i', strtotime($createdAt)) ?>)</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Project</div>
+                            <div class=""><?= htmlspecialchars($request['project_name'] ?? '—') ?></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Vendor</div>
+                            <div class=""><span class="badge bg-secondary"><?= htmlspecialchars($request['vendor_name'] ?? '—') ?></span></div>
+                        </div>
+                        <?php if (!empty($request['purchase_order_id']) && $request['purchase_order_id'] > 0): ?>
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Purchase Order</div>
+                            <div class="">
+                                <a href="<?= $base_url ?>/con-purchase-order/<?= $request['purchase_order_id'] ?>">PO-<?= $request['purchase_order_id'] ?></a>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Invoice Number</div>
+                            <div class=""><?= htmlspecialchars($request['invoice_number'] ?? '—') ?></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Delivery Verified</div>
+                            <div class="">
+                                <?php if ($request['delivery_verified']): ?>
+                                    <span class="badge bg-success">Yes</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary">Not Yet</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold">QC Verified</div>
+                            <div class="">
+                                <?php if ($request['qc_verified']): ?>
+                                    <span class="badge bg-success">Yes</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary">Not Yet</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <!-- Financial Summary Row -->
+                        <div class="col-md-12">
+                            <div class="row g-2 mt-1">
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 text-center">
+                                        <small class="text-muted d-block mb-1">Invoice Amount</small>
+                                        <h5 class="text-primary mb-0 fw-bold">৳ <?= number_format($invoiceAmt, 2) ?></h5>
+                                    </div>
+                                </div>
+                                <?php if ($penaltyAmt > 0): ?>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 text-center">
+                                        <small class="text-muted d-block mb-1">Penalty Deducted</small>
+                                        <h5 class="text-danger mb-0 fw-bold">- ৳ <?= number_format($penaltyAmt, 2) ?></h5>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 text-center">
+                                        <small class="text-muted d-block mb-1">Net Payable</small>
+                                        <h5 class="text-success mb-0 fw-bold">৳ <?= number_format($netPayable, 2) ?></h5>
+                                    </div>
+                                </div>
+                                <?php if (!empty($request['approved_amount'])): ?>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 text-center border-success">
+                                        <small class="text-muted d-block mb-1">Approved Amount</small>
+                                        <h5 class="text-success mb-0 fw-bold">৳ <?= number_format($request['approved_amount'], 2) ?></h5>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($isApproved || $isFullyPaid): ?>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 text-center">
+                                        <small class="text-muted d-block mb-1">Total Paid</small>
+                                        <h5 class="text-success mb-0 fw-bold">৳ <?= number_format($totalPaid, 2) ?></h5>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3 text-center">
+                                        <small class="text-muted d-block mb-1">Due Amount</small>
+                                        <?php if ($dueAmount > 0): ?>
+                                            <h5 class="text-danger mb-0 fw-bold">৳ <?= number_format($dueAmount, 2) ?></h5>
+                                        <?php else: ?>
+                                            <h5 class="text-success mb-0 fw-bold">৳ 0.00</h5>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Created By</div>
+                            <div class="">
+                                <?= htmlspecialchars($request['created_by_name'] ?? '—') ?>
+                                <?php if (!empty($request['created_at'])): ?>
+                                    <small class="text-muted">(<?= date('d M Y h:i A', strtotime($request['created_at'])) ?>)</small>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php if (!empty($request['approved_by_name'])): ?>
+                        <div class="col-md-6">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Approved By</div>
+                            <div class=""><strong><?= htmlspecialchars($request['approved_by_name']) ?></strong></div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
             <!-- Linked Penalties -->
             <?php if (!empty($penalties)): ?>
-            <div class="card__wrapper shadow-sm mb-4">
-                <div class="card__header">
-                    <h6 class="card__title mb-0 text-danger">
-                        <i class="bi bi-exclamation-triangle me-2"></i>Deducted Penalties
-                    </h6>
+            <div class="card custom-card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0 text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Deducted Penalties</h6>
                 </div>
-                <div class="card__body p-3">
+                <div class="card-body">
                     <table class="table table-sm table-bordered mb-0">
                         <thead class="table-light">
                             <tr>
@@ -153,21 +215,73 @@ $createdAt    = $request['created_at'] ?? null;
             </div>
             <?php endif; ?>
 
-            <!-- PO Payment History -->
-            <?php if (!empty($po_payments) && count($po_payments) > 1): ?>
-            <div class="card__wrapper shadow-sm mb-4">
-                <div class="card__header">
-                    <h6 class="card__title mb-0">
-                        <i class="bi bi-clock-history me-2"></i>PO Payment History
-                    </h6>
+            <!-- Payment History -->
+            <?php if (!empty($payments)): ?>
+            <div class="card custom-card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Payment History</h6>
                 </div>
-                <div class="card__body p-3">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Date</th>
+                                    <th>Amount (৳)</th>
+                                    <th>Type</th>
+                                    <th>Method</th>
+                                    <th>Reference</th>
+                                    <th>Processed By</th>
+                                    <th>Proof</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($payments as $idx => $pay): ?>
+                                <tr>
+                                    <td><?= $idx + 1 ?></td>
+                                    <td><?= date('d M Y', strtotime($pay['transaction_date'])) ?></td>
+                                    <td class="text-end fw-semibold">৳ <?= number_format($pay['amount_paid'], 2) ?></td>
+                                    <td><span class="badge bg-<?= $pay['payment_type'] === 'Full' ? 'success' : 'info' ?>"><?= $pay['payment_type'] ?></span></td>
+                                    <td><?= str_replace('BankTransfer', 'Bank Transfer', $pay['payment_method']) ?></td>
+                                    <td><?= htmlspecialchars($pay['reference_number'] ?? '—') ?></td>
+                                    <td><?= htmlspecialchars($pay['processed_by_name'] ?? '—') ?></td>
+                                    <td>
+                                        <?php
+                                        $proofs = json_decode($pay['disbursement_proof'] ?? '[]', true);
+                                        if (!empty($proofs)):
+                                            foreach ($proofs as $pi => $proof): ?>
+                                                <a href="<?= $base_url ?>/<?= $proof ?>" target="_blank" class="btn btn-sm btn-outline-info">
+                                                    <i class="bi bi-file-earmark"></i> Doc <?= $pi + 1 ?>
+                                                </a>
+                                            <?php endforeach;
+                                        else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- PO Payment History (other requests for same PO) -->
+            <?php if (!empty($po_payments) && count($po_payments) > 1): ?>
+            <div class="card custom-card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-list-check me-2"></i>PO Payment History</h6>
+                </div>
+                <div class="card-body">
                     <table class="table table-sm table-bordered mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th>VPR</th><th>Type</th><th>Created</th>
                                 <th class="text-end">Invoice</th>
                                 <th class="text-end">Net Payable</th>
+                                <th class="text-end">Total Paid</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -183,9 +297,13 @@ $createdAt    = $request['created_at'] ?? null;
                                 <td><?= !empty($pp['created_at']) ? date('d M Y', strtotime($pp['created_at'])) : '—' ?></td>
                                 <td class="text-end">৳ <?= number_format($pp['invoice_amount'] ?? 0, 2) ?></td>
                                 <td class="text-end">৳ <?= number_format($pp['net_payable'] ?? 0, 2) ?></td>
-                                <td><span class="badge <?= ($pp['status'] === 'Paid') ? 'bg-dark' : (($pp['status'] === 'Approved') ? 'bg-success' : 'bg-warning text-dark') ?>">
-                                    <?= $pp['status'] ?>
-                                </span></td>
+                                <td class="text-end fw-semibold text-success">৳ <?= number_format($pp['total_paid'] ?? 0, 2) ?></td>
+                                <td>
+                                    <?php
+                                    $ppBadge = $statusMap[$pp['status']] ?? ['color' => 'secondary', 'label' => $pp['status']];
+                                    ?>
+                                    <span class="badge bg-<?= $ppBadge['color'] ?>"><?= $ppBadge['label'] ?></span>
+                                </td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -195,94 +313,195 @@ $createdAt    = $request['created_at'] ?? null;
             <?php endif; ?>
         </div>
 
-        <!-- Sidebar Financials -->
+        <!-- Sidebar (Right) -->
         <div class="col-lg-4">
-            <div class="card__wrapper shadow-sm border-top border-primary border-4 mb-4">
-                <div class="card__body p-4">
-                    <h6 class="text-uppercase text-muted fw-bold mb-4 text-center">Financial Summary</h6>
-
-                    <?php if (($request['payment_type'] ?? '') === 'Advance'): ?>
-                        <div class="text-center mb-3">
-                            <span class="badge bg-primary px-3 py-2 fs-6">Advance Payment</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="text-muted">Advance Amount</span>
-                            <span class="fw-bold fs-5">৳ <?= number_format($invoiceAmt, 2) ?></span>
-                        </div>
-                        <div class="alert alert-info small py-2">
-                            <i class="bi bi-info-circle me-1"></i>
-                            This advance will be auto-deducted from the Final invoice for the same PO.
-                        </div>
-                    <?php else: ?>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-muted">Invoice Amount</span>
-                            <span class="fw-bold fs-5">৳ <?= number_format($invoiceAmt, 2) ?></span>
-                        </div>
-
-                        <?php if ($advance_paid > 0): ?>
-                        <div class="d-flex justify-content-between align-items-center mb-2 text-primary">
-                            <span><i class="bi bi-dash-circle me-1"></i>Advance Paid</span>
-                            <span class="fw-bold">৳ <?= number_format($advance_paid, 2) ?></span>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if ($penaltyAmt > 0): ?>
-                        <div class="d-flex justify-content-between align-items-center mb-2 text-danger">
-                            <span><i class="bi bi-dash-circle me-1"></i>Penalties</span>
-                            <span class="fw-bold">৳ <?= number_format($penaltyAmt, 2) ?></span>
-                        </div>
-                        <?php endif; ?>
-
-                        <hr>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-success fw-bold fs-5">Net Payable</span>
-                            <span class="fw-bold fs-3 text-success">৳ <?= number_format($netPayable, 2) ?></span>
-                        </div>
+            <!-- Status Info Card -->
+            <div class="card custom-card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Status Info</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Current Status</small>
+                        <span class="badge bg-<?= $statusInfo['color'] ?> fs-6"><?= $statusInfo['label'] ?></span>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Created At</small>
+                        <strong><?= date('d M Y h:i A', strtotime($request['created_at'])) ?></strong>
+                    </div>
+                    <?php if (!empty($request['approved_by_name'])): ?>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Approved By</small>
+                        <strong><?= htmlspecialchars($request['approved_by_name']) ?></strong>
+                    </div>
                     <?php endif; ?>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Last Updated</small>
+                        <strong><?= !empty($request['updated_at']) ? date('d M Y h:i A', strtotime($request['updated_at'])) : '—' ?></strong>
+                    </div>
                 </div>
             </div>
 
-            <!-- Approval Action -->
-            <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3])): ?>
-                <?php if (($request['status'] ?? '') === 'Submitted'): ?>
-                    <div class="card__wrapper shadow-sm border-warning mb-3">
-                        <div class="card__body p-4 text-center">
-                            <h6 class="fw-bold mb-3"><i class="bi bi-shield-lock me-2"></i>Accounts Action</h6>
-                            <p class="small text-muted mb-4">Review the financial summary before approving this payment.</p>
-                            <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>"
-                                  method="POST" class="d-grid gap-2 mb-2">
-                                <button type="submit" class="btn btn-success fw-bold py-2"
-                                        onclick="return confirm('Approve this payment request?');">
-                                    <i class="bi bi-check-circle me-1"></i> Approve Payment
-                                </button>
-                            </form>
-                            <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>"
-                                  method="POST" class="d-grid">
-                                <button type="submit" class="btn btn-outline-danger btn-sm"
-                                        onclick="return confirm('Reject this payment request?');">
-                                    <i class="bi bi-x-circle me-1"></i> Reject
-                                </button>
-                            </form>
+            <!-- Approval Actions (Management only, Submitted status) -->
+            <?php if ($canApproveReq && $isSubmitted): ?>
+            <div class="card custom-card border-warning mb-3">
+                <div class="card-header bg-warning bg-opacity-10">
+                    <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Approval Action</h6>
+                </div>
+                <div class="card-body">
+                    <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>" method="POST" class="mb-3">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Approved Amount (৳)</label>
+                            <input type="number" name="approved_amount" class="form-control"
+                                   value="<?= number_format($netPayable, 2, '.', '') ?>"
+                                   step="0.01" min="0.01" max="<?= $netPayable ?>" required>
+                            <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?></small>
                         </div>
-                    </div>
-                <?php elseif (($request['status'] ?? '') === 'Approved'): ?>
-                    <div class="alert alert-success text-center">
-                        <i class="bi bi-check-circle-fill fs-4 d-block mb-2"></i>
-                        Approved — awaiting payment processing in
-                        <a href="<?= $base_url ?>/con-pending-payments">Pending Payments</a>.
-                    </div>
-                <?php elseif (($request['status'] ?? '') === 'Paid'): ?>
-                    <div class="alert alert-dark text-center">
-                        <i class="bi bi-cash-coin fs-4 d-block mb-2"></i>
-                        Payment has been processed and recorded.
-                    </div>
-                <?php elseif (($request['status'] ?? '') === 'Rejected'): ?>
-                    <div class="alert alert-danger text-center">
-                        <i class="bi bi-x-circle-fill fs-4 d-block mb-2"></i>
-                        This payment request has been rejected.
-                    </div>
-                <?php endif; ?>
+                        <button type="submit" class="btn btn-success w-100 fw-bold"
+                                onclick="return confirm('Approve this payment request?');">
+                            <i class="bi bi-check-circle me-1"></i> Approve Payment
+                        </button>
+                    </form>
+                    <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST">
+                        <button type="submit" class="btn btn-outline-danger w-100 btn-sm"
+                                onclick="return confirm('Reject this payment request?');">
+                            <i class="bi bi-x-circle me-1"></i> Reject
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Status Messages -->
+            <?php if ($isApproved && !$showPaymentForm): ?>
+                <div class="alert alert-success text-center">
+                    <i class="bi bi-check-circle-fill fs-4 d-block mb-2"></i>
+                    Approved — awaiting payment processing.
+                </div>
+            <?php elseif ($isFullyPaid): ?>
+                <div class="alert alert-secondary text-center">
+                    <i class="bi bi-cash-coin fs-4 d-block mb-2"></i>
+                    All payments have been fully processed.
+                </div>
+            <?php elseif ($isRejected): ?>
+                <div class="alert alert-danger text-center">
+                    <i class="bi bi-x-circle-fill fs-4 d-block mb-2"></i>
+                    This payment request has been rejected.
+                </div>
+            <?php endif; ?>
+
+            <!-- Add Payment Button / Section -->
+            <?php if ($showPaymentForm): ?>
+            <div class="card custom-card border-success mb-3">
+                <div class="card-header bg-success bg-opacity-10">
+                    <h6 class="card-title mb-0"><i class="bi bi-wallet2 me-2"></i>Process Payment</h6>
+                </div>
+                <div class="card-body text-center">
+                    <p class="text-muted mb-2">Remaining Due: <strong class="text-danger fs-5">৳ <?= number_format($dueAmount, 2) ?></strong></p>
+                    <button class="btn btn-success w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        <?= empty($payments) ? 'Add First Payment' : 'Add Another Payment' ?>
+                    </button>
+                </div>
+            </div>
             <?php endif; ?>
         </div>
     </div>
-</section>
+</div>
+
+<!-- Add Payment Modal -->
+<?php if ($showPaymentForm): ?>
+<div class="modal fade" id="addPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="<?= $base_url ?>/con-vendor-payment-payment/<?= $request['id'] ?>" method="POST" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-wallet2 me-2"></i>Add Payment — VPR-<?= $request['id'] ?></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Payment Amount (৳) *</label>
+                            <input type="number" name="amount" class="form-control" step="0.01" min="0.01"
+                                   max="<?= number_format($dueAmount, 2, '.', '') ?>" required
+                                   placeholder="Max: <?= number_format($dueAmount, 2) ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Payment Date *</label>
+                            <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Payment Method *</label>
+                            <select name="payment_method" id="vprPaymentMethod" class="form-select" required>
+                                <option value="Cash">Cash</option>
+                                <option value="Cheque">Cheque</option>
+                                <option value="BankTransfer">Bank Transfer</option>
+                                <option value="MobileWallet">Mobile Wallet</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Reference Number</label>
+                            <input type="text" name="reference_no" class="form-control" placeholder="Cheque/Transaction No.">
+                        </div>
+                        <!-- Bank Transfer Field (hidden by default) -->
+                        <div class="col-md-6 vpr-bank-field" style="display: none;">
+                            <label class="form-label fw-semibold">Select Bank *</label>
+                            <select name="bank_id" class="form-select">
+                                <option value="">-- Select Bank --</option>
+                                <?php if (!empty($banks)): ?>
+                                    <?php foreach ($banks as $bank): ?>
+                                        <option value="<?= $bank['id'] ?>"><?= htmlspecialchars($bank['bank_name']) ?> — <?= htmlspecialchars($bank['branch_name']) ?></option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold">Disbursement Proof (Required) *</label>
+                            <input type="file" name="disbursement_proof[]" class="form-control" multiple required
+                                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            <small class="text-muted">PDF, DOC, JPG, PNG — Max 5MB each</small>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold">Notes</label>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="Optional payment notes..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success fw-bold">
+                        <i class="bi bi-check-circle me-1"></i> Submit Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var methodSelect = document.getElementById('vprPaymentMethod');
+    var bankFields = document.querySelectorAll('.vpr-bank-field');
+
+    function toggleBankField() {
+        var show = methodSelect && methodSelect.value === 'BankTransfer';
+        bankFields.forEach(function(el) {
+            el.style.display = show ? '' : 'none';
+            var sel = el.querySelector('select');
+            if (sel) sel.required = show;
+        });
+    }
+
+    if (methodSelect) {
+        methodSelect.addEventListener('change', toggleBankField);
+        var modal = document.getElementById('addPaymentModal');
+        if (modal) {
+            modal.addEventListener('shown.bs.modal', toggleBankField);
+        }
+        toggleBankField();
+    }
+});
+</script>

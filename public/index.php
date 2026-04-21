@@ -724,12 +724,18 @@ $routes['con-contractor-bill-create']        = ['controller' => 'Phase2\Con_Cont
 $routes['con-contractor-bill-store']         = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'store'];
 $routes['con-contractor-bill/(\d+)']         = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'show'];
 $routes['con-contractor-bill-verify/(\d+)']  = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'verify'];
+$routes['con-contractor-bill-approve/(\d+)'] = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'approve'];
+$routes['con-contractor-bill-reject/(\d+)']  = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'reject'];
+$routes['con-contractor-bill-payment/(\d+)'] = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'addPayment'];
 
 // ── Operational Fund Requests ──────────────────────────────────────────────
 $routes['con-fund-requests']           = ['controller' => 'Phase2\Con_FundRequestController', 'method' => 'index'];
 $routes['con-fund-request-create']     = ['controller' => 'Phase2\Con_FundRequestController', 'method' => 'create'];
 $routes['con-fund-request-store']      = ['controller' => 'Phase2\Con_FundRequestController', 'method' => 'store'];
 $routes['con-fund-request/(\d+)']      = ['controller' => 'Phase2\Con_FundRequestController', 'method' => 'show'];
+$routes['con-fund-request-approve/(\d+)']  = ['controller' => 'Phase2\Con_FundRequestController', 'method' => 'approve'];
+$routes['con-fund-request-reject/(\d+)']   = ['controller' => 'Phase2\Con_FundRequestController', 'method' => 'reject'];
+$routes['con-fund-request-payment/(\d+)']  = ['controller' => 'Phase2\Con_FundRequestController', 'method' => 'addPayment'];
 
 // ── Materials / Inventory ──────────────────────────────────────────────────
 $routes['con-materials']               = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'index'];
@@ -789,6 +795,7 @@ $routes['con-vendor-payment-approve/(\d+)']     = ['controller' => 'Phase2\Con_V
 $routes['con-vendor-payment-reject/(\d+)']      = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'reject'];
 $routes['con-vendor-payment-ajax-penalty']      = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'];
 $routes['con-vendor-payment-ajax-advance']      = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetAdvanceSummary'];
+$routes['con-vendor-payment-payment/(\d+)']     = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'addPayment'];
 
 // ── BOQ ───────────────────────────────────────────────────────────────────
 $routes['con-boq']                     = ['controller' => 'Phase2\Con_BOQController', 'method' => 'index'];

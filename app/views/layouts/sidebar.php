@@ -814,6 +814,38 @@
                         </ul>
                     </li>
 
+                    <!-- ===================== -->
+                    <!-- Construction Finance -->
+                    <!-- ===================== -->
+                    <li class="slide has-sub <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-helmet-safety"></i></div>
+                            <span class="sidebar__menu-label">Construction Finance</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide <?= isActive('con-vendor-payment-requests', $current_route) ?>">
+                                <a href="<?= $base_url ?>/con-vendor-payment-requests" class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
+                                    <i class="bi bi-wallet2 me-1"></i> Vendor Payments
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-contractor-bills', $current_route) ?>">
+                                <a href="<?= $base_url ?>/con-contractor-bills" class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
+                                    <i class="bi bi-receipt me-1"></i> Contractor Bills
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-transactions', $current_route) ?>">
+                                <a href="<?= $base_url ?>/con-transactions" class="sidebar__menu-item <?= isActive('con-transactions', $current_route) ?>">
+                                    <i class="bi bi-journal-check me-1"></i> Transactions Ledger
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-pending-payments', $current_route) ?>">
+                                <a href="<?= $base_url ?>/con-pending-payments" class="sidebar__menu-item <?= isActive('con-pending-payments', $current_route) ?>">
+                                    <i class="bi bi-clock me-1"></i> Pending Payments
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
 
                 <?php endif ?>
                 <!--END Accounts CATEGORY -->
@@ -1206,11 +1238,6 @@
                                 <a href="<?= $base_url ?>/con-vendor-create" class="sidebar__menu-item <?= isActive('con-vendor-create', $current_route) ?>">Add Vendor</a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $base_url ?>/con-vendor-payment-requests" class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
-                                    <i class="bi bi-wallet2 me-1"></i> Payment Requests
-                                </a>
-                            </li>
-                            <li class="slide">
                                 <a href="<?= $base_url ?>/con-vendor-payment-create" class="sidebar__menu-item <?= isActive('con-vendor-payment-create', $current_route) ?>">
                                     + New Payment Request
                                 </a>
@@ -1301,59 +1328,22 @@
                     </li>
                     <!-- ====== END Site Operations ====== -->
 
-                    <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
-                    <li class="slide has-sub <?= isActive(['con-contractor-bills','con-contractor-bill-create','con-fund-requests','con-fund-request-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-contractor-bills','con-contractor-bill-create','con-fund-requests','con-fund-request-create'], $current_route) ? 'menu-open active' : '' ?>">
+                    <!-- ====== Bills (Create shortcut) ====== -->
+                    <li class="slide has-sub <?= isActive(['con-contractor-bill-create'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-contractor-bill-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-                            <span class="sidebar__menu-label">Bills & Funds</span>
+                            <span class="sidebar__menu-label">Bills</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-contractor-bills" class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
-                                    <i class="bi bi-receipt me-1"></i> Contractor Bills
-                                </a>
-                            </li>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-contractor-bill-create" class="sidebar__menu-item <?= isActive('con-contractor-bill-create', $current_route) ?>">
                                     + New Bill
                                 </a>
                             </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-fund-requests" class="sidebar__menu-item <?= isActive('con-fund-requests', $current_route) ?>">
-                                    <i class="bi bi-cash-coin me-1"></i> Fund Requests
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-fund-request-create" class="sidebar__menu-item <?= isActive('con-fund-request-create', $current_route) ?>">
-                                    + New Fund Request
-                                </a>
-                            </li>
                         </ul>
                     </li>
-                    <!-- ====== END Operators & Bills ====== -->
-
-                    <!-- ====== Finance & Accounts (Batch 3 NEW) ====== -->
-                    <li class="slide has-sub <?= isActive(['con-transactions','con-pending-payments'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-transactions','con-pending-payments'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
-                            <span class="sidebar__menu-label">Finance & Accounts</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-transactions" class="sidebar__menu-item <?= isActive('con-transactions', $current_route) ?>">
-                                    <i class="bi bi-journal-check me-1"></i> Transactions Ledger
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-pending-payments" class="sidebar__menu-item <?= isActive('con-pending-payments', $current_route) ?>">
-                                    <i class="bi bi-clock me-1"></i> Pending Payments
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    <!-- ====== END Finance & Accounts ====== -->
+                    <!-- ====== END Bills ====== -->
 
                 <!-- ==================== END PHASE 2 ==================== -->
 

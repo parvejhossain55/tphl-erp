@@ -37,6 +37,8 @@ $page_title = $page_title ?? 'Operational Fund Requests';
                             <th>Fund Date</th>
                             <th>Status</th>
                             <th>Requested By</th>
+                            <th>Approved By</th>
+                            <th>Payment By</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -45,12 +47,15 @@ $page_title = $page_title ?? 'Operational Fund Requests';
                             <?php foreach ($requests as $i => $r): ?>
                                 <?php
                                 $statusMap = [
-                                    'pending'  => 'warning',
-                                    'approved' => 'success',
-                                    'rejected' => 'danger',
-                                    'paid'     => 'dark',
+                                    'pending'        => 'warning',
+                                    'approved'       => 'success',
+                                    'rejected'       => 'danger',
+                                    'paid'           => 'secondary',
+                                    'partially_paid' => 'info',
+                                    'fully_paid'     => 'secondary',
                                 ];
                                 $badge = $statusMap[$r['status']] ?? 'secondary';
+                                $statusLabel = ucfirst(str_replace('_', ' ', $r['status']));
                                 ?>
                                 <tr>
                                     <td><?= $i + 1 ?></td>
@@ -58,8 +63,22 @@ $page_title = $page_title ?? 'Operational Fund Requests';
                                     <td><?= htmlspecialchars(mb_strimwidth($r['purpose'] ?? '-', 0, 50, '...')) ?></td>
                                     <td class="text-end fw-semibold">৳ <?= number_format($r['amount'], 2) ?></td>
                                     <td><?= date('d M Y', strtotime($r['fund_date'])) ?></td>
-                                    <td><span class="badge bg-<?= $badge ?>"><?= ucfirst($r['status']) ?></span></td>
+                                    <td><span class="badge bg-<?= $badge ?>"><?= $statusLabel ?></span></td>
                                     <td><?= htmlspecialchars($r['requester_name'] ?? '-') ?></td>
+                                    <td>
+                                        <?php if (!empty($r['approved_by_name'])): ?>
+                                            <span class="text-success fw-semibold"><?= htmlspecialchars($r['approved_by_name']) ?></span>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($r['payment_by_name'])): ?>
+                                            <span class="text-primary fw-semibold"><?= htmlspecialchars($r['payment_by_name']) ?></span>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <a href="<?= $base_url ?>/con-fund-request/<?= $r['id'] ?>" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-eye"></i>
@@ -68,7 +87,7 @@ $page_title = $page_title ?? 'Operational Fund Requests';
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="8" class="text-center text-muted py-4">No fund requests found. <a href="<?= $base_url ?>/con-fund-request-create">Create one</a></td></tr>
+                            <tr><td colspan="10" class="text-center text-muted py-4">No fund requests found. <a href="<?= $base_url ?>/con-fund-request-create">Create one</a></td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

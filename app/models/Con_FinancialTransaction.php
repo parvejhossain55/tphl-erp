@@ -5,9 +5,10 @@
  *
  * Schema:
  * id, ref_type (contractor_bill|operational_fund|vendor_payment),
- * ref_id, project_id, amount, payment_type (Advance|Partial|Full|Refund),
- * payment_method (Cash|Cheque|BankTransfer|MobileWallet),
- * payment_date, reference_no, notes, processed_by, created_at
+ * ref_id, project_id, amount_paid, payment_type (Advance|Partial|Full|Refund),
+ * payment_method (Cash|Cheque|BankTransfer|MobileWallet|Other),
+ * transaction_date, reference_number, notes, disbursement_proof,
+ * processed_by, update_status, created_by, created_at, updated_at
  */
 class Con_FinancialTransaction extends Model
 {
@@ -69,11 +70,25 @@ class Con_FinancialTransaction extends Model
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    /** Total amount already paid for a specific source record */
+    public function getTotalPaidForSource($refType, $refId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COALESCE(SUM(amount_paid), 0) AS total_paid
+             FROM {$this->table}
+             WHERE ref_type = ? AND ref_id = ?"
+        );
+        $stmt->bind_param('si', $refType, $refId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return (float)($row['total_paid'] ?? 0);
+    }
+
     /**
-     * Get approved (but not yet paid) records pending payment:
-     * - contractor_bill_requests (status='approved')
-     * - operational_fund_requests (status='approved')
-     * - vendor_payment_requests (status='Approved')
+     * Get approved (but not yet fully paid) records pending payment:
+     * - contractor_bill_requests (status IN approved, partially_paid)
+     * - operational_fund_requests (status IN approved, partially_paid)
+     * - vendor_payment_requests (status IN Submitted, Approved, Partially_Paid)
      */
     public function getPendingApprovals()
     {
@@ -83,13 +98,15 @@ class Con_FinancialTransaction extends Model
                     cbr.project_id,
                     p.name            AS project_name,
                     CONCAT('Contractor Bill #', cbr.id) AS description,
-                    cbr.bill_amount   AS amount,
+                    COALESCE(cbr.approved_amount, cbr.bill_amount) AS amount,
+                    cbr.due_amount,
                     'Full'            AS payment_type,
+                    cbr.status        AS source_status,
                     NULL              AS vpr_status,
                     cbr.created_at
                 FROM contractor_bill_requests cbr
                 LEFT JOIN projects p ON p.id = cbr.project_id
-                WHERE cbr.status = 'approved'
+                WHERE cbr.status IN ('approved', 'partially_paid')
 
                 UNION ALL
 
@@ -100,12 +117,14 @@ class Con_FinancialTransaction extends Model
                     p.name             AS project_name,
                     CONCAT('Fund Request - ', ofr.purpose) AS description,
                     COALESCE(ofr.approved_amount, ofr.amount) AS amount,
+                    ofr.due_amount,
                     'Full'             AS payment_type,
+                    ofr.status         AS source_status,
                     NULL               AS vpr_status,
                     ofr.created_at
                 FROM operational_fund_requests ofr
                 LEFT JOIN projects p ON p.id = ofr.project_id
-                WHERE ofr.status = 'approved'
+                WHERE ofr.status IN ('approved', 'partially_paid')
 
                 UNION ALL
 
@@ -116,13 +135,15 @@ class Con_FinancialTransaction extends Model
                     p.name            AS project_name,
                     CONCAT(vpr.payment_type, ' Payment — ', v.name) AS description,
                     vpr.net_payable   AS amount,
+                    vpr.due_amount,
                     vpr.payment_type  AS payment_type,
+                    vpr.status        AS source_status,
                     vpr.status        AS vpr_status,
                     vpr.created_at
                 FROM vendor_payment_requests vpr
                 LEFT JOIN projects p ON p.id  = vpr.project_id
                 LEFT JOIN vendors  v ON v.id  = vpr.vendor_id
-                WHERE vpr.status IN ('Submitted', 'Approved')
+                WHERE vpr.status IN ('Submitted', 'Approved', 'Partially_Paid')
 
                 ORDER BY created_at DESC";
         $result = $this->db->query($sql);
@@ -135,7 +156,7 @@ class Con_FinancialTransaction extends Model
         $stmt = $this->db->prepare(
             "SELECT ref_type,
                     COUNT(*) AS transaction_count,
-                    SUM(amount) AS total_paid
+                    SUM(amount_paid) AS total_paid
              FROM {$this->table}
              WHERE project_id = ?
              GROUP BY ref_type"
@@ -150,10 +171,11 @@ class Con_FinancialTransaction extends Model
     // =========================================================================
 
     /**
-     * Create a transaction and mark the source record as 'paid' (or 'Paid').
+     * Create a transaction and update source record with partial payment tracking.
      *
      * @param array $data [ref_type, ref_id, project_id, amount, payment_type,
-     *                     payment_method, payment_date, reference_no, notes, processed_by]
+     *                     payment_method, payment_date, reference_no, notes,
+     *                     disbursement_proof, processed_by]
      */
     public function create($data)
     {
@@ -163,12 +185,13 @@ class Con_FinancialTransaction extends Model
 
             // 1. Insert transaction record
             $sql = "INSERT INTO {$this->table}
-                    (ref_type, ref_id, project_id, amount, payment_type, payment_method,
-                     payment_date, reference_no, notes, processed_by, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                    (ref_type, ref_id, project_id, amount_paid, payment_type, payment_method,
+                     transaction_date, reference_number, notes, disbursement_proof,
+                     processed_by, update_status, created_by, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Completed', ?, NOW())";
             $stmt = $this->db->prepare($sql);
             $stmt->bind_param(
-                'siidsssssi',
+                'siidssssssis',
                 $data['ref_type'],
                 $data['ref_id'],
                 $data['project_id'],
@@ -178,26 +201,30 @@ class Con_FinancialTransaction extends Model
                 $data['payment_date'],
                 $data['reference_no'],
                 $data['notes'],
+                $data['disbursement_proof'],
+                $data['processed_by'],
                 $data['processed_by']
             );
             $stmt->execute();
             $txnId = $stmt->insert_id;
 
-            // 2. Mark source record based on type
-            if ($data['ref_type'] === 'contractor_bill') {
-                $this->db->query(
-                    "UPDATE contractor_bill_requests SET status='paid' WHERE id=" . (int)$data['ref_id']
-                );
-            } elseif ($data['ref_type'] === 'operational_fund') {
-                $this->db->query(
-                    "UPDATE operational_fund_requests SET status='paid' WHERE id=" . (int)$data['ref_id']
-                );
-            } elseif ($data['ref_type'] === 'vendor_payment') {
-                // Advance stays visible for future Final deduction — status becomes 'Paid'
-                $this->db->query(
-                    "UPDATE vendor_payment_requests SET status='Paid' WHERE id=" . (int)$data['ref_id']
-                );
+            // 2. Calculate total paid so far for this source
+            $totalPaid = $this->getTotalPaidForSource($data['ref_type'], $data['ref_id']);
+
+            // 3. Determine the approved/payable amount from the source
+            $sourceAmount = $this->getSourceAmount($data['ref_type'], $data['ref_id']);
+
+            // 4. Calculate due amount and determine new status
+            $dueAmount = max(0, $sourceAmount - $totalPaid);
+
+            if ($dueAmount <= 0) {
+                $newStatus = $this->getFullyPaidStatus($data['ref_type']);
+            } else {
+                $newStatus = $this->getPartiallyPaidStatus($data['ref_type']);
             }
+
+            // 5. Update source record with new status and due_amount
+            $this->updateSourceRecord($data['ref_type'], $data['ref_id'], $newStatus, $dueAmount);
 
             $this->db->commit();
             return $txnId;
@@ -206,5 +233,75 @@ class Con_FinancialTransaction extends Model
             error_log("Financial transaction create failed: " . $e->getMessage());
             return false;
         }
+    }
+
+    // =========================================================================
+    // HELPERS (private)
+    // =========================================================================
+
+    /** Get the approved/payable amount from the source record */
+    private function getSourceAmount($refType, $refId)
+    {
+        if ($refType === 'contractor_bill') {
+            $stmt = $this->db->prepare(
+                "SELECT COALESCE(approved_amount, bill_amount) AS payable FROM contractor_bill_requests WHERE id = ?"
+            );
+        } elseif ($refType === 'operational_fund') {
+            $stmt = $this->db->prepare(
+                "SELECT COALESCE(approved_amount, amount) AS payable FROM operational_fund_requests WHERE id = ?"
+            );
+        } elseif ($refType === 'vendor_payment') {
+            $stmt = $this->db->prepare(
+                "SELECT COALESCE(approved_amount, net_payable) AS payable FROM vendor_payment_requests WHERE id = ?"
+            );
+        } else {
+            return 0;
+        }
+
+        $stmt->bind_param('i', $refId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return (float)($row['payable'] ?? 0);
+    }
+
+    /** Get the 'fully_paid' status string for each source type */
+    private function getFullyPaidStatus($refType)
+    {
+        return match ($refType) {
+            'vendor_payment' => 'Fully_Paid',
+            default          => 'fully_paid',
+        };
+    }
+
+    /** Get the 'partially_paid' status string for each source type */
+    private function getPartiallyPaidStatus($refType)
+    {
+        return match ($refType) {
+            'vendor_payment' => 'Partially_Paid',
+            default          => 'partially_paid',
+        };
+    }
+
+    /** Update source record status and due_amount */
+    private function updateSourceRecord($refType, $refId, $status, $dueAmount)
+    {
+        if ($refType === 'contractor_bill') {
+            $stmt = $this->db->prepare(
+                "UPDATE contractor_bill_requests SET status = ?, due_amount = ? WHERE id = ?"
+            );
+        } elseif ($refType === 'operational_fund') {
+            $stmt = $this->db->prepare(
+                "UPDATE operational_fund_requests SET status = ?, due_amount = ? WHERE id = ?"
+            );
+        } elseif ($refType === 'vendor_payment') {
+            $stmt = $this->db->prepare(
+                "UPDATE vendor_payment_requests SET status = ?, due_amount = ? WHERE id = ?"
+            );
+        } else {
+            return;
+        }
+
+        $stmt->bind_param('sdi', $status, $dueAmount, $refId);
+        $stmt->execute();
     }
 }
