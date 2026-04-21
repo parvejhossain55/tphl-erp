@@ -61,11 +61,24 @@ class LeadController extends Controller
 
 
 
-        // echo "Role: " . $_SESSION['user']['role_id'];
-        // echo "<br>Team: " . $_SESSION['user']['team_id'];
-        // die();
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date);
-        $leadCounts = count($leads);
+        $limit = 50;
+        $currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($currentPage < 1) $currentPage = 1;
+        $offset = ($currentPage - 1) * $limit;
+
+        // Get total count for pagination
+        $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date);
+
+        // Fetch paginated records
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date, $limit, $offset);
+        
+        $totalPages = ceil($leadCounts / $limit);
+
+        // Build pagination route query string (excluding 'page')
+        $queryArr = $_GET;
+        unset($queryArr['page'], $queryArr['url']); // 'url' is sometimes set by routing
+        $queryString = http_build_query($queryArr);
+        $paginationRoute = $GLOBALS['base_url'] . '/lead-lists' . ($queryString ? '?' . $queryString : '');
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -114,8 +127,9 @@ class LeadController extends Controller
             "selectedAction" => $lastAction,
             "selectedAssigned" => $assigned,
             "selectedAssignedUser" => $assigned_user,
-
-
+            "currentPage" => $currentPage,
+            "totalPages" => $totalPages,
+            "paginationRoute" => $paginationRoute,
         ]);
     }
 

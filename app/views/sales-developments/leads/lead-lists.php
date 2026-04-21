@@ -468,6 +468,9 @@ $show_breadcrumb = true;
                         </tbody>
                     </table>
                 </div>
+                <div class="mt-3">
+                    <?= paginateLinksSecondary($paginationRoute ?? '', $currentPage ?? 1, $totalPages ?? 1); ?>
+                </div>
             </div>
 
             <div id="viewNoteModal" class="modal custom-modal fade">
@@ -782,6 +785,12 @@ $show_breadcrumb = true;
                     </div>
                 </div>
             <?php endforeach; ?>
+        </div>
+        </div>
+
+        <!-- Mobile Pagination -->
+        <div class="mt-3">
+            <?= paginateLinksSecondary($paginationRoute ?? '', $currentPage ?? 1, $totalPages ?? 1); ?>
         </div>
 
         <!-- FAB Button -->

@@ -392,11 +392,13 @@ $statementModel = $statementModel ?? null;
                     elseif ($category === 'bank_cashin') $cashinLabel = "Total Bank Cash In";
                     elseif ($category === 'bank_cashout') $cashinLabel = "Total Bank Cash Out";
                     elseif (in_array($category, ['cashout', 'utilities', 'other'])) $cashinLabel = "Total " . ucfirst($category);
+                    elseif ($category === 'vendor_payment') $cashinLabel = "Total Vendor Payments";
+                    elseif ($category === 'contractor_bill') $cashinLabel = "Total Contractor Bills";
                 }
                 ?>
                 <?= $cashinLabel ?>
             </div>
-            <div class="stat-value <?= (isset($category) && in_array($category, ['cashout', 'utilities', 'other', 'bank_cashout'])) ? 'cash-out' : 'revenue' ?>">
+            <div class="stat-value <?= (isset($category) && in_array($category, ['cashout', 'utilities', 'other', 'bank_cashout', 'vendor_payment', 'contractor_bill'])) ? 'cash-out' : 'revenue' ?>">
                 <?php
                 // For bank categories calculate from bank_transactions
                 if (isset($category) && in_array($category, ['bank_cashin', 'bank_cashout'])) {
@@ -405,7 +407,7 @@ $statementModel = $statementModel ?? null;
                         $bankTotal += (float)($bt['amount'] ?? 0);
                     }
                     $printStatVal = $bankTotal;
-                } elseif (isset($category) && in_array($category, ['cashout', 'utilities', 'other'])) {
+                } elseif (isset($category) && in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])) {
                     $printStatVal = $printTotalCashOut;
                 } else {
                     $printStatVal = $printTotalCashIn;
@@ -546,6 +548,14 @@ $statementModel = $statementModel ?? null;
                         <?php if ($category === 'cashout'): ?>
                         <th>Purpose / Paid To</th>
                         <?php endif; ?>
+                    <?php elseif ($category === 'vendor_payment'): ?>
+                        <th class="text-right">Vendor Payment (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
+                        <th>Vendor / Details</th>
+                    <?php elseif ($category === 'contractor_bill'): ?>
+                        <th class="text-right">Contractor Bill (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
+                        <th>Contractor / Details</th>
                     <?php endif; ?>
                 <?php endif; ?>
             </tr>
@@ -634,6 +644,70 @@ $statementModel = $statementModel ?? null;
                                 <?php endif; ?>
                             </td>
                             <?php endif; ?>
+                        <?php elseif ($category === 'vendor_payment'): ?>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                            <td>
+                                <?php 
+                                $vDetails = $vendor_payment_details ?? [];
+                                $hasPayments = false;
+                                if (!empty($vDetails[$rowDate])): 
+                                    foreach ($vDetails[$rowDate] as $payment):
+                                        $hasPayments = true;
+                                ?>
+                                    <div style="font-size: 7.5pt; margin-bottom: 3px; line-height: 1.4;">
+                                        <span style="color: #333;"><?= htmlspecialchars($payment['vendor_name'] ?? '—') ?></span>
+                                        <?php if (!empty($payment['project_name'])): ?>
+                                            <span style="color: #007bff;">(<?= htmlspecialchars($payment['project_name']) ?>)</span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($payment['vpr_payment_type'])): ?>
+                                            <span style="color: #666;">· <?= htmlspecialchars($payment['vpr_payment_type']) ?></span>
+                                        <?php endif; ?>
+                                        <span style="font-size: 7pt; background: #f0f0f0; padding: 1px 3px; border-radius: 2px;">
+                                            <?= ucfirst($payment['payment_method'] ?? 'cash') ?>
+                                        </span>
+                                        <strong class="negative">TK.<?= number_format($payment['amount'] ?? 0, 2) ?></strong>
+                                    </div>
+                                <?php 
+                                    endforeach;
+                                endif;
+                                if (!$hasPayments): 
+                                ?>
+                                    <span style="color: #aaa;">—</span>
+                                <?php endif; ?>
+                            </td>
+                        <?php elseif ($category === 'contractor_bill'): ?>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                            <td>
+                                <?php 
+                                $cDetails = $contractor_bill_details ?? [];
+                                $hasPayments = false;
+                                if (!empty($cDetails[$rowDate])): 
+                                    foreach ($cDetails[$rowDate] as $payment):
+                                        $hasPayments = true;
+                                ?>
+                                    <div style="font-size: 7.5pt; margin-bottom: 3px; line-height: 1.4;">
+                                        <span style="color: #333;"><?= htmlspecialchars($payment['contractor_name'] ?? '—') ?></span>
+                                        <?php if (!empty($payment['project_name'])): ?>
+                                            <span style="color: #007bff;">(<?= htmlspecialchars($payment['project_name']) ?>)</span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($payment['bill_type'])): ?>
+                                            <span style="color: #666;">· <?= htmlspecialchars($payment['bill_type']) ?></span>
+                                        <?php endif; ?>
+                                        <span style="font-size: 7pt; background: #f0f0f0; padding: 1px 3px; border-radius: 2px;">
+                                            <?= ucfirst($payment['payment_method'] ?? 'cash') ?>
+                                        </span>
+                                        <strong class="negative">TK.<?= number_format($payment['amount'] ?? 0, 2) ?></strong>
+                                    </div>
+                                <?php 
+                                    endforeach;
+                                endif;
+                                if (!$hasPayments): 
+                                ?>
+                                    <span style="color: #aaa;">—</span>
+                                <?php endif; ?>
+                            </td>
                         <?php endif; ?>
                     <?php endif; ?>
                 </tr>
@@ -689,6 +763,12 @@ $statementModel = $statementModel ?? null;
                         <?php if ($category === 'cashout'): ?>
                         <th>Purpose / Paid To</th>
                         <?php endif; ?>
+                    <?php elseif ($category === 'vendor_payment'): ?>
+                        <th class="text-right">Vendor Payment (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
+                    <?php elseif ($category === 'contractor_bill'): ?>
+                        <th class="text-right">Contractor Bill (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php endif; ?>
                 <?php endif; ?>
             </tr>
@@ -777,6 +857,12 @@ $statementModel = $statementModel ?? null;
                                 <?php endif; ?>
                             </td>
                             <?php endif; ?>
+                        <?php elseif ($category === 'vendor_payment'): ?>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                        <?php elseif ($category === 'contractor_bill'): ?>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
+                            <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
                         <?php endif; ?>
                     <?php endif; ?>
                 </tr>
@@ -794,7 +880,7 @@ $statementModel = $statementModel ?? null;
         <div class="summary-title">PERIOD SUMMARY</div>
         <div class="summary-grid">
             <div class="summary-box">
-                <?php if (!isset($category) || in_array($category, ['all', 'emi', 'landshare', 'service_fee', 'registration', 'booking_money', 'agreement', 'management_cashin', 'total_cashin', 'bank_cashin', 'bank_cashout'])): ?>
+                <?php if (!isset($category) || in_array($category, ['all', 'emi', 'landshare', 'service_fee', 'registration', 'booking_money', 'agreement', 'management_cashin', 'total_cashin', 'bank_cashin', 'bank_cashout', 'vendor_payment', 'contractor_bill'])): ?>
                     <div class="summary-row">
                         <span class="summary-label">
                             <?php 
@@ -816,7 +902,7 @@ $statementModel = $statementModel ?? null;
                     </div>
                 <?php endif; ?>
                 
-                <?php if (!isset($category) || in_array($category, ['all', 'cashout', 'utilities', 'other'])): ?>
+                <?php if (!isset($category) || in_array($category, ['all', 'cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])): ?>
                     <div class="summary-row">
                         <span class="summary-label">
                             <?php 
