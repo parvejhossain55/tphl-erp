@@ -16,8 +16,8 @@ foreach ($pending ?? [] as $p) {
 ?>
 
 <div class="pagetitle d-flex justify-content-between align-items-center">
-    <div>
-        <h1><?= htmlspecialchars($page_title) ?></h1>
+    <div class="mb-3">
+        <h4><?= htmlspecialchars($page_title) ?></h4>
         <nav>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
@@ -50,7 +50,7 @@ foreach ($pending ?? [] as $p) {
     ================================================================ -->
     <?php if (!empty($awaitingApproval)): ?>
     <div class="card__wrapper shadow-sm mb-4 border-top border-warning border-3">
-        <div class="card__header d-flex justify-content-between align-items-center">
+        <div class="mb-2 card__header d-flex justify-content-between align-items-center">
             <h6 class="card__title mb-0 text-warning">
                 <i class="bi bi-hourglass-split me-2"></i>
                 Vendor Payments — Awaiting Approval

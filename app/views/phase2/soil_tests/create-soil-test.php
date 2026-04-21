@@ -30,7 +30,7 @@
             </div>
             <div class="col-12">
                 <label>Field Data / Notes</label>
-                <textarea name="field_data" class="form-control" rows="4" placeholder="Enter field observations..."></textarea>
+                <textarea name="field_data" id="tinymce_simple_textarea" class="form-control" rows="4" placeholder="Enter field observations..."></textarea>
             </div>
             <div class="col-12 text-center mt-4">
                 <button type="submit" class="btn btn-primary px-5">Save Soil Test</button>

@@ -764,6 +764,7 @@ CREATE TABLE IF NOT EXISTS `operational_fund_requests` (
   `amount`          DECIMAL(15,2)    NOT NULL,
   `purpose`         TEXT             NOT NULL,
   `fund_date`       DATE             NOT NULL,
+  `approved_by`  INT  Deafualt Null
   `approved_amount` DECIMAL(15,2)    DEFAULT NULL,
   `status`          ENUM('pending','approved','rejected','paid') NOT NULL DEFAULT 'pending',
   `created_by`      INT(11)          NOT NULL,
