@@ -235,3 +235,66 @@ ADD INDEX `idx_parent_payment_id` (`parent_payment_id`);
 ALTER TABLE `emi_schedules`
 ADD COLUMN `overdue_since` DATE NULL,
 ADD COLUMN `is_overdue` TINYINT(1) NOT NULL DEFAULT 0;
+
+
+-- ============================================================
+-- 21 April 2026  |  Construction Finance Enhancements
+-- Feature: Partial Payments, Disbursement Proof, Role Gating
+-- ============================================================
+
+-- 1. con_financial_transactions — add disbursement proof column
+ALTER TABLE `con_financial_transactions`
+    ADD COLUMN IF NOT EXISTS `disbursement_proof`
+        TEXT DEFAULT NULL
+        COMMENT 'JSON array of disbursement proof file paths uploaded by Accounts'
+        AFTER `notes`;
+
+-- 2. operational_fund_requests — add due_amount + expand status for partial payments
+ALTER TABLE `operational_fund_requests`
+    ADD COLUMN IF NOT EXISTS `due_amount`
+        DECIMAL(15,2) DEFAULT NULL
+        COMMENT 'Remaining amount due after partial payments'
+        AFTER `approved_amount`;
+
+ALTER TABLE `operational_fund_requests`
+    MODIFY COLUMN `status`
+        ENUM('pending','approved','rejected','paid','partially_paid','fully_paid')
+        NOT NULL DEFAULT 'pending';
+
+-- 3. contractor_bill_requests — add due_amount + expand status for partial payments
+ALTER TABLE `contractor_bill_requests`
+    ADD COLUMN IF NOT EXISTS `due_amount`
+        DECIMAL(15,2) DEFAULT NULL
+        COMMENT 'Remaining amount due after partial payments'
+        AFTER `approved_amount`;
+
+ALTER TABLE `contractor_bill_requests`
+    MODIFY COLUMN `status`
+        ENUM('draft','submitted','verified','approved','rejected','paid','partially_paid','fully_paid')
+        NOT NULL DEFAULT 'draft';
+
+-- 4. vendor_payment_requests — add due_amount + expand status for partial payments
+ALTER TABLE `vendor_payment_requests`
+    ADD COLUMN IF NOT EXISTS `due_amount`
+        DECIMAL(15,2) DEFAULT NULL
+        COMMENT 'Remaining amount due after partial payments'
+        AFTER `approved_amount`;
+
+ALTER TABLE `vendor_payment_requests`
+    MODIFY COLUMN `status`
+        ENUM('Draft','Submitted','Approved','Rejected','Paid','Partially_Paid','Fully_Paid')
+        NOT NULL DEFAULT 'Draft';
+
+-- 5. vendor_payment_requests — add approved_by for tracking approver
+ALTER TABLE `vendor_payment_requests`
+    ADD COLUMN IF NOT EXISTS `approved_by`
+        INT(11) DEFAULT NULL
+        COMMENT 'User ID of the manager who approved/rejected this request'
+        AFTER `approved_amount`;
+
+-- 6. contractor_bill_requests — add approved_by for tracking approver
+ALTER TABLE `contractor_bill_requests`
+    ADD COLUMN IF NOT EXISTS `approved_by`
+        INT(11) DEFAULT NULL
+        COMMENT 'User ID of the manager who approved/rejected this bill'
+        AFTER `approved_amount`;

@@ -18,6 +18,8 @@ if (isset($category) && $category === 'utilities' && isset($statement_data['star
 
 // cashout_payment_details passed from controller (grouped by date, only when category === 'cashout')
 $cashout_payment_details = $cashout_payment_details ?? [];
+$vendor_payment_details = $vendor_payment_details ?? [];
+$contractor_bill_details = $contractor_bill_details ?? [];
 ?>
 
 <style>
@@ -319,6 +321,8 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                                 <optgroup label="Expense Categories">
                                     <option value="cashout" <?= ($category ?? '') === 'cashout' ? 'selected' : '' ?>>Cash Out</option>
                                     <option value="utilities" <?= ($category ?? '') === 'utilities' ? 'selected' : '' ?>>Utilities</option>
+                                    <option value="vendor_payment" <?= ($category ?? '') === 'vendor_payment' ? 'selected' : '' ?>>Vendor Payments</option>
+                                    <option value="contractor_bill" <?= ($category ?? '') === 'contractor_bill' ? 'selected' : '' ?>>Contractor Bills</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -459,6 +463,12 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                 } elseif (in_array($category, ['cashout', 'utilities', 'other'])) {
                     $card_amount = $overall_stats['total_cash_out'] ?? 0;
                     $card_label = 'Total ' . ucfirst($category);
+                } elseif ($category === 'vendor_payment') {
+                    $card_amount = $overall_stats['total_cash_out'] ?? 0;
+                    $card_label = 'Total Vendor Payments';
+                } elseif ($category === 'contractor_bill') {
+                    $card_amount = $overall_stats['total_cash_out'] ?? 0;
+                    $card_label = 'Total Contractor Bills';
                 }
                 ?>
                 <h6 class="card__sub-title mb-10"><?= $card_label ?></h6>
@@ -499,6 +509,12 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                     // For expense categories, revenue should show as 0 (not negative)
                     $revenue_amount = 0;
                     $revenue_label = 'Total ' . ucfirst($category) . ' Expense';
+                } elseif ($category === 'vendor_payment') {
+                    $revenue_amount = 0;
+                    $revenue_label = 'Total Vendor Payment Expense';
+                } elseif ($category === 'contractor_bill') {
+                    $revenue_amount = 0;
+                    $revenue_label = 'Total Contractor Bill Expense';
                 }
                 ?>
                 <h6 class="card__sub-title mb-10"><?= $revenue_label ?></h6>
@@ -523,7 +539,7 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                 
                 if ($category === 'all') {
                     $cashout_amount = $overall_stats['total_cash_out'] ?? 0;
-                } elseif (in_array($category, ['cashout', 'utilities', 'other'])) {
+                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])) {
                     // For cashout categories, sum the displayed data
                     if (isset($statement_data['daily_data'])) {
                         foreach ($statement_data['daily_data'] as $row) {
@@ -570,7 +586,7 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                 } elseif (in_array($category, ['emi', 'landshare', 'service_fee', 'registration', 'booking_money', 'agreement', 'management_cashin', 'total_cashin'])) {
                     // For revenue categories: Net Balance = Category Amount - 0 (since no cashout for revenue categories)
                     $net_balance = $card_amount;
-                } elseif (in_array($category, ['cashout', 'utilities', 'other'])) {
+                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])) {
                     // For expense categories: Net Balance = 0 - Category Amount (negative balance)
                     $net_balance = -$card_amount;
                 }
@@ -707,6 +723,16 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                                     <?php if ($category === 'cashout'): ?>
                                     <th>Source / Purpose</th>
                                     <?php endif; ?>
+                                <?php elseif ($category === 'vendor_payment'): ?>
+                                    <!-- For vendor payments -->
+                                    <th>Vendor Payment (TK.)</th>
+                                    <th>Amount (TK.)</th>
+                                    <th>Vendor / Details</th>
+                                <?php elseif ($category === 'contractor_bill'): ?>
+                                    <!-- For contractor bills -->
+                                    <th>Contractor Bill (TK.)</th>
+                                    <th>Amount (TK.)</th>
+                                    <th>Contractor / Details</th>
                                 <?php endif; ?>
                             </tr>
                         </thead>
@@ -796,6 +822,62 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                                             <?php endif; ?>
                                         </td>
                                         <?php endif; ?>
+                                    <?php elseif ($category === 'vendor_payment'): ?>
+                                        <!-- Show vendor payment data -->
+                                        <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
+                                        <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
+                                        <td>
+                                            <?php if (!empty($vendor_payment_details[$rowDate])): ?>
+                                                <?php foreach ($vendor_payment_details[$rowDate] as $payment): ?>
+                                                    <div style="font-size: 12px; margin-bottom: 4px; line-height: 1.6;">
+                                                        <span style="color: #555;"><?= htmlspecialchars($payment['vendor_name'] ?? '—') ?></span>
+                                                        <?php if (!empty($payment['project_name'])): ?>
+                                                            <span style="color: #007bff; font-size: 11px;">(<?= htmlspecialchars($payment['project_name']) ?>)</span>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($payment['vpr_payment_type'])): ?>
+                                                            <span style="color: #888; font-size: 11px;">· <?= htmlspecialchars($payment['vpr_payment_type']) ?></span>
+                                                        <?php endif; ?>
+                                                        <span style="font-size: 11px; background: #eee; padding: 1px 5px; border-radius: 3px; margin-left: 4px;">
+                                                            <?= ucfirst($payment['payment_method'] ?? 'cash') ?>
+                                                        </span>
+                                                        <?php if (!empty($payment['transaction_ref'])): ?>
+                                                            <span style="color: #888; font-size: 11px;">· Ref: <?= htmlspecialchars($payment['transaction_ref']) ?></span>
+                                                        <?php endif; ?>
+                                                        <strong class="negative" style="margin-left: 4px;">৳<?= number_format($payment['amount'] ?? 0, 2) ?></strong>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <span style="color: #aaa; font-size: 12px;">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    <?php elseif ($category === 'contractor_bill'): ?>
+                                        <!-- Show contractor bill data -->
+                                        <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
+                                        <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
+                                        <td>
+                                            <?php if (!empty($contractor_bill_details[$rowDate])): ?>
+                                                <?php foreach ($contractor_bill_details[$rowDate] as $payment): ?>
+                                                    <div style="font-size: 12px; margin-bottom: 4px; line-height: 1.6;">
+                                                        <span style="color: #555;"><?= htmlspecialchars($payment['contractor_name'] ?? '—') ?></span>
+                                                        <?php if (!empty($payment['project_name'])): ?>
+                                                            <span style="color: #007bff; font-size: 11px;">(<?= htmlspecialchars($payment['project_name']) ?>)</span>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($payment['bill_type'])): ?>
+                                                            <span style="color: #888; font-size: 11px;">· <?= htmlspecialchars($payment['bill_type']) ?></span>
+                                                        <?php endif; ?>
+                                                        <span style="font-size: 11px; background: #eee; padding: 1px 5px; border-radius: 3px; margin-left: 4px;">
+                                                            <?= ucfirst($payment['payment_method'] ?? 'cash') ?>
+                                                        </span>
+                                                        <?php if (!empty($payment['transaction_ref'])): ?>
+                                                            <span style="color: #888; font-size: 11px;">· Ref: <?= htmlspecialchars($payment['transaction_ref']) ?></span>
+                                                        <?php endif; ?>
+                                                        <strong class="negative" style="margin-left: 4px;">৳<?= number_format($payment['amount'] ?? 0, 2) ?></strong>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <span style="color: #aaa; font-size: 12px;">—</span>
+                                            <?php endif; ?>
+                                        </td>
                                     <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
@@ -863,6 +945,14 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                                     <?php if ($category === 'cashout'): ?>
                                     <th>Source / Purpose</th>
                                     <?php endif; ?>
+                                <?php elseif ($category === 'vendor_payment'): ?>
+                                    <!-- For vendor payments -->
+                                    <th>Vendor Payment (TK.)</th>
+                                    <th>Amount (TK.)</th>
+                                <?php elseif ($category === 'contractor_bill'): ?>
+                                    <!-- For contractor bills -->
+                                    <th>Contractor Bill (TK.)</th>
+                                    <th>Amount (TK.)</th>
                                 <?php endif; ?>
                             </tr>
                         </thead>
@@ -960,6 +1050,14 @@ $cashout_payment_details = $cashout_payment_details ?? [];
                                             <?php endif; ?>
                                         </td>
                                         <?php endif; ?>
+                                    <?php elseif ($category === 'vendor_payment'): ?>
+                                        <!-- Show vendor payment monthly data -->
+                                        <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
+                                        <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
+                                    <?php elseif ($category === 'contractor_bill'): ?>
+                                        <!-- Show contractor bill monthly data -->
+                                        <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
+                                        <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
                                     <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>

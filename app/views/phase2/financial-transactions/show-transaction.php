@@ -40,11 +40,8 @@ $refLabel = [
         <div class="col-xl-7">
             <!-- Receipt Card -->
             <div class="card custom-card">
-                <div class="card-header bg-success bg-opacity-10 text-center py-4">
-                    <div class="avatar avatar-lg bg-success rounded-circle mx-auto mb-2">
-                        <i class="bi bi-check-lg text-white fs-3"></i>
-                    </div>
-                    <h5 class="fw-bold text-success mb-1">Payment Processed</h5>
+                <div class="card-header bg-opacity-10 text-center py-4">
+
                     <p class="text-muted small mb-0">Transaction #<?= $txn['id'] ?></p>
                 </div>
                 <div class="card-body">
@@ -59,11 +56,11 @@ $refLabel = [
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-muted small mb-1">Amount Paid</label>
-                            <p class="fw-bold mb-0 fs-4 text-success">৳ <?= number_format($txn['amount'], 2) ?></p>
+                            <p class="fw-bold mb-0 fs-4 text-success">৳ <?= number_format($txn['amount_paid'] ?? $txn['amount'] ?? 0, 2) ?></p>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-muted small mb-1">Payment Date</label>
-                            <p class="fw-semibold mb-0"><?= date('d M Y', strtotime($txn['payment_date'])) ?></p>
+                            <p class="fw-semibold mb-0"><?= date('d M Y', strtotime($txn['transaction_date'] ?? $txn['created_at'])) ?></p>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-muted small mb-1">Payment Method</label>
@@ -72,16 +69,40 @@ $refLabel = [
                                 <?= htmlspecialchars($txn['payment_method']) ?>
                             </p>
                         </div>
-                        <?php if (!empty($txn['reference_no'])): ?>
+                        <?php if (!empty($txn['reference_number'])): ?>
                         <div class="col-md-6">
                             <label class="form-label text-muted small mb-1">Reference No.</label>
-                            <p class="fw-semibold mb-0"><?= htmlspecialchars($txn['reference_no']) ?></p>
+                            <p class="fw-semibold mb-0"><?= htmlspecialchars($txn['reference_number']) ?></p>
                         </div>
                         <?php endif; ?>
                         <?php if (!empty($txn['notes'])): ?>
                         <div class="col-md-12">
                             <label class="form-label text-muted small mb-1">Notes</label>
                             <p class="mb-0"><?= nl2br(htmlspecialchars($txn['notes'])) ?></p>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php
+                        // Display disbursement proof documents
+                        $proofFiles = [];
+                        if (!empty($txn['disbursement_proof'])) {
+                            $proofFiles = json_decode($txn['disbursement_proof'], true) ?? [];
+                        }
+                        ?>
+                        <?php if (!empty($proofFiles)): ?>
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small mb-1">
+                                <i class="bi bi-file-earmark-check me-1"></i>Disbursement Proof
+                            </label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <?php foreach ($proofFiles as $idx => $filePath): ?>
+                                    <a href="<?= $base_url ?>/public/<?= htmlspecialchars($filePath) ?>"
+                                       target="_blank" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-file-earmark me-1"></i>
+                                        Document <?= $idx + 1 ?>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                         <?php endif; ?>
 

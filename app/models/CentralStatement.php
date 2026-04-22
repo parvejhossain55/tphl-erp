@@ -549,6 +549,8 @@ class CentralStatement extends Model
         $serviceFeeData = $this->getDailyServiceFees($startDate, $endDate, $projectId);
         $managementCashinData = $this->getDailyManagementCashins($startDate, $endDate); // Already exists
         $developmentChargeData = $this->getDailyPaymentByType('development_charge', $startDate, $endDate, $projectId);
+        $vendorPaymentData = $this->getDailyVendorPayments($startDate, $endDate, $projectId);
+        $contractorBillData = $this->getDailyContractorBills($startDate, $endDate, $projectId);
         $discountData = $this->getDailyDiscounts($startDate, $endDate, $projectId);
         $cashOutData = $this->getCashOutData($startDate, $endDate, $category, $projectId);
 
@@ -565,6 +567,8 @@ class CentralStatement extends Model
             'service_fee' => 0,
             'management_cashin' => 0,
             'development_charge' => 0,
+            'vendor_payment' => 0,
+            'contractor_bill' => 0,
             'discount' => 0,
             'cash_out' => 0
         ];
@@ -581,6 +585,8 @@ class CentralStatement extends Model
             $serviceFee = $serviceFeeData[$date] ?? 0;
             $managementCashin = $managementCashinData[$date] ?? 0;
             $developmentCharge = $developmentChargeData[$date] ?? 0;
+            $vendorPayment = $vendorPaymentData[$date] ?? 0;
+            $contractorBill = $contractorBillData[$date] ?? 0;
             $discount = $discountData[$date] ?? 0;
 
             // Calculate cashin based on selected category
@@ -603,8 +609,16 @@ class CentralStatement extends Model
             } elseif ($category === 'management_cashin') {
                 $cashin = $managementCashin;
             }
-
-            $cashOut = $cashOutData[$date] ?? 0;
+// updated 
+            // For vendor_payment and contractor_bill categories, use their specific data as cash_out
+            $cashOut = 0;
+            if ($category === 'vendor_payment') {
+                $cashOut = $vendorPayment;
+            } elseif ($category === 'contractor_bill') {
+                $cashOut = $contractorBill;
+            } else {
+                $cashOut = $cashOutData[$date] ?? 0;
+            }
             $netAmount = $cashin - $cashOut;
 
             // Only update running balance for 'all' category
@@ -620,6 +634,8 @@ class CentralStatement extends Model
             $totals['service_fee'] += $serviceFee;
             $totals['management_cashin'] += $managementCashin; // Accumulate
             $totals['development_charge'] += $developmentCharge;
+            $totals['vendor_payment'] += $vendorPayment;
+            $totals['contractor_bill'] += $contractorBill;
             $totals['discount'] += $discount;
             $totals['cash_out'] += $cashOut;
 
@@ -674,6 +690,12 @@ class CentralStatement extends Model
         } elseif ($category === 'management_cashin') {
             $totalCashin = $totals['management_cashin'];
             $totalRevenue = $totals['management_cashin'];
+        } elseif ($category === 'vendor_payment') {
+            $totalCashin = 0;
+            $totalRevenue = 0;
+        } elseif ($category === 'contractor_bill') {
+            $totalCashin = 0;
+            $totalRevenue = 0;
         }
 
         return [
@@ -1037,11 +1059,43 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
             }
         }
 
+        // Get vendor payments and contractor bills from con_financial_transactions - only for 'all' category
+        $conFinancialData = [];
+        if ($category === 'all') {
+            $conFinQuery = "
+            SELECT 
+                DATE(transaction_date) as transaction_date,
+                SUM(amount_paid) as total_amount
+            FROM con_financial_transactions
+            WHERE DATE(transaction_date) BETWEEN ? AND ?
+            AND ref_type IN ('vendor_payment', 'contractor_bill')
+        ";
+
+            if ($projectId) {
+                $conFinQuery .= " AND project_id = ?";
+            }
+
+            $conFinQuery .= " GROUP BY DATE(transaction_date)";
+
+            $stmt = $this->db->prepare($conFinQuery);
+            if ($projectId) {
+                $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+            } else {
+                $stmt->bind_param("ss", $startDate, $endDate);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $conFinancialData[$row['transaction_date']] = (float)$row['total_amount'];
+            }
+        }
+
         // Combine all sources based on category
         $allDates = array_unique(array_merge(
             array_keys($managementData),
             array_keys($cashoutRequestData),
-            array_keys($payslipsData)
+            array_keys($payslipsData),
+            array_keys($conFinancialData)
         ));
 
         $combinedData = [];
@@ -1049,7 +1103,8 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
             $combinedData[$date] =
                 ($managementData[$date] ?? 0) +
                 ($cashoutRequestData[$date] ?? 0) +
-                ($payslipsData[$date] ?? 0);
+                ($payslipsData[$date] ?? 0) +
+                ($conFinancialData[$date] ?? 0);
         }
 
         return $combinedData;
@@ -1156,7 +1211,11 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
 
             // Only get cashout for expense categories, not for revenue categories
             $cashOut = 0;
-            if (in_array($category, ['all', 'cashout', 'utilities', 'other'])) {
+            if ($category === 'vendor_payment') {
+                $cashOut = $this->getMonthlyVendorPayments($monthStart, $monthEnd, $projectId);
+            } elseif ($category === 'contractor_bill') {
+                $cashOut = $this->getMonthlyContractorBills($monthStart, $monthEnd, $projectId);
+            } elseif (in_array($category, ['all', 'cashout', 'utilities', 'other'])) {
                 $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category);
             }
 
@@ -1396,7 +1455,11 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
 
             // Only get cashout for expense categories, not for revenue categories
             $cashOut = 0;
-            if (in_array($category, ['all', 'cashout', 'utilities', 'other'])) {
+            if ($category === 'vendor_payment') {
+                $cashOut = $this->getMonthlyVendorPayments($monthStart, $monthEnd, $projectId);
+            } elseif ($category === 'contractor_bill') {
+                $cashOut = $this->getMonthlyContractorBills($monthStart, $monthEnd, $projectId);
+            } elseif (in_array($category, ['all', 'cashout', 'utilities', 'other'])) {
                 $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category);
             }
 
@@ -1518,7 +1581,16 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             $serviceFee = $this->getDailyServiceFeeSingle($date, $projectId);
             $managementCashin = $this->getDailyManagementCashinSingle($date);
             $discount = $this->getDailyDiscountSingle($date, $projectId);
-            $cashOut = $this->getDailyCashOut($date, $category);
+
+            // Handle vendor_payment and contractor_bill as cashout categories
+            $cashOut = 0;
+            if ($category === 'vendor_payment') {
+                $cashOut = $this->getDailyVendorPaymentSingle($date, $projectId);
+            } elseif ($category === 'contractor_bill') {
+                $cashOut = $this->getDailyContractorBillSingle($date, $projectId);
+            } else {
+                $cashOut = $this->getDailyCashOut($date, $category);
+            }
 
             // Calculate cashin based on selected category
             $cashin = 0;
@@ -1604,6 +1676,12 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         } elseif ($category === 'management_cashin') {
             $totalCashin = $totals['management_cashin'];
             $totalRevenue = $totals['management_cashin'];
+        } elseif ($category === 'vendor_payment') {
+            $totalCashin = 0;
+            $totalRevenue = 0;
+        } elseif ($category === 'contractor_bill') {
+            $totalCashin = 0;
+            $totalRevenue = 0;
         }
 
         return [
@@ -1783,7 +1861,11 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
 
             // Only get cashout for expense categories, not for revenue categories
             $cashOut = 0;
-            if (in_array($category, ['all', 'cashout', 'utilities', 'other'])) {
+            if ($category === 'vendor_payment') {
+                $cashOut = $this->getMonthlyVendorPayments($monthStart, $monthEnd, $projectId);
+            } elseif ($category === 'contractor_bill') {
+                $cashOut = $this->getMonthlyContractorBills($monthStart, $monthEnd, $projectId);
+            } elseif (in_array($category, ['all', 'cashout', 'utilities', 'other'])) {
                 $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category);
             }
 
@@ -1872,6 +1954,12 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         } elseif ($category === 'management_cashin') {
             $totalCashin = $totals['management_cashin'];
             $totalRevenue = $totals['management_cashin'];
+        } elseif ($category === 'vendor_payment') {
+            $totalCashin = 0;
+            $totalRevenue = 0;
+        } elseif ($category === 'contractor_bill') {
+            $totalCashin = 0;
+            $totalRevenue = 0;
         }
 
         return [
@@ -1996,7 +2084,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         if ($category === 'utilities') {
             $stmt->bind_param("s", $startDate);
         } else {
-            $stmt->bind_param("ss", $startDate, $startDate);
+            $stmt->bind_param("sss", $startDate, $startDate, $startDate);
         }
 
         $stmt->execute();
@@ -2130,6 +2218,14 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             WHERE DATE(cp.payment_date) < ?
             AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
             $projectCondition
+            
+            UNION ALL
+            
+            -- Vendor payments & contractor bills
+            SELECT amount_paid as total_amount
+            FROM con_financial_transactions
+            WHERE DATE(transaction_date) < ?
+            AND ref_type IN ('vendor_payment', 'contractor_bill')
         ) combined
     ";
     }
@@ -2184,6 +2280,17 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             WHERE DATE(updated_at) = ?
             AND status = 'paid'
             " : "SELECT 0 as total_amount") . "
+            
+            UNION ALL
+            
+            -- Vendor payments & contractor bills - only for 'all' category
+            " . ($category === 'all' ? "
+            SELECT amount_paid as total_amount
+            FROM con_financial_transactions
+            WHERE DATE(transaction_date) = ?
+            AND ref_type IN ('vendor_payment', 'contractor_bill')
+            " . ($projectId ? " AND project_id = ?" : "") . "
+            " : "SELECT 0 as total_amount") . "
         ) combined
     ";
 
@@ -2202,13 +2309,13 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             $params[] = $categoryId;
             $types = "si";
         } else if ($category === 'all' && $projectId) {
-            // All categories with project filter: date, date, projectId, projectId, date
-            $params = [$date, $date, $projectId, $projectId, $date];
-            $types = "ssiiss";
+            // All categories with project filter: date, date, projectId, projectId, date, date, projectId
+            $params = [$date, $date, $projectId, $projectId, $date, $date, $projectId];
+            $types = "ssiissi";
         } else if ($category === 'all') {
-            // All categories: date, date, date
-            $params = [$date, $date, $date];
-            $types = "sss";
+            // All categories: date, date, date, date
+            $params = [$date, $date, $date, $date];
+            $types = "ssss";
         } else if ($category === 'cashout' && $projectId) {
             // Cashout only with project filter: date, date, projectId, projectId
             $params = [$date, $date, $projectId, $projectId];
@@ -2327,6 +2434,17 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             WHERE DATE(updated_at) BETWEEN ? AND ?
             AND status = 'paid'
             " : "SELECT 0 as total_amount") . "
+            
+            UNION ALL
+            
+            -- Vendor payments & contractor bills - only for 'all' category
+            " . ($category === 'all' ? "
+            SELECT amount_paid as total_amount
+            FROM con_financial_transactions
+            WHERE DATE(transaction_date) BETWEEN ? AND ?
+            AND ref_type IN ('vendor_payment', 'contractor_bill')
+            " . ($projectId ? " AND project_id = ?" : "") . "
+            " : "SELECT 0 as total_amount") . "
         ) combined
     ";
 
@@ -2345,12 +2463,12 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             $types = "ssi";
         } else if ($category === 'all' && $projectId) {
             // All categories with project filter
-            $params = [$startDate, $endDate, $startDate, $endDate, $projectId, $projectId, $startDate, $endDate];
-            $types = "ssssiiii";
+            $params = [$startDate, $endDate, $startDate, $endDate, $projectId, $projectId, $startDate, $endDate, $startDate, $endDate, $projectId];
+            $types = "ssssiiissssi";
         } else if ($category === 'all') {
-            // All categories: start, end, start, end, start, end
-            $params = [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate];
-            $types = "ssssss";
+            // All categories: start, end, start, end, start, end, start, end
+            $params = [$startDate, $endDate, $startDate, $endDate, $startDate, $endDate, $startDate, $endDate];
+            $types = "ssssssss";
         } else if ($category === 'cashout' && $projectId) {
             // Cashout only with project filter
             $params = [$startDate, $endDate, $startDate, $endDate, $projectId, $projectId];
@@ -2461,6 +2579,37 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             return $this->getUtilitiesCashOutForPeriod($startDate, $endDate, $projectId);
         }
 
+        // Handle vendor_payment and contractor_bill separately
+        if ($category === 'vendor_payment' || $category === 'contractor_bill') {
+            $query = "
+                SELECT COALESCE(SUM(amount_paid), 0) as total
+                FROM con_financial_transactions
+                WHERE ref_type = ?
+            ";
+            $params = [$category];
+            $types = "s";
+
+            if ($startDate && $endDate) {
+                $query .= " AND DATE(transaction_date) BETWEEN ? AND ?";
+                $params[] = $startDate;
+                $params[] = $endDate;
+                $types .= "ss";
+            }
+
+            if ($projectId) {
+                $query .= " AND project_id = ?";
+                $params[] = $projectId;
+                $types .= "i";
+            }
+
+            $stmt = $this->db->prepare($query);
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result->fetch_assoc();
+            return ['total' => (float)($row['total'] ?? 0)];
+        }
+
         // Get category ID if a specific category is selected (for management_cashout)
         $categoryId = null;
         if ($category !== 'all' && $category !== 'cashout') {
@@ -2516,6 +2665,17 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             WHERE status = 'paid'
             " . ($startDate && $endDate ? " AND DATE(updated_at) BETWEEN ? AND ?" : "") . "
             " : "SELECT 0 as total_amount") . "
+            
+            UNION ALL
+            
+            -- Vendor payments & contractor bills - only for 'all' category
+            " . ($category === 'all' ? "
+            SELECT amount_paid as total_amount
+            FROM con_financial_transactions
+            WHERE ref_type IN ('vendor_payment', 'contractor_bill')
+            " . ($startDate && $endDate ? " AND DATE(transaction_date) BETWEEN ? AND ?" : "") . "
+            " . ($projectId ? " AND project_id = ?" : "") . "
+            " : "SELECT 0 as total_amount") . "
         ) combined
     ";
 
@@ -2554,6 +2714,18 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             if ($startDate && $endDate) {
                 $bindParams = array_merge($bindParams, [$startDate, $endDate]);
                 $bindTypes .= "ss";
+            }
+        }
+
+        // con_financial_transactions params (for 'all' category)
+        if ($category === 'all') {
+            if ($startDate && $endDate) {
+                $bindParams = array_merge($bindParams, [$startDate, $endDate]);
+                $bindTypes .= "ss";
+            }
+            if ($projectId) {
+                $bindParams = array_merge($bindParams, [$projectId]);
+                $bindTypes .= "i";
             }
         }
 
@@ -2694,6 +2866,300 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         ];
 
         return $categoryMap[$categoryName] ?? null;
+    }
+
+    // =========================================================================
+    // VENDOR PAYMENT & CONTRACTOR BILL METHODS
+    // =========================================================================
+
+    /**
+     * Get daily vendor payments from con_financial_transactions
+     */
+    private function getDailyVendorPayments($startDate, $endDate, $projectId = null)
+    {
+        $query = "
+            SELECT 
+                DATE(cft.transaction_date) as transaction_date,
+                SUM(cft.amount_paid) as total_amount
+            FROM con_financial_transactions cft
+            WHERE cft.ref_type = 'vendor_payment'
+            AND DATE(cft.transaction_date) BETWEEN ? AND ?
+        ";
+
+        if ($projectId) {
+            $query .= " AND cft.project_id = ?";
+        }
+
+        $query .= " GROUP BY DATE(cft.transaction_date)";
+
+        $stmt = $this->db->prepare($query);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[$row['transaction_date']] = (float)$row['total_amount'];
+        }
+        return $data;
+    }
+
+    /**
+     * Get daily contractor bills from con_financial_transactions
+     */
+    private function getDailyContractorBills($startDate, $endDate, $projectId = null)
+    {
+        $query = "
+            SELECT 
+                DATE(cft.transaction_date) as transaction_date,
+                SUM(cft.amount_paid) as total_amount
+            FROM con_financial_transactions cft
+            WHERE cft.ref_type = 'contractor_bill'
+            AND DATE(cft.transaction_date) BETWEEN ? AND ?
+        ";
+
+        if ($projectId) {
+            $query .= " AND cft.project_id = ?";
+        }
+
+        $query .= " GROUP BY DATE(cft.transaction_date)";
+
+        $stmt = $this->db->prepare($query);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[$row['transaction_date']] = (float)$row['total_amount'];
+        }
+        return $data;
+    }
+
+    /**
+     * Get single-day vendor payment total
+     */
+    private function getDailyVendorPaymentSingle($date, $projectId = null)
+    {
+        $query = "
+            SELECT COALESCE(SUM(amount_paid), 0) as total
+            FROM con_financial_transactions
+            WHERE ref_type = 'vendor_payment'
+            AND DATE(transaction_date) = ?
+        ";
+
+        if ($projectId) {
+            $query .= " AND project_id = ?";
+        }
+
+        $stmt = $this->db->prepare($query);
+        if ($projectId) {
+            $stmt->bind_param("si", $date, $projectId);
+        } else {
+            $stmt->bind_param("s", $date);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return (float)($row['total'] ?? 0);
+    }
+
+    /**
+     * Get single-day contractor bill total
+     */
+    private function getDailyContractorBillSingle($date, $projectId = null)
+    {
+        $query = "
+            SELECT COALESCE(SUM(amount_paid), 0) as total
+            FROM con_financial_transactions
+            WHERE ref_type = 'contractor_bill'
+            AND DATE(transaction_date) = ?
+        ";
+
+        if ($projectId) {
+            $query .= " AND project_id = ?";
+        }
+
+        $stmt = $this->db->prepare($query);
+        if ($projectId) {
+            $stmt->bind_param("si", $date, $projectId);
+        } else {
+            $stmt->bind_param("s", $date);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return (float)($row['total'] ?? 0);
+    }
+
+    /**
+     * Get monthly vendor payment total
+     */
+    private function getMonthlyVendorPayments($startDate, $endDate, $projectId = null)
+    {
+        $query = "
+            SELECT COALESCE(SUM(amount_paid), 0) as total
+            FROM con_financial_transactions
+            WHERE ref_type = 'vendor_payment'
+            AND DATE(transaction_date) BETWEEN ? AND ?
+        ";
+
+        if ($projectId) {
+            $query .= " AND project_id = ?";
+        }
+
+        $stmt = $this->db->prepare($query);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return (float)($row['total'] ?? 0);
+    }
+
+    /**
+     * Get monthly contractor bill total
+     */
+    private function getMonthlyContractorBills($startDate, $endDate, $projectId = null)
+    {
+        $query = "
+            SELECT COALESCE(SUM(amount_paid), 0) as total
+            FROM con_financial_transactions
+            WHERE ref_type = 'contractor_bill'
+            AND DATE(transaction_date) BETWEEN ? AND ?
+        ";
+
+        if ($projectId) {
+            $query .= " AND project_id = ?";
+        }
+
+        $stmt = $this->db->prepare($query);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return (float)($row['total'] ?? 0);
+    }
+
+    /**
+     * Get vendor payment details grouped by date for breakdown view
+     */
+    public function getVendorPaymentDetails($startDate, $endDate, $projectId = null)
+    {
+        $query = "
+            SELECT 
+                DATE(cft.transaction_date) as payment_date,
+                cft.amount_paid as amount,
+                cft.payment_method,
+                cft.reference_number as transaction_ref,
+                cft.payment_type,
+                cft.notes,
+                p.name as project_name,
+                v.name as vendor_name,
+                vpr.payment_type as vpr_payment_type,
+                u.full_name as processed_by_name
+            FROM con_financial_transactions cft
+            LEFT JOIN projects p ON cft.project_id = p.id
+            LEFT JOIN vendor_payment_requests vpr ON cft.ref_id = vpr.id
+            LEFT JOIN vendors v ON vpr.vendor_id = v.id
+            LEFT JOIN users u ON cft.processed_by = u.id
+            WHERE cft.ref_type = 'vendor_payment'
+            AND DATE(cft.transaction_date) BETWEEN ? AND ?
+        ";
+
+        if ($projectId) {
+            $query .= " AND cft.project_id = ?";
+        }
+
+        $query .= " ORDER BY cft.transaction_date ASC";
+
+        $stmt = $this->db->prepare($query);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $payments = [];
+        while ($row = $result->fetch_assoc()) {
+            $date = $row['payment_date'];
+            if (!isset($payments[$date])) {
+                $payments[$date] = [];
+            }
+            $payments[$date][] = $row;
+        }
+
+        return $payments;
+    }
+
+    /**
+     * Get contractor bill details grouped by date for breakdown view
+     */
+    public function getContractorBillDetails($startDate, $endDate, $projectId = null)
+    {
+        $query = "
+            SELECT 
+                DATE(cft.transaction_date) as payment_date,
+                cft.amount_paid as amount,
+                cft.payment_method,
+                cft.reference_number as transaction_ref,
+                cft.payment_type,
+                cft.notes,
+                p.name as project_name,
+                oo.name as contractor_name,
+                cbr.work_description as bill_type,
+                u.full_name as processed_by_name
+            FROM con_financial_transactions cft
+            LEFT JOIN projects p ON cft.project_id = p.id
+            LEFT JOIN contractor_bill_requests cbr ON cft.ref_id = cbr.id
+            LEFT JOIN contractors oo ON cbr.operator_id = oo.id
+            LEFT JOIN users u ON cft.processed_by = u.id
+            WHERE cft.ref_type = 'contractor_bill'
+            AND DATE(cft.transaction_date) BETWEEN ? AND ?
+        ";
+
+        if ($projectId) {
+            $query .= " AND cft.project_id = ?";
+        }
+
+        $query .= " ORDER BY cft.transaction_date ASC";
+
+        $stmt = $this->db->prepare($query);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $payments = [];
+        while ($row = $result->fetch_assoc()) {
+            $date = $row['payment_date'];
+            if (!isset($payments[$date])) {
+                $payments[$date] = [];
+            }
+            $payments[$date][] = $row;
+        }
+
+        return $payments;
     }
 
     /**

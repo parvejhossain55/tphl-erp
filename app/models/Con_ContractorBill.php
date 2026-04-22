@@ -4,21 +4,42 @@ class Con_ContractorBill extends Model
 {
     protected $table = 'contractor_bill_requests';
 
-    public function getAllWithRelations()
+    /**
+     * Get all bills with relations + approved_by/payment_by names
+     * @param int|null $userId  If set, only show bills created by this user
+     */
+    public function getAllWithRelations($userId = null)
     {
         $sql = "SELECT cbr.*,
                        oo.name  AS operator_name,
                        oo.role  AS operator_role,
                        p.name   AS project_name,
-                       u.full_name AS created_by_name,
-                       v.full_name AS verified_by_name
+                       u.full_name  AS created_by_name,
+                       v.full_name  AS verified_by_name,
+                       ab.full_name AS approved_by_name,
+                       pb.full_name AS payment_by_name
                 FROM {$this->table} cbr
                 LEFT JOIN contractors oo ON oo.id = cbr.operator_id
                 LEFT JOIN projects p  ON p.id  = cbr.project_id
                 LEFT JOIN users u     ON u.id  = cbr.created_by
                 LEFT JOIN users v     ON v.id  = cbr.verified_by
-                ORDER BY cbr.created_at DESC";
-        return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+                LEFT JOIN users ab    ON ab.id = cbr.approved_by
+                LEFT JOIN (
+                    SELECT ref_id, processed_by
+                    FROM con_financial_transactions
+                    WHERE ref_type = 'contractor_bill'
+                    ORDER BY id DESC
+                ) latest_txn ON latest_txn.ref_id = cbr.id
+                LEFT JOIN users pb ON pb.id = latest_txn.processed_by";
+
+        if ($userId !== null) {
+            $sql .= " WHERE cbr.created_by = " . (int)$userId;
+        }
+
+        $sql .= " GROUP BY cbr.id ORDER BY cbr.created_at DESC";
+
+        $result = $this->db->query($sql);
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     public function findWithRelations($id)
@@ -28,13 +49,15 @@ class Con_ContractorBill extends Model
                        oo.phone AS operator_phone,
                        oo.trade AS operator_trade,
                        p.name   AS project_name,
-                       u.full_name AS created_by_name,
-                       v.full_name AS verified_by_name
+                       u.full_name  AS created_by_name,
+                       v.full_name  AS verified_by_name,
+                       ab.full_name AS approved_by_name
                 FROM {$this->table} cbr
                 LEFT JOIN contractors oo ON oo.id = cbr.operator_id
                 LEFT JOIN projects p  ON p.id  = cbr.project_id
                 LEFT JOIN users u     ON u.id  = cbr.created_by
                 LEFT JOIN users v     ON v.id  = cbr.verified_by
+                LEFT JOIN users ab    ON ab.id = cbr.approved_by
                 WHERE cbr.id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $id);
@@ -94,6 +117,37 @@ class Con_ContractorBill extends Model
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param($types, ...$params);
+        return $stmt->execute();
+    }
+
+    /** Approve with amount and approver tracking */
+    public function approve($id, $userId, $approvedAmount = null)
+    {
+        $bill = $this->find($id);
+        if (!$bill || !in_array($bill['status'], ['submitted', 'verified'])) return false;
+
+        if ($approvedAmount === null || $approvedAmount <= 0) {
+            $approvedAmount = (float)($bill['bill_amount'] ?? 0);
+        }
+
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET status = 'approved', approved_amount = ?, approved_by = ?, due_amount = ?
+             WHERE id = ?"
+        );
+        $stmt->bind_param('didi', $approvedAmount, $userId, $approvedAmount, $id);
+        return $stmt->execute();
+    }
+
+    /** Reject with approver tracking */
+    public function reject($id, $userId)
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET status = 'rejected', approved_by = ?
+             WHERE id = ? AND status IN ('submitted', 'verified')"
+        );
+        $stmt->bind_param('ii', $userId, $id);
         return $stmt->execute();
     }
 

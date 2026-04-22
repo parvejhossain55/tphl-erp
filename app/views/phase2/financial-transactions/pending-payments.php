@@ -1,6 +1,9 @@
 <?php
 $base_url   = $GLOBALS['base_url'];
 $page_title = $page_title ?? 'Pending Payments';
+$canProcess = $canProcessPayment ?? false;
+$canApproveVendor = $canApprove ?? false;
+$userRole   = $userRole ?? null;
 
 // Separate: vendor payments waiting approval vs all others ready for payment
 $awaitingApproval = [];
@@ -16,10 +19,15 @@ foreach ($pending ?? [] as $p) {
 ?>
 
 <div class="pagetitle d-flex justify-content-between align-items-center">
+<<<<<<< HEAD
     <div class="mb-3">
         <h4><?= htmlspecialchars($page_title) ?></h4>
+=======
+    <div>
+        <h1 class="mb-3"><?= htmlspecialchars($page_title) ?></h1>
+>>>>>>> 3c9b3fa0bbf940b36ab0fd1ee0d020354f928834
         <nav>
-            <ol class="breadcrumb mb-0">
+            <ol class="breadcrumb mb-3">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-transactions">Transactions</a></li>
                 <li class="breadcrumb-item active">Pending Payments</li>
@@ -35,7 +43,7 @@ foreach ($pending ?? [] as $p) {
 
     <?php if (empty($pending)): ?>
     <div class="card__wrapper shadow-sm">
-        <div class="card__body text-center py-5">
+        <div class="card__body text-center py-5 mb-3">
             <i class="bi bi-check-circle-fill text-success fs-1 mb-3 d-block"></i>
             <h5 class="text-muted">No pending payments!</h5>
             <p class="text-muted small">All approved requests have been paid.</p>
@@ -72,7 +80,9 @@ foreach ($pending ?? [] as $p) {
                             <th>Description</th>
                             <th class="text-end">Amount (৳)</th>
                             <th>Submitted On</th>
+                            <?php if ($canApproveVendor): ?>
                             <th class="text-center">Action</th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -92,12 +102,14 @@ foreach ($pending ?? [] as $p) {
                             <td><?= htmlspecialchars(mb_strimwidth($p['description'] ?? '', 0, 55, '...')) ?></td>
                             <td class="text-end fw-bold text-warning">৳ <?= number_format((float)($p['amount'] ?? 0), 2) ?></td>
                             <td><small><?= !empty($p['created_at']) ? date('d M Y', strtotime($p['created_at'])) : '—' ?></small></td>
+                            <?php if ($canApproveVendor): ?>
                             <td class="text-center">
                                 <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $p['ref_id'] ?>"
                                    class="btn btn-warning btn-sm fw-bold">
                                     <i class="bi bi-eye me-1"></i> View & Approve
                                 </a>
                             </td>
+                            <?php endif; ?>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -113,7 +125,7 @@ foreach ($pending ?? [] as $p) {
     <?php if (!empty($readyToPay)): ?>
     <div class="card__wrapper shadow-sm border-top border-success border-3">
         <div class="card__header d-flex justify-content-between align-items-center">
-            <h6 class="card__title mb-0 text-success">
+            <h6 class="card__title mb-0 text-success mb-3">
                 <i class="bi bi-credit-card me-2"></i>
                 Approved — Ready for Payment Processing
                 <span class="badge bg-success ms-2"><?= count($readyToPay) ?></span>
@@ -132,9 +144,13 @@ foreach ($pending ?? [] as $p) {
                             <th>Type</th>
                             <th>Project</th>
                             <th>Description</th>
-                            <th class="text-end">Amount (৳)</th>
+                            <th class="text-end">Payable (৳)</th>
+                            <th class="text-end">Due (৳)</th>
+                            <th>Status</th>
                             <th>Approved On</th>
+                            <?php if ($canProcess): ?>
                             <th class="text-center">Action</th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -153,6 +169,11 @@ foreach ($pending ?? [] as $p) {
                                 'vendor_payment'   => 'Vendor Payment',
                                 default            => 'Other',
                             };
+
+                            $sourceStatus = $p['source_status'] ?? '';
+                            $isPartial    = in_array($sourceStatus, ['partially_paid', 'Partially_Paid']);
+                            $dueAmount    = $p['due_amount'] ?? null;
+                            $displayDue   = ($dueAmount !== null) ? (float)$dueAmount : (float)($p['amount'] ?? 0);
                         ?>
                         <tr>
                             <td><?= $i + 1 ?></td>
@@ -164,14 +185,31 @@ foreach ($pending ?? [] as $p) {
                             </td>
                             <td><?= htmlspecialchars($p['project_name'] ?? '—') ?></td>
                             <td><?= htmlspecialchars(mb_strimwidth($p['description'] ?? '', 0, 55, '...')) ?></td>
-                            <td class="text-end fw-semibold text-success">৳ <?= number_format((float)($p['amount'] ?? 0), 2) ?></td>
+                            <td class="text-end fw-semibold">৳ <?= number_format((float)($p['amount'] ?? 0), 2) ?></td>
+                            <td class="text-end fw-bold <?= $isPartial ? 'text-warning' : 'text-success' ?>">
+                                ৳ <?= number_format($displayDue, 2) ?>
+                            </td>
+                            <td>
+                                <?php if ($isPartial): ?>
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-pie-chart-fill me-1"></i>Partially Paid
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>Approved
+                                    </span>
+                                <?php endif; ?>
+                            </td>
                             <td><small><?= !empty($p['created_at']) ? date('d M Y', strtotime($p['created_at'])) : '—' ?></small></td>
+                            <?php if ($canProcess): ?>
                             <td class="text-center">
                                 <a href="<?= $base_url ?>/con-process-payment/<?= $p['ref_type'] ?>/<?= $p['ref_id'] ?>"
                                    class="btn btn-success btn-sm fw-bold">
-                                    <i class="bi bi-credit-card me-1"></i> Process Payment
+                                    <i class="bi bi-credit-card me-1"></i>
+                                    <?= $isPartial ? 'Continue Payment' : 'Process Payment' ?>
                                 </a>
                             </td>
+                            <?php endif; ?>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
