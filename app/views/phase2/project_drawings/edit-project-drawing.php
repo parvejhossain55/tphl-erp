@@ -49,15 +49,15 @@
                 </select>
             </div>
 
-            <div class="col-xl-4 <?= $record['is_in_house'] ? 'd-none' : '' ?>" id="ext_name_wrap">
+            <div class="col-xl-6 <?= $record['is_in_house'] ? 'd-none' : '' ?>" id="ext_name_wrap">
                 <label>External Designer Name</label>
                 <input type="text" name="designer_name" class="form-control" value="<?= htmlspecialchars($record['designer_name'] ?? '') ?>">
             </div>
-            <div class="col-xl-4 <?= $record['is_in_house'] ? 'd-none' : '' ?>" id="ext_desig_wrap">
+            <div class="col-xl-6 <?= $record['is_in_house'] ? 'd-none' : '' ?>" id="ext_desig_wrap">
                 <label>Designer Designation</label>
                 <input type="text" name="designer_designation" class="form-control" value="<?= htmlspecialchars($record['designer_designation'] ?? '') ?>">
             </div>
-            <div class="col-xl-4 <?= $record['is_in_house'] ? 'd-none' : '' ?>" id="ext_company_wrap">
+            <div class="col-xl-6 <?= $record['is_in_house'] ? 'd-none' : '' ?>" id="ext_company_wrap">
                 <label>Designer Company</label>
                 <input type="text" name="designer_company" class="form-control" value="<?= htmlspecialchars($record['designer_company'] ?? '') ?>">
             </div>

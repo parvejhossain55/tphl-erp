@@ -1,12 +1,7 @@
-<div class="pagetitle d-flex justify-content-between align-items-center">
-    <div>
-        <h1><?= htmlspecialchars($page_title) ?></h1>
-        <nav>
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
-                <li class="breadcrumb-item active">Initial Estimates</li>
-            </ol>
-        </nav>
+<div class="mb-3 pagetitle d-flex justify-content-between align-items-center">
+    <div class="">
+        <h4><?= htmlspecialchars($page_title) ?></h4>
+     
     </div>
     <a href="<?= $base_url ?>/con-estimate-create" class="btn btn-primary btn-sm">
         <i class="bi bi-plus-circle me-1"></i> New Estimate

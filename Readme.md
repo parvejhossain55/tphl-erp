@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS `soil_tests` (
 -- 2. OPERATIONS OPERATORS
 -- =============================================================================
 
-CREATE TABLE IF NOT EXISTS `operations_operators` (
+CREATE TABLE IF NOT EXISTS `operations_contractors` (
   `id`          INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name`        VARCHAR(255)     NOT NULL,
   `role`        ENUM('Contractor','Subcontractor','Supervisor','Worker') NOT NULL DEFAULT 'Contractor',
@@ -764,6 +764,7 @@ CREATE TABLE IF NOT EXISTS `operational_fund_requests` (
   `amount`          DECIMAL(15,2)    NOT NULL,
   `purpose`         TEXT             NOT NULL,
   `fund_date`       DATE             NOT NULL,
+  `approved_by`  INT  Deafualt Null
   `approved_amount` DECIMAL(15,2)    DEFAULT NULL,
   `status`          ENUM('pending','approved','rejected','paid') NOT NULL DEFAULT 'pending',
   `created_by`      INT(11)          NOT NULL,

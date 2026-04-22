@@ -385,63 +385,63 @@ $show_breadcrumb = true;
                                         </div>
                                     </td>
 
-                                                            <td>
+                                    <td>
                                         <?php if (
                                             isset($_SESSION['user']['role_id']) &&
                                             in_array($_SESSION['user']['role_id'], [1, 3, 5, 9])
                                         ): ?>
-                                       <div class="d-flex align-items-center gap-1">
+                                            <div class="d-flex align-items-center gap-1">
 
-    <!-- Follow Up -->
-    <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
-        class="btn btn-primary btn-sm position-relative"
-        style="white-space:nowrap;">
-        Follow Up
-        <?php if (!empty($followUpCounts[$lead['id']])): ?>
-            <span class="action-badge" style="">
-                <?= $followUpCounts[$lead['id']] ?>
-            </span>
-        <?php endif; ?>
-    </a>
+                                                <!-- Follow Up -->
+                                                <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
+                                                    class="btn btn-primary btn-sm position-relative"
+                                                    style="white-space:nowrap;">
+                                                    Follow Up
+                                                    <?php if (!empty($followUpCounts[$lead['id']])): ?>
+                                                        <span class="action-badge" style="">
+                                                            <?= $followUpCounts[$lead['id']] ?>
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </a>
 
-    <!-- Booking -->
-    <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
-        class="btn btn-secondary btn-sm position-relative"
-        style="white-space:nowrap;">
-        <?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?>
-        <span class="action-badge" style="">
-            <?= $bookingCount[$lead['id']] ?? 0 ?>
-        </span>
-    </a>
+                                                <!-- Booking -->
+                                                <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
+                                                    class="btn btn-secondary btn-sm position-relative"
+                                                    style="white-space:nowrap;">
+                                                    <?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?>
+                                                    <span class="action-badge" style="">
+                                                        <?= $bookingCount[$lead['id']] ?? 0 ?>
+                                                    </span>
+                                                </a>
 
-    <!-- 3 Dot Dropdown -->
-    <div class="dropdown">
-        <button class="action-dot-btn btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
-            <i class="bi bi-three-dots-vertical"></i>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
-            <li>
-                <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>">
-                    <i class="bi bi-pencil-square me-2 text-primary"></i> Edit
-                </a>
-            </li>
-            <li>
-                <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>">
-                    <i class="bi bi-eye me-2 text-success"></i> View
-                </a>
-            </li>
-            <li>
-                <button class="dropdown__item text-danger removeBtnCust"
-                    data-name="<?= $lead['full_name'] ?>"
-                    data-action="lead-delete"
-                    data-id="<?= $lead['id'] ?>">
-                    <i class="bi bi-trash me-2"></i> Delete
-                </button>
-            </li>
-        </ul>
-    </div>
+                                                <!-- 3 Dot Dropdown -->
+                                                <div class="dropdown">
+                                                    <button class="action-dot-btn btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                                        <i class="bi bi-three-dots-vertical"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                                                        <li>
+                                                            <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>">
+                                                                <i class="bi bi-pencil-square me-2 text-primary"></i> Edit
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>">
+                                                                <i class="bi bi-eye me-2 text-success"></i> View
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <button class="dropdown__item text-danger removeBtnCust"
+                                                                data-name="<?= $lead['full_name'] ?>"
+                                                                data-action="lead-delete"
+                                                                data-id="<?= $lead['id'] ?>">
+                                                                <i class="bi bi-trash me-2"></i> Delete
+                                                            </button>
+                                                        </li>
+                                                    </ul>
+                                                </div>
 
-</div>
+                                            </div>
                                         <?php else: ?>
                                             <div class="d-flex align-items-center gap-1 flex-nowrap">
 

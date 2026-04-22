@@ -679,6 +679,9 @@ h6{
   .btn {
     width: 100%;
   }
+  .permission-btn {
+    width: 70px!important;
+  }
   .followup-btn {
     justify-content: flex-start;
   }

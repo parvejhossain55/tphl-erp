@@ -5,7 +5,8 @@
  *
  * Schema:
  * id, project_id, site_engineer_id, work_done, progress_percentage,
- * report_date, weather_condition, manpower_count, created_by, created_at
+ * report_date, weather_condition, manpower_count, progress_image,
+ * created_by, created_at
  */
 class Con_DPR extends Model
 {
@@ -110,11 +111,11 @@ class Con_DPR extends Model
         $sql = "INSERT INTO {$this->table}
                 (project_id, site_engineer_id, work_done,
                  progress_percentage, report_date,
-                 weather_condition, manpower_count, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                 weather_condition, manpower_count, progress_image, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iisdssii',
+            'iisdssisi',
             $data['project_id'],
             $data['site_engineer_id'],
             $data['work_done'],
@@ -122,6 +123,7 @@ class Con_DPR extends Model
             $data['report_date'],
             $data['weather_condition'],
             $data['manpower_count'],
+            $data['progress_image'],
             $data['created_by']
         );
         $stmt->execute();

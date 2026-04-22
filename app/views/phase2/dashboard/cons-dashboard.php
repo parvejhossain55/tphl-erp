@@ -1,1105 +1,575 @@
-﻿<?php
+<?php
 $addPage = true;
 $show_breadcrumb = false;
+$base = $GLOBALS['base_url'];
+
+// Helper: format BDT amounts
+function conFmt($n) {
+    $n = (float)$n;
+    if ($n >= 10000000) return '৳' . number_format($n/10000000, 2) . ' Cr';
+    if ($n >= 100000)   return '৳' . number_format($n/100000,   2) . ' L';
+    if ($n >= 1000)     return '৳' . number_format($n/1000,     1) . 'K';
+    return '৳' . number_format($n, 0);
+}
+
+$stats       = $stats      ?? [];
+$projects    = $projects   ?? [];
+$budgetUtil  = $budgetUtil ?? ['total'=>0,'spent'=>0,'pct'=>0,'remaining'=>0];
+$stockAlerts = $stockAlerts ?? [];
+$pendingAlerts = $pendingAlerts ?? [];
+$soilAlerts  = $soilAlerts ?? [];
+
+$statusColor = [
+    'Planning'    => ['bg'=>'rgba(99,102,241,.12)', 'text'=>'#6366f1'],
+    'In Progress' => ['bg'=>'rgba(245,158,11,.12)', 'text'=>'#f59e0b'],
+    'On Hold'     => ['bg'=>'rgba(239,68,68,.12)',  'text'=>'#ef4444'],
+    'Completed'   => ['bg'=>'rgba(16,185,129,.12)', 'text'=>'#10b981'],
+];
 ?>
 <style>
-  /* ── Uses project CSS variables already defined in the theme ── */
-  .stat-card {
-    border-radius: 12px;
-    padding: 18px 20px;
-    height: 100%;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 3px;
-    height: 100%;
-    border-radius: 12px 0 0 12px;
-  }
-
-  .stat-label {
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-
-  .stat-value {
-    font-weight: 700;
-    font-size: 28px;
-    line-height: 1;
-  }
-
-  .stat-sub {
-    font-size: 11px;
-    margin-top: 4px;
-  }
-
-  .stat-icon {
-    position: absolute;
-    right: 18px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 28px;
-    opacity: .12;
-  }
-
-  .card-green {
-    --card-accent: #2ecc71;
-  }
-
-  .card-amber {
-    --card-accent: #f39c12;
-  }
-
-  .card-red {
-    --card-accent: #e74c3c;
-  }
-
-  .card-blue {
-    --card-accent: #3498db;
-  }
-
-  .section-title {
-    font-weight: 700;
-    font-size: 14px;
-    letter-spacing: .4px;
-    text-transform: uppercase;
-    margin-bottom: 14px;
-  }
-
-  .section-title span {
-    font-weight: 400;
-    font-size: 11px;
-    margin-left: 8px;
-    text-transform: none;
-    letter-spacing: 0;
-  }
-
-  .panel-card {
-    border-radius: 12px;
-    padding: 20px;
-    height: 100%;
-  }
-
-  /* Progress */
-  .prog-row {
-    margin-bottom: 14px;
-  }
-
-  .prog-label {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 6px;
-    font-size: 12px;
-  }
-
-  .prog-label strong {
-    font-weight: 600;
-  }
-
-  .prog-track {
-    height: 7px;
-    border-radius: 6px;
-    overflow: hidden;
-    background: rgba(0, 0, 0, .08);
-  }
-
-  .prog-fill {
-    height: 100%;
-    border-radius: 6px;
-  }
-
-  .fill-green {
-    background: linear-gradient(90deg, #27ae60, #2ecc71);
-  }
-
-  .fill-amber {
-    background: linear-gradient(90deg, #d68910, #f39c12);
-  }
-
-  .fill-red {
-    background: linear-gradient(90deg, #c0392b, #e74c3c);
-  }
-
-  .fill-blue {
-    background: linear-gradient(90deg, #2980b9, #3498db);
-  }
-
-  /* Donut (CSS only) */
-  .donut-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-  }
-
-  .donut {
-    width: 140px;
-    height: 140px;
-    border-radius: 50%;
-    background: conic-gradient(#f39c12 0% 70.3%, rgba(0, 0, 0, .1) 70.3% 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-
-  .donut::after {
-    content: '';
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    position: absolute;
-  }
-
-  .donut-text {
-    position: absolute;
-    z-index: 2;
-    text-align: center;
-  }
-
-  .donut-pct {
-    font-weight: 800;
-    font-size: 26px;
-    line-height: 1;
-  }
-
-  .donut-sub {
-    font-size: 10px;
-  }
-
-  .donut-legend {
-    display: flex;
-    gap: 20px;
-    margin-top: 16px;
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-  }
-
-  .legend-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-  }
-
-  .donut-stats {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid rgba(0, 0, 0, .08);
-  }
-
-  .donut-stat-val {
-    font-size: 18px;
-    font-weight: 700;
-  }
-
-  .donut-stat-lbl {
-    font-size: 10px;
-  }
-
-  /* Table */
-  .dash-table {
-    width: 100%;
-  }
-
-  .dash-table th {
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    font-weight: 600;
-    padding: 0 0 10px;
-    border-bottom: 1px solid rgba(0, 0, 0, .08);
-  }
-
-  .dash-table td {
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(0, 0, 0, .06);
-    font-size: 12.5px;
-    vertical-align: middle;
-  }
-
-  .dash-table tr:last-child td {
-    border-bottom: none;
-  }
-
-  .proj-name {
-    font-weight: 600;
-    font-size: 13px;
-  }
-
-  .proj-loc {
-    font-size: 11px;
-  }
-
-  .manager-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .manager-av {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .status-badge {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: .5px;
-    padding: 3px 10px;
-    border-radius: 20px;
-  }
-
-  .status-ongoing {
-    background: rgba(52, 152, 219, .15);
-    color: #3498db;
-  }
-
-  .status-completed {
-    background: rgba(46, 204, 113, .15);
-    color: #2ecc71;
-  }
-
-  .health-score {
-    font-weight: 700;
-    font-size: 17px;
-  }
-
-  .score-low {
-    color: #e74c3c;
-  }
-
-  .score-mid {
-    color: #f39c12;
-  }
-
-  .score-high {
-    color: #2ecc71;
-  }
-
-  /* Health Cards */
-  .health-card {
-    border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
-  }
-
-  .health-card:last-child {
-    margin-bottom: 0;
-  }
-
-  .health-card-title {
-    font-weight: 600;
-    font-size: 13px;
-  }
-
-  .health-card-loc {
-    font-size: 11px;
-  }
-
-  .health-score-badge {
-    font-size: 18px;
-    font-weight: 800;
-  }
-
-  .at-risk-tag {
-    font-size: 9px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    border-radius: 4px;
-    padding: 2px 7px;
-    font-weight: 700;
-    background: rgba(231, 76, 60, .12);
-    color: #e74c3c;
-  }
-
-  .health-meta {
-    font-size: 10px;
-  }
-
-  /* Alert Cards */
-  .alert-card {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    border-radius: 10px;
-    padding: 12px 14px;
-    margin-bottom: 8px;
-  }
-
-  .alert-card:last-child {
-    margin-bottom: 0;
-  }
-
-  .alert-icon-circle {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-
-  .alert-icon-amber {
-    background: rgba(243, 156, 18, .12);
-    color: #f39c12;
-  }
-
-  .alert-icon-red {
-    background: rgba(231, 76, 60, .12);
-    color: #e74c3c;
-  }
-
-  .alert-icon-blue {
-    background: rgba(52, 152, 219, .12);
-    color: #3498db;
-  }
-
-  .alert-title {
-    font-size: 12.5px;
-    font-weight: 600;
-  }
-
-  .alert-detail {
-    font-size: 11px;
-  }
-
-  /* Contractor */
-  .contractor-row {
-    margin-bottom: 12px;
-  }
-
-  .contractor-row:last-child {
-    margin-bottom: 0;
-  }
-
-  .contractor-name {
-    font-size: 12.5px;
-    font-weight: 600;
-  }
-
-  .contractor-type {
-    font-size: 11px;
-  }
-
-  /* Stock Alert */
-  .stock-alert-card {
-    border-radius: 10px;
-    padding: 12px 14px;
-    margin-bottom: 8px;
-  }
-
-  .stock-alert-card:last-child {
-    margin-bottom: 0;
-  }
-
-  .stock-name {
-    font-size: 12.5px;
-    font-weight: 600;
-  }
-
-  .stock-type {
-    font-size: 10px;
-  }
-
-  .stock-qty {
-    font-size: 16px;
-    font-weight: 700;
-  }
-
-  .stock-min {
-    font-size: 11px;
-  }
-
-  /* Labour */
-  .labour-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid rgba(0, 0, 0, .06);
-  }
-
-  .labour-row:last-child {
-    border-bottom: none;
-  }
-
-  .labour-label {
-    font-size: 12px;
-  }
-
-  .labour-val {
-    font-size: 17px;
-    font-weight: 700;
-  }
-
-  .labour-val.neg {
-    color: #e74c3c;
-  }
-
-  .labour-val.pos {
-    color: #2ecc71;
-  }
-
-  /* Financial */
-  .fin-card {
-    border-radius: 10px;
-    padding: 14px 16px;
-  }
-
-  .fin-label {
-    font-size: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-
-  .fin-val {
-    font-size: 22px;
-    font-weight: 700;
-  }
-
-  .fin-tag {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 4px;
-    margin-left: 6px;
-  }
-
-  .fin-tag-amber {
-    background: rgba(243, 156, 18, .12);
-    color: #f39c12;
-  }
-
-  .fin-tag-red {
-    background: rgba(231, 76, 60, .12);
-    color: #e74c3c;
-  }
-
-  .fin-tag-green {
-    background: rgba(46, 204, 113, .12);
-    color: #2ecc71;
-  }
-
-  /* Wrap panels & stat-cards with card__wrapper look */
-  .panel-card,
-  .stat-card,
-  .health-card,
-  .alert-card,
-  .stock-alert-card,
-  .fin-card {
-    border: 1px solid var(--border-color, rgba(0, 0, 0, .08));
-
-  }
-
-
+:root {
+  --cd-primary: #198754;
+  --cd-dark:    #0f5132;
+  --cd-light:   #20a86a;
+  --cd-blue:    #3b82f6;
+  --cd-green:   #10b981;
+  --cd-amber:   #f59e0b;
+  --cd-red:     #ef4444;
+  --cd-purple:  #8b5cf6;
+  --cd-indigo:  #6366f1;
+  --cd-teal:    #14b8a6;
+  --cd-pink:    #ec4899;
+}
+
+/* ── KPI Cards ────────────────────────────────────────────── */
+.kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+.kpi-card {
+  border-radius:14px;
+  padding:18px 20px;
+  position:relative;
+  overflow:hidden;
+  text-decoration:none !important;
+  display:block;
+  border:1px solid var(--border-color, rgba(0,0,0,.08));
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.kpi-card:hover { transform:translateY(-3px); box-shadow:0 8px 28px rgba(0,0,0,.12); }
+.kpi-accent {
+  position:absolute; left:0; top:0; width:4px; height:100%; border-radius:14px 0 0 14px;
+}
+.kpi-icon {
+  width:42px; height:42px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; margin-bottom:12px;
+}
+.kpi-value { font-size:26px; font-weight:800; line-height:1; margin-bottom:4px; }
+.kpi-label { font-size:10.5px; font-weight:600; letter-spacing:1px; text-transform:uppercase; margin-bottom:3px; }
+.kpi-sub   { font-size:11px; }
+.kpi-badge {
+  position:absolute; top:14px; right:14px;
+  font-size:9px; font-weight:700; padding:3px 8px; border-radius:20px; letter-spacing:.5px;
+}
+
+/* ── Section Panels ───────────────────────────────────────── */
+.con-panel {
+  border-radius:14px; padding:22px;
+  border:1px solid var(--border-color, rgba(0,0,0,.08));
+}
+.sec-title {
+  font-size:11px; font-weight:700; letter-spacing:1.5px;
+  text-transform:uppercase; margin-bottom:16px;
+  display:flex; align-items:center; gap:8px;
+}
+.sec-title-dot {
+  width:8px; height:8px; border-radius:50%;
+}
+
+/* ── Progress bars ────────────────────────────────────────── */
+.prog-row { margin-bottom:13px; }
+.prog-row:last-child { margin-bottom:0; }
+.prog-meta { display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px; }
+.prog-track { height:8px; border-radius:6px; background:rgba(0,0,0,.07); overflow:hidden; }
+.prog-fill  { height:100%; border-radius:6px; transition:width .5s ease; }
+
+/* ── Donut ────────────────────────────────────────────────── */
+.donut-ring {
+  width:130px; height:130px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  position:relative; margin:0 auto 14px;
+}
+.donut-inner {
+  position:absolute; z-index:2; text-align:center;
+}
+.donut-pct { font-size:22px; font-weight:800; line-height:1; }
+.donut-sub { font-size:10px; }
+.donut-stats { display:flex; gap:20px; justify-content:center; flex-wrap:wrap; margin-top:14px; }
+.donut-stat { text-align:center; }
+.donut-stat-val { font-size:16px; font-weight:700; }
+.donut-stat-lbl { font-size:10px; }
+
+/* ── Project Table ────────────────────────────────────────── */
+.proj-table { width:100%; border-collapse:collapse; }
+.proj-table th {
+  font-size:10px; letter-spacing:1.4px; text-transform:uppercase; font-weight:600;
+  padding:0 12px 10px; border-bottom:2px solid rgba(0,0,0,.07); text-align:left;
+}
+.proj-table td {
+  padding:12px; border-bottom:1px solid rgba(0,0,0,.05);
+  font-size:12.5px; vertical-align:middle;
+}
+.proj-table tr:last-child td { border-bottom:none; }
+.proj-table tr.proj-row { cursor:pointer; transition:background .15s; }
+.proj-table tr.proj-row:hover td { background:rgba(59,130,246,.04); }
+.proj-name-cell { font-weight:700; font-size:13px; }
+.proj-loc-cell  { font-size:11px; margin-top:2px; }
+.status-pill {
+  font-size:10px; font-weight:700; padding:3px 10px; border-radius:20px; letter-spacing:.5px;
+}
+
+/* ── Alert Cards ──────────────────────────────────────────── */
+.alert-item {
+  display:flex; align-items:flex-start; gap:12px;
+  padding:11px 13px; border-radius:10px; margin-bottom:8px;
+  cursor:pointer; transition:opacity .15s;
+  border:1px solid rgba(0,0,0,.06);
+}
+.alert-item:last-child { margin-bottom:0; }
+.alert-item:hover { opacity:.8; }
+.alert-icon-wrap {
+  width:34px; height:34px; border-radius:9px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:15px;
+}
+.alert-item-title { font-size:12.5px; font-weight:600; }
+.alert-item-sub   { font-size:11px; margin-top:1px; }
+
+/* ── Stock Alert ──────────────────────────────────────────── */
+.stock-item {
+  padding:11px 13px; border-radius:10px; margin-bottom:8px;
+  border:1px solid rgba(0,0,0,.06);
+}
+.stock-item:last-child { margin-bottom:0; }
+.stock-name  { font-size:12.5px; font-weight:700; }
+.stock-qty   { font-size:16px; font-weight:700; }
+.stock-track { height:5px; border-radius:3px; background:rgba(0,0,0,.08); overflow:hidden; margin-top:6px; }
+.stock-fill  { height:100%; border-radius:3px; background:linear-gradient(90deg,#ef4444,#f87171); }
+
+/* ── Empty state ──────────────────────────────────────────── */
+.empty-state { text-align:center; padding:28px 0; }
+.empty-state-icon { font-size:28px; opacity:.3; margin-bottom:8px; }
+.empty-state-text { font-size:12px; }
 </style>
 
-
-
-
-
-
-
-
-  <!-- ── KPI Row 1 ── -->
-  <div class="row  mb-3">
-    <div class="col-3">
-      <div class="stat-card card__wrapper">
-        <div class="stat-label">Total Projects</div>
-        <div class="stat-value">4</div>
-        <div class="stat-sub">3 ongoing · 1 completed</div>
-
+<!-- ═══════════════════════════════ GREEN HERO BANNER ═══════════════════════════════ -->
+<div style="background:linear-gradient(135deg,#0f5132 0%,#198754 55%,#20a86a 100%);
+            border-radius:18px;padding:26px 30px;margin-bottom:22px;
+            position:relative;overflow:hidden">
+  <div style="position:absolute;width:260px;height:260px;border-radius:50%;
+    background:rgba(255,255,255,.04);top:-80px;right:-60px"></div>
+  <div style="position:absolute;width:160px;height:160px;border-radius:50%;
+    background:rgba(255,255,255,.03);bottom:-50px;left:-30px"></div>
+  <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:7px;
+        background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);
+        padding:4px 14px;border-radius:20px;font-size:10.5px;font-weight:700;
+        letter-spacing:1.5px;text-transform:uppercase;color:#fff;margin-bottom:12px">
+        <i class="fa-solid fa-hard-hat"></i> Construction Management
       </div>
+      <h4 style="font-size:24px;font-weight:900;color:#fff;margin:0 0 5px">Construction Dashboard</h4>
+      <p style="font-size:12.5px;color:rgba(255,255,255,.7);margin:0">
+        <i class="fal fa-calendar me-1"></i>Real-time overview · <?= date('d M Y, h:i A') ?>
+      </p>
     </div>
-    <div class="col-3">
-      <div class="stat-card card__wrapper">
-        <div class="stat-label">Budget Utilization</div>
-        <div class="stat-value">70%</div>
-        <div class="stat-sub">৳20.8 Cr of ৳29.5 Cr</div>
-
-      </div>
-    </div>
-    <div class="col-3">
-      <div class="stat-card card__wrapper">
-        <div class="stat-label">Total Purchases</div>
-        <div class="stat-value">৳20.2 L</div>
-        <div class="stat-sub">4 orders pending</div>
-
-      </div>
-    </div>
-    <div class="col-3">
-      <div class="stat-card card__wrapper">
-        <div class="stat-label">Stock Alerts</div>
-        <div class="stat-value">2</div>
-        <div class="stat-sub">Items below minimum level</div>
-
-      </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <a href="<?=$base?>/con-estimates" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+        color:#fff;border-radius:10px;padding:7px 18px;font-size:12px;font-weight:700;
+        text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+        <i class="fal fa-file-alt"></i>Estimates
+      </a>
+      <a href="<?=$base?>/con-working-plans" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+        color:#fff;border-radius:10px;padding:7px 18px;font-size:12px;font-weight:700;
+        text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+        <i class="fal fa-calendar-alt"></i>Work Plans
+      </a>
+      <a href="<?=$base?>/con-projects" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+        color:#fff;border-radius:10px;padding:7px 18px;font-size:12px;font-weight:700;
+        text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+        <i class="fal fa-building"></i>Projects
+      </a>
     </div>
   </div>
+</div>
 
-  <!-- ── KPI Row 2 ── -->
-  <div class="row  mb-4">
-    <div class="col-3">
-      <div class="stat-card card__wrapper">
-        <div class="stat-label">Active Workers</div>
-        <div class="stat-value">1</div>
-        <div class="stat-sub">৳800 unpaid wages</div>
+<!-- ══════════════════════ ROW 1: 4 KPI CARDS ═══════════════════════════════ -->
+<div class="kpi-grid">
 
+  <!-- 1. Total Projects -->
+  <a href="<?=$base?>/con-projects" class="kpi-card card__wrapper">
+    <div class="kpi-accent" style="background:var(--cd-blue)"></div>
+    <div class="kpi-icon" style="background:rgba(59,130,246,.12);color:var(--cd-blue)"><i class="fal fa-building"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Total Projects</div>
+    <div class="kpi-value" style="color:var(--cd-blue)"><?= $stats['total_projects'] ?? 0 ?></div>
+    <div class="kpi-sub" style="color:var(--text-muted)">Active construction sites</div>
+  </a>
+
+  <!-- 2. Total Initial Budget -->
+  <a href="<?=$base?>/con-estimates" class="kpi-card card__wrapper">
+    <div class="kpi-accent" style="background:var(--cd-green)"></div>
+    <div class="kpi-icon" style="background:rgba(16,185,129,.12);color:var(--cd-green)"><i class="fal fa-money-bill-wave"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Total Initial Budget</div>
+    <div class="kpi-value" style="color:var(--cd-green)"><?= conFmt($stats['total_budget'] ?? 0) ?></div>
+    <div class="kpi-sub" style="color:var(--text-muted)">Approved estimates total</div>
+  </a>
+
+  <!-- 3. Material Budget -->
+  <a href="<?=$base?>/con-estimates" class="kpi-card card__wrapper">
+    <div class="kpi-accent" style="background:var(--cd-amber)"></div>
+    <div class="kpi-icon" style="background:rgba(245,158,11,.12);color:var(--cd-amber)"><i class="fal fa-boxes"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Total Material Budget</div>
+    <div class="kpi-value" style="color:var(--cd-amber)"><?= conFmt($stats['total_material'] ?? 0) ?></div>
+    <div class="kpi-sub" style="color:var(--text-muted)">Construction materials cost</div>
+  </a>
+
+  <!-- 4. Manpower Budget -->
+  <a href="<?=$base?>/con-estimates" class="kpi-card card__wrapper">
+    <div class="kpi-accent" style="background:var(--cd-purple)"></div>
+    <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:var(--cd-purple)"><i class="fal fa-hard-hat"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Total Manpower Budget</div>
+    <div class="kpi-value" style="color:var(--cd-purple)"><?= conFmt($stats['total_labour'] ?? 0) ?></div>
+    <div class="kpi-sub" style="color:var(--text-muted)">Labour &amp; workforce cost</div>
+  </a>
+
+</div>
+
+<!-- ══════════════════════ ROW 2: 4 MORE CARDS ══════════════════════════════ -->
+<div class="kpi-grid mb-4">
+
+  <!-- 5. Stock Alerts -->
+  <a href="<?=$base?>/con-stocks" class="kpi-card card__wrapper">
+    <div class="kpi-accent" style="background:var(--cd-red)"></div>
+    <div class="kpi-icon" style="background:rgba(239,68,68,.12);color:var(--cd-red)"><i class="fal fa-warehouse"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Stock Alerts</div>
+    <div class="kpi-value" style="color:var(--cd-red)"><?= $stats['stock_alerts'] ?? 0 ?></div>
+    <div class="kpi-sub" style="color:var(--text-muted)">Items below minimum level</div>
+    <?php if (($stats['stock_alerts'] ?? 0) > 0): ?>
+    <span class="kpi-badge" style="background:rgba(239,68,68,.12);color:var(--cd-red)"><i class="fas fa-exclamation-triangle me-1"></i>ALERT</span>
+    <?php endif; ?>
+  </a>
+
+  <!-- 6. Pending Approvals -->
+  <a href="<?=$base?>/con-pending-payments" class="kpi-card card__wrapper">
+    <div class="kpi-accent" style="background:var(--cd-indigo)"></div>
+    <div class="kpi-icon" style="background:rgba(99,102,241,.12);color:var(--cd-indigo)"><i class="fal fa-check-circle"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Pending Approvals</div>
+    <div class="kpi-value" style="color:var(--cd-indigo)"><?= $stats['pending_approvals'] ?? 0 ?></div>
+    <div class="kpi-sub" style="color:var(--text-muted)">Bills, funds &amp; vendor payments</div>
+    <?php if (($stats['pending_approvals'] ?? 0) > 0): ?>
+    <span class="kpi-badge" style="background:rgba(99,102,241,.12);color:var(--cd-indigo)">PENDING</span>
+    <?php endif; ?>
+  </a>
+
+  <!-- 7. Budget Requests -->
+  <a href="<?=$base?>/con-budget-extends" class="kpi-card card__wrapper">
+    <div class="kpi-accent" style="background:var(--cd-teal)"></div>
+    <div class="kpi-icon" style="background:rgba(20,184,166,.12);color:var(--cd-teal)"><i class="fal fa-file-invoice-dollar"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Budget Requests</div>
+    <div class="kpi-value" style="color:var(--cd-teal)"><?= $stats['budget_requests'] ?? 0 ?></div>
+    <div class="kpi-sub" style="color:var(--text-muted)">Pending extension requests</div>
+    <?php if (($stats['budget_requests'] ?? 0) > 0): ?>
+    <span class="kpi-badge" style="background:rgba(20,184,166,.12);color:var(--cd-teal)">REVIEW</span>
+    <?php endif; ?>
+  </a>
+
+  <!-- 8. Lab Testing Alerts -->
+  <a href="<?=$base?>/con-soil-tests" class="kpi-card card__wrapper">
+    <div class="kpi-accent" style="background:var(--cd-pink)"></div>
+    <div class="kpi-icon" style="background:rgba(236,72,153,.12);color:var(--cd-pink)"><i class="fal fa-flask"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Lab Testing Alerts</div>
+    <div class="kpi-value" style="color:var(--cd-pink)"><?= $stats['lab_alerts'] ?? 0 ?></div>
+    <div class="kpi-sub" style="color:var(--text-muted)">Soil test records</div>
+  </a>
+
+</div>
+
+<!-- ═══════════════ ROW 3: PROJECT PROGRESS + BUDGET DONUT ══════════════════ -->
+<div class="row  mb-4">
+
+  <!-- Project Progress Overview -->
+  <div class="col-8">
+    <div class="con-panel card__wrapper h-100">
+      <div class="sec-title">
+        <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
+        Project Progress Overview
       </div>
-    </div>
-    <div class="col-3">
-      <div class="stat-card card__wrapper">
-        <div class="stat-label">Labour Costs</div>
-        <div class="stat-value">৳800</div>
-        <div class="stat-sub">Total wages to date</div>
-
-      </div>
-    </div>
-    <div class="col-3">
-      <div class="stat-card card__wrapper">
-        <div class="stat-label">Pending Approvals</div>
-        <div class="stat-value">0</div>
-        <div class="stat-sub">All clear</div>
-
-      </div>
-    </div>
-    <div class="col-3">
-      <div class="stat-card card__wrapper">
-        <div class="stat-label">Stock Value</div>
-        <div class="stat-value">৳58.3 L</div>
-        <div class="stat-sub">Total inventory value</div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Charts Row ── -->
-  <div class="row  mb-4">
-    <!-- Project Progress -->
-    <div class="col-8">
-      <div class="panel-card card__wrapper">
-        <div class="section-title">Project Progress Overview</div>
-        <div class="prog-row">
-          <div class="prog-label"><strong>Green Valley Residency</strong><span>35%</span></div>
-          <div class="prog-track">
-            <div class="prog-fill fill-amber" style="width:35%"></div>
-          </div>
+      <?php if (empty($projects)): ?>
+        <div class="empty-state">
+          <div class="empty-state-icon"><i class="fal fa-chart-bar"></i></div>
+          <div class="empty-state-text" style="color:var(--text-muted)">No projects found</div>
         </div>
-        <div class="prog-row">
-          <div class="prog-label"><strong>Premium Heights Tower</strong><span>48%</span></div>
-          <div class="prog-track">
-            <div class="prog-fill fill-amber" style="width:48%"></div>
-          </div>
-        </div>
-        <div class="prog-row">
-          <div class="prog-label"><strong>Riverside Apartments</strong><span>100%</span></div>
-          <div class="prog-track">
-            <div class="prog-fill fill-green" style="width:100%"></div>
-          </div>
-        </div>
-        <div class="prog-row" style="margin-bottom:0">
-          <div class="prog-label"><strong>Skyline Plaza</strong><span>88%</span></div>
-          <div class="prog-track">
-            <div class="prog-fill fill-green" style="width:88%"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Budget Donut -->
-    <div class="col-4">
-      <div class="panel-card card__wrapper">
-        <div class="section-title">Budget Utilization</div>
-        <div class="donut-wrap">
-          <div style="position:relative; display:flex; align-items:center; justify-content:center;">
-            <div class="donut"></div>
-            <div class="donut-text">
-              <div class="donut-pct">70.3%</div>
-              <div class="donut-sub">Used</div>
-            </div>
-          </div>
-          <div class="donut-legend">
-            <div class="legend-item">
-              <div class="legend-dot" style="background:var(--accent-amber)"></div>Used Budget
-            </div>
-            <div class="legend-item">
-              <div class="legend-dot" style="background:var(--progress-track)"></div>Remaining
-            </div>
-          </div>
-          <div class="donut-stats">
-            <div class="text-center">
-              <div class="donut-stat-val">৳29.5 Cr</div>
-              <div class="donut-stat-lbl">Total Budget</div>
-            </div>
-            <div class="text-center">
-              <div class="donut-stat-val" style="color:var(--accent-amber)">৳8.8 Cr</div>
-              <div class="donut-stat-lbl">Remaining</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Financial Summary + Health Score ── -->
-  <div class="row  mb-4">
-    <!-- Financial Summary -->
-    <div class="col-5">
-      <div class="panel-card card__wrapper">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <div class="section-title" style="margin-bottom:0">Financial Summary</div>
-          <span class="fin-tag fin-tag-amber">70% Utilized</span>
-        </div>
-        <div class="row g-2">
-          <div class="col-6">
-            <div class="fin-card">
-              <div class="fin-label">Total Project Budget</div>
-              <div class="fin-val">৳29.5 Cr</div>
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="fin-card">
-              <div class="fin-label">Purchase Costs</div>
-              <div class="fin-val">৳20.2 L</div>
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="fin-card">
-              <div class="fin-label">Labour Costs</div>
-              <div class="fin-val" style="color:var(--accent-red)">৳800</div>
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="fin-card">
-              <div class="fin-label">Remaining Budget</div>
-              <div class="fin-val" style="color:var(--accent-amber)">৳8.8 Cr</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Project Health Score -->
-    <div class="col-7">
-      <div class="panel-card card__wrapper">
-        <div class="section-title">Project Health Score</div>
-
-        <div class="health-card">
-          <div class="d-flex justify-content-between align-items-start mb-2">
+      <?php else: ?>
+        <?php foreach ($projects as $pr): 
+          $pct   = round((float)($pr['progress_pct'] ?? 0), 1);
+          $color = $pct >= 75 ? 'var(--cd-green)' : ($pct >= 40 ? 'var(--cd-amber)' : 'var(--cd-red)');
+          $grad  = $pct >= 75 ? 'linear-gradient(90deg,#059669,#10b981)' : ($pct >= 40 ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#dc2626,#ef4444)');
+          $sc    = $statusColor[$pr['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.06)','text'=>'var(--text-muted)'];
+        ?>
+        <div class="prog-row" onclick="location.href='<?=$base?>/con-project/<?= $pr['id'] ?>'" style="cursor:pointer">
+          <div class="prog-meta">
             <div>
-              <div class="health-card-title">Green Valley Residency</div>
-              <div class="health-card-loc">📍 Banani, Dhaka</div>
+              <strong style="font-size:13px"><?= htmlspecialchars($pr['name']) ?></strong>
+              <span style="font-size:11px;color:var(--text-muted);margin-left:8px"><i class="fal fa-map-marker-alt me-1"></i><?= htmlspecialchars($pr['location_name'] ?: 'N/A') ?></span>
+              <span class="status-pill ms-2" style="background:<?=$sc['bg']?>;color:<?=$sc['text']?>"><?= $pr['project_status'] ?? 'N/A' ?></span>
             </div>
-            <div class="text-end">
-              <div class="health-score-badge score-low">70 / 100</div>
-              <div><span class="at-risk-tag">At Risk</span></div>
+            <div style="text-align:right">
+              <span style="font-weight:700;font-size:13px;color:<?=$color?>"><?=$pct?>%</span>
+              <span style="font-size:10px;color:var(--text-muted);margin-left:8px"><?= conFmt($pr['total_budget']) ?> budget</span>
             </div>
           </div>
-          <div class="row g-2">
-            <div class="col-4">
-              <div class="health-meta">Progress</div>
-              <div class="prog-track mt-1">
-                <div class="prog-fill fill-amber" style="width:35%"></div>
-              </div>
-              <div class="health-meta mt-1">35%</div>
-            </div>
-            <div class="col-4">
-              <div class="health-meta">Budget</div>
-              <div class="prog-track mt-1">
-                <div class="prog-fill fill-amber" style="width:48%"></div>
-              </div>
-              <div class="health-meta mt-1">48%</div>
-            </div>
-            <div class="col-4">
-              <div class="health-meta">Delays</div>
-              <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--accent-red)">62d</div>
-            </div>
+          <div class="prog-track">
+            <div class="prog-fill" style="width:<?=$pct?>%;background:<?=$grad?>"></div>
           </div>
         </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
+  </div>
 
-        <div class="health-card">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div>
-              <div class="health-card-title">Premium Heights Tower</div>
-              <div class="health-card-loc">📍 Gulshan-1, Dhaka</div>
-            </div>
-            <div class="text-end">
-              <div class="health-score-badge score-mid">80 / 100</div>
-              <div><span class="at-risk-tag">At Risk</span></div>
-            </div>
-          </div>
-          <div class="row g-2">
-            <div class="col-4">
-              <div class="health-meta">Progress</div>
-              <div class="prog-track mt-1">
-                <div class="prog-fill fill-amber" style="width:48%"></div>
-              </div>
-              <div class="health-meta mt-1">48%</div>
-            </div>
-            <div class="col-4">
-              <div class="health-meta">Budget</div>
-              <div class="prog-track mt-1">
-                <div class="prog-fill fill-amber" style="width:50%"></div>
-              </div>
-              <div class="health-meta mt-1">50%</div>
-            </div>
-            <div class="col-4">
-              <div class="health-meta">Delays</div>
-              <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--accent-amber)">17d</div>
-            </div>
-          </div>
+  <!-- Budget Utilization Donut -->
+  <div class="col-4">
+    <div class="con-panel card__wrapper h-100 text-center">
+      <div class="sec-title justify-content-center">
+        <div class="sec-title-dot" style="background:var(--cd-amber)"></div>
+        Budget Utilization
+      </div>
+      <?php
+        $pct  = (float)($budgetUtil['pct'] ?? 0);
+        $deg  = round($pct * 3.6);
+        $clr  = $pct > 85 ? '#ef4444' : ($pct > 60 ? '#f59e0b' : '#10b981');
+      ?>
+      <div class="donut-ring" style="background:conic-gradient(<?=$clr?> 0% <?=$deg?>deg, rgba(0,0,0,.08) <?=$deg?>deg 360deg)">
+        <div style="width:92px;height:92px;border-radius:50%;position:absolute;background:var(--card-bg,#fff)"></div>
+        <div class="donut-inner">
+          <div class="donut-pct" style="color:<?=$clr?>"><?=$pct?>%</div>
+          <div class="donut-sub" style="color:var(--text-muted)">Used</div>
         </div>
-
-        <div class="health-card" style="margin-bottom:0">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div>
-              <div class="health-card-title">Skyline Plaza</div>
-              <div class="health-card-loc">📍 Uttara, Dhaka</div>
-            </div>
-            <div class="text-end">
-              <div class="health-score-badge score-mid">75 / 100</div>
-              <div><span class="at-risk-tag">At Risk</span></div>
-            </div>
-          </div>
-          <div class="row g-2">
-            <div class="col-4">
-              <div class="health-meta">Progress</div>
-              <div class="prog-track mt-1">
-                <div class="prog-fill fill-green" style="width:88%"></div>
-              </div>
-              <div class="health-meta mt-1">88%</div>
-            </div>
-            <div class="col-4">
-              <div class="health-meta">Budget</div>
-              <div class="prog-track mt-1">
-                <div class="prog-fill fill-amber" style="width:90%"></div>
-              </div>
-              <div class="health-meta mt-1">90%</div>
-            </div>
-            <div class="col-4">
-              <div class="health-meta">Delays</div>
-              <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--accent-amber)">6d</div>
-            </div>
-          </div>
+      </div>
+      <div class="donut-stats">
+        <div class="donut-stat">
+          <div class="donut-stat-val"><?= conFmt($budgetUtil['total']) ?></div>
+          <div class="donut-stat-lbl" style="color:var(--text-muted)">Total Budget</div>
         </div>
-
+        <div class="donut-stat">
+          <div class="donut-stat-val" style="color:<?=$clr?>"><?= conFmt($budgetUtil['spent']) ?></div>
+          <div class="donut-stat-lbl" style="color:var(--text-muted)">Spent</div>
+        </div>
+        <div class="donut-stat">
+          <div class="donut-stat-val" style="color:var(--cd-green)"><?= conFmt($budgetUtil['remaining']) ?></div>
+          <div class="donut-stat-lbl" style="color:var(--text-muted)">Remaining</div>
+        </div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ── Project Status Table ── -->
-  <div class="panel-card mb-4 card__wrapper">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div class="section-title" style="margin-bottom:0">Project Status Overview</div>
-      <a href="#" style="font-size:11px;color:var(--accent-green);text-decoration:none">View All →</a>
+<!-- ══════════════════════ ROW 4: PROJECT STATUS TABLE ══════════════════════ -->
+<div class="con-panel card__wrapper mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="sec-title" style="margin-bottom:0">
+      <div class="sec-title-dot" style="background:var(--cd-indigo)"></div>
+      Project Status Overview
     </div>
-    <table class="dash-table">
-      <thead>
-        <tr>
-          <th>Project</th>
-          <th>Manager</th>
-          <th>Progress</th>
-          <th>Budget Used</th>
-          <th>Health</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <div class="proj-name">Green Valley Residency</div>
-            <div class="proj-loc">📍 Banani, Dhaka · Mar 2025</div>
-          </td>
-          <td>
-            <div class="manager-cell">
-              <div class="manager-av">FR</div>
-              Fatima Rahman
+    <a href="<?=$base?>/con-projects" style="font-size:11px;color:var(--cd-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <table class="proj-table">
+    <thead>
+      <tr>
+        <th>Project</th>
+        <th>Floors</th>
+        <th>Progress</th>
+        <th>Budget Used</th>
+        <th>Status</th>
+        <th style="text-align:right">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php if (empty($projects)): ?>
+      <tr><td colspan="6" class="empty-state"><div class="empty-state-icon"><i class="fal fa-hard-hat"></i></div><div class="empty-state-text">No projects yet</div></td></tr>
+      <?php else: ?>
+      <?php foreach ($projects as $pr):
+        $pct = round((float)($pr['progress_pct'] ?? 0), 1);
+        $clr = $pct >= 75 ? 'var(--cd-green)' : ($pct >= 40 ? 'var(--cd-amber)' : 'var(--cd-red)');
+        $pclr = $pct >= 75 ? 'var(--cd-green)' : ($pct >= 40 ? 'var(--cd-amber)' : 'var(--cd-red)');
+        $grad = $pct >= 75 ? 'linear-gradient(90deg,#059669,#10b981)' : ($pct >= 40 ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#dc2626,#ef4444)');
+        $sc   = $statusColor[$pr['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.06)','text'=>'var(--text-muted)'];
+        $budgetUsedPct = ($pr['total_budget'] > 0) ? round($pr['total_spent'] / $pr['total_budget'] * 100, 1) : 0;
+      ?>
+      <tr class="proj-row" onclick="location.href='<?=$base?>/con-project/<?= $pr['id'] ?>'">
+        <td>
+          <div class="proj-name-cell"><?= htmlspecialchars($pr['name']) ?></div>
+          <div class="proj-loc-cell" style="color:var(--text-muted)"><i class="fal fa-map-marker-alt me-1"></i><?= htmlspecialchars($pr['location_name'] ?: 'N/A') ?></div>
+        </td>
+        <td style="font-weight:600"><?= $pr['total_floors'] ?: '—' ?></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;min-width:130px">
+            <div class="prog-track" style="flex:1">
+              <div class="prog-fill" style="width:<?=$pct?>%;background:<?=$grad?>"></div>
             </div>
-          </td>
-          <td>
-            <div style="margin-bottom:4px;font-size:12px;font-weight:600;color:var(--accent-amber)">35%</div>
-            <div class="prog-track" style="width:120px">
-              <div class="prog-fill fill-amber" style="width:35%"></div>
-            </div>
-          </td>
-          <td>
-            <div style="color:var(--text-primary);font-weight:600">৳2.2 Cr</div>
-            <div style="font-size:11px;color:var(--text-muted)">of ৳14.5 Cr</div>
-          </td>
-          <td><span class="health-score score-low">70</span>
-            <div style="font-size:10px;color:var(--text-muted)">At Risk</div>
-          </td>
-          <td><span class="status-badge status-ongoing">Ongoing</span></td>
-        </tr>
-        <tr>
-          <td>
-            <div class="proj-name">Premium Heights Tower</div>
-            <div class="proj-loc">📍 Gulshan-1, Dhaka · Jun 2025</div>
-          </td>
-          <td>
-            <div class="manager-cell">
-              <div class="manager-av">KA</div>
-              Md. Karim Ahmed
-            </div>
-          </td>
-          <td>
-            <div style="margin-bottom:4px;font-size:12px;font-weight:600;color:var(--accent-amber)">48%</div>
-            <div class="prog-track" style="width:120px">
-              <div class="prog-fill fill-amber" style="width:48%"></div>
-            </div>
-          </td>
-          <td>
-            <div style="color:var(--text-primary);font-weight:600">৳4.3 Cr</div>
-            <div style="font-size:11px;color:var(--text-muted)">of ৳8.5 Cr</div>
-          </td>
-          <td><span class="health-score score-mid">80</span>
-            <div style="font-size:10px;color:var(--text-muted)">At Risk</div>
-          </td>
-          <td><span class="status-badge status-ongoing">Ongoing</span></td>
-        </tr>
-        <tr>
-          <td>
-            <div class="proj-name">Riverside Apartments</div>
-            <div class="proj-loc">📍 Mirpur DOHS, Dhaka · Feb 2024</div>
-          </td>
-          <td>
-            <div class="manager-cell">
-              <div class="manager-av">AB</div>
-              Aisha Begum
-            </div>
-          </td>
-          <td>
-            <div style="margin-bottom:4px;font-size:12px;font-weight:600;color:var(--accent-green)">100%</div>
-            <div class="prog-track" style="width:120px">
-              <div class="prog-fill fill-green" style="width:100%"></div>
-            </div>
-          </td>
-          <td>
-            <div style="color:var(--text-primary);font-weight:600">৳3.5 Cr</div>
-            <div style="font-size:11px;color:var(--text-muted)">of ৳3.5 Cr</div>
-          </td>
-          <td><span class="health-score score-high">86</span>
-            <div style="font-size:10px;color:var(--text-muted)">Healthy</div>
-          </td>
-          <td><span class="status-badge status-completed">Completed</span></td>
-        </tr>
-        <tr>
-          <td>
-            <div class="proj-name">Skyline Plaza</div>
-            <div class="proj-loc">📍 Uttara, Dhaka · Dec 2024</div>
-          </td>
-          <td>
-            <div class="manager-cell">
-              <div class="manager-av">RI</div>
-              Md. Rafiq Islam
-            </div>
-          </td>
-          <td>
-            <div style="margin-bottom:4px;font-size:12px;font-weight:600;color:var(--accent-green)">88%</div>
-            <div class="prog-track" style="width:120px">
-              <div class="prog-fill fill-green" style="width:88%"></div>
-            </div>
-          </td>
-          <td>
-            <div style="color:var(--text-primary);font-weight:600">৳10.8 Cr</div>
-            <div style="font-size:11px;color:var(--text-muted)">of ৳11.9 Cr</div>
-          </td>
-          <td><span class="health-score score-mid">75</span>
-            <div style="font-size:10px;color:var(--text-muted)">At Risk</div>
-          </td>
-          <td><span class="status-badge status-ongoing">Ongoing</span></td>
-        </tr>
-      </tbody>
-    </table>
+            <span style="font-weight:700;font-size:12px;color:<?=$pclr?>"><?=$pct?>%</span>
+          </div>
+        </td>
+        <td>
+          <div style="font-weight:600"><?= conFmt($pr['total_spent']) ?></div>
+          <div style="font-size:10.5px;color:var(--text-muted)">of <?= conFmt($pr['total_budget']) ?> (<?=$budgetUsedPct?>%)</div>
+        </td>
+        <td>
+          <span class="status-pill" style="background:<?=$sc['bg']?>;color:<?=$sc['text']?>">
+            <?= htmlspecialchars($pr['project_status'] ?? 'Unknown') ?>
+          </span>
+        </td>
+        <td style="text-align:right">
+          <a href="<?=$base?>/con-project/<?= $pr['id'] ?>" class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:rgba(59,130,246,.1);color:var(--cd-blue);border-radius:6px;text-decoration:none" onclick="event.stopPropagation()">View <i class="fal fa-arrow-right ms-1"></i></a>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+      <?php endif; ?>
+    </tbody>
+  </table>
+</div>
+
+<!-- ════════════════ ROW 5: SMART ALERTS + LAB ALERTS + STOCK ═══════════════ -->
+<div class="row  mb-4">
+
+  <!-- Smart Alerts -->
+  <div class="col-4">
+    <div class="con-panel card__wrapper h-100">
+      <div class="sec-title">
+        <div class="sec-title-dot" style="background:var(--cd-red)"></div>
+        Smart Alerts
+      </div>
+
+      <?php if (($stats['stock_alerts'] ?? 0) > 0): ?>
+      <a href="<?=$base?>/con-stocks" class="alert-item" style="background:rgba(239,68,68,.05);text-decoration:none">
+        <div class="alert-icon-wrap" style="background:rgba(239,68,68,.12);color:var(--cd-red)"><i class="fal fa-warehouse"></i></div>
+        <div>
+          <div class="alert-item-title"><?= $stats['stock_alerts'] ?> Low Stock Item<?= $stats['stock_alerts'] > 1 ? 's' : '' ?></div>
+          <div class="alert-item-sub" style="color:var(--text-muted)">Materials below minimum level</div>
+        </div>
+      </a>
+      <?php endif; ?>
+
+      <?php if (($stats['pending_approvals'] ?? 0) > 0): ?>
+      <a href="<?=$base?>/con-pending-payments" class="alert-item" style="background:rgba(99,102,241,.05);text-decoration:none">
+        <div class="alert-icon-wrap" style="background:rgba(99,102,241,.12);color:var(--cd-indigo)"><i class="fal fa-hourglass-half"></i></div>
+        <div>
+          <div class="alert-item-title"><?= $stats['pending_approvals'] ?> Pending Approval<?= $stats['pending_approvals'] > 1 ? 's' : '' ?></div>
+          <div class="alert-item-sub" style="color:var(--text-muted)">Bills &amp; payments awaiting action</div>
+        </div>
+      </a>
+      <?php endif; ?>
+
+      <?php if (($stats['budget_requests'] ?? 0) > 0): ?>
+      <a href="<?=$base?>/con-budget-extends" class="alert-item" style="background:rgba(20,184,166,.05);text-decoration:none">
+        <div class="alert-icon-wrap" style="background:rgba(20,184,166,.12);color:var(--cd-teal)"><i class="fal fa-file-invoice-dollar"></i></div>
+        <div>
+          <div class="alert-item-title"><?= $stats['budget_requests'] ?> Budget Extension<?= $stats['budget_requests'] > 1 ? 's' : '' ?></div>
+          <div class="alert-item-sub" style="color:var(--text-muted)">Pending review &amp; approval</div>
+        </div>
+      </a>
+      <?php endif; ?>
+
+      <?php if (empty($pendingAlerts) && ($stats['stock_alerts']??0) == 0 && ($stats['pending_approvals']??0) == 0 && ($stats['budget_requests']??0) == 0): ?>
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fal fa-check-circle" style="color:var(--cd-green)"></i></div>
+        <div class="empty-state-text" style="color:var(--text-muted)">All clear — no alerts</div>
+      </div>
+      <?php endif; ?>
+
+      <!-- Recent pending items list -->
+      <?php if (!empty($pendingAlerts)): ?>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.07)">
+        <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Recent</div>
+        <?php foreach (array_slice($pendingAlerts, 0, 3) as $pa): ?>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.05)">
+          <span><?= $pa['description']?></span>
+          <span style="font-weight:600;color:var(--cd-amber)"><?= conFmt($pa['amount'] ?? 0) ?></span>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
+    </div>
   </div>
 
-  <!-- ── Bottom Row ── -->
-  <div class="row ">
-    <!-- Smart Alerts -->
-    <div class="col-3">
-      <div class="panel-card card__wrapper">
-        <div class="section-title">Smart Alerts</div>
-        <div class="alert-card">
-          <div class="alert-icon-circle alert-icon-amber">⏱</div>
+  <!-- Lab Testing Alerts -->
+  <div class="col-4">
+    <div class="con-panel card__wrapper h-100">
+      <div class="sec-title">
+        <div class="sec-title-dot" style="background:var(--cd-pink)"></div>
+        Lab Testing Alerts
+        <a href="<?=$base?>/con-soil-tests" style="font-size:10px;color:var(--cd-blue);text-decoration:none;margin-left:auto">View All <i class="fal fa-arrow-right ms-1"></i></a>
+      </div>
+      <?php if (empty($soilAlerts)): ?>
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fal fa-flask"></i></div>
+        <div class="empty-state-text" style="color:var(--text-muted)">No soil test records</div>
+      </div>
+      <?php else: ?>
+      <?php foreach ($soilAlerts as $st): ?>
+      <a href="<?=$base?>/con-soil-tests" class="alert-item" style="background:rgba(236,72,153,.05);text-decoration:none">
+        <div class="alert-icon-wrap" style="background:rgba(236,72,153,.12);color:var(--cd-pink)"><i class="fal fa-flask"></i></div>
+        <div>
+          <div class="alert-item-title"><?= htmlspecialchars($st['project_name'] ?? 'Project') ?></div>
+          <div class="alert-item-sub" style="color:var(--text-muted)">
+            Test: <?= $st['test_date'] ? date('d M Y', strtotime($st['test_date'])) : 'N/A' ?>
+            <?php if (!empty($st['lab_test_document_link'])): ?>
+            · <a href="<?= htmlspecialchars($st['lab_test_document_link']) ?>" target="_blank" style="color:var(--cd-blue)" onclick="event.stopPropagation()"><i class="fal fa-link me-1"></i>Lab Doc</a>
+            <?php endif; ?>
+            <?php if (!empty($st['field_test_doc_link'])): ?>
+            · <a href="<?= htmlspecialchars($st['field_test_doc_link']) ?>" target="_blank" style="color:var(--cd-green)" onclick="event.stopPropagation()"><i class="fal fa-link me-1"></i>Field Doc</a>
+            <?php endif; ?>
+          </div>
+        </div>
+      </a>
+      <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <!-- Low Stock Items -->
+  <div class="col-4">
+    <div class="con-panel card__wrapper h-100">
+      <div class="sec-title">
+        <div class="sec-title-dot" style="background:var(--cd-red)"></div>
+        Low Stock Items
+        <a href="<?=$base?>/con-stocks" style="font-size:10px;color:var(--cd-blue);text-decoration:none;margin-left:auto">Manage <i class="fal fa-arrow-right ms-1"></i></a>
+      </div>
+      <?php if (empty($stockAlerts)): ?>
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fal fa-check-circle" style="color:var(--cd-green)"></i></div>
+        <div class="empty-state-text" style="color:var(--text-muted)">Stock levels are healthy</div>
+      </div>
+      <?php else: ?>
+      <?php foreach ($stockAlerts as $sk):
+        $pct = $sk['min_stock_level'] > 0 ? min(100, round($sk['current_quantity'] / $sk['min_stock_level'] * 100)) : 100;
+      ?>
+      <div class="stock-item">
+        <div class="d-flex justify-content-between align-items-center">
           <div>
-            <div class="alert-title">1 Delayed Phase</div>
-            <div class="alert-detail">Project phases behind schedule — review timeline</div>
+            <div class="stock-name"><?= htmlspecialchars($sk['material_name']) ?></div>
+            <div style="font-size:10px;color:var(--text-muted)"><i class="fal fa-warehouse me-1"></i><?= htmlspecialchars($sk['warehouse_name']) ?></div>
+          </div>
+          <div style="text-align:right">
+            <div class="stock-qty" style="color:var(--cd-red)"><?= $sk['current_quantity'] ?> <span style="font-size:11px"><?= $sk['unit'] ?></span></div>
+            <div style="font-size:10px;color:var(--text-muted)">Min: <?= $sk['min_stock_level'] ?></div>
           </div>
         </div>
-        <div class="alert-card">
-          <div class="alert-icon-circle alert-icon-red">📦</div>
-          <div>
-            <div class="alert-title">2 Low Stock Items</div>
-            <div class="alert-detail">Materials below minimum inventory levels</div>
-          </div>
-        </div>
-        <div class="alert-card">
-          <div class="alert-icon-circle alert-icon-blue">💸</div>
-          <div>
-            <div class="alert-title">Unpaid Labour Wages</div>
-            <div class="alert-detail">৳800 in outstanding payments</div>
-          </div>
+        <div class="stock-track">
+          <div class="stock-fill" style="width:<?=$pct?>%"></div>
         </div>
       </div>
+      <?php endforeach; ?>
+      <?php endif; ?>
     </div>
-
-    <!-- Contractor Performance -->
-    <div class="col-3">
-      <div class="panel-card card__wrapper">
-        <div class="section-title">Contractor Performance</div>
-        <div class="contractor-row">
-          <div class="d-flex justify-content-between mb-1">
-            <div>
-              <div class="contractor-name">Foundation Experts Ltd</div>
-              <div class="contractor-type">Foundation</div>
-            </div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--accent-green)">100%</div>
-          </div>
-          <div class="prog-track">
-            <div class="prog-fill fill-green" style="width:100%"></div>
-          </div>
-        </div>
-        <div class="contractor-row">
-          <div class="d-flex justify-content-between mb-1">
-            <div>
-              <div class="contractor-name">ABC Developers</div>
-              <div class="contractor-type">Land Development</div>
-            </div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--accent-green)">100%</div>
-          </div>
-          <div class="prog-track">
-            <div class="prog-fill fill-green" style="width:100%"></div>
-          </div>
-        </div>
-        <div class="contractor-row">
-          <div class="d-flex justify-content-between mb-1">
-            <div>
-              <div class="contractor-name">PowerLine Electric</div>
-              <div class="contractor-type">Electrical</div>
-            </div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--accent-amber)">95%</div>
-          </div>
-          <div class="prog-track">
-            <div class="prog-fill fill-amber" style="width:95%"></div>
-          </div>
-        </div>
-        <div class="contractor-row" style="margin-bottom:0">
-          <div class="d-flex justify-content-between mb-1">
-            <div>
-              <div class="contractor-name">AquaFlow Solutions</div>
-              <div class="contractor-type">Plumbing</div>
-            </div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--accent-amber)">90%</div>
-          </div>
-          <div class="prog-track">
-            <div class="prog-fill fill-amber" style="width:90%"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Low Stock Alerts -->
-    <div class="col-3">
-      <div class="panel-card card__wrapper">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <div class="section-title" style="margin-bottom:0">Low Stock Alerts</div>
-          <span class="fin-tag fin-tag-red">2 Items</span>
-        </div>
-        <div class="stock-alert-card">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div>
-              <div class="stock-name">Stone Chips</div>
-              <div class="stock-type">Aggregate</div>
-            </div>
-            <span class="fin-tag fin-tag-amber">Low</span>
-          </div>
-          <div class="d-flex justify-content-between align-items-center mb-1">
-            <span class="stock-qty" style="color:var(--accent-amber)">350 CFT</span>
-            <span class="stock-min">Min: 500 CFT</span>
-          </div>
-          <div class="prog-track">
-            <div class="prog-fill fill-amber" style="width:70%"></div>
-          </div>
-        </div>
-        <div class="stock-alert-card">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div>
-              <div class="stock-name">White Cement</div>
-              <div class="stock-type">Cement</div>
-            </div>
-            <span class="fin-tag fin-tag-red">Critical</span>
-          </div>
-          <div class="d-flex justify-content-between align-items-center mb-1">
-            <span class="stock-qty" style="color:var(--accent-red)">60 Bag</span>
-            <span class="stock-min">Min: 100 Bag</span>
-          </div>
-          <div class="prog-track">
-            <div class="prog-fill fill-red" style="width:60%"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Labour Overview -->
-    <div class="col-3">
-      <div class="panel-card card__wrapper">
-        <div class="section-title">Labour Overview</div>
-        <div class="labour-row">
-          <span class="labour-label">Total Workers</span>
-          <span class="labour-val">1</span>
-        </div>
-        <div class="labour-row">
-          <span class="labour-label">Total Wages</span>
-          <span class="labour-val">৳800</span>
-        </div>
-        <div class="labour-row">
-          <span class="labour-label">Paid</span>
-          <span class="labour-val pos">৳0</span>
-        </div>
-        <div class="labour-row">
-          <span class="labour-label">Unpaid</span>
-          <span class="labour-val neg">৳800</span>
-        </div>
-        <div class="labour-row">
-          <span class="labour-label">Overtime Hours</span>
-          <span class="labour-val">0 hrs</span>
-        </div>
-        <div class="labour-row">
-          <span class="labour-label">Total Entries</span>
-          <span class="labour-val">—</span>
-        </div>
-      </div>
-    </div>
-
   </div>
-  <!-- end bottom row -->
+</div>
 
-  <div style="height:32px"></div>
-</div><!-- end main-content -->
+<div style="height:30px"></div>

@@ -3,20 +3,17 @@ $addPage = true;
 $show_breadcrumb = false;
 ?>
 
-<h4 class="mb-2">Land Visibility Study</h4>
 
-<div class="row">
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex flex-column flex-sm-row gap-2">
-                <a href="<?= $GLOBALS['base_url'] ?>/con-land-visibility-studies/create" class="btn btn-primary w-100">
-                    <i class="fa-light fa-plus me-1"></i> Add New Study
-                </a>
-            </div>
-        </div>
+
+
+<div class="mb-3 pagetitle d-flex justify-content-between align-items-center">
+    <div class="">
+        <h4 class="mb-2">Land Visibility Study</h4>
     </div>
+    <a href="<?= $GLOBALS['base_url'] ?>/con-land-visibility-studies/create" class="btn btn-primary ">
+        <i class="fa-light fa-plus me-1"></i> Add New Study
+    </a>
 </div>
-
 <div class="row">
     <div class="col-xxl-12">
         <div class="card__wrapper">
@@ -41,7 +38,7 @@ $show_breadcrumb = false;
                                     <td class="fw-semibold"><?= htmlspecialchars($row['project_name'] ?? 'N/A') ?></td>
                                     <td>
                                         <?php
-                                        $docBadge = match($row['land_legal_doc_status']) {
+                                        $docBadge = match ($row['land_legal_doc_status']) {
                                             'Verified' => 'success',
                                             'Rejected' => 'danger',
                                             default    => 'warning'
@@ -69,7 +66,7 @@ $show_breadcrumb = false;
                                     </td>
                                     <td>
                                         <?php
-                                        $qcBadge = match($row['qc_approval_status'] ?? 'Pending') {
+                                        $qcBadge = match ($row['qc_approval_status'] ?? 'Pending') {
                                             'Approved' => 'success',
                                             'Rejected' => 'danger',
                                             default    => 'secondary'
@@ -92,7 +89,7 @@ $show_breadcrumb = false;
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                       
+
                         <?php endif; ?>
                     </tbody>
                 </table>

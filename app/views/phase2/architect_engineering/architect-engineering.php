@@ -2,20 +2,21 @@
 $addPage = true;
 $show_breadcrumb = false;
 ?>
-
-<h4 class="mb-2">Architect & Engineering</h4>
-
-<div class="row">
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex flex-column flex-sm-row gap-2">
-                <a href="<?= $GLOBALS['base_url'] ?>/con-architect-engineering/create" class="btn btn-primary w-100">
-                    <i class="fa-light fa-plus me-1"></i> Add New
+<div class="mb-4 pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="">
+        <h4><?= htmlspecialchars($page_title) ?></h4>
+       
+    </div>
+    <div class="d-flex gap-2">
+          <a href="<?= $GLOBALS['base_url'] ?>/con-architect-engineering/create" class="btn btn-primary w-100">
+                    <i class="fa-light fa-plus me-1"></i> Add New Architecture
                 </a>
-            </div>
-        </div>
     </div>
 </div>
+
+<!-- <h4 class="mb-2">Architect & Engineering</h4> -->
+
+
 
 <div class="row">
     <div class="col-xxl-12">

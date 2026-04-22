@@ -3,8 +3,8 @@ namespace Phase2;
 
 use Controller;
 use Con_ContractorBill;
-use Con_Operator;
 use ApprovalRequest;
+use Con_Contractor;
 use Con_TargetFixed;
 
 class Con_ContractorBillController extends Controller
@@ -20,7 +20,7 @@ class Con_ContractorBillController extends Controller
     {
         $this->db            = $db;
         $this->billModel     = new Con_ContractorBill($this->db);
-        $this->operatorModel = new Con_Operator($this->db);
+        $this->operatorModel = new Con_Contractor($this->db);
         $this->approvalModel = new ApprovalRequest($this->db);
         $this->targetModel   = new Con_TargetFixed($this->db);
     }

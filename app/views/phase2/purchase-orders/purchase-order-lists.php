@@ -10,7 +10,6 @@
     </div>
 </div>
 
-<section class="section">
     <div class="card__wrapper shadow-sm">
         <div class="card__body p-0">
             <div class="table-responsive">
@@ -68,4 +67,3 @@
             </div>
         </div>
     </div>
-</section>

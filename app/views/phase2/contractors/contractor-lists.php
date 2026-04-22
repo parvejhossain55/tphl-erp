@@ -9,7 +9,7 @@ $show_breadcrumb = false;
     <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
         <div class="card__wrapper">
             <div class="d-flex flex-column flex-sm-row gap-2">
-                <a href="<?= $GLOBALS['base_url'] ?>/con-operator-create" class="btn btn-primary w-100">
+                <a href="<?= $GLOBALS['base_url'] ?>/con-contractor-create" class="btn btn-primary w-100">
                     <i class="fa-light fa-plus me-1"></i> Add Operator
                 </a>
             </div>
@@ -56,13 +56,13 @@ $show_breadcrumb = false;
                                     </td>
                                     <td class="table__icon-box">
                                         <div class="d-flex align-items-center justify-content-center gap-10">
-                                            <a href="<?= $GLOBALS['base_url'] ?>/con-operator-edit/<?= $row['id'] ?>" class="table__icon edit">
+                                            <a href="<?= $GLOBALS['base_url'] ?>/con-contractor-edit/<?= $row['id'] ?>" class="table__icon edit">
                                                 <i class="fa-sharp fa-light fa-pen"></i>
                                             </a>
                                             <button class="table__icon delete removeBtnCust"
                                                 data-id="<?= $row['id'] ?>"
                                                 data-name="<?= htmlspecialchars($row['name']) ?>"
-                                                data-action="con-operator-delete">
+                                                data-action="con-contractor-delete">
                                                 <i class="fa-regular fa-trash"></i>
                                             </button>
                                         </div>

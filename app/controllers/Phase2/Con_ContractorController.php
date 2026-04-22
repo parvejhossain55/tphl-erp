@@ -1,18 +1,18 @@
 <?php
 namespace Phase2;
 
+use Con_Contractor;
 use Controller;
-use Con_Operator;
 
-class Con_OperatorController extends Controller
+class Con_ContractorController extends Controller
 {
     protected $db;
-    protected $operatorModel;
+    protected $contractorModel;
 
     public function __construct($db)
     {
         $this->db = $db;
-        $this->operatorModel = new Con_Operator($this->db);
+        $this->contractorModel = new Con_Contractor($this->db);
     }
 
     /* =====================
@@ -22,11 +22,11 @@ class Con_OperatorController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        $operators = $this->operatorModel->getAll();
+        $operators = $this->contractorModel->getAll();
 
-        $this->view('phase2/operators/operators-list', [
-            'current_route' => 'con-operators',
-            'page_title'    => 'Operators & Contractors',
+        $this->view('phase2/contractors/contractor-lists', [
+            'current_route' => 'con-contractors',
+            'page_title'    => ' Contractors',
             'operators'     => $operators,
         ]);
     }
@@ -36,8 +36,8 @@ class Con_OperatorController extends Controller
     ====================== */
     public function create()
     {
-        $this->view('phase2/operators/create-operator', [
-            'current_route' => 'con-operators',
+        $this->view('phase2/contractors/create-contractor', [
+            'current_route' => 'con-contractor-create',
             'page_title'    => 'Add Operator / Contractor',
         ]);
     }
@@ -63,18 +63,18 @@ class Con_OperatorController extends Controller
 
         if (empty($data['name'])) {
             setError('Operator name is required.');
-            header("Location: {$GLOBALS['base_url']}/con-operator-create");
+            header("Location: {$GLOBALS['base_url']}/con-contractors-create");
             exit;
         }
 
-        if ($this->operatorModel->create($data)) {
-            setSuccess('Operator created successfully!');
-            header("Location: {$GLOBALS['base_url']}/con-operators");
+        if ($this->contractorModel->create($data)) {
+            setSuccess('contractors created successfully!');
+            header("Location: {$GLOBALS['base_url']}/con-contractors");
             exit;
         }
 
-        setError('Failed to create operator.');
-        header("Location: {$GLOBALS['base_url']}/con-operator-create");
+        setError('Failed to create contractors.');
+        header("Location: {$GLOBALS['base_url']}/con-contractors-create");
         exit;
     }
 
@@ -83,17 +83,17 @@ class Con_OperatorController extends Controller
     ====================== */
     public function edit($id)
     {
-        $operator = $this->operatorModel->find($id);
-        if (!$operator) {
-            setError('Operator not found.');
-            header("Location: {$GLOBALS['base_url']}/con-operators");
+        $contractors = $this->contractorModel->find($id);
+        if (!$contractors) {
+            setError('contractors not found.');
+            header("Location: {$GLOBALS['base_url']}/con-contractors");
             exit;
         }
 
-        $this->view('phase2/operators/edit-operator', [
-            'current_route' => 'con-operators',
-            'page_title'    => 'Edit Operator',
-            'operator'      => $operator,
+        $this->view('phase2/contractors/edit-contractors', [
+            'current_route' => 'con-contractors',
+            'page_title'    => 'Edit contractors',
+            'contractors'      => $contractors,
         ]);
     }
 
@@ -115,14 +115,14 @@ class Con_OperatorController extends Controller
             'status'     => $_POST['status'] ?? 'active',
         ];
 
-        if ($this->operatorModel->update($id, $data)) {
-            setSuccess('Operator updated successfully!');
-            header("Location: {$GLOBALS['base_url']}/con-operators");
+        if ($this->contractorModel->update($id, $data)) {
+            setSuccess('contractors updated successfully!');
+            header("Location: {$GLOBALS['base_url']}/con-contractors");
             exit;
         }
 
-        setError('Failed to update operator.');
-        header("Location: {$GLOBALS['base_url']}/con-operator-edit/$id");
+        setError('Failed to update contractors.');
+        header("Location: {$GLOBALS['base_url']}/con-contractors-edit/$id");
         exit;
     }
 
@@ -132,12 +132,12 @@ class Con_OperatorController extends Controller
     public function delete()
     {
         $id = $_POST['id'] ?? 0;
-        if ($this->operatorModel->delete($id)) {
-            setSuccess('Operator deleted.');
+        if ($this->contractorModel->delete($id)) {
+            setSuccess('contractors deleted.');
         } else {
             setError('Delete failed.');
         }
-        header("Location: {$GLOBALS['base_url']}/con-operators");
+        header("Location: {$GLOBALS['base_url']}/con-contractors");
         exit;
     }
 }
