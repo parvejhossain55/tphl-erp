@@ -102,7 +102,7 @@ class Con_FinancialTransactionController extends Controller
                 "SELECT cbr.*, p.name AS project_name, oo.name AS operator_name
                  FROM contractor_bill_requests cbr
                  LEFT JOIN projects p ON p.id = cbr.project_id
-                 LEFT JOIN operations_operators oo ON oo.id = cbr.operator_id
+                 LEFT JOIN contractors oo ON oo.id = cbr.operator_id
                  WHERE cbr.id = ?"
             );
             $stmt->bind_param('i', $refId);

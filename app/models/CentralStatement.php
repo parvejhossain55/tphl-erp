@@ -3129,7 +3129,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             FROM con_financial_transactions cft
             LEFT JOIN projects p ON cft.project_id = p.id
             LEFT JOIN contractor_bill_requests cbr ON cft.ref_id = cbr.id
-            LEFT JOIN operations_operators oo ON cbr.operator_id = oo.id
+            LEFT JOIN contractors oo ON cbr.operator_id = oo.id
             LEFT JOIN users u ON cft.processed_by = u.id
             WHERE cft.ref_type = 'contractor_bill'
             AND DATE(cft.transaction_date) BETWEEN ? AND ?

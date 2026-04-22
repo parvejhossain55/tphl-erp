@@ -20,7 +20,7 @@ class Con_DashboardController extends Controller
         $stats = [];
 
         $stats['total_contractors'] = $this->db
-            ->query("SELECT COUNT(*) AS cnt FROM operations_operators WHERE status='active'")->fetch_assoc()['cnt'] ?? 0;
+            ->query("SELECT COUNT(*) AS cnt FROM contractors WHERE status='active'")->fetch_assoc()['cnt'] ?? 0;
 
         $stats['pending_bills'] = $this->db
             ->query("SELECT COUNT(*) AS cnt FROM contractor_bill_requests WHERE status IN ('submitted','verified')")->fetch_assoc()['cnt'] ?? 0;
@@ -35,7 +35,7 @@ class Con_DashboardController extends Controller
         $recentBills = $this->db->query("
             SELECT cbr.*, oo.name AS operator_name, p.name AS project_name
             FROM contractor_bill_requests cbr
-            LEFT JOIN operations_operators oo ON oo.id = cbr.operator_id
+            LEFT JOIN contractors oo ON oo.id = cbr.operator_id
             LEFT JOIN projects p ON p.id = cbr.project_id
             ORDER BY cbr.created_at DESC
             LIMIT 5

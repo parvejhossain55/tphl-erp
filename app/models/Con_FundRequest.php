@@ -19,7 +19,7 @@ class Con_FundRequest extends Model
                 FROM {$this->table} ofr
                 LEFT JOIN projects p              ON p.id   = ofr.project_id
                 LEFT JOIN users u                 ON u.id   = ofr.requester_id
-                LEFT JOIN operations_operators oo ON oo.id  = ofr.operator_id
+                LEFT JOIN contractors oo ON oo.id  = ofr.operator_id
                 LEFT JOIN users ab                ON ab.id  = ofr.approved_by
                 LEFT JOIN (
                     SELECT ref_id, processed_by
@@ -48,7 +48,7 @@ class Con_FundRequest extends Model
                 FROM {$this->table} ofr
                 LEFT JOIN projects p              ON p.id   = ofr.project_id
                 LEFT JOIN users u                 ON u.id   = ofr.requester_id
-                LEFT JOIN operations_operators oo ON oo.id  = ofr.operator_id
+                LEFT JOIN contractors oo ON oo.id  = ofr.operator_id
                 LEFT JOIN users ab                ON ab.id  = ofr.approved_by
                 WHERE ofr.id = ?";
         $stmt = $this->db->prepare($sql);
