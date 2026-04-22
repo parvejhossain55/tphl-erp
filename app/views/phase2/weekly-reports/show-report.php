@@ -6,24 +6,97 @@ $pct = (float)($r['progress_percentage'] ?? 0);
 $pctColor = $pct >= 80 ? '#198754' : ($pct >= 50 ? '#f59e0b' : '#ef4444');
 ?>
 <style>
-:root { --wr-green:#198754; --wr-dark:#0f5132; }
-.wr-hero { background:linear-gradient(135deg,#0f5132 0%,#198754 55%,#20a86a 100%);
-  border-radius:18px;padding:24px 30px;margin-bottom:20px;color:#fff;position:relative;overflow:hidden; }
-.wr-hero::before { content:'';position:absolute;width:200px;height:200px;border-radius:50%;
-  background:rgba(255,255,255,.05);top:-60px;right:-40px; }
-.wr-badge { display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.13);
-  border:1px solid rgba(255,255,255,.22);padding:3px 14px;border-radius:20px;
-  font-size:10.5px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;margin-bottom:10px; }
-.wr-card { border-radius:16px;border:1px solid rgba(0,0,0,.08);background:var(--card-bg,#fff);padding:24px;margin-bottom:20px; }
-.wr-sec { font-size:10.5px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;
-  color:var(--wr-green);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid rgba(25,135,84,.12);
-  display:flex;align-items:center;gap:7px; }
-.wr-info-row { display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:0; }
-.wr-info-item { background:rgba(25,135,84,.04);border:1px solid rgba(25,135,84,.1);
-  border-radius:12px;padding:14px 16px; }
-.wr-info-lbl { font-size:10px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;
-  color:var(--wr-green);margin-bottom:4px; }
-.wr-info-val { font-size:14px;font-weight:800;color:var(--text, #222); }
+  :root {
+    --wr-green: #198754;
+    --wr-dark: #0f5132;
+  }
+
+  .wr-hero {
+    background: linear-gradient(135deg, #0f5132 0%, #198754 55%, #20a86a 100%);
+    border-radius: 18px;
+    padding: 24px 30px;
+    margin-bottom: 20px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .wr-hero::before {
+    content: '';
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .05);
+    top: -60px;
+    right: -40px;
+  }
+
+  .wr-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, .13);
+    border: 1px solid rgba(255, 255, 255, .22);
+    padding: 3px 14px;
+    border-radius: 20px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .wr-card {
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, .08);
+    background: var(--card-bg, #fff);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .wr-sec {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--wr-green);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(25, 135, 84, .12);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .wr-info-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 0;
+  }
+
+  .wr-info-item {
+    background: rgba(25, 135, 84, .04);
+    border: 1px solid rgba(25, 135, 84, .1);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+
+  .wr-info-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+    color: var(--wr-green);
+    margin-bottom: 4px;
+  }
+
+  .wr-info-val {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text, #222);
+  }
 </style>
 
 <!-- Breadcrumb -->
@@ -54,7 +127,7 @@ $pctColor = $pct >= 80 ? '#198754' : ($pct >= 50 ? '#f59e0b' : '#ef4444');
         color:rgba(255,255,255,.7);margin-bottom:4px">Progress</div>
       <div style="font-size:30px;font-weight:900"><?= number_format($pct, 1) ?>%</div>
       <div style="height:6px;border-radius:4px;background:rgba(255,255,255,.2);margin-top:8px;overflow:hidden">
-        <div style="width:<?= min($pct,100) ?>%;height:100%;border-radius:4px;background:#fff"></div>
+        <div style="width:<?= min($pct, 100) ?>%;height:100%;border-radius:4px;background:#fff"></div>
       </div>
     </div>
   </div>
@@ -98,22 +171,22 @@ $pctColor = $pct >= 80 ? '#198754' : ($pct >= 50 ? '#f59e0b' : '#ef4444');
       </div>
 
       <?php if (!empty($r['weather_condition'])): ?>
-      <hr style="border-color:rgba(0,0,0,.07);margin:16px 0">
-      <div class="wr-sec"><i class="fal fa-cloud-sun"></i> Weather / Additional Notes</div>
-      <p style="font-size:13px"><?= htmlspecialchars($r['weather_condition']) ?></p>
+        <hr style="border-color:rgba(0,0,0,.07);margin:16px 0">
+        <div class="wr-sec"><i class="fal fa-cloud-sun"></i> Weather / Additional Notes</div>
+        <p style="font-size:13px"><?= htmlspecialchars($r['weather_condition']) ?></p>
       <?php endif; ?>
     </div>
   </div>
 
   <!-- Progress Photo -->
   <?php if (!empty($r['progress_image'])): ?>
-  <div class="col-lg-4">
-    <div class="wr-card">
-      <div class="wr-sec"><i class="fal fa-image"></i> Progress Photo</div>
-      <img src="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($r['progress_image']) ?>"
-        alt="Progress Photo" style="width:100%;border-radius:12px;border:1px solid rgba(0,0,0,.08)">
+    <div class="col-lg-4">
+      <div class="wr-card">
+        <div class="wr-sec"><i class="fal fa-image"></i> Progress Photo</div>
+        <img src="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($r['progress_image']) ?>"
+          alt="Progress Photo" style="width:100%;border-radius:12px;border:1px solid rgba(0,0,0,.08)">
+      </div>
     </div>
-  </div>
   <?php endif; ?>
 </div>
 

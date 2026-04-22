@@ -4,23 +4,87 @@ $base    = $GLOBALS['base_url'];
 $projects = $projects ?? [];
 ?>
 <style>
-:root { --wr-green:#198754; --wr-dark:#0f5132; }
-.wr-hero { background:linear-gradient(135deg,#0f5132 0%,#198754 55%,#20a86a 100%);
-  border-radius:18px;padding:22px 28px;margin-bottom:20px;color:#fff;position:relative;overflow:hidden; }
-.wr-hero::before { content:'';position:absolute;width:200px;height:200px;border-radius:50%;
-  background:rgba(255,255,255,.05);top:-60px;right:-40px; }
-.wr-badge { display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.13);
-  border:1px solid rgba(255,255,255,.22);padding:3px 14px;border-radius:20px;
-  font-size:10.5px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;margin-bottom:10px; }
-.wr-card { border-radius:16px;border:1px solid rgba(0,0,0,.08);background:var(--card-bg,#fff);
-  padding:28px;margin-bottom:20px; }
-.wr-section-title { font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;
-  color:var(--wr-green);margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid rgba(25,135,84,.12);
-  display:flex;align-items:center;gap:8px; }
-.wr-btn-green { background:linear-gradient(135deg,#0f5132,#198754);color:#fff;border:none;
-  border-radius:10px;padding:10px 26px;font-size:13px;font-weight:700;cursor:pointer;
-  display:inline-flex;align-items:center;gap:8px;transition:opacity .15s; }
-.wr-btn-green:hover { opacity:.88; }
+  :root {
+    --wr-green: #198754;
+    --wr-dark: #0f5132;
+  }
+
+  .wr-hero {
+    background: linear-gradient(135deg, #0f5132 0%, #198754 55%, #20a86a 100%);
+    border-radius: 18px;
+    padding: 22px 28px;
+    margin-bottom: 20px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .wr-hero::before {
+    content: '';
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .05);
+    top: -60px;
+    right: -40px;
+  }
+
+  .wr-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, .13);
+    border: 1px solid rgba(255, 255, 255, .22);
+    padding: 3px 14px;
+    border-radius: 20px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .wr-card {
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, .08);
+    /* background: var(--card-bg, #fff); */
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+
+  .wr-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--wr-green);
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(25, 135, 84, .12);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .wr-btn-green {
+    background: linear-gradient(135deg, #0f5132, #198754);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 26px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity .15s;
+  }
+
+  .wr-btn-green:hover {
+    opacity: .88;
+  }
 </style>
 
 <!-- Hero -->
@@ -46,9 +110,9 @@ $projects = $projects ?? [];
 <form action="<?= $base ?>/con-weekly-report-store" method="POST" enctype="multipart/form-data">
 
   <!-- Step 1: Project & Plan -->
-  <div class="wr-card">
+  <div class="wr-card card__wrapper">
     <div class="wr-section-title"><i class="fal fa-project-diagram"></i> Step 1 — Project & Working Plan</div>
-    <div class="row g-3">
+    <div class="row ">
 
       <div class="col-md-6">
         <label class="form-label fw-semibold">Project <span class="text-danger">*</span></label>
@@ -76,9 +140,9 @@ $projects = $projects ?? [];
   </div>
 
   <!-- Step 2: Target & Week -->
-  <div class="wr-card">
+  <div class="wr-card card__wrapper">
     <div class="wr-section-title"><i class="fal fa-bullseye"></i> Step 2 — Target & Week Number</div>
-    <div class="row g-3">
+    <div class="row ">
 
       <div class="col-md-5">
         <label class="form-label fw-semibold">Target (Optional)</label>
@@ -116,9 +180,9 @@ $projects = $projects ?? [];
   </div>
 
   <!-- Step 3: Report Details -->
-  <div class="wr-card">
+  <div class="wr-card card__wrapper">
     <div class="wr-section-title"><i class="fal fa-clipboard-list"></i> Step 3 — Report Details</div>
-    <div class="row g-3">
+    <div class="row ">
 
       <div class="col-md-4">
         <label class="form-label fw-semibold">Report Date</label>
@@ -163,124 +227,127 @@ $projects = $projects ?? [];
 </form>
 
 <script>
-const BASE_URL = '<?= $base ?>';
+  const BASE_URL = '<?= $base ?>';
 
-// ── Cascade 1: Project → Work Plans (via existing con-ajax-project-data) ────
-document.getElementById('project_id').addEventListener('change', function () {
-    const pid       = this.value;
-    const planSel   = document.getElementById('work_plan_id');
-    const planInfo  = document.getElementById('plan-info');
+  // ── Cascade 1: Project → Work Plans (via existing con-ajax-project-data) ────
+  document.getElementById('project_id').addEventListener('change', function() {
+    const pid = this.value;
+    const planSel = document.getElementById('work_plan_id');
+    const planInfo = document.getElementById('plan-info');
     const planLoader = document.getElementById('plan-loader');
     const targetSel = document.getElementById('target_id');
 
     planSel.innerHTML = '<option value="">— Loading... —</option>';
-    planSel.disabled  = true;
+    planSel.disabled = true;
     targetSel.innerHTML = '<option value="">— Select working plan first —</option>';
-    targetSel.disabled  = true;
+    targetSel.disabled = true;
     clearAutoFill();
 
     if (!pid) {
-        planSel.innerHTML = '<option value="">— Select project first —</option>';
-        return;
+      planSel.innerHTML = '<option value="">— Select project first —</option>';
+      return;
     }
 
     planLoader.style.display = 'block';
 
     fetch(BASE_URL + '/con-ajax-project-data?project_id=' + pid)
-        .then(r => r.json())
-        .then(data => {
-            planLoader.style.display = 'none';
-            planSel.innerHTML = '<option value="">— Select Working Plan —</option>';
-            const plans = data.work_plans || [];
-            if (plans.length === 0) {
-                planSel.innerHTML += '<option disabled>No plans found for this project</option>';
-            } else {
-                plans.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.textContent = p.label;
-                    opt.dataset.desc = p.work_description || '';
-                    planSel.appendChild(opt);
-                });
-            }
-            planSel.disabled = false;
-        })
-        .catch(err => {
-            planLoader.style.display = 'none';
-            planSel.innerHTML = '<option value="">Error: Could not load plans</option>';
-            planSel.disabled = false;
-            console.error('Work plan AJAX error:', err);
-        });
-});
+      .then(r => r.json())
+      .then(data => {
+        planLoader.style.display = 'none';
+        planSel.innerHTML = '<option value="">— Select Working Plan —</option>';
+        const plans = data.work_plans || [];
+        if (plans.length === 0) {
+          planSel.innerHTML += '<option disabled>No plans found for this project</option>';
+        } else {
+          plans.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.label;
+            opt.dataset.desc = p.work_description || '';
+            planSel.appendChild(opt);
+          });
+        }
+        planSel.disabled = false;
+      })
+      .catch(err => {
+        planLoader.style.display = 'none';
+        planSel.innerHTML = '<option value="">Error: Could not load plans</option>';
+        planSel.disabled = false;
+        console.error('Work plan AJAX error:', err);
+      });
+  });
 
-// ── Cascade 2: Work Plan → Targets ──────────────────────────────────────────
-document.getElementById('work_plan_id').addEventListener('change', function () {
-    const wpid       = this.value;
-    const targetSel  = document.getElementById('target_id');
+  // ── Cascade 2: Work Plan → Targets ──────────────────────────────────────────
+  document.getElementById('work_plan_id').addEventListener('change', function() {
+    const wpid = this.value;
+    const targetSel = document.getElementById('target_id');
     const targetLoader = document.getElementById('target-loader');
-    const planInfo   = document.getElementById('plan-info');
+    const planInfo = document.getElementById('plan-info');
 
     // Show plan description
     const opt = this.options[this.selectedIndex];
     planInfo.textContent = opt && opt.dataset.desc ? '📋 ' + opt.dataset.desc : '';
 
     targetSel.innerHTML = '<option value="">— Loading targets... —</option>';
-    targetSel.disabled  = true;
+    targetSel.disabled = true;
     clearAutoFill();
 
     if (!wpid) {
-        targetSel.innerHTML = '<option value="">— Select working plan first —</option>';
-        return;
+      targetSel.innerHTML = '<option value="">— Select working plan first —</option>';
+      return;
     }
 
     targetLoader.style.display = 'block';
 
     fetch(BASE_URL + '/con-ajax-report-targets?work_plan_id=' + wpid)
-        .then(r => r.json())
-        .then(data => {
-            targetLoader.style.display = 'none';
-            let html = '<option value="">— No specific target (optional) —</option>';
-            if (Array.isArray(data) && data.length > 0) {
-                data.forEach(t => {
-                    html += `<option value="${t.id}"
+      .then(r => r.json())
+      .then(data => {
+        targetLoader.style.display = 'none';
+        let html = '<option value="">— No specific target (optional) —</option>';
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach(t => {
+            html += `<option value="${t.id}"
                         data-year="${t.year}"
                         data-month="${t.month}"
                         data-week="${t.week_number}">
                         ${t.target_title} — Week ${t.week_number || '?'} (${t.year}/${String(t.month).padStart(2,'0')})
                     </option>`;
-                });
-            }
-            targetSel.innerHTML = html;
-            targetSel.disabled  = false;
+          });
+        }
+        targetSel.innerHTML = html;
+        targetSel.disabled = false;
 
-            // Auto-select if only one
-            if (data.length === 1) targetSel.selectedIndex = 1, targetSel.dispatchEvent(new Event('change'));
-        })
-        .catch(err => {
-            targetLoader.style.display = 'none';
-            targetSel.innerHTML = '<option value="">Error loading targets</option>';
-            targetSel.disabled = false;
-            console.error('Target AJAX error:', err);
-        });
-});
+        // Auto-select if only one
+        if (data.length === 1) targetSel.selectedIndex = 1, targetSel.dispatchEvent(new Event('change'));
+      })
+      .catch(err => {
+        targetLoader.style.display = 'none';
+        targetSel.innerHTML = '<option value="">Error loading targets</option>';
+        targetSel.disabled = false;
+        console.error('Target AJAX error:', err);
+      });
+  });
 
-// ── Target → Auto-fill Year / Month / Week ──────────────────────────────────
-document.getElementById('target_id').addEventListener('change', function () {
+  // ── Target → Auto-fill Year / Month / Week ──────────────────────────────────
+  document.getElementById('target_id').addEventListener('change', function() {
     const opt = this.options[this.selectedIndex];
     if (opt && opt.dataset.year) {
-        document.getElementById('display_year').value  = opt.dataset.year;
-        document.getElementById('display_month').value = opt.dataset.month;
-        const wSel = document.getElementById('week_no');
-        for (let i = 0; i < wSel.options.length; i++) {
-            if (wSel.options[i].value == opt.dataset.week) { wSel.selectedIndex = i; break; }
+      document.getElementById('display_year').value = opt.dataset.year;
+      document.getElementById('display_month').value = opt.dataset.month;
+      const wSel = document.getElementById('week_no');
+      for (let i = 0; i < wSel.options.length; i++) {
+        if (wSel.options[i].value == opt.dataset.week) {
+          wSel.selectedIndex = i;
+          break;
         }
+      }
     } else {
-        clearAutoFill();
+      clearAutoFill();
     }
-});
+  });
 
-function clearAutoFill() {
-    document.getElementById('display_year').value  = '';
+  function clearAutoFill() {
+    document.getElementById('display_year').value = '';
     document.getElementById('display_month').value = '';
-}
+  }
 </script>

@@ -23,7 +23,7 @@ class Con_MaterialIssue extends Model
                        m.name AS material_name, m.unit,
                        u.full_name AS issued_by_name,
                        wp.work_description AS work_plan_name,
-                       tf.title AS target_name
+                       tf.target_title AS target_name
                 FROM {$this->table} mi
                 LEFT JOIN projects p ON p.id = mi.project_id
                 LEFT JOIN con_warehouses w ON w.id = mi.warehouse_id
@@ -43,7 +43,7 @@ class Con_MaterialIssue extends Model
                     m.name AS material_name, m.unit,
                     u.full_name AS issued_by_name,
                     wp.work_description AS work_plan_name,
-                    tf.title AS target_name
+                    tf.target_title AS target_name
              FROM {$this->table} mi
              LEFT JOIN projects p ON p.id = mi.project_id
              LEFT JOIN con_warehouses w ON w.id = mi.warehouse_id
