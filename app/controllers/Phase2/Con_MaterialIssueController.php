@@ -63,6 +63,15 @@ class Con_MaterialIssueController extends Controller
             if ($tRes) $targets = $tRes->fetch_all(MYSQLI_ASSOC);
         } catch (\Exception $e) {}
 
+        // Fetch contractors from contractors table
+        $contractors = [];
+        try {
+            $cRes = $this->db->query(
+                "SELECT id, company_name, contact_person FROM contractors ORDER BY company_name ASC"
+            );
+            if ($cRes) $contractors = $cRes->fetch_all(MYSQLI_ASSOC);
+        } catch (\Exception $e) {}
+
         $this->view('phase2/material-issues/create-issue', [
             'current_route' => 'con-material-issues-create',
             'page_title'    => 'New Material Issue',
@@ -72,6 +81,7 @@ class Con_MaterialIssueController extends Controller
             'stocks'        => $stocks,
             'workPlans'     => $workPlans,
             'targets'       => $targets,
+            'contractors'   => $contractors,
         ]);
     }
 

@@ -118,9 +118,17 @@
                         <!-- Row 3: Issued To + Purpose -->
                         <div class="row  mb-3">
                             <div class="col-md-5">
-                                <label class="form-label fw-bold">Issued To (Person/Contractor)</label>
-                                <input type="text" name="issued_to" class="form-control"
-                                       placeholder="e.g., Contractor Rahim, Site Engineer Karim...">
+                                <label class="form-label fw-bold">Issued To (Contractor) <span class="text-danger">*</span></label>
+                                <select name="issued_to" class="form-select" required>
+                                    <option value="">-- Select Contractor --</option>
+                                    <?php foreach ($contractors ?? [] as $c): ?>
+                                        <option value="<?= htmlspecialchars($c['company_name']) ?>">
+                                            <?= htmlspecialchars($c['company_name']) ?>
+                                            <?= $c['contact_person'] ? '(' . htmlspecialchars($c['contact_person']) . ')' : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <div class="form-text text-muted">যদি না থাকে, contractor আগে add করুন</div>
                             </div>
                             <div class="col-md-7">
                                 <label class="form-label fw-bold">Purpose</label>
