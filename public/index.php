@@ -851,6 +851,9 @@ $routes['con-vendor-payments']              = ['controller' => 'Phase2\Con_Vendo
 $routes['con-vendor-payment-create']        = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'create'];
 $routes['con-vendor-payment-store']         = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'store'];
 $routes['con-vendor-payment/(\d+)']         = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'];
+$routes['con-vendor-payment-ajax-penalty']  = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'];
+$routes['con-vendor-payment-ajax-advance']  = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetAdvanceSummary'];
+$routes['con-ajax-po-by-vendor']            = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPOsByVendor'];
 
 // ── Financial Ledger ──────────────────────────────────────────────────────
 $routes['con-ledger']                  = ['controller' => 'Phase2\Con_FinancialLedgerController', 'method' => 'index'];
@@ -871,6 +874,7 @@ $routes['con-estimate-edit/(\d+)']    = ['controller' => 'Phase2\Con_InitialEsti
 $routes['con-estimate-update/(\d+)']  = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'update'];
 $routes['con-estimate-approve/(\d+)'] = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'approveBudget'];
 $routes['con-estimate-cancel/(\d+)']  = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'cancelBudget'];
+$routes['con-ajax-arch-by-project']   = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'ajaxArchByProject'];
 
 // ── Material Issues (Stock OUT) ───────────────────────────────────────────
 $routes['con-material-issues']               = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'index'];

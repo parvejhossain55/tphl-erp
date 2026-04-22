@@ -364,4 +364,36 @@ class Con_InitialEstimateController extends Controller
         header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
         exit;
     }
+
+    // =========================================================================
+    // AJAX — Architecture records for a project (GET ?project_id=N)
+    // Returns JSON array of { id, label }
+    // =========================================================================
+
+    public function ajaxArchByProject()
+    {
+        header('Content-Type: application/json');
+        $projectId = (int)($_GET['project_id'] ?? 0);
+
+        if (!$projectId) {
+            echo json_encode([]);
+            exit;
+        }
+
+        // architect_engineering records linked to this project
+        $stmt = $this->db->prepare(
+            "SELECT ae.id,
+                    CONCAT('Arch #', ae.id, ' — ', COALESCE(ae.project_name, p.name), ' (', ae.engineer_name, ')') AS label
+             FROM architect_engineering ae
+             LEFT JOIN projects p ON p.id = ae.project_id
+             WHERE ae.project_id = ?
+             ORDER BY ae.id DESC
+             LIMIT 20"
+        );
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        echo json_encode($rows);
+        exit;
+    }
 }

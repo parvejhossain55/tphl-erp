@@ -32,7 +32,7 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
-                                <select name="project_id" class="form-select" required>
+                                <select name="project_id" id="extendProjectId" class="form-select" required>
                                     <option value="">-- Select Project --</option>
                                     <?php foreach ($projects as $p): ?>
                                         <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
@@ -43,15 +43,12 @@
                                 <label class="form-label fw-bold">
                                     Initial Budget Reference <span class="text-danger">*</span>
                                 </label>
-                                <select name="initial_budget_id" class="form-select" required>
-                                    <option value="">-- Select Budget --</option>
-                                    <?php foreach ($budgets as $b): ?>
-                                        <option value="<?= $b['id'] ?>">
-                                            #<?= $b['id'] ?> — <?= htmlspecialchars($b['project_name']) ?>
-                                            (৳<?= number_format($b['total_estimated_cost'], 0) ?>)
-                                        </option>
-                                    <?php endforeach; ?>
+                                <select name="initial_budget_id" id="extendBudgetSel" class="form-select" required disabled>
+                                    <option value="">-- Select Project First --</option>
                                 </select>
+                                <div id="extendBudgetLoader" class="text-muted small mt-1" style="display:none">
+                                    <i class="bi bi-hourglass-split me-1"></i> Loading budgets...
+                                </div>
                             </div>
                         </div>
 
@@ -138,3 +135,49 @@
         </div>
     </div>
 </section>
+
+<script>
+// ── Budget Extend: Project → Initial Budget cascade ───────────────────────
+const EXTEND_BASE = '<?= $GLOBALS["base_url"] ?>';
+
+document.getElementById('extendProjectId').addEventListener('change', function () {
+    const pid       = this.value;
+    const budgetSel = document.getElementById('extendBudgetSel');
+    const loader    = document.getElementById('extendBudgetLoader');
+
+    budgetSel.innerHTML = '<option value="">-- Loading... --</option>';
+    budgetSel.disabled  = true;
+
+    if (!pid) {
+        budgetSel.innerHTML = '<option value="">-- Select Project First --</option>';
+        return;
+    }
+
+    loader.style.display = 'block';
+    fetch(EXTEND_BASE + '/con-ajax-project-data?project_id=' + pid)
+        .then(r => r.json())
+        .then(data => {
+            loader.style.display = 'none';
+            const budgets = data.budgets || [];
+            if (!budgets.length) {
+                budgetSel.innerHTML = '<option value="">-- No budgets for this project --</option>';
+                budgetSel.disabled  = false;
+                return;
+            }
+            budgetSel.innerHTML = '<option value="">-- Select Budget --</option>';
+            budgets.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.label;
+                budgetSel.appendChild(opt);
+            });
+            if (budgets.length === 1) budgetSel.selectedIndex = 1;
+            budgetSel.disabled = false;
+        })
+        .catch(() => {
+            loader.style.display = 'none';
+            budgetSel.innerHTML = '<option value="">-- Error loading budgets --</option>';
+            budgetSel.disabled  = false;
+        });
+});
+</script>

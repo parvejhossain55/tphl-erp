@@ -26,7 +26,7 @@
                 <div class="row">
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
-                        <select name="project_id" class="form-select" required>
+                        <select name="project_id" id="estimateProjectId" class="form-select" required>
                             <option value="">-- Choose Project --</option>
                             <?php foreach ($projects as $p): ?>
                                 <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
@@ -35,14 +35,12 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Architecture Record <span class="text-danger">*</span></label>
-                        <select name="architecture_id" class="form-select" required>
-                            <option value="">-- Choose Architecture --</option>
-                            <?php foreach ($archs as $a): ?>
-                                <option value="<?= $a['id'] ?>">
-                                    <?= htmlspecialchars($a['project_name'] ?? 'Arch #' . $a['id']) ?>
-                                </option>
-                            <?php endforeach; ?>
+                        <select name="architecture_id" id="archSelect" class="form-select" required>
+                            <option value="">-- Select Project First --</option>
                         </select>
+                        <div id="archLoader" class="text-muted small mt-1" style="display:none">
+                            <i class="bi bi-hourglass-split me-1"></i> Loading...
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold">Start Date</label>
@@ -383,5 +381,51 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Run on page load
     recalc();
+});
+</script>
+
+<script>
+// ── AJAX: Project → Architecture auto-select ─────────────────────────────
+const EST_BASE = '<?= $GLOBALS["base_url"] ?>';
+
+document.getElementById('estimateProjectId').addEventListener('change', function () {
+    const pid     = this.value;
+    const archSel = document.getElementById('archSelect');
+    const loader  = document.getElementById('archLoader');
+
+    archSel.innerHTML = '<option value="">-- Loading... --</option>';
+    archSel.disabled  = true;
+
+    if (!pid) {
+        archSel.innerHTML = '<option value="">-- Select Project First --</option>';
+        return;
+    }
+
+    loader.style.display = 'block';
+    fetch(EST_BASE + '/con-ajax-arch-by-project?project_id=' + pid)
+        .then(r => r.json())
+        .then(data => {
+            loader.style.display = 'none';
+            if (!data.length) {
+                archSel.innerHTML = '<option value="">-- No Architecture Record --</option>';
+                archSel.disabled = false;
+                return;
+            }
+            archSel.innerHTML = '<option value="">-- Select Architecture --</option>';
+            data.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                opt.textContent = a.label;
+                archSel.appendChild(opt);
+            });
+            // Auto-select if only one record
+            if (data.length === 1) archSel.selectedIndex = 1;
+            archSel.disabled = false;
+        })
+        .catch(() => {
+            loader.style.display = 'none';
+            archSel.innerHTML = '<option value="">-- Error loading --</option>';
+            archSel.disabled = false;
+        });
 });
 </script>
