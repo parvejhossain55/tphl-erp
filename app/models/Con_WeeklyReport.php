@@ -98,7 +98,7 @@ class Con_WeeklyReport extends Model
         $stmt = $this->db->prepare(
             "SELECT id, work_description, year, month
              FROM project_working_plans
-             WHERE project_id = ? AND approved_status = 'Approved'
+             WHERE project_id = ?
              ORDER BY year DESC, month DESC"
         );
         $stmt->bind_param('i', $projectId);
