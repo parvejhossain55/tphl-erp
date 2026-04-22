@@ -1,6 +1,6 @@
 <div class="pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
-        <h1><?= htmlspecialchars($page_title) ?></h1>
+        <h3><?= htmlspecialchars($page_title) ?></h3>
         <nav>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>

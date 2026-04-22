@@ -1,5 +1,4 @@
-<?php require_once 'app/views/layouts/header.php'; ?>
-<?php require_once 'app/views/layouts/sidebar.php'; ?>
+
 
 <main id="main" class="main">
     <div class="pagetitle d-flex justify-content-between align-items-center">
@@ -84,5 +83,3 @@
         </div>
     </section>
 </main>
-
-<?php require_once 'app/views/layouts/footer.php'; ?>

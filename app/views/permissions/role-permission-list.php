@@ -48,7 +48,7 @@ $show_breadcrumb = true;
                         <?php endif; ?>
 
                         <!-- Edit button always visible -->
-                        <button class="btn btn-primary ms-2"
+                        <button class="btn btn-primary permission-btn ms-2"
                             data-bs-toggle="modal"
                             data-bs-target="#editRoleModal<?= $role['role_id'] ?>">
                             Edit

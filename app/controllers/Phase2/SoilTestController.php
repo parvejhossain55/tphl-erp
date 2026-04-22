@@ -46,6 +46,7 @@ class SoilTestController extends Controller {
             'site_engineer_id'        => $_POST['site_engineer_id'] ?? null,
             'field_data'              => $_POST['field_data'] ?? null,
             'lab_test_document_link'  => $_POST['lab_test_document_link'] ?? null,
+            'field_test_doc_link'     => $_POST['field_test_doc_link'] ?? null,
             'test_date'               => $_POST['test_date'] ?? null,
             'created_by'              => $_SESSION['user']['id'],
         ];
@@ -88,6 +89,7 @@ class SoilTestController extends Controller {
             'site_engineer_id'       => $_POST['site_engineer_id'] ?? null,
             'field_data'             => $_POST['field_data'] ?? null,
             'lab_test_document_link' => $_POST['lab_test_document_link'] ?? null,
+            'field_test_doc_link'    => $_POST['field_test_doc_link'] ?? null,
             'test_date'              => $_POST['test_date'] ?? null,
         ];
 

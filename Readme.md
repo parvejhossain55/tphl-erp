@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS `soil_tests` (
 -- 2. OPERATIONS OPERATORS
 -- =============================================================================
 
-CREATE TABLE IF NOT EXISTS `operations_operators` (
+CREATE TABLE IF NOT EXISTS `operations_contractors` (
   `id`          INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name`        VARCHAR(255)     NOT NULL,
   `role`        ENUM('Contractor','Subcontractor','Supervisor','Worker') NOT NULL DEFAULT 'Contractor',
@@ -387,6 +387,7 @@ CREATE TABLE IF NOT EXISTS `vendors` (
   `id`         INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name`       VARCHAR(255)     NOT NULL,
   `phone`      VARCHAR(30)      DEFAULT NULL,
+  `company_name`      VARCHAR(30)      DEFAULT NULL,
   `trade_license_no` VARCHAR(255)     DEFAULT NULL,
   `tin_no` VARCHAR(255)     DEFAULT NULL,
   `email`      VARCHAR(191)     DEFAULT NULL,
@@ -732,6 +733,7 @@ CREATE TABLE IF NOT EXISTS `contractor_bill_requests` (
 CREATE TABLE IF NOT EXISTS `vendor_payment_requests` (
   `id`                 INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `vendor_id`          INT(11) UNSIGNED NOT NULL,
+  `project_id`          INT(11) UNSIGNED NOT NULL,
   `purchase_order_id`  INT(11) UNSIGNED NOT NULL,
   `invoice_number`     VARCHAR(100)     DEFAULT NULL,
   `invoice_amount`     DECIMAL(16,4)    NOT NULL COMMENT 'Vendor actual bill',
@@ -744,6 +746,7 @@ CREATE TABLE IF NOT EXISTS `vendor_payment_requests` (
   `qc_verified`        TINYINT(1)       NOT NULL DEFAULT 0,
   `status`             ENUM('Draft','Submitted','Approved','Rejected','Paid') NOT NULL DEFAULT 'Draft',
   `approved_amount`    DECIMAL(16,4)    DEFAULT NULL COMMENT 'Final amount approved by Accounts',
+  `net_payable`    DECIMAL(16,4)    DEFAULT 0,
   
   `created_by`         INT(11)          NOT NULL,
   `created_at`         TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -764,6 +767,7 @@ CREATE TABLE IF NOT EXISTS `operational_fund_requests` (
   `amount`          DECIMAL(15,2)    NOT NULL,
   `purpose`         TEXT             NOT NULL,
   `fund_date`       DATE             NOT NULL,
+  `approved_by`  INT  Deafualt Null
   `approved_amount` DECIMAL(15,2)    DEFAULT NULL,
   `status`          ENUM('pending','approved','rejected','paid') NOT NULL DEFAULT 'pending',
   `created_by`      INT(11)          NOT NULL,
@@ -785,6 +789,7 @@ CREATE TABLE IF NOT EXISTS `con_financial_transactions` (
   `id`               INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `ref_type`         ENUM('contractor_bill','operational_fund','vendor_payment') NOT NULL,
   `ref_id`           INT(11) UNSIGNED NOT NULL,
+  `project_id`       INT(11) UNSIGNED NOT NULL,
   `payment_type`     ENUM('Advance','Partial','Full','Refund') NOT NULL,
   `payment_method`   ENUM('Cash','Cheque','BankTransfer','MobileWallet','Other') NOT NULL,
   `amount_paid`      DECIMAL(15,2)    NOT NULL,

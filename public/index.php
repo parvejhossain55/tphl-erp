@@ -672,6 +672,7 @@ $route = trim($route, '/');
 // PHASE 2 — CONSTRUCTION MANAGEMENT ROUTES
 // =============================================================================
 // ── Module 1: Pre-Construction ──────────────────────────────────────────────
+$routes['con-dashboard'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'index'];
 $routes['con-land-visibility-studies'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'index'];
 $routes['con-land-visibility-studies/create'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'create'];
 $routes['con-land-visibility-studies/store'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'store'];
@@ -707,16 +708,28 @@ $routes['con-soil-tests/edit'] = ['controller' => 'Phase2\SoilTestController', '
 $routes['con-soil-tests/update'] = ['controller' => 'Phase2\SoilTestController', 'method' => 'update'];
 $routes['delete-soil-test']                     = ['controller' => 'Phase2\SoilTestController', 'method' => 'delete'];
 
-// ── Dashboard ──────────────────────────────────────────────────────────────
-$routes['con-dashboard'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'index'];
+// \u2500\u2500 Dashboard + Project Detail + AJAX Tab Routes \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+$routes['con-dashboard']           = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'index'];
+$routes['con-projects']            = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectsList'];
+$routes['con-project/(\d+)']       = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectDetail'];
+$routes['con-ajax-workplan/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWorkPlan'];
+$routes['con-ajax-targets/(\d+)']  = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxTargets'];
+$routes['con-ajax-weekly/(\d+)']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWeeklyData'];
+// ── Role-Specific Dashboards ───────────────────────────────────────────────
+$routes['qc-dashboard']                   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'qcDashboard'];
+$routes['purchase-team-lead-dashboard']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'purchaseTeamLeadDashboard'];
+$routes['draft-dashboard']                = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'draftDashboard'];
+$routes['land-dashboard']                 = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'landDashboard'];
+$routes['project-architecture-dashboard'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectArchitectureDashboard'];
+$routes['estimator-dashboard']            = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'estimatorDashboard'];
 
 // ── Operators / Contractors ────────────────────────────────────────────────
-$routes['con-operators']              = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'index'];
-$routes['con-operator-create']        = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'create'];
-$routes['con-operator-store']         = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'store'];
-$routes['con-operator-edit/(\d+)']    = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'edit'];
-$routes['con-operator-update/(\d+)']  = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'update'];
-$routes['con-operator-delete']        = ['controller' => 'Phase2\Con_OperatorController', 'method' => 'delete'];
+$routes['con-contractors']              = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'index'];
+$routes['con-contractor-create']        = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'create'];
+$routes['con-contractor-store']         = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'store'];
+$routes['con-contractor-edit/(\d+)']    = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'edit'];
+$routes['con-contractor-update/(\d+)']  = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'update'];
+$routes['con-contractor-delete']        = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'delete'];
 
 // ── Contractor Bill Requests ───────────────────────────────────────────────
 $routes['con-contractor-bills']              = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'index'];
@@ -780,13 +793,15 @@ $routes['con-material-receiving-create/(\d+)'] = ['controller' => 'Phase2\Con_Ma
 $routes['con-material-receiving-store']        = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'store'];
 $routes['con-material-receiving-qc/(\d+)']     = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'qcReview'];
 
-// ── Vendor Payment Requests (New Module) ───────────────────────────────────
-$routes['con-vendor-payment-requests'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'index'];
-$routes['con-vendor-payment-create']   = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'create'];
-$routes['con-vendor-payment-store']    = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'store'];
-$routes['con-vendor-payment-show/(\d+)'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'];
-$routes['con-vendor-payment-approve/(\d+)'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'approve'];
-$routes['con-vendor-payment-ajax-penalty'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'];
+// ── Vendor Payment Requests ────────────────────────────────────────────────
+$routes['con-vendor-payment-requests']          = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'index'];
+$routes['con-vendor-payment-create']            = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'create'];
+$routes['con-vendor-payment-store']             = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'store'];
+$routes['con-vendor-payment-show/(\d+)']        = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'];
+$routes['con-vendor-payment-approve/(\d+)']     = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'approve'];
+$routes['con-vendor-payment-reject/(\d+)']      = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'reject'];
+$routes['con-vendor-payment-ajax-penalty']      = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'];
+$routes['con-vendor-payment-ajax-advance']      = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetAdvanceSummary'];
 
 // ── BOQ ───────────────────────────────────────────────────────────────────
 $routes['con-boq']                     = ['controller' => 'Phase2\Con_BOQController', 'method' => 'index'];
@@ -819,10 +834,10 @@ $routes['con-usage-log-create']        = ['controller' => 'Phase2\Con_MaterialUs
 $routes['con-usage-log-store']         = ['controller' => 'Phase2\Con_MaterialUsageController', 'method' => 'store'];
 
 // ── Vendor Payments ───────────────────────────────────────────────────────
-$routes['con-vendor-payments']              = ['controller' => 'Phase2\Con_VendorPaymentController', 'method' => 'index'];
-$routes['con-vendor-payment-create']        = ['controller' => 'Phase2\Con_VendorPaymentController', 'method' => 'create'];
-$routes['con-vendor-payment-store']         = ['controller' => 'Phase2\Con_VendorPaymentController', 'method' => 'store'];
-$routes['con-vendor-payment/(\d+)']         = ['controller' => 'Phase2\Con_VendorPaymentController', 'method' => 'show'];
+$routes['con-vendor-payments']              = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'index'];
+$routes['con-vendor-payment-create']        = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'create'];
+$routes['con-vendor-payment-store']         = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'store'];
+$routes['con-vendor-payment/(\d+)']         = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'];
 
 // ── Financial Ledger ──────────────────────────────────────────────────────
 $routes['con-ledger']                  = ['controller' => 'Phase2\Con_FinancialLedgerController', 'method' => 'index'];

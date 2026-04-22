@@ -154,6 +154,8 @@ class Con_InitialEstimateController extends Controller
 
     public function show($id)
     {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
         $budget = $this->model->find($id);
         if (!$budget) {
             setError('Budget not found.');
@@ -165,14 +167,22 @@ class Con_InitialEstimateController extends Controller
         $labors    = $this->model->getLaborsByBudget($id);
         $breakdown = $this->model->getFullBreakdownByDesignType($id);
 
+        // Load working plans linked to this budget (with approved_status)
+        $wpModel      = new \Con_WorkingPlan($this->db);
+        $workingPlans = $wpModel->getByBudget($id);
+
+        $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+
         $this->view('phase2/initial_estimates/show-initial-budget', [
-            'current_route' => 'con-estimates',
-            'page_title'    => 'Estimate Detail — ' . $budget['project_name'],
-            'budget'        => $budget,
-            'items'         => $items,
-            'labors'        => $labors,
-            'breakdown'     => $breakdown,
-            'locked'        => $this->model->isLocked($id),
+            'current_route'  => 'con-estimates',
+            'page_title'     => 'Estimate Detail — ' . $budget['project_name'],
+            'budget'         => $budget,
+            'items'          => $items,
+            'labors'         => $labors,
+            'breakdown'      => $breakdown,
+            'locked'         => $this->model->isLocked($id),
+            'workingPlans'   => $workingPlans,
+            'currentUserId'  => $currentUserId,
         ]);
     }
 
@@ -237,6 +247,7 @@ class Con_InitialEstimateController extends Controller
             'end_date'        =>         ($_POST['end_date']        ?? null),
             'total_area_sqft' => (float) ($_POST['total_area_sqft'] ?? 0),
             'other_costs'     => (float) ($_POST['other_costs']     ?? 0),
+            'updated_by'      => (int)   ($_SESSION['user']['id']   ?? 0),
         ];
 
         if (!$header['project_id'] || !$header['architecture_id']) {

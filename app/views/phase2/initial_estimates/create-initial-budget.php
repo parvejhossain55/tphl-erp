@@ -23,7 +23,7 @@
                 <h6 class="card__title mb-0"><i class="bi bi-info-circle me-2"></i>Budget Header</h6>
             </div>
             <div class="card__body p-4">
-                <div class="row g-3">
+                <div class="row">
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
                         <select name="project_id" class="form-select" required>
@@ -219,7 +219,7 @@
                 </h6>
             </div>
             <div class="card__body p-4">
-                <div class="row g-3 text-center">
+                <div class="row text-center">
                     <div class="col-6 col-md-3">
                         <div class="p-3 border rounded bg-light">
                             <div class="text-muted small mb-1">Material Cost</div>

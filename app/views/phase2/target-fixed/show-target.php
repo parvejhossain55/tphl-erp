@@ -17,7 +17,7 @@ $totalApprovals = array_sum(array_map(fn($s) => (int)$t[$s['col']], $approvalSte
     <!-- Breadcrumb -->
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <div class="my-auto">
-            <h4 class="page-title fw-semibold fs-18 mb-0"><?= htmlspecialchars($t['target_title']) ?></h4>
+            <h4 class="page-title fw-semibold fs-18 mb-0"><= htmlspecialchars($t['target_title']) ?></h4>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-targets">Site Targets</a></li>

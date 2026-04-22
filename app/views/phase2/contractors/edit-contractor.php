@@ -6,7 +6,7 @@ $show_breadcrumb = true;
 
 <div class="row">
     <div class="card__wrapper">
-        <form action="<?= $GLOBALS['base_url'] ?>/con-operator-update/<?= $operator['id'] ?>" method="POST">
+        <form action="<?= $GLOBALS['base_url'] ?>/con-contractor-update/<?= $operator['id'] ?>" method="POST">
             <div class="row gy-20">
 
                 <div class="col-xl-6">

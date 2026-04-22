@@ -98,14 +98,22 @@ class Con_MaterialController extends Controller
     public function stocks()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
-        
-        $stockModel = new \Con_Stock($this->db);
-        $stocks = $stockModel->getCurrentStock();
+
+        $stockModel     = new \Con_Stock($this->db);
+        $stocks         = $stockModel->getCurrentStock();
+        $stats          = $stockModel->getStockSummaryStats();
+        $availableStock = $stockModel->getAvailableStock();
+        $lowStockItems  = $stockModel->getLowStockItems();
+        $byProject      = $stockModel->getStockByProject();
 
         $this->view('phase2/stocks/con-stocks', [
-            'current_route' => 'con-stocks',
-            'page_title'    => 'Inventory Stock Levels',
-            'stocks'        => $stocks,
+            'current_route'  => 'con-stocks',
+            'page_title'     => 'Inventory Stock Levels',
+            'stocks'         => $stocks,
+            'stats'          => $stats,
+            'availableStock' => $availableStock,
+            'lowStockItems'  => $lowStockItems,
+            'byProject'      => $byProject,
         ]);
     }
 }

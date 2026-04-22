@@ -289,14 +289,38 @@ function redirectByRole()
         case 9: // sales
             $url = "{$GLOBALS['base_url']}/sales-team-head-dashboard";
             break;
-        // case 11: // whatsapp
-        //     $url = "{$GLOBALS['base_url']}/whatsapp-dashboard";
+            // case 11: // whatsapp
+            //     $url = "{$GLOBALS['base_url']}/whatsapp-dashboard";
             break;
         case 10: // sales
             $url = "{$GLOBALS['base_url']}/digital-marketing-dashboard";
             break;
         case 11: // digital marketing executive
             $url = "{$GLOBALS['base_url']}/digital-marketing-executive-dashboard";
+            break;
+        case 12: // site Engineer
+            $url = "{$GLOBALS['base_url']}/con-dashboard";
+            break;
+        case 13: // QC
+            $url = "{$GLOBALS['base_url']}/qc-dashboard";
+            break;
+        case 14: // QC
+            $url = "{$GLOBALS['base_url']}/land-dashboard";
+            break;
+        case 15: // Project Manager
+            $url = "{$GLOBALS['base_url']}/con-dashboard";
+            break;
+        case 16: // Draftsman
+            $url = "{$GLOBALS['base_url']}/draft-dashboard";
+            break;
+        case 17: // Purchase team lead
+            $url = "{$GLOBALS['base_url']}/purchase-team-lead-dashboard";
+            break;
+        case 18: // Purchase team lead
+            $url = "{$GLOBALS['base_url']}/project-architecture-dashboard";
+            break;
+        case 19: // Purchase team lead
+            $url = "{$GLOBALS['base_url']}/estimator-dashboard";
             break;
 
         default:
@@ -891,7 +915,7 @@ function renderApprovalContext(array $req)
                                 <span class="badge bg-primary ms-md-2">Requested By</span>
                             </div>
                             <div class="col-12 col-md-6 text-break">
-                              <strong><?= esc($ctx['requester']['user_name'] ?? 'N/A') ?></strong>
+                                <strong><?= esc($ctx['requester']['user_name'] ?? 'N/A') ?></strong>
                                 <div class="small text-muted">
                                     <i class="bi bi-envelope"></i>
                                     <?= esc($ctx['requester']['email']) ?>
@@ -953,7 +977,7 @@ function renderApprovalContext(array $req)
                                 <span class="badge bg-warning text-dark ms-md-2">Employee</span>
                             </div>
                             <div class="col-12 col-md-6">
-                              <strong><?= esc($ctx['employee']['user_name'] ?? 'N/A') ?></strong>
+                                <strong><?= esc($ctx['employee']['user_name'] ?? 'N/A') ?></strong>
                                 <div class="small text-muted">
                                     <i class="bi bi-briefcase"></i>
                                     <?= esc($ctx['employee']['designation'], 'N/A') ?>
@@ -1030,14 +1054,14 @@ function renderApprovalContext(array $req)
                             </div>
                         </div>
                         <?php if (!empty($ctx['requisition']['project_name'])): ?>
-                        <div class="row g-1 mb-1">
-                            <div class="col-12 col-md-6 mb-1 mb-md-0">
-                                <span class="badge bg-info text-light ms-md-2">Project</span>
+                            <div class="row g-1 mb-1">
+                                <div class="col-12 col-md-6 mb-1 mb-md-0">
+                                    <span class="badge bg-info text-light ms-md-2">Project</span>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <strong><?= esc($ctx['requisition']['project_name'], 'N/A') ?></strong>
+                                </div>
                             </div>
-                            <div class="col-12 col-md-6">
-                                <strong><?= esc($ctx['requisition']['project_name'], 'N/A') ?></strong>
-                            </div>
-                        </div>
                         <?php endif; ?>
                         <div class="row g-1">
                             <div class="col-12 col-md-6 mb-1 mb-md-0">
@@ -1081,15 +1105,16 @@ function renderApprovalContext(array $req)
 if (!function_exists('sendMail')) {
     function sendMail($email, $title, $link, $assignedBy)
     {
-            // echo "Helper called"; die;
+        // echo "Helper called"; die;
         // require_once 'path/to/MailService.php'; 
         $mail = new MailService();
         return $mail->sendMail($email, $title, $link, $assignedBy);
     }
 }
 
-function generateVerificationCode($length = 6) {
-    return str_pad(rand(0, pow(10, $length)-1), $length, '0', STR_PAD_LEFT);
+function generateVerificationCode($length = 6)
+{
+    return str_pad(rand(0, pow(10, $length) - 1), $length, '0', STR_PAD_LEFT);
 }
 
 // upload webp image
