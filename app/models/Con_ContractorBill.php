@@ -13,7 +13,7 @@ class Con_ContractorBill extends Model
                        u.full_name AS created_by_name,
                        v.full_name AS verified_by_name
                 FROM {$this->table} cbr
-                LEFT JOIN operations_operators oo ON oo.id = cbr.operator_id
+                LEFT JOIN contractors oo ON oo.id = cbr.operator_id
                 LEFT JOIN projects p  ON p.id  = cbr.project_id
                 LEFT JOIN users u     ON u.id  = cbr.created_by
                 LEFT JOIN users v     ON v.id  = cbr.verified_by
@@ -31,7 +31,7 @@ class Con_ContractorBill extends Model
                        u.full_name AS created_by_name,
                        v.full_name AS verified_by_name
                 FROM {$this->table} cbr
-                LEFT JOIN operations_operators oo ON oo.id = cbr.operator_id
+                LEFT JOIN contractors oo ON oo.id = cbr.operator_id
                 LEFT JOIN projects p  ON p.id  = cbr.project_id
                 LEFT JOIN users u     ON u.id  = cbr.created_by
                 LEFT JOIN users v     ON v.id  = cbr.verified_by
@@ -101,7 +101,7 @@ class Con_ContractorBill extends Model
     {
         $sql = "SELECT cbr.*, oo.name AS operator_name, p.name AS project_name
                 FROM {$this->table} cbr
-                LEFT JOIN operations_operators oo ON oo.id = cbr.operator_id
+                LEFT JOIN contractors oo ON oo.id = cbr.operator_id
                 LEFT JOIN projects p ON p.id = cbr.project_id
                 WHERE cbr.status = ?
                 ORDER BY cbr.created_at DESC";
@@ -115,7 +115,7 @@ class Con_ContractorBill extends Model
     {
         $sql = "SELECT cbr.*, oo.name AS operator_name, p.name AS project_name
                 FROM {$this->table} cbr
-                LEFT JOIN operations_operators oo ON oo.id = cbr.operator_id
+                LEFT JOIN contractors oo ON oo.id = cbr.operator_id
                 LEFT JOIN projects p ON p.id = cbr.project_id
                 WHERE cbr.target_id = ?
                 ORDER BY cbr.created_at DESC";

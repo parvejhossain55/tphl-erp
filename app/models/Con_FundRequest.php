@@ -14,7 +14,7 @@ class Con_FundRequest extends Model
                 FROM {$this->table} ofr
                 LEFT JOIN projects p            ON p.id   = ofr.project_id
                 LEFT JOIN users u               ON u.id   = ofr.requester_id
-                LEFT JOIN operations_operators oo ON oo.id = ofr.operator_id
+                LEFT JOIN contractors oo ON oo.id = ofr.operator_id
                 LEFT JOIN users ab              ON ab.id  = ofr.approved_by
                 ORDER BY ofr.created_at DESC";
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
@@ -30,7 +30,7 @@ class Con_FundRequest extends Model
                 FROM {$this->table} ofr
                 LEFT JOIN projects p              ON p.id   = ofr.project_id
                 LEFT JOIN users u                 ON u.id   = ofr.requester_id
-                LEFT JOIN operations_operators oo ON oo.id  = ofr.operator_id
+                LEFT JOIN contractors oo ON oo.id  = ofr.operator_id
                 LEFT JOIN users ab                ON ab.id  = ofr.approved_by
                 WHERE ofr.id = ?";
         $stmt = $this->db->prepare($sql);

@@ -17,7 +17,7 @@ $r = $report;
         </a>
     </div>
 
-    <div class="row g-3 justify-content-center">
+    <div class="row  justify-content-center">
         <div class="col-xl-8">
             <div class="card custom-card">
                 <div class="card-header bg-primary text-white">
@@ -27,7 +27,7 @@ $r = $report;
                     </h6>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3 mb-3">
+                    <div class="row  mb-3">
                         <div class="col-md-4">
                             <div class="p-3 bg-light rounded text-center">
                                 <div class="text-muted small mb-1">Project</div>
