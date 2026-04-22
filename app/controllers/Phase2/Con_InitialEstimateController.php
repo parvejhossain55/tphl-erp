@@ -172,6 +172,29 @@ class Con_InitialEstimateController extends Controller
         $workingPlans = $wpModel->getByBudget($id);
 
         $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // ── Approval permission ──────────────────────────────────────────────
+        // PM (15) and SE (12) can approve — but NEVER the person who created it
+        $approverRoles = [12, 15]; // Site Engineer, Project Manager
+        $createdBy     = (int)($budget['created_by'] ?? 0);
+        $canApprove    = in_array($currentRoleId, $approverRoles)
+                         && ($currentUserId !== $createdBy);
+
+        // Fetch creator info (name + designation) to show in approval banner
+        $creatorInfo = [];
+        if ($createdBy) {
+            $stmt = $this->db->prepare("
+                SELECT u.full_name,
+                       COALESCE(d.name, '') AS designation
+                FROM   users u
+                LEFT JOIN employees e  ON e.user_id = u.id
+                LEFT JOIN designations d ON d.id = e.designation_id
+                WHERE  u.id = ? LIMIT 1");
+            $stmt->bind_param('i', $createdBy);
+            $stmt->execute();
+            $creatorInfo = $stmt->get_result()->fetch_assoc() ?? [];
+        }
 
         $this->view('phase2/initial_estimates/show-initial-budget', [
             'current_route'  => 'con-estimates',
@@ -183,6 +206,8 @@ class Con_InitialEstimateController extends Controller
             'locked'         => $this->model->isLocked($id),
             'workingPlans'   => $workingPlans,
             'currentUserId'  => $currentUserId,
+            'canApprove'     => $canApprove,
+            'creatorInfo'    => $creatorInfo,
         ]);
     }
 
@@ -318,13 +343,30 @@ class Con_InitialEstimateController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        $userId   = (int)($_SESSION['user']['id']   ?? 0);
+        $roleId   = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // Role guard: only PM(15) and SE(12)
+        if (!in_array($roleId, [12, 15])) {
+            setError('You do not have permission to approve budgets.');
+            header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
+            exit;
+        }
+
+        // Creator cannot approve their own submission
+        $budget = $this->model->find($id);
+        if ($budget && (int)($budget['created_by'] ?? 0) === $userId) {
+            setError('You cannot approve a budget that you created.');
+            header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
+            exit;
+        }
+
         if ($this->model->isLocked($id)) {
             setError('This budget is already approved or cancelled.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;
         }
 
-        $userId = (int) ($_SESSION['user']['id'] ?? 0);
         if ($this->model->approveBudget($id, $userId)) {
             setSuccess('Budget approved successfully.');
         } else {
@@ -341,8 +383,27 @@ class Con_InitialEstimateController extends Controller
 
     public function cancelBudget($id)
     {
-        $note = trim($_POST['rejection_note'] ?? '');
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
+        $userId = (int)($_SESSION['user']['id']   ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // Role guard: only PM(15) and SE(12) can reject
+        if (!in_array($roleId, [12, 15])) {
+            setError('You do not have permission to reject budgets.');
+            header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
+            exit;
+        }
+
+        // Creator cannot reject their own submission
+        $budget = $this->model->find($id);
+        if ($budget && (int)($budget['created_by'] ?? 0) === $userId) {
+            setError('You cannot reject a budget that you created.');
+            header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
+            exit;
+        }
+
+        $note = trim($_POST['rejection_note'] ?? '');
         if (empty($note)) {
             setError('Rejection note is required to cancel a budget.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
@@ -356,7 +417,7 @@ class Con_InitialEstimateController extends Controller
         }
 
         if ($this->model->cancelBudget($id, $note)) {
-            setSuccess('Budget cancelled.');
+            setSuccess('Budget rejected.');
         } else {
             setError('Cancellation failed.');
         }

@@ -91,8 +91,8 @@ class Con_MaterialReceiving extends Model
             // Create receiving header
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->table}
-                    (purchase_order_id, warehouse_id, received_by, receiving_date, received_status, overall_status, notes, created_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                    (purchase_order_id, warehouse_id, received_by, receiving_date, received_status, overall_status, notes, site_eng_note, site_eng_photo, created_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
             if (!$stmt) {
                 throw new \Exception("Header prepare failed: " . $this->db->error);
@@ -100,7 +100,10 @@ class Con_MaterialReceiving extends Model
             $overallStatus  = 'Pending QC';
             $receivedStatus = $data['received_status'] ?? 'Full';
             $notes = $data['notes'] ?? '';
-            $stmt->bind_param('iiissssi',
+            $siteEngNote  = $data['site_eng_note'] ?? null;
+            $siteEngPhoto = $data['site_eng_photo'] ?? null;
+
+            $stmt->bind_param('iiissssssi',
                 $data['purchase_order_id'],
                 $data['warehouse_id'],
                 $data['received_by'],
@@ -108,6 +111,8 @@ class Con_MaterialReceiving extends Model
                 $receivedStatus,
                 $overallStatus,
                 $notes,
+                $siteEngNote,
+                $siteEngPhoto,
                 $data['created_by']
             );
             if (!$stmt->execute()) {
@@ -243,10 +248,13 @@ class Con_MaterialReceiving extends Model
             } else {
                 $overallStatus = 'Partially Accepted';
             }
+            $qcNote  = $itemStatuses['qc_note'] ?? null;
+            $qcPhoto = $itemStatuses['qc_photo'] ?? null;
+
             $oStmt = $this->db->prepare(
-                "UPDATE {$this->table} SET overall_status = ?, qc_checked_by = ? WHERE id = ?"
+                "UPDATE {$this->table} SET overall_status = ?, qc_checked_by = ?, qc_note = COALESCE(?, qc_note), qc_photo = COALESCE(?, qc_photo) WHERE id = ?"
             );
-            $oStmt->bind_param('sii', $overallStatus, $userId, $receivingId);
+            $oStmt->bind_param('sissi', $overallStatus, $userId, $qcNote, $qcPhoto, $receivingId);
             $oStmt->execute();
 
             // 4. Check if PO is fully received

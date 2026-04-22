@@ -103,10 +103,44 @@ class Con_TargetFixedController extends Controller
             exit;
         }
 
+        $currentUserId = (int)($_SESSION['user']['id']   ?? 0);
+        $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $createdBy     = (int)($target['user_id'] ?? 0);
+
+        // ── Who can approve? ───────────────────────────────────────────
+        // QC (13) approves step 'qc', PM (15) approves step 'manager'
+        // SE (12) creates but CANNOT approve their own target
+        $approverRoleMap = [13 => 'qc', 15 => 'manager']; // roleId => step key
+        $approverRole    = $approverRoleMap[$currentRoleId] ?? null;
+        $canApprove      = ($approverRole !== null) && ($currentUserId !== $createdBy);
+
+        // Already approved this step?
+        $stepCol   = ($approverRole === 'qc') ? 'approved_by_qc' : 'approved_by_manager';
+        $alreadyApproved = $canApprove && !empty($target[$stepCol]);
+
+        // Fetch creator info
+        $creatorInfo = [];
+        if ($createdBy) {
+            $stmt = $this->db->prepare("
+                SELECT u.full_name, COALESCE(d.name,'') AS designation
+                FROM   users u
+                LEFT JOIN employees   e ON e.user_id = u.id
+                LEFT JOIN designations d ON d.id = e.designation_id
+                WHERE  u.id = ? LIMIT 1");
+            $stmt->bind_param('i', $createdBy);
+            $stmt->execute();
+            $creatorInfo = $stmt->get_result()->fetch_assoc() ?? [];
+        }
+
         $this->view('phase2/target-fixed/show-target', [
-            'current_route' => 'con-targets',
-            'page_title'    => 'Target Detail',
-            'target'        => $target,
+            'current_route'   => 'con-targets',
+            'page_title'      => 'Target Detail',
+            'target'          => $target,
+            'canApprove'      => $canApprove,
+            'alreadyApproved' => $alreadyApproved,
+            'approverRole'    => $approverRole,
+            'creatorInfo'     => $creatorInfo,
+            'currentRoleId'   => $currentRoleId,
         ]);
     }
 
@@ -202,21 +236,34 @@ class Con_TargetFixedController extends Controller
 
     // =========================================================================
     // APPROVE A STEP
-    // POST: step = 'site_eng' | 'qc' | 'pc' | 'pd' | 'manager'
+    // QC (role 13) approves step 'qc'
+    // PM (role 15) approves step 'manager'
+    // SE (role 12) creates and CANNOT approve
     // =========================================================================
     public function approve($id)
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        $step   = $_POST['step'] ?? '';
-        $userId = $_SESSION['user']['id'] ?? null;
+        $userId = (int)($_SESSION['user']['id']   ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        $allowed = ['site_eng', 'qc', 'pc', 'pd', 'manager'];
-        if (!in_array($step, $allowed)) {
-            setError('Invalid approval step.');
+        // Role guard
+        $roleStepMap = [13 => 'qc', 15 => 'manager'];
+        if (!isset($roleStepMap[$roleId])) {
+            setError('You do not have permission to approve targets.');
             header("Location: {$GLOBALS['base_url']}/con-target/{$id}");
             exit;
         }
+
+        // Creator cannot self-approve
+        $target = $this->targetModel->find($id);
+        if ($target && (int)($target['user_id'] ?? 0) === $userId) {
+            setError('You cannot approve a target that you created.');
+            header("Location: {$GLOBALS['base_url']}/con-target/{$id}");
+            exit;
+        }
+
+        $step = $roleStepMap[$roleId]; // 'qc' or 'manager'
 
         if ($this->targetModel->approveStep($id, $step, $userId)) {
             setSuccess('Approval recorded successfully!');
@@ -243,7 +290,7 @@ class Con_TargetFixedController extends Controller
         }
 
         $stmt = $this->db->prepare(
-            "SELECT id, target_title, year, month, week_number, gain_percentage, status
+            "SELECT id, target_title, year, month, week_number, gain_percentage
              FROM target_fixed
              WHERE project_id = ?
              ORDER BY year DESC, month DESC, week_number ASC"

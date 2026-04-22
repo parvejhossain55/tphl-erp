@@ -3,11 +3,8 @@ namespace Phase2;
 
 use Controller;
 use Con_ContractorBill;
-<<<<<<< HEAD
-=======
 use Con_Operator;
 use Con_FinancialTransaction;
->>>>>>> 3c9b3fa0bbf940b36ab0fd1ee0d020354f928834
 use ApprovalRequest;
 use Con_Contractor;
 use Con_TargetFixed;

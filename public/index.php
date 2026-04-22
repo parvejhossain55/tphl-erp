@@ -792,6 +792,7 @@ $routes['con-quotation-select']        = ['controller' => 'Phase2\Con_QuotationC
 $routes['con-purchase-orders']         = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'index'];
 $routes['con-purchase-order/(\d+)']    = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'show'];
 $routes['con-purchase-order-generate/(\d+)'] = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'generate'];
+$routes['con-purchase-order-approve/(\d+)']  = ['controller' => 'Phase2\\Con_PurchaseOrderController', 'method' => 'approvePO'];
 
 // ── Material Receiving / GRN ───────────────────────────────────────────────
 $routes['con-material-receivings']             = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'index'];
@@ -827,6 +828,7 @@ $routes['con-targets']                 = ['controller' => 'Phase2\Con_TargetFixe
 $routes['con-target-create']           = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'create'];
 $routes['con-target-store']            = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'store'];
 $routes['con-target/(\d+)']            = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'show'];
+
 $routes['con-target-approve/(\d+)']    = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'approve'];
 
 // ── Daily Progress Reports ────────────────────────────────────────────────
@@ -834,6 +836,7 @@ $routes['con-weekly-reports']           = ['controller' => 'Phase2\Con_WeeklyRep
 $routes['con-weekly-report-create']     = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'create'];
 $routes['con-weekly-report-store']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'store'];
 $routes['con-weekly-report/(\d+)']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'show'];
+$routes['con-weekly-report-approve/(\d+)'] = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'approve'];
 $routes['con-ajax-work-plans']          = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'ajaxWorkPlans'];
 $routes['con-ajax-report-targets']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'ajaxTargets'];
 // Legacy aliases

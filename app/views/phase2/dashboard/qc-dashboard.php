@@ -20,6 +20,7 @@ $totalEstimates = $totalEstimates ?? 0;
 $projects       = $projects       ?? [];
 $recentIssues   = $recentIssues   ?? [];
 $recentDPRs     = $recentDPRs     ?? [];
+$pendingTargets = $pendingTargets ?? [];
 ?>
 <style>
 :root {
@@ -336,4 +337,183 @@ $recentDPRs     = $recentDPRs     ?? [];
   </div>
 
 </div>
+
+<?php if (!empty($pendingGRNsQC)): ?>
+<div class="rd-panel" style="border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.03);margin-top:4px">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="rd-panel-title" style="margin-bottom:0">
+      <div class="rd-dot" style="background:var(--qc-purple,#8b5cf6)"></div>
+      <i class="fal fa-clipboard-check me-2" style="color:var(--qc-purple,#8b5cf6)"></i>
+      Pending Material Receivings (GRN) — QC Approval Required
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+        background:rgba(139,92,246,.12);color:var(--qc-purple,#8b5cf6)">
+        <?= count($pendingGRNsQC) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?= $base ?>/con-material-receivings" style="font-size:11px;color:var(--qc-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="rd-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>GRN Number</th>
+          <th>Project</th>
+          <th>Receiving Date</th>
+          <th>Logged By</th>
+          <th style="text-align:right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($pendingGRNsQC as $pi => $grn): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
+          <td style="font-weight:800;color:var(--qc-purple,#8b5cf6)">GRN-<?= $grn['id'] ?></td>
+          <td style="font-weight:700"><?= htmlspecialchars($grn['project_name'] ?? 'N/A') ?></td>
+          <td style="font-size:11px;color:var(--text-muted)"><?= !empty($grn['receiving_date']) ? date('d M Y', strtotime($grn['receiving_date'])) : '&mdash;' ?></td>
+          <td style="font-size:12px"><?= htmlspecialchars($grn['received_by_name'] ?? '&mdash;') ?></td>
+          <td style="text-align:right">
+            <a href="<?=$base?>/con-material-receiving-qc/<?= $grn['id'] ?>" class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff;border-radius:6px;text-decoration:none">
+              <i class="fal fa-check-circle me-1"></i> Review &amp; Approve
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php
+$pendingWeeklyReportsQC = $pendingWeeklyReportsQC ?? [];
+if (!empty($pendingWeeklyReportsQC)):
+?>
+<div class="rd-panel" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.03);margin-top:4px">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="rd-panel-title" style="margin-bottom:0">
+      <div class="rd-dot" style="background:#0f5132"></div>
+      <i class="fal fa-calendar-week me-2" style="color:#0f5132"></i>
+      Pending Weekly Reports — QC Approval Required
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+        background:rgba(16,185,129,.12);color:#0f5132">
+        <?= count($pendingWeeklyReportsQC) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?= $base ?>/con-weekly-reports" style="font-size:11px;color:var(--qc-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="rd-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Report Date</th>
+          <th>Project</th>
+          <th>Week No</th>
+          <th>Submitted By</th>
+          <th style="text-align:right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($pendingWeeklyReportsQC as $pi => $rep): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
+          <td style="font-weight:800;color:#0f5132"><?= !empty($rep['report_date']) ? date('d M Y', strtotime($rep['report_date'])) : '&mdash;' ?></td>
+          <td style="font-weight:700"><?= htmlspecialchars($rep['project_name'] ?? 'N/A') ?></td>
+          <td style="font-size:11px;color:var(--text-muted)">Week <?= (int)$rep['week_no'] ?></td>
+          <td style="font-size:12px"><?= htmlspecialchars($rep['created_by_name'] ?? '&mdash;') ?></td>
+          <td style="text-align:right">
+            <a href="<?=$base?>/con-weekly-report/<?= $rep['id'] ?>" class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:linear-gradient(135deg,#0f5132,#198754);color:#fff;border-radius:6px;text-decoration:none">
+              <i class="fal fa-check-circle me-1"></i> Review &amp; Approve
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($pendingTargets)): ?>
+<div class="rd-panel" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03);margin-top:4px">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="rd-panel-title" style="margin-bottom:0">
+      <div class="rd-dot" style="background:var(--qc-amber)"></div>
+      <i class="fal fa-bullseye me-2" style="color:var(--qc-amber)"></i>
+      Pending Targets — QC Approval Required
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+        background:rgba(245,158,11,.12);color:var(--qc-amber)">
+        <?= count($pendingTargets) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?= $base ?>/con-targets" style="font-size:11px;color:var(--qc-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="rd-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Project</th>
+          <th>Target Title</th>
+          <th>Submitted By</th>
+          <th>Designation</th>
+          <th>Target %</th>
+          <th>Gain %</th>
+          <th>Period</th>
+          <th>Submitted On</th>
+          <th style="text-align:right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($pendingTargets as $pi => $pt): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
+          <td style="font-weight:700"><?= htmlspecialchars($pt['project_name'] ?? 'N/A') ?></td>
+          <td><?= htmlspecialchars($pt['target_title'] ?? '—') ?></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:7px">
+              <div style="width:26px;height:26px;border-radius:50%;background:rgba(99,102,241,.1);
+                display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="fal fa-user" style="font-size:10px;color:#6366f1"></i>
+              </div>
+              <span style="font-size:12px;font-weight:600"><?= htmlspecialchars($pt['creator_name'] ?? '—') ?></span>
+            </div>
+          </td>
+          <td>
+            <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;
+              background:rgba(99,102,241,.08);color:#6366f1">
+              <?= htmlspecialchars($pt['creator_designation'] ?: 'SE') ?>
+            </span>
+          </td>
+          <td><span class="status-pill" style="background:rgba(59,130,246,.1);color:#2563eb"><?= number_format($pt['target_percentage'] ?? 0, 1) ?>%</span></td>
+          <td>
+            <?php $g = (float)($pt['gain_percentage'] ?? 0); $tp = (float)($pt['target_percentage'] ?? 0); ?>
+            <span class="status-pill" style="background:<?= $g>=$tp?'rgba(16,185,129,.1)':'rgba(245,158,11,.1)' ?>;
+              color:<?= $g>=$tp?'#059669':'#d97706' ?>"><?= number_format($g,1) ?>%</span>
+          </td>
+          <td style="font-size:11px;color:var(--text-muted)">
+            <?= $pt['year'] ?? '' ?>
+            <?= $pt['week_number'] ? ' / Wk '.$pt['week_number'] : '' ?>
+          </td>
+          <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">
+            <i class="fal fa-calendar me-1"></i>
+            <?= !empty($pt['created_at']) ? date('d M Y', strtotime($pt['created_at'])) : '—' ?>
+          </td>
+          <td style="text-align:right">
+            <a href="<?= $base ?>/con-target/<?= $pt['id'] ?>"
+              style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+                padding:5px 14px;border-radius:8px;text-decoration:none;
+                background:linear-gradient(135deg,#059669,#10b981);color:#fff">
+              <i class="fal fa-check-circle"></i> Review &amp; Approve
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
 <div style="height:30px"></div>

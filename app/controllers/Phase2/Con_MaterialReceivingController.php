@@ -71,6 +71,21 @@ class Con_MaterialReceivingController extends Controller
 
         $userId = (int)($_SESSION['user']['id'] ?? 0);
 
+        // File upload helper
+        $uploadPhoto = function ($fileInputName) {
+            if (isset($_FILES[$fileInputName]) && $_FILES[$fileInputName]['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = __DIR__ . '/../../../../public/uploads/material_receivings/';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+                
+                $fileName = time() . '_' . basename($_FILES[$fileInputName]['name']);
+                $targetFile = $uploadDir . $fileName;
+                if (move_uploaded_file($_FILES[$fileInputName]['tmp_name'], $targetFile)) {
+                    return '/public/uploads/material_receivings/' . $fileName;
+                }
+            }
+            return null;
+        };
+
         $data = [
             'purchase_order_id' => (int)($_POST['purchase_order_id'] ?? 0),
             'warehouse_id'      => (int)($_POST['warehouse_id'] ?? 0),
@@ -78,6 +93,8 @@ class Con_MaterialReceivingController extends Controller
             'receiving_date'    => $_POST['receiving_date'] ?? date('Y-m-d'),
             'received_status'   => $_POST['received_status'] ?? 'Full',
             'notes'             => trim($_POST['notes'] ?? ''),
+            'site_eng_note'     => trim($_POST['site_eng_note'] ?? ''),
+            'site_eng_photo'    => $uploadPhoto('site_eng_photo'),
             'created_by'        => $userId,
         ];
 
@@ -161,11 +178,29 @@ class Con_MaterialReceivingController extends Controller
             ];
         }
 
+        // File upload helper
+        $uploadPhoto = function ($fileInputName) {
+            if (isset($_FILES[$fileInputName]) && $_FILES[$fileInputName]['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = __DIR__ . '/../../../../public/uploads/material_receivings/';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+                
+                $fileName = time() . '_' . basename($_FILES[$fileInputName]['name']);
+                $targetFile = $uploadDir . $fileName;
+                if (move_uploaded_file($_FILES[$fileInputName]['tmp_name'], $targetFile)) {
+                    return '/public/uploads/material_receivings/' . $fileName;
+                }
+            }
+            return null;
+        };
+
         if (empty($itemStatuses)) {
             setError('No QC decisions provided.');
             header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
             exit;
         }
+
+        $itemStatuses['qc_note'] = trim($_POST['qc_note'] ?? '');
+        $itemStatuses['qc_photo'] = $uploadPhoto('qc_photo');
 
         if ($this->receivingModel->qcReview($id, $itemStatuses, $userId)) {
             setSuccess('QC Review completed. Stock updated for accepted items.');

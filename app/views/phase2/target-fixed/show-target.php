@@ -1,214 +1,385 @@
 <?php
-$base_url = $GLOBALS['base_url'];
-$page_title = $page_title ?? 'Target Detail';
-$t = $target;
-$months = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+$base_url   = $GLOBALS['base_url'];
+$t          = $target ?? [];
+$canApprove      = $canApprove      ?? false;
+$alreadyApproved = $alreadyApproved ?? false;
+$approverRole    = $approverRole    ?? null;  // 'qc' or 'manager'
+$creatorInfo     = $creatorInfo     ?? [];
+$currentRoleId   = $currentRoleId   ?? 0;
 
-$approvalSteps = [
-    'site_eng' => ['label' => 'Site Engineer', 'col' => 'approved_by_site_eng', 'icon' => 'bi-person-check'],
-    'qc'       => ['label' => 'QC Officer',   'col' => 'approved_by_qc',      'icon' => 'bi-shield-check'],
-    'pc'       => ['label' => 'PC',           'col' => 'approved_by_pc',      'icon' => 'bi-star-half'],
-    'pd'       => ['label' => 'Project Director', 'col' => 'approved_by_pd',   'icon' => 'bi-briefcase'],
-    'manager'  => ['label' => 'Manager',      'col' => 'approved_by_manager', 'icon' => 'bi-person-badge'],
+$months = ['','January','February','March','April','May','June',
+           'July','August','September','October','November','December'];
+
+// Approval state
+$qcApproved  = !empty($t['approved_by_qc']);
+$pmApproved  = !empty($t['approved_by_manager']);
+$fullyApproved = $qcApproved && $pmApproved;
+
+$overallStatus = $fullyApproved ? 'Approved'
+               : ($qcApproved || $pmApproved ? 'In Review' : 'Pending');
+$statusMap = [
+    'Approved'  => ['bg'=>'rgba(16,185,129,.2)', 'text'=>'#059669', 'icon'=>'fa-check-circle'],
+    'In Review' => ['bg'=>'rgba(59,130,246,.2)', 'text'=>'#2563eb', 'icon'=>'fa-hourglass-half'],
+    'Pending'   => ['bg'=>'rgba(245,158,11,.2)', 'text'=>'#d97706', 'icon'=>'fa-clock'],
 ];
-$totalApprovals = array_sum(array_map(fn($s) => (int)$t[$s['col']], $approvalSteps));
+$sc = $statusMap[$overallStatus];
 ?>
-<div class="container-fluid">
-    <!-- Breadcrumb -->
-    <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-        <div class="my-auto">
-            <h4 class="page-title fw-semibold fs-18 mb-0"><= htmlspecialchars($t['target_title']) ?></h4>
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
-                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-targets">Site Targets</a></li>
-                <li class="breadcrumb-item active">Detail</li>
-            </ol>
+<style>
+:root{
+  --tgt-primary:#198754;--tgt-amber:#f59e0b;--tgt-blue:#3b82f6;
+  --tgt-green:#10b981;--tgt-red:#ef4444;--tgt-purple:#8b5cf6;--tgt-indigo:#6366f1;
+}
+.tgt-hero{background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 55%,#3b82f6 100%);
+  border-radius:18px;padding:26px 30px;margin-bottom:22px;position:relative;overflow:hidden;}
+.tgt-hero::before{content:'';position:absolute;width:260px;height:260px;border-radius:50%;
+  background:rgba(255,255,255,.04);top:-80px;right:-60px;}
+.tgt-hero::after{content:'';position:absolute;width:150px;height:150px;border-radius:50%;
+  background:rgba(255,255,255,.03);bottom:-40px;left:-30px;}
+.tgt-hero-inner{position:relative;z-index:2;}
+.tgt-badge-top{display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  padding:4px 12px;border-radius:20px;font-size:10.5px;font-weight:700;
+  letter-spacing:1.4px;text-transform:uppercase;color:#fff;margin-bottom:12px;}
+.tgt-btn-w{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);
+  color:#fff;border-radius:10px;padding:7px 18px;font-size:12px;font-weight:700;
+  text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:background .18s;}
+.tgt-btn-w:hover{background:rgba(255,255,255,.25);color:#fff;}
+
+/* Layout */
+.tgt-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:22px;}
+@media(max-width:992px){.tgt-grid{grid-template-columns:1fr 1fr;}}
+.tgt-kpi{border-radius:14px;padding:16px 18px;border:1px solid rgba(0,0,0,.08);
+  background:var(--card-bg,#fff);position:relative;overflow:hidden;}
+.tgt-kpi-accent{position:absolute;left:0;top:0;width:4px;height:100%;border-radius:14px 0 0 14px;}
+.tgt-kpi-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:16px;margin-bottom:10px;}
+.tgt-kpi-val{font-size:22px;font-weight:900;line-height:1;margin-bottom:2px;}
+.tgt-kpi-lbl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);}
+
+.tgt-panel{border-radius:14px;padding:22px;border:1px solid rgba(0,0,0,.08);
+  background:var(--card-bg,#fff);margin-bottom:18px;}
+.tgt-panel-title{font-size:11px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.tgt-dot{width:8px;height:8px;border-radius:50%;}
+
+/* Approval steps */
+.apv-step{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-radius:12px;border:1px solid rgba(0,0,0,.07);margin-bottom:10px;}
+.apv-step:last-child{margin-bottom:0;}
+.apv-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:15px;flex-shrink:0;}
+
+/* Progress bar */
+.tgt-prog-track{height:10px;border-radius:6px;background:rgba(0,0,0,.07);overflow:hidden;}
+.tgt-prog-fill{height:100%;border-radius:6px;transition:width .5s ease;}
+
+.empty-note{text-align:center;padding:20px;color:var(--text-muted);font-size:12px;}
+</style>
+
+<!-- ══════════ HERO ══════════ -->
+<div class="tgt-hero">
+  <div class="tgt-hero-inner">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
+      <div>
+        <div class="tgt-badge-top"><i class="fal fa-bullseye"></i>Site Target</div>
+        <h4 style="font-size:22px;font-weight:900;color:#fff;margin:0 0 5px">
+          <?= htmlspecialchars($t['target_title'] ?? 'N/A') ?>
+        </h4>
+        <p style="font-size:12.5px;color:rgba(255,255,255,.65);margin:0">
+          <i class="fal fa-building me-1"></i><?= htmlspecialchars($t['project_name'] ?? '—') ?>
+          &nbsp;·&nbsp;
+          <i class="fal fa-calendar me-1"></i>
+          <?= $t['year'] ?? '' ?> / <?= $months[(int)($t['month'] ?? 0)] ?? '' ?>
+          <?= $t['week_number'] ? ' — Week '.$t['week_number'] : '' ?>
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+          <a href="<?= $base_url ?>/con-target-edit/<?= $t['id'] ?>" class="tgt-btn-w">
+            <i class="fal fa-pencil"></i>Edit
+          </a>
+          <a href="<?= $base_url ?>/con-targets" class="tgt-btn-w">
+            <i class="fal fa-arrow-left"></i>Back
+          </a>
         </div>
-        <div class="my-auto d-flex gap-2">
-            <a href="<?= $base_url ?>/con-target-edit/<?= $t['id'] ?>" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-pencil me-1"></i> Edit
-            </a>
-            <a href="<?= $base_url ?>/con-targets" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-arrow-left me-1"></i> Back
-            </a>
+      </div>
+      <div style="text-align:right">
+        <div style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;
+          padding:8px 18px;border-radius:20px;background:<?= $sc['bg'] ?>;color:<?= $sc['text'] ?>">
+          <i class="fal <?= $sc['icon'] ?>"></i><?= $overallStatus ?>
         </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:8px">
+          <?= $fullyApproved ? 'Both QC &amp; PM approved' : ($qcApproved || $pmApproved ? 'Partial approval' : 'Awaiting QC &amp; PM') ?>
+        </div>
+      </div>
     </div>
-
-    <div class="row ">
-        <!-- Left: Target Info -->
-        <div class="col-xl-7">
-            <div class="card custom-card">
-                <div class="card-header">
-                    <h6 class="card-title mb-0"><i class="bi bi-bullseye me-2 text-primary"></i> Target Information</h6>
-                </div>
-                <div class="card-body">
-                    <table class="table table-borderless">
-                        <tr>
-                            <th width="35%">Project</th>
-                            <td><?= htmlspecialchars($t['project_name'] ?? '-') ?></td>
-                        </tr>
-                        <tr>
-                            <th>Working Plan</th>
-                            <td><?= htmlspecialchars($t['plan_description'] ?? '-') ?></td>
-                        </tr>
-                        <tr>
-                            <th>Design Type</th>
-                            <td><span class="badge bg-primary"><?= htmlspecialchars($t['design_type_name'] ?? '-') ?></span></td>
-                        </tr>
-                        <tr>
-                            <th>Year / Month</th>
-                            <td><?= $t['year'] ?> / <?= $months[(int)$t['month']] ?></td>
-                        </tr>
-                        <tr>
-                            <th>Week</th>
-                            <td><?= $t['week_number'] ? 'Week ' . $t['week_number'] : 'Monthly Target' ?></td>
-                        </tr>
-                        <tr>
-                            <th>Assigned To</th>
-                            <td><?= htmlspecialchars($t['created_by_name'] ?? '-') ?></td>
-                        </tr>
-                        <tr>
-                            <th>Created</th>
-                            <td><?= date('d M Y', strtotime($t['created_at'])) ?></td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Progress Card -->
-            <div class="card custom-card mt-3">
-                <div class="card-header">
-                    <h6 class="card-title mb-0"><i class="bi bi-graph-up me-2 text-success"></i> Progress</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row text-center mb-3">
-                        <div class="col-6">
-                            <div class="fs-1 fw-bold text-info"><?= number_format($t['target_percentage'], 1) ?>%</div>
-                            <div class="text-muted small">Target %</div>
-                        </div>
-                        <div class="col-6">
-                            <div class="fs-1 fw-bold text-<?= (float)$t['gain_percentage'] >= (float)$t['target_percentage'] ? 'success' : 'warning' ?>">
-                                <?= number_format($t['gain_percentage'], 1) ?>%
-                            </div>
-                            <div class="text-muted small">Gain %</div>
-                        </div>
-                    </div>
-                    <div class="progress mb-2" style="height:18px;">
-                        <div class="progress-bar bg-info progress-bar-striped" role="progressbar"
-                            style="width: <?= min($t['target_percentage'], 100) ?>%">
-                            Target: <?= number_format($t['target_percentage'], 1) ?>%
-                        </div>
-                    </div>
-                    <div class="progress" style="height:18px;">
-                        <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar"
-                            style="width: <?= min($t['gain_percentage'], 100) ?>%">
-                            Gain: <?= number_format($t['gain_percentage'], 1) ?>%
-                        </div>
-                    </div>
-
-                    <?php if (!empty($t['photo_link'])): ?>
-                        <div class="mt-3">
-                            <img src="<?= $base_url ?>/<?= htmlspecialchars($t['photo_link']) ?>" class="img-fluid rounded" style="max-height:220px;" alt="Site Photo">
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if ($t['field_test_details']): ?>
-                        <div class="mt-3 p-3 bg-light rounded">
-                            <strong>Field Test:</strong><br><?= nl2br(htmlspecialchars($t['field_test_details'])) ?>
-                        </div>
-                    <?php endif; ?>
-                    <?php if ($t['lab_test_result']): ?>
-                        <div class="mt-2 p-3 bg-light rounded">
-                            <strong>Lab Result:</strong><br><?= nl2br(htmlspecialchars($t['lab_test_result'])) ?>
-                        </div>
-                    <?php endif; ?>
-
-                    <!-- Update Gain Form -->
-                    <hr>
-                    <h6 class="fw-semibold">Update Actual Gain</h6>
-                    <form action="<?= $base_url ?>/con-target-gain/<?= $t['id'] ?>" method="POST" enctype="multipart/form-data">
-                        <div class="row g-2">
-                            <div class="col-md-4">
-                                <label class="form-label small">Gain %</label>
-                                <input type="number" name="gain_percentage" class="form-control form-control-sm" step="0.01" min="0" max="100"
-                                    value="<?= $t['gain_percentage'] ?>">
-                            </div>
-                            <div class="col-md-8">
-                                <label class="form-label small">Site Photo</label>
-                                <input type="file" name="photo" class="form-control form-control-sm" accept="image/*">
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label small">Field Test Details</label>
-                                <textarea name="field_test_details" rows="2" class="form-control form-control-sm"><?= htmlspecialchars($t['field_test_details'] ?? '') ?></textarea>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label small">Lab Test Result</label>
-                                <textarea name="lab_test_result" rows="2" class="form-control form-control-sm"><?= htmlspecialchars($t['lab_test_result'] ?? '') ?></textarea>
-                            </div>
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-upload me-1"></i> Update Gain</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right: Approval Steps -->
-        <div class="col-xl-5">
-            <div class="card custom-card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="card-title mb-0"><i class="bi bi-shield-check me-2 text-success"></i> Approval Steps</h6>
-                    <span class="badge bg-<?= $totalApprovals >= 5 ? 'success' : ($totalApprovals > 0 ? 'warning' : 'secondary') ?>">
-                        <?= $totalApprovals ?>/5
-                    </span>
-                </div>
-                <div class="card-body p-0">
-                    <ul class="list-group list-group-flush">
-                        <?php foreach ($approvalSteps as $key => $step): ?>
-                            <?php $approved = (int)$t[$step['col']]; ?>
-                            <li class="list-group-item d-flex align-items-center justify-content-between">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi <?= $step['icon'] ?> fs-5 text-<?= $approved ? 'success' : 'muted' ?>"></i>
-                                    <span><?= $step['label'] ?></span>
-                                </div>
-                                <?php if ($approved): ?>
-                                    <span class="badge bg-success"><i class="bi bi-check-lg"></i> Approved</span>
-                                <?php else: ?>
-                                    <form action="<?= $base_url ?>/con-target-approve/<?= $t['id'] ?>" method="POST" class="d-inline">
-                                        <input type="hidden" name="step" value="<?= $key ?>">
-                                        <button type="submit" class="btn btn-sm btn-outline-success"
-                                            onclick="return confirm('Confirm approval as <?= $step['label'] ?>?')">
-                                            <i class="bi bi-check-circle me-1"></i> Approve
-                                        </button>
-                                    </form>
-                                <?php endif; ?>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-                <?php if ($totalApprovals >= 5): ?>
-                    <div class="card-footer bg-success-subtle text-success text-center fw-semibold">
-                        <i class="bi bi-check-circle-fill me-1"></i> Fully Approved — Contractor Bill Can Be Raised
-                    </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- QC Review Info -->
-            <?php if ($t['qc_reviewed_by_name']): ?>
-                <div class="card custom-card mt-3">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-person-check-fill text-teal fs-4"></i>
-                            <div>
-                                <div class="fw-semibold">QC Reviewed by</div>
-                                <div class="text-muted small"><?= htmlspecialchars($t['qc_reviewed_by_name']) ?></div>
-                                <div class="text-muted small"><?= $t['qc_reviewed_at'] ? date('d M Y H:i', strtotime($t['qc_reviewed_at'])) : '' ?></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
+  </div>
 </div>
+
+<!-- ══════════ KPI GRID ══════════ -->
+<div class="tgt-grid">
+  <div class="tgt-kpi">
+    <div class="tgt-kpi-accent" style="background:var(--tgt-blue)"></div>
+    <div class="tgt-kpi-icon" style="background:rgba(59,130,246,.12);color:var(--tgt-blue)"><i class="fal fa-percent"></i></div>
+    <div class="tgt-kpi-lbl">Target %</div>
+    <div class="tgt-kpi-val" style="color:var(--tgt-blue)"><?= number_format($t['target_percentage'] ?? 0, 1) ?>%</div>
+  </div>
+  <div class="tgt-kpi">
+    <div class="tgt-kpi-accent" style="background:var(--tgt-green)"></div>
+    <div class="tgt-kpi-icon" style="background:rgba(16,185,129,.12);color:var(--tgt-green)"><i class="fal fa-chart-line"></i></div>
+    <div class="tgt-kpi-lbl">Gain %</div>
+    <div class="tgt-kpi-val" style="color:var(--tgt-green)"><?= number_format($t['gain_percentage'] ?? 0, 1) ?>%</div>
+  </div>
+  <div class="tgt-kpi">
+    <div class="tgt-kpi-accent" style="background:var(--tgt-purple)"></div>
+    <div class="tgt-kpi-icon" style="background:rgba(139,92,246,.12);color:var(--tgt-purple)"><i class="fal fa-shield-check"></i></div>
+    <div class="tgt-kpi-lbl">Approvals</div>
+    <div class="tgt-kpi-val" style="color:var(--tgt-purple)"><?= ($qcApproved?1:0)+($pmApproved?1:0) ?>/2</div>
+  </div>
+  <div class="tgt-kpi">
+    <div class="tgt-kpi-accent" style="background:<?= $sc['text'] ?>"></div>
+    <div class="tgt-kpi-icon" style="background:<?= $sc['bg'] ?>;color:<?= $sc['text'] ?>"><i class="fal <?= $sc['icon'] ?>"></i></div>
+    <div class="tgt-kpi-lbl">Status</div>
+    <div class="tgt-kpi-val" style="color:<?= $sc['text'] ?>;font-size:14px"><?= $overallStatus ?></div>
+  </div>
+</div>
+
+<div class="row">
+  <!-- Left: Info + Gain update -->
+  <div class="col-xl-7">
+
+    <!-- Target Info -->
+    <div class="tgt-panel">
+      <div class="tgt-panel-title">
+        <div class="tgt-dot" style="background:var(--tgt-blue)"></div>
+        Target Information
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <?php $rows = [
+          ['Project',      htmlspecialchars($t['project_name'] ?? '—')],
+          ['Working Plan', htmlspecialchars($t['plan_description'] ?? '—')],
+          ['Design Type',  '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(59,130,246,.1);color:#2563eb">'.htmlspecialchars($t['design_type_name'] ?? '—').'</span>'],
+          ['Year / Month', ($t['year'] ?? '—') . ' / ' . ($months[(int)($t['month'] ?? 0)] ?? '—')],
+          ['Week',         $t['week_number'] ? 'Week '.$t['week_number'] : 'Monthly Target'],
+          ['Created By',   htmlspecialchars($t['created_by_name'] ?? '—')],
+          ['Created',      !empty($t['created_at']) ? date('d M Y', strtotime($t['created_at'])) : '—'],
+        ];
+        foreach ($rows as $r): ?>
+        <tr style="border-bottom:1px solid rgba(0,0,0,.05)">
+          <td style="padding:9px 12px;font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap;width:35%"><?= $r[0] ?></td>
+          <td style="padding:9px 12px;font-size:12.5px"><?= $r[1] ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </table>
+    </div>
+
+    <!-- Progress -->
+    <div class="tgt-panel">
+      <div class="tgt-panel-title">
+        <div class="tgt-dot" style="background:var(--tgt-green)"></div>
+        Progress Overview
+      </div>
+      <?php
+      $tPct = min((float)($t['target_percentage'] ?? 0), 100);
+      $gPct = min((float)($t['gain_percentage']   ?? 0), 100);
+      $gColor = $gPct >= $tPct ? 'linear-gradient(90deg,#059669,#10b981)' : ($gPct > 0 ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#dc2626,#ef4444)');
+      ?>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px;text-align:center">
+        <div>
+          <div style="font-size:36px;font-weight:900;color:var(--tgt-blue)"><?= number_format($tPct,1) ?>%</div>
+          <div style="font-size:11px;color:var(--text-muted)">Target</div>
+        </div>
+        <div>
+          <div style="font-size:36px;font-weight:900;color:<?= $gPct>=$tPct?'var(--tgt-green)':'var(--tgt-amber)' ?>"><?= number_format($gPct,1) ?>%</div>
+          <div style="font-size:11px;color:var(--text-muted)">Actual Gain</div>
+        </div>
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span>Target</span><span><?= number_format($tPct,1) ?>%</span>
+        </div>
+        <div class="tgt-prog-track">
+          <div class="tgt-prog-fill" style="width:<?= $tPct ?>%;background:linear-gradient(90deg,#1e40af,#3b82f6)"></div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span>Gain</span><span><?= number_format($gPct,1) ?>%</span>
+        </div>
+        <div class="tgt-prog-track">
+          <div class="tgt-prog-fill" style="width:<?= $gPct ?>%;background:<?= $gColor ?>"></div>
+        </div>
+      </div>
+
+      <?php if (!empty($t['photo_link'])): ?>
+      <div style="margin-top:14px">
+        <img src="<?= $base_url ?>/<?= htmlspecialchars($t['photo_link']) ?>"
+             style="max-width:100%;border-radius:10px;max-height:220px;object-fit:cover" alt="Site Photo">
+      </div>
+      <?php endif; ?>
+      <?php if (!empty($t['field_test_details'])): ?>
+      <div style="margin-top:12px;padding:12px;background:rgba(0,0,0,.03);border-radius:10px;font-size:12px">
+        <strong>Field Test:</strong><br><?= nl2br(htmlspecialchars($t['field_test_details'])) ?>
+      </div>
+      <?php endif; ?>
+      <?php if (!empty($t['lab_test_result'])): ?>
+      <div style="margin-top:8px;padding:12px;background:rgba(0,0,0,.03);border-radius:10px;font-size:12px">
+        <strong>Lab Result:</strong><br><?= nl2br(htmlspecialchars($t['lab_test_result'])) ?>
+      </div>
+      <?php endif; ?>
+
+      <!-- Update Gain Form -->
+      <hr style="border-color:rgba(0,0,0,.07);margin:16px 0">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;color:var(--text-muted)">
+        Update Actual Gain
+      </div>
+      <form action="<?= $base_url ?>/con-target-gain/<?= $t['id'] ?>" method="POST" enctype="multipart/form-data">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Gain %</label>
+            <input type="number" name="gain_percentage" class="form-control form-control-sm"
+                   step="0.01" min="0" max="100" value="<?= $t['gain_percentage'] ?? 0 ?>">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Site Photo</label>
+            <input type="file" name="photo" class="form-control form-control-sm" accept="image/*">
+          </div>
+        </div>
+        <div style="margin-bottom:10px">
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Field Test Details</label>
+          <textarea name="field_test_details" rows="2" class="form-control form-control-sm"><?= htmlspecialchars($t['field_test_details'] ?? '') ?></textarea>
+        </div>
+        <div style="margin-bottom:10px">
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Lab Test Result</label>
+          <textarea name="lab_test_result" rows="2" class="form-control form-control-sm"><?= htmlspecialchars($t['lab_test_result'] ?? '') ?></textarea>
+        </div>
+        <button type="submit" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;
+          border:none;border-radius:10px;padding:8px 20px;font-size:12px;font-weight:700;cursor:pointer">
+          <i class="fal fa-upload me-2"></i>Update Gain
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right: Approval Panel -->
+  <div class="col-xl-5">
+
+    <!-- Approval Status (Always visible) -->
+    <div class="tgt-panel">
+      <div class="tgt-panel-title">
+        <div class="tgt-dot" style="background:var(--tgt-purple)"></div>
+        Approval Status
+        <span style="margin-left:auto;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;
+          background:<?= $fullyApproved ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.12)' ?>;
+          color:<?= $fullyApproved ? '#059669' : '#d97706' ?>">
+          <?= ($qcApproved?1:0)+($pmApproved?1:0) ?>/2 Done
+        </span>
+      </div>
+
+      <!-- Creator Info -->
+      <?php if (!empty($creatorInfo) || !empty($t['created_by_name'])): ?>
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;
+        background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.12);margin-bottom:14px">
+        <div style="width:34px;height:34px;border-radius:50%;background:rgba(99,102,241,.12);
+          display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fal fa-user" style="color:#6366f1;font-size:14px"></i>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:800;color:#6366f1">
+            <?= htmlspecialchars($creatorInfo['full_name'] ?? $t['created_by_name'] ?? '—') ?>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted)">
+            <?= htmlspecialchars($creatorInfo['designation'] ?? 'Site Engineer') ?>
+            &nbsp;·&nbsp;<i class="fal fa-calendar me-1"></i>
+            <?= !empty($t['created_at']) ? date('d M Y', strtotime($t['created_at'])) : '—' ?>
+          </div>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <!-- QC Step -->
+      <div class="apv-step" style="background:<?= $qcApproved ? 'rgba(16,185,129,.05)' : 'rgba(245,158,11,.04)' ?>;
+        border-color:<?= $qcApproved ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.2)' ?>">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="apv-icon" style="background:<?= $qcApproved ? 'rgba(16,185,129,.15)' : 'rgba(245,158,11,.12)' ?>;
+            color:<?= $qcApproved ? '#059669' : '#d97706' ?>">
+            <i class="fal <?= $qcApproved ? 'fa-check-circle' : 'fa-shield-alt' ?>"></i>
+          </div>
+          <div>
+            <div style="font-size:12.5px;font-weight:700">QC Officer</div>
+            <?php if ($qcApproved && !empty($t['qc_reviewed_by_name'])): ?>
+            <div style="font-size:11px;color:var(--text-muted)">
+              <?= htmlspecialchars($t['qc_reviewed_by_name']) ?>
+              <?= !empty($t['qc_reviewed_at']) ? ' · '.date('d M Y', strtotime($t['qc_reviewed_at'])) : '' ?>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
+          background:<?= $qcApproved ? 'rgba(16,185,129,.15)' : 'rgba(245,158,11,.12)' ?>;
+          color:<?= $qcApproved ? '#059669' : '#d97706' ?>">
+          <?= $qcApproved ? '✓ Approved' : 'Pending' ?>
+        </span>
+      </div>
+
+      <!-- PM Step -->
+      <div class="apv-step" style="background:<?= $pmApproved ? 'rgba(16,185,129,.05)' : 'rgba(245,158,11,.04)' ?>;
+        border-color:<?= $pmApproved ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.2)' ?>">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="apv-icon" style="background:<?= $pmApproved ? 'rgba(16,185,129,.15)' : 'rgba(245,158,11,.12)' ?>;
+            color:<?= $pmApproved ? '#059669' : '#d97706' ?>">
+            <i class="fal <?= $pmApproved ? 'fa-check-circle' : 'fa-user-tie' ?>"></i>
+          </div>
+          <div>
+            <div style="font-size:12.5px;font-weight:700">Project Manager</div>
+            <div style="font-size:11px;color:var(--text-muted)"><?= $pmApproved ? 'Approved' : 'Awaiting approval' ?></div>
+          </div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
+          background:<?= $pmApproved ? 'rgba(16,185,129,.15)' : 'rgba(245,158,11,.12)' ?>;
+          color:<?= $pmApproved ? '#059669' : '#d97706' ?>">
+          <?= $pmApproved ? '✓ Approved' : 'Pending' ?>
+        </span>
+      </div>
+
+      <!-- Final status banner -->
+      <?php if ($fullyApproved): ?>
+      <div style="margin-top:14px;padding:14px 16px;border-radius:12px;
+        background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);text-align:center">
+        <i class="fal fa-check-circle" style="color:#059669;font-size:22px;display:block;margin-bottom:6px"></i>
+        <div style="font-size:13px;font-weight:800;color:#059669">Fully Approved</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Contractor bill can now be raised</div>
+      </div>
+      <?php endif; ?>
+    </div>
+
+    <!-- Approval Action Card — only for QC/PM, not for SE/creator -->
+    <?php if ($canApprove && !$alreadyApproved): ?>
+    <div class="tgt-panel" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.04)">
+      <div class="tgt-panel-title" style="margin-bottom:14px">
+        <div class="tgt-dot" style="background:var(--tgt-green)"></div>
+        Your Approval — Action Required
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
+        <i class="fal fa-info-circle me-1"></i>
+        <?= $approverRole === 'qc' ? 'You are approving as <strong>QC Officer</strong>' : 'You are approving as <strong>Project Manager</strong>' ?>
+      </div>
+      <form action="<?= $base_url ?>/con-target-approve/<?= $t['id'] ?>" method="POST">
+        <button type="submit"
+          style="width:100%;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;
+            border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer"
+          onclick="return confirm('Approve this target? This action cannot be undone.')">
+          <i class="fal fa-check-circle me-2"></i>Approve Target
+        </button>
+      </form>
+    </div>
+    <?php elseif ($canApprove && $alreadyApproved): ?>
+    <div class="tgt-panel" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.04)">
+      <div style="text-align:center;padding:10px">
+        <i class="fal fa-check-circle" style="color:#059669;font-size:28px;display:block;margin-bottom:8px"></i>
+        <div style="font-size:13px;font-weight:700;color:#059669">You have already approved this target</div>
+      </div>
+    </div>
+    <?php endif; ?>
+
+  </div><!-- /col -->
+</div><!-- /row -->
+<div style="height:30px"></div>

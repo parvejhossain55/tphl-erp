@@ -67,7 +67,7 @@ class Con_MaterialIssueController extends Controller
         $contractors = [];
         try {
             $cRes = $this->db->query(
-                "SELECT id, company_name, contact_person FROM contractors ORDER BY company_name ASC"
+                "SELECT id, name, phone, trade FROM contractors ORDER BY name ASC"
             );
             if ($cRes) $contractors = $cRes->fetch_all(MYSQLI_ASSOC);
         } catch (\Exception $e) {}

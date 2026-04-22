@@ -20,6 +20,7 @@
                             <th>Project</th>
                             <th class="text-end">Total Amount</th>
                             <th>Status</th>
+                            <th class="text-center">Approvals</th>
                             <th>Order Date</th>
                             <th>Created By</th>
                             <th class="text-center">Actions</th>
@@ -36,6 +37,7 @@
                                     <?php
                                     $badge = match($po['status']) {
                                         'Issued'             => 'bg-info',
+                                        'Approved'           => 'bg-success',
                                         'Partially Received' => 'bg-warning text-dark',
                                         'Fully Received'     => 'bg-success',
                                         'Cancelled'          => 'bg-danger',
@@ -43,6 +45,20 @@
                                     };
                                     ?>
                                     <span class="badge <?= $badge ?>"><?= $po['status'] ?></span>
+                                </td>
+                                <td class="text-center">
+                                    <?php
+                                    $seOk = !empty($po['approved_by_se']);
+                                    $pmOk = !empty($po['approved_by_pm']);
+                                    $cnt  = ($seOk?1:0)+($pmOk?1:0);
+                                    $apvColor = $cnt>=2?'#059669':($cnt>0?'#d97706':'#6b7280');
+                                    ?>
+                                    <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;
+                                      background:rgba(0,0,0,.05);color:<?= $apvColor ?>">
+                                      <?= $cnt ?>/2
+                                      <?= $seOk?'<span title="SE">SE✓</span>':'' ?>
+                                      <?= $pmOk?'<span title="PM">PM✓</span>':'' ?>
+                                    </span>
                                 </td>
                                 <td class="text-muted small"><?= date('d M Y', strtotime($po['order_date'])) ?></td>
                                 <td><?= htmlspecialchars($po['created_by_name'] ?? '—') ?></td>

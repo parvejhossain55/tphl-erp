@@ -111,6 +111,8 @@ class Con_BOQController extends Controller
 
     public function show($id)
     {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
         $boq = $this->boqModel->find($id);
         if (!$boq) {
             setError('BOQ not found.');
@@ -120,11 +122,38 @@ class Con_BOQController extends Controller
 
         $items = $this->boqModel->getItems($id);
 
+        $currentUserId = (int)($_SESSION['user']['id']   ?? 0);
+        $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // ── Approval permission ─────────────────────────────────────────────
+        // Only PM (15) can approve BOQ. SE (12) creates but cannot approve.
+        // Creator cannot approve their own submission.
+        $createdBy  = (int)($boq['created_by'] ?? 0);
+        $canApprove = ($currentRoleId === 15)
+                      && ($currentUserId !== $createdBy);
+
+        // Fetch creator info (name + designation)
+        $creatorInfo = [];
+        if ($createdBy) {
+            $stmt = $this->db->prepare("
+                SELECT u.full_name,
+                       COALESCE(d.name, '') AS designation
+                FROM   users u
+                LEFT JOIN employees   e ON e.user_id = u.id
+                LEFT JOIN designations d ON d.id = e.designation_id
+                WHERE  u.id = ? LIMIT 1");
+            $stmt->bind_param('i', $createdBy);
+            $stmt->execute();
+            $creatorInfo = $stmt->get_result()->fetch_assoc() ?? [];
+        }
+
         $this->view('phase2/boq/show-boq', [
             'current_route' => 'con-boq',
             'page_title'    => 'BOQ Details — ' . $boq['project_name'],
             'boq'           => $boq,
             'items'         => $items,
+            'canApprove'    => $canApprove,
+            'creatorInfo'   => $creatorInfo,
         ]);
     }
 
@@ -207,8 +236,25 @@ class Con_BOQController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        $userId = (int)($_SESSION['user']['id']   ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // Role guard: only PM (15) can approve
+        if ($roleId !== 15) {
+            setError('Only the Project Manager can approve a BOQ.');
+            header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
+            exit;
+        }
+
+        // Creator cannot approve their own BOQ
+        $boq = $this->boqModel->find($id);
+        if ($boq && (int)($boq['created_by'] ?? 0) === $userId) {
+            setError('You cannot approve a BOQ that you created.');
+            header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
+            exit;
+        }
+
         $status = $_POST['status'] ?? 'Approved';
-        $userId = (int)($_SESSION['user']['id'] ?? 0);
 
         if (!in_array($status, ['Submitted', 'Approved', 'Rejected'])) {
             setError('Invalid status.');

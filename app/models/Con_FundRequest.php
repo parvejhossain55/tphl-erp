@@ -17,13 +17,6 @@ class Con_FundRequest extends Model
                        ab.full_name AS approved_by_name,
                        pb.full_name AS payment_by_name
                 FROM {$this->table} ofr
-<<<<<<< HEAD
-                LEFT JOIN projects p            ON p.id   = ofr.project_id
-                LEFT JOIN users u               ON u.id   = ofr.requester_id
-                LEFT JOIN contractors oo ON oo.id = ofr.operator_id
-                LEFT JOIN users ab              ON ab.id  = ofr.approved_by
-                ORDER BY ofr.created_at DESC";
-=======
                 LEFT JOIN projects p              ON p.id   = ofr.project_id
                 LEFT JOIN users u                 ON u.id   = ofr.requester_id
                 LEFT JOIN contractors oo ON oo.id  = ofr.operator_id
@@ -42,7 +35,6 @@ class Con_FundRequest extends Model
 
         $sql .= " GROUP BY ofr.id ORDER BY ofr.created_at DESC";
 
->>>>>>> 3c9b3fa0bbf940b36ab0fd1ee0d020354f928834
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 

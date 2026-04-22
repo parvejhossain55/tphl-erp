@@ -4,6 +4,12 @@ $base = $GLOBALS['base_url'];
 $r = $report ?? [];
 $pct = (float)($r['progress_percentage'] ?? 0);
 $pctColor = $pct >= 80 ? '#198754' : ($pct >= 50 ? '#f59e0b' : '#ef4444');
+
+$qcOk = !empty($r['approved_by_qc']);
+$pmOk = !empty($r['approved_by_pm']);
+$canApprove = $canApprove ?? false;
+$alreadyApproved = $alreadyApproved ?? false;
+$approverRole = $approverRole ?? null;
 ?>
 <style>
   :root {
@@ -113,7 +119,7 @@ $pctColor = $pct >= 80 ? '#198754' : ($pct >= 50 ? '#f59e0b' : '#ef4444');
   <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
     <div>
       <div class="wr-badge"><i class="fal fa-calendar-week"></i> Weekly Report #<?= $r['id'] ?? '—' ?></div>
-      <h4 style="font-size:22px;font-weight:900;margin:0 0 4px"><?= htmlspecialchars($r['project_name'] ?? 'Unknown Project') ?></h4>
+      <h4 style="font-size:22px;font-weight:900;margin:0 0 4px" class="text-light"><?= htmlspecialchars($r['project_name'] ?? 'Unknown Project') ?></h4>
       <p style="font-size:12px;color:rgba(255,255,255,.7);margin:0">
         <?= htmlspecialchars($r['work_plan_title'] ?? '—') ?>
         &nbsp;·&nbsp; <?= $r['target_year'] ?? '—' ?>/<?= str_pad($r['target_month'] ?? '', 2, '0', STR_PAD_LEFT) ?>
@@ -161,6 +167,25 @@ $pctColor = $pct >= 80 ? '#198754' : ($pct >= 50 ? '#f59e0b' : '#ef4444');
   </div>
 </div>
 
+<!-- Approvals -->
+<div class="wr-card" style="padding:15px 24px; display:flex; align-items:center; gap:30px; flex-wrap:wrap">
+  <div style="font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">
+    Approval Status
+  </div>
+  <div style="display:flex;gap:15px">
+    <span style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;
+      background:<?= $qcOk ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.1)' ?>;
+      color:<?= $qcOk ? '#059669' : '#dc2626' ?>">
+      <?= $qcOk ? '<i class="fal fa-check-circle me-1"></i> QC Approved' : '<i class="fal fa-hourglass-half me-1"></i> QC Pending' ?>
+    </span>
+    <span style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;
+      background:<?= $pmOk ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.1)' ?>;
+      color:<?= $pmOk ? '#059669' : '#dc2626' ?>">
+      <?= $pmOk ? '<i class="fal fa-check-circle me-1"></i> PM Approved' : '<i class="fal fa-hourglass-half me-1"></i> PM Pending' ?>
+    </span>
+  </div>
+</div>
+
 <div class="row">
   <!-- Work Done Notes -->
   <div class="col-lg-<?= !empty($r['progress_image']) ? '8' : '12' ?>">
@@ -191,7 +216,7 @@ $pctColor = $pct >= 80 ? '#198754' : ($pct >= 50 ? '#f59e0b' : '#ef4444');
 </div>
 
 <!-- Actions -->
-<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:30px">
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:30px;align-items:center">
   <a href="<?= $base ?>/con-weekly-reports"
     style="border:1.5px solid rgba(0,0,0,.12);border-radius:10px;padding:9px 22px;
       font-size:12px;font-weight:700;color:var(--text-muted);text-decoration:none">
@@ -202,4 +227,19 @@ $pctColor = $pct >= 80 ? '#198754' : ($pct >= 50 ? '#f59e0b' : '#ef4444');
       border-radius:10px;padding:9px 22px;font-size:12px;font-weight:700;text-decoration:none">
     <i class="fal fa-plus me-1"></i> New Report
   </a>
+
+  <div style="flex-grow:1"></div>
+
+  <?php if ($canApprove && !$alreadyApproved): ?>
+    <form action="<?= $base ?>/con-weekly-report-approve/<?= $r['id'] ?>" method="POST" style="margin:0">
+      <button type="submit" class="btn btn-success fw-bold" style="border-radius:10px;padding:9px 22px;font-size:12px"
+        onclick="return confirm('Approve this Weekly Progress Report?');">
+        <i class="fal fa-check-double me-1"></i> Approve Report as <?= strtoupper($approverRole) ?>
+      </button>
+    </form>
+  <?php elseif ($alreadyApproved): ?>
+    <div style="font-size:12px;font-weight:700;color:#059669;padding:9px 22px;background:rgba(16,185,129,.1);border-radius:10px">
+      <i class="fal fa-check-circle me-1"></i> You Approved This
+    </div>
+  <?php endif; ?>
 </div>

@@ -20,6 +20,7 @@ $drawingsByType          = $drawingsByType          ?? [];
 $recentDrawings          = $recentDrawings          ?? [];
 $projectsWithoutEstimate = $projectsWithoutEstimate ?? [];
 $recentEstimates         = $recentEstimates         ?? [];
+$pendingBudgetsList      = $pendingBudgetsList      ?? [];
 
 $typeColors = [
     '#198754','#3b82f6','#f59e0b','#8b5cf6','#14b8a6',
@@ -186,8 +187,80 @@ $typeColors = [
 <!-- ═══════════════ MAIN ROW ═══════════════ -->
 <div class="row">
 
-  <!-- Left: Recent Drawings -->
+  <!-- Left: Panels -->
   <div class="col-lg-8">
+
+    <!-- ── Pending Submissions Awaiting Approval ── -->
+    <?php if (!empty($pendingBudgetsList)): ?>
+    <div class="est-panel" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">
+      <div class="est-panel-title">
+        <div class="est-dot" style="background:var(--est-amber)"></div>
+        Pending Budget Submissions — Awaiting Approval
+        <span style="margin-left:auto;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;
+          background:rgba(245,158,11,.12);color:var(--est-amber)">
+          <?= count($pendingBudgetsList) ?> Pending
+        </span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="est-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Project</th>
+              <th>Submitted By</th>
+              <th>Designation</th>
+              <th>Grand Total</th>
+              <th>Submitted On</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($pendingBudgetsList as $pi => $pb): ?>
+            <tr>
+              <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
+              <td style="font-weight:700;font-size:12.5px"><?= htmlspecialchars($pb['project_name'] ?? 'N/A') ?></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:7px">
+                  <div style="width:28px;height:28px;border-radius:50%;background:rgba(99,102,241,.12);
+                    display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <i class="fal fa-user" style="font-size:11px;color:#6366f1"></i>
+                  </div>
+                  <span style="font-size:12px;font-weight:600"><?= htmlspecialchars($pb['creator_name'] ?? '—') ?></span>
+                </div>
+              </td>
+              <td>
+                <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
+                  background:rgba(139,92,246,.08);color:#8b5cf6">
+                  <?= htmlspecialchars($pb['creator_designation'] ?: 'Estimator') ?>
+                </span>
+              </td>
+              <td style="font-weight:800;color:var(--est-primary)"><?= estFmt($pb['total_estimated_cost'] ?? 0) ?></td>
+              <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">
+                <i class="fal fa-calendar me-1"></i>
+                <?= !empty($pb['created_at']) ? date('d M Y', strtotime($pb['created_at'])) : '—' ?>
+                <div style="font-size:10px;opacity:.7">
+                  <?= !empty($pb['created_at']) ? date('h:i A', strtotime($pb['created_at'])) : '' ?>
+                </div>
+              </td>
+              <td>
+                <a href="<?= $base ?>/con-estimate-show/<?= $pb['id'] ?>"
+                  style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+                    padding:5px 12px;border-radius:8px;text-decoration:none;
+                    background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(245,158,11,.05));
+                    color:var(--est-amber);border:1px solid rgba(245,158,11,.25)"
+                  onmouseover="this.style.background='rgba(245,158,11,.2)'"
+                  onmouseout="this.style.background='linear-gradient(135deg,rgba(245,158,11,.15),rgba(245,158,11,.05))'">
+                  <i class="fal fa-eye"></i> View
+                </a>
+              </td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <?php endif; ?>
+
     <div class="est-panel">
       <div class="est-panel-title">
         <div class="est-dot" style="background:var(--est-blue)"></div>

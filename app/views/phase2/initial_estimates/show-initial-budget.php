@@ -7,6 +7,8 @@ $breakdown    = $breakdown    ?? [];
 $workingPlans = $workingPlans ?? [];
 $locked       = $locked       ?? false;
 $currentUserId= $currentUserId?? 0;
+$canApprove   = $canApprove   ?? false;
+$creatorInfo  = $creatorInfo  ?? [];
 
 $monthNames = ['','January','February','March','April','May','June',
                'July','August','September','October','November','December'];
@@ -201,12 +203,34 @@ function sib_fmt($n) {
   </div>
 </div>
 
-<!-- ═══════════════ APPROVAL ACTION (only when pending) ═══════════════ -->
-<?php if (!$locked && $st === 'pending'): ?>
+<!-- ═══════════════ APPROVAL ACTION (only for PM/SE, never for creator) ═══════════════ -->
+<?php if ($canApprove && !$locked && $st === 'pending'): ?>
 <div class="sib-action-card">
+  <!-- Creator Info Banner -->
+  <?php if (!empty($creatorInfo)): ?>
+  <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:10px;
+    background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);margin-bottom:16px">
+    <div style="width:38px;height:38px;border-radius:50%;background:rgba(99,102,241,.12);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <i class="fal fa-user" style="color:#6366f1;font-size:16px"></i>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:800;color:var(--sib-indigo,#6366f1)">
+        <?= htmlspecialchars($creatorInfo['full_name'] ?? 'Unknown') ?>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted)">
+        <?= htmlspecialchars($creatorInfo['designation'] ?? 'Staff') ?>
+        &nbsp;·&nbsp;
+        <i class="fal fa-calendar me-1"></i>
+        Submitted <?= !empty($budget['created_at']) ? date('d M Y, h:i A', strtotime($budget['created_at'])) : '—' ?>
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <div class="sib-panel-title" style="margin-bottom:14px">
     <div class="sib-dot" style="background:var(--sib-amber)"></div>
-    Pending Approval Action
+    Pending Approval — Your Action Required
   </div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
     <form action="<?= $base ?>/con-estimate-approve/<?= $budget['id'] ?>" method="POST">
@@ -219,7 +243,7 @@ function sib_fmt($n) {
     <button type="button" class="btn btn-sm px-4"
       style="background:rgba(239,68,68,.1);color:#dc2626;border:1px solid rgba(239,68,68,.3);border-radius:10px;font-size:12px;font-weight:700"
       data-bs-toggle="modal" data-bs-target="#cancelModal">
-      <i class="fal fa-times-circle me-2"></i>Cancel Budget
+      <i class="fal fa-times-circle me-2"></i>Reject Budget
     </button>
     <span style="font-size:11px;color:var(--text-muted)">
       <i class="fal fa-info-circle me-1"></i>Once approved, items cannot be edited.
@@ -227,14 +251,14 @@ function sib_fmt($n) {
   </div>
 </div>
 
-<!-- Cancel Modal -->
+<!-- Reject Modal -->
 <div class="modal fade" id="cancelModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content" style="border-radius:16px;border:none">
       <form action="<?= $base ?>/con-estimate-cancel/<?= $budget['id'] ?>" method="POST">
         <div class="modal-header" style="border-bottom:1px solid rgba(0,0,0,.07)">
           <h5 class="modal-title" style="font-size:14px;font-weight:800">
-            <i class="fal fa-exclamation-triangle text-danger me-2"></i>Cancel Budget
+            <i class="fal fa-exclamation-triangle text-danger me-2"></i>Reject Budget
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
@@ -244,17 +268,18 @@ function sib_fmt($n) {
           </label>
           <textarea name="rejection_note" class="form-control" rows="4" required
             style="border-radius:10px;font-size:13px"
-            placeholder="Explain why this budget is being cancelled…"></textarea>
+            placeholder="Explain why this budget is being rejected…"></textarea>
         </div>
         <div class="modal-footer" style="border-top:1px solid rgba(0,0,0,.07)">
           <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-sm btn-danger px-4" style="border-radius:10px">Confirm Cancel</button>
+          <button type="submit" class="btn btn-sm btn-danger px-4" style="border-radius:10px">Confirm Reject</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 <?php endif; ?>
+
 
 <!-- ═══════════════ TABBED CONTENT ═══════════════ -->
 <div class="sib-tabs">

@@ -46,15 +46,34 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $currentUserId = (int)($_SESSION['user']['id']   ?? 0);
+        $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $createdBy     = (int)($po['created_by'] ?? 0);
+
+        // Role guards — SE (12) approves SE step, PM (15) approves PM step
+        $seApproved   = !empty($po['approved_by_se']);
+        $pmApproved   = !empty($po['approved_by_pm']);
+        $fullyApproved = $seApproved && $pmApproved;
+
+        $canApproveSE = ($currentRoleId === 12) && !$seApproved; // && ($currentUserId !== $createdBy);
+        $canApprovePM = ($currentRoleId === 15) && !$pmApproved;
+
         $items        = $this->poModel->getItems($id);
         $pendingItems = $this->poModel->getPendingItems($id);
 
         $this->view('phase2/purchase-orders/show-purchase-order', [
-            'current_route' => 'con-purchase-orders',
-            'page_title'    => 'Purchase Order #' . $id,
-            'po'            => $po,
-            'items'         => $items,
-            'pendingItems'  => $pendingItems,
+            'current_route'  => 'con-purchase-orders',
+            'page_title'     => 'Purchase Order #' . $id,
+            'po'             => $po,
+            'items'          => $items,
+            'pendingItems'   => $pendingItems,
+            'seApproved'     => $seApproved,
+            'pmApproved'     => $pmApproved,
+            'fullyApproved'  => $fullyApproved,
+            'canApproveSE'   => $canApproveSE,
+            'canApprovePM'   => $canApprovePM,
+            'currentRoleId'  => $currentRoleId,
         ]);
     }
 
@@ -70,12 +89,79 @@ class Con_PurchaseOrderController extends Controller
         $result = $this->poModel->generate($requestId, $userId);
 
         if ($result['success']) {
-            setSuccess('Purchase Order #' . $result['id'] . ' generated successfully.');
+            setSuccess('Purchase Order #' . $result['id'] . ' generated. Awaiting SE & PM approval.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$result['id']}");
         } else {
             setError('PO generation failed: ' . $result['error']);
             header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
         }
+        exit;
+    }
+
+    // =========================================================================
+    // APPROVE PO STEP — SE (12) or PM (15)
+    // =========================================================================
+
+    public function approvePO($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $userId = (int)($_SESSION['user']['id']   ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        $po = $this->poModel->find($id);
+        if (!$po) {
+            setError('Purchase Order not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-orders");
+            exit;
+        }
+
+        // Role guard
+        if ($roleId === 12) {
+            // SE approval
+            if (!empty($po['approved_by_se'])) {
+                setError('SE has already approved this PO.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+                exit;
+            }
+            $stmt = $this->db->prepare(
+                "UPDATE purchase_orders SET approved_by_se = ?, se_approved_at = NOW() WHERE id = ?"
+            );
+            $stmt->bind_param('ii', $userId, $id);
+            $stmt->execute();
+
+        } elseif ($roleId === 15) {
+            // PM approval
+            if (!empty($po['approved_by_pm'])) {
+                setError('PM has already approved this PO.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+                exit;
+            }
+            $stmt = $this->db->prepare(
+                "UPDATE purchase_orders SET approved_by_pm = ?, pm_approved_at = NOW() WHERE id = ?"
+            );
+            $stmt->bind_param('ii', $userId, $id);
+            $stmt->execute();
+
+        } else {
+            setError('You are not authorized to approve Purchase Orders.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+            exit;
+        }
+
+        // Refresh PO to check full approval
+        $fresh = $this->poModel->find($id);
+        if (!empty($fresh['approved_by_se']) && !empty($fresh['approved_by_pm'])) {
+            // Both approved — update status to 'Approved'
+            $upd = $this->db->prepare("UPDATE purchase_orders SET status = 'Approved' WHERE id = ?");
+            $upd->bind_param('i', $id);
+            $upd->execute();
+            setSuccess('PO fully approved by SE & PM. Status updated to Approved!');
+        } else {
+            setSuccess('Your approval has been recorded. Waiting for the other approval.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
         exit;
     }
 }

@@ -521,67 +521,96 @@ class Con_VendorPaymentRequestController extends Controller
             exit;
         }
 
-        // Build query — join purchase_order_items for value calculation
-        // Note: vendor is per-item (poi.selected_vendor_id), project via purchase_requests
-        $whereParts = ['poi.selected_vendor_id = ?'];
-        $params     = [$vendorId];
-        $types      = 'i';
-
+        // ── Step 1: Find all PO IDs that have at least one item from this vendor ─────
         if ($projectId) {
-            $whereParts[] = 'pr.project_id = ?';
-            $params[]     = $projectId;
-            $types       .= 'i';
+            $stmt = $this->db->prepare("
+                SELECT DISTINCT po.id
+                FROM purchase_orders po
+                JOIN purchase_requests pr ON pr.id = po.request_id
+                JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
+                WHERE poi.selected_vendor_id = ?
+                  AND pr.project_id = ?
+                ORDER BY po.id DESC
+            ");
+            $stmt->bind_param('ii', $vendorId, $projectId);
+        } else {
+            $stmt = $this->db->prepare("
+                SELECT DISTINCT po.id
+                FROM purchase_orders po
+                JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
+                WHERE poi.selected_vendor_id = ?
+                ORDER BY po.id DESC
+            ");
+            $stmt->bind_param('i', $vendorId);
         }
 
-        $whereSQL = implode(' AND ', $whereParts);
+        if (!$stmt->execute()) {
+            echo json_encode(['error' => 'Query failed: ' . $stmt->error]);
+            exit;
+        }
 
-        $sql = "SELECT
-                    po.id,
-                    pr.project_id,
-                    p.name AS project_name,
-                    po.status,
-                    po.created_at,
-                    COALESCE(SUM(poi.quantity * poi.unit_price), 0)        AS total_order_value,
-                    COALESCE(SUM(COALESCE(ri.received_quantity, 0) * poi.unit_price), 0) AS received_amount,
-                    COALESCE(SUM(COALESCE(ri.received_quantity, 0)), 0)    AS total_received_qty
+        $poIds = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'id');
+
+        if (empty($poIds)) {
+            echo json_encode([]);
+            exit;
+        }
+
+        // ── Step 2: For each PO, fetch header + financial summary ─────────────────
+        $result = [];
+        foreach ($poIds as $poId) {
+            // PO header info
+            $hStmt = $this->db->prepare("
+                SELECT po.id, po.status, po.created_at,
+                       pr.project_id,
+                       p.name AS project_name
                 FROM purchase_orders po
                 JOIN purchase_requests pr ON pr.id = po.request_id
                 LEFT JOIN projects p ON p.id = pr.project_id
-                LEFT JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
-                LEFT JOIN (
-                    SELECT mri.purchase_order_item_id,
-                           SUM(mri.received_quantity) AS received_quantity
-                    FROM material_receiving_items mri
-                    INNER JOIN material_receivings mr ON mr.id = mri.receiving_id
-                    WHERE mr.overall_status IN ('Accepted','Partially Accepted')
-                    GROUP BY mri.purchase_order_item_id
-                ) ri ON ri.purchase_order_item_id = poi.id
-                WHERE {$whereSQL}
-                GROUP BY po.id
-                ORDER BY po.id DESC";
+                WHERE po.id = ?
+            ");
+            $hStmt->bind_param('i', $poId);
+            $hStmt->execute();
+            $po = $hStmt->get_result()->fetch_assoc();
+            if (!$po) continue;
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            // Total order value (all items, not just this vendor)
+            $vStmt = $this->db->prepare("
+                SELECT COALESCE(SUM(quantity * unit_price), 0) AS total_order_value
+                FROM purchase_order_items
+                WHERE purchase_order_id = ?
+            ");
+            $vStmt->bind_param('i', $poId);
+            $vStmt->execute();
+            $totalValue = (float)$vStmt->get_result()->fetch_assoc()['total_order_value'];
 
-        // Add advance_paid and due per PO
-        $result = [];
-        foreach ($rows as $row) {
-            $advancePaid = $this->model->getTotalAdvancePaid($row['id']);
-            $totalValue  = (float)$row['total_order_value'];
-            $received    = (float)$row['received_amount'];
-            $due         = max(0, $received - $advancePaid);
+            // Received amount (QC accepted items only)
+            $rStmt = $this->db->prepare("
+                SELECT COALESCE(SUM(mri.received_quantity * poi.unit_price), 0) AS received_amount
+                FROM material_receiving_items mri
+                JOIN material_receiving mr ON mr.id = mri.receiving_id
+                JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+                WHERE mr.purchase_order_id = ?
+                  AND mr.overall_status IN ('Accepted','Partially Accepted')
+                  AND mri.status IN ('Accepted','Partially Accepted')
+            ");
+            $rStmt->bind_param('i', $poId);
+            $rStmt->execute();
+            $receivedAmount = (float)$rStmt->get_result()->fetch_assoc()['received_amount'];
+
+            // Advance already paid for this PO
+            $advancePaid = $this->model->getTotalAdvancePaid($poId);
+            $due         = max(0, $receivedAmount - $advancePaid);
 
             $result[] = [
-                'id'               => $row['id'],
-                'label'            => 'PO-' . $row['id'] . ' | ' . ($row['project_name'] ?? 'N/A') . ' | ' . $row['status'],
-                'project_name'     => $row['project_name'] ?? '',
-                'status'           => $row['status'] ?? '',
-                'total_order_value'=> round($totalValue, 2),
-                'received_amount'  => round($received, 2),
-                'advance_paid'     => round($advancePaid, 2),
-                'due_amount'       => round($due, 2),
+                'id'                => (int)$po['id'],
+                'label'             => 'PO-' . $po['id'] . ' | ' . ($po['project_name'] ?? 'N/A') . ' | ' . $po['status'],
+                'project_name'      => $po['project_name'] ?? '',
+                'status'            => $po['status'] ?? '',
+                'total_order_value' => round($totalValue,    2),
+                'received_amount'   => round($receivedAmount, 2),
+                'advance_paid'      => round($advancePaid,    2),
+                'due_amount'        => round($due,            2),
             ];
         }
 

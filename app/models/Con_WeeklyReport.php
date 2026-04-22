@@ -159,4 +159,21 @@ class Con_WeeklyReport extends Model
         $stmt->bind_param('i', $id);
         return $stmt->execute();
     }
+
+    // =========================================================================
+    // APPROVAL
+    // =========================================================================
+
+    public function approveStep($id, $step, $userId)
+    {
+        if ($step === 'qc') {
+            $stmt = $this->db->prepare("UPDATE {$this->table} SET approved_by_qc = ? WHERE id = ?");
+        } elseif ($step === 'pm') {
+            $stmt = $this->db->prepare("UPDATE {$this->table} SET approved_by_pm = ? WHERE id = ?");
+        } else {
+            return false;
+        }
+        $stmt->bind_param('ii', $userId, $id);
+        return $stmt->execute();
+    }
 }

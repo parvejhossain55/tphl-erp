@@ -122,9 +122,9 @@
                                 <select name="issued_to" class="form-select" required>
                                     <option value="">-- Select Contractor --</option>
                                     <?php foreach ($contractors ?? [] as $c): ?>
-                                        <option value="<?= htmlspecialchars($c['company_name']) ?>">
-                                            <?= htmlspecialchars($c['company_name']) ?>
-                                            <?= $c['contact_person'] ? '(' . htmlspecialchars($c['contact_person']) . ')' : '' ?>
+                                        <option value="<?= htmlspecialchars($c['name']) ?>">
+                                            <?= htmlspecialchars($c['name']) ?>
+                                            <?= !empty($c['trade']) ? ' (' . htmlspecialchars($c['trade']) . ')' : '' ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>

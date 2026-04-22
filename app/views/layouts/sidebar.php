@@ -1451,7 +1451,7 @@
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-weekly-reports" class="sidebar__menu-item <?= isActive('con-weekly-reports', $current_route) ?>">
-                                    <i class="bi bi-journal-text me-1"></i> Weekly Reports (DPR)
+                                    <i class="bi bi-journal-text me-1"></i> Weekly Reports (WPR)
                                 </a>
                             </li>
                             <li class="slide">

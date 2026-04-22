@@ -6,7 +6,7 @@ $page_title = $page_title ?? 'Site Targets';
     <!-- Breadcrumb -->
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <div class="my-auto">
-            <h4 class="page-title fw-semibold fs-18 mb-0"><?= $page_title ?></h4>
+            <h4 class="page-title fw-semibold fs-18 mb-0">Site Targets</h4>
             <div class="d-flex">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
@@ -47,12 +47,10 @@ $page_title = $page_title ?? 'Site Targets';
                         <?php if (!empty($targets)): ?>
                             <?php foreach ($targets as $i => $t): ?>
                                 <?php
-                                $totalApprovals = (int)$t['approved_by_site_eng']
-                                                + (int)$t['approved_by_qc']
-                                                + (int)$t['approved_by_pc']
-                                                + (int)$t['approved_by_pd']
-                                                + (int)$t['approved_by_manager'];
-                                if ($totalApprovals >= 5) $badge = 'success';
+                                $qcApproved = !empty($t['approved_by_qc']);
+                                $pmApproved = !empty($t['approved_by_manager']);
+                                $totalApprovals = ($qcApproved ? 1 : 0) + ($pmApproved ? 1 : 0);
+                                if ($totalApprovals >= 2) $badge = 'success';
                                 elseif ($totalApprovals > 0) $badge = 'warning';
                                 else $badge = 'secondary';
                                 ?>
@@ -73,7 +71,7 @@ $page_title = $page_title ?? 'Site Targets';
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-<?= $badge ?>"><?= $totalApprovals ?>/5 Approved</span>
+                                        <span class="badge bg-<?= $badge ?>"><?= $totalApprovals ?>/2 Approved</span>
                                     </td>
                                     <td>
                                         <a href="<?= $base_url ?>/con-target/<?= $t['id'] ?>" class="btn btn-sm btn-outline-primary">

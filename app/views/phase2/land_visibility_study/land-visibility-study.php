@@ -26,7 +26,7 @@ $show_breadcrumb = false;
                             <th>Legal Doc Status</th>
                             <th>Survey Report</th>
                             <th>Govt Approval</th>
-                            <th>QC Status</th>
+                            <th class="d-none">QC Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -64,7 +64,7 @@ $show_breadcrumb = false;
                                             <span class="text-muted">—</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td>
+                                    <td class="d-none">
                                         <?php
                                         $qcBadge = match ($row['qc_approval_status'] ?? 'Pending') {
                                             'Approved' => 'success',

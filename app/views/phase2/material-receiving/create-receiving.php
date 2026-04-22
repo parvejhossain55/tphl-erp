@@ -25,7 +25,7 @@
                     </h6>
                 </div>
                 <div class="card__body p-4">
-                    <form action="<?= $base_url ?>/con-material-receiving-store" method="POST" id="receivingForm">
+                    <form action="<?= $base_url ?>/con-material-receiving-store" method="POST" id="receivingForm" enctype="multipart/form-data">
                         <input type="hidden" name="purchase_order_id" value="<?= $po['id'] ?>">
 
                         <!-- Header -->
@@ -55,6 +55,21 @@
                                 <label class="form-label fw-bold">Notes</label>
                                 <input type="text" name="notes" class="form-control"
                                        placeholder="Challan/Invoice ref...">
+                            </div>
+                        </div>
+
+                        </div>
+
+                        <!-- Site Engineer Attachments -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">Site Engineer Note</label>
+                                <textarea name="site_eng_note" class="form-control" rows="2" placeholder="Any remarks regarding the received materials..."></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Supporting Photo/Document</label>
+                                <input type="file" name="site_eng_photo" class="form-control" accept="image/*,.pdf,.doc,.docx">
+                                <small class="text-muted">Optional: Upload challan photo or material condition.</small>
                             </div>
                         </div>
 

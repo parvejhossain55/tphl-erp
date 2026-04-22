@@ -18,6 +18,7 @@ $budgetUtil  = $budgetUtil ?? ['total'=>0,'spent'=>0,'pct'=>0,'remaining'=>0];
 $stockAlerts = $stockAlerts ?? [];
 $pendingAlerts = $pendingAlerts ?? [];
 $soilAlerts  = $soilAlerts ?? [];
+$pendingInitialBudgets = $pendingInitialBudgets ?? [];
 
 $statusColor = [
     'Planning'    => ['bg'=>'rgba(99,102,241,.12)', 'text'=>'#6366f1'],
@@ -290,6 +291,404 @@ $statusColor = [
   </a>
 
 </div>
+
+<!-- ══════════════════════ PENDING INITIAL BUDGET APPROVALS ══════════════════════ -->
+<?php if (!empty($pendingInitialBudgets)): ?>
+<div class="con-panel card__wrapper mb-4" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="sec-title" style="margin-bottom:0">
+      <div class="sec-title-dot" style="background:var(--cd-amber)"></div>
+      <i class="fal fa-clock me-2" style="color:var(--cd-amber)"></i>
+      Pending Initial Budget Approvals
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+        background:rgba(245,158,11,.12);color:var(--cd-amber)">
+        <?= count($pendingInitialBudgets) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?=$base?>/con-estimates" style="font-size:11px;color:var(--cd-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="proj-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Project</th>
+          <th>Submitted By</th>
+          <th>Designation</th>
+          <th>Grand Total</th>
+          <th>Submitted On</th>
+          <th style="text-align:right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($pendingInitialBudgets as $bi => $pb): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $bi+1 ?></td>
+          <td>
+            <div style="font-weight:700;font-size:13px"><?= htmlspecialchars($pb['project_name'] ?? 'N/A') ?></div>
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:30px;height:30px;border-radius:50%;background:rgba(99,102,241,.1);
+                display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="fal fa-user" style="font-size:12px;color:#6366f1"></i>
+              </div>
+              <span style="font-size:12.5px;font-weight:600"><?= htmlspecialchars($pb['creator_name'] ?? '—') ?></span>
+            </div>
+          </td>
+          <td>
+            <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
+              background:rgba(139,92,246,.08);color:#8b5cf6">
+              <?= htmlspecialchars($pb['creator_designation'] ?: 'Estimator') ?>
+            </span>
+          </td>
+          <td style="font-weight:800;color:var(--cd-primary,#198754)"><?= conFmt($pb['total_estimated_cost'] ?? 0) ?></td>
+          <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">
+            <i class="fal fa-calendar me-1"></i>
+            <?= !empty($pb['created_at']) ? date('d M Y', strtotime($pb['created_at'])) : '—' ?>
+            <div style="font-size:10px;opacity:.75"><?= !empty($pb['created_at']) ? date('h:i A', strtotime($pb['created_at'])) : '' ?></div>
+          </td>
+          <td style="text-align:right">
+            <a href="<?=$base?>/con-estimate-show/<?= $pb['id'] ?>"
+              style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+                padding:5px 14px;border-radius:8px;text-decoration:none;
+                background:linear-gradient(135deg,#059669,#10b981);color:#fff"
+              onclick="event.stopPropagation()">
+              <i class="fal fa-check-circle"></i> Review & Approve
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php
+$pendingBoqs = $pendingBoqs ?? [];
+if (!empty($pendingBoqs)):
+?>
+<div class="con-panel card__wrapper mb-4" style="border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.03)">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="sec-title" style="margin-bottom:0">
+      <div class="sec-title-dot" style="background:var(--cd-purple)"></div>
+      <i class="fal fa-clipboard-list me-2" style="color:var(--cd-purple)"></i>
+      Pending BOQ Approvals
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+        background:rgba(139,92,246,.12);color:var(--cd-purple)">
+        <?= count($pendingBoqs) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?=$base?>/con-boq" style="font-size:11px;color:var(--cd-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="proj-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Project</th>
+          <th>Created By</th>
+          <th>Designation</th>
+          <th>Version</th>
+          <th>Items</th>
+          <th>Grand Total</th>
+          <th>Status</th>
+          <th>Submitted On</th>
+          <th style="text-align:right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($pendingBoqs as $bi => $bq):
+          $bqStatus = $bq['status'] ?? 'Draft';
+          $bqSc = $bqStatus === 'Submitted'
+            ? ['bg'=>'rgba(59,130,246,.1)','text'=>'#2563eb']
+            : ['bg'=>'rgba(245,158,11,.1)','text'=>'#d97706'];
+        ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $bi+1 ?></td>
+          <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($bq['project_name'] ?? 'N/A') ?></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:30px;height:30px;border-radius:50%;background:rgba(99,102,241,.1);
+                display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="fal fa-user" style="font-size:12px;color:#6366f1"></i>
+              </div>
+              <span style="font-size:12.5px;font-weight:600"><?= htmlspecialchars($bq['creator_name'] ?? '—') ?></span>
+            </div>
+          </td>
+          <td>
+            <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
+              background:rgba(99,102,241,.08);color:#6366f1">
+              <?= htmlspecialchars($bq['creator_designation'] ?: 'Site Engineer') ?>
+            </span>
+          </td>
+          <td style="font-size:11.5px;color:var(--text-muted)">v<?= htmlspecialchars($bq['version'] ?? '1.0') ?></td>
+          <td style="font-weight:700;text-align:center"><?= (int)($bq['item_count'] ?? 0) ?></td>
+          <td style="font-weight:800;color:var(--cd-primary,#198754)"><?= conFmt($bq['grand_total'] ?? 0) ?></td>
+          <td>
+            <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
+              background:<?= $bqSc['bg'] ?>;color:<?= $bqSc['text'] ?>">
+              <?= $bqStatus ?>
+            </span>
+          </td>
+          <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">
+            <i class="fal fa-calendar me-1"></i>
+            <?= !empty($bq['created_at']) ? date('d M Y', strtotime($bq['created_at'])) : '—' ?>
+            <div style="font-size:10px;opacity:.75"><?= !empty($bq['created_at']) ? date('h:i A', strtotime($bq['created_at'])) : '' ?></div>
+          </td>
+          <td style="text-align:right">
+            <a href="<?=$base?>/con-boq-show/<?= $bq['id'] ?>"
+              style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+                padding:5px 14px;border-radius:8px;text-decoration:none;
+                background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff"
+              onclick="event.stopPropagation()">
+              <i class="fal fa-check-circle"></i> Review &amp; Approve
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php
+$pendingTargetsPM = $pendingTargetsPM ?? [];
+if (!empty($pendingTargetsPM)):
+?>
+<div class="con-panel card__wrapper mb-4" style="border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.03)">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="sec-title" style="margin-bottom:0">
+      <div class="sec-title-dot" style="background:var(--cd-amber)"></div>
+      <i class="fal fa-bullseye me-2" style="color:var(--cd-amber)"></i>
+      Pending Targets — PM Approval Required
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+        background:rgba(245,158,11,.12);color:var(--cd-amber)">
+        <?= count($pendingTargetsPM) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?=$base?>/con-targets" style="font-size:11px;color:var(--cd-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="proj-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Project</th>
+          <th>Target Title</th>
+          <th>Created By (SE)</th>
+          <th>QC Status</th>
+          <th>Target %</th>
+          <th>Gain %</th>
+          <th>Period</th>
+          <th>Submitted On</th>
+          <th style="text-align:right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($pendingTargetsPM as $pi => $pt): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
+          <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($pt['project_name'] ?? 'N/A') ?></td>
+          <td><?= htmlspecialchars($pt['target_title'] ?? '—') ?></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:28px;height:28px;border-radius:50%;background:rgba(99,102,241,.1);
+                display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="fal fa-user" style="font-size:11px;color:#6366f1"></i>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:600"><?= htmlspecialchars($pt['creator_name'] ?? '—') ?></div>
+                <div style="font-size:10px;color:var(--text-muted)"><?= htmlspecialchars($pt['creator_designation'] ?: 'SE') ?></div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <?php $qcDone = !empty($pt['approved_by_qc']); ?>
+            <span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;
+              background:<?= $qcDone?'rgba(16,185,129,.12)':'rgba(239,68,68,.1)' ?>;
+              color:<?= $qcDone?'#059669':'#dc2626' ?>">
+              <?= $qcDone ? '✓ QC Approved' : '⏳ QC Pending' ?>
+            </span>
+          </td>
+          <td><span style="font-size:11px;font-weight:700;color:#2563eb"><?= number_format($pt['target_percentage'] ?? 0, 1) ?>%</span></td>
+          <td>
+            <?php $g2 = (float)($pt['gain_percentage'] ?? 0); $t2 = (float)($pt['target_percentage'] ?? 0); ?>
+            <span style="font-size:11px;font-weight:700;color:<?= $g2>=$t2?'#059669':'#d97706' ?>">
+              <?= number_format($g2, 1) ?>%
+            </span>
+          </td>
+          <td style="font-size:11px;color:var(--text-muted)">
+            <?= $pt['year'] ?? '' ?><?= $pt['week_number'] ? ' / Wk '.$pt['week_number'] : '' ?>
+          </td>
+          <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">
+            <i class="fal fa-calendar me-1"></i>
+            <?= !empty($pt['created_at']) ? date('d M Y', strtotime($pt['created_at'])) : '—' ?>
+          </td>
+          <td style="text-align:right">
+            <a href="<?=$base?>/con-target/<?= $pt['id'] ?>"
+              style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+                padding:5px 14px;border-radius:8px;text-decoration:none;
+                background:linear-gradient(135deg,#059669,#10b981);color:#fff"
+              onclick="event.stopPropagation()">
+              <i class="fal fa-check-circle"></i> Review &amp; Approve
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php
+$pendingPOsForSE = $pendingPOsForSE ?? [];
+if (!empty($pendingPOsForSE)):
+?>
+<div class="con-panel card__wrapper mb-4" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.03)">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="sec-title" style="margin-bottom:0">
+      <div class="sec-title-dot" style="background:var(--cd-green)"></div>
+      <i class="fal fa-hard-hat me-2" style="color:#059669"></i>
+      Pending Purchase Orders &mdash; SE Approval Required
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(16,185,129,.12);color:#059669">
+        <?= count($pendingPOsForSE) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?=$base?>/con-purchase-orders" style="font-size:11px;color:#059669;text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="proj-table">
+      <thead><tr><th>#</th><th>PO</th><th>Project</th><th>Order Date</th><th>PM Status</th><th>Created By</th><th style="text-align:right">Action</th></tr></thead>
+      <tbody>
+        <?php foreach ($pendingPOsForSE as $pi => $po): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
+          <td style="font-weight:800;color:#059669">PO-<?= $po['id'] ?></td>
+          <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($po['project_name'] ?? '&mdash;') ?></td>
+          <td style="font-size:11px;color:var(--text-muted)"><?= !empty($po['order_date']) ? date('d M Y', strtotime($po['order_date'])) : '&mdash;' ?></td>
+          <td><?php $pmOk = !empty($po['approved_by_pm']); ?><span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:<?= $pmOk?'rgba(16,185,129,.12)':' rgba(239,68,68,.1)' ?>;color:<?= $pmOk?'#059669':'#dc2626' ?>"><?= $pmOk ? '&#10003; PM Approved' : '&#x23f3; PM Pending' ?></span></td>
+          <td style="font-size:12px"><?= htmlspecialchars($po['created_by_name'] ?? '&mdash;') ?></td>
+          <td style="text-align:right"><a href="<?=$base?>/con-purchase-order/<?= $po['id'] ?>" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 14px;border-radius:8px;text-decoration:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff"><i class="fal fa-check-circle"></i> Review &amp; Approve</a></td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php
+$pendingPOsForPM = $pendingPOsForPM ?? [];
+if (!empty($pendingPOsForPM)):
+?>
+<div class="con-panel card__wrapper mb-4" style="border-color:rgba(59,130,246,.35);background:rgba(59,130,246,.03)">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="sec-title" style="margin-bottom:0">
+      <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
+      <i class="fal fa-file-contract me-2" style="color:var(--cd-blue)"></i>
+      Pending Purchase Orders &mdash; PM Approval Required
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(59,130,246,.12);color:var(--cd-blue)">
+        <?= count($pendingPOsForPM) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?=$base?>/con-purchase-orders" style="font-size:11px;color:var(--cd-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="proj-table">
+      <thead><tr><th>#</th><th>PO</th><th>Project</th><th>Order Date</th><th>SE Status</th><th>Created By</th><th style="text-align:right">Action</th></tr></thead>
+      <tbody>
+        <?php foreach ($pendingPOsForPM as $pi => $po): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
+          <td style="font-weight:800;color:var(--cd-blue)">PO-<?= $po['id'] ?></td>
+          <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($po['project_name'] ?? '&mdash;') ?></td>
+          <td style="font-size:11px;color:var(--text-muted)"><?= !empty($po['order_date']) ? date('d M Y', strtotime($po['order_date'])) : '&mdash;' ?></td>
+          <td><?php $seOk = !empty($po['approved_by_se']); ?><span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:<?= $seOk?'rgba(16,185,129,.12)':' rgba(239,68,68,.1)' ?>;color:<?= $seOk?'#059669':'#dc2626' ?>"><?= $seOk ? '&#10003; SE Approved' : '&#x23f3; SE Pending' ?></span></td>
+          <td style="font-size:12px"><?= htmlspecialchars($po['created_by_name'] ?? '&mdash;') ?></td>
+          <td style="text-align:right"><a href="<?=$base?>/con-purchase-order/<?= $po['id'] ?>" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 14px;border-radius:8px;text-decoration:none;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff"><i class="fal fa-check-circle"></i> Review &amp; Approve</a></td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php
+$pendingWeeklyReportsPM = $pendingWeeklyReportsPM ?? [];
+if (!empty($pendingWeeklyReportsPM)):
+?>
+<div class="con-panel card__wrapper mb-4" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.03)">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="sec-title" style="margin-bottom:0">
+      <div class="sec-title-dot" style="background:#0f5132"></div>
+      <i class="fal fa-calendar-week me-2" style="color:#0f5132"></i>
+      Pending Weekly Reports &mdash; PM Approval Required
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(16,185,129,.12);color:#0f5132">
+        <?= count($pendingWeeklyReportsPM) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?=$base?>/con-weekly-reports" style="font-size:11px;color:#0f5132;text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="proj-table">
+      <thead><tr><th>#</th><th>Report Date</th><th>Project</th><th>Week No</th><th>Submitted By</th><th style="text-align:right">Action</th></tr></thead>
+      <tbody>
+        <?php foreach ($pendingWeeklyReportsPM as $pi => $rep): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
+          <td style="font-weight:800;color:#0f5132"><?= !empty($rep['report_date']) ? date('d M Y', strtotime($rep['report_date'])) : '&mdash;' ?></td>
+          <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($rep['project_name'] ?? '&mdash;') ?></td>
+          <td style="font-size:12px">Week <?= (int)$rep['week_no'] ?></td>
+          <td style="font-size:12px"><?= htmlspecialchars($rep['created_by_name'] ?? '&mdash;') ?></td>
+          <td style="text-align:right"><a href="<?=$base?>/con-weekly-report/<?= $rep['id'] ?>" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 14px;border-radius:8px;text-decoration:none;background:linear-gradient(135deg,#0f5132,#198754);color:#fff"><i class="fal fa-check-circle"></i> Review &amp; Approve</a></td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php
+$pendingGRNs = $pendingGRNs ?? [];
+if (!empty($pendingGRNs)):
+?>
+<div class="con-panel card__wrapper mb-4" style="border-color:rgba(139,92,246,.35);background:rgba(139,92,246,.03)">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="sec-title" style="margin-bottom:0">
+      <div class="sec-title-dot" style="background:var(--cd-purple,#8b5cf6)"></div>
+      <i class="fal fa-box-open me-2" style="color:var(--cd-purple,#8b5cf6)"></i>
+      Pending Material Receivings (GRN) &mdash; Awaiting QC
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(139,92,246,.12);color:var(--cd-purple,#8b5cf6)">
+        <?= count($pendingGRNs) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?=$base?>/con-material-receivings" style="font-size:11px;color:var(--cd-purple,#8b5cf6);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="proj-table">
+      <thead><tr><th>#</th><th>GRN</th><th>Project</th><th>Receiving Date</th><th>Logged By</th><th style="text-align:right">Action</th></tr></thead>
+      <tbody>
+        <?php foreach ($pendingGRNs as $pi => $grn): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
+          <td style="font-weight:800;color:var(--cd-purple,#8b5cf6)">GRN-<?= $grn['id'] ?></td>
+          <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($grn['project_name'] ?? '&mdash;') ?></td>
+          <td style="font-size:11px;color:var(--text-muted)"><?= !empty($grn['receiving_date']) ? date('d M Y', strtotime($grn['receiving_date'])) : '&mdash;' ?></td>
+          <td style="font-size:12px"><?= htmlspecialchars($grn['received_by_name'] ?? '&mdash;') ?></td>
+          <td style="text-align:right"><a href="<?=$base?>/con-material-receiving-qc/<?= $grn['id'] ?>" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 14px;border-radius:8px;text-decoration:none;background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff"><i class="fal fa-eye"></i> View</a></td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- ═══════════════ ROW 3: PROJECT PROGRESS + BUDGET DONUT ══════════════════ -->
 <div class="row  mb-4">

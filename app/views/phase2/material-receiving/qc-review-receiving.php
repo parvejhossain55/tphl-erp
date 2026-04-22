@@ -58,6 +58,25 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                             </span>
                         </div>
                     </div>
+                    <?php if (!empty($receiving['site_eng_note']) || !empty($receiving['site_eng_photo'])): ?>
+                    <hr class="my-3">
+                    <div class="row bg-light p-3 rounded mx-0">
+                        <div class="col-md-8">
+                            <label class="small text-uppercase text-muted d-block fw-bold">Site Engineer Note</label>
+                            <p class="mb-0 small"><?= nl2br(htmlspecialchars($receiving['site_eng_note'] ?? '—')) ?></p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small text-uppercase text-muted d-block fw-bold">Site Engineer Photo/Doc</label>
+                            <?php if (!empty($receiving['site_eng_photo'])): ?>
+                                <a href="<?= $base_url . $receiving['site_eng_photo'] ?>" target="_blank" class="btn btn-sm btn-outline-info">
+                                    <i class="bi bi-eye"></i> View Document
+                                </a>
+                            <?php else: ?>
+                                <span class="text-muted small">—</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -73,7 +92,19 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
 
                     <?php if ($isPending): ?>
                     <!-- QC FORM — Accept/Reject each item -->
-                    <form action="<?= $base_url ?>/con-material-receiving-qc/<?= $receiving['id'] ?>" method="POST" id="qcForm">
+                    <form action="<?= $base_url ?>/con-material-receiving-qc/<?= $receiving['id'] ?>" method="POST" id="qcForm" enctype="multipart/form-data">
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">QC General Note</label>
+                                <textarea name="qc_note" class="form-control" rows="2" placeholder="Overall quality remarks..."></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">QC Photo/Document</label>
+                                <input type="file" name="qc_photo" class="form-control" accept="image/*,.pdf,.doc,.docx">
+                                <small class="text-muted">Optional: Upload lab report or inspection photo.</small>
+                            </div>
+                        </div>
 
                         <div class="alert alert-warning small mb-3">
                             <i class="bi bi-exclamation-triangle me-1"></i>
@@ -137,6 +168,25 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
 
                     <?php else: ?>
                     <!-- QC COMPLETED — Show Results -->
+                    <?php if (!empty($receiving['qc_note']) || !empty($receiving['qc_photo'])): ?>
+                    <div class="row bg-light p-3 rounded mx-0 mb-4 border border-info">
+                        <div class="col-md-8">
+                            <label class="small text-uppercase text-muted d-block fw-bold text-info">QC Note</label>
+                            <p class="mb-0 small"><?= nl2br(htmlspecialchars($receiving['qc_note'] ?? '—')) ?></p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small text-uppercase text-muted d-block fw-bold text-info">QC Photo/Doc</label>
+                            <?php if (!empty($receiving['qc_photo'])): ?>
+                                <a href="<?= $base_url . $receiving['qc_photo'] ?>" target="_blank" class="btn btn-sm btn-info text-white">
+                                    <i class="bi bi-eye"></i> View QC Doc
+                                </a>
+                            <?php else: ?>
+                                <span class="text-muted small">—</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                     <div class="table-responsive">
                         <table class="table table-bordered align-middle">
                             <thead class="table-dark">

@@ -151,10 +151,63 @@ class Con_WeeklyReportController extends Controller
             exit;
         }
 
+        $currentUserId = (int)($_SESSION['user']['id']   ?? 0);
+        $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $createdBy     = (int)($report['created_by'] ?? 0);
+
+        // Role guard for approval
+        $roleStepMap = [13 => 'qc', 15 => 'pm']; // 13=QC, 15=PM
+        $approverRole    = $roleStepMap[$currentRoleId] ?? null;
+        $canApprove      = ($approverRole !== null) && ($currentUserId !== $createdBy);
+
+        $stepCol         = ($approverRole === 'qc') ? 'approved_by_qc' : 'approved_by_pm';
+        $alreadyApproved = $canApprove && !empty($report[$stepCol]);
+
         $this->view('phase2/weekly-reports/show-report', [
-            'current_route' => 'con-weekly-reports',
-            'page_title'    => 'Weekly Report Detail',
-            'report'        => $report,
+            'current_route'   => 'con-weekly-reports',
+            'page_title'      => 'Weekly Report Detail',
+            'report'          => $report,
+            'canApprove'      => $canApprove,
+            'alreadyApproved' => $alreadyApproved,
+            'approverRole'    => $approverRole,
+            'currentRoleId'   => $currentRoleId,
         ]);
+    }
+
+    // =========================================================================
+    // APPROVE A STEP (QC / PM)
+    // =========================================================================
+    public function approve($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $userId = (int)($_SESSION['user']['id']   ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // Role guard
+        $roleStepMap = [13 => 'qc', 15 => 'pm'];
+        if (!isset($roleStepMap[$roleId])) {
+            setError('You do not have permission to approve reports.');
+            header("Location: {$GLOBALS['base_url']}/con-weekly-report/{$id}");
+            exit;
+        }
+
+        // Creator cannot self-approve
+        $report = $this->model->find($id);
+        if ($report && (int)($report['created_by'] ?? 0) === $userId) {
+            setError('You cannot approve a report that you created.');
+            header("Location: {$GLOBALS['base_url']}/con-weekly-report/{$id}");
+            exit;
+        }
+
+        $step = $roleStepMap[$roleId];
+
+        if ($this->model->approveStep($id, $step, $userId)) {
+            setSuccess('Approval recorded successfully!');
+        } else {
+            setError('Approval failed.');
+        }
+        header("Location: {$GLOBALS['base_url']}/con-weekly-report/{$id}");
+        exit;
     }
 }
