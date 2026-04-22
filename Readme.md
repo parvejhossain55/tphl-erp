@@ -35,7 +35,7 @@
 --   7.  Material Receiving + QC   (material_receiving, material_receiving_items)
 --   8.  Vendor Penalty & Rating   (vendor_penalties, vendor_ratings)
 --   9.  Target Fixed              (weekly / monthly QC progress targets)
---   10. Site Execution            (daily_progress_reports, material_usage_logs)
+--   10. Site Execution            (weekly_progress_report, material_usage_logs)
 --   11. Contractor Bill Requests  (contractor_bill_requests)
 --         Flow: Draft → Submitted → Verified → Approved → Paid
 --         Approval: approval_requests (source_table='contractor_bill_requests')
@@ -674,9 +674,12 @@ CREATE TABLE IF NOT EXISTS `target_fixed` (
 -- 10. SITE EXECUTION
 -- =============================================================================
 
-CREATE TABLE IF NOT EXISTS `daily_progress_reports` (
+CREATE TABLE IF NOT EXISTS `weekly_progress_report` (
   `id`                  INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `project_id`          INT(11)          NOT NULL,
+  `work_plan_id`          INT(11)          NOT NULL,
+  `target_id`          INT(11)          NOT NULL,
+  `week_no`          INT(11)          NOT NULL,
   `site_engineer_id`    INT(11)          NOT NULL,
   `work_done`           TEXT             NOT NULL,
   `progress_percentage` DECIMAL(5,2)     NOT NULL DEFAULT 0.00,
@@ -932,7 +935,7 @@ SET FOREIGN_KEY_CHECKS = 1
 --   target_fixed
 --
 -- SITE EXECUTION:
---   daily_progress_reports
+--   weekly_progress_report
 --   material_usage_logs
 --
 -- PAYMENTS:
