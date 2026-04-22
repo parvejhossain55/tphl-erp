@@ -509,4 +509,422 @@ class Con_DashboardController extends Controller
         echo json_encode(['success' => true, 'data' => $result]);
         exit;
     }
+
+    // =========================================================================
+    // QC DASHBOARD  (Quality Controller)
+    // Permissions: Estimate Budget, Project Target Set, Material Issue,
+    //              Purchase order, Working Plan, Project Report
+    // =========================================================================
+    public function qcDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // KPI: Total Material Issues
+        $r1 = $this->db->query("SELECT COUNT(*) AS c FROM con_material_issues");
+        $totalIssues = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
+
+        // KPI: Total Purchase Orders
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM purchase_orders");
+        $totalPOs = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+
+        // KPI: Pending Working Plans (not yet approved)
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM project_working_plans WHERE approved_status IN ('Pending','Draft') OR approved_status IS NULL");
+        $pendingPlans = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
+
+        // KPI: Total DPR (Project Reports)
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM daily_progress_reports");
+        $totalDPRs = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
+
+        // KPI: Low Stock alerts
+        $r5 = $this->db->query("SELECT COUNT(*) AS c FROM con_stocks s JOIN con_materials m ON m.id=s.material_id WHERE s.current_quantity < m.min_stock_level");
+        $lowStock = $r5 ? (int)$r5->fetch_assoc()['c'] : 0;
+
+        // KPI: Initial Estimates
+        $r6 = $this->db->query("SELECT COUNT(*) AS c FROM initial_estimate_budgets");
+        $totalEstimates = $r6 ? (int)$r6->fetch_assoc()['c'] : 0;
+
+        // Recent Project Progress
+        $rProj = $this->db->query("
+            SELECT p.id, p.name, p.project_status,
+                   COALESCE(l.name,'') AS location_name,
+                   COALESCE(prog.progress_pct,0) AS progress_pct,
+                   COALESCE(bud.total_budget,0) AS total_budget
+            FROM projects p
+            LEFT JOIN locations l ON l.id=p.location_id
+            LEFT JOIN (SELECT project_id, AVG(gain_percentage) AS progress_pct FROM target_fixed GROUP BY project_id) prog ON prog.project_id=p.id
+            LEFT JOIN (SELECT project_id, SUM(total_estimated_cost) AS total_budget FROM initial_estimate_budgets WHERE status='approved' GROUP BY project_id) bud ON bud.project_id=p.id
+            WHERE p.deleted_at IS NULL ORDER BY p.id DESC LIMIT 6");
+        $projects = $rProj ? $rProj->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Recent Material Issues
+        $rIssues = $this->db->query("
+            SELECT mi.*, m.name AS material_name, p.name AS project_name
+            FROM con_material_issues mi
+            LEFT JOIN con_materials m ON m.id=mi.material_id
+            LEFT JOIN projects p ON p.id=mi.project_id
+            ORDER BY mi.id DESC LIMIT 5");
+        $recentIssues = $rIssues ? $rIssues->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Recent DPRs
+        $rDPR = $this->db->query("
+            SELECT dpr.*, p.name AS project_name
+            FROM daily_progress_reports dpr
+            LEFT JOIN projects p ON p.id=dpr.project_id
+            ORDER BY dpr.id DESC LIMIT 5");
+        $recentDPRs = $rDPR ? $rDPR->fetch_all(MYSQLI_ASSOC) : [];
+
+        return $this->view('phase2/dashboard/qc-dashboard', [
+            'current_route'  => 'qc-dashboard',
+            'totalIssues'    => $totalIssues,
+            'totalPOs'       => $totalPOs,
+            'pendingPlans'   => $pendingPlans,
+            'totalDPRs'      => $totalDPRs,
+            'lowStock'       => $lowStock,
+            'totalEstimates' => $totalEstimates,
+            'projects'       => $projects,
+            'recentIssues'   => $recentIssues,
+            'recentDPRs'     => $recentDPRs,
+        ]);
+    }
+
+    // =========================================================================
+    // PURCHASE TEAM LEAD DASHBOARD
+    // Permissions: Material Issue, Purchase order, Vendor Manage,
+    //              Vendor Penalty, Material Manage
+    // =========================================================================
+    public function purchaseTeamLeadDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // KPI: Total Purchase Orders
+        $r1 = $this->db->query("SELECT COUNT(*) AS c FROM purchase_orders");
+        $totalPOs = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
+
+        // KPI: Total Vendors
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM vendors");
+        $totalVendors = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+
+        // KPI: Vendor Penalties (vendor_penalties table)
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM vendor_penalties");
+        if (!$r3) { $r3_alt = $this->db->query("SELECT 0 AS c"); $totalPenalties = 0; } else { $totalPenalties = (int)$r3->fetch_assoc()['c']; }
+
+        // KPI: Total Material Issues
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM con_material_issues");
+        $totalIssues = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
+
+        // KPI: Total Materials
+        $r5 = $this->db->query("SELECT COUNT(*) AS c FROM con_materials");
+        $totalMaterials = $r5 ? (int)$r5->fetch_assoc()['c'] : 0;
+
+        // KPI: Pending Payment Requests
+        $r6 = $this->db->query("SELECT COUNT(*) AS c FROM vendor_payment_requests WHERE status IN ('Submitted','Approved')");
+        $pendingPayments = $r6 ? (int)$r6->fetch_assoc()['c'] : 0;
+
+        // Recent Vendors
+        $rVend = $this->db->query("SELECT * FROM vendors ORDER BY id DESC LIMIT 5");
+        $recentVendors = $rVend ? $rVend->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Recent Purchase Orders (vendor comes from purchase_order_items.selected_vendor_id)
+        $rPO = $this->db->query("
+            SELECT po.*,
+                   pr.project_id,
+                   p.name  AS project_name,
+                   v.name  AS vendor_name,
+                   (SELECT COALESCE(SUM(poi2.total_price),0)
+                    FROM purchase_order_items poi2
+                    WHERE poi2.purchase_order_id = po.id) AS total_amount
+            FROM purchase_orders po
+            LEFT JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN projects p  ON p.id  = pr.project_id
+            LEFT JOIN (
+                SELECT purchase_order_id, MIN(selected_vendor_id) AS vendor_id
+                FROM purchase_order_items GROUP BY purchase_order_id
+            ) vi ON vi.purchase_order_id = po.id
+            LEFT JOIN vendors v ON v.id = vi.vendor_id
+            ORDER BY po.id DESC LIMIT 5");
+        $recentPOs = $rPO ? $rPO->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Material Stock Overview
+        $rStock = $this->db->query("
+            SELECT m.name AS material_name, m.unit, m.min_stock_level,
+                   COALESCE(SUM(s.current_quantity),0) AS total_qty
+            FROM con_materials m
+            LEFT JOIN con_stocks s ON s.material_id=m.id
+            GROUP BY m.id ORDER BY total_qty ASC LIMIT 8");
+        $stockOverview = $rStock ? $rStock->fetch_all(MYSQLI_ASSOC) : [];
+
+        return $this->view('phase2/dashboard/purchase-team-lead-dashboard', [
+            'current_route'   => 'purchase-team-lead-dashboard',
+            'totalPOs'        => $totalPOs,
+            'totalVendors'    => $totalVendors,
+            'totalPenalties'  => $totalPenalties,
+            'totalIssues'     => $totalIssues,
+            'totalMaterials'  => $totalMaterials,
+            'pendingPayments' => $pendingPayments,
+            'recentVendors'   => $recentVendors,
+            'recentPOs'       => $recentPOs,
+            'stockOverview'   => $stockOverview,
+        ]);
+    }
+
+    // =========================================================================
+    // DRAFTSMAN DASHBOARD
+    // Permissions: Draft Design (Project Drawings, Design Types, etc.)
+    // =========================================================================
+    public function draftDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // KPI: Total Project Drawings
+        $r1 = $this->db->query("SELECT COUNT(*) AS c FROM project_drawings");
+        $totalDrawings = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
+
+        // KPI: Total Design Types
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM design_types");
+        $totalDesignTypes = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+
+        // KPI: Total Projects with Drawings
+        $r3 = $this->db->query("SELECT COUNT(DISTINCT project_id) AS c FROM project_drawings");
+        $projectsWithDrawings = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
+
+        // KPI: Total Architect & Engineering records
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering");
+        $totalAE = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
+
+        // Drawings by Design Type
+        $rByType = $this->db->query("
+            SELECT dt.name AS design_type, COUNT(pd.id) AS count
+            FROM design_types dt
+            LEFT JOIN project_drawings pd ON pd.design_type_id=dt.id
+            GROUP BY dt.id ORDER BY count DESC");
+        $drawingsByType = $rByType ? $rByType->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Recent Drawings
+        $rDrawings = $this->db->query("
+            SELECT pd.*, p.name AS project_name, dt.name AS design_type_name
+            FROM project_drawings pd
+            LEFT JOIN projects p ON p.id=pd.project_id
+            LEFT JOIN design_types dt ON dt.id=pd.design_type_id
+            ORDER BY pd.id DESC LIMIT 8");
+        $recentDrawings = $rDrawings ? $rDrawings->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Projects needing drawings (no drawings yet)
+        $rNeedDraw = $this->db->query("
+            SELECT p.id, p.name, p.project_status, COALESCE(l.name,'') AS location_name
+            FROM projects p
+            LEFT JOIN locations l ON l.id=p.location_id
+            LEFT JOIN project_drawings pd ON pd.project_id=p.id
+            WHERE p.deleted_at IS NULL AND pd.id IS NULL
+            ORDER BY p.id DESC LIMIT 5");
+        $projectsNeedingDrawings = $rNeedDraw ? $rNeedDraw->fetch_all(MYSQLI_ASSOC) : [];
+
+        return $this->view('phase2/dashboard/draft-dashboard', [
+            'current_route'          => 'draft-dashboard',
+            'totalDrawings'          => $totalDrawings,
+            'totalDesignTypes'       => $totalDesignTypes,
+            'projectsWithDrawings'   => $projectsWithDrawings,
+            'totalAE'                => $totalAE,
+            'drawingsByType'         => $drawingsByType,
+            'recentDrawings'         => $recentDrawings,
+            'projectsNeedingDrawings'=> $projectsNeedingDrawings,
+        ]);
+    }
+
+    // =========================================================================
+    // LAND MANAGER DASHBOARD
+    // Permissions: Land Study
+    // =========================================================================
+    public function landDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // KPI: Total Land Studies
+        $r1 = $this->db->query("SELECT COUNT(*) AS c FROM land_visibility_study");
+        $totalStudies = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
+
+        // KPI: Total Projects
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NULL");
+        $totalProjects = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+
+        // KPI: Projects with Land Study
+        $r3 = $this->db->query("SELECT COUNT(DISTINCT project_id) AS c FROM land_visibility_study");
+        $projectsWithStudy = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
+
+        // KPI: Projects without Land Study
+        $projectsNoStudy = max(0, $totalProjects - $projectsWithStudy);
+
+        // Recent Land Studies
+        $rStudies = $this->db->query("
+            SELECT lvs.*, p.name AS project_name, p.project_status,
+                   COALESCE(l.name,'') AS location_name
+            FROM land_visibility_study lvs
+            LEFT JOIN projects p ON p.id=lvs.project_id
+            LEFT JOIN locations l ON l.id=p.location_id
+            ORDER BY lvs.id DESC LIMIT 8");
+        $recentStudies = $rStudies ? $rStudies->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Projects without land study
+        $rPNoStudy = $this->db->query("
+            SELECT p.id, p.name, p.project_status, COALESCE(l.name,'') AS location_name
+            FROM projects p
+            LEFT JOIN locations l ON l.id=p.location_id
+            LEFT JOIN land_visibility_study lvs ON lvs.project_id=p.id
+            WHERE p.deleted_at IS NULL AND lvs.id IS NULL
+            ORDER BY p.id DESC LIMIT 6");
+        $pendingStudyProjects = $rPNoStudy ? $rPNoStudy->fetch_all(MYSQLI_ASSOC) : [];
+
+        return $this->view('phase2/dashboard/land-dashboard', [
+            'current_route'        => 'land-dashboard',
+            'totalStudies'         => $totalStudies,
+            'totalProjects'        => $totalProjects,
+            'projectsWithStudy'    => $projectsWithStudy,
+            'projectsNoStudy'      => $projectsNoStudy,
+            'recentStudies'        => $recentStudies,
+            'pendingStudyProjects' => $pendingStudyProjects,
+        ]);
+    }
+
+    // =========================================================================
+    // PROJECT ARCHITECTURE DASHBOARD
+    // Permissions: Purchase order
+    // =========================================================================
+    public function projectArchitectureDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // KPI: Total Purchase Orders
+        $r1 = $this->db->query("SELECT COUNT(*) AS c FROM purchase_orders");
+        $totalPOs = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
+
+        // KPI: Pending Purchase Requests
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM purchase_requests WHERE status='Pending'");
+        $pendingPRs = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+
+        // KPI: Approved Purchase Requests
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM purchase_requests WHERE status='Approved'");
+        $approvedPRs = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
+
+        // KPI: Total spend on POs (sum from line items)
+        $r4 = $this->db->query("SELECT COALESCE(SUM(total_price),0) AS total FROM purchase_order_items");
+        $totalPOValue = $r4 ? (float)$r4->fetch_assoc()['total'] : 0.0;
+
+        // Recent Purchase Orders (vendor from purchase_order_items.selected_vendor_id)
+        $rPO = $this->db->query("
+            SELECT po.*,
+                   pr.project_id,
+                   p.name  AS project_name,
+                   v.name  AS vendor_name,
+                   (SELECT COALESCE(SUM(poi2.total_price),0)
+                    FROM purchase_order_items poi2
+                    WHERE poi2.purchase_order_id = po.id) AS total_amount
+            FROM purchase_orders po
+            LEFT JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN projects p  ON p.id  = pr.project_id
+            LEFT JOIN (
+                SELECT purchase_order_id, MIN(selected_vendor_id) AS vendor_id
+                FROM purchase_order_items GROUP BY purchase_order_id
+            ) vi ON vi.purchase_order_id = po.id
+            LEFT JOIN vendors v ON v.id = vi.vendor_id
+            ORDER BY po.id DESC LIMIT 8");
+        $recentPOs = $rPO ? $rPO->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Purchase Requests breakdown by status
+        $rStatus = $this->db->query("
+            SELECT status, COUNT(*) AS cnt FROM purchase_requests GROUP BY status");
+        $statusBreakdown = $rStatus ? $rStatus->fetch_all(MYSQLI_ASSOC) : [];
+
+        return $this->view('phase2/dashboard/project-architecture-dashboard', [
+            'current_route'   => 'project-architecture-dashboard',
+            'totalPOs'        => $totalPOs,
+            'pendingPRs'      => $pendingPRs,
+            'approvedPRs'     => $approvedPRs,
+            'totalPOValue'    => $totalPOValue,
+            'recentPOs'       => $recentPOs,
+            'statusBreakdown' => $statusBreakdown,
+        ]);
+    }
+
+    // =========================================================================
+    // ESTIMATOR DASHBOARD
+    // =========================================================================
+
+    public function estimatorDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // KPI 1: Total Project Drawings
+        $r1 = $this->db->query("SELECT COUNT(*) AS c FROM project_drawings");
+        $totalDrawings = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
+
+        // KPI 2: Total Design Types
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM design_types");
+        $totalDesignTypes = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+
+        // KPI 3: Pending Estimates (status = pending)
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM initial_estimate_budgets WHERE status = 'pending'");
+        $pendingEstimates = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
+
+        // KPI 4: Approved Estimates
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM initial_estimate_budgets WHERE status = 'approved'");
+        $approvedEstimates = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
+
+        // KPI 5: Total Approved Budget Value
+        $r5 = $this->db->query("SELECT COALESCE(SUM(total_estimated_cost),0) AS total FROM initial_estimate_budgets WHERE status='approved'");
+        $totalBudgetValue = $r5 ? (float)$r5->fetch_assoc()['total'] : 0.0;
+
+        // Project Drawings by Design Type (for chart/breakdown)
+        $rByType = $this->db->query("
+            SELECT dt.name AS design_type_name, dt.id AS design_type_id,
+                   COUNT(pd.id) AS drawing_count
+            FROM design_types dt
+            LEFT JOIN project_drawings pd ON pd.design_type_id = dt.id
+            GROUP BY dt.id, dt.name
+            ORDER BY drawing_count DESC");
+        $drawingsByType = $rByType ? $rByType->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Recent Project Drawings with project & design type
+        $rDrawings = $this->db->query("
+            SELECT pd.*, p.name AS project_name, dt.name AS design_type_name,
+                   u.full_name AS designer_full_name
+            FROM project_drawings pd
+            LEFT JOIN projects p      ON p.id  = pd.project_id
+            LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+            LEFT JOIN users u         ON u.id  = pd.user_id
+            ORDER BY pd.id DESC LIMIT 8");
+        $recentDrawings = $rDrawings ? $rDrawings->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Projects without any estimate yet
+        $rNoEst = $this->db->query("
+            SELECT p.id, p.name, p.project_status
+            FROM projects p
+            LEFT JOIN initial_estimate_budgets b ON b.project_id = p.id
+            WHERE p.deleted_at IS NULL AND b.id IS NULL
+            ORDER BY p.id DESC LIMIT 6");
+        $projectsWithoutEstimate = $rNoEst ? $rNoEst->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Recent Estimates
+        $rEst = $this->db->query("
+            SELECT b.*, p.name AS project_name,
+                   u.full_name AS created_by_name,
+                   ab.full_name AS approved_by_name
+            FROM initial_estimate_budgets b
+            LEFT JOIN projects p  ON p.id  = b.project_id
+            LEFT JOIN users u     ON u.id  = b.created_by
+            LEFT JOIN users ab    ON ab.id = b.approved_by
+            ORDER BY b.id DESC LIMIT 8");
+        $recentEstimates = $rEst ? $rEst->fetch_all(MYSQLI_ASSOC) : [];
+
+        return $this->view('phase2/dashboard/estimator-dashboard', [
+            'current_route'           => 'estimator-dashboard',
+            'totalDrawings'           => $totalDrawings,
+            'totalDesignTypes'        => $totalDesignTypes,
+            'pendingEstimates'        => $pendingEstimates,
+            'approvedEstimates'       => $approvedEstimates,
+            'totalBudgetValue'        => $totalBudgetValue,
+            'drawingsByType'          => $drawingsByType,
+            'recentDrawings'          => $recentDrawings,
+            'projectsWithoutEstimate' => $projectsWithoutEstimate,
+            'recentEstimates'         => $recentEstimates,
+        ]);
+    }
 }

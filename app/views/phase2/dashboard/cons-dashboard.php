@@ -28,14 +28,17 @@ $statusColor = [
 ?>
 <style>
 :root {
-  --cd-blue:   #3b82f6;
-  --cd-green:  #10b981;
-  --cd-amber:  #f59e0b;
-  --cd-red:    #ef4444;
-  --cd-purple: #8b5cf6;
-  --cd-indigo: #6366f1;
-  --cd-teal:   #14b8a6;
-  --cd-pink:   #ec4899;
+  --cd-primary: #198754;
+  --cd-dark:    #0f5132;
+  --cd-light:   #20a86a;
+  --cd-blue:    #3b82f6;
+  --cd-green:   #10b981;
+  --cd-amber:   #f59e0b;
+  --cd-red:     #ef4444;
+  --cd-purple:  #8b5cf6;
+  --cd-indigo:  #6366f1;
+  --cd-teal:    #14b8a6;
+  --cd-pink:    #ec4899;
 }
 
 /* ── KPI Cards ────────────────────────────────────────────── */
@@ -156,15 +159,44 @@ $statusColor = [
 .empty-state-text { font-size:12px; }
 </style>
 
-<!-- ═══════════════════════════════ PAGE HEADER ═══════════════════════════════ -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h5 class="mb-1 fw-800"><i class="fal fa-hard-hat me-2" style="color:var(--cd-amber)"></i>Construction Dashboard</h5>
-    <div style="font-size:12px;color:var(--text-muted)">Real-time overview · <?= date('d M Y, h:i A') ?></div>
-  </div>
-  <div class="d-flex gap-2">
-    <a href="<?=$base?>/con-estimates" class="btn btn-sm btn-outline-primary"><i class="fal fa-file-alt me-1"></i>Estimates</a>
-    <a href="<?=$base?>/con-working-plans" class="btn btn-sm btn-primary"><i class="fal fa-calendar-alt me-1"></i>Work Plans</a>
+<!-- ═══════════════════════════════ GREEN HERO BANNER ═══════════════════════════════ -->
+<div style="background:linear-gradient(135deg,#0f5132 0%,#198754 55%,#20a86a 100%);
+            border-radius:18px;padding:26px 30px;margin-bottom:22px;
+            position:relative;overflow:hidden">
+  <div style="position:absolute;width:260px;height:260px;border-radius:50%;
+    background:rgba(255,255,255,.04);top:-80px;right:-60px"></div>
+  <div style="position:absolute;width:160px;height:160px;border-radius:50%;
+    background:rgba(255,255,255,.03);bottom:-50px;left:-30px"></div>
+  <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:7px;
+        background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);
+        padding:4px 14px;border-radius:20px;font-size:10.5px;font-weight:700;
+        letter-spacing:1.5px;text-transform:uppercase;color:#fff;margin-bottom:12px">
+        <i class="fa-solid fa-hard-hat"></i> Construction Management
+      </div>
+      <h4 style="font-size:24px;font-weight:900;color:#fff;margin:0 0 5px">Construction Dashboard</h4>
+      <p style="font-size:12.5px;color:rgba(255,255,255,.7);margin:0">
+        <i class="fal fa-calendar me-1"></i>Real-time overview · <?= date('d M Y, h:i A') ?>
+      </p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <a href="<?=$base?>/con-estimates" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+        color:#fff;border-radius:10px;padding:7px 18px;font-size:12px;font-weight:700;
+        text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+        <i class="fal fa-file-alt"></i>Estimates
+      </a>
+      <a href="<?=$base?>/con-working-plans" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+        color:#fff;border-radius:10px;padding:7px 18px;font-size:12px;font-weight:700;
+        text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+        <i class="fal fa-calendar-alt"></i>Work Plans
+      </a>
+      <a href="<?=$base?>/con-projects" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+        color:#fff;border-radius:10px;padding:7px 18px;font-size:12px;font-weight:700;
+        text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+        <i class="fal fa-building"></i>Projects
+      </a>
+    </div>
   </div>
 </div>
 

@@ -5,7 +5,8 @@
  *
  * Schema (from Readme.md):
  * project_working_plans: id, project_id, initial_budget_id, design_type_id, year, month,
- *                        work_description, planned_quantity, estimated_cost, created_by
+ *                        work_description, planned_quantity, estimated_cost, created_by,
+ *                        approved_status (Pending|Approved|Rejected), approved_by
  * budget_extend_requests: id, project_id, initial_budget_id, requested_by, title, amount,
  *                         reason, status, approved_by, approved_at, remarks
  */
@@ -29,15 +30,17 @@ class Con_WorkingPlan extends Model
     public function getAll()
     {
         $sql = "SELECT w.*,
-                       p.name       AS project_name,
+                       p.name        AS project_name,
                        b.total_estimated_cost AS budget_total,
-                       dt.name      AS design_type_name,
-                       u.full_name  AS created_by_name
+                       dt.name       AS design_type_name,
+                       u.full_name   AS created_by_name,
+                       ap.full_name  AS approved_by_name
                 FROM {$this->planTable} w
                 LEFT JOIN projects                 p  ON p.id  = w.project_id
                 LEFT JOIN initial_estimate_budgets b  ON b.id  = w.initial_budget_id
                 LEFT JOIN design_types             dt ON dt.id = w.design_type_id
                 LEFT JOIN users                    u  ON u.id  = w.created_by
+                LEFT JOIN users                    ap ON ap.id = w.approved_by
                 ORDER BY w.year DESC, w.month DESC, p.name ASC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -50,11 +53,15 @@ class Con_WorkingPlan extends Model
             "SELECT w.*,
                     p.name AS project_name,
                     b.total_estimated_cost AS budget_total,
-                    dt.name AS design_type_name
+                    dt.name AS design_type_name,
+                    u.full_name  AS created_by_name,
+                    ap.full_name AS approved_by_name
              FROM {$this->planTable} w
              LEFT JOIN projects                 p  ON p.id  = w.project_id
              LEFT JOIN initial_estimate_budgets b  ON b.id  = w.initial_budget_id
              LEFT JOIN design_types             dt ON dt.id = w.design_type_id
+             LEFT JOIN users                    u  ON u.id  = w.created_by
+             LEFT JOIN users                    ap ON ap.id = w.approved_by
              WHERE w.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -78,18 +85,22 @@ class Con_WorkingPlan extends Model
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    /** All working plans for a specific project (with budget total + design type) */
+    /** All working plans for a specific project (with budget total + design type + approval info) */
     public function getByProject($projectId)
     {
         $stmt = $this->db->prepare(
             "SELECT w.*,
                     p.name  AS project_name,
                     b.total_estimated_cost AS budget_total,
-                    dt.name AS design_type_name
+                    dt.name AS design_type_name,
+                    u.full_name  AS created_by_name,
+                    ap.full_name AS approved_by_name
              FROM {$this->planTable} w
              LEFT JOIN projects                 p  ON p.id  = w.project_id
              LEFT JOIN initial_estimate_budgets b  ON b.id  = w.initial_budget_id
              LEFT JOIN design_types             dt ON dt.id = w.design_type_id
+             LEFT JOIN users                    u  ON u.id  = w.created_by
+             LEFT JOIN users                    ap ON ap.id = w.approved_by
              WHERE w.project_id = ?
              ORDER BY w.year ASC, w.month ASC"
         );
@@ -205,8 +216,9 @@ class Con_WorkingPlan extends Model
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->planTable}
                      (project_id, initial_budget_id, design_type_id, year, month,
-                      work_description, planned_quantity, estimated_cost, created_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                      work_description, planned_quantity, estimated_cost, created_by,
+                      approved_status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')"
             );
             $stmt->bind_param(
                 'iiiiisddi',
@@ -301,6 +313,52 @@ class Con_WorkingPlan extends Model
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         return $row && in_array($row['status'], ['approved', 'cancelled']);
+    }
+
+    // =========================================================================
+    // WORKING PLAN APPROVAL
+    // =========================================================================
+
+    /**
+     * Approve a working plan — sets approved_status = 'Approved', approved_by = $userId
+     */
+    public function approvePlan($id, $userId)
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->planTable}
+             SET approved_status = 'Approved', approved_by = ?
+             WHERE id = ? AND (approved_status = 'Pending' OR approved_status IS NULL)"
+        );
+        $stmt->bind_param('ii', $userId, $id);
+        return $stmt->execute() && $stmt->affected_rows > 0;
+    }
+
+    /**
+     * Reject a working plan — sets approved_status = 'Rejected', approved_by = $userId
+     */
+    public function rejectPlan($id, $userId)
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->planTable}
+             SET approved_status = 'Rejected', approved_by = ?
+             WHERE id = ? AND (approved_status = 'Pending' OR approved_status IS NULL)"
+        );
+        $stmt->bind_param('ii', $userId, $id);
+        return $stmt->execute() && $stmt->affected_rows > 0;
+    }
+
+    /**
+     * Get approved plans count for a project
+     */
+    public function getApprovedCount($projectId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) AS c FROM {$this->planTable}
+             WHERE project_id = ? AND approved_status = 'Approved'"
+        );
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        return (int)$stmt->get_result()->fetch_assoc()['c'];
     }
 
     // =========================================================================

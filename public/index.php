@@ -715,6 +715,13 @@ $routes['con-project/(\d+)']       = ['controller' => 'Phase2\Con_DashboardContr
 $routes['con-ajax-workplan/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWorkPlan'];
 $routes['con-ajax-targets/(\d+)']  = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxTargets'];
 $routes['con-ajax-weekly/(\d+)']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWeeklyData'];
+// ── Role-Specific Dashboards ───────────────────────────────────────────────
+$routes['qc-dashboard']                   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'qcDashboard'];
+$routes['purchase-team-lead-dashboard']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'purchaseTeamLeadDashboard'];
+$routes['draft-dashboard']                = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'draftDashboard'];
+$routes['land-dashboard']                 = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'landDashboard'];
+$routes['project-architecture-dashboard'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectArchitectureDashboard'];
+$routes['estimator-dashboard']            = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'estimatorDashboard'];
 
 // ── Operators / Contractors ────────────────────────────────────────────────
 $routes['con-contractors']              = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'index'];
