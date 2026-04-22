@@ -1259,9 +1259,9 @@
                         </ul>
                     </li>
 
-                    <!-- ====== Site Operations (Batch 1 NEW) ====== -->
-                    <li class="slide has-sub <?= isActive(['con-targets','con-target-create','con-daily-reports','con-daily-report-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-targets','con-target-create','con-daily-reports','con-daily-report-create'], $current_route) ? 'menu-open active' : '' ?>">
+                    <!-- ====== Site Operations ====== -->
+                    <li class="slide has-sub <?= isActive(['con-targets','con-target-create','con-weekly-reports','con-weekly-report-create'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-targets','con-target-create','con-weekly-reports','con-weekly-report-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
                             <span class="sidebar__menu-label">Site Operations</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1278,18 +1278,19 @@
                                 </a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $base_url ?>/con-daily-reports" class="sidebar__menu-item <?= isActive('con-daily-reports', $current_route) ?>">
-                                    <i class="bi bi-journal-text me-1"></i> Daily Reports (DPR)
+                                <a href="<?= $base_url ?>/con-weekly-reports" class="sidebar__menu-item <?= isActive('con-weekly-reports', $current_route) ?>">
+                                    <i class="bi bi-calendar-week me-1"></i> Weekly Reports
                                 </a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $base_url ?>/con-daily-report-create" class="sidebar__menu-item <?= isActive('con-daily-report-create', $current_route) ?>">
-                                    + New DPR
+                                <a href="<?= $base_url ?>/con-weekly-report-create" class="sidebar__menu-item <?= isActive('con-weekly-report-create', $current_route) ?>">
+                                    + New Weekly Report
                                 </a>
                             </li>
                         </ul>
                     </li>
                     <!-- ====== END Site Operations ====== -->
+
 
                     <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
                     <li class="slide has-sub <?= isActive(['con-contractor-bills','con-contractor-bill-create','con-fund-requests','con-fund-request-create'], $current_route) ? 'active' : '' ?>">

@@ -140,7 +140,7 @@
                     <h6 class="card__title mb-0"><i class="bi bi-diagram-3 me-2"></i>Procurement Pipeline</h6>
                 </div>
                 <div class="card__body p-4">
-                    <div class="row g-3">
+                    <div class="row">
                         <!-- Step 1: Quotations -->
                         <div class="col-md-4">
                             <div class="border rounded p-3 text-center h-100">

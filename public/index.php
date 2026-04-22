@@ -808,10 +808,10 @@ $routes['con-target/(\d+)']            = ['controller' => 'Phase2\Con_TargetFixe
 $routes['con-target-approve/(\d+)']    = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'approve'];
 
 // ── Daily Progress Reports ────────────────────────────────────────────────
-$routes['con-daily-reports']           = ['controller' => 'Phase2\Con_DPRController', 'method' => 'index'];
-$routes['con-daily-report-create']     = ['controller' => 'Phase2\Con_DPRController', 'method' => 'create'];
-$routes['con-daily-report-store']      = ['controller' => 'Phase2\Con_DPRController', 'method' => 'store'];
-$routes['con-daily-report/(\d+)']      = ['controller' => 'Phase2\Con_DPRController', 'method' => 'show'];
+$routes['con-weekly-reports']           = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'index'];
+$routes['con-weekly-report-create']     = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'create'];
+$routes['con-weekly-report-store']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'store'];
+$routes['con-weekly-report/(\d+)']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'show'];
 
 // ── Material Usage Log ────────────────────────────────────────────────────
 $routes['con-usage-logs']              = ['controller' => 'Phase2\Con_MaterialUsageController', 'method' => 'index'];
