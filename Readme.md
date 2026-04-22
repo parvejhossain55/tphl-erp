@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS `soil_tests` (
 -- 2. OPERATIONS OPERATORS
 -- =============================================================================
 
-CREATE TABLE IF NOT EXISTS `operations_contractors` (
+CREATE TABLE IF NOT EXISTS `contractors` (
   `id`          INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name`        VARCHAR(255)     NOT NULL,
   `role`        ENUM('Contractor','Subcontractor','Supervisor','Worker') NOT NULL DEFAULT 'Contractor',
@@ -896,7 +896,7 @@ SET FOREIGN_KEY_CHECKS = 1
 --   soil_tests
 --
 -- OPERATIONS:
---   operations_operators
+--   contractors
 --
 -- INVENTORY:
 --   con_materials

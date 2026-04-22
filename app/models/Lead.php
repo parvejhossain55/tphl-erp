@@ -107,7 +107,78 @@ class Lead extends Model
     }
 
 
-    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null,   $date = null)
+    public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null)
+    {
+        $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l WHERE l.deleted_at IS NULL";
+
+        $params = [];
+        $types  = "";
+
+        // ROLE BASED FILTER
+        if (in_array($roleId, [1, 3, 5]) && !empty($teamId)) {
+            $sql .= " AND l.team_id = ?";
+            $params[] = $teamId;
+            $types .= "i";
+        }
+
+        // Date filter
+        if (!empty($date)) {
+            $sql .= " AND DATE(l.created_at) = ?";
+            $params[] = $date;
+            $types .= "s";
+        } else {
+            // Year filter
+            if (!empty($year)) {
+                $sql .= " AND YEAR(l.created_at) = ?";
+                $params[] = $year;
+                $types .= "i";
+            }
+            // Month filter
+            if (!empty($month)) {
+                $sql .= " AND MONTH(l.created_at) = ?";
+                $params[] = $month;
+                $types .= "i";
+            }
+        }
+
+        // Last action filter
+        if (!empty($lastAction)) {
+            $sql .= " AND l.last_lead_action = ?";
+            $params[] = $lastAction;
+            $types .= "s";
+        }
+
+        // Assigned filter
+        if (isset($assigned) && $assigned !== '') {
+            if ($assigned === 'assigned') {
+                $sql .= " AND l.assigned_id IS NOT NULL";
+            } elseif ($assigned === 'unassigned') {
+                $sql .= " AND l.assigned_id IS NULL";
+            }
+        }
+        
+        // Assigned User filter
+        if (isset($assigned_user) && $assigned_user !== '') {
+            $sql .= " AND l.assigned_id = ?";
+            $params[] = $assigned_user;
+            $types .= "i";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        
+        if (!$stmt->execute()) {
+            return 0;
+        }
+
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return $row ? (int)$row['total_count'] : 0;
+    }
+
+    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null)
     {
         $sql = "SELECT 
         l.*,
@@ -207,6 +278,13 @@ class Lead extends Model
 
         //  Order by created_at DESC for latest leads first
         $sql .= " ORDER BY l.created_at DESC, l.id DESC";
+
+        if ($limit !== null && $offset !== null) {
+            $sql .= " LIMIT ? OFFSET ?";
+            $params[] = (int)$limit;
+            $params[] = (int)$offset;
+            $types .= "ii";
+        }
 
         $stmt = $this->db->prepare($sql);
 

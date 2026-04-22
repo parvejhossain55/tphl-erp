@@ -116,6 +116,26 @@ public function index()
         );
     }
 
+    // Fetch vendor payment details when vendor_payment category is selected
+    $vendorPaymentDetails = [];
+    if ($category === 'vendor_payment' && $statementStartDate && $statementEndDate) {
+        $vendorPaymentDetails = $this->statementModel->getVendorPaymentDetails(
+            $statementStartDate,
+            $statementEndDate,
+            $projectId
+        );
+    }
+
+    // Fetch contractor bill details when contractor_bill category is selected
+    $contractorBillDetails = [];
+    if ($category === 'contractor_bill' && $statementStartDate && $statementEndDate) {
+        $contractorBillDetails = $this->statementModel->getContractorBillDetails(
+            $statementStartDate,
+            $statementEndDate,
+            $projectId
+        );
+    }
+
     // Fetch bank transactions for bank_cashin / bank_cashout categories
     $bankTransactions = [];
     if (in_array($category, ['bank_cashin', 'bank_cashout']) && $statementStartDate && $statementEndDate) {
@@ -138,6 +158,8 @@ public function index()
         'overall_stats' => $overallStats,
         'revenue_data' => $revenueData,
         'cashout_payment_details' => $cashoutPaymentDetails,
+        'vendor_payment_details' => $vendorPaymentDetails,
+        'contractor_bill_details' => $contractorBillDetails,
         'bank_transactions' => $bankTransactions,
     ];
 
@@ -285,6 +307,10 @@ public function printStatement()
             $categoryName = 'Bank Cash In';
         } elseif ($category === 'bank_cashout') {
             $categoryName = 'Bank Cash Out';
+        } elseif ($category === 'vendor_payment') {
+            $categoryName = 'Vendor Payments';
+        } elseif ($category === 'contractor_bill') {
+            $categoryName = 'Contractor Bills';
         }
     }
 
@@ -312,6 +338,20 @@ public function printStatement()
     if ($category === 'utilities') {
         $utilitiesTransactions = $this->statementModel->getUtilitiesTransactions($statementStartDate, $statementEndDate);
         $viewData['utilitiesTransactions'] = $utilitiesTransactions;
+    }
+
+    // Fetch vendor payment details for print
+    if ($category === 'vendor_payment' && $statementStartDate && $statementEndDate) {
+        $viewData['vendor_payment_details'] = $this->statementModel->getVendorPaymentDetails(
+            $statementStartDate, $statementEndDate, $projectId
+        );
+    }
+
+    // Fetch contractor bill details for print
+    if ($category === 'contractor_bill' && $statementStartDate && $statementEndDate) {
+        $viewData['contractor_bill_details'] = $this->statementModel->getContractorBillDetails(
+            $statementStartDate, $statementEndDate, $projectId
+        );
     }
 
     // Fetch bank transactions for bank_cashin / bank_cashout

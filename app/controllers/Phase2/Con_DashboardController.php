@@ -27,7 +27,43 @@ class Con_DashboardController extends Controller
         $pendingAlerts = $this->getPendingApprovalsList();
         $soilAlerts    = $this->getRecentSoilTests();
 
+<<<<<<< HEAD
         return $this->view('phase2/dashboard/cons-dashboard', [
+=======
+        $stats['total_contractors'] = $this->db
+            ->query("SELECT COUNT(*) AS cnt FROM contractors WHERE status='active'")->fetch_assoc()['cnt'] ?? 0;
+
+        $stats['pending_bills'] = $this->db
+            ->query("SELECT COUNT(*) AS cnt FROM contractor_bill_requests WHERE status IN ('submitted','verified')")->fetch_assoc()['cnt'] ?? 0;
+
+        $stats['pending_funds'] = $this->db
+            ->query("SELECT COUNT(*) AS cnt FROM operational_fund_requests WHERE status='pending'")->fetch_assoc()['cnt'] ?? 0;
+
+        $stats['total_vendors'] = $this->db
+            ->query("SELECT COUNT(*) AS cnt FROM vendors WHERE status='active'")->fetch_assoc()['cnt'] ?? 0;
+
+        // Recent contractor bills (last 5)
+        $recentBills = $this->db->query("
+            SELECT cbr.*, oo.name AS operator_name, p.name AS project_name
+            FROM contractor_bill_requests cbr
+            LEFT JOIN contractors oo ON oo.id = cbr.operator_id
+            LEFT JOIN projects p ON p.id = cbr.project_id
+            ORDER BY cbr.created_at DESC
+            LIMIT 5
+        ")->fetch_all(MYSQLI_ASSOC);
+
+        // Recent fund requests (last 5)
+        $recentFunds = $this->db->query("
+            SELECT ofr.*, p.name AS project_name, u.full_name AS requester_name
+            FROM operational_fund_requests ofr
+            LEFT JOIN projects p ON p.id = ofr.project_id
+            LEFT JOIN users u ON u.id = ofr.requester_id
+            ORDER BY ofr.created_at DESC
+            LIMIT 5
+        ")->fetch_all(MYSQLI_ASSOC);
+
+        $this->view('phase2/dashboard/cons-dashboard', [
+>>>>>>> 3c9b3fa0bbf940b36ab0fd1ee0d020354f928834
             'current_route' => 'con-dashboard',
             'stats'         => $stats,
             'projects'      => $projects,

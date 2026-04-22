@@ -3,7 +3,6 @@ $base_url   = $GLOBALS['base_url'];
 $page_title = $page_title ?? 'Contractor Bill Requests';
 ?>
 <div class="container-fluid">
-    <!-- Breadcrumb -->
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <div class="my-auto">
             <h4 class="page-title fw-semibold fs-18 mb-0"><?= $page_title ?></h4>
@@ -21,7 +20,6 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
         </div>
     </div>
 
-    <!-- Card -->
     <div class="card custom-card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h6 class="card-title mb-0"><i class="bi bi-receipt me-2 text-primary"></i> All Contractor Bills</h6>
@@ -35,9 +33,11 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                             <th>Project</th>
                             <th>Contractor</th>
                             <th>Bill Date</th>
-                            <th>Amount (৳)</th>
+                            <th class="text-end">Amount (৳)</th>
                             <th>Status</th>
                             <th>Submitted By</th>
+                            <th>Approved By</th>
+                            <th>Payment By</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -46,13 +46,17 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                             <?php foreach ($bills as $i => $b): ?>
                                 <?php
                                 $statusMap = [
-                                    'submitted' => 'primary',
-                                    'verified'  => 'info',
-                                    'approved'  => 'success',
-                                    'paid'      => 'dark',
-                                    'rejected'  => 'danger',
+                                    'draft'          => 'warning',
+                                    'submitted'      => 'info',
+                                    'verified'       => 'primary',
+                                    'approved'       => 'success',
+                                    'rejected'       => 'danger',
+                                    'paid'           => 'secondary',
+                                    'partially_paid' => 'info',
+                                    'fully_paid'     => 'secondary',
                                 ];
                                 $badge = $statusMap[$b['status']] ?? 'secondary';
+                                $statusLabel = str_replace('_', ' ', ucfirst($b['status']));
                                 ?>
                                 <tr>
                                     <td><?= $i + 1 ?></td>
@@ -63,8 +67,22 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                                     </td>
                                     <td><?= date('d M Y', strtotime($b['bill_date'])) ?></td>
                                     <td class="fw-semibold text-end">৳ <?= number_format($b['bill_amount'], 2) ?></td>
-                                    <td><span class="badge bg-<?= $badge ?>"><?= ucfirst($b['status']) ?></span></td>
+                                    <td><span class="badge bg-<?= $badge ?>"><?= $statusLabel ?></span></td>
                                     <td><?= htmlspecialchars($b['created_by_name'] ?? '-') ?></td>
+                                    <td>
+                                        <?php if (!empty($b['approved_by_name'])): ?>
+                                            <span class="text-success fw-semibold"><?= htmlspecialchars($b['approved_by_name']) ?></span>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($b['payment_by_name'])): ?>
+                                            <span class="text-primary fw-semibold"><?= htmlspecialchars($b['payment_by_name']) ?></span>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <a href="<?= $base_url ?>/con-contractor-bill/<?= $b['id'] ?>" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-eye"></i>
@@ -73,7 +91,7 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="8" class="text-center text-muted py-4">No contractor bills found. <a href="<?= $base_url ?>/con-contractor-bill-create">Create one</a></td></tr>
+                            <tr><td colspan="10" class="text-center text-muted py-4">No contractor bills found. <a href="<?= $base_url ?>/con-contractor-bill-create">Create one</a></td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
