@@ -609,7 +609,7 @@ class CentralStatement extends Model
             } elseif ($category === 'management_cashin') {
                 $cashin = $managementCashin;
             }
-
+// updated 
             // For vendor_payment and contractor_bill categories, use their specific data as cash_out
             $cashOut = 0;
             if ($category === 'vendor_payment') {
