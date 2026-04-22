@@ -827,6 +827,12 @@ $routes['con-weekly-reports']           = ['controller' => 'Phase2\Con_WeeklyRep
 $routes['con-weekly-report-create']     = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'create'];
 $routes['con-weekly-report-store']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'store'];
 $routes['con-weekly-report/(\d+)']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'show'];
+$routes['con-ajax-work-plans']          = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'ajaxWorkPlans'];
+$routes['con-ajax-report-targets']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'ajaxTargets'];
+// Legacy aliases
+$routes['con-daily-reports']            = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'index'];
+$routes['con-daily-report-create']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'create'];
+$routes['con-daily-report/(\d+)']       = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'show'];
 
 // ── Material Usage Log ────────────────────────────────────────────────────
 $routes['con-usage-logs']              = ['controller' => 'Phase2\Con_MaterialUsageController', 'method' => 'index'];
