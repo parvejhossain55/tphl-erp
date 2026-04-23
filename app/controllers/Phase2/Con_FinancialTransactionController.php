@@ -68,6 +68,15 @@ class Con_FinancialTransactionController extends Controller
     {
         $pending = $this->txnModel->getPendingApprovals();
 
+        // Add already-paid amounts for each item
+        foreach ($pending as &$p) {
+            $p['already_paid'] = $this->txnModel->getTotalPaidForSource(
+                $p['ref_type'],
+                $p['ref_id']
+            );
+        }
+        unset($p);
+
         $this->view('phase2/financial-transactions/pending-payments', [
             'current_route'     => 'con-pending-payments',
             'page_title'        => 'Pending Payments',
@@ -295,10 +304,77 @@ class Con_FinancialTransactionController extends Controller
             exit;
         }
 
+        // Load source record details
+        $sourceDetail = null;
+        $refType = $txn['ref_type'];
+        $refId   = $txn['ref_id'];
+
+        if ($refType === 'vendor_payment') {
+            $stmt = $this->db->prepare(
+                "SELECT vpr.*,
+                        v.name          AS vendor_name,
+                        v.phone         AS vendor_phone,
+                        p.name          AS project_name,
+                        u.full_name     AS approved_by_name
+                 FROM vendor_payment_requests vpr
+                 LEFT JOIN vendors  v ON v.id = vpr.vendor_id
+                 LEFT JOIN projects p ON p.id = vpr.project_id
+                 LEFT JOIN users    u ON u.id = vpr.approved_by
+                 WHERE vpr.id = ?"
+            );
+            $stmt->bind_param('i', $refId);
+            $stmt->execute();
+            $sourceDetail = $stmt->get_result()->fetch_assoc();
+
+        } elseif ($refType === 'contractor_bill') {
+            $stmt = $this->db->prepare(
+                "SELECT cbr.*, p.name AS project_name, c.name AS contractor_name
+                 FROM contractor_bill_requests cbr
+                 LEFT JOIN projects     p ON p.id = cbr.project_id
+                 LEFT JOIN contractors  c ON c.id = cbr.operator_id
+                 WHERE cbr.id = ?"
+            );
+            $stmt->bind_param('i', $refId);
+            $stmt->execute();
+            $sourceDetail = $stmt->get_result()->fetch_assoc();
+
+        } elseif ($refType === 'operational_fund') {
+            $stmt = $this->db->prepare(
+                "SELECT ofr.*, p.name AS project_name
+                 FROM operational_fund_requests ofr
+                 LEFT JOIN projects p ON p.id = ofr.project_id
+                 WHERE ofr.id = ?"
+            );
+            $stmt->bind_param('i', $refId);
+            $stmt->execute();
+            $sourceDetail = $stmt->get_result()->fetch_assoc();
+        }
+
+        // Payment summary for this source
+        $allPayments   = $this->txnModel->getByRef($refType, $refId);
+        $totalPaid     = $this->txnModel->getTotalPaidForSource($refType, $refId);
+
+        // Determine original payable amount
+        $originalAmount = 0;
+        if ($refType === 'vendor_payment') {
+            $originalAmount = (float)($sourceDetail['net_payable'] ?? 0);
+        } elseif ($refType === 'contractor_bill') {
+            $originalAmount = (float)($sourceDetail['approved_amount'] ?? $sourceDetail['bill_amount'] ?? 0);
+        } elseif ($refType === 'operational_fund') {
+            $originalAmount = (float)($sourceDetail['approved_amount'] ?? $sourceDetail['amount'] ?? 0);
+        }
+
+        $dueAmount = max(0, $originalAmount - $totalPaid);
+
         $this->view('phase2/financial-transactions/show-transaction', [
-            'current_route' => 'con-transactions',
-            'page_title'    => 'Transaction Receipt',
-            'txn'           => $txn,
+            'current_route'   => 'con-transactions',
+            'page_title'      => 'Transaction Receipt',
+            'txn'             => $txn,
+            'sourceDetail'    => $sourceDetail,
+            'allPayments'     => $allPayments,
+            'totalPaid'       => $totalPaid,
+            'originalAmount'  => $originalAmount,
+            'dueAmount'       => $dueAmount,
         ]);
     }
 

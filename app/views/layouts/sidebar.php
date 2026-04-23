@@ -1100,7 +1100,7 @@
                     <li class="slide <?= isActive('project-architecture-dashboard', $current_route) ?>">
                         <a href="<?= $base_url ?>/project-architecture-dashboard" class="sidebar__menu-item <?= isActive('project-architecture-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-building-columns"></i></div>
-                            <span class="sidebar__menu-label">Architecture Dashboard</span>
+                            <span class="sidebar__menu-label">Architect Dashboard</span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -1263,15 +1263,15 @@
                     <li class="slide has-sub <?= isActive(['con-boq', 'con-boq-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-boq', 'con-boq-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-clipboard-list"></i></div>
-                            <span class="sidebar__menu-label">BOQ</span>
+                            <span class="sidebar__menu-label">BOM</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide">
-                                <a href="<?= $base_url ?>/con-boq" class="sidebar__menu-item <?= isActive('con-boq', $current_route) ?>">BOQ List</a>
+                                <a href="<?= $base_url ?>/con-boq" class="sidebar__menu-item <?= isActive('con-boq', $current_route) ?>">BOM List</a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $base_url ?>/con-boq-create" class="sidebar__menu-item <?= isActive('con-boq-create', $current_route) ?>">New BOQ</a>
+                                <a href="<?= $base_url ?>/con-boq-create" class="sidebar__menu-item <?= isActive('con-boq-create', $current_route) ?>">New BOM</a>
                             </li>
                         </ul>
                     </li>
@@ -1464,12 +1464,12 @@
                 <?php endif; ?>
                 <!-- ====== END Operators & Bills ====== -->
 
-
+             <?php if (hasPermission('Bill & Payments')): ?>
                 <!-- ====== Finance & Accounts (Batch 3 NEW) ====== -->
                 <li class="slide has-sub <?= isActive(['con-transactions', 'con-pending-payments'], $current_route) ? 'active' : '' ?>">
                     <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-transactions', 'con-pending-payments'], $current_route) ? 'menu-open active' : '' ?>">
                         <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
-                        <span class="sidebar__menu-label">Finance & Accounts</span>
+                        <span class="sidebar__menu-label">Bill & Payments</span>
                         <i class="fa-regular fa-angle-down side-menu__angle"></i>
                     </a>
                     <ul class="sidebar-menu child2" style="display:block;">
@@ -1485,6 +1485,7 @@
                         </li>
                     </ul>
                 </li>
+                <?php endif;?>
                 <!-- ====== END Finance & Accounts ====== -->
 
 

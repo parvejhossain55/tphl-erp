@@ -315,7 +315,7 @@ $recentAE             = $recentAE             ?? [];
   <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
     <div>
       <div class="pa-role-badge"><i class="fa-solid fa-building-columns"></i> Project Architecture</div>
-      <h4 class="pa-hero-title">Architecture Dashboard</h4>
+      <h4 class="pa-hero-title">Architect Dashboard</h4>
       <p class="pa-hero-sub">Architect & Engineering · Design Types · Project Drawings · <?= date('d M Y, h:i A') ?></p>
     </div>
   </div>

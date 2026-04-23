@@ -60,15 +60,22 @@ class Con_TargetFixedController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        $isLabTest   = (int)($_POST['is_lab_test']   ?? 0);
+        $labTestDate = ($isLabTest && !empty($_POST['lab_test_date']))
+                        ? $_POST['lab_test_date'] : null;
+
         $data = [
-            'project_id'         => $_POST['project_id']         ?? null,
-            'work_plan_id'       => $_POST['work_plan_id']       ?? null,
-            'target_title'       => trim($_POST['target_title']  ?? ''),
-            'user_id'            => $_SESSION['user']['id']      ?? null,
-            'year'               => $_POST['year']               ?? date('Y'),
-            'month'              => $_POST['month']              ?? date('n'),
-            'week_number'        => !empty($_POST['week_number']) ? $_POST['week_number'] : null,
-            'target_percentage'  => $_POST['target_percentage']  ?? 0,
+            'project_id'        => $_POST['project_id']        ?? null,
+            'work_plan_id'      => $_POST['work_plan_id']      ?? null,
+            'target_title'      => trim($_POST['target_title'] ?? ''),
+            'user_id'           => $_SESSION['user']['id']     ?? null,
+            'year'              => $_POST['year']              ?? date('Y'),
+            'month'             => $_POST['month']             ?? date('n'),
+            'week_number'       => !empty($_POST['week_number']) ? $_POST['week_number'] : null,
+            'target_percentage' => $_POST['target_percentage'] ?? 0,
+            'is_lab_test'       => $isLabTest,
+            'lab_test_date'     => $labTestDate,
+            'target_details'    => trim($_POST['target_details'] ?? ''),
         ];
 
         if (empty($data['project_id']) || empty($data['work_plan_id']) || empty($data['target_title'])) {
@@ -177,6 +184,10 @@ class Con_TargetFixedController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        $isLabTest   = (int)($_POST['is_lab_test']   ?? 0);
+        $labTestDate = ($isLabTest && !empty($_POST['lab_test_date']))
+                        ? $_POST['lab_test_date'] : null;
+
         $data = [
             'project_id'        => $_POST['project_id']        ?? null,
             'work_plan_id'      => $_POST['work_plan_id']      ?? null,
@@ -185,6 +196,9 @@ class Con_TargetFixedController extends Controller
             'month'             => $_POST['month']             ?? date('n'),
             'week_number'       => !empty($_POST['week_number']) ? $_POST['week_number'] : null,
             'target_percentage' => $_POST['target_percentage'] ?? 0,
+            'is_lab_test'       => $isLabTest,
+            'lab_test_date'     => $labTestDate,
+            'target_details'    => trim($_POST['target_details'] ?? ''),
         ];
 
         if (empty($data['project_id']) || empty($data['work_plan_id']) || empty($data['target_title'])) {

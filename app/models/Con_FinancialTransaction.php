@@ -181,54 +181,66 @@ class Con_FinancialTransaction extends Model
     {
         $this->db->begin_transaction();
         try {
-            $paymentType = $data['payment_type'] ?? 'Full';
+            $paymentType        = $data['payment_type']       ?? 'Full';
+            $refType            = $data['ref_type']            ?? '';
+            $refId              = (int)($data['ref_id']        ?? 0);
+            $projectId          = (int)($data['project_id']   ?? 0);
+            $amount             = (float)($data['amount']     ?? 0);
+            $paymentMethod      = $data['payment_method']      ?? 'Cash';
+            $paymentDate        = $data['payment_date']        ?? date('Y-m-d');
+            $referenceNo        = $data['reference_no']        ?? '';
+            $notes              = $data['notes']               ?? '';
+            $disbursementProof  = $data['disbursement_proof']  ?? null;
+            $processedBy        = (int)($data['processed_by'] ?? 0);
 
             // 1. Insert transaction record
             $sql = "INSERT INTO {$this->table}
                     (ref_type, ref_id, project_id, amount_paid, payment_type, payment_method,
-                     transaction_date, reference_number, notes, disbursement_proof,
+                     transaction_date_str, reference_number, notes, disbursement_proof,
                      processed_by, update_status, created_by, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Completed', ?, NOW())";
             $stmt = $this->db->prepare($sql);
             $stmt->bind_param(
-                'siidssssssis',
-                $data['ref_type'],
-                $data['ref_id'],
-                $data['project_id'],
-                $data['amount'],
+                'siidssssssii',
+                $refType,
+                $refId,
+                $projectId,
+                $amount,
                 $paymentType,
-                $data['payment_method'],
-                $data['payment_date'],
-                $data['reference_no'],
-                $data['notes'],
-                $data['disbursement_proof'],
-                $data['processed_by'],
-                $data['processed_by']
+                $paymentMethod,
+                $paymentDate,
+                $referenceNo,
+                $notes,
+                $disbursementProof,
+                $processedBy,
+                $processedBy
             );
-            $stmt->execute();
+            if (!$stmt->execute()) {
+                throw new \Exception("Insert failed: " . $stmt->error);
+            }
             $txnId = $stmt->insert_id;
 
             // 2. Calculate total paid so far for this source
-            $totalPaid = $this->getTotalPaidForSource($data['ref_type'], $data['ref_id']);
+            $totalPaid = $this->getTotalPaidForSource($refType, $refId);
 
             // 3. Determine the approved/payable amount from the source
-            $sourceAmount = $this->getSourceAmount($data['ref_type'], $data['ref_id']);
+            $sourceAmount = $this->getSourceAmount($refType, $refId);
 
             // 4. Calculate due amount and determine new status
             $dueAmount = max(0, $sourceAmount - $totalPaid);
 
             if ($dueAmount <= 0) {
-                $newStatus = $this->getFullyPaidStatus($data['ref_type']);
+                $newStatus = $this->getFullyPaidStatus($refType);
             } else {
-                $newStatus = $this->getPartiallyPaidStatus($data['ref_type']);
+                $newStatus = $this->getPartiallyPaidStatus($refType);
             }
 
             // 5. Update source record with new status and due_amount
-            $this->updateSourceRecord($data['ref_type'], $data['ref_id'], $newStatus, $dueAmount);
+            $this->updateSourceRecord($refType, $refId, $newStatus, $dueAmount);
 
             $this->db->commit();
             return $txnId;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->db->rollback();
             error_log("Financial transaction create failed: " . $e->getMessage());
             return false;

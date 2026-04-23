@@ -170,21 +170,75 @@ class Con_DashboardController extends Controller
             ORDER BY r.id DESC LIMIT 10");
         $pendingWeeklyReportsPM = $rPendingWeeklyPM ? $rPendingWeeklyPM->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── Week-based Target Notifications (PM role=15, SE role=12) ──────
+        // Show targets where current month+week matches the target's month+week
+        $curYear  = (int)date('Y');
+        $curMonth = (int)date('n');
+        $curWeek  = (int)ceil(date('j') / 7);
+        $curWeek  = min($curWeek, 4);
+
+        $rWeekTargets = $this->db->prepare("
+            SELECT tf.id, tf.target_title, tf.target_percentage, tf.gain_percentage,
+                   tf.year, tf.month, tf.week_number,
+                   tf.is_lab_test, tf.lab_test_date, tf.target_details,
+                   tf.approved_by_qc, tf.approved_by_manager,
+                   p.name AS project_name,
+                   u.full_name AS creator_name
+            FROM target_fixed tf
+            LEFT JOIN projects p ON p.id = tf.project_id
+            LEFT JOIN users    u ON u.id = tf.user_id
+            WHERE tf.year  = ?
+              AND tf.month = ?
+              AND (tf.week_number = ? OR tf.week_number IS NULL)
+            ORDER BY tf.id DESC
+            LIMIT 20");
+        $rWeekTargets->bind_param('iii', $curYear, $curMonth, $curWeek);
+        $rWeekTargets->execute();
+        $weekTargetNotifications = $rWeekTargets->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Lab test date notifications — lab test due within current week
+        $daysInMonth = (int)date('t');
+        $weekStartDay = ($curWeek - 1) * 7 + 1;
+        $weekEndDay   = min($curWeek * 7, $daysInMonth);
+        $weekStart    = date('Y-m-') . str_pad($weekStartDay, 2, '0', STR_PAD_LEFT);
+        $weekEnd      = date('Y-m-') . str_pad($weekEndDay,   2, '0', STR_PAD_LEFT);
+
+        $rLabDue = $this->db->prepare("
+            SELECT tf.id, tf.target_title, tf.lab_test_date,
+                   tf.year, tf.month, tf.week_number,
+                   p.name AS project_name
+            FROM target_fixed tf
+            LEFT JOIN projects p ON p.id = tf.project_id
+            WHERE tf.is_lab_test = 1
+              AND tf.lab_test_date BETWEEN ? AND ?
+            ORDER BY tf.lab_test_date ASC
+            LIMIT 15");
+        $rLabDue->bind_param('ss', $weekStart, $weekEnd);
+        $rLabDue->execute();
+        $labDueNotifications = $rLabDue->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/dashboard/cons-dashboard', [
-            'current_route'         => 'con-dashboard',
-            'stats'                 => $stats,
-            'projects'              => $projects,
-            'budgetUtil'            => $budgetUtil,
-            'stockAlerts'           => $stockAlerts,
-            'pendingAlerts'         => $pendingAlerts,
-            'soilAlerts'            => $soilAlerts,
-            'pendingInitialBudgets' => $pendingInitialBudgets,
-            'pendingBoqs'           => $pendingBoqs,
-            'pendingTargetsPM'      => $pendingTargetsPM,
-            'pendingPOsForPM'       => $pendingPOsForPM,
-            'pendingPOsForSE'       => $pendingPOsForSE,
-            'pendingGRNs'           => $pendingGRNs,
-            'pendingWeeklyReportsPM'=> $pendingWeeklyReportsPM,
+            'current_route'           => 'con-dashboard',
+            'stats'                   => $stats,
+            'projects'                => $projects,
+            'budgetUtil'              => $budgetUtil,
+            'stockAlerts'             => $stockAlerts,
+            'pendingAlerts'           => $pendingAlerts,
+            'soilAlerts'              => $soilAlerts,
+            'pendingInitialBudgets'   => $pendingInitialBudgets,
+            'pendingBoqs'             => $pendingBoqs,
+            'pendingTargetsPM'        => $pendingTargetsPM,
+            'pendingPOsForPM'         => $pendingPOsForPM,
+            'pendingPOsForSE'         => $pendingPOsForSE,
+            'pendingGRNs'             => $pendingGRNs,
+            'pendingWeeklyReportsPM'  => $pendingWeeklyReportsPM,
+            'weekTargetNotifications' => $weekTargetNotifications,
+            'labDueNotifications'     => $labDueNotifications,
+            'currentWeek'             => $curWeek,
+            'currentMonth'            => $curMonth,
+            'currentYear'             => $curYear,
+            'recentBills'             => $recentBills,
+            'recentFunds'             => $recentFunds,
         ]);
     }
 
@@ -623,7 +677,7 @@ class Con_DashboardController extends Controller
                 // DPR entries for this week
                 $s2 = $this->db->prepare("
                     SELECT dpr.*, se.full_name AS engineer_name
-                    FROM   daily_progress_reports dpr
+                    FROM   weekly_progress_report dpr
                     LEFT JOIN users se ON se.id = dpr.site_engineer_id
                     WHERE  dpr.project_id = ? AND dpr.report_date BETWEEN ? AND ?
                     ORDER  BY dpr.report_date ASC");
@@ -682,7 +736,7 @@ class Con_DashboardController extends Controller
         $pendingPlans = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
 
         // KPI: Total DPR (Project Reports)
-        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM daily_progress_reports");
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM weekly_progress_report");
         $totalDPRs = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
         // KPI: Low Stock alerts
@@ -718,7 +772,7 @@ class Con_DashboardController extends Controller
         // Recent DPRs
         $rDPR = $this->db->query("
             SELECT dpr.*, p.name AS project_name
-            FROM daily_progress_reports dpr
+            FROM weekly_progress_report dpr
             LEFT JOIN projects p ON p.id=dpr.project_id
             ORDER BY dpr.id DESC LIMIT 5");
         $recentDPRs = $rDPR ? $rDPR->fetch_all(MYSQLI_ASSOC) : [];

@@ -146,19 +146,27 @@ $sc = $statusMap[$overallStatus];
   <!-- Left: Info + Gain update -->
   <div class="col-xl-7">
 
-    <!-- Target Info -->
     <div class="tgt-panel">
       <div class="tgt-panel-title">
         <div class="tgt-dot" style="background:var(--tgt-blue)"></div>
         Target Information
       </div>
       <table style="width:100%;border-collapse:collapse">
-        <?php $rows = [
+        <?php
+        $isLabTest = !empty($t['is_lab_test']) ? (int)$t['is_lab_test'] : 0;
+        $labBadge  = $isLabTest
+            ? '<span style="background:rgba(6,182,212,.12);color:#0891b2;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700"><i class="bi bi-flask me-1"></i>Yes</span>'
+            : '<span style="background:rgba(107,114,128,.1);color:#6b7280;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700">No</span>';
+        $labDateFmt = !empty($t['lab_test_date']) ? date('d M Y', strtotime($t['lab_test_date'])) : '—';
+
+        $rows = [
           ['Project',      htmlspecialchars($t['project_name'] ?? '—')],
           ['Working Plan', htmlspecialchars($t['plan_description'] ?? '—')],
           ['Design Type',  '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(59,130,246,.1);color:#2563eb">'.htmlspecialchars($t['design_type_name'] ?? '—').'</span>'],
           ['Year / Month', ($t['year'] ?? '—') . ' / ' . ($months[(int)($t['month'] ?? 0)] ?? '—')],
           ['Week',         $t['week_number'] ? 'Week '.$t['week_number'] : 'Monthly Target'],
+          ['Lab Test',     $labBadge],
+          ['Lab Test Date',$isLabTest ? $labDateFmt : '<span class="text-muted">—</span>'],
           ['Created By',   htmlspecialchars($t['created_by_name'] ?? '—')],
           ['Created',      !empty($t['created_at']) ? date('d M Y', strtotime($t['created_at'])) : '—'],
         ];
@@ -169,6 +177,17 @@ $sc = $statusMap[$overallStatus];
         </tr>
         <?php endforeach; ?>
       </table>
+
+      <?php if (!empty($t['target_details'])): ?>
+      <div style="margin-top:14px;padding:12px 14px;background:rgba(59,130,246,.04);
+                  border:1px solid rgba(59,130,246,.12);border-radius:10px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+                    color:#2563eb;margin-bottom:6px">
+            <i class="bi bi-card-text me-1"></i>Target Details
+        </div>
+        <div style="font-size:12.5px;line-height:1.7;white-space:pre-line"><?= htmlspecialchars($t['target_details']) ?></div>
+      </div>
+      <?php endif; ?>
     </div>
 
     <!-- Progress -->

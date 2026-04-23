@@ -155,4 +155,124 @@ class Con_PurchaseRequestController extends Controller
         header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
         exit;
     }
+
+    // =========================================================================
+    // AJAX — BOQ Remaining by Project (FIX: was missing, caused N/A)
+    // GET: /con-boq-remaining/{project_id}
+    // Returns JSON array of { material_id, material_name, unit, total_boq_qty, used_qty, remaining_qty }
+    // =========================================================================
+
+    public function boqRemaining($projectId)
+    {
+        header('Content-Type: application/json');
+        $projectId = (int)$projectId;
+        if (!$projectId) {
+            echo json_encode([]);
+            exit;
+        }
+
+        $data = $this->boqModel->getRemainingBOQ($projectId);
+        echo json_encode($data);
+        exit;
+    }
+
+    // =========================================================================
+    // AJAX — Approved BOQs by Project with items (target-wise)
+    // GET: /con-ajax-pr-boqs?project_id=N
+    // Returns JSON: { boqs: [{id, boq_label, target_title, items:[{material_id,material_name,unit,boq_qty,used_qty,remaining_qty}]}] }
+    // =========================================================================
+
+    public function ajaxGetProjectBoqs()
+    {
+        header('Content-Type: application/json');
+        $projectId = (int)($_GET['project_id'] ?? 0);
+
+        if (!$projectId) {
+            echo json_encode(['boqs' => []]);
+            exit;
+        }
+
+        // Get all approved BOQs for this project (with target info)
+        $stmtBoq = $this->db->prepare("
+            SELECT bm.id, bm.version, bm.target_id, bm.design_type_id,
+                   tf.target_title,
+                   tf.year  AS target_year,
+                   tf.month AS target_month,
+                   tf.week_number AS target_week,
+                   dt.name AS design_type_name,
+                   COUNT(bi.id) AS item_count
+            FROM boq_master bm
+            LEFT JOIN target_fixed  tf ON tf.id = bm.target_id
+            LEFT JOIN design_types  dt ON dt.id = bm.design_type_id
+            LEFT JOIN boq_items     bi ON bi.boq_id = bm.id
+            WHERE bm.project_id = ?
+              AND bm.status = 'Approved'
+            GROUP BY bm.id
+            ORDER BY bm.id DESC");
+        $stmtBoq->bind_param('i', $projectId);
+        $stmtBoq->execute();
+        $boqRows = $stmtBoq->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Month names
+        $months = ['','January','February','March','April','May','June',
+                   'July','August','September','October','November','December'];
+
+        $boqs = [];
+        foreach ($boqRows as $boq) {
+            // BOQ label
+            $label = 'BOQ #' . $boq['id'] . ' v' . ($boq['version'] ?? '1.0');
+            if (!empty($boq['target_title'])) {
+                $mon = $months[(int)($boq['target_month'])] ?? '';
+                $wk  = $boq['target_week'] ? ' · Wk ' . $boq['target_week'] : '';
+                $label .= ' — ' . $boq['target_title'] . ' [' . $mon . ' ' . $boq['target_year'] . $wk . ']';
+            }
+            if (!empty($boq['design_type_name'])) {
+                $label .= ' (' . $boq['design_type_name'] . ')';
+            }
+
+            // Get BOQ items with remaining quantities
+            $stmtItems = $this->db->prepare("
+                SELECT
+                    bi.material_id,
+                    m.name  AS material_name,
+                    m.unit,
+                    bi.quantity AS boq_qty,
+                    COALESCE((
+                        SELECT SUM(pri.quantity)
+                        FROM purchase_request_items pri
+                        JOIN purchase_requests pr ON pr.id = pri.request_id
+                        WHERE pr.project_id = ?
+                          AND pri.material_id = bi.material_id
+                          AND pr.status NOT IN ('Rejected','Draft')
+                    ), 0) AS used_qty
+                FROM boq_items bi
+                JOIN con_materials m ON m.id = bi.material_id
+                WHERE bi.boq_id = ?
+                ORDER BY m.name ASC");
+            $stmtItems->bind_param('ii', $projectId, $boq['id']);
+            $stmtItems->execute();
+            $items = $stmtItems->get_result()->fetch_all(MYSQLI_ASSOC);
+
+            // Compute remaining
+            foreach ($items as &$item) {
+                $item['remaining_qty'] = max(0, (float)$item['boq_qty'] - (float)$item['used_qty']);
+            }
+            unset($item);
+
+            $boqs[] = [
+                'id'               => $boq['id'],
+                'boq_label'        => $label,
+                'target_title'     => $boq['target_title'],
+                'design_type_name' => $boq['design_type_name'],
+                'target_year'      => $boq['target_year'],
+                'target_month'     => $boq['target_month'],
+                'target_week'      => $boq['target_week'],
+                'item_count'       => $boq['item_count'],
+                'items'            => $items,
+            ];
+        }
+
+        echo json_encode(['boqs' => $boqs]);
+        exit;
+    }
 }

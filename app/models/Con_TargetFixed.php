@@ -9,7 +9,9 @@
  * photo_link, field_test_details, lab_test_result,
  * approved_by_site_eng, approved_by_qc, approved_by_pc,
  * approved_by_pd, approved_by_manager,
- * qc_reviewed_by_id, qc_reviewed_at, created_at, updated_at
+ * qc_reviewed_by_id, qc_reviewed_at,
+ * is_lab_test, lab_test_date, target_details,
+ * created_at, updated_at
  */
 class Con_TargetFixed extends Model
 {
@@ -113,17 +115,20 @@ class Con_TargetFixed extends Model
     /** INSERT new target */
     public function create($data)
     {
+        $isLabTest   = (int)($data['is_lab_test']   ?? 0);
+        $labTestDate = $isLabTest ? ($data['lab_test_date'] ?? null) : null;
+        $details     = $data['target_details'] ?? null;
+
         $sql = "INSERT INTO {$this->table}
                 (project_id, work_plan_id, target_title, user_id,
                  year, month, week_number, target_percentage,
+                 is_lab_test, lab_test_date, target_details,
                  gain_percentage, photo_link, field_test_details,
                  lab_test_result, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0.00, NULL, NULL, NULL, NOW())";
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.00, NULL, NULL, NULL, NOW())";
         $stmt = $this->db->prepare($sql);
-        // i=project_id, i=work_plan_id, s=target_title, i=user_id,
-        // i=year, i=month, i=week_number, d=target_percentage
         $stmt->bind_param(
-            'iiisiiid',
+            'iiisiiidiss',
             $data['project_id'],
             $data['work_plan_id'],
             $data['target_title'],
@@ -131,7 +136,10 @@ class Con_TargetFixed extends Model
             $data['year'],
             $data['month'],
             $data['week_number'],
-            $data['target_percentage']
+            $data['target_percentage'],
+            $isLabTest,
+            $labTestDate,
+            $details
         );
         $stmt->execute();
         return $stmt->insert_id;
@@ -140,6 +148,10 @@ class Con_TargetFixed extends Model
     /** UPDATE target basic info */
     public function update($id, $data)
     {
+        $isLabTest   = (int)($data['is_lab_test']   ?? 0);
+        $labTestDate = $isLabTest ? ($data['lab_test_date'] ?? null) : null;
+        $details     = $data['target_details'] ?? null;
+
         $sql = "UPDATE {$this->table}
                 SET project_id        = ?,
                     work_plan_id      = ?,
@@ -148,13 +160,14 @@ class Con_TargetFixed extends Model
                     month             = ?,
                     week_number       = ?,
                     target_percentage = ?,
+                    is_lab_test       = ?,
+                    lab_test_date     = ?,
+                    target_details    = ?,
                     updated_at        = NOW()
                 WHERE id = ?";
         $stmt = $this->db->prepare($sql);
-        // i=project_id, i=work_plan_id, s=target_title,
-        // i=year, i=month, i=week_number, d=target_percentage, i=id
         $stmt->bind_param(
-            'iiisiidi',
+            'iiisiidissi',
             $data['project_id'],
             $data['work_plan_id'],
             $data['target_title'],
@@ -162,6 +175,9 @@ class Con_TargetFixed extends Model
             $data['month'],
             $data['week_number'],
             $data['target_percentage'],
+            $isLabTest,
+            $labTestDate,
+            $details,
             $id
         );
         return $stmt->execute();

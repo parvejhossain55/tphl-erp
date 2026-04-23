@@ -73,7 +73,7 @@ $advancePaid  = (float)($advance_paid ?? 0);
                     <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Request Information</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-6">
                             <div class="info-label text-uppercase text-muted small fw-bold">Project</div>
                             <div class=""><?= htmlspecialchars($request['project_name'] ?? '—') ?></div>
@@ -182,6 +182,42 @@ $advancePaid  = (float)($advance_paid ?? 0);
                             <div class=""><strong><?= htmlspecialchars($request['approved_by_name']) ?></strong></div>
                         </div>
                         <?php endif; ?>
+
+                        <?php if (!empty($request['payment_attachment'])): ?>
+                        <div class="col-md-12">
+                            <div class="info-label text-uppercase text-muted small fw-bold mb-2">
+                                <i class="bi bi-paperclip me-1"></i>Payment Attachment
+                            </div>
+                            <?php
+                            $attPath = $request['payment_attachment'];
+                            $attExt  = strtolower(pathinfo($attPath, PATHINFO_EXTENSION));
+                            $attUrl  = $base_url . '/' . $attPath;
+                            $imgExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                            ?>
+                            <?php if (in_array($attExt, $imgExts)): ?>
+                                <a href="<?= $attUrl ?>" target="_blank" title="View Attachment">
+                                    <img src="<?= $attUrl ?>" alt="Payment Attachment"
+                                         style="max-height: 120px; max-width: 100%; border-radius: 6px; border: 1px solid #dee2e6; object-fit: cover;">
+                                </a>
+                                <div class="mt-1">
+                                    <a href="<?= $attUrl ?>" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>Open Full View
+                                    </a>
+                                </div>
+                            <?php else: ?>
+                                <a href="<?= $attUrl ?>" target="_blank" class="btn btn-outline-primary btn-sm">
+                                    <?php if ($attExt === 'pdf'): ?>
+                                        <i class="bi bi-file-earmark-pdf me-1 text-danger"></i>
+                                    <?php elseif (in_array($attExt, ['doc', 'docx'])): ?>
+                                        <i class="bi bi-file-earmark-word me-1 text-primary"></i>
+                                    <?php else: ?>
+                                        <i class="bi bi-file-earmark me-1"></i>
+                                    <?php endif; ?>
+                                    View Attachment (<?= strtoupper($attExt) ?>)
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -240,7 +276,10 @@ $advancePaid  = (float)($advance_paid ?? 0);
                                 <?php foreach ($payments as $idx => $pay): ?>
                                 <tr>
                                     <td><?= $idx + 1 ?></td>
-                                    <td><?= date('d M Y', strtotime($pay['transaction_date'])) ?></td>
+                                    <td><?php
+                                        $displayDate = $pay['transaction_date_str'] ?? $pay['transaction_date'] ?? null;
+                                        echo $displayDate ? date('d M Y', strtotime($displayDate)) : '—';
+                                    ?></td>
                                     <td class="text-end fw-semibold">৳ <?= number_format($pay['amount_paid'], 2) ?></td>
                                     <td><span class="badge bg-<?= $pay['payment_type'] === 'Full' ? 'success' : 'info' ?>"><?= $pay['payment_type'] ?></span></td>
                                     <td><?= str_replace('BankTransfer', 'Bank Transfer', $pay['payment_method']) ?></td>
@@ -349,22 +388,20 @@ $advancePaid  = (float)($advance_paid ?? 0);
                     <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Approval Action</h6>
                 </div>
                 <div class="card-body">
-                    <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>" method="POST" class="mb-3">
+                    <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>" method="POST" id="approveVprForm" class="mb-3">
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Approved Amount (৳)</label>
-                            <input type="number" name="approved_amount" class="form-control"
+                            <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
                                    value="<?= number_format($netPayable, 2, '.', '') ?>"
-                                   step="0.01" min="0.01" max="<?= $netPayable ?>" required>
+                                   step="0.01" min="0.01" required>
                             <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?></small>
                         </div>
-                        <button type="submit" class="btn btn-success w-100 fw-bold"
-                                onclick="return confirm('Approve this payment request?');">
+                        <button type="button" id="approveVprBtn" class="btn btn-success w-100 fw-bold">
                             <i class="bi bi-check-circle me-1"></i> Approve Payment
                         </button>
                     </form>
-                    <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST">
-                        <button type="submit" class="btn btn-outline-danger w-100 btn-sm"
-                                onclick="return confirm('Reject this payment request?');">
+                    <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST" id="rejectVprForm">
+                        <button type="button" id="rejectVprBtn" class="btn btn-outline-danger w-100 btn-sm">
                             <i class="bi bi-x-circle me-1"></i> Reject
                         </button>
                     </form>
@@ -420,7 +457,7 @@ $advancePaid  = (float)($advance_paid ?? 0);
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Payment Amount (৳) *</label>
                             <input type="number" name="amount" class="form-control" step="0.01" min="0.01"
@@ -502,6 +539,55 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.addEventListener('shown.bs.modal', toggleBankField);
         }
         toggleBankField();
+    }
+
+    // ── Approve Button ─────────────────────────────────────────────────────
+    var approveBtn = document.getElementById('approveVprBtn');
+    var approveForm = document.getElementById('approveVprForm');
+    if (approveBtn && approveForm) {
+        approveBtn.addEventListener('click', function () {
+            var amt = document.getElementById('approveAmtInput');
+            if (!amt || !amt.value || parseFloat(amt.value) <= 0) {
+                Swal.fire({ icon: 'warning', title: 'Amount Required', text: 'Please enter a valid approved amount.', confirmButtonColor: '#198754' });
+                return;
+            }
+            Swal.fire({
+                title: 'Approve Payment?',
+                text: 'Amount: ৳ ' + parseFloat(amt.value).toLocaleString('en-BD', {minimumFractionDigits: 2}),
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Approve',
+                cancelButtonText: 'Cancel'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    approveForm.submit();
+                }
+            });
+        });
+    }
+
+    // ── Reject Button ──────────────────────────────────────────────────────
+    var rejectBtn = document.getElementById('rejectVprBtn');
+    var rejectForm = document.getElementById('rejectVprForm');
+    if (rejectBtn && rejectForm) {
+        rejectBtn.addEventListener('click', function () {
+            Swal.fire({
+                title: 'Reject Payment Request?',
+                text: 'This action will reject the request. Are you sure?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Reject',
+                cancelButtonText: 'Cancel'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    rejectForm.submit();
+                }
+            });
+        });
     }
 });
 </script>

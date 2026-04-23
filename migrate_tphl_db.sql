@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 22, 2026 at 01:15 PM
+-- Generation Time: Apr 23, 2026 at 06:17 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -58,7 +58,8 @@ INSERT INTO `approval_requests` (`id`, `department`, `request_type`, `title`, `s
 (2, 'HR', 'salary', 'Salary Approval', 'payslips', 1, 21100.00, 21100.00, NULL, NULL, 110, '2026-04-04 11:38:08', 'approved', 4, 'management', '{\"employee_id\":\"1\",\"month\":\"31 March 2026\"}', '2026-03-31 11:47:19', '2026-04-04 11:38:08', NULL),
 (3, 'Accounts', 'cashout', '[Project: The Legacy Residence] Cashout Request: Test from developer', 'cashout_requests', 2, 2000.00, NULL, NULL, NULL, NULL, NULL, 'pending', 1, 'management', '{\"purpose\":\"Test from developer\",\"payment_method\":\"cash\",\"requester_name\":\"Farzana\",\"description\":\"Test cashout\",\"project_id\":\"5\",\"project_name\":\"The Legacy Residence\",\"office\":null}', '2026-04-08 09:10:29', '2026-04-08 09:10:29', NULL),
 (4, 'HR', 'salary', 'Salary Approval', 'payslips', 2, 29000.00, NULL, NULL, NULL, NULL, NULL, 'pending', 4, 'management', '{\"employee_id\":\"1\",\"month\":\"10 April 2026\"}', '2026-04-10 10:20:42', '2026-04-10 10:20:42', NULL),
-(5, 'Accounts', 'cashout', 'Cashout Request: Construction fee', 'cashout_requests', 3, 40000.00, 30000.00, NULL, NULL, 6, '2026-04-10 10:59:01', 'partial', 5, 'management', '{\"purpose\":\"Construction fee\",\"payment_method\":\"cash\",\"requester_name\":\"Mr. Jisan\",\"description\":\"construction for the legacy residence\",\"project_id\":null,\"project_name\":null,\"office\":null}', '2026-04-10 10:55:49', '2026-04-10 10:59:01', 'test note');
+(5, 'Accounts', 'cashout', 'Cashout Request: Construction fee', 'cashout_requests', 3, 40000.00, 30000.00, NULL, NULL, 6, '2026-04-10 10:59:01', 'partial', 5, 'management', '{\"purpose\":\"Construction fee\",\"payment_method\":\"cash\",\"requester_name\":\"Mr. Jisan\",\"description\":\"construction for the legacy residence\",\"project_id\":null,\"project_name\":null,\"office\":null}', '2026-04-10 10:55:49', '2026-04-10 10:59:01', 'test note'),
+(6, 'construction', 'vendor_payment', 'Vendor Payment — Vendor - 1 | The Legacy Residence', 'vendor_payment_requests', 2, 1050.00, NULL, 0, NULL, NULL, NULL, 'pending', 123, 'management', NULL, '2026-04-23 04:07:18', '2026-04-23 04:07:18', NULL);
 
 -- --------------------------------------------------------
 
@@ -504,10 +505,12 @@ CREATE TABLE `contractor_bill_requests` (
   `bill_amount` decimal(15,2) NOT NULL,
   `attachment_path` varchar(255) DEFAULT NULL,
   `verified_by` int(11) DEFAULT NULL,
+  `approved_by` int(11) DEFAULT NULL,
   `verified_at` timestamp NULL DEFAULT NULL,
   `verification_note` text DEFAULT NULL,
   `approved_amount` decimal(15,2) DEFAULT NULL,
   `status` enum('draft','submitted','verified','approved','rejected','paid') NOT NULL DEFAULT 'draft',
+  `due_amount` decimal(10,2) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -1479,7 +1482,7 @@ CREATE TABLE `land_visibility_study` (
 
 INSERT INTO `land_visibility_study` (`id`, `project_id`, `land_legal_doc_status`, `digital_survey_report_link`, `govt_approval_doc_link`, `others_doc_link`, `qc_reviewed_by_id`, `qc_approval_status`, `qc_reviewed_at`, `created_by`, `created_at`, `updated_at`) VALUES
 (2, 11, 'Pending', 'https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads', 'https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads', 'https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads', NULL, 'Pending', NULL, 20, '2026-04-16 05:39:47', NULL),
-(3, 9, 'Pending', 'https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads', 'https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads', 'https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads', NULL, 'Pending', NULL, 6, '2026-04-19 10:08:38', NULL);
+(3, 9, 'Verified', 'https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads', 'https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads', 'https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads', NULL, 'Pending', NULL, 6, '2026-04-19 10:08:38', '2026-04-22 16:16:08');
 
 -- --------------------------------------------------------
 
@@ -4290,6 +4293,7 @@ CREATE TABLE `operational_fund_requests` (
   `fund_date` date NOT NULL,
   `approved_amount` decimal(15,2) DEFAULT NULL,
   `status` enum('pending','approved','rejected','paid') NOT NULL DEFAULT 'pending',
+  `due_amount` decimal(10,2) DEFAULT NULL,
   `created_by` int(11) NOT NULL,
   `approved_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -4433,7 +4437,7 @@ INSERT INTO `permissions` (`id`, `name`, `status`, `created_by`, `created_at`, `
 (33, 'Material Issue', 1, 6, '2026-04-21 04:47:41', '2026-04-21 04:47:41'),
 (34, 'Project Draft Design', 1, 6, '2026-04-22 05:13:46', '2026-04-22 05:13:46'),
 (35, 'Purchase order', 1, 6, '2026-04-22 05:15:54', '2026-04-22 05:15:54'),
-(36, 'Vendor Manage ', 1, 6, '2026-04-22 05:16:11', '2026-04-22 05:16:11'),
+(36, 'Vendor Manage', 1, 6, '2026-04-22 05:16:11', '2026-04-22 05:16:11'),
 (37, 'Vendor Penalty', 1, 6, '2026-04-22 05:16:57', '2026-04-22 05:16:57'),
 (38, 'Procurement Manage', 1, 6, '2026-04-22 05:18:51', '2026-04-22 05:18:51'),
 (39, 'Architect Design', 1, 6, '2026-04-22 06:04:48', '2026-04-22 06:04:48'),
@@ -4673,16 +4677,20 @@ CREATE TABLE `purchase_orders` (
   `status` enum('Draft','Issued','Partially Received','Fully Received','Cancelled') NOT NULL DEFAULT 'Draft',
   `order_date` date NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  `approved_by_se` int(11) DEFAULT 0,
+  `approved_by_pm` int(11) DEFAULT 0,
+  `se_approved_at` datetime DEFAULT NULL,
+  `pm_approved_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `purchase_orders`
 --
 
-INSERT INTO `purchase_orders` (`id`, `request_id`, `created_by`, `status`, `order_date`, `created_at`, `updated_at`) VALUES
-(1, 1, 6, 'Partially Received', '2026-04-19', '2026-04-19 10:37:56', '2026-04-19 11:11:11'),
-(2, 2, 6, 'Partially Received', '2026-04-20', '2026-04-20 07:39:38', '2026-04-20 07:41:00');
+INSERT INTO `purchase_orders` (`id`, `request_id`, `created_by`, `status`, `order_date`, `created_at`, `updated_at`, `approved_by_se`, `approved_by_pm`, `se_approved_at`, `pm_approved_at`) VALUES
+(1, 1, 6, 'Partially Received', '2026-04-19', '2026-04-19 10:37:56', '2026-04-19 11:11:11', 0, 0, NULL, NULL),
+(2, 2, 6, '', '2026-04-20', '2026-04-20 07:39:38', '2026-04-22 18:30:37', 121, 122, '2026-04-23 00:29:29', '2026-04-23 00:30:37');
 
 -- --------------------------------------------------------
 
@@ -4996,25 +5004,26 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (298, 17, 35, '2026-04-22 06:46:55', '2026-04-22 06:46:55'),
 (299, 17, 36, '2026-04-22 06:46:55', '2026-04-22 06:46:55'),
 (300, 17, 37, '2026-04-22 06:46:55', '2026-04-22 06:46:55'),
-(301, 12, 39, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
-(302, 12, 45, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
-(303, 12, 28, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
-(304, 12, 27, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
-(305, 12, 33, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
-(306, 12, 43, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
-(307, 12, 34, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
-(308, 12, 46, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
-(309, 12, 35, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
-(310, 12, 30, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
-(311, 12, 36, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
-(312, 12, 37, '2026-04-22 06:47:31', '2026-04-22 06:47:31'),
 (315, 18, 39, '2026-04-22 08:30:35', '2026-04-22 08:30:35'),
 (316, 18, 34, '2026-04-22 08:30:35', '2026-04-22 08:30:35'),
 (317, 16, 34, '2026-04-22 08:30:52', '2026-04-22 08:30:52'),
 (319, 20, 31, '2026-04-22 08:37:13', '2026-04-22 08:37:13'),
 (320, 20, 29, '2026-04-22 08:37:13', '2026-04-22 08:37:13'),
 (321, 19, 31, '2026-04-22 09:25:53', '2026-04-22 09:25:53'),
-(322, 19, 29, '2026-04-22 09:25:53', '2026-04-22 09:25:53');
+(322, 19, 29, '2026-04-22 09:25:53', '2026-04-22 09:25:53'),
+(323, 12, 39, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(324, 12, 45, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(325, 12, 28, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(326, 12, 27, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(327, 12, 33, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(328, 12, 43, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(329, 12, 34, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(330, 12, 46, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(331, 12, 32, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(332, 12, 35, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(333, 12, 30, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(334, 12, 36, '2026-04-22 17:26:04', '2026-04-22 17:26:04'),
+(335, 12, 37, '2026-04-22 17:26:04', '2026-04-22 17:26:04');
 
 -- --------------------------------------------------------
 
@@ -5331,7 +5340,7 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 0, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-04-10 08:42:50', 4, '2026-02-23 03:24:25', '2026-04-10 08:42:50', 0),
 (4, 1008, 'Md. Jasim Uddin', 'Jasim Uddin', '01762013007', 'hr@gmail.com', 14, 'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.', '1903663282', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, '', '', '2026-04-11 04:36:09', 4, '2026-02-23 05:44:19', '2026-04-11 04:36:09', NULL),
 (5, 0, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 3, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, '', '', '2026-04-08 09:48:37', 6, '2026-02-23 06:11:06', '2026-04-08 09:48:37', NULL),
-(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-04-22 16:57:25', 110, '2026-03-29 03:44:44', '2026-04-22 10:57:25', 0),
+(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-04-23 09:49:02', 110, '2026-03-29 03:44:44', '2026-04-23 03:49:02', 0),
 (7, NULL, 'CED', 'CED', '01872364346', 'ced@gmail.com', 1, 'Dhaka', '823445', 7, '$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.', NULL, '', '', '2026-03-31 12:05:54', 6, '2026-03-29 04:01:38', '2026-03-31 12:05:54', NULL),
 (8, NULL, 'Sales Team Head', 'Sales Head', '01327488234', 'sales-head@gmail.com', 1, 'Dhaka', '09231943', 9, '$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.', NULL, '', '', '2026-04-08 09:30:55', 1, '2026-03-29 04:16:47', '2026-04-08 09:30:55', NULL),
 (9, 3, 'Md. rafi', 'admin_39_', '01234567890', 'rafi@easytechx.com', 9, 'ADDL Tower, Dhanmondi 27/A', '', 8, '$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG', NULL, '', '', '2026-03-29 10:24:18', 0, '2026-03-29 10:23:39', '2026-03-30 16:36:23', NULL),
@@ -5423,12 +5432,13 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (118, 87, 'Shazzadur Rahman Shoumic', 'Shazzad', '01765562314', 'shazzadur.tphl@gmail.com', 20, '', '', 8, '$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6', NULL, '', '', '2026-04-12 11:46:52', 0, '2026-04-12 11:46:52', '2026-04-12 11:46:52', 5),
 (119, 88, 'Rifat', 'Rifat', '01868834754', 'rifat@gmail.com', 32, '', '', 2, '$2y$10$DNWOm3TgFL6at1Qu5JSjI.ll3s9L47vvuJwaNU9ibVumfMS7n/Oc.', NULL, '', '', '2026-04-16 14:58:39', 0, '2026-04-16 08:58:39', '2026-04-16 08:58:39', 0),
 (120, NULL, 'Mr. QC', 'Mr. QC', '01782346455', 'qc@gmail.com', 43, 'Dhaka', '', 13, '$2y$10$YHZlqKT1f8NgvRCPIzahE.SzkH31XZ09lfsi2hk62Z4bxdQQZuZTm', NULL, '', '', '2026-04-22 16:50:11', 6, '2026-04-22 05:08:15', '2026-04-22 10:50:11', 0),
-(121, NULL, 'Mr. SE', 'Mr. SE', '01766663854', 'se@gmail.com', 38, 'Dhaka', '', 12, '$2y$10$jE3Ownd5jWLtRkKpHoHqpOOQ80S3l4thqAOOlkzKGj1f2.kXZwZUa', NULL, '', '', '2026-04-22 11:21:11', 6, '2026-04-22 05:21:11', '2026-04-22 05:21:11', 0),
+(121, NULL, 'Mr. SE', 'Mr. SE', '01766663854', 'se@gmail.com', 38, 'Dhaka', '', 12, '$2y$10$jE3Ownd5jWLtRkKpHoHqpOOQ80S3l4thqAOOlkzKGj1f2.kXZwZUa', NULL, '', '', '2026-04-22 23:26:20', 6, '2026-04-22 05:21:11', '2026-04-22 17:26:20', 0),
 (122, NULL, 'Mr. PM', 'Mr. PM', '01892173484', 'pm@gmail.com', 36, 'Dhaka', '', 15, '$2y$10$dKzBwiTeAH9e1rmunBU7Z.jfWRqwaY5hpwszqeafDldBuPyDvWBym', NULL, '', '', '2026-04-22 14:27:01', 6, '2026-04-22 05:22:00', '2026-04-22 08:27:01', 0),
 (123, NULL, 'Mr. PDL', 'Mr.PDL', '01763256545', 'pd@gmail.com', 42, 'Dhaka', '', 17, '$2y$10$PlNG2uW.A5FIAM/vGge/cOVIGc7QYCbcEBLhON9XQzLFut8CxDEA.', NULL, '', '', '2026-04-22 16:50:43', 6, '2026-04-22 05:24:56', '2026-04-22 10:50:43', 0),
-(124, NULL, 'Mr. Architect', 'Mr. Architect', '01782346567', 'architect@gmail.com', 34, 'Dhaka', '', 18, '$2y$10$VhMSdOwSPs8sWwMCeM2kbuc5uapbOTgHr3.myxkgbo9emHUpoPvpi', NULL, '', '', '2026-04-22 14:33:44', 6, '2026-04-22 05:26:21', '2026-04-22 08:33:44', 0),
+(124, NULL, 'Mr. Architect', 'Mr. Architect', '01782346567', 'architect@gmail.com', 34, 'Dhaka', '', 18, '$2y$10$VhMSdOwSPs8sWwMCeM2kbuc5uapbOTgHr3.myxkgbo9emHUpoPvpi', NULL, '', '', '2026-04-22 22:51:58', 6, '2026-04-22 05:26:21', '2026-04-22 16:51:58', 0),
 (125, NULL, 'Mr. Draftsman', 'Mr. Draftsman', '01893768342', 'draft@gmail.com', 35, 'Dhaka', '', 16, '$2y$10$kFvt3Gb.DefnjhieKo.Ieee8NzLj16oNwlnCGSSC/Y5Gr2f8s96Le', NULL, '', '', '2026-04-22 14:31:25', 6, '2026-04-22 05:29:44', '2026-04-22 08:31:25', 0),
-(126, NULL, 'Mr. Estimator', 'Mr. Estimator', '01875637453', 'estimator@gmail.com', 37, 'Dhaka', '', 19, '$2y$10$vsLMZDXa6cDLYUMgc/wElO5r9AySv8kbuOcvf98fHq5oLQ6Tm8Cx6', NULL, '', '', '2026-04-22 15:24:36', 6, '2026-04-22 09:05:37', '2026-04-22 09:24:36', 0);
+(126, NULL, 'Mr. Estimator', 'Mr. Estimator', '01875637453', 'estimator@gmail.com', 37, 'Dhaka', '', 19, '$2y$10$vsLMZDXa6cDLYUMgc/wElO5r9AySv8kbuOcvf98fHq5oLQ6Tm8Cx6', NULL, '', '', '2026-04-22 23:20:32', 6, '2026-04-22 09:05:37', '2026-04-22 17:20:32', 0),
+(127, NULL, 'Mr. Land Manager', 'Mr. Land Manager', '01790120923', 'land@gmail.com', 33, 'Dhaka', '', 14, '$2y$10$jeoKx6Fj0K7cyD5ZlTocBuQcaAdJh6TY4xU9hbF7frtj85ooIwKmm', NULL, '', '', '2026-04-22 22:18:00', 6, '2026-04-22 16:11:15', '2026-04-22 16:18:00', 0);
 
 -- --------------------------------------------------------
 
@@ -5480,6 +5490,9 @@ CREATE TABLE `vendor_payment_requests` (
   `status` enum('Draft','Submitted','Approved','Rejected','Paid') NOT NULL DEFAULT 'Draft',
   `approved_amount` decimal(16,4) DEFAULT NULL,
   `net_payable` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `payment_attachment` varchar(255) DEFAULT NULL,
+  `approved_by` int(11) DEFAULT NULL,
+  `due_amount` decimal(10,2) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -5488,8 +5501,9 @@ CREATE TABLE `vendor_payment_requests` (
 -- Dumping data for table `vendor_payment_requests`
 --
 
-INSERT INTO `vendor_payment_requests` (`id`, `vendor_id`, `project_id`, `purchase_order_id`, `payment_type`, `created_by`, `invoice_number`, `invoice_amount`, `delivery_verified`, `penalty_amount`, `net_payable_amount`, `qc_verified`, `status`, `approved_amount`, `net_payable`, `created_at`, `updated_at`) VALUES
-(1, 1, 5, 2, 'Advance', 6, NULL, 1000.0000, 0, 0.00, 1000.00, 0, 'Submitted', NULL, 1000.00, '2026-04-20 11:16:36', NULL);
+INSERT INTO `vendor_payment_requests` (`id`, `vendor_id`, `project_id`, `purchase_order_id`, `payment_type`, `created_by`, `invoice_number`, `invoice_amount`, `delivery_verified`, `penalty_amount`, `net_payable_amount`, `qc_verified`, `status`, `approved_amount`, `net_payable`, `payment_attachment`, `approved_by`, `due_amount`, `created_at`, `updated_at`) VALUES
+(1, 1, 5, 2, 'Advance', 6, NULL, 1000.0000, 0, 0.00, 1000.00, 0, 'Approved', 1000.0000, 1000.00, NULL, 6, 1000.00, '2026-04-20 11:16:36', '2026-04-23 04:09:01'),
+(2, 1, 5, 2, 'Advance', 123, NULL, 1050.0000, 0, 0.00, 1050.00, 0, 'Submitted', NULL, 1050.00, NULL, NULL, NULL, '2026-04-23 04:07:18', NULL);
 
 -- --------------------------------------------------------
 
@@ -5559,6 +5573,13 @@ CREATE TABLE `weekly_progress_report` (
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `weekly_progress_report`
+--
+
+INSERT INTO `weekly_progress_report` (`id`, `project_id`, `site_engineer_id`, `work_plan_id`, `week_no`, `target_id`, `work_done`, `progress_percentage`, `report_date`, `progress_image`, `weather_condition`, `manpower_count`, `created_by`, `created_at`) VALUES
+(1, 5, 121, 2, 1, 1, 'Test', 80.00, '2026-04-22', NULL, 'Good', 20, 121, '2026-04-22 18:58:30');
 
 -- --------------------------------------------------------
 
@@ -6351,7 +6372,7 @@ ALTER TABLE `whatsapp_messages`
 -- AUTO_INCREMENT for table `approval_requests`
 --
 ALTER TABLE `approval_requests`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `architect_engineering`
@@ -6825,7 +6846,7 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `role_permissions`
 --
 ALTER TABLE `role_permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=323;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=336;
 
 --
 -- AUTO_INCREMENT for table `sales_targets`
@@ -6885,7 +6906,7 @@ ALTER TABLE `units`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=127;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=128;
 
 --
 -- AUTO_INCREMENT for table `vendors`
@@ -6897,7 +6918,7 @@ ALTER TABLE `vendors`
 -- AUTO_INCREMENT for table `vendor_payment_requests`
 --
 ALTER TABLE `vendor_payment_requests`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `vendor_penalties`
@@ -6915,7 +6936,7 @@ ALTER TABLE `vendor_ratings`
 -- AUTO_INCREMENT for table `weekly_progress_report`
 --
 ALTER TABLE `weekly_progress_report`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `whatsapp_campaigns`
@@ -6938,27 +6959,8 @@ ALTER TABLE `whatsapp_messages`
 --
 ALTER TABLE `initial_estimate_items`
   ADD CONSTRAINT `fk_iei_budget` FOREIGN KEY (`budget_id`) REFERENCES `initial_estimate_budgets` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `initial_estimate_labors`
---
-ALTER TABLE `initial_estimate_labors`
-  ADD CONSTRAINT `fk_iel_budget` FOREIGN KEY (`budget_id`) REFERENCES `initial_estimate_budgets` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `project_working_plans`
---
-ALTER TABLE `project_working_plans`
-  ADD CONSTRAINT `fk_pwp_budget` FOREIGN KEY (`initial_budget_id`) REFERENCES `initial_estimate_budgets` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `vendor_penalties`
---
-ALTER TABLE `vendor_penalties`
-  ADD CONSTRAINT `fk_vp_vendor` FOREIGN KEY (`vendor_id`) REFERENCES `vendors` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-c

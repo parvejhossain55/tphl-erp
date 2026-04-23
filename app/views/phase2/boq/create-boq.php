@@ -1,3 +1,9 @@
+<?php
+$base_url   = $GLOBALS['base_url'];
+$page_title = $page_title ?? 'New Bill of Quantities';
+$months     = ['','January','February','March','April','May','June',
+               'July','August','September','October','November','December'];
+?>
 <div class="pagetitle d-flex justify-content-between align-items-center">
     <div class="mb-4">
         <h4><?= htmlspecialchars($page_title) ?></h4>
@@ -26,11 +32,15 @@
                 <div class="card__body p-4">
                     <form action="<?= $base_url ?>/con-boq-store" method="POST" id="boqForm">
 
-                        <!-- Header Fields -->
-                        <div class="row  mb-4">
+                        <!-- Hidden: target_id & design_type_id saved on target selection -->
+                        <input type="hidden" name="target_id"      id="target_id_hidden">
+                        <input type="hidden" name="design_type_id" id="design_type_id_hidden">
+
+                        <!-- ── Row 1: Project + Version + Status ── -->
+                        <div class="row mb-3">
                             <div class="col-md-5">
                                 <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
-                                <select name="project_id" class="form-select" required>
+                                <select name="project_id" id="project_id" class="form-select" required>
                                     <option value="">-- Select Project --</option>
                                     <?php foreach ($projects as $p): ?>
                                         <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
@@ -50,9 +60,40 @@
                             </div>
                         </div>
 
+                        <!-- ── Row 2: Target Selection (loads after project select) ── -->
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-bullseye me-1 text-primary"></i>
+                                    Linked Target
+                                    <span class="text-muted fw-normal" style="font-size:11px">(optional — select project first)</span>
+                                </label>
+                                <select id="target_select" class="form-select" disabled>
+                                    <option value="">-- Select Project First --</option>
+                                </select>
+                                <div id="target_loading" class="text-muted small mt-1" style="display:none">
+                                    <i class="bi bi-hourglass-split me-1"></i> Loading targets...
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-layers me-1 text-info"></i>Design Type
+                                </label>
+                                <input type="text" id="design_type_display" class="form-control bg-light" readonly
+                                       placeholder="Auto-filled from target">
+                            </div>
+                        </div>
+
+                        <!-- ── Target Info Card (shown when target selected) ── -->
+                        <div id="targetInfoCard" class="alert alert-info d-none mb-3 py-2" style="font-size:12.5px">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <strong>Selected Target:</strong>
+                            <span id="targetInfoText">—</span>
+                        </div>
+
                         <hr class="my-3">
 
-                        <!-- BOQ Items Table -->
+                        <!-- ── BOQ Items Table ── -->
                         <div class="table-responsive">
                             <table class="table table-bordered align-middle" id="boqItemsTable">
                                 <thead class="table-light">
@@ -128,10 +169,103 @@
 </section>
 
 <script>
+const BASE_URL  = '<?= $base_url ?>';
+const MONTHS    = <?= json_encode($months) ?>;
+
+// ── Stored material options HTML (for cloning rows) ──
+const materialOptionsHTML = document.querySelector('.boq-material').innerHTML;
+
+// ── Project → Load Targets ───────────────────────────────────────────────
+document.getElementById('project_id').addEventListener('change', function () {
+    const pid = this.value;
+    const sel = document.getElementById('target_select');
+    const load = document.getElementById('target_loading');
+
+    // Reset target
+    sel.innerHTML = '<option value="">-- Select Target --</option>';
+    sel.disabled  = true;
+    document.getElementById('target_id_hidden').value      = '';
+    document.getElementById('design_type_id_hidden').value = '';
+    document.getElementById('design_type_display').value   = '';
+    document.getElementById('targetInfoCard').classList.add('d-none');
+
+    if (!pid) {
+        sel.innerHTML = '<option value="">-- Select Project First --</option>';
+        return;
+    }
+
+    load.style.display = 'block';
+
+    fetch(BASE_URL + '/con-ajax-boq-targets?project_id=' + pid)
+        .then(r => r.json())
+        .then(data => {
+            load.style.display = 'none';
+            sel.innerHTML = '<option value="">-- No Target (General BOQ) --</option>';
+            if (data.targets && data.targets.length > 0) {
+                data.targets.forEach(t => {
+                    const wk  = t.week_number ? ' · Week ' + t.week_number : '';
+                    const mon = MONTHS[parseInt(t.month)] || '';
+                    const label = t.target_title
+                        + ' [' + mon + ' ' + t.year + wk + ']'
+                        + (t.design_type_name ? ' — ' + t.design_type_name : '');
+
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = label;
+                    opt.dataset.designTypeId   = t.design_type_id   || '';
+                    opt.dataset.designTypeName  = t.design_type_name  || '';
+                    opt.dataset.targetTitle     = t.target_title;
+                    opt.dataset.targetPct       = t.target_percentage || '';
+                    opt.dataset.year            = t.year;
+                    opt.dataset.month           = t.month;
+                    opt.dataset.week            = t.week_number || '';
+                    sel.appendChild(opt);
+                });
+            } else {
+                sel.innerHTML += '<option disabled>No targets found for this project</option>';
+            }
+            sel.disabled = false;
+        })
+        .catch(() => {
+            load.style.display = 'none';
+            sel.innerHTML = '<option value="">-- Error loading targets --</option>';
+            sel.disabled  = false;
+        });
+});
+
+// ── Target Selection → Auto-fill design type ─────────────────────────────
+document.getElementById('target_select').addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+
+    // Store in hidden fields
+    document.getElementById('target_id_hidden').value      = this.value || '';
+    document.getElementById('design_type_id_hidden').value = opt.dataset.designTypeId || '';
+
+    // Display design type
+    document.getElementById('design_type_display').value =
+        opt.dataset.designTypeName || (this.value ? '—' : '');
+
+    // Info card
+    const card = document.getElementById('targetInfoCard');
+    const txt  = document.getElementById('targetInfoText');
+    if (this.value) {
+        const mon = MONTHS[parseInt(opt.dataset.month)] || '';
+        const wk  = opt.dataset.week ? ' · Week ' + opt.dataset.week : '';
+        let info  = '<strong>' + (opt.dataset.targetTitle || '—') + '</strong>';
+        info     += ' | Period: ' + mon + ' ' + (opt.dataset.year || '') + wk;
+        if (opt.dataset.targetPct) info += ' | Target: <strong>' + parseFloat(opt.dataset.targetPct).toFixed(1) + '%</strong>';
+        if (opt.dataset.designTypeName) info += ' | Design: <strong>' + opt.dataset.designTypeName + '</strong>';
+        txt.innerHTML = info;
+        card.classList.remove('d-none');
+    } else {
+        card.classList.add('d-none');
+    }
+});
+
+// ── BOQ Item Calculations ────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
     var tbody = document.getElementById('boqItemsBody');
 
-    // Recalculate totals
     function recalc() {
         var grandTotal = 0;
         tbody.querySelectorAll('tr').forEach(function (row) {
@@ -148,7 +282,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Material change → update unit label
     tbody.addEventListener('change', function (e) {
         if (e.target.classList.contains('boq-material')) {
             var opt  = e.target.options[e.target.selectedIndex];
@@ -157,26 +290,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Qty / Cost input → recalc
     tbody.addEventListener('input', function (e) {
         if (e.target.classList.contains('boq-qty') || e.target.classList.contains('boq-cost')) {
             recalc();
         }
     });
 
-    // Add Row
     document.getElementById('boqAddRow').addEventListener('click', function () {
         var firstRow = tbody.querySelector('tr');
         var newRow   = firstRow.cloneNode(true);
+        // Reset material select with all options
+        const matSel = newRow.querySelector('.boq-material');
+        matSel.innerHTML = materialOptionsHTML;
+        matSel.selectedIndex = 0;
         newRow.querySelectorAll('input').forEach(function (inp) { inp.value = ''; });
-        newRow.querySelector('.boq-material').selectedIndex = 0;
         newRow.querySelector('.boq-unit').textContent = '-';
         newRow.querySelector('.boq-row-total').textContent = '0.00';
         newRow.querySelector('.boq-remove-row').style.display = '';
         tbody.appendChild(newRow);
     });
 
-    // Remove Row
     tbody.addEventListener('click', function (e) {
         var btn = e.target.closest('.boq-remove-row');
         if (btn) {

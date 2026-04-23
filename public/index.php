@@ -2,10 +2,10 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// error_reporting(E_ALL);
-// ini_set('display_errors', 0);
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
 
-// mysqli_report(MYSQLI_REPORT_OFF);
+mysqli_report(MYSQLI_REPORT_OFF);
 
 // for producttion error hide 
 require_once("../app/helpers/helper.php");
@@ -21,8 +21,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Enable debug
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
 
 $root = dirname(__DIR__);
 $GLOBALS['base_url'] = '/TPHL-ERP';
@@ -781,6 +781,7 @@ $routes['con-purchase-request-store']  = ['controller' => 'Phase2\Con_PurchaseRe
 $routes['con-purchase-request/(\d+)']  = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'show'];
 $routes['con-purchase-request-approve/(\d+)'] = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'approve'];
 $routes['con-boq-remaining/(\d+)']    = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'boqRemaining'];
+$routes['con-ajax-pr-boqs']           = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'ajaxGetProjectBoqs'];
 
 // ── Quotations & CST ──────────────────────────────────────────────────────
 $routes['con-quotation-create/(\d+)']  = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'create'];
@@ -820,6 +821,8 @@ $routes['con-boq-edit/(\d+)']          = ['controller' => 'Phase2\Con_BOQControl
 $routes['con-boq-update/(\d+)']        = ['controller' => 'Phase2\Con_BOQController', 'method' => 'update'];
 $routes['con-boq-approve/(\d+)']       = ['controller' => 'Phase2\Con_BOQController', 'method' => 'approve'];
 $routes['con-boq-delete']              = ['controller' => 'Phase2\Con_BOQController', 'method' => 'delete'];
+$routes['con-ajax-boq-targets']        = ['controller' => 'Phase2\Con_BOQController', 'method' => 'ajaxGetTargetsByProject'];
+
 
 // (Working Plan + Budget routes moved below to avoid duplicates — see lines 839+)
 
@@ -839,6 +842,10 @@ $routes['con-weekly-report/(\d+)']      = ['controller' => 'Phase2\Con_WeeklyRep
 $routes['con-weekly-report-approve/(\d+)'] = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'approve'];
 $routes['con-ajax-work-plans']          = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'ajaxWorkPlans'];
 $routes['con-ajax-report-targets']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'ajaxTargets'];
+$routes['con-vendor-payment-ajax-penalty']  = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'];
+$routes['con-vendor-payment-ajax-advance']  = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetAdvanceSummary'];
+$routes['con-ajax-po-by-vendor']            = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPOsByVendor'];
+$routes['con-ajax-po-by-project']          = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPOsByProject'];
 // Legacy aliases
 $routes['con-daily-reports']            = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'index'];
 $routes['con-daily-report-create']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'create'];
@@ -877,7 +884,8 @@ $routes['con-estimate-edit/(\d+)']    = ['controller' => 'Phase2\Con_InitialEsti
 $routes['con-estimate-update/(\d+)']  = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'update'];
 $routes['con-estimate-approve/(\d+)'] = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'approveBudget'];
 $routes['con-estimate-cancel/(\d+)']  = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'cancelBudget'];
-$routes['con-ajax-arch-by-project']   = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'ajaxArchByProject'];
+$routes['con-ajax-arch-by-project']     = ['controller' => 'Phase2\\Con_InitialEstimateController', 'method' => 'ajaxArchByProject'];
+$routes['con-ajax-designs-by-project']  = ['controller' => 'Phase2\\Con_InitialEstimateController', 'method' => 'ajaxDesignsByProject'];
 
 // ── Material Issues (Stock OUT) ───────────────────────────────────────────
 $routes['con-material-issues']               = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'index'];

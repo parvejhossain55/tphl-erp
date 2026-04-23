@@ -46,7 +46,9 @@
                                     <?php foreach ($budgets as $b): ?>
                                         <option value="<?= $b['id'] ?>"
                                                 data-project="<?= $b['project_id'] ?>"
-                                                data-total="<?= $b['total_estimated_cost'] ?>">
+                                                data-total="<?= $b['total_estimated_cost'] ?>"
+                                                data-start="<?= $b['start_date'] ?? '' ?>"
+                                                data-end="<?= $b['end_date'] ?? '' ?>">
                                             #<?= $b['id'] ?> — <?= htmlspecialchars($b['project_name']) ?>
                                             (৳<?= number_format($b['total_estimated_cost'], 0) ?>)
                                         </option>
@@ -69,11 +71,10 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Year <span class="text-danger">*</span></label>
-                                <select name="year" class="form-select" required>
-                                    <?php for ($y = date('Y') - 1; $y <= date('Y') + 3; $y++): ?>
-                                        <option value="<?= $y ?>" <?= $y == date('Y') ? 'selected' : '' ?>><?= $y ?></option>
-                                    <?php endfor; ?>
+                                <select name="year" id="yearSelect" class="form-select" required>
+                                    <option value="">-- Select Project First --</option>
                                 </select>
+                                <div class="form-text text-muted" id="yearHint"></div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Month <span class="text-danger">*</span></label>
@@ -130,20 +131,62 @@
 document.addEventListener('DOMContentLoaded', function () {
     var projectSelect = document.getElementById('projectSelect');
     var budgetSelect  = document.getElementById('budgetSelect');
+    var yearSelect    = document.getElementById('yearSelect');
     var budgetInfo    = document.getElementById('budgetInfo');
-    var allOptions    = budgetSelect.querySelectorAll('option[data-project]');
+    var allBudgetOpts = budgetSelect.querySelectorAll('option[data-project]');
+    var currentYear   = <?= date('Y') ?>;
 
-    // ─── Project change → auto-filter & auto-select budget ───────────────
+    // ── Rebuild Year Dropdown from Budget date range ───────────────
+    function rebuildYears(opt) {
+        yearSelect.innerHTML = '';
+
+        var startDate = opt ? opt.getAttribute('data-start') : '';
+        var endDate   = opt ? opt.getAttribute('data-end')   : '';
+
+        var startYear, endYear;
+
+        if (startDate && endDate) {
+            startYear = parseInt(startDate.substring(0, 4));
+            endYear   = parseInt(endDate.substring(0, 4));
+        } else {
+            // Fallback: ±2 years around current year
+            startYear = currentYear - 1;
+            endYear   = currentYear + 3;
+        }
+
+        if (endYear < startYear) endYear = startYear;
+
+        for (var y = startYear; y <= endYear; y++) {
+            var o = document.createElement('option');
+            o.value = y;
+            o.textContent = y;
+            if (y === currentYear) o.selected = true;
+            yearSelect.appendChild(o);
+        }
+
+        // Update hint
+        var hint = document.getElementById('yearHint');
+        if (hint) {
+            if (startDate && endDate) {
+                hint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Budget period: ' + startDate + ' → ' + endDate;
+            } else {
+                hint.textContent = 'No date range set for this budget.';
+            }
+        }
+    }
+
+    // ── Project change → filter budgets + auto-select + rebuild years ─
     projectSelect.addEventListener('change', function () {
         var pid = this.value;
 
-        // Reset budget
         budgetSelect.value = '';
         budgetInfo.textContent = '';
+        yearSelect.innerHTML = '<option value="">-- Select Budget First --</option>';
+        var hint = document.getElementById('yearHint');
+        if (hint) hint.textContent = '';
 
-        // Show/hide budget options based on project_id
         var firstMatch = null;
-        allOptions.forEach(function (opt) {
+        allBudgetOpts.forEach(function (opt) {
             if (opt.getAttribute('data-project') === pid) {
                 opt.style.display = '';
                 opt.disabled = false;
@@ -154,24 +197,27 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Auto-select the first matching budget
         if (firstMatch) {
             budgetSelect.value = firstMatch.value;
             budgetInfo.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Budget Total: ৳ ' +
                 parseFloat(firstMatch.getAttribute('data-total')).toLocaleString('en-BD') + '</span>';
+            rebuildYears(firstMatch);
         } else {
             budgetInfo.innerHTML = '<span class="text-warning">No budget found for this project.</span>';
+            rebuildYears(null);
         }
     });
 
-    // ─── Budget manual change → show total ────────────────────────────────
+    // ── Budget manual change → update info + rebuild years ────────
     budgetSelect.addEventListener('change', function () {
         var opt = this.options[this.selectedIndex];
         if (opt && opt.getAttribute('data-total')) {
             budgetInfo.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Budget Total: ৳ ' +
                 parseFloat(opt.getAttribute('data-total')).toLocaleString('en-BD') + '</span>';
+            rebuildYears(opt);
         } else {
             budgetInfo.textContent = '';
+            yearSelect.innerHTML = '<option value="">-- Select Budget First --</option>';
         }
     });
 });

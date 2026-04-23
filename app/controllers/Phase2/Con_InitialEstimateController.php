@@ -428,7 +428,7 @@ class Con_InitialEstimateController extends Controller
 
     // =========================================================================
     // AJAX — Architecture records for a project (GET ?project_id=N)
-    // Returns JSON array of { id, label }
+    // Returns JSON array of { id, label, design_link }
     // =========================================================================
 
     public function ajaxArchByProject()
@@ -444,9 +444,11 @@ class Con_InitialEstimateController extends Controller
         // architect_engineering records linked to this project
         $stmt = $this->db->prepare(
             "SELECT ae.id,
-                    CONCAT('Arch #', ae.id, ' — ', COALESCE(ae.project_name, p.name), ' (', ae.engineer_name, ')') AS label
+                    CONCAT('Arch #', ae.id, ' — ', p.name, ' (by ', u.full_name, ')') AS label,
+                    ae.full_architecture_design_link AS design_link
              FROM architect_engineering ae
              LEFT JOIN projects p ON p.id = ae.project_id
+             LEFT JOIN users    u ON u.id = ae.user_id
              WHERE ae.project_id = ?
              ORDER BY ae.id DESC
              LIMIT 20"
@@ -455,6 +457,60 @@ class Con_InitialEstimateController extends Controller
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         echo json_encode($rows);
+        exit;
+    }
+
+    // =========================================================================
+    // AJAX — All designs (arch + project drawings) for a project
+    // GET ?project_id=N → returns { archs: [...], drawings: [...] }
+    // =========================================================================
+
+    public function ajaxDesignsByProject()
+    {
+        header('Content-Type: application/json');
+        $projectId = (int)($_GET['project_id'] ?? 0);
+
+        if (!$projectId) {
+            echo json_encode(['archs' => [], 'drawings' => []]);
+            exit;
+        }
+
+        // Architecture records
+        $stmt = $this->db->prepare(
+            "SELECT ae.id,
+                    ae.full_architecture_design_link AS design_link,
+                    ae.notes,
+                    u.full_name AS uploaded_by,
+                    ae.created_at
+             FROM architect_engineering ae
+             LEFT JOIN users u ON u.id = ae.user_id
+             WHERE ae.project_id = ?
+             ORDER BY ae.id DESC"
+        );
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $archs = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Project Drawings
+        $stmt2 = $this->db->prepare(
+            "SELECT pd.id,
+                    pd.design_link,
+                    pd.version,
+                    pd.status,
+                    dt.name AS design_type,
+                    u.full_name AS uploaded_by,
+                    pd.created_at
+             FROM project_drawings pd
+             LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+             LEFT JOIN users        u  ON u.id  = pd.created_by
+             WHERE pd.project_id = ?
+             ORDER BY pd.id DESC"
+        );
+        $stmt2->bind_param('i', $projectId);
+        $stmt2->execute();
+        $drawings = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        echo json_encode(['archs' => $archs, 'drawings' => $drawings]);
         exit;
     }
 }

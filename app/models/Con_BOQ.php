@@ -4,7 +4,8 @@
  * Tables: boq_master, boq_items
  *
  * Schema:
- * boq_master: id, project_id, version, status(Draft/Submitted/Approved/Rejected),
+ * boq_master: id, project_id, target_id, design_type_id,
+ *             version, status(Draft/Submitted/Approved/Rejected),
  *             approved_by, approved_at, created_by, created_at, updated_at
  * boq_items:  id, boq_id, material_id, quantity, unit_cost, total_cost(GENERATED)
  */
@@ -24,30 +25,40 @@ class Con_BOQ extends Model
     // BOQ MASTER — READ
     // =========================================================================
 
-    /** All BOQ masters with project + user info */
+    /** All BOQ masters with project + target + user info */
     public function getAll()
     {
         $sql = "SELECT b.*, p.name AS project_name, u.full_name AS created_by_name,
-                       a.full_name AS approved_by_name
+                       a.full_name AS approved_by_name,
+                       tf.target_title,
+                       dt.name AS design_type_name
                 FROM {$this->masterTable} b
-                LEFT JOIN projects p ON p.id = b.project_id
-                LEFT JOIN users    u ON u.id = b.created_by
-                LEFT JOIN users    a ON a.id = b.approved_by
+                LEFT JOIN projects      p  ON p.id  = b.project_id
+                LEFT JOIN users         u  ON u.id  = b.created_by
+                LEFT JOIN users         a  ON a.id  = b.approved_by
+                LEFT JOIN target_fixed  tf ON tf.id = b.target_id
+                LEFT JOIN design_types  dt ON dt.id = b.design_type_id
                 ORDER BY b.id DESC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-    /** Single BOQ master with project name */
+    /** Single BOQ master with project name + target + design type */
     public function find($id)
     {
         $stmt = $this->db->prepare(
             "SELECT b.*, p.name AS project_name, u.full_name AS created_by_name,
-                    a.full_name AS approved_by_name
+                    a.full_name AS approved_by_name,
+                    tf.target_title, tf.target_percentage,
+                    tf.year AS target_year, tf.month AS target_month,
+                    tf.week_number AS target_week,
+                    dt.name AS design_type_name
              FROM {$this->masterTable} b
-             LEFT JOIN projects p ON p.id = b.project_id
-             LEFT JOIN users    u ON u.id = b.created_by
-             LEFT JOIN users    a ON a.id = b.approved_by
+             LEFT JOIN projects      p  ON p.id  = b.project_id
+             LEFT JOIN users         u  ON u.id  = b.created_by
+             LEFT JOIN users         a  ON a.id  = b.approved_by
+             LEFT JOIN target_fixed  tf ON tf.id = b.target_id
+             LEFT JOIN design_types  dt ON dt.id = b.design_type_id
              WHERE b.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -125,6 +136,110 @@ public function getRemainingBOQ($projectId) {
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
+    /**
+     * Per-material consumption for a specific BOQ:
+     * boq_qty, ordered_qty (from POs), received_qty (from material_receiving Approved/Accepted),
+     * remaining_qty = boq_qty - ordered_qty
+     * Returns array keyed by material_id for fast lookup.
+     */
+    public function getBoqConsumption($boqId, $projectId)
+    {
+        $sql = "
+            SELECT
+                bi.material_id,
+                m.name      AS material_name,
+                m.unit,
+                bi.quantity AS boq_qty,
+                COALESCE((
+                    SELECT SUM(poi.quantity)
+                    FROM purchase_order_items poi
+                    JOIN purchase_orders po ON po.id = poi.purchase_order_id
+                    JOIN purchase_requests pr ON pr.id = po.request_id
+                    WHERE pr.project_id = ?
+                      AND poi.material_id = bi.material_id
+                      AND po.status NOT IN ('Cancelled')
+                ), 0) AS ordered_qty,
+                COALESCE((
+                    SELECT SUM(poi2.quantity)
+                    FROM purchase_order_items poi2
+                    JOIN purchase_orders po2 ON po2.id = poi2.purchase_order_id
+                    JOIN purchase_requests pr2 ON pr2.id = po2.request_id
+                    JOIN material_receiving mr ON mr.purchase_order_id = po2.id
+                    WHERE pr2.project_id = ?
+                      AND poi2.material_id = bi.material_id
+                      AND mr.overall_status IN ('QC Approved','Accepted','Fully Received','Partially Received')
+                ), 0) AS received_qty
+            FROM boq_items bi
+            JOIN con_materials m ON m.id = bi.material_id
+            WHERE bi.boq_id = ?
+            ORDER BY m.name ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('iii', $projectId, $projectId, $boqId);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $result = [];
+        foreach ($rows as $row) {
+            $row['remaining_qty']  = max(0, (float)$row['boq_qty'] - (float)$row['ordered_qty']);
+            $row['consumed_pct']   = $row['boq_qty'] > 0
+                ? min(100, round((float)$row['received_qty'] / (float)$row['boq_qty'] * 100, 1))
+                : 0;
+            $result[$row['material_id']] = $row;
+        }
+        return $result;
+    }
+
+    /**
+     * All BOQs with target info + consumption summary stats for list view
+     * Returns total_boq_value, total_ordered_qty, total_received_qty per BOQ
+     */
+    public function getAllWithConsumption()
+    {
+        $sql = "
+            SELECT b.*, p.name AS project_name, u.full_name AS created_by_name,
+                   a.full_name AS approved_by_name,
+                   tf.target_title,
+                   dt.name AS design_type_name,
+                   COUNT(bi.id)          AS item_count,
+                   COALESCE(SUM(bi.quantity * bi.unit_cost), 0) AS total_boq_value,
+                   -- Total ordered from POs (not cancelled)
+                   COALESCE((
+                       SELECT SUM(poi.quantity)
+                       FROM boq_items bi2
+                       JOIN purchase_order_items poi ON poi.material_id = bi2.material_id
+                       JOIN purchase_orders po ON po.id = poi.purchase_order_id
+                       JOIN purchase_requests pr ON pr.id = po.request_id
+                       WHERE bi2.boq_id = b.id
+                         AND pr.project_id = b.project_id
+                         AND po.status NOT IN ('Cancelled')
+                   ), 0) AS total_ordered,
+                   -- Total actually received via material_receiving
+                   COALESCE((
+                       SELECT SUM(poi2.quantity)
+                       FROM boq_items bi3
+                       JOIN purchase_order_items poi2 ON poi2.material_id = bi3.material_id
+                       JOIN purchase_orders po2 ON po2.id = poi2.purchase_order_id
+                       JOIN purchase_requests pr2 ON pr2.id = po2.request_id
+                       JOIN material_receiving mr ON mr.purchase_order_id = po2.id
+                       WHERE bi3.boq_id = b.id
+                         AND pr2.project_id = b.project_id
+                         AND mr.overall_status IN ('QC Approved','Accepted','Fully Received','Partially Received')
+                   ), 0) AS total_received
+            FROM {$this->masterTable} b
+            LEFT JOIN projects      p  ON p.id  = b.project_id
+            LEFT JOIN users         u  ON u.id  = b.created_by
+            LEFT JOIN users         a  ON a.id  = b.approved_by
+            LEFT JOIN target_fixed  tf ON tf.id = b.target_id
+            LEFT JOIN design_types  dt ON dt.id = b.design_type_id
+            LEFT JOIN boq_items     bi ON bi.boq_id = b.id
+            GROUP BY b.id
+            ORDER BY b.id DESC";
+
+        $result = $this->db->query($sql);
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
     // =========================================================================
     // BOQ MASTER — WRITE
     // =========================================================================
@@ -132,13 +247,19 @@ public function getRemainingBOQ($projectId) {
     /** Create a new BOQ master, returns insert_id or false */
     public function createMaster($data)
     {
+        $targetId      = !empty($data['target_id'])      ? (int)$data['target_id']      : null;
+        $designTypeId  = !empty($data['design_type_id']) ? (int)$data['design_type_id'] : null;
+
         $stmt = $this->db->prepare(
-            "INSERT INTO {$this->masterTable} (project_id, version, status, created_by)
-             VALUES (?, ?, ?, ?)"
+            "INSERT INTO {$this->masterTable}
+             (project_id, target_id, design_type_id, version, status, created_by)
+             VALUES (?, ?, ?, ?, ?, ?)"
         );
         $stmt->bind_param(
-            'issi',
+            'iiissi',
             $data['project_id'],
+            $targetId,
+            $designTypeId,
             $data['version'],
             $data['status'],
             $data['created_by']

@@ -134,6 +134,18 @@ class Con_VendorPaymentRequestController extends Controller
             'created_by'        => $userId,
         ];
 
+        // Handle optional payment_attachment file upload
+        if (!empty($_FILES['payment_attachment']['name'])) {
+            $uploadResult = $this->handleFileUpload($_FILES['payment_attachment']);
+            if ($uploadResult['success']) {
+                $data['payment_attachment'] = $uploadResult['file_path'];
+            } else {
+                setError($uploadResult['message']);
+                header("Location: {$GLOBALS['base_url']}/con-vendor-payment-create");
+                exit;
+            }
+        }
+
         if (!$data['project_id'] || !$data['vendor_id'] || $data['invoice_amount'] <= 0) {
             setError('Project, Vendor, and a valid Amount are required.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-create");
@@ -611,6 +623,122 @@ class Con_VendorPaymentRequestController extends Controller
                 'received_amount'   => round($receivedAmount, 2),
                 'advance_paid'      => round($advancePaid,    2),
                 'due_amount'        => round($due,            2),
+            ];
+        }
+
+        echo json_encode($result);
+        exit;
+    }
+
+    // =========================================================================
+    // AJAX — POs by Project (project select করলেই load হবে, vendor optional)
+    // GET: /con-ajax-po-by-project?project_id=N
+    // Returns: [{id, label, project_name, status, total_order_value,
+    //            received_amount, advance_paid, due_amount,
+    //            payments:[{id, payment_type, invoice_amount, net_payable_amount, status, created_at}]}]
+    // =========================================================================
+
+    public function ajaxGetPOsByProject()
+    {
+        header('Content-Type: application/json');
+        $projectId = (int)($_GET['project_id'] ?? 0);
+
+        if (!$projectId) {
+            echo json_encode([]);
+            exit;
+        }
+
+        // Get all POs for this project
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT po.id
+            FROM purchase_orders po
+            JOIN purchase_requests pr ON pr.id = po.request_id
+            WHERE pr.project_id = ?
+            ORDER BY po.id DESC");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $poIds = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'id');
+
+        if (empty($poIds)) {
+            echo json_encode([]);
+            exit;
+        }
+
+        $months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        $result = [];
+
+        foreach ($poIds as $poId) {
+            // PO header
+            $hStmt = $this->db->prepare("
+                SELECT po.id, po.status, po.created_at,
+                       pr.project_id, p.name AS project_name
+                FROM purchase_orders po
+                JOIN purchase_requests pr ON pr.id = po.request_id
+                LEFT JOIN projects p ON p.id = pr.project_id
+                WHERE po.id = ?");
+            $hStmt->bind_param('i', $poId);
+            $hStmt->execute();
+            $po = $hStmt->get_result()->fetch_assoc();
+            if (!$po) continue;
+
+            // Total PO value
+            $vStmt = $this->db->prepare("
+                SELECT COALESCE(SUM(quantity * unit_price), 0) AS total
+                FROM purchase_order_items WHERE purchase_order_id = ?");
+            $vStmt->bind_param('i', $poId);
+            $vStmt->execute();
+            $totalValue = (float)$vStmt->get_result()->fetch_assoc()['total'];
+
+            // Received amount
+            $rStmt = $this->db->prepare("
+                SELECT COALESCE(SUM(poi.quantity * poi.unit_price), 0) AS received_amount
+                FROM purchase_order_items poi
+                JOIN material_receiving mr ON mr.purchase_order_id = poi.purchase_order_id
+                WHERE poi.purchase_order_id = ?
+                  AND mr.overall_status IN ('QC Approved','Accepted','Fully Received','Partially Received','Partially Accepted')");
+            $rStmt->bind_param('i', $poId);
+            $rStmt->execute();
+            $receivedAmount = (float)$rStmt->get_result()->fetch_assoc()['received_amount'];
+
+            // Previous payments for this PO
+            $pStmt = $this->db->prepare("
+                SELECT vpr.id, vpr.payment_type, vpr.invoice_amount,
+                       vpr.net_payable_amount, vpr.status, vpr.created_at,
+                       v.name AS vendor_name, v.company_name
+                FROM vendor_payment_requests vpr
+                LEFT JOIN con_vendors v ON v.id = vpr.vendor_id
+                WHERE vpr.purchase_order_id = ?
+                ORDER BY vpr.id DESC");
+            $pStmt->bind_param('i', $poId);
+            $pStmt->execute();
+            $payments = $pStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+            // Total paid (Approved/Paid statuses)
+            $totalPaid = 0;
+            foreach ($payments as $pay) {
+                if (in_array($pay['status'], ['Approved','Paid','Partially_Paid','Fully_Paid'])) {
+                    $totalPaid += (float)$pay['net_payable_amount'];
+                }
+            }
+            $due = max(0, $totalValue - $totalPaid);
+
+            // PO date formatted
+            $poDate = !empty($po['created_at'])
+                ? date('d M Y', strtotime($po['created_at'])) : '';
+
+            $result[] = [
+                'id'                => (int)$po['id'],
+                'label'             => 'PO-' . $po['id'] . ' | ' . ($po['project_name'] ?? 'N/A')
+                                       . ' | ৳' . number_format($totalValue, 0)
+                                       . ' | ' . ($po['status'] ?? ''),
+                'project_name'      => $po['project_name'] ?? '',
+                'status'            => $po['status'] ?? '',
+                'po_date'           => $poDate,
+                'total_order_value' => round($totalValue,      2),
+                'received_amount'   => round($receivedAmount,  2),
+                'total_paid'        => round($totalPaid,       2),
+                'due_amount'        => round($due,             2),
+                'payments'          => $payments,
             ];
         }
 

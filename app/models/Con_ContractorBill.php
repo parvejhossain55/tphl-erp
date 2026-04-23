@@ -80,7 +80,7 @@ class Con_ContractorBill extends Model
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiissdss i',
+            'iiissdssi',
             $data['project_id'],
             $data['operator_id'],
             $data['target_id'],

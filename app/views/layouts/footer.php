@@ -227,8 +227,8 @@
 
         <script>
             document.addEventListener("DOMContentLoaded", function() {
-                const labels = <?= json_encode($flatSalesLabels) ?>;
-                const series = <?= json_encode($flatSalesSeries) ?>;
+                const labels = <?= json_encode($flatSalesLabels ?? []) ?>;
+                const series = <?= json_encode($flatSalesSeries ?? []) ?>;
 
                 const options = {
                     series: series,
@@ -387,16 +387,16 @@
 
                 const salesData = {
                     week: {
-                        labels: <?= json_encode(array_column($weeklySales, 'date')) ?>,
-                        totals: <?= json_encode(array_column($weeklySales, 'total')) ?>
+                        labels: <?= json_encode(array_column($weeklySales  ?? [], 'date')) ?>,
+                        totals: <?= json_encode(array_column($weeklySales  ?? [], 'total')) ?>
                     },
                     month: {
-                        labels: <?= json_encode(array_column($monthlySales, 'date')) ?>,
-                        totals: <?= json_encode(array_column($monthlySales, 'total')) ?>
+                        labels: <?= json_encode(array_column($monthlySales ?? [], 'date')) ?>,
+                        totals: <?= json_encode(array_column($monthlySales ?? [], 'total')) ?>
                     },
                     year: {
-                        labels: <?= json_encode(array_column($yearlySales, 'month')) ?>,
-                        totals: <?= json_encode(array_column($yearlySales, 'total')) ?>
+                        labels: <?= json_encode(array_column($yearlySales  ?? [], 'month')) ?>,
+                        totals: <?= json_encode(array_column($yearlySales  ?? [], 'total')) ?>
                     }
                 };
 

@@ -246,7 +246,7 @@
             </div>
         </div>
 
-        <div class="text-end mb-5">
+        <div class="text-end mb-4">
             <a href="<?= $base_url ?>/con-estimates" class="btn btn-secondary me-2">Cancel</a>
             <button type="submit" class="btn btn-primary px-5 py-2">
                 <i class="bi bi-save me-1"></i> Save Estimate
@@ -254,6 +254,62 @@
         </div>
 
     </form>
+
+    <!-- ══ ALL DESIGNS VIEWER (outside form) ══════════════════════════════ -->
+    <div id="allDesignsSection" style="display:none;">
+        <div class="card__wrapper shadow-sm mb-4 border-top border-info border-3">
+            <div class="card__header d-flex justify-content-between align-items-center">
+                <h6 class="card__title mb-0 text-info">
+                    <i class="bi bi-folder2-open me-2"></i>
+                    All Designs for Selected Project
+                    <span id="designsProjectName" class="text-muted fw-normal small ms-2"></span>
+                </h6>
+                <div class="d-flex gap-2">
+                    <a id="viewAllArchBtn" href="<?= $base_url ?>/con-architect-engineering" target="_blank"
+                       class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> All Arch Records
+                    </a>
+                    <a id="viewAllDrawingsBtn" href="<?= $base_url ?>/con-project-drawings" target="_blank"
+                       class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> All Drawings
+                    </a>
+                </div>
+            </div>
+            <div class="card__body p-4">
+                <div id="designsLoader" class="text-center py-3" style="display:none;">
+                    <i class="bi bi-hourglass-split me-1"></i> Loading designs...
+                </div>
+                <div class="row" id="designsPanels">
+
+                    <!-- Architect Engineering -->
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3">
+                            <i class="bi bi-pencil-square me-1 text-primary"></i>
+                            Architectural Design Records
+                            <span id="archCount" class="badge bg-primary ms-1">0</span>
+                        </h6>
+                        <div id="archList">
+                            <p class="text-muted small">No records found.</p>
+                        </div>
+                    </div>
+
+                    <!-- Project Drawings -->
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3">
+                            <i class="bi bi-file-earmark-image me-1 text-success"></i>
+                            Project Drawings
+                            <span id="drawingsCount" class="badge bg-success ms-1">0</span>
+                        </h6>
+                        <div id="drawingsList">
+                            <p class="text-muted small">No drawings found.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
 </section>
 
 <!-- Pure Vanilla JS — same pattern as lead-lists.php -->
@@ -389,19 +445,24 @@ document.addEventListener('DOMContentLoaded', function () {
 const EST_BASE = '<?= $GLOBALS["base_url"] ?>';
 
 document.getElementById('estimateProjectId').addEventListener('change', function () {
-    const pid     = this.value;
-    const archSel = document.getElementById('archSelect');
-    const loader  = document.getElementById('archLoader');
+    const pid      = this.value;
+    const archSel  = document.getElementById('archSelect');
+    const loader   = document.getElementById('archLoader');
+    const pName    = this.options[this.selectedIndex]?.textContent ?? '';
 
     archSel.innerHTML = '<option value="">-- Loading... --</option>';
     archSel.disabled  = true;
 
+    // Hide designs section if no project
     if (!pid) {
         archSel.innerHTML = '<option value="">-- Select Project First --</option>';
+        document.getElementById('allDesignsSection').style.display = 'none';
         return;
     }
 
     loader.style.display = 'block';
+
+    // ── 1. Load architecture dropdown ────────────────────────────────────
     fetch(EST_BASE + '/con-ajax-arch-by-project?project_id=' + pid)
         .then(r => r.json())
         .then(data => {
@@ -416,6 +477,7 @@ document.getElementById('estimateProjectId').addEventListener('change', function
                 const opt = document.createElement('option');
                 opt.value = a.id;
                 opt.textContent = a.label;
+                if (a.design_link) opt.setAttribute('data-link', a.design_link);
                 archSel.appendChild(opt);
             });
             // Auto-select if only one record
@@ -426,6 +488,73 @@ document.getElementById('estimateProjectId').addEventListener('change', function
             loader.style.display = 'none';
             archSel.innerHTML = '<option value="">-- Error loading --</option>';
             archSel.disabled = false;
+        });
+
+    // ── 2. Load all designs panel ─────────────────────────────────────────
+    const section = document.getElementById('allDesignsSection');
+    const dLoader = document.getElementById('designsLoader');
+    document.getElementById('designsProjectName').textContent = pName;
+    document.getElementById('archList').innerHTML      = '';
+    document.getElementById('drawingsList').innerHTML  = '';
+    document.getElementById('archCount').textContent     = '...';
+    document.getElementById('drawingsCount').textContent = '...';
+    section.style.display = 'block';
+    dLoader.style.display = 'block';
+
+    fetch(EST_BASE + '/con-ajax-designs-by-project?project_id=' + pid)
+        .then(r => r.json())
+        .then(data => {
+            dLoader.style.display = 'none';
+
+            // — Archs —
+            const archs = data.archs || [];
+            document.getElementById('archCount').textContent = archs.length;
+            const archList = document.getElementById('archList');
+            if (!archs.length) {
+                archList.innerHTML = '<p class="text-muted small">No architectural design records.</p>';
+            } else {
+                archList.innerHTML = archs.map((a, i) => {
+                    const link = a.design_link
+                        ? `<a href="${a.design_link}" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
+                               <i class="bi bi-box-arrow-up-right me-1"></i>View Design
+                           </a>`
+                        : '<span class="text-muted small">No link</span>';
+                    return `<div class="border rounded p-2 mb-2">
+                        <div class="fw-semibold">Arch #${a.id} <small class="text-muted">(${a.uploaded_by ?? '—'})</small></div>
+                        ${a.notes ? `<div class="text-muted small">${a.notes}</div>` : ''}
+                        ${link}
+                    </div>`;
+                }).join('');
+            }
+
+            // — Drawings —
+            const drawings = data.drawings || [];
+            document.getElementById('drawingsCount').textContent = drawings.length;
+            const drawList = document.getElementById('drawingsList');
+            if (!drawings.length) {
+                drawList.innerHTML = '<p class="text-muted small">No project drawings found.</p>';
+            } else {
+                drawList.innerHTML = drawings.map(d => {
+                    const statusBadge = d.status === 'Approved'
+                        ? '<span class="badge bg-success ms-1">Approved</span>'
+                        : `<span class="badge bg-secondary ms-1">${d.status ?? 'Draft'}</span>`;
+                    const link = d.design_link
+                        ? `<a href="${d.design_link}" target="_blank" class="btn btn-sm btn-outline-success mt-1">
+                               <i class="bi bi-box-arrow-up-right me-1"></i>View Drawing
+                           </a>`
+                        : '<span class="text-muted small">No link</span>';
+                    return `<div class="border rounded p-2 mb-2">
+                        <div class="fw-semibold">${d.design_type ?? 'Drawing'} v${d.version ?? '—'} ${statusBadge}</div>
+                        <div class="text-muted small">By: ${d.uploaded_by ?? '—'}</div>
+                        ${link}
+                    </div>`;
+                }).join('');
+            }
+        })
+        .catch(() => {
+            dLoader.style.display = 'none';
+            document.getElementById('archList').innerHTML    = '<p class="text-danger small">Failed to load designs.</p>';
+            document.getElementById('drawingsList').innerHTML = '<p class="text-danger small">Failed to load drawings.</p>';
         });
 });
 </script>

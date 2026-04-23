@@ -1,9 +1,14 @@
 <?php
-$base        = $base_url;
-$boq         = $boq         ?? [];
-$items       = $items       ?? [];
-$canApprove  = $canApprove  ?? false;
-$creatorInfo = $creatorInfo ?? [];
+$base              = $base_url;
+$boq               = $boq               ?? [];
+$items             = $items             ?? [];
+$canApprove        = $canApprove        ?? false;
+$creatorInfo       = $creatorInfo       ?? [];
+$totalBoqQty       = $totalBoqQty       ?? 0;
+$totalOrdered      = $totalOrdered      ?? 0;
+$totalReceived     = $totalReceived     ?? 0;
+$totalRemaining    = $totalRemaining    ?? 0;
+$overallConsumedPct= $overallConsumedPct ?? 0;
 
 function boqFmt($n) {
     $n = (float)$n;
@@ -101,7 +106,20 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
           <i class="fal fa-code-branch me-1"></i>Version <?= htmlspecialchars($boq['version'] ?? '1.0') ?>
           &nbsp;·&nbsp;
           <i class="fal fa-calendar me-1"></i><?= !empty($boq['created_at']) ? date('d M Y', strtotime($boq['created_at'])) : '—' ?>
+          <?php if (!empty($boq['target_title'])): ?>
+          &nbsp;·&nbsp;
+          <i class="bi bi-bullseye me-1"></i>
+          <span style="color:rgba(255,255,255,.85);font-weight:600"><?= htmlspecialchars($boq['target_title']) ?></span>
+          <?php endif; ?>
+          <?php if (!empty($boq['design_type_name'])): ?>
+          &nbsp;·&nbsp;
+          <i class="bi bi-layers me-1"></i>
+          <span style="background:rgba(255,255,255,.15);padding:1px 8px;border-radius:8px;font-size:11px;font-weight:700">
+            <?= htmlspecialchars($boq['design_type_name']) ?>
+          </span>
+          <?php endif; ?>
         </p>
+
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
           <?php if ($status !== 'Approved'): ?>
           <a href="<?= $base ?>/con-boq-edit/<?= $boq['id'] ?>" class="boq-btn-w">
@@ -153,20 +171,26 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
     <div class="boq-kpi-val" style="color:var(--boq-blue)"><?= count($items) ?></div>
   </div>
   <div class="boq-kpi">
-    <div class="boq-kpi-accent" style="background:var(--boq-purple)"></div>
-    <div class="boq-kpi-icon" style="background:rgba(139,92,246,.12);color:var(--boq-purple)">
-      <i class="fal fa-code-branch"></i>
+    <div class="boq-kpi-accent" style="background:var(--boq-amber)"></div>
+    <div class="boq-kpi-icon" style="background:rgba(245,158,11,.12);color:var(--boq-amber)">
+      <i class="bi bi-cart-check"></i>
     </div>
-    <div class="boq-kpi-lbl">Version</div>
-    <div class="boq-kpi-val" style="color:var(--boq-purple)">v<?= htmlspecialchars($boq['version'] ?? '1.0') ?></div>
+    <div class="boq-kpi-lbl">Ordered Qty</div>
+    <div class="boq-kpi-val" style="color:var(--boq-amber)"><?= number_format($totalOrdered, 2) ?></div>
   </div>
   <div class="boq-kpi">
-    <div class="boq-kpi-accent" style="background:<?= $sc['text'] ?>"></div>
-    <div class="boq-kpi-icon" style="background:<?= $sc['bg'] ?>;color:<?= $sc['text'] ?>">
-      <i class="fal <?= $sc['icon'] ?>"></i>
+    <div class="boq-kpi-accent" style="background:<?= $overallConsumedPct >= 90 ? 'var(--boq-red)' : ($overallConsumedPct >= 60 ? 'var(--boq-amber)' : 'var(--boq-green)') ?>"></div>
+    <div class="boq-kpi-icon" style="background:rgba(16,185,129,.12);color:var(--boq-green)">
+      <i class="bi bi-box-arrow-in-down"></i>
     </div>
-    <div class="boq-kpi-lbl">Status</div>
-    <div class="boq-kpi-val" style="color:<?= $sc['text'] ?>"><?= $status ?></div>
+    <div class="boq-kpi-lbl">Received / <?= $overallConsumedPct ?>% consumed</div>
+    <div class="boq-kpi-val" style="color:var(--boq-green)"><?= number_format($totalReceived, 2) ?></div>
+    <?php if ($totalOrdered > 0): ?>
+    <div style="height:5px;background:rgba(0,0,0,.07);border-radius:3px;overflow:hidden;margin-top:6px">
+      <div style="height:100%;border-radius:3px;width:<?= $overallConsumedPct ?>%;
+        background:<?= $overallConsumedPct >= 90 ? '#ef4444' : ($overallConsumedPct >= 60 ? '#f59e0b' : '#10b981') ?>"></div>
+    </div>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -282,7 +306,7 @@ if ($viewerRole === 12 && $status === 'Draft'):
 <div class="boq-panel">
   <div class="boq-panel-title">
     <div class="boq-dot" style="background:var(--boq-green)"></div>
-    Bill of Quantities — Material Items
+    Bill of Quantities — Material Items &amp; Consumption Tracker
     <span style="margin-left:auto;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;
       background:rgba(16,185,129,.12);color:var(--boq-green)"><?= count($items) ?> Items</span>
   </div>
@@ -297,30 +321,77 @@ if ($viewerRole === 12 && $status === 'Draft'):
           <th>#</th>
           <th>Material</th>
           <th>Unit</th>
-          <th style="text-align:right">Quantity</th>
+          <th style="text-align:right">BOQ Qty</th>
           <th style="text-align:right">Unit Cost</th>
           <th style="text-align:right">Total Cost</th>
+          <th style="text-align:right">Ordered</th>
+          <th style="text-align:right">Received</th>
+          <th style="text-align:right">Remaining</th>
+          <th style="min-width:100px">Status</th>
         </tr>
       </thead>
       <tbody>
-        <?php foreach ($items as $i => $item): ?>
+        <?php foreach ($items as $i => $item):
+          $ordered  = (float)($item['ordered_qty']  ?? 0);
+          $received = (float)($item['received_qty'] ?? 0);
+          $boqQty   = (float)($item['quantity']     ?? 0);
+          $remaining = (float)($item['remaining_qty'] ?? $boqQty);
+          $consPct  = $boqQty > 0 ? min(100, round($received / $boqQty * 100, 1)) : 0;
+          $clr = $consPct >= 90 ? '#dc2626' : ($consPct >= 60 ? '#d97706' : '#059669');
+        ?>
         <tr>
           <td style="font-size:11px;color:var(--text-muted)"><?= $i+1 ?></td>
           <td style="font-weight:700"><?= htmlspecialchars($item['material_name']) ?></td>
           <td style="font-size:11.5px;color:var(--text-muted)"><?= htmlspecialchars($item['unit']) ?></td>
-          <td style="text-align:right"><?= number_format($item['quantity'], 3) ?></td>
+          <td style="text-align:right;font-weight:700;color:#2563eb"><?= number_format($boqQty, 3) ?></td>
           <td style="text-align:right"><?= boqFmt($item['unit_cost']) ?></td>
-          <td style="text-align:right;font-weight:800;color:var(--boq-green)"><?= boqFmt($item['total_cost']) ?></td>
+          <td style="text-align:right;font-weight:700;color:var(--boq-green)"><?= boqFmt($item['total_cost']) ?></td>
+          <td style="text-align:right;color:#d97706;font-weight:600"><?= number_format($ordered, 3) ?></td>
+          <td style="text-align:right;color:#059669;font-weight:700"><?= number_format($received, 3) ?></td>
+          <td style="text-align:right;font-weight:800;color:<?= $remaining <= 0 ? '#dc2626' : '#374151' ?>">
+            <?= number_format($remaining, 3) ?>
+          </td>
+          <td>
+            <?php if ($boqQty > 0): ?>
+            <div style="font-size:9.5px;color:var(--text-muted);margin-bottom:2px"><?= $consPct ?>% received</div>
+            <div style="height:6px;background:rgba(0,0,0,.07);border-radius:4px;overflow:hidden">
+              <div style="height:100%;border-radius:4px;width:<?= $consPct ?>%;background:<?= $clr ?>"></div>
+            </div>
+            <?php else: ?><span class="text-muted">—</span><?php endif; ?>
+          </td>
         </tr>
         <?php endforeach; ?>
       </tbody>
       <tfoot>
         <tr style="background:rgba(0,0,0,.03)">
-          <td colspan="5" style="text-align:right;font-weight:800;padding:14px 12px;font-size:12px">
-            GRAND TOTAL ESTIMATED COST:
+          <td colspan="3" style="text-align:right;font-weight:800;padding:14px 12px;font-size:12px">
+            TOTALS:
           </td>
-          <td style="text-align:right;font-weight:900;font-size:18px;color:var(--boq-primary,#198754);padding:14px 12px">
+          <td style="text-align:right;font-weight:900;font-size:14px;color:#2563eb;padding:14px 12px">
+            <?= number_format($totalBoqQty, 3) ?>
+          </td>
+          <td colspan="2" style="text-align:right;font-weight:900;font-size:16px;color:var(--boq-primary,#198754);padding:14px 12px">
             <?= boqFmt($grandTotal) ?>
+          </td>
+          <td style="text-align:right;font-weight:800;color:#d97706;padding:14px 12px">
+            <?= number_format($totalOrdered, 3) ?>
+          </td>
+          <td style="text-align:right;font-weight:800;color:#059669;padding:14px 12px">
+            <?= number_format($totalReceived, 3) ?>
+          </td>
+          <td style="text-align:right;font-weight:900;color:<?= $totalRemaining <= 0 ? '#dc2626' : '#374151' ?>;padding:14px 12px">
+            <?= number_format($totalRemaining, 3) ?>
+          </td>
+          <td style="padding:14px 12px">
+            <?php if ($totalOrdered > 0): ?>
+            <div style="font-size:9.5px;color:var(--text-muted);margin-bottom:3px">
+              <?= $overallConsumedPct ?>% overall
+            </div>
+            <div style="height:7px;background:rgba(0,0,0,.07);border-radius:4px;overflow:hidden">
+              <div style="height:100%;border-radius:4px;width:<?= $overallConsumedPct ?>%;
+                background:<?= $overallConsumedPct >= 90 ? '#ef4444' : ($overallConsumedPct >= 60 ? '#f59e0b' : '#10b981') ?>"></div>
+            </div>
+            <?php endif; ?>
           </td>
         </tr>
       </tfoot>

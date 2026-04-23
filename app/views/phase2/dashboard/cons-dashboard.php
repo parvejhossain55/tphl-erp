@@ -690,6 +690,122 @@ if (!empty($pendingGRNs)):
 </div>
 <?php endif; ?>
 
+<?php
+$weekTargetNotifications = $weekTargetNotifications ?? [];
+$labDueNotifications     = $labDueNotifications     ?? [];
+$currentWeek  = $currentWeek  ?? (int)ceil(date('j') / 7);
+$currentMonth = $currentMonth ?? (int)date('n');
+$currentYear  = $currentYear  ?? (int)date('Y');
+$monthNames   = ['','January','February','March','April','May','June',
+                 'July','August','September','October','November','December'];
+if (!empty($weekTargetNotifications) || !empty($labDueNotifications)):
+?>
+<div class="con-panel card__wrapper mb-4" style="border-color:rgba(6,182,212,.35);background:rgba(6,182,212,.03)">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="sec-title" style="margin-bottom:0">
+      <div class="sec-title-dot" style="background:#0891b2"></div>
+      <i class="bi bi-bell-fill me-2" style="color:#0891b2"></i>
+      This Week — Target Notifications
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+        background:rgba(6,182,212,.12);color:#0891b2">
+        <?= $monthNames[$currentMonth] ?> <?= $currentYear ?> · Week <?= $currentWeek ?>
+      </span>
+    </div>
+    <a href="<?=$base?>/con-targets" style="font-size:11px;color:#0891b2;text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+
+  <div class="row">
+    <!-- Targets this week -->
+    <div class="col-md-7">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0891b2;margin-bottom:10px">
+        <i class="bi bi-bullseye me-1"></i> Active Targets This Week (<?= count($weekTargetNotifications) ?>)
+      </div>
+      <?php if (empty($weekTargetNotifications)): ?>
+        <div class="text-muted small text-center py-3">No targets assigned for this week.</div>
+      <?php else: ?>
+        <?php foreach ($weekTargetNotifications as $wt):
+          $wtQC  = !empty($wt['approved_by_qc']);
+          $wtPM  = !empty($wt['approved_by_manager']);
+          $wtLab = !empty($wt['is_lab_test']);
+        ?>
+        <div class="d-flex align-items-start gap-2 mb-2 p-2 rounded border"
+             style="background:rgba(6,182,212,.04)">
+          <div style="width:32px;height:32px;border-radius:9px;background:rgba(6,182,212,.12);
+                      display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-bullseye" style="color:#0891b2;font-size:14px"></i>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              <a href="<?=$base?>/con-target/<?= $wt['id'] ?>" style="text-decoration:none;color:inherit">
+                <?= htmlspecialchars($wt['target_title'] ?? '—') ?>
+              </a>
+            </div>
+            <div style="font-size:10.5px;color:var(--text-muted)">
+              <?= htmlspecialchars($wt['project_name'] ?? '—') ?> ·
+              Target: <strong><?= number_format($wt['target_percentage'] ?? 0, 1) ?>%</strong>
+              <?php if ($wtLab): ?>
+                <span style="background:rgba(6,182,212,.12);color:#0891b2;padding:1px 6px;border-radius:6px;font-size:9px;margin-left:4px">
+                  <i class="bi bi-flask me-1"></i>Lab Test
+                </span>
+              <?php endif; ?>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;flex-shrink:0">
+            <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;
+              background:<?= $wtQC ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.1)' ?>;
+              color:<?= $wtQC ? '#059669' : '#d97706' ?>">
+              QC: <?= $wtQC ? '✓' : '⏳' ?>
+            </span>
+            <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;
+              background:<?= $wtPM ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.1)' ?>;
+              color:<?= $wtPM ? '#059669' : '#d97706' ?>">
+              PM: <?= $wtPM ? '✓' : '⏳' ?>
+            </span>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
+
+    <!-- Lab test due this week -->
+    <div class="col-md-5">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#dc2626;margin-bottom:10px">
+        <i class="bi bi-flask me-1"></i> Lab Tests Due This Week (<?= count($labDueNotifications) ?>)
+      </div>
+      <?php if (empty($labDueNotifications)): ?>
+        <div class="text-muted small text-center py-3">No lab tests due this week.</div>
+      <?php else: ?>
+        <?php foreach ($labDueNotifications as $ld): ?>
+        <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded border"
+             style="background:rgba(239,68,68,.04);border-color:rgba(239,68,68,.2) !important">
+          <div style="width:30px;height:30px;border-radius:9px;background:rgba(239,68,68,.1);
+                      display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-flask-fill" style="color:#dc2626;font-size:13px"></i>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              <a href="<?=$base?>/con-target/<?= $ld['id'] ?>" style="text-decoration:none;color:inherit">
+                <?= htmlspecialchars($ld['target_title'] ?? '—') ?>
+              </a>
+            </div>
+            <div style="font-size:10.5px;color:var(--text-muted)">
+              <?= htmlspecialchars($ld['project_name'] ?? '—') ?>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:10px;font-weight:700;color:#dc2626">
+              <?= !empty($ld['lab_test_date']) ? date('d M', strtotime($ld['lab_test_date'])) : '—' ?>
+            </div>
+            <div style="font-size:9px;color:var(--text-muted)">Due date</div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- ═══════════════ ROW 3: PROJECT PROGRESS + BUDGET DONUT ══════════════════ -->
 <div class="row  mb-4">
 

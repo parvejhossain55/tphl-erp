@@ -19,13 +19,8 @@ foreach ($pending ?? [] as $p) {
 ?>
 
 <div class="pagetitle d-flex justify-content-between align-items-center">
-<<<<<<< HEAD
     <div class="mb-3">
         <h4><?= htmlspecialchars($page_title) ?></h4>
-=======
-    <div>
-        <h1 class="mb-3"><?= htmlspecialchars($page_title) ?></h1>
->>>>>>> 3c9b3fa0bbf940b36ab0fd1ee0d020354f928834
         <nav>
             <ol class="breadcrumb mb-3">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
@@ -145,9 +140,10 @@ foreach ($pending ?? [] as $p) {
                             <th>Project</th>
                             <th>Description</th>
                             <th class="text-end">Payable (৳)</th>
+                            <th class="text-end">Paid (৳)</th>
                             <th class="text-end">Due (৳)</th>
                             <th>Status</th>
-                            <th>Approved On</th>
+                            <th>Date</th>
                             <?php if ($canProcess): ?>
                             <th class="text-center">Action</th>
                             <?php endif; ?>
@@ -156,24 +152,26 @@ foreach ($pending ?? [] as $p) {
                     <tbody>
                         <?php foreach ($readyToPay as $i => $p): ?>
                         <?php
-                            $refType  = $p['ref_type'] ?? '';
-                            $badgeColor = match($refType) {
+                            $refType     = $p['ref_type'] ?? '';
+                            $badgeColor  = match($refType) {
                                 'contractor_bill'  => 'primary',
                                 'operational_fund' => 'success',
                                 'vendor_payment'   => 'info',
                                 default            => 'secondary',
                             };
-                            $refLabel = match($refType) {
+                            $refLabel    = match($refType) {
                                 'contractor_bill'  => 'Contractor Bill',
                                 'operational_fund' => 'Fund Request',
                                 'vendor_payment'   => 'Vendor Payment',
                                 default            => 'Other',
                             };
-
                             $sourceStatus = $p['source_status'] ?? '';
                             $isPartial    = in_array($sourceStatus, ['partially_paid', 'Partially_Paid']);
-                            $dueAmount    = $p['due_amount'] ?? null;
-                            $displayDue   = ($dueAmount !== null) ? (float)$dueAmount : (float)($p['amount'] ?? 0);
+                            $payable      = (float)($p['amount']       ?? 0);
+                            $alreadyPaid  = (float)($p['already_paid'] ?? 0);
+                            $dueAmount    = $p['due_amount'] !== null
+                                            ? (float)$p['due_amount']
+                                            : max(0, $payable - $alreadyPaid);
                         ?>
                         <tr>
                             <td><?= $i + 1 ?></td>
@@ -184,15 +182,22 @@ foreach ($pending ?? [] as $p) {
                                 <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($p['project_name'] ?? '—') ?></td>
-                            <td><?= htmlspecialchars(mb_strimwidth($p['description'] ?? '', 0, 55, '...')) ?></td>
-                            <td class="text-end fw-semibold">৳ <?= number_format((float)($p['amount'] ?? 0), 2) ?></td>
-                            <td class="text-end fw-bold <?= $isPartial ? 'text-warning' : 'text-success' ?>">
-                                ৳ <?= number_format($displayDue, 2) ?>
+                            <td><?= htmlspecialchars(mb_strimwidth($p['description'] ?? '', 0, 50, '...')) ?></td>
+                            <td class="text-end fw-semibold">৳ <?= number_format($payable, 2) ?></td>
+                            <td class="text-end fw-semibold <?= $alreadyPaid > 0 ? 'text-info' : 'text-muted' ?>">
+                                <?= $alreadyPaid > 0 ? '৳ ' . number_format($alreadyPaid, 2) : '—' ?>
+                            </td>
+                            <td class="text-end fw-bold <?= $dueAmount > 0 ? 'text-warning' : 'text-success' ?>">
+                                <?php if ($dueAmount <= 0): ?>
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                <?php else: ?>
+                                    ৳ <?= number_format($dueAmount, 2) ?>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($isPartial): ?>
                                     <span class="badge bg-warning text-dark">
-                                        <i class="bi bi-pie-chart-fill me-1"></i>Partially Paid
+                                        <i class="bi bi-pie-chart-fill me-1"></i>Partial
                                     </span>
                                 <?php else: ?>
                                     <span class="badge bg-success">
@@ -203,11 +208,19 @@ foreach ($pending ?? [] as $p) {
                             <td><small><?= !empty($p['created_at']) ? date('d M Y', strtotime($p['created_at'])) : '—' ?></small></td>
                             <?php if ($canProcess): ?>
                             <td class="text-center">
-                                <a href="<?= $base_url ?>/con-process-payment/<?= $p['ref_type'] ?>/<?= $p['ref_id'] ?>"
-                                   class="btn btn-success btn-sm fw-bold">
+                                <?php if ($refType === 'vendor_payment'): ?>
+                                <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $p['ref_id'] ?>"
+                                   class="btn btn-<?= $isPartial ? 'warning' : 'success' ?> btn-sm fw-bold">
                                     <i class="bi bi-credit-card me-1"></i>
-                                    <?= $isPartial ? 'Continue Payment' : 'Process Payment' ?>
+                                    <?= $isPartial ? 'Continue' : 'Pay' ?>
                                 </a>
+                                <?php else: ?>
+                                <a href="<?= $base_url ?>/con-process-payment/<?= $p['ref_type'] ?>/<?= $p['ref_id'] ?>"
+                                   class="btn btn-<?= $isPartial ? 'warning' : 'success' ?> btn-sm fw-bold">
+                                    <i class="bi bi-credit-card me-1"></i>
+                                    <?= $isPartial ? 'Continue' : 'Process' ?>
+                                </a>
+                                <?php endif; ?>
                             </td>
                             <?php endif; ?>
                         </tr>

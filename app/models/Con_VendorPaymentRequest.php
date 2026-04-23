@@ -26,7 +26,8 @@ class Con_VendorPaymentRequest extends Model
                        po.id        AS po_number,
                        u.full_name  AS created_by_name,
                        ab.full_name AS approved_by_name,
-                       pb.full_name AS payment_by_name
+                       pb.full_name AS payment_by_name,
+                       COALESCE(txn_sum.total_paid, 0) AS already_paid
                 FROM {$this->table} pr
                 LEFT JOIN vendors v          ON v.id  = pr.vendor_id
                 LEFT JOIN projects p         ON p.id  = pr.project_id
@@ -39,7 +40,13 @@ class Con_VendorPaymentRequest extends Model
                     WHERE ref_type = 'vendor_payment'
                     ORDER BY id DESC
                 ) latest_txn ON latest_txn.ref_id = pr.id
-                LEFT JOIN users pb ON pb.id = latest_txn.processed_by";
+                LEFT JOIN users pb ON pb.id = latest_txn.processed_by
+                LEFT JOIN (
+                    SELECT ref_id, SUM(amount_paid) AS total_paid
+                    FROM con_financial_transactions
+                    WHERE ref_type = 'vendor_payment'
+                    GROUP BY ref_id
+                ) txn_sum ON txn_sum.ref_id = pr.id";
 
         if ($userId !== null) {
             $sql .= " WHERE pr.created_by = " . (int)$userId;
@@ -154,24 +161,26 @@ class Con_VendorPaymentRequest extends Model
             $vendorId        = (int)($data['vendor_id'] ?? 0);
 
             // INSERT — matches actual table columns
+            $attachmentPath = $data['payment_attachment'] ?? null;
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->table}
                     (project_id, vendor_id, purchase_order_id, payment_type,
                      invoice_amount, penalty_amount, net_payable_amount, net_payable,
-                     delivery_verified, status, created_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Submitted', ?)"
+                     delivery_verified, payment_attachment, status, created_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Submitted', ?)"
             );
             $stmt->bind_param(
-                'iiisddddii',
+                'iiissddddsi',
                 $projectId,
                 $vendorId,
                 $purchaseOrderId,
                 $paymentType,
                 $invoiceAmt,
                 $penaltyAmt,
-                $netPayable,   // net_payable_amount
-                $netPayable,   // net_payable (same value)
+                $netPayable,      // net_payable_amount
+                $netPayable,      // net_payable (same value)
                 $deliveryVerified,
+                $attachmentPath,
                 $createdBy
             );
             $stmt->execute();

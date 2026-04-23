@@ -47,15 +47,14 @@ $months     = ['January','February','March','April','May','June','July','August'
 
                         <!-- Budget Info (auto-filled) -->
                         <div id="budgetInfoCard" class="alert alert-info d-none mb-3">
-                            <i class="bi bi-piggy-bank me-1"></i>
-                            <strong>Linked Budget:</strong>
+                            <strong>Total Initial Budget:</strong>
                             <span id="budgetInfoText">—</span>
                         </div>
 
                         <!-- Design Type (auto-filled) -->
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Design Type</label>
-                            <input type="text" id="design_type_display" class="form-control bg-light" readonly
+                            <input type="text" id="design_type_display" class="form-control " readonly
                                    placeholder="Auto-filled on plan selection">
                         </div>
 
@@ -101,6 +100,39 @@ $months     = ['January','February','March','April','May','June','July','August'
                             <input type="number" name="target_percentage" class="form-control"
                                    step="0.01" min="0" max="100" required placeholder="e.g. 25.00">
                             <div class="form-text">এই মাস/সপ্তাহে কতটুকু কাজ শেষ করতে হবে (%)</div>
+                        </div>
+
+                        <!-- Lab Test Section -->
+                        <div class="card  border mb-3 p-3">
+                            <div class="fw-semibold mb-2">
+                                <i class="bi bi-flask me-1 text-info"></i> Lab Test Required?
+                            </div>
+                            <div class="d-flex gap-4 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="is_lab_test"
+                                           id="labTestNo" value="0" checked>
+                                    <label class="form-check-label" for="labTestNo">No</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="is_lab_test"
+                                           id="labTestYes" value="1">
+                                    <label class="form-check-label" for="labTestYes">Yes</label>
+                                </div>
+                            </div>
+                            <div id="labDateWrapper" style="display:none;">
+                                <label class="form-label fw-semibold">Lab Test Date <span class="text-danger">*</span></label>
+                                <input type="date" name="lab_test_date" id="lab_test_date"
+                                       class="form-control" style="max-width:260px;">
+                            </div>
+                        </div>
+
+                        <!-- Target Details / Description -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-card-text me-1"></i> Target Details / Description
+                            </label>
+                            <textarea name="target_details" class="form-control" rows="3"
+                                      placeholder="এই target সম্পর্কে বিস্তারিত লিখুন..."></textarea>
                         </div>
 
                         <div class="d-flex gap-2">
@@ -180,5 +212,21 @@ document.getElementById('work_plan_id').addEventListener('change', function () {
     } else {
         budgetCard.classList.add('d-none');
     }
+});
+
+// Lab Test toggle
+document.querySelectorAll('input[name="is_lab_test"]').forEach(function(radio) {
+    radio.addEventListener('change', function () {
+        const wrapper = document.getElementById('labDateWrapper');
+        const dateInput = document.getElementById('lab_test_date');
+        if (this.value === '1') {
+            wrapper.style.display = 'block';
+            dateInput.required = true;
+        } else {
+            wrapper.style.display = 'none';
+            dateInput.required = false;
+            dateInput.value = '';
+        }
+    });
 });
 </script>

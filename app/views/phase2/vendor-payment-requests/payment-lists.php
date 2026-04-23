@@ -37,10 +37,13 @@ $page_title = $page_title ?? 'Vendor Payment Requests';
                             <th>Vendor</th>
                             <th class="text-end">Invoice (৳)</th>
                             <th class="text-end">Net Payable</th>
+                            <th class="text-end">Paid (৳)</th>
+                            <th class="text-end">Due (৳)</th>
                             <th>Status</th>
                             <th>Created By</th>
                             <th>Approved By</th>
                             <th>Payment By</th>
+                            <th class="text-center">Attachment</th>
                             <th class="text-center">Action</th>
                         </tr>
                     </thead>
@@ -70,7 +73,26 @@ $page_title = $page_title ?? 'Vendor Payment Requests';
                                     <td><?= htmlspecialchars($req['project_name'] ?? '—') ?></td>
                                     <td><span class="badge bg-secondary"><?= htmlspecialchars($req['vendor_name'] ?? '—') ?></span></td>
                                     <td class="text-end"><?= number_format((float)($req['invoice_amount'] ?? 0), 2) ?></td>
-                                    <td class="text-end fw-bold text-success"><?= number_format((float)($req['net_payable'] ?? 0), 2) ?></td>
+                                    <td class="text-end fw-bold"><?= number_format((float)($req['net_payable'] ?? 0), 2) ?></td>
+                                    <?php
+                                        $alreadyPaid = (float)($req['already_paid'] ?? 0);
+                                        $netPay      = (float)($req['net_payable'] ?? 0);
+                                        $dueAmt      = $req['due_amount'] !== null
+                                                        ? (float)$req['due_amount']
+                                                        : max(0, $netPay - $alreadyPaid);
+                                    ?>
+                                    <td class="text-end fw-semibold <?= $alreadyPaid > 0 ? 'text-info' : 'text-muted' ?>">
+                                        <?= $alreadyPaid > 0 ? '৳ ' . number_format($alreadyPaid, 2) : '—' ?>
+                                    </td>
+                                    <td class="text-end fw-bold <?= $dueAmt > 0 ? 'text-danger' : ($alreadyPaid > 0 ? 'text-success' : 'text-muted') ?>">
+                                        <?php if ($alreadyPaid <= 0): ?>
+                                            —
+                                        <?php elseif ($dueAmt <= 0): ?>
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                        <?php else: ?>
+                                            ৳ <?= number_format($dueAmt, 2) ?>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><span class="badge bg-<?= $badge ?>"><?= $statusLabel ?></span></td>
                                     <td><small><?= htmlspecialchars($req['created_by_name'] ?? '') ?></small></td>
                                     <td>
@@ -88,6 +110,16 @@ $page_title = $page_title ?? 'Vendor Payment Requests';
                                         <?php endif; ?>
                                     </td>
                                     <td class="text-center">
+                                        <?php if (!empty($req['payment_attachment'])): ?>
+                                            <a href="<?= $base_url ?>/<?= htmlspecialchars($req['payment_attachment']) ?>" target="_blank"
+                                               class="btn btn-sm btn-outline-secondary" title="View Attachment">
+                                                <i class="bi bi-paperclip"></i>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center">
                                         <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $req['id'] ?>" class="btn btn-sm btn-outline-primary" title="View Details">
                                             <i class="bi bi-eye"></i>
                                         </a>
@@ -95,7 +127,7 @@ $page_title = $page_title ?? 'Vendor Payment Requests';
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="12" class="text-center text-muted py-4">No vendor payment requests found. <a href="<?= $base_url ?>/con-vendor-payment-create">Create one</a></td></tr>
+                            <tr><td colspan="13" class="text-center text-muted py-4">No vendor payment requests found. <a href="<?= $base_url ?>/con-vendor-payment-create">Create one</a></td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
