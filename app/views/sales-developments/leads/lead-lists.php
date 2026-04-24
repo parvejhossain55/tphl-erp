@@ -237,7 +237,7 @@ $show_breadcrumb = true;
         <div class="col-xxl-12">
             <div class="card__wrapper">
                 <div class="table__wrapper table-responsive">
-                    <table class="table no-border-table mb-20 multiple_tables">
+                    <table id="serverSideLeadTable" class="table no-border-table mb-20">
                         <thead>
                             <tr class="table__title table__sort">
                                 <th style="min-width:60px;">
@@ -255,215 +255,8 @@ $show_breadcrumb = true;
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($leads as $key => $lead): ?>
-                                <tr data-id="<?= $lead['id'] ?>">
-                                    <td>
-                                        <input type="checkbox" class="me-2 selectedId" data-id="<?= $lead['id'] ?>">
-                                        <?= $key + 1 ?>
-                                    </td>
-                                    <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
-                                    <td><strong><?= $lead['full_name'] ?? '' ?></strong></td>
-                                    <td>
-                                        <?php
-                                        $phone = $lead['phone_number'] ?? $lead['phone'];
-                                        $phone = preg_replace('/[^0-9]/', '', $phone); // clean number
-                                        ?>
-
-                                        <a href="https://wa.me/<?= $phone ?>" target="_blank">
-                                            <?= $phone ?>
-                                        </a>
-                                    </td>
-                                    <?php
-                                    $displayName = !empty($lead['campaign_name'])
-                                        ? $lead['campaign_name']
-                                        : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
-
-                                    $plainText = strip_tags($displayName);
-                                    ?>
-
-
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                            <span class="project-badge mb-0">
-                                                <i class="bi bi-building"></i>
-                                                <?= truncateText($displayName, 15) ?>
-                                            </span>
-
-                                            <?php if (mb_strlen($plainText) > 15): ?>
-                                                <button type="button"
-                                                    id="viewCampaignBtn<?= $lead['id'] ?>"
-                                                    class="btn btn-sm btn-outline-primary flex-shrink-0"
-                                                    data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#viewProjectCampaignName">
-                                                    View
-
-
-
-                                                </button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-
-                                    <!-- last_action_form  -->
-                                    <!-- New Last Action Update Button -->
-                                    <td>
-
-                                        <form method="POST"
-                                            action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>"
-                                            class="m-0 p-0">
-
-                                            <select name="last_lead_action"
-                                                class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
-                                                onchange="this.form.submit()">
-
-                                                <option value=""> Update action </option>
-                                                <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>
-                                                    New
-                                                </option>
-
-                                                <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>
-                                                    Booked
-                                                </option>
-
-                                                <option value="follow up"
-                                                    <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>
-                                                    class="<?= $lead['last_lead_action'] == 'follow up' ? 'action-follow_up' : '' ?>">
-                                                    Follow Up
-                                                </option>
-
-
-                                                <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>
-                                                    Visited
-                                                </option>
-                                                <option value="cancel" <?= $lead['last_lead_action'] == 'cancel' ? 'selected' : '' ?>>
-                                                    Cancel
-                                                </option>
-
-                                            </select>
-
-                                        </form>
-                                    </td>
-                                    <!-- last_action_form  -->
-                                    <td>
-                                        <div>
-                                            <?= !empty($lead['next_follow_up_date']) && $lead['next_follow_up_date'] !== '0000-00-00'
-                                                ? formatDate($lead['next_follow_up_date'])
-                                                : 'No Schedule' ?>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                            <span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">
-                                                <?= $lead['agent_name'] ?? 'No Agent Assigned' ?>
-                                            </span>
-
-                                            <?php
-                                            $note      = $lead['call_note'] ?? 'No note';
-                                            $words     = explode(' ', trim($note));
-                                            $isLong    = count($words) > 10;
-                                            $shortNote = $isLong ? implode(' ', array_slice($words, 0, 10)) . '...' : $note;
-                                            ?>
-
-                                            <span class="bd-badge bg-success"
-                                                style="">
-
-                                                <?php if (!empty($lead['call_note'])): ?>
-                                                    <button type="button"
-                                                        class="btn btn-sm  p-0 px-1 note-view-btn"
-                                                        style="font-size:11px; vertical-align:baseline; color:#fff;"
-                                                        data-note="<?= htmlspecialchars($lead['call_note'], ENT_QUOTES, 'UTF-8') ?>"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#viewNoteModal">
-                                                        View Note
-                                                    </button>
-                                                <?php else: ?>
-                                                    No Note
-                                                <?php endif; ?>
-
-                                            </span>
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <?php if (
-                                            isset($_SESSION['user']['role_id']) &&
-                                            in_array($_SESSION['user']['role_id'], [1, 3, 5, 9])
-                                        ): ?>
-                                            <div class="d-flex align-items-center gap-1">
-
-                                                <!-- Follow Up -->
-                                                <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
-                                                    class="btn btn-primary btn-sm position-relative"
-                                                    style="white-space:nowrap;">
-                                                    Follow Up
-                                                    <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                                        <span class="action-badge" style="">
-                                                            <?= $followUpCounts[$lead['id']] ?>
-                                                        </span>
-                                                    <?php endif; ?>
-                                                </a>
-
-                                                <!-- Booking -->
-                                                <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
-                                                    class="btn btn-secondary btn-sm position-relative"
-                                                    style="white-space:nowrap;">
-                                                    <?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?>
-                                                    <span class="action-badge" style="">
-                                                        <?= $bookingCount[$lead['id']] ?? 0 ?>
-                                                    </span>
-                                                </a>
-
-                                                <!-- 3 Dot Dropdown -->
-                                                <div class="dropdown">
-                                                    <button class="action-dot-btn btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
-                                                        <i class="bi bi-three-dots-vertical"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
-                                                        <li>
-                                                            <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>">
-                                                                <i class="bi bi-pencil-square me-2 text-primary"></i> Edit
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>">
-                                                                <i class="bi bi-eye me-2 text-success"></i> View
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <button class="dropdown__item text-danger removeBtnCust"
-                                                                data-name="<?= $lead['full_name'] ?>"
-                                                                data-action="lead-delete"
-                                                                data-id="<?= $lead['id'] ?>">
-                                                                <i class="bi bi-trash me-2"></i> Delete
-                                                            </button>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-
-                                            </div>
-                                        <?php else: ?>
-                                            <div class="d-flex align-items-center gap-1 flex-nowrap">
-
-                                                <!-- Follow Up (Disabled) -->
-                                                <button class="btn btn-success btn-sm position-relative" disabled>
-                                                    Follow Up
-                                                    <span class="action-badge"><?= $followUpCounts[$lead['id']] ?? 0 ?></span>
-                                                </button>
-
-                                                <!-- Booking (Disabled) -->
-                                                <button class="btn btn-secondary btn-sm position-relative" disabled>
-                                                    <?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?>
-                                                    <span class="action-badge"><?= $bookingCount[$lead['id']] ?? 0 ?></span>
-                                                </button>
-
-                                            </div>
-                                        <?php endif; ?>
-                                    </td>
-
-
-                                </tr>
-                            <?php endforeach; ?>
+                            <!-- Data will be loaded via AJAX DataTables -->
+                        </tbody>
 
                         </tbody>
                     </table>
@@ -1095,5 +888,63 @@ $show_breadcrumb = true;
             e.preventDefault(); // ensures no form submit
             // Bootstrap modal opens automatically via data-bs-toggle="modal"
         });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if ($('#serverSideLeadTable').length > 0) {
+            // Build the AJAX URL with all the query parameters for filtering
+            const urlParams = new URLSearchParams(window.location.search);
+            const ajaxUrl = base_url + '/leads-ajax-data?' + urlParams.toString();
+
+            const dtTable = $('#serverSideLeadTable').DataTable({
+                serverSide: true,
+                processing: true,
+                ajax: {
+                    url: ajaxUrl,
+                    type: 'POST'
+                },
+                lengthMenu: [
+                    [10, 25, 50, 100],
+                    [10, 25, 50, 100]
+                ],
+                order: [], // Let backend handle default sorting
+                columnDefs: [
+                    { targets: 0, orderable: false }, // SL/Checkbox
+                    { targets: 8, orderable: false }  // Action
+                ],
+                drawCallback: function(settings) {
+                    // Re-bind events for dynamically loaded content
+                    
+                    // 1. Note View Buttons
+                    $('.note-view-btn').off('click').on('click', function() {
+                        document.getElementById('view_note_text').value = this.getAttribute('data-note');
+                    });
+                    
+                    // 2. View Campaign Buttons
+                    $('.viewCampaignBtnDynamic').off('click').on('click', function() {
+                        document.getElementById('view_campaign_id').value = this.getAttribute('data-description');
+                    });
+                }
+            });
+            
+            // Handle Select All checkbox logic specifically for serverSide
+            $('#selectAllLeads').off('change').on('change', function() {
+                const isChecked = this.checked;
+                $('#serverSideLeadTable tbody .selectedId').each(function() {
+                    this.checked = isChecked;
+                    const id = this.dataset.id;
+                    if (isChecked) {
+                        selectedLeadsSet.add(id);
+                    } else {
+                        selectedLeadsSet.delete(id);
+                    }
+                    // Sync mobile if needed
+                    const mobileCb = document.querySelector('.selectedIdMobile[data-id="' + id + '"]');
+                    if (mobileCb) mobileCb.checked = isChecked;
+                });
+                if(typeof updateAssignUIData === 'function') updateAssignUIData();
+            });
+        }
     });
 </script>

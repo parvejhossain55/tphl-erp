@@ -107,7 +107,7 @@ class Lead extends Model
     }
 
 
-    public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null)
+    public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null)
     {
         $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l WHERE l.deleted_at IS NULL";
 
@@ -164,6 +164,16 @@ class Lead extends Model
             $types .= "i";
         }
 
+        // Search Filter
+        if (!empty($search)) {
+            $sql .= " AND (l.full_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ?)";
+            $searchParam = "%{$search}%";
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $types .= "sss";
+        }
+
         $stmt = $this->db->prepare($sql);
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
@@ -178,7 +188,7 @@ class Lead extends Model
         return $row ? (int)$row['total_count'] : 0;
     }
 
-    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null)
+    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null, $search = null)
     {
         $sql = "SELECT 
         l.*,
@@ -273,6 +283,16 @@ class Lead extends Model
     $params[] = $assigned_user;
     $types .= "i";
 }
+
+        // Search Filter
+        if (!empty($search)) {
+            $sql .= " AND (l.full_name LIKE ? OR l.phone LIKE ? OR l.phone_number LIKE ?)";
+            $searchParam = "%{$search}%";
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $types .= "sss";
+        }
 
 
 
