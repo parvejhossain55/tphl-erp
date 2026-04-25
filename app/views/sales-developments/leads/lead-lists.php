@@ -234,7 +234,7 @@ $show_breadcrumb = true;
         <p>Lead Lists</p>
 
         <!-- Table -->
-        <div class="col-xxl-12">
+        <div class="col-xxl-12 desktop-only">
             <div class="card__wrapper">
                 <div class="table__wrapper table-responsive">
                     <table id="serverSideLeadTable" class="table no-border-table mb-20">
@@ -883,11 +883,13 @@ $show_breadcrumb = true;
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Prevent page reload when Import CSV clicked
+        // ✅ Fixed: null check - button may not exist for all user roles
         const importBtn = document.getElementById('importCsvBtn');
-        importBtn.addEventListener('click', function(e) {
-            e.preventDefault(); // ensures no form submit
-            // Bootstrap modal opens automatically via data-bs-toggle="modal"
-        });
+        if (importBtn) {
+            importBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+            });
+        }
     });
 </script>
 <script>
