@@ -8,6 +8,9 @@ use Con_FinancialTransaction;
 use ApprovalRequest;
 use Con_Contractor;
 use Con_TargetFixed;
+use AccountMailService;
+
+require_once __DIR__ . '/../../views/accounts/AccountMailService.php';
 
 class Con_ContractorBillController extends Controller
 {
@@ -17,6 +20,7 @@ class Con_ContractorBillController extends Controller
     protected $approvalModel;
     protected $txnModel;
     protected $targetModel;
+    protected $mailService;
     protected $userRole;
     protected $userId;
 
@@ -28,6 +32,7 @@ class Con_ContractorBillController extends Controller
         $this->approvalModel = new ApprovalRequest($this->db);
         $this->txnModel      = new Con_FinancialTransaction($this->db);
         $this->targetModel   = new Con_TargetFixed($this->db);
+        $this->mailService   = new AccountMailService($this->db);
 
         if (session_status() === PHP_SESSION_NONE) session_start();
         $this->userId   = $_SESSION['user']['id'] ?? null;
@@ -143,6 +148,20 @@ class Con_ContractorBillController extends Controller
                 'request_amount'=> $data['bill_amount'],
             ]);
 
+            // Send email notification to Management + Accounts
+            try {
+                $this->mailService->sendContractorBillOnSubmission([
+                    'bill_amount'      => $data['bill_amount'],
+                    'contractor_name'  => $operator['name'] ?? '',
+                    'work_description' => $data['work_description'],
+                    'project_name'     => $project['name'] ?? '',
+                    'project_id'       => $data['project_id'],
+                    'created_by'       => $this->userId,
+                ]);
+            } catch (\Exception $e) {
+                error_log("Contractor Bill email (submission) failed: " . $e->getMessage());
+            }
+
             setSuccess('Contractor bill submitted and sent for approval!');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$billId}");
             exit;
@@ -248,6 +267,27 @@ class Con_ContractorBillController extends Controller
 
         if ($this->billModel->approve($id, $this->userId, $approvedAmount)) {
             $this->syncApprovalRequest($id, 'approved');
+
+            // Send email notification on approval
+            try {
+                $updatedBill = $this->billModel->find($id);
+                if ($updatedBill) {
+                    // Fetch contractor and project names for the email
+                    $operator = $this->operatorModel->find($bill['operator_id'] ?? 0);
+                    $project  = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($bill['project_id'] ?? 0))->fetch_assoc();
+                    $updatedBill['contractor_name'] = $operator['name'] ?? '';
+                    $updatedBill['project_name']    = $project['name'] ?? '';
+
+                    $this->mailService->sendContractorBillOnApproval(
+                        $updatedBill,
+                        'approved',
+                        $this->userId
+                    );
+                }
+            } catch (\Exception $e) {
+                error_log("Contractor Bill email (approval) failed: " . $e->getMessage());
+            }
+
             setSuccess('Bill approved with amount ৳' . number_format($approvedAmount, 2));
         } else {
             setError('Failed to approve or bill already processed.');

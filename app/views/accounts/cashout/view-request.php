@@ -49,8 +49,8 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
         <div class="card__wrapper">
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title">Cashout Request #<?= $request['id'] ?? '' ?></h5>
-                <a href="<?= $GLOBALS['base_url'] ?>/cashout-requests" class="btn btn-secondary">
-                    <i class="fa-light fa-arrow-left me-2"></i> Back to List
+                <a href="<?= $GLOBALS['base_url'] ?><?= isset($_GET['redirect']) && $_GET['redirect'] === 'client-refunds' ? '/client-refunds' : '/cashout-requests' ?>" class="btn btn-secondary">
+                    <i class="fa-light fa-arrow-left me-2"></i> Back
                 </a>
             </div>
             <div class="card__body">
@@ -573,7 +573,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                     <h5 class="modal-title"><i class="fa-light fa-plus-circle me-2"></i>Add Payment</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form action="<?= $GLOBALS['base_url'] ?>/add-cashout-payment" method="POST" enctype="multipart/form-data">
+                <form action="<?= $GLOBALS['base_url'] ?>/add-cashout-payment<?= isset($_GET['redirect']) ? '?redirect=' . urlencode($_GET['redirect']) : '' ?>" method="POST" enctype="multipart/form-data">
                     <div class="modal-body">
                         <input type="hidden" name="request_id" value="<?= $request['id'] ?>">
 

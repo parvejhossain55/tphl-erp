@@ -378,13 +378,45 @@ $show_breadcrumb = true;
                 <h5 class="card__title">Transaction History</h5>
             </div>
             <div class="col-xxl-12 mb-4">
+                    <?php
+                        $db = $accountModel->getDb();
+                        $stmt = $db->prepare("SELECT id FROM client_refund_requests WHERE booking_id = ? AND status != 'rejected'");
+                        $bId = $clientDetails['booking_id'];
+                        $stmt->bind_param('i', $bId);
+                        $stmt->execute();
+                        $hasRefund = $stmt->get_result()->num_rows > 0;
+                    ?>
+                    <?php if ($hasRefund): ?>
+                    <div class="mt-2 alert alert-warning d-flex align-items-center mb-3 border-warning" style="background-color: #fff3cd; color: #856404;" role="alert">
+                        <!-- <i class="fa-solid fa-circle-exclamation me-2 fs-5"></i> -->
+                        <div>
+                            <strong>Refund in Progress:</strong> A refund has been initiated for this booking. As a result, the system is no longer accepting new cash-in transactions.
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                 <div class="mt-3 d-flex gap-2 position ">
-                    <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
-                        <i class="fa-light fa-plus me-2"></i> Add Transaction
-                    </a>
+                    <?php if ($hasRefund): ?>
+                        <button class="btn btn-secondary mb-3" disabled title="A refund has been requested for this booking">
+                            <i class="fa-light fa-plus me-2"></i> Add Transaction
+                        </button>
+                    <?php else: ?>
+                        <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
+                            <i class="fa-light fa-plus me-2"></i> Add Transaction
+                        </a>
+                    <?php endif; ?>
                     <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
+                    <?php
+                        $canRefund = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6]);
+                        $bookingIsActive = in_array($clientDetails['booking_status'] ?? '', ['booked', 'completed']);
+                    ?>
+                    <?php if ($canRefund && $bookingIsActive && !$hasRefund): ?>
+                    <button type="button" class="btn btn-danger mb-3" data-bs-toggle="modal" data-bs-target="#refundRequestModal">
+                        <i class="fa-light fa-rotate-left me-2"></i> Refund
+                    </button>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Payment Type Filter -->
@@ -725,6 +757,42 @@ $show_breadcrumb = true;
             <div class="modal-footer" style="border-top: 1px solid #f0f0f0;">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== REFUND REQUEST MODAL ===== -->
+<div class="modal fade" id="refundRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="<?= $GLOBALS['base_url'] ?>/client-refund-store" method="POST" enctype="multipart/form-data">
+                <div class="modal-header" style="background: linear-gradient(135deg, #dc2626, #b91c1c); color:#fff; border:0;">
+                    <h5 class="modal-title">
+                        <i class="fa-light fa-rotate-left me-2"></i>Request Refund
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="booking_id" value="<?= $clientDetails['booking_id'] ?>">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Refund Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="1" name="refund_amount" class="form-control" required placeholder="Enter refund amount">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
+                        <textarea name="reason" class="form-control" rows="3" required placeholder="Provide reason for refund..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Upload Document <span class="text-muted">(Optional)</span></label>
+                        <input type="file" name="document" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                        <small class="text-muted">Allowed types: jpg, png, pdf, doc, docx. Max size: 5MB.</small>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #f0f0f0;">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm">Submit Request</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
