@@ -86,9 +86,9 @@ $routes = [
     "today-leads" => ["controller" => "UserDashboardController", "method" => "todayLead"],
     "update-call-status" => ["controller" => "UserDashboardController", "method" => "updateCallStatus"],
     "update-communication-type" => ["controller" => "UserDashboardController", "method" => "updateCommunicationStatus"],
-    "update-lead-quality" => [
+    "update-lead-status" => [
         "controller" => "UserDashboardController",
-        "method" => "updateLeadQuality"
+        "method" => "updateLeadStatus"
     ],
     "update-call-notes" => ["controller" => "UserDashboardController", "method" => "updateCallNote"],
     "today-follow-up" => ["controller" => "UserDashboardController", "method" => "todayFollowUp"],

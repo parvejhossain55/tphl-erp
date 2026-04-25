@@ -16,446 +16,512 @@
                <div class="col-xxl-12">
                    <div class="card__wrapper">
                        <div class="table__wrapper table-responsive">
-                           <table class="table mb-20 ">
+                           <table class="table no-border-table mb-20 multiple_tables">
                                <thead>
                                    <tr class="table__title table__sort">
-
-
                                        <th style="min-width:60px;">S/L</th>
-                                       <th class="th_1">Client/Lead Name</th>
-
-                                       <!-- <th>Source Type</th> -->
-
-                                       <th>Project name</th>
-                                       <th>phone_number</th>
-                                       <th>Follow Up</th>
-                                       <th class="d-none">Booking</th>
-                                       <th class="d-none">job title</th>
-                                       <th class="d-none">Interested Apartment Size</th>
-                                       <th class="d-none">Interset Floor for Shop</th>
-                                       <th>Best Time to Contact</th>
-                                       <th class="text-center">Call Type</th>
-                                       <th class="text-center">Communicate Type</th>
-                                       <th class="text-center">Lead Quality</th>
-                                       <th class="text-center">Communicate Type</th>
-                                       <th class="text-center">Note</th>
-                                       <th class="text-center">Show</th>
+                                       <th style="min-width: 120px;">Lead Date</th>
+                                       <th style="min-width: 160px;">Lead Name</th>
+                                       <th style="min-width: 180px;">Project Campaign</th>
+                                       <th style="min-width: 200px;">Last Follow Up Project</th>
+                                       <th style="min-width: 160px;">Change Client Action</th>
+                                       <th style="min-width: 160px;" class="text-center">Call Status</th>
+                                       <th style="min-width: 160px;" class="text-center">Communication Type</th>
+                                       <th style="min-width: 160px;" class="text-center">Lead Status</th>
+                                       <th style="min-width: 130px;" class="text-center">Follow Up Status</th>
+                                       <th style="min-width: 250px;" class="text-center">Communicate Note</th>
+                                       <th style="min-width: 140px;">Next Follow-Up</th>
+                                       <th style="min-width: 180px;">Action</th>
                                    </tr>
                                </thead>
                                <tbody class="table__body">
                                    <?php foreach ($todayLeads as $key => $lead): ?>
-                                       <tr>
+                                       <?php
+                                        $displayName = !empty($lead['campaign_name'])
+                                            ? $lead['campaign_name']
+                                            : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
+                                        $plainText = strip_tags($displayName);
+                                        ?>
+                                       <tr data-id="<?= $lead['id'] ?>">
                                            <!-- S/L -->
                                            <td><?= $key + 1 ?></td>
 
-                                           <!-- Client / Lead Name -->
-                                           <td><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></td>
+                                           <!-- Lead Date -->
+                                           <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
 
-                                           <?php
-                                            $displayName = !empty($lead['campaign_name'])
-                                                ? $lead['campaign_name']
-                                                : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
+                                           <!-- Lead Name + WhatsApp -->
+                                           <td><strong><?= $lead['full_name'] ?? '' ?></strong>
+                                               <?php
+                                                $phone = $lead['phone_number'] ?? $lead['phone'] ?? '';
+                                                $phone = preg_replace('/[^0-9]/', '', $phone);
+                                                if (substr($phone, 0, 2) === '01') {
+                                                    $phone = '880' . substr($phone, 1);
+                                                }
+                                                ?>
+                                               <a href="https://wa.me/<?= $phone ?>" target="_blank"><?= $phone ?></a>
+                                           </td>
 
-                                            $plainText = strip_tags($displayName);
-                                            ?>
-
-
+                                           <!-- Project Campaign -->
                                            <td>
                                                <div class="d-flex align-items-center gap-2 flex-nowrap">
                                                    <span class="project-badge mb-0">
                                                        <i class="bi bi-building"></i>
                                                        <?= truncateText($displayName, 15) ?>
                                                    </span>
-
                                                    <?php if (mb_strlen($plainText) > 15): ?>
                                                        <button type="button"
                                                            id="viewCampaignBtn<?= $lead['id'] ?>"
                                                            class="btn btn-sm btn-outline-primary flex-shrink-0"
                                                            data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
                                                            data-bs-toggle="modal"
-                                                           data-bs-target="#viewProjectCampaignName">
-                                                           View
-
-
-
+                                                           data-bs-target="#viewProjectCampaignName">View
                                                        </button>
                                                    <?php endif; ?>
                                                </div>
                                            </td>
 
-                                           <!-- Phone -->
+                                           <!-- Last Follow-Up Project -->
                                            <td>
-                                               <?php if (!empty($lead['phone_number'])):
-                                                    $phone = preg_replace('/[^0-9+]/', '', $lead['phone_number']);
-                                                ?>
-                                                   <a href="tel:<?= $phone ?>" class="text-decoration-none">
-                                                       <?= htmlspecialchars($phone) ?>
-                                                   </a>
+                                               <?php if (!empty($lead['project_name'])): ?>
+                                                   <div class="bd-badge-custom">
+                                                       <div class="fw-bold"><?= htmlspecialchars($lead['project_name']) ?></div>
+                                                       <div class="mt-1 small" style="opacity:0.9;border-top:1px solid rgba(255,255,255,0.2);padding-top:2px;">
+                                                           <strong>Flat:</strong> <?= !empty($lead['flat_name']) ? htmlspecialchars($lead['flat_name']) : 'N/A' ?>
+                                                       </div>
+                                                   </div>
                                                <?php else: ?>
-                                                   N/A
+                                                   <div class="bd-badge-custom bd-badge-secondary-custom">No Follow Data</div>
                                                <?php endif; ?>
                                            </td>
 
-                                           <!-- Job Title -->
-                                           <td class="d-none"><?= htmlspecialchars($lead['job_title'] ?? 'N/A') ?></td>
-
-                                           <!-- Apartment Size -->
-                                           <td class="d-none">
-                                               <?= htmlspecialchars($lead['which_apartment_size_are_you_interested_in'] ?? $lead['pref_flat_size'] ?? 'N/A') ?>
-                                           </td>
-
-                                           <!-- Floor -->
-                                           <td class="d-none">
-                                               <?= htmlspecialchars($lead['which_floor_are_you_for_shop'] ?? 'N/A') ?>
-                                           </td>
-
+                                           <!-- Change Client Action -->
                                            <td>
-                                               <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
-                                                   class="btn btn-primary">
-
-                                                   <span>Follow Up</span>
-                                                   <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                                       <span class="action-badge">
-                                                           <?= $followUpCounts[$lead['id']] ?>
-                                                       </span>
-                                                   <?php endif; ?>
-                                               </a>
-
+                                               <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>" class="m-0 p-0">
+                                                   <select name="last_lead_action"
+                                                       class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
+                                                       onchange="this.form.submit()">
+                                                       <option value="">Update action</option>
+                                                       <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>New</option>
+                                                       <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>Booked</option>
+                                                       <option value="follow up" <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
+                                                       <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>Visited</option>
+                                                       <option value="cancel" <?= $lead['last_lead_action'] == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                                                   </select>
+                                               </form>
                                            </td>
-                                           <td class="d-none">
-                                               <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
-                                                   class="btn btn-secondary d-flex align-items-center gap-2 justify-content-between">
-                                                   <?php if (!empty($bookingCount[$lead['id']])): ?>
-                                                       <span>Booked </span>
-                                                       <span class="followup-badge">
-                                                           <?= $bookingCount[$lead['id']] ?>
-                                                       </span>
-                                                   <?php else: ?>
-                                                       <span>Booking </span>
-                                                   <?php endif ?>
-                                               </a>
+
+                                           <!-- Call Status -->
+                                           <?php
+                                            $callStatus = $lead['call_status'] ?? 'not_called';
+                                            $callClass = $callStatus == 'received' ? 'bg-received' : ($callStatus == 'not_received' ? 'bg-not-received' : '');
+                                            ?>
+                                           <td class="call-status-cell">
+                                               <select class="call-status <?= $callClass ?>" data-id="<?= $lead['id'] ?>">
+                                                   <option value="not_called" <?= $callStatus == 'not_called' ? 'selected' : '' ?>>Not Called</option>
+                                                   <option value="called" <?= $callStatus == 'called'     ? 'selected' : '' ?>>Called</option>
+                                                   <option value="received" <?= $callStatus == 'received'   ? 'selected' : '' ?>>Received</option>
+                                                   <option value="not_received" <?= $callStatus == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+                                               </select>
                                            </td>
-                                           <!-- Best Time to Contact -->
+
+                                           <!-- Communication Type -->
+                                           <?php
+                                            $commType = $lead['communication_type'] ?? 'Not Select';
+                                            $commClass = $commType == 'WA Messaging' ? 'bg-received' : ($commType == 'WA Conversion' ? 'bg-not-received' : '');
+                                            ?>
+                                           <td class="call-status-cell">
+                                               <select class="communication-status <?= $commClass ?> form-select form-control" data-id="<?= $lead['id'] ?>">
+                                                   <option value="">Select type</option>
+                                                   <option value="WA Messaging" <?= $commType == 'WA Messaging'  ? 'selected' : '' ?>>WA Messaging</option>
+                                                   <option value="WA Conversion" <?= $commType == 'WA Conversion' ? 'selected' : '' ?>>WA conversation</option>
+                                               </select>
+                                           </td>
+
+                                           <!-- Lead Status -->
+                                           <?php
+                                            $statusVal = $lead['lead_type'] ?? 'Pending';
+                                            $statusClass = '';
+                                            if (in_array($statusVal, ['Prospect', 'High Prospect'])) $statusClass = 'bg-received';
+                                            elseif (in_array($statusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) $statusClass = 'bg-not-received';
+                                            ?>
                                            <td>
-                                               <?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? 'N/A') ?>
+                                               <select class="lead-status <?= $statusClass ?> form-control select-form" data-id="<?= $lead['id'] ?>">
+                                                   <?php
+                                                    $statuses = ['No Response', 'Pending', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 'Project Transferred', 'Not Interested', "Don't Call Again", 'Refund', 'Future', 'Cold', 'Hot', 'Warm'];
+                                                    foreach ($statuses as $st) {
+                                                        echo "<option value=\"$st\"" . ($statusVal == $st ? ' selected' : '') . ">$st</option>";
+                                                    }
+                                                    ?>
+                                               </select>
+                                           </td>
+
+                                           <!-- Follow Up Status -->
+                                           <td class="text-center">
+                                               <?php
+                                                $fuStatus = $lead['last_follow_up_status'] ?? null;
+                                                $nextDate = $lead['next_follow_up_date'] ?? null;
+                                                $todayD   = date('Y-m-d');
+                                                if ($fuStatus === 'completed') {
+                                                    $fuBadgeClass = 'bg-success';
+                                                    $fuLabel = '&#x2714; Completed';
+                                                } elseif ($fuStatus === 'missed') {
+                                                    $fuBadgeClass = 'bg-danger';
+                                                    $fuLabel = '&#x2718; Missed';
+                                                } elseif ($fuStatus === 'canceled') {
+                                                    $fuBadgeClass = 'bg-secondary';
+                                                    $fuLabel = 'Canceled';
+                                                } elseif ($fuStatus === 'pending' && !empty($nextDate)) {
+                                                    if ($nextDate < $todayD) {
+                                                        $fuBadgeClass = 'bg-danger';
+                                                        $fuLabel = '&#x26A0; Overdue';
+                                                    } elseif ($nextDate === $todayD) {
+                                                        $fuBadgeClass = 'bg-warning text-dark';
+                                                        $fuLabel = 'Due Today';
+                                                    } else {
+                                                        $fuBadgeClass = 'bg-info text-dark';
+                                                        $fuLabel = 'Upcoming';
+                                                    }
+                                                } elseif ($fuStatus === 'pending') {
+                                                    $fuBadgeClass = 'bg-warning text-dark';
+                                                    $fuLabel = 'Pending';
+                                                } else {
+                                                    $fuBadgeClass = 'bg-light text-muted border';
+                                                    $fuLabel = 'No Follow Up';
+                                                }
+                                                ?>
+                                               <span class="badge <?= $fuBadgeClass ?>" style="font-size:11px;padding:5px 8px;white-space:nowrap;"><?= $fuLabel ?></span>
+                                           </td>
+
+                                           <!-- Communicate Note (last follow-up, readonly) -->
+                                           <td class="note-cell">
+                                               <div class="note-wrapper">
+                                                   <textarea class="call-note" data-id="<?= $lead['id'] ?>"
+                                                       placeholder="No follow-up note yet..."
+                                                       readonly
+                                                       style="background:#f8f9fa;cursor:default;"><?= htmlspecialchars($lead['last_follow_up_note'] ?? '') ?></textarea>
+                                               </div>
+                                           </td>
+
+                                           <!-- Next Follow-Up -->
+                                           <td>
+                                               <div class="next-followup-badge">
+                                                   <i class="bi bi-calendar-check me-1"></i>
+                                                   <?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?>
+                                               </div>
                                            </td>
 
                                            <!-- Action -->
-
-                                           <td class="call-status-cell">
-                                               <select
-                                                   class="call-status"
-                                                   data-id="<?= $lead['id'] ?>">
-                                                   <option value="not_called" <?= $lead['call_status'] == 'not_called' ? 'selected' : '' ?>>Not Called</option>
-                                                   <option value="called" <?= $lead['call_status'] == 'called' ? 'selected' : '' ?>>Called</option>
-                                                   <option value="received" <?= $lead['call_status'] == 'received' ? 'selected' : '' ?>>Received</option>
-                                                   <option value="not_received" <?= $lead['call_status'] == 'not_received' ? 'selected' : '' ?>>Not Received</option>
-                                               </select>
-                                           </td>
-                                           <?php
-                                            $status = $lead['communication_type'] ?? 'Not Select';
-
-                                            $statusClass = '';
-                                            if ($status == 'WA Messaging') {
-                                                $statusClass = 'bg-received';
-                                            } elseif ($status == 'WA Conversion') {
-                                                $statusClass = 'bg-not-received';
-                                            }
-                                            ?>
-                                           <td class="call-status-cell">
-                                               <select
-                                                   class="communication-status <?= $statusClass ?> form-select form-control"
-                                                   data-id="<?= $lead['id'] ?>">
-                                                   <option value="">Select type</option>
-                                                   <option value="WA Messaging" <?= $status == 'WA Messaging' ? 'selected' : '' ?>>WA Messaging</option>
-                                                   <option value="WA Conversion" <?= $status == 'WA Conversion' ? 'selected' : '' ?>>WA conversation</option>
-
-                                               </select>
-                                           </td>
-                                           <?php
-                                            $quality = $lead['lead_quality'] ?? 'Pending';
-
-                                            $class = '';
-                                            if ($quality == 'Prospect') {
-                                                $class = 'bg-received';
-                                            } elseif ($quality == 'Not Interested') {
-                                                $class = 'bg-not-received';
-                                            }
-                                            ?>
-
                                            <td>
-                                               <select
-                                                   class="lead-quality <?= $class ?> form-control select-form"
-                                                   data-id="<?= $lead['id'] ?>">
-                                                   <option value="Pending" <?= $quality == 'Pending' ? 'selected' : '' ?>>Pending</option>
-                                                   <option value="Prospect" <?= $quality == 'Prospect' ? 'selected' : '' ?>>Prospect</option>
-                                                   <option value="Not Interested" <?= $quality == 'Not Interested' ? 'selected' : '' ?>>Not Interested</option>
-                                               </select>
-                                           </td>
-
-                                           <td class="note-cell">
-                                               <div class="note-wrapper">
-                                                   <textarea
-                                                       class="call-note"
-                                                       data-id="<?= $lead['id'] ?>"
-                                                       placeholder="Click to add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
-                                                   <button type="button" class="btn btn-sm btn-success note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
+                                               <div class="d-flex align-items-center gap-1">
+                                                   <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>" class="btn btn-primary btn-sm d-flex align-items-center gap-1 justify-content-center" style="white-space:nowrap;">
+                                                       <span>Follow Up</span>
+                                                       <?php if (!empty($followUpCounts[$lead['id']])): ?>
+                                                           <span class="action-badge"><?= $followUpCounts[$lead['id']] ?></span>
+                                                       <?php endif; ?>
+                                                   </a>
+                                                   <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>" class="btn btn-secondary btn-sm d-flex align-items-center gap-1 justify-content-center" style="white-space:nowrap;">
+                                                       <span>Booking</span>
+                                                       <?php if (!empty($bookingCount[$lead['id']])): ?>
+                                                           <span class="badge bg-white text-dark" style="font-size:10px;"><?= $bookingCount[$lead['id']] ?></span>
+                                                       <?php endif; ?>
+                                                   </a>
+                                                   <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>" title="View Lead" style="white-space:nowrap;">
+                                                       <i class="fa-regular fa-eye"></i>
+                                                   </a>
                                                </div>
+
                                            </td>
-                                           <td>
-                                               <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>"
-                                                   title="View Transaction History"> <i class="fa-regular fa-eye"></i>
-                                               </a>
-                                           </td>
-
-
-
                                        </tr>
                                    <?php endforeach ?>
                                </tbody>
-
                            </table>
                        </div>
                    </div>
                </div>
            </div>
 
+           <div class="mobile-only">
+               <?php foreach ($todayLeads as $key => $lead): ?>
+                   <?php
+                    $displayName = !empty($lead['campaign_name'])
+                        ? $lead['campaign_name']
+                        : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
+                    $plainText = strip_tags($displayName);
 
-
-       </div>
-       <div class="mobile-only">
-           <?php foreach ($todayLeads as $key => $lead): ?>
-               <?php
-                $displayName = !empty($lead['campaign_name'])
-                    ? $lead['campaign_name']
-                    : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
-                $plainText = strip_tags($displayName);
-
-                // Clean phone for call link
-                $phone = !empty($lead['phone_number']) ? preg_replace('/[^0-9+]/', '', $lead['phone_number']) : '';
-                ?>
-               <div class="lead-card mb-3 p-2 border rounded" data-id="<?= $lead['id'] ?>">
-                   <!-- Header: Lead Name + Phone -->
-                   <div class="d-flex justify-content-between align-items-center">
-                       <div class="">
-                           <input type="checkbox" class="selectedIdMobile me-2 d-none" data-id="<?= $lead['id'] ?>">
-                           <span class="lead-name fw-bold"><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></span>
+                    // Clean phone for call link
+                    $phone = !empty($lead['phone_number']) ? preg_replace('/[^0-9+]/', '', $lead['phone_number']) : '';
+                    ?>
+                   <div class="lead-card mb-3 p-2 border rounded" data-id="<?= $lead['id'] ?>">
+                       <!-- Header: Lead Name + Phone -->
+                       <div class="d-flex justify-content-between align-items-center">
+                           <div class="">
+                               <input type="checkbox" class="selectedIdMobile me-2 d-none" data-id="<?= $lead['id'] ?>">
+                               <span class="lead-name fw-bold"><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></span>
+                           </div>
+                           <div>
+                               <?php if ($phone): ?>
+                                   <a href="tel:<?= $phone ?>" class="text-decoration-none fw-bold me-2"><?= htmlspecialchars($phone) ?></a>
+                                   <a href="https://wa.me/<?= $phone ?>" target="_blank" class="text-success">
+                                       <i class="bi bi-whatsapp"></i>
+                                   </a>
+                               <?php else: ?>
+                                   N/A
+                               <?php endif; ?>
+                           </div>
                        </div>
-                       <div>
-                           <?php if ($phone): ?>
-                               <a href="tel:<?= $phone ?>" class="text-decoration-none fw-bold me-2"><?= htmlspecialchars($phone) ?></a>
-                               <a href="https://wa.me/<?= $phone ?>" target="_blank" class="text-success">
-                                   <i class="bi bi-whatsapp"></i>
-                               </a>
-                           <?php else: ?>
-                               N/A
-                           <?php endif; ?>
+
+                       <!-- Status -->
+                       <div class="mt-2">
+                           <label class="d-block mb-1">Call Status</label>
+                           <select class="call-status w-100" data-id="<?= $lead['id'] ?>">
+                               <option value="not_called" <?= $lead['call_status'] == 'not_called' ? 'selected' : '' ?>>Not Called</option>
+                               <option value="called" <?= $lead['call_status'] == 'called' ? 'selected' : '' ?>>Called</option>
+                               <option value="received" <?= $lead['call_status'] == 'received' ? 'selected' : '' ?>>Received</option>
+                               <option value="not_received" <?= $lead['call_status'] == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+                           </select>
                        </div>
-                   </div>
 
-                   <!-- Status -->
-                   <div class="mt-2">
-                       <label class="d-block mb-1">Call Status</label>
-                       <select class="call-status w-100" data-id="<?= $lead['id'] ?>">
-                           <option value="not_called" <?= $lead['call_status'] == 'not_called' ? 'selected' : '' ?>>Not Called</option>
-                           <option value="called" <?= $lead['call_status'] == 'called' ? 'selected' : '' ?>>Called</option>
-                           <option value="received" <?= $lead['call_status'] == 'received' ? 'selected' : '' ?>>Received</option>
-                           <option value="not_received" <?= $lead['call_status'] == 'not_received' ? 'selected' : '' ?>>Not Received</option>
-                       </select>
-                   </div>
-
-                   <!-- Follow Up & Booking -->
-                   <div class="d-flex gap-2 flex-wrap mt-2">
-                       <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>" class="btn btn-primary btn-sm flex-grow-1 d-flex justify-content-between align-items-center">
-                           <span>Follow Up</span>
-                           <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                               <span class="badge bg-secondary"><?= $followUpCounts[$lead['id']] ?></span>
-                           <?php endif; ?>
-                       </a>
+                       <!-- Follow Up & Booking -->
+                       <div class="d-flex gap-2 flex-wrap mt-2">
+                           <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>" class="btn btn-primary btn-sm flex-grow-1 d-flex justify-content-between align-items-center">
+                               <span>Follow Up</span>
+                               <?php if (!empty($followUpCounts[$lead['id']])): ?>
+                                   <span class="badge bg-secondary"><?= $followUpCounts[$lead['id']] ?></span>
+                               <?php endif; ?>
+                           </a>
 
 
-                   </div>
+                       </div>
 
-                   <!-- Project Info -->
-                   <div class="project-detail mt-2">
-                       <div class="info-label flex-shrink-0">Project</div>
-                       <div class="d-flex align-items-center gap-2 mt-1">
-                           <span class="project-badge mb-0">
-                               <i class="bi bi-building"></i>
-                               <?= truncateText($displayName, 15) ?>
+                       <!-- Project Info -->
+                       <div class="project-detail mt-2">
+                           <div class="info-label flex-shrink-0">Project</div>
+                           <div class="d-flex align-items-center gap-2 mt-1">
+                               <span class="project-badge mb-0">
+                                   <i class="bi bi-building"></i>
+                                   <?= truncateText($displayName, 15) ?>
+                               </span>
+                               <?php if (mb_strlen($plainText) > 15): ?>
+                                   <button type="button"
+                                       id="viewCampaignBtn<?= $lead['id'] ?>"
+                                       class="btn btn-sm btn-outline-primary ms-3 w-auto px-1 py-0"
+                                       data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
+                                       data-bs-toggle="modal"
+                                       data-bs-target="#viewProjectCampaignName"
+                                       title="View Project">View
+                                   </button>
+                               <?php endif; ?>
+                           </div>
+                       </div>
+
+                       <!-- Next Follow-Up -->
+                       <div class="mt-2">
+                           <label class="d-block mb-1">Next Follow-Up</label>
+                           <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1">
+                               <i class="bi bi-calendar2-check me-1"></i>
+                               <?= !empty($lead['next_follow_up_date']) && $lead['next_follow_up_date'] !== '0000-00-00'
+                                    ? formatDate($lead['next_follow_up_date'])
+                                    : 'No Schedule' ?>
                            </span>
-                           <?php if (mb_strlen($plainText) > 15): ?>
-                               <button type="button"
-                                   id="viewCampaignBtn<?= $lead['id'] ?>"
-                                   class="btn btn-sm btn-outline-primary ms-3 w-auto px-1 py-0"
-                                   data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
-                                   data-bs-toggle="modal"
-                                   data-bs-target="#viewProjectCampaignName"
-                                   title="View Project">View
-                               </button>
-                           <?php endif; ?>
+                       </div>
+
+                       <!-- Lead Status -->
+                       <div class="mt-2">
+                           <label class="d-block mb-1">Lead Status</label>
+                           <?php $leadType = $lead['lead_type'] ?? '-'; ?>
+                           <span class="badge bg-secondary rounded-pill px-2 py-1" style="font-size:11px;">
+                               <?= htmlspecialchars($leadType) ?>
+                           </span>
+                       </div>
+
+                       <!-- Follow Up Status -->
+                       <div class="mt-2">
+                           <label class="d-block mb-1">Follow Up Status</label>
+                           <?php
+                            $fuStatus = $lead['last_follow_up_status'] ?? null;
+                            $nextDate = $lead['next_follow_up_date'] ?? null;
+                            $todayD   = date('Y-m-d');
+                            if ($fuStatus === 'completed') {
+                                $fuBadgeClass = 'bg-success';
+                                $fuLabel = '&#x2714; Completed';
+                            } elseif ($fuStatus === 'missed') {
+                                $fuBadgeClass = 'bg-danger';
+                                $fuLabel = '&#x2718; Missed';
+                            } elseif ($fuStatus === 'canceled') {
+                                $fuBadgeClass = 'bg-secondary';
+                                $fuLabel = 'Canceled';
+                            } elseif ($fuStatus === 'pending' && !empty($nextDate)) {
+                                if ($nextDate < $todayD) {
+                                    $fuBadgeClass = 'bg-danger';
+                                    $fuLabel = '&#x26A0; Overdue';
+                                } elseif ($nextDate === $todayD) {
+                                    $fuBadgeClass = 'bg-warning text-dark';
+                                    $fuLabel = 'Due Today';
+                                } else {
+                                    $fuBadgeClass = 'bg-info text-dark';
+                                    $fuLabel = 'Upcoming';
+                                }
+                            } elseif ($fuStatus === 'pending') {
+                                $fuBadgeClass = 'bg-warning text-dark';
+                                $fuLabel = 'Pending';
+                            } else {
+                                $fuBadgeClass = 'bg-light text-muted border';
+                                $fuLabel = 'No Follow Up';
+                            }
+                            ?>
+                           <span class="badge <?= $fuBadgeClass ?>" style="font-size:11px; padding:5px 8px; white-space:nowrap;">
+                               <?= $fuLabel ?>
+                           </span>
+                       </div>
+
+                       <!-- Best Time to Contact -->
+                       <div class="mt-2">
+                           <label class="d-block mb-1">Best Time to Contact</label>
+                           <span><?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? 'N/A') ?></span>
+                       </div>
+
+
+
+                       <!-- Notes -->
+                       <div class="mt-2">
+                           <label class="d-block mb-1">Notes</label>
+                           <textarea class="form-control call-note" data-id="<?= $lead['id'] ?>" placeholder="Add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
+                           <button type="button" class="btn btn-sm btn-success mt-1 note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
                        </div>
                    </div>
-
-                   <!-- Next Follow-Up -->
-                   <div class="mt-2">
-                       <label class="d-block mb-1">Next Follow-Up</label>
-                       <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1">
-                           <i class="bi bi-calendar2-check me-1"></i>
-                           <?= !empty($lead['next_follow_up_date']) && $lead['next_follow_up_date'] !== '0000-00-00'
-                                ? formatDate($lead['next_follow_up_date'])
-                                : 'No Schedule' ?>
-                       </span>
-                   </div>
-
-                   <!-- Best Time to Contact -->
-                   <div class="mt-2">
-                       <label class="d-block mb-1">Best Time to Contact</label>
-                       <span><?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? 'N/A') ?></span>
-                   </div>
+               <?php endforeach; ?>
+           </div>
 
 
+           <!-- view full rule description -->
+           <div id="viewProjectCampaignName" class="modal custom-modal fade">
+               <div class="modal-dialog modal-dialog-centered modal-lg">
+                   <div class="modal-content">
 
-                   <!-- Notes -->
-                   <div class="mt-2">
-                       <label class="d-block mb-1">Notes</label>
-                       <textarea class="form-control call-note" data-id="<?= $lead['id'] ?>" placeholder="Add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
-                       <button type="button" class="btn btn-sm btn-success mt-1 note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
-                   </div>
-               </div>
-           <?php endforeach; ?>
-       </div>
+                       <div class="modal-header">
+                           <h5 class="modal-title">Project Campaing Name</h5>
+                           <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                               <i class="fa-solid fa-xmark-large"></i>
+                           </button>
+                       </div>
 
+                       <div class="modal-body">
+                           <textarea id="view_campaign_id" class="form-control" rows="2" readonly></textarea>
 
-       <!-- view full rule description -->
-       <div id="viewProjectCampaignName" class="modal custom-modal fade">
-           <div class="modal-dialog modal-dialog-centered modal-lg">
-               <div class="modal-content">
-
-                   <div class="modal-header">
-                       <h5 class="modal-title">Project Campaing Name</h5>
-                       <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
-                           <i class="fa-solid fa-xmark-large"></i>
-                       </button>
-                   </div>
-
-                   <div class="modal-body">
-                       <textarea id="view_campaign_id" class="form-control" rows="2" readonly></textarea>
+                       </div>
 
                    </div>
-
                </div>
            </div>
        </div>
-   </div>
-   <script>
-       document.querySelectorAll('[id^="viewCampaignBtn"]').forEach(function(btn) {
-           btn.addEventListener('click', function() {
-               //From data-description  full text 
-               const description = this.getAttribute('data-description');
-               // textarea  set 
-               document.getElementById('view_campaign_id').value = description;
-           });
-       });
-   </script>
-   <script>
-       const base_url = "<?= $GLOBALS['base_url'] ?>";
-       document.querySelectorAll('.call-btn').forEach(btn => {
-           btn.addEventListener('click', function() {
-               let leadId = this.dataset.id;
-               let phone = this.dataset.phone;
-
-               // Mobile call
-               window.location.href = 'tel:' + phone;
-
-               // Update call status = called
-               fetch('<?= $GLOBALS['base_url'] ?>/update-call-status', {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/x-www-form-urlencoded'
-                   },
-                   body: 'lead_id=' + leadId + '&call_status=called'
+       <script>
+           document.querySelectorAll('[id^="viewCampaignBtn"]').forEach(function(btn) {
+               btn.addEventListener('click', function() {
+                   //From data-description  full text 
+                   const description = this.getAttribute('data-description');
+                   // textarea  set 
+                   document.getElementById('view_campaign_id').value = description;
                });
            });
-       });
+       </script>
+       <script>
+           const base_url = "<?= $GLOBALS['base_url'] ?>";
+           document.querySelectorAll('.call-btn').forEach(btn => {
+               btn.addEventListener('click', function() {
+                   let leadId = this.dataset.id;
+                   let phone = this.dataset.phone;
 
-       // received or not received 
-       document.querySelectorAll('.call-status').forEach(select => {
-           select.addEventListener('change', function() {
-               fetch('<?= $base_url ?>/update-call-status', {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/x-www-form-urlencoded'
-                   },
-                   body: 'lead_id=' + this.dataset.id + '&call_status=' + this.value
-               });
-           });
-       });
-       // Communication type update
-       document.querySelectorAll('.communication-status').forEach(select => {
-           select.addEventListener('change', function() {
-               fetch(base_url + '/update-communication-type', {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/x-www-form-urlencoded'
-                   },
-                   body: 'lead_id=' + this.dataset.id + '&communication_type=' + this.value
-               });
-           });
-       });
+                   // Mobile call
+                   window.location.href = 'tel:' + phone;
 
-       // lead quality
-       document.querySelectorAll('.lead-quality').forEach(select => {
-           select.addEventListener('change', function() {
-
-               fetch(base_url + '/update-lead-quality', {
+                   // Update call status = called
+                   fetch('<?= $GLOBALS['base_url'] ?>/update-call-status', {
                        method: 'POST',
                        headers: {
                            'Content-Type': 'application/x-www-form-urlencoded'
                        },
-                       body: 'lead_id=' + this.dataset.id + '&lead_quality=' + encodeURIComponent(this.value)
-                   })
-                   .then(res => res.json())
-                   .then(data => {
-                       console.log(data);
-                   })
-                   .catch(err => {
-                       console.error(err);
+                       body: 'lead_id=' + leadId + '&call_status=called'
                    });
-
-           });
-       });
-
-
-       document.querySelectorAll('.note-save-btn').forEach(btn => {
-           btn.addEventListener('click', function() {
-               const leadId = this.dataset.id;
-               const textarea = document.querySelector('.call-note[data-id="' + leadId + '"]');
-               saveNote(leadId, textarea.value, textarea);
-           });
-       });
-
-       document.querySelectorAll('.call-note').forEach(textarea => {
-           textarea.addEventListener('keydown', function(e) {
-               if (e.key === 'Enter' && !e.shiftKey) { // shift+enter for newline
-                   e.preventDefault(); // avoid new line
-                   saveNote(this.dataset.id, this.value, this);
-               }
-           });
-       });
-
-       function saveNote(leadId, note, el) {
-           fetch('<?= $base_url ?>/update-call-notes', {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/x-www-form-urlencoded'
-                   },
-                   body: 'lead_id=' + encodeURIComponent(leadId) + '&call_note=' + encodeURIComponent(note)
-               })
-               .then(res => res.text())
-               .then(() => {
-                   el.style.borderColor = '#198754'; // success hint
-                   setTimeout(() => el.style.borderColor = '#ddd', 800);
                });
-       }
-   </script>
+           });
+
+           // received or not received 
+           document.querySelectorAll('.call-status').forEach(select => {
+               select.addEventListener('change', function() {
+                   fetch('<?= $base_url ?>/update-call-status', {
+                       method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/x-www-form-urlencoded'
+                       },
+                       body: 'lead_id=' + this.dataset.id + '&call_status=' + this.value
+                   });
+               });
+           });
+           // Communication type update
+           document.querySelectorAll('.communication-status').forEach(select => {
+               select.addEventListener('change', function() {
+                   fetch(base_url + '/update-communication-type', {
+                       method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/x-www-form-urlencoded'
+                       },
+                       body: 'lead_id=' + this.dataset.id + '&communication_type=' + this.value
+                   });
+               });
+           });
+
+           // lead quality
+           document.querySelectorAll('.lead-quality').forEach(select => {
+               select.addEventListener('change', function() {
+
+                   fetch(base_url + '/update-lead-quality', {
+                           method: 'POST',
+                           headers: {
+                               'Content-Type': 'application/x-www-form-urlencoded'
+                           },
+                           body: 'lead_id=' + this.dataset.id + '&lead_quality=' + encodeURIComponent(this.value)
+                       })
+                       .then(res => res.json())
+                       .then(data => {
+                           console.log(data);
+                       })
+                       .catch(err => {
+                           console.error(err);
+                       });
+
+               });
+           });
+
+
+           document.querySelectorAll('.note-save-btn').forEach(btn => {
+               btn.addEventListener('click', function() {
+                   const leadId = this.dataset.id;
+                   const textarea = document.querySelector('.call-note[data-id="' + leadId + '"]');
+                   saveNote(leadId, textarea.value, textarea);
+               });
+           });
+
+           document.querySelectorAll('.call-note').forEach(textarea => {
+               textarea.addEventListener('keydown', function(e) {
+                   if (e.key === 'Enter' && !e.shiftKey) { // shift+enter for newline
+                       e.preventDefault(); // avoid new line
+                       saveNote(this.dataset.id, this.value, this);
+                   }
+               });
+           });
+
+           function saveNote(leadId, note, el) {
+               fetch('<?= $base_url ?>/update-call-notes', {
+                       method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/x-www-form-urlencoded'
+                       },
+                       body: 'lead_id=' + encodeURIComponent(leadId) + '&call_note=' + encodeURIComponent(note)
+                   })
+                   .then(res => res.text())
+                   .then(() => {
+                       el.style.borderColor = '#198754'; // success hint
+                       setTimeout(() => el.style.borderColor = '#ddd', 800);
+                   });
+           }
+       </script>

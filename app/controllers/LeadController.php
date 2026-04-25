@@ -310,7 +310,7 @@ class LeadController extends Controller
                 <span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">'.$agent_name.'</span>
                 <span class="bd-badge bg-success">';
             if (!empty($lead['call_note'])) {
-                $noteHtml .= '<button type="button" class="btn btn-sm p-0 px-1 note-view-btn" style="font-size:11px; vertical-align:baseline; color:#fff;" data-note="'.htmlspecialchars($lead['call_note'], ENT_QUOTES, 'UTF-8').'" data-bs-toggle="modal" data-bs-target="#viewNoteModal">View Note</button>';
+                $noteHtml .= '<button type="button" class="btn btn-sm p-0  note-view-btn" style="font-size:11px; vertical-align:baseline; color:#fff;" data-note="'.htmlspecialchars($lead['call_note'], ENT_QUOTES, 'UTF-8').'" data-bs-toggle="modal" data-bs-target="#viewNoteModal">View Note</button>';
             } else {
                 $noteHtml .= 'No Note';
             }

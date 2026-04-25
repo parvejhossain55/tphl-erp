@@ -1,20 +1,14 @@
 <?php
-$config = require __DIR__ . '/app/config/config.php';
-$conn = new mysqli(
-    $config['db_host'],
-    $config['db_user'],
-    $config['db_pass'],
-    $config['db_name']
-);
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+$db = new mysqli("localhost", "root", "", "tphl_db");
+$res = $db->query("DESCRIBE lead_follow_ups");
+while($row = $res->fetch_assoc()) {
+    echo $row['Field'] . ' - ' . $row['Type'] . "\n";
 }
 
-$result = $conn->query("SHOW COLUMNS FROM manpower_requisitions");
-$columns = [];
-while ($row = $result->fetch_assoc()) {
-    $columns[] = $row;
+echo "LEADS:\n";
+$res = $db->query("DESCRIBE leads");
+while($row = $res->fetch_assoc()) {
+    if ($row['Field'] == 'lead_type') {
+        echo $row['Field'] . ' - ' . $row['Type'] . "\n";
+    }
 }
-echo json_encode($columns, JSON_PRETTY_PRINT);
-$conn->close();

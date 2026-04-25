@@ -34,6 +34,20 @@ class FollowUpController extends Controller
         $projects = $this->projectModel->getAll(); // optional
         $flats = $this->flatModel->getAll();       // optional
 
+        // Fetch teams for re-assignment
+        $teamModel = new Team($this->db);
+        $teams = $teamModel->getAll();
+
+        // Follow-up Agent dropdown: always show only same-team users
+        // Uses the logged-in user's own team_id from session
+        $teamId = $_SESSION['user']['team_id'] ?? null;
+
+        if (!empty($teamId)) {
+            $teamMembers = $this->userModel->getUsersByTeamAndRole($teamId);
+        } else {
+            $teamMembers = []; // no team assigned → empty
+        }
+
         $this->view("sales-developments/followUp-leads/followUpLeads", [
             "current_route" => "follow-up-leads",
             "page_title" => "Follow Up Lead List",
@@ -43,6 +57,8 @@ class FollowUpController extends Controller
             "leads" => $leads,
             "selected_lead_id" => $lead_id,
             "assignedUsers" => $assignedUsers,
+            "teams" => $teams,
+            "teamMembers" => $teamMembers,
         ]);
 
         // print_r($followUpLeads);
@@ -93,7 +109,33 @@ public function store()
         'next_action' => $next_action,
         'assigned_with' => !empty($_POST['assigned_with']) ? (int)$_POST['assigned_with'] : null,
         'created_by' => $_SESSION['user']['id'] ?? null,
+        'follow_up_agent_id' => !empty($_POST['follow_up_agent_id']) ? (int)$_POST['follow_up_agent_id'] : null,
+        'lead_status' => $_POST['lead_status'] ?? null,
+        'next_follow_up_plan_notes' => $_POST['next_follow_up_plan_notes'] ?? null,
     ];
+
+    // Handle Team Re-assignment
+    if ($followUpData['lead_status'] === 'Lead Transferred' && !empty($_POST['team_id'])) {
+        $team_id = (int)$_POST['team_id'];
+        $lead_id = $followUpData['lead_id'];
+        
+        $updateTeam = $this->db->prepare("UPDATE leads SET team_id = ?, assigned_id = NULL WHERE id = ?");
+        if ($updateTeam) {
+            $updateTeam->bind_param("ii", $team_id, $lead_id);
+            $updateTeam->execute();
+        }
+    }
+
+    // Update Lead Type
+    if (!empty($followUpData['lead_status'])) {
+        $lead_status = $followUpData['lead_status'];
+        $lead_id = $followUpData['lead_id'];
+        $updateLeadType = $this->db->prepare("UPDATE leads SET lead_type = ? WHERE id = ?");
+        if ($updateLeadType) {
+            $updateLeadType->bind_param("si", $lead_status, $lead_id);
+            $updateLeadType->execute();
+        }
+    }
 
     // Create follow-up
     $created = $this->followUpModel->create($followUpData);
@@ -124,8 +166,21 @@ public function store()
             'discussion_note' => $_POST['discussion_note'] ?? null,
             'next_follow_up_date' => $_POST['next_follow_up_date'] ?: null,
             'next_action' => $_POST['next_action'] ?? null,
-
+            'follow_up_agent_id' => !empty($_POST['follow_up_agent_id']) ? (int)$_POST['follow_up_agent_id'] : null,
+            'lead_status' => $_POST['lead_status'] ?? null,
+            'next_follow_up_plan_notes' => $_POST['next_follow_up_plan_notes'] ?? null,
         ];
+
+        // Update Lead Type if provided
+        if (!empty($followUpData['lead_status'])) {
+            $lead_status = $followUpData['lead_status'];
+            $lead_id = $followUpData['lead_id'];
+            $updateLeadType = $this->db->prepare("UPDATE leads SET lead_type = ? WHERE id = ?");
+            if ($updateLeadType) {
+                $updateLeadType->bind_param("si", $lead_status, $lead_id);
+                $updateLeadType->execute();
+            }
+        }
 
 
         if ($this->followUpModel->update($followUpData)) {

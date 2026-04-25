@@ -407,9 +407,22 @@ class Lead extends Model
         $sql = "
         SELECT 
             l.*,
-            p.name AS project_name
+            p.name AS project_name,
+            lf.status AS last_follow_up_status,
+            lf.discussion_note AS last_follow_up_note,
+            lf.next_follow_up_date,
+            lf.follow_up_type
         FROM leads AS l
         LEFT JOIN projects AS p ON l.project_id = p.id
+        LEFT JOIN (
+            SELECT t1.*
+            FROM lead_follow_ups t1
+            INNER JOIN (
+                SELECT lead_id, MAX(id) AS max_id
+                FROM lead_follow_ups
+                GROUP BY lead_id
+            ) t2 ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
+        ) lf ON lf.lead_id = l.id
         WHERE l.assigned_id = {$userId}
           AND l.deleted_at IS NULL
           AND (
@@ -443,6 +456,8 @@ class Lead extends Model
         $sql = "SELECT leads.*, 
         lf.next_action,
         lf.follow_up_type,
+        lf.status AS last_follow_up_status,
+        lf.discussion_note AS last_follow_up_note,
         p.name AS project_name,
         f.flat_name,
         lf.next_follow_up_date

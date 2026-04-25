@@ -59,8 +59,8 @@ class FollowUp extends Model
         // ==============================
         $stmt = $this->db->prepare("
         INSERT INTO lead_follow_ups 
-        (lead_id, project_id, flat_id, follow_up_date, follow_up_time, follow_up_type, status, discussion_note, next_follow_up_date, next_action, created_by, assigned_with)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (lead_id, project_id, flat_id, follow_up_date, follow_up_time, follow_up_type, status, discussion_note, next_follow_up_date, next_action, created_by, assigned_with, follow_up_agent_id, lead_status, next_follow_up_plan_notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
         if (!$stmt) {
@@ -69,7 +69,7 @@ class FollowUp extends Model
         }
 
         $stmt->bind_param(
-            "iiissssssssi",
+            "iiisssssssiiiss",
             $data['lead_id'],
             $data['project_id'],
             $flat_id,
@@ -81,7 +81,10 @@ class FollowUp extends Model
             $next_follow_up_date,
             $next_action,
             $data['created_by'],
-            $data['assigned_with']
+            $data['assigned_with'],
+            $data['follow_up_agent_id'],
+            $data['lead_status'],
+            $data['next_follow_up_plan_notes']
         );
 
         if (!$stmt->execute()) {
@@ -167,7 +170,10 @@ class FollowUp extends Model
             status = ?,
             discussion_note = ?,
             next_follow_up_date = ?,
-            next_action = ?
+            next_action = ?,
+            follow_up_agent_id = ?,
+            lead_status = ?,
+            next_follow_up_plan_notes = ?
         WHERE id = ?
     ");
 
@@ -176,7 +182,7 @@ class FollowUp extends Model
             return false;
         }
         $stmt->bind_param(
-            "iisssssssi",
+            "iisssssssissi",
             $data['lead_id'],
             $data['flat_id'],   // NULL or valid flats.id
             $data['follow_up_date'],
@@ -186,6 +192,9 @@ class FollowUp extends Model
             $data['discussion_note'],
             $data['next_follow_up_date'],
             $data['next_action'],
+            $data['follow_up_agent_id'],
+            $data['lead_status'],
+            $data['next_follow_up_plan_notes'],
             $data['id']
         );
 
