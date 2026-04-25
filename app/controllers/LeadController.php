@@ -225,12 +225,37 @@ class LeadController extends Controller
         $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date, $length, $start, $search);
 
         // ✅ FIXED: শুধু current page এর lead IDs দিয়ে count করা হচ্ছে
-        // আগে সব 3900+ leads এর count একসাথে আনা হতো → server এ memory fail হতো
         $leadIds = array_column($leads, 'id');
         $followUpCounts = !empty($leadIds) ? (new FollowUp($this->db))->getFollowUpCountByLeadIds($leadIds) : [];
         $bookingCounts  = !empty($leadIds) ? $this->leadBookedModel->getBookingCountByLeadIds($leadIds) : [];
-        // backward compat: alias
         $bookingCount = $bookingCounts;
+
+        // ── MOBILE FORMAT: return raw data for JS card rendering ─────────
+        if (!empty($_GET['mobile'])) {
+            $mobileData = [];
+            foreach ($leads as $lead) {
+                $mobileData[] = [
+                    'id'               => $lead['id'],
+                    'full_name'        => $lead['full_name'] ?? '',
+                    'phone'            => $lead['phone_number'] ?? $lead['phone'] ?? '',
+                    'campaign_name'    => $lead['campaign_name'] ?? $lead['project_name'] ?? '-',
+                    'last_lead_action' => $lead['last_lead_action'] ?? '',
+                    'next_follow_up'   => $lead['next_follow_up_date'] ?? '',
+                    'agent_name'       => $lead['agent_name'] ?? '',
+                    'follow_up_count'  => $followUpCounts[$lead['id']] ?? 0,
+                    'booking_count'    => $bookingCounts[$lead['id']] ?? 0,
+                    'created_at'       => $lead['created_at'] ?? '',
+                ];
+            }
+            echo json_encode([
+                'draw'            => $draw,
+                'recordsTotal'    => $totalRecords,
+                'recordsFiltered' => $filteredRecords,
+                'data'            => $mobileData,
+            ]);
+            exit;
+        }
+        // ── END MOBILE FORMAT ─────────────────────────────────────────────
 
         $data = [];
         foreach ($leads as $key => $lead) {
