@@ -284,6 +284,7 @@ $routes = [
     // leads
     "lead-lists" => ["controller" => "LeadController", "method" => "index"],
     "leads-ajax-data" => ["controller" => "LeadController", "method" => "getLeadsAjax"],
+    "leads-ajax-debug" => ["controller" => "LeadController", "method" => "debugLeadsAjax"],
     "create-lead" => ["controller" => "LeadController", "method" => "create"],
     "store-lead" => ["controller" => "LeadController", "method" => "store"],
     "store-location-lead" => ["controller" => "LeadController", "method" => "storeLocation"],

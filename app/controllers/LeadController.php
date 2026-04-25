@@ -134,6 +134,59 @@ class LeadController extends Controller
     }
 
 
+    // ====== TEMPORARY DEBUG - DELETE AFTER FIX ======
+    public function debugLeadsAjax()
+    {
+        $start_time = microtime(true);
+        set_time_limit(120);
+        ini_set('memory_limit', '256M');
+        ini_set('display_errors', 1);
+        error_reporting(E_ALL);
+        header('Content-Type: text/html; charset=utf-8');
+
+        echo "<h2>Lead AJAX Debug</h2>";
+        echo "<p>PHP: " . PHP_VERSION . " | max_exec: " . ini_get('max_execution_time') . "s | memory: " . ini_get('memory_limit') . "</p>";
+
+        // 1. Count
+        $t1 = microtime(true);
+        $countQuery = $this->db->query("SELECT COUNT(*) AS total FROM leads WHERE deleted_at IS NULL");
+        $total = $countQuery ? $countQuery->fetch_assoc()['total'] : 'ERROR: ' . $this->db->error;
+        echo "<p><b>Total Leads:</b> $total | Time: " . round((microtime(true)-$t1)*1000) . "ms</p>";
+
+        // 2. Simple paginated query
+        $t2 = microtime(true);
+        $r2 = $this->db->query("SELECT l.id FROM leads l WHERE l.deleted_at IS NULL ORDER BY l.created_at DESC LIMIT 10");
+        $rows2 = $r2 ? $r2->num_rows : 0;
+        echo "<p><b>Simple LIMIT 10 query:</b> $rows2 rows | Time: " . round((microtime(true)-$t2)*1000) . "ms</p>";
+
+        // 3. Follow-up count ALL (old method)
+        $t3 = microtime(true);
+        $r3 = $this->db->query("SELECT lead_id, COUNT(*) AS c FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id");
+        $rows3 = $r3 ? $r3->num_rows : 'ERROR: ' . $this->db->error;
+        echo "<p><b>getAllFollowUpCounts (OLD - slow):</b> $rows3 rows | Time: " . round((microtime(true)-$t3)*1000) . "ms</p>";
+
+        // 4. Booking count ALL (old method)
+        $t4 = microtime(true);
+        $r4 = $this->db->query("SELECT lb.lead_id, COUNT(DISTINCT lb.id) AS c FROM lead_bookings lb INNER JOIN lead_payments lp ON lp.booking_id = lb.id GROUP BY lb.lead_id");
+        $rows4 = $r4 ? $r4->num_rows : 'ERROR: ' . $this->db->error;
+        echo "<p><b>getAllBookingCounts (OLD - slow):</b> $rows4 rows | Time: " . round((microtime(true)-$t4)*1000) . "ms</p>";
+
+        // 5. Test WITH new method (only 10 IDs)
+        $t5 = microtime(true);
+        $ids = [];
+        $r5tmp = $this->db->query("SELECT id FROM leads WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 10");
+        while ($row = $r5tmp->fetch_assoc()) $ids[] = $row['id'];
+        $idStr = implode(',', $ids);
+        $r5 = $this->db->query("SELECT lead_id, COUNT(*) AS c FROM lead_follow_ups WHERE deleted_at IS NULL AND lead_id IN ($idStr) GROUP BY lead_id");
+        $rows5 = $r5 ? $r5->num_rows : 'ERROR';
+        echo "<p><b>getFollowUpCounts for 10 IDs (NEW - fast):</b> $rows5 rows | Time: " . round((microtime(true)-$t5)*1000) . "ms</p>";
+
+        echo "<hr><p><b>Total time:</b> " . round((microtime(true)-$start_time)*1000) . "ms</p>";
+        echo "<p style='color:red'><b>⚠️ DELETE leads-ajax-debug route after testing!</b></p>";
+        exit;
+    }
+    // ====== END TEMPORARY DEBUG ======
+
     public function getLeadsAjax()
     {
         // Server e 3000+ leads এর complex JOIN query র জন্য timeout বাড়ানো হলো
