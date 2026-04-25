@@ -234,7 +234,7 @@ $show_breadcrumb = true;
         <p>Lead Lists</p>
 
         <!-- Table -->
-        <div class="col-xxl-12 desktop-only">
+        <div class="col-xxl-12">
             <div class="card__wrapper">
                 <div class="table__wrapper table-responsive">
                     <table id="serverSideLeadTable" class="table no-border-table mb-20">
@@ -444,29 +444,152 @@ $show_breadcrumb = true;
             </div>
         </div>
 
-        </div>
-
-        <!-- Mobile Lead Cards (AJAX Loaded) -->
         <div class="row g-3" id="mobileLeadCards">
-            <!-- Cards injected by JS below -->
-        </div>
+            <?php foreach ($leads as $key => $lead): ?>
+                <?php
+                $displayName = !empty($lead['campaign_name'])
+                    ? $lead['campaign_name']
+                    : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
+                $plainText = strip_tags($displayName);
+                ?>
+                <div class="col-12 col-sm-6">
+                    <!-- Lead Card -->
+                    <div class="lead-card h-100" data-id="<?= $lead['id'] ?>">
+                        <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="d-flex align-items-center gap-1">
+                                    <input type="checkbox" class="selectedIdMobile me-1" data-id="<?= $lead['id'] ?>">
+                                    <span class="lead-name text-truncate"><?= $lead['full_name'] ?></span>
+                                </div>
+                                <div class="lead-phone text-truncate small"><?= $lead['phone'] ?></div>
+                            </div>
 
-        <!-- Mobile Loading Spinner -->
-        <div id="mobileLeadsLoader" class="text-center py-4">
-            <div class="spinner-border text-success" role="status" style="width:2rem;height:2rem;">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <div class="small text-muted mt-2">Loading leads...</div>
+                            <!-- 3 Dot Dropdown as Action Button -->
+                            <div class="dropdown">
+                                <button class="action-dot-btn" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                                    <li>
+                                        <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/edit-lead/<?= $lead['id'] ?>">
+                                            <i class="bi bi-pencil-square me-2 text-primary"></i> Edit
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown__item" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $lead['id'] ?>">
+                                            <i class="bi bi-eye me-2 text-success"></i> View
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <buton class="dropdown__item text-danger removeBtnCust" data-name="<?= $lead['full_name'] ?>"
+                                            data-action="lead-delete"
+                                            data-id="<?= $lead['id'] ?>">
+                                            <i class="bi bi-trash me-2"></i> Delete
+                                        </buton>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Status & Actions -->
+                        <div class="mt-2">
+                            <div class="info-label">Status & Action</div>
+                            <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>" class="m-0 p-0 mb-2">
+                                <select name="last_lead_action"
+                                    class="form-select form-select-sm last-action-select w-100 <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
+                                    onchange="this.form.submit()">
+                                    <option value="">Update action</option>
+                                    <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>New</option>
+                                    <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>Booked</option>
+                                    <option value="follow up" <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
+                                    <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>Visited</option>
+                                    <option value="cancel" <?= $lead['last_lead_action'] == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                                </select>
+                            </form>
+
+                            <div class="d-flex flex-column gap-2">
+                                <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
+                                    class="btn btn-primary btn-sm w-100 d-flex align-items-center gap-2 px-2">
+                                    <span>Follow Up</span>
+
+                                    <?php if (!empty($followUpCounts[$lead['id']])): ?>
+                                        <span class="badge bg-white text-dark rounded-circle  justify-content-center"
+                                            style="font-size: 10px; width: 18px; height: 18px;">
+                                            <?= $followUpCounts[$lead['id']] ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </a>
+
+                                <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
+                                    class="btn btn-secondary btn-sm w-100 d-flex align-items-center gap-2 px-2">
+                                    <span>Booking</span>
+
+                                    <?php if (!empty($bookingCount[$lead['id']])): ?>
+                                        <span class="badge bg-white text-dark rounded-circle  justify-content-center"
+                                            style="font-size: 10px; width: 18px; height: 18px;">
+                                            <?= $bookingCount[$lead['id']] ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Project Info -->
+                        <div class="project-detail mt-2">
+                            <div class="info-label flex-shrink-0">Project</div>
+                            <div class="d-flex align-items-center gap-2 mt-1">
+                                <span class="project-badge mb-0">
+                                    <i class="bi bi-building"></i>
+                                    <?= truncateText($displayName, 15) ?>
+                                </span>
+                                <?php if (mb_strlen($plainText) > 15): ?>
+                                    <button type="button"
+                                        id="viewCampaignBtn<?= $lead['id'] ?>"
+                                        class="btn btn-sm btn-outline-primary ms-3 w-auto px-1 py-0"
+                                        data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#viewProjectCampaignName"
+                                        title="View Project">View
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <!-- Next Follow-Up -->
+                        <div class="d-flex align-items-center gap-2 mt-2">
+                            <div class="info-label flex-shrink-0">Next Follow-Up</div>
+                            <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                <i class="bi bi-calendar2-check me-1"></i>
+                                <?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?>
+                            </span>
+                        </div>
+
+                        <!-- Agent Name -->
+                        <div class="d-flex align-items-center gap-2 mt-2">
+                            <div class="info-label flex-shrink-0">Executive Name</div>
+                            <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                <i class="bi bi-person me-1"></i>
+                                <?= $lead['agent_name'] ?? 'No Agent Assigned' ?>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
         </div>
 
         <!-- Mobile Load More -->
-        <div id="mobileLoadMoreWrapper" class="text-center py-3" style="display:none;">
-            <button id="mobileLoadMoreBtn" class="btn btn-outline-success btn-sm px-4">
+        <div class="text-center py-3" id="mobileLoadMoreWrapper">
+            <div class="small text-muted mb-2" id="mobileLeadCount">Showing <?= count($leads) ?> of <?= $leadCounts ?> leads</div>
+            <?php if (count($leads) < $leadCounts): ?>
+            <button id="mobileLoadMoreBtn" class="btn btn-outline-success px-4">
                 <i class="bi bi-arrow-down-circle me-1"></i> Load More
             </button>
-            <div class="small text-muted mt-1" id="mobileLeadCount"></div>
+            <?php endif; ?>
+            <div id="mobileLoader" class="py-2" style="display:none;">
+                <div class="spinner-border spinner-border-sm text-success"></div>
+                <span class="small text-muted ms-2">Loading...</span>
+            </div>
         </div>
-
 
         <!-- FAB Button -->
         <button class="fab-button d-none">
@@ -773,8 +896,7 @@ $show_breadcrumb = true;
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Prevent page reload when Import CSV clicked
-        // ✅ Fixed: null check - button may not exist for all user roles
+        // ✅ Fixed: null check — button only exists for admin/manager roles
         const importBtn = document.getElementById('importCsvBtn');
         if (importBtn) {
             importBtn.addEventListener('click', function(e) {
@@ -842,51 +964,47 @@ $show_breadcrumb = true;
     });
 </script>
 
-<!-- ══ Mobile AJAX Card Loader ══════════════════════════════════════ -->
 <script>
-(function() {
-    // Only run on mobile view
-    const mobileSection = document.getElementById('mobileLeadCards');
-    if (!mobileSection) return;
+// ── Mobile Lead Cards: Load More via AJAX ───────────────────────────
+(function () {
+    const cardsContainer = document.getElementById('mobileLeadCards');
+    const loadMoreBtn    = document.getElementById('mobileLoadMoreBtn');
+    const loader         = document.getElementById('mobileLoader');
+    const countEl        = document.getElementById('mobileLeadCount');
 
-    const loader       = document.getElementById('mobileLeadsLoader');
-    const loadMoreWrap = document.getElementById('mobileLoadMoreWrapper');
-    const loadMoreBtn  = document.getElementById('mobileLoadMoreBtn');
-    const countEl      = document.getElementById('mobileLeadCount');
+    if (!cardsContainer || !loadMoreBtn) return;
 
-    const PAGE_SIZE    = 20;
-    let   currentStart = 0;
-    let   totalRecords = 0;
-    let   isLoading    = false;
+    const PAGE_SIZE = 20;
+    let currentStart = <?= count($leads) ?>;  // PHP already rendered these
+    let totalRecords = <?= (int)$leadCounts ?>;
+    let isLoading    = false;
 
-    // Build AJAX URL with current page filters
     const urlParams = new URLSearchParams(window.location.search);
     urlParams.set('mobile', '1');
     const ajaxUrl = base_url + '/leads-ajax-data?' + urlParams.toString();
 
-    // Action color map
     const actionColors = {
         'new':       'bg-info-subtle text-info',
         'booked':    'bg-success-subtle text-success',
         'follow up': 'bg-warning-subtle text-warning',
         'visited':   'bg-primary-subtle text-primary',
         'cancel':    'bg-danger-subtle text-danger',
-        '':          'bg-secondary-subtle text-secondary'
     };
 
     function buildCard(lead) {
-        const actionClass = actionColors[lead.last_lead_action] || 'bg-secondary-subtle text-secondary';
-        const actionLabel = lead.last_lead_action
+        const ac    = actionColors[lead.last_lead_action] || 'bg-secondary-subtle text-secondary';
+        const label = lead.last_lead_action
             ? lead.last_lead_action.charAt(0).toUpperCase() + lead.last_lead_action.slice(1)
             : 'No Action';
         const nextFU = lead.next_follow_up
-            ? new Date(lead.next_follow_up).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'})
+            ? new Date(lead.next_follow_up).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})
             : 'No Schedule';
         const fuBadge = lead.follow_up_count > 0
-            ? `<span class="badge bg-white text-dark rounded-circle" style="font-size:10px;width:18px;height:18px;line-height:18px;">${lead.follow_up_count}</span>` : '';
+            ? `<span class="badge bg-white text-dark rounded-circle" style="font-size:10px;min-width:18px;height:18px;line-height:18px;">${lead.follow_up_count}</span>` : '';
         const bkBadge = lead.booking_count > 0
-            ? `<span class="badge bg-white text-dark rounded-circle" style="font-size:10px;width:18px;height:18px;line-height:18px;">${lead.booking_count}</span>` : '';
-        const phone = lead.phone ? lead.phone.replace(/[^0-9]/g, '') : '';
+            ? `<span class="badge bg-white text-dark rounded-circle" style="font-size:10px;min-width:18px;height:18px;line-height:18px;">${lead.booking_count}</span>` : '';
+        const name    = lead.full_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const project = (lead.campaign_name || '-').substring(0, 20);
 
         return `
         <div class="col-12 col-sm-6">
@@ -895,9 +1013,9 @@ $show_breadcrumb = true;
               <div class="flex-grow-1 overflow-hidden">
                 <div class="d-flex align-items-center gap-1">
                   <input type="checkbox" class="selectedIdMobile me-1" data-id="${lead.id}">
-                  <span class="lead-name text-truncate">${lead.full_name}</span>
+                  <span class="lead-name text-truncate">${name}</span>
                 </div>
-                <div class="lead-phone text-truncate small">${lead.phone}</div>
+                <div class="lead-phone text-truncate small">${lead.phone || ''}</div>
               </div>
               <div class="dropdown">
                 <button class="action-dot-btn" type="button" data-bs-toggle="dropdown">
@@ -906,14 +1024,11 @@ $show_breadcrumb = true;
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
                   <li><a class="dropdown__item" href="${base_url}/edit-lead/${lead.id}"><i class="bi bi-pencil-square me-2 text-primary"></i>Edit</a></li>
                   <li><a class="dropdown__item" href="${base_url}/view-lead/${lead.id}"><i class="bi bi-eye me-2 text-success"></i>View</a></li>
-                  <li><button class="dropdown__item text-danger removeBtnCust" data-name="${lead.full_name.replace(/"/g,'&quot;')}" data-action="lead-delete" data-id="${lead.id}"><i class="bi bi-trash me-2"></i>Delete</button></li>
                 </ul>
               </div>
             </div>
-
             <div class="mt-2">
-              <div class="info-label">Status</div>
-              <span class="badge ${actionClass} rounded-pill px-2 py-1 mb-2" style="font-size:0.78rem;">${actionLabel}</span>
+              <span class="badge ${ac} rounded-pill px-2 py-1 mb-2" style="font-size:.78rem;">${label}</span>
               <div class="d-flex flex-column gap-2">
                 <a href="${base_url}/follow-up-leads/${lead.id}" class="btn btn-primary btn-sm w-100 d-flex align-items-center gap-2 px-2">
                   <span>Follow Up</span>${fuBadge}
@@ -923,22 +1038,19 @@ $show_breadcrumb = true;
                 </a>
               </div>
             </div>
-
             <div class="project-detail mt-2">
               <div class="info-label">Project</div>
-              <span class="project-badge mb-0 mt-1"><i class="bi bi-building"></i> ${lead.campaign_name.substring(0,20)}${lead.campaign_name.length > 20 ? '…' : ''}</span>
+              <span class="project-badge mb-0 mt-1"><i class="bi bi-building"></i> ${project}</span>
             </div>
-
             <div class="d-flex align-items-center gap-2 mt-2">
               <div class="info-label flex-shrink-0">Next Follow-Up</div>
-              <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:0.75rem;">
+              <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:.75rem;">
                 <i class="bi bi-calendar2-check me-1"></i>${nextFU}
               </span>
             </div>
-
             <div class="d-flex align-items-center gap-2 mt-2">
               <div class="info-label flex-shrink-0">Executive</div>
-              <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:0.75rem;">
+              <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:.75rem;">
                 <i class="bi bi-person me-1"></i>${lead.agent_name || 'No Agent'}
               </span>
             </div>
@@ -946,11 +1058,11 @@ $show_breadcrumb = true;
         </div>`;
     }
 
-    function loadLeads() {
+    function loadMore() {
         if (isLoading) return;
         isLoading = true;
-        loader.style.display = 'block';
-        loadMoreWrap.style.display = 'none';
+        loadMoreBtn.disabled = true;
+        if (loader) loader.style.display = 'block';
 
         const form = new FormData();
         form.append('draw', Math.ceil(currentStart / PAGE_SIZE) + 1);
@@ -961,37 +1073,29 @@ $show_breadcrumb = true;
         fetch(ajaxUrl, { method: 'POST', body: form, credentials: 'same-origin' })
             .then(r => r.json())
             .then(json => {
-                totalRecords = json.recordsTotal || 0;
-                const cards = (json.data || []).map(buildCard).join('');
-                mobileSection.insertAdjacentHTML('beforeend', cards);
-                currentStart += json.data.length;
+                totalRecords = json.recordsTotal || totalRecords;
+                const newCards = (json.data || []).map(buildCard).join('');
+                cardsContainer.insertAdjacentHTML('beforeend', newCards);
+                currentStart += (json.data || []).length;
 
-                // Update count
                 if (countEl) countEl.textContent = `Showing ${currentStart} of ${totalRecords} leads`;
 
-                // Show Load More if more available
-                if (currentStart < totalRecords) {
-                    loadMoreWrap.style.display = 'block';
+                if (currentStart >= totalRecords) {
+                    loadMoreBtn.style.display = 'none';
+                    if (countEl) countEl.textContent = `All ${totalRecords} leads loaded ✓`;
                 }
             })
-            .catch(err => {
-                mobileSection.insertAdjacentHTML('beforeend',
-                    `<div class="col-12"><div class="alert alert-danger">Failed to load leads. Please refresh.</div></div>`);
+            .catch(() => {
+                cardsContainer.insertAdjacentHTML('beforeend',
+                    `<div class="col-12"><div class="alert alert-warning py-2">Failed to load. <a href="#" onclick="location.reload()">Refresh</a></div></div>`);
             })
             .finally(() => {
-                loader.style.display = 'none';
                 isLoading = false;
+                loadMoreBtn.disabled = false;
+                if (loader) loader.style.display = 'none';
             });
     }
 
-    // Load More button
-    if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', loadLeads);
-    }
-
-    // Auto-load first batch when mobile view is visible
-    if (window.innerWidth <= 767) {
-        loadLeads();
-    }
+    loadMoreBtn.addEventListener('click', loadMore);
 })();
 </script>
