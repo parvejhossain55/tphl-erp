@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $page = "Lead & Booking Management";
 $show_breadcrumb = true;
 ?>
@@ -711,261 +711,160 @@ $show_breadcrumb = true;
     // campaign full show
 </script>
 
-<!-- Lead Selection & Assignment Logic -->
+<!-- Lead Selection & Assignment Logic + DataTables Init (Unified) -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const selectedLeadsSet = new Set();
-        const assignCard = document.getElementById('assignCard');
-        const assignCardMobile = document.getElementById('assignCardMobile');
-        const selectAll = document.getElementById('selectAllLeads');
 
-        // Function to update the visible state of the assign card
+        // â”€â”€ Shared state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        const selectedLeadsSet  = new Set();
+        const assignCard        = document.getElementById('assignCard');
+        const assignCardMobile  = document.getElementById('assignCardMobile');
+        const selectAll         = document.getElementById('selectAllLeads');
+
+        // â”€â”€ Update assign UI visibility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function updateAssignUIData() {
             const count = selectedLeadsSet.size;
-            const anySelected = count > 0;
-            if (assignCard) assignCard.style.display = anySelected ? 'flex' : 'none';
-            if (assignCardMobile) assignCardMobile.style.display = anySelected ? 'block' : 'none';
-
-            const countEl = document.getElementById('selectedCount');
-            if (countEl) countEl.innerText = count;
-
+            if (assignCard)       assignCard.style.display       = count > 0 ? 'flex'  : 'none';
+            if (assignCardMobile) assignCardMobile.style.display = count > 0 ? 'block' : 'none';
+            const countEl       = document.getElementById('selectedCount');
             const countMobileEl = document.getElementById('selectedCountMobile');
+            if (countEl)       countEl.innerText       = count;
             if (countMobileEl) countMobileEl.innerText = count;
         }
 
-        // Function to sync checkboxes with the Set
+        // â”€â”€ Sync checkboxes with Set (after DataTables page change) â”€â”€
         function syncCheckboxes() {
-            // Desk checkboxes
             document.querySelectorAll('.selectedId').forEach(cb => {
                 cb.checked = selectedLeadsSet.has(cb.dataset.id);
             });
-            // Mobile checkboxes
             document.querySelectorAll('.selectedIdMobile').forEach(cb => {
                 cb.checked = selectedLeadsSet.has(cb.dataset.id);
             });
-
-            // Update header checkbox
-            const currentDeskCheckboxes = Array.from(document.querySelectorAll('.selectedId'));
-            if (currentDeskCheckboxes.length > 0) {
-                const allCheckedOnPage = currentDeskCheckboxes.every(cb => cb.checked);
-                if (selectAll) selectAll.checked = allCheckedOnPage;
+            // Reflect "all on page selected" in header checkbox
+            const deskCbs = Array.from(document.querySelectorAll('#serverSideLeadTable tbody .selectedId'));
+            if (deskCbs.length > 0 && selectAll) {
+                selectAll.checked = deskCbs.every(cb => cb.checked);
             }
         }
 
-        // Shared function to submit the assignment form
+        // â”€â”€ Submit assign form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function submitAssignForm(userId, selectedLeads, assignedDate) {
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '<?= $base_url ?>/assign-multiple-leads';
-
-            const inputUser = document.createElement('input');
-            inputUser.type = 'hidden';
-            inputUser.name = 'user_id';
-            inputUser.value = userId;
-            form.appendChild(inputUser);
-
-            const inputLeads = document.createElement('input');
-            inputLeads.type = 'hidden';
-            inputLeads.name = 'lead_ids';
-            inputLeads.value = selectedLeads.join(',');
-            form.appendChild(inputLeads);
-
-            const inputDate = document.createElement('input');
-            inputDate.type = 'hidden';
-            inputDate.name = 'assigned_date';
-            inputDate.value = assignedDate;
-            form.appendChild(inputDate);
-
+            [['user_id', userId], ['lead_ids', selectedLeads.join(',')], ['assigned_date', assignedDate]].forEach(([n, v]) => {
+                const inp = document.createElement('input');
+                inp.type = 'hidden'; inp.name = n; inp.value = v;
+                form.appendChild(inp);
+            });
             document.body.appendChild(form);
             form.submit();
         }
 
-        // --- DESKTOP ASSIGN ---
+        // â”€â”€ Desktop assign button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         const assignBtn = document.getElementById('assignUserBtn');
         if (assignBtn) {
             assignBtn.addEventListener('click', function() {
-                const userId = document.getElementById('assignUserSelect').value;
+                const userId       = document.getElementById('assignUserSelect').value;
                 const assignedDate = document.getElementById('assignedDate').value;
-                const selectedLeads = Array.from(selectedLeadsSet);
-
-                if (!userId || selectedLeads.length === 0) {
-                    alert('Select leads and a user to assign.');
-                    return;
-                }
-                submitAssignForm(userId, selectedLeads, assignedDate);
+                const selected     = Array.from(selectedLeadsSet);
+                if (!userId || selected.length === 0) { alert('Select leads and a user to assign.'); return; }
+                submitAssignForm(userId, selected, assignedDate);
             });
         }
 
-        // --- MOBILE ASSIGN ---
+        // â”€â”€ Mobile assign button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         const assignBtnMobile = document.getElementById('assignUserBtnMobile');
         if (assignBtnMobile) {
             assignBtnMobile.addEventListener('click', function() {
-                const selectedLeads = Array.from(selectedLeadsSet);
-                const userId = document.getElementById('assignUserSelectMobile').value;
+                const userId       = document.getElementById('assignUserSelectMobile').value;
                 const assignedDate = document.getElementById('assignedDateMobile').value;
-
-                if (!userId || selectedLeads.length === 0) {
-                    alert('Select leads and a user to assign.');
-                    return;
-                }
-                submitAssignForm(userId, selectedLeads, assignedDate);
+                const selected     = Array.from(selectedLeadsSet);
+                if (!userId || selected.length === 0) { alert('Select leads and a user to assign.'); return; }
+                submitAssignForm(userId, selected, assignedDate);
             });
         }
 
-        // Handle header checkbox (Select All on current page)
-        if (selectAll) {
-            // Prevent DataTables scaling/sorting when clicking the checkbox
-            selectAll.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
-
-            selectAll.addEventListener('change', function() {
-                const table = $('.multiple_tables').DataTable();
-                const currentPageNodes = table.rows({
-                    page: 'current'
-                }).nodes();
-                const isChecked = this.checked;
-
-                // Only toggle leads on the current page
-                $(currentPageNodes).find('.selectedId').each(function() {
-                    this.checked = isChecked;
-                    const id = this.dataset.id;
-
-                    if (isChecked) {
-                        selectedLeadsSet.add(id);
-                    } else {
-                        selectedLeadsSet.delete(id);
-                    }
-
-                    // Sync the mobile version for this specific lead only
-                    const mobileCb = document.querySelector(`.selectedIdMobile[data-id="${id}"]`);
-                    if (mobileCb) mobileCb.checked = isChecked;
-                });
-
-                updateAssignUIData();
-            });
-        }
-
-        // Event delegation for individual row checkboxes
+        // â”€â”€ Individual checkbox change (event delegation) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         document.addEventListener('change', function(e) {
             if (e.target.classList.contains('selectedId') || e.target.classList.contains('selectedIdMobile')) {
                 const id = e.target.dataset.id;
-                if (e.target.checked) {
-                    selectedLeadsSet.add(id);
-                } else {
-                    selectedLeadsSet.delete(id);
-                }
-                syncCheckboxes();
+                e.target.checked ? selectedLeadsSet.add(id) : selectedLeadsSet.delete(id);
+                // Sync counterpart checkbox (desktop â†” mobile)
+                const counterClass = e.target.classList.contains('selectedId') ? 'selectedIdMobile' : 'selectedId';
+                const counterCb = document.querySelector(`.${counterClass}[data-id="${id}"]`);
+                if (counterCb) counterCb.checked = e.target.checked;
                 updateAssignUIData();
+                syncCheckboxes();
             }
         });
 
-        // Prevent sorting when clicking row checkboxes
+        // Prevent column sort when clicking checkbox
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('selectedId') || e.target.classList.contains('selectedIdMobile')) {
                 e.stopPropagation();
             }
         });
 
-        // Hook into DataTables 'draw' event
-        const dtTable = $('.multiple_tables');
-        if (dtTable.length > 0) {
-            // Get DataTable instance
-            const table = dtTable.DataTable();
-
-            // Disable sorting on the first column (where the checkbox is)
-            table.settings()[0].aoColumns[0].bSortable = false;
-
-            table.on('draw', function() {
-                syncCheckboxes();
-            });
-        }
-    });
-</script>
-
-<script>
-    document.querySelectorAll('[id^="viewCampaignBtn"]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            //From data-description  full text 
-            const description = this.getAttribute('data-description');
-            // textarea  set 
-            document.getElementById('view_campaign_id').value = description;
-        });
-    });
-</script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // ✅ Fixed: null check — button only exists for admin/manager roles
+        // â”€â”€ importCsvBtn null check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         const importBtn = document.getElementById('importCsvBtn');
         if (importBtn) {
-            importBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-            });
+            importBtn.addEventListener('click', function(e) { e.preventDefault(); });
         }
-    });
-</script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
+
+        // â”€â”€ DataTables server-side init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if ($('#serverSideLeadTable').length > 0) {
-            // Build the AJAX URL with all the query parameters for filtering
             const urlParams = new URLSearchParams(window.location.search);
-            const ajaxUrl = base_url + '/leads-ajax-data?' + urlParams.toString();
+            const ajaxUrl   = base_url + '/leads-ajax-data?' + urlParams.toString();
 
             const dtTable = $('#serverSideLeadTable').DataTable({
                 serverSide: true,
                 processing: true,
-                ajax: {
-                    url: ajaxUrl,
-                    type: 'POST'
-                },
-                lengthMenu: [
-                    [10, 25, 50, 100],
-                    [10, 25, 50, 100]
-                ],
-                order: [], // Let backend handle default sorting
+                ajax: { url: ajaxUrl, type: 'POST' },
+                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                order: [],
                 columnDefs: [
-                    { targets: 0, orderable: false }, // SL/Checkbox
-                    { targets: 8, orderable: false }  // Action
+                    { targets: 0, orderable: false },
+                    { targets: 8, orderable: false }
                 ],
-                drawCallback: function(settings) {
-                    // Re-bind events for dynamically loaded content
-                    
-                    // 1. Note View Buttons
+                drawCallback: function() {
+                    // Re-bind dynamic button events after each page draw
                     $('.note-view-btn').off('click').on('click', function() {
                         document.getElementById('view_note_text').value = this.getAttribute('data-note');
                     });
-                    
-                    // 2. View Campaign Buttons
                     $('.viewCampaignBtnDynamic').off('click').on('click', function() {
                         document.getElementById('view_campaign_id').value = this.getAttribute('data-description');
                     });
+                    // Restore checkboxes after page redraw
+                    syncCheckboxes();
+                    updateAssignUIData();
                 }
             });
-            
-            // Handle Select All checkbox logic specifically for serverSide
-            $('#selectAllLeads').off('change').on('change', function() {
-                const isChecked = this.checked;
-                $('#serverSideLeadTable tbody .selectedId').each(function() {
-                    this.checked = isChecked;
-                    const id = this.dataset.id;
-                    if (isChecked) {
-                        selectedLeadsSet.add(id);
-                    } else {
-                        selectedLeadsSet.delete(id);
-                    }
-                    // Sync mobile if needed
-                    const mobileCb = document.querySelector('.selectedIdMobile[data-id="' + id + '"]');
-                    if (mobileCb) mobileCb.checked = isChecked;
+
+            // â”€â”€ Select All (current page only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            if (selectAll) {
+                selectAll.addEventListener('click', function(e) { e.stopPropagation(); });
+
+                selectAll.addEventListener('change', function() {
+                    const isChecked = this.checked;
+                    // Only affect rows visible on current page
+                    $('#serverSideLeadTable tbody .selectedId').each(function() {
+                        this.checked = isChecked;
+                        const id = this.dataset.id;
+                        isChecked ? selectedLeadsSet.add(id) : selectedLeadsSet.delete(id);
+                        // Sync mobile
+                        const mobileCb = document.querySelector(`.selectedIdMobile[data-id="${id}"]`);
+                        if (mobileCb) mobileCb.checked = isChecked;
+                    });
+                    updateAssignUIData();
                 });
-                if(typeof updateAssignUIData === 'function') updateAssignUIData();
-            });
+            }
         }
     });
 </script>
 
 <script>
-// ── Mobile Lead Cards: Load More via AJAX ───────────────────────────
+// â”€â”€ Mobile Lead Cards: Load More via AJAX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 (function () {
     const cardsContainer = document.getElementById('mobileLeadCards');
     const loadMoreBtn    = document.getElementById('mobileLoadMoreBtn');
@@ -1082,7 +981,7 @@ $show_breadcrumb = true;
 
                 if (currentStart >= totalRecords) {
                     loadMoreBtn.style.display = 'none';
-                    if (countEl) countEl.textContent = `All ${totalRecords} leads loaded ✓`;
+                    if (countEl) countEl.textContent = `All ${totalRecords} leads loaded âœ“`;
                 }
             })
             .catch(() => {
