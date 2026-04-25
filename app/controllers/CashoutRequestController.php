@@ -282,7 +282,7 @@ class CashoutRequestController extends Controller
         $approvalRequest = $this->cashoutModel->getApprovalRequest($id);
 
         $this->view("accounts/cashout/admin-view-request", [
-            "current_route"    => "admin-view-cashout-request",
+            "current_route"    => "view-cashout-request",
             "page_title"       => "Admin - Cashout Request Details",
             "request"          => $request,
             "payments"         => $payments,
@@ -357,7 +357,7 @@ class CashoutRequestController extends Controller
                     $proofPaths[] = $res['file_path'];
                 } else {
                     setError($res['message']);
-                    header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id={$requestId}");
+                    header("Location: {$GLOBALS['base_url']}/view-cashout-request?id={$requestId}");
                     exit;
                 }
             }
@@ -365,7 +365,7 @@ class CashoutRequestController extends Controller
 
         if (empty($proofPaths)) {
             setError("Disbursement proof document is required. Please upload at least one file.");
-            header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id={$requestId}");
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id={$requestId}");
             exit;
         }
 
@@ -396,7 +396,7 @@ class CashoutRequestController extends Controller
 
         if ($data['amount'] <= 0) {
             setError("Please enter a valid amount.");
-            header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
             exit;
         }
 
@@ -420,7 +420,8 @@ class CashoutRequestController extends Controller
             setError($result['message']);
         }
 
-        header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
+        $redirectUrl = isset($_GET['redirect']) && $_GET['redirect'] === 'client-refunds' ? '/client-refunds' : '/admin-cashout-requests';
+        header("Location: {$GLOBALS['base_url']}{$redirectUrl}");
         exit;
     }
 
@@ -489,7 +490,7 @@ class CashoutRequestController extends Controller
 
         if (empty($reason)) {
             setError("Please provide a rejection reason.");
-            header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
             exit;
         }
 
@@ -501,7 +502,7 @@ class CashoutRequestController extends Controller
             setError("Failed to reject request.");
         }
 
-        header("Location: {$GLOBALS['base_url']}/admin-view-cashout-request?id=" . $requestId);
+        header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
         exit;
     }
 

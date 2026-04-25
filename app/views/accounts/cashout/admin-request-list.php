@@ -337,7 +337,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
 
                                                 <!-- Admin actions button (uncomment if needed) -->
                                                 <!--
-                                                <a href="<?= $GLOBALS['base_url'] ?>/admin-view-cashout-request?id=<?= $request['id'] ?>"
+                                                <a href="<?= $GLOBALS['base_url'] ?>/view-cashout-request?id=<?= $request['id'] ?>"
                                                     class="btn btn-sm btn-warning" title="Admin Actions">
                                                     <i class="fa-light fa-gavel"></i>
                                                 </a>

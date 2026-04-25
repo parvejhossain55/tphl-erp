@@ -839,6 +839,14 @@
                         </ul>
                     </li>
 
+                    <!-- Client Refunds -->
+                    <li class="slide <?= isActive('client-refunds', $current_route) ?>">
+                        <a href="<?= $base_url ?>/client-refunds" class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-arrow-rotate-left"></i></div>
+                            <span class="sidebar__menu-label">Client Refunds</span>
+                        </a>
+                    </li>
+
                 <?php endif ?>
                 <!--END Accounts CATEGORY -->
 

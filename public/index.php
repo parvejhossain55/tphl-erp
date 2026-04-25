@@ -634,6 +634,14 @@ $routes = [
     "export-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "export"],
     "sync-cashout-approvals" => ["controller" => "CashoutRequestController", "method" => "syncAllApprovals"],
 
+    // Client Refund Routes
+    "client-refunds"              => ["controller" => "ClientRefundController", "method" => "index"],
+    "client-refund-create/(\d+)"  => ["controller" => "ClientRefundController", "method" => "create"],
+    "client-refund-store"         => ["controller" => "ClientRefundController", "method" => "store"],
+    "client-refund/(\d+)"         => ["controller" => "ClientRefundController", "method" => "show"],
+    "client-refund-approve/(\d+)" => ["controller" => "ClientRefundController", "method" => "approve"],
+    "client-refund-reject/(\d+)"  => ["controller" => "ClientRefundController", "method" => "reject"],
+
     //rafi End
 
     // ==================== FINANCIAL VERIFICATION GATEWAY ====================

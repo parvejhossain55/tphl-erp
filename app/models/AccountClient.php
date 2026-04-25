@@ -14,7 +14,7 @@ class AccountClient extends Model
      */
     public function getAllClients($projectId = null)
     {
-        $whereClause = "WHERE lb.booking_status != 'cancelled'";
+        $whereClause = "WHERE 1=1";
         $params = [];
         $types = '';
 
@@ -36,25 +36,25 @@ class AccountClient extends Model
              FROM lead_bookings lb_sub
              INNER JOIN lead_payments lp_sub ON lp_sub.booking_id = lb_sub.id AND lp_sub.payment_type = 'booking_money'
              INNER JOIN users u_agent ON u_agent.id = lp_sub.created_by
-             WHERE lb_sub.lead_id = l.id AND lb_sub.booking_status != 'cancelled'
+             WHERE lb_sub.lead_id = l.id
             ) AS agent_name,
             COUNT(lb.id) AS total_bookings,
             SUM(lb.agreement_value) AS total_agreement_value,
             -- First booking's project and flat for quick context
             (SELECT p2.name FROM lead_bookings lb2
              INNER JOIN projects p2 ON lb2.project_id = p2.id
-             WHERE lb2.lead_id = l.id AND lb2.booking_status != 'cancelled'
+             WHERE lb2.lead_id = l.id
              ORDER BY lb2.created_at DESC LIMIT 1) AS project_name,
             (SELECT CONCAT(f2.flat_name, ' - Floor ', f2.floor_no)
              FROM lead_bookings lb2
              INNER JOIN flats f2 ON lb2.flat_id = f2.id
-             WHERE lb2.lead_id = l.id AND lb2.booking_status != 'cancelled'
+             WHERE lb2.lead_id = l.id
              ORDER BY lb2.created_at DESC LIMIT 1) AS flat_no,
             -- Latest verification status across all this client's payments
             (SELECT lp.verification_status
              FROM lead_payments lp
              INNER JOIN lead_bookings lb3 ON lb3.id = lp.booking_id
-             WHERE lb3.lead_id = l.id AND lb3.booking_status != 'cancelled'
+             WHERE lb3.lead_id = l.id
              ORDER BY lp.created_at DESC LIMIT 1) AS latest_verification_status,
             COALESCE(
                 (SELECT SUM(lp.amount)
@@ -97,7 +97,7 @@ class AccountClient extends Model
      */
     public function getAllBookings($projectId = null)
     {
-        $whereClause = "WHERE lb.booking_status != 'cancelled'";
+        $whereClause = "WHERE 1=1";
         $params = [];
         $types = '';
 
@@ -931,7 +931,8 @@ ORDER BY lb.booking_date DESC
                     $serviceChargeRate = (float) ($summary['service_charge_per_emi'] ?? 0);
                     $serviceFee        = ($serviceChargeRate > 0) ? round($amount * ($serviceChargeRate / 100)) : 0;
                     $dueEmiAmount      = 0; // settlement itself has no new due
-                    // Keep $paymentType as 'emi_due_settlement' for full audit trail
+                    // Change $paymentType to 'emi' to satisfy ENUM constraint, settlement_type will track the difference
+                    $paymentType = 'emi';
                     break;
 
                 default:
@@ -1270,6 +1271,7 @@ ORDER BY lb.booking_date DESC
                 es.status as emi_status,
                 es.service_fee as emi_service_fee,
                 CASE 
+                    WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
                     THEN CONCAT(es.emi_no, 
                         CASE 
@@ -1288,6 +1290,7 @@ ORDER BY lb.booking_date DESC
                     ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
                 END as installment_label,
                 CASE 
+                    WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI Due Settlement'
                     WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
                     WHEN lp.payment_type = 'registration' THEN 'Registration Money'
                     WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
@@ -1385,6 +1388,7 @@ ORDER BY lb.booking_date DESC
                 lb.discount_amount,
                 lb.booking_date as booking_date,
                 CASE 
+                    WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
                     THEN CONCAT(es.emi_no, 
                         CASE 
@@ -1399,14 +1403,17 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
                     WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
                     WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
+                    WHEN lp.payment_type = 'development_charge' THEN 'DEV CHARGE'
                     ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
                 END as installment_label,
                 CASE 
+                    WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI Due Settlement'
                     WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
                     WHEN lp.payment_type = 'registration' THEN 'Registration Money'
                     WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
                     WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
                     WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
+                    WHEN lp.payment_type = 'development_charge' THEN 'Development Charge'
                     ELSE 'Other Payment'
                 END as payment_details,
                 b.bank_name as bank_display_name
