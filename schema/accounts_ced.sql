@@ -298,3 +298,48 @@ ALTER TABLE `contractor_bill_requests`
         INT(11) DEFAULT NULL
         COMMENT 'User ID of the manager who approved/rejected this bill'
         AFTER `approved_amount`;
+
+-- =====================================================================
+-- BATCH: Client Refund System | 25 April 2026
+-- =====================================================================
+
+-- 7. client_refund_requests — master table for flat refund requests
+CREATE TABLE IF NOT EXISTS `client_refund_requests` (
+    `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `booking_id` INT(10) UNSIGNED NOT NULL COMMENT 'FK → lead_bookings.id',
+    `lead_id` INT(10) UNSIGNED NOT NULL COMMENT 'FK → leads.id',
+    `project_id` INT(11) NOT NULL COMMENT 'FK → projects.id',
+    `flat_id` INT(11) NOT NULL COMMENT 'FK → flats.id',
+    `total_paid` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Sum of all verified lead_payments for this booking',
+    `retention_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Company charges that cannot be refunded',
+    `refund_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'total_paid - retention_amount',
+    `reason` TEXT DEFAULT NULL COMMENT 'Free-text refund reason',
+    `status` ENUM('pending','approved','rejected','refunded') NOT NULL DEFAULT 'pending',
+    `cashout_request_id` INT(11) DEFAULT NULL COMMENT 'FK → cashout_requests.id (created on approval)',
+    `requested_by` INT(11) NOT NULL COMMENT 'User who initiated the refund (Accounts)',
+    `approved_by` INT(11) DEFAULT NULL COMMENT 'User who approved/rejected (Management)',
+    `approved_at` DATETIME DEFAULT NULL,
+    `refunded_at` DATETIME DEFAULT NULL COMMENT 'Timestamp when cashout was fully disbursed',
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_booking` (`booking_id`),
+    KEY `idx_lead` (`lead_id`),
+    KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 8. lead_bookings — expand booking_status to include 'refunded'
+ALTER TABLE `lead_bookings`
+    MODIFY COLUMN `booking_status`
+        ENUM('booked','cancelled','completed','refunded')
+        DEFAULT 'booked';
+
+-- 9. emi_schedules — expand status to include 'cancelled'
+ALTER TABLE `emi_schedules`
+    MODIFY COLUMN `status`
+        ENUM('pending','paid','missed','cancelled')
+        DEFAULT 'pending';
+
+-- 10. lead_payments — add missing due_emi_amount column
+ALTER TABLE `lead_payments`
+    ADD COLUMN IF NOT EXISTS `due_emi_amount` DECIMAL(12,2) DEFAULT 0.00 AFTER `bulk_emi_discount`;

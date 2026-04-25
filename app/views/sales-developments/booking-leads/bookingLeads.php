@@ -223,7 +223,15 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                             </button>
 
                                             <!-- Payments -->
-                                            <?php if ($or['approval_status'] === 'rejected'): ?>
+                                            <?php if (($or['booking_status'] ?? '') === 'refunded'): ?>
+                                                <button class="btn btn-sm btn-secondary" disabled>
+                                                    Refunded
+                                                </button>
+                                            <?php elseif (($or['booking_status'] ?? '') === 'cancelled'): ?>
+                                                <button class="btn btn-sm btn-secondary" disabled>
+                                                    Cancelled
+                                                </button>
+                                            <?php elseif ($or['approval_status'] === 'rejected'): ?>
                                                 <button class="btn btn-sm btn-danger" disabled
                                                     title="Discount rejected by management">
                                                     Rejected

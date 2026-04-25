@@ -318,4 +318,440 @@ HTML;
             return false;
         }
     }
+
+    // =========================================================================
+    // VENDOR PAYMENT REQUEST NOTIFICATIONS
+    // =========================================================================
+
+    /**
+     * Notification: Vendor Payment Request Submitted
+     * Sent to Management (1, 3) and Accounts (6)
+     */
+    public function sendVendorPaymentOnSubmission($requestData)
+    {
+        try {
+            $mail = $this->getMailer();
+            $mail->Subject = 'New Vendor Payment Request Submitted';
+
+            $invoiceAmount = number_format((float)($requestData['invoice_amount'] ?? 0), 2);
+            $netPayable    = number_format((float)($requestData['net_payable'] ?? 0), 2);
+            $paymentType   = htmlspecialchars($requestData['payment_type'] ?? 'N/A');
+            $vendorName    = htmlspecialchars($requestData['vendor_name'] ?? 'N/A');
+
+            $requester     = $this->getUserById($requestData['created_by'] ?? 0);
+            $requesterName = $requester ? htmlspecialchars($requester['full_name']) : 'Unknown User';
+
+            $projectName = '';
+            if (!empty($requestData['project_name'])) {
+                $projectName = htmlspecialchars($requestData['project_name']);
+            } elseif (!empty($requestData['project_id'])) {
+                $projectName = htmlspecialchars($this->getProjectNames($requestData['project_id']) ?? '');
+            }
+
+            $extraDetails = "";
+            if (!empty($projectName)) {
+                $extraDetails .= "<strong style='color: #000000;'>Project:</strong> {$projectName}<br>";
+            }
+
+            $headerTitle = "New Vendor Payment Request";
+            $greeting    = "Hello,";
+            $message     = "A new vendor payment request has been submitted and is pending your review.";
+            $buttonText  = "View Requests";
+            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/con-vendor-payment-requests";
+
+            $detailsHtml = "
+                <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Request Details:</h4>
+                <div style='color: #333333; font-size: 15px; line-height: 1.6;'>
+                    <strong style='color: #000000;'>Requested By:</strong> {$requesterName}<br>
+                    <strong style='color: #000000;'>Vendor:</strong> {$vendorName}<br>
+                    {$extraDetails}
+                    <strong style='color: #000000;'>Payment Type:</strong> {$paymentType}<br>
+                    <strong style='color: #000000;'>Invoice Amount:</strong> BDT {$invoiceAmount}<br>
+                    <strong style='color: #000000;'>Net Payable:</strong> BDT {$netPayable}
+                </div>
+            ";
+
+            $mail->Body    = $this->getHtmlTemplate($headerTitle, $greeting, $message, $buttonText, $buttonUrl, $detailsHtml);
+            $mail->AltBody = "New Vendor Payment Request by {$requesterName}. Vendor: {$vendorName}. Invoice: BDT {$invoiceAmount}. Net Payable: BDT {$netPayable}.";
+
+            $recipients = $this->getUsersByRoles([1, 3, 6]);
+            if (empty($recipients)) return false;
+
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addAddress($recipient['email'], $recipient['full_name']);
+                }
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Vendor Payment Submission): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Notification: Vendor Payment Request Approved
+     * Sent to Management (1, 3), Accounts (6), and original Requester
+     */
+    public function sendVendorPaymentOnApproval($requestData, $status, $approverId)
+    {
+        try {
+            $mail = $this->getMailer();
+
+            $isPartial  = ($status === 'partial' || $status === 'partially_paid');
+            $statusText = $isPartial ? 'Partially Approved' : 'Approved';
+
+            $mail->Subject = "Vendor Payment Request {$statusText}";
+
+            $approvedAmount = number_format((float)($requestData['approved_amount'] ?? $requestData['net_payable'] ?? 0), 2);
+            $vendorName     = htmlspecialchars($requestData['vendor_name'] ?? 'N/A');
+
+            $requester     = $this->getUserById($requestData['created_by'] ?? 0);
+            $requesterName = $requester ? htmlspecialchars($requester['full_name']) : 'Unknown User';
+
+            $approver     = $this->getUserById($approverId);
+            $approverName = $approver ? htmlspecialchars($approver['full_name']) : 'System/Admin';
+
+            $projectName = '';
+            if (!empty($requestData['project_name'])) {
+                $projectName = htmlspecialchars($requestData['project_name']);
+            } elseif (!empty($requestData['project_id'])) {
+                $projectName = htmlspecialchars($this->getProjectNames($requestData['project_id']) ?? '');
+            }
+
+            $extraDetails = "";
+            if (!empty($projectName)) {
+                $extraDetails .= "<strong style='color: #000000;'>Project:</strong> {$projectName}<br>";
+            }
+
+            $amountLabel = $isPartial ? 'Partially Approved Amount' : 'Approved Amount';
+            $requestId   = (int)($requestData['id'] ?? 0);
+
+            $headerTitle = "Vendor Payment Request {$statusText}";
+            $greeting    = "Hello,";
+            $message     = "A vendor payment request has been processed and updated to {$statusText}.";
+            $buttonText  = "View Requests";
+            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/con-vendor-payment-requests";
+
+            $detailsHtml = "
+                <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Approval Details:</h4>
+                <div style='color: #333333; font-size: 15px; line-height: 1.6;'>
+                    <strong style='color: #000000;'>Requested By:</strong> {$requesterName}<br>
+                    <strong style='color: #000000;'>Approved By:</strong> {$approverName}<br>
+                    <strong style='color: #000000;'>Vendor:</strong> {$vendorName}<br>
+                    {$extraDetails}
+                    <strong style='color: #000000;'>{$amountLabel}:</strong> BDT {$approvedAmount}
+                </div>
+            ";
+
+            $mail->Body    = $this->getHtmlTemplate($headerTitle, $greeting, $message, $buttonText, $buttonUrl, $detailsHtml);
+            $mail->AltBody = "Vendor Payment Request {$statusText}. Vendor: {$vendorName}. {$amountLabel}: BDT {$approvedAmount}. Approved By: {$approverName}.";
+
+            $recipients = $this->getUsersByRoles([1, 3, 6]);
+
+            $requesterEmailAdded = false;
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addAddress($recipient['email'], $recipient['full_name']);
+                    if ($requester && $recipient['email'] === $requester['email']) {
+                        $requesterEmailAdded = true;
+                    }
+                }
+            }
+
+            // Ensure Requester gets the email
+            if (!$requesterEmailAdded && $requester && filter_var($requester['email'], FILTER_VALIDATE_EMAIL)) {
+                $mail->addAddress($requester['email'], $requester['full_name']);
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Vendor Payment Approval): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // =========================================================================
+    // CONTRACTOR BILL REQUEST NOTIFICATIONS
+    // =========================================================================
+
+    /**
+     * Notification: Contractor Bill Submitted
+     * Sent to Management (1, 3) and Accounts (6)
+     */
+    public function sendContractorBillOnSubmission($billData)
+    {
+        try {
+            $mail = $this->getMailer();
+            $mail->Subject = 'New Contractor Bill Submitted';
+
+            $billAmount      = number_format((float)($billData['bill_amount'] ?? 0), 2);
+            $contractorName  = htmlspecialchars($billData['contractor_name'] ?? 'N/A');
+            $workDescription = nl2br(htmlspecialchars($billData['work_description'] ?? ''));
+
+            $requester     = $this->getUserById($billData['created_by'] ?? 0);
+            $requesterName = $requester ? htmlspecialchars($requester['full_name']) : 'Unknown User';
+
+            $projectName = '';
+            if (!empty($billData['project_name'])) {
+                $projectName = htmlspecialchars($billData['project_name']);
+            } elseif (!empty($billData['project_id'])) {
+                $projectName = htmlspecialchars($this->getProjectNames($billData['project_id']) ?? '');
+            }
+
+            $extraDetails = "";
+            if (!empty($projectName)) {
+                $extraDetails .= "<strong style='color: #000000;'>Project:</strong> {$projectName}<br>";
+            }
+
+            $headerTitle = "New Contractor Bill";
+            $greeting    = "Hello,";
+            $message     = "A new contractor bill has been submitted and is pending your review.";
+            $buttonText  = "View Bills";
+            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/con-contractor-bills";
+
+            $detailsHtml = "
+                <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Bill Details:</h4>
+                <div style='color: #333333; font-size: 15px; line-height: 1.6;'>
+                    <strong style='color: #000000;'>Submitted By:</strong> {$requesterName}<br>
+                    <strong style='color: #000000;'>Contractor:</strong> {$contractorName}<br>
+                    {$extraDetails}
+                    <strong style='color: #000000;'>Bill Amount:</strong> BDT {$billAmount}<br>
+                    <strong style='color: #000000;'>Work Description:</strong> {$workDescription}
+                </div>
+            ";
+
+            $mail->Body    = $this->getHtmlTemplate($headerTitle, $greeting, $message, $buttonText, $buttonUrl, $detailsHtml);
+            $mail->AltBody = "New Contractor Bill by {$requesterName}. Contractor: {$contractorName}. Amount: BDT {$billAmount}.";
+
+            $recipients = $this->getUsersByRoles([1, 3, 6]);
+            if (empty($recipients)) return false;
+
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addAddress($recipient['email'], $recipient['full_name']);
+                }
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Contractor Bill Submission): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Notification: Contractor Bill Approved
+     * Sent to Management (1, 3), Accounts (6), and original Requester
+     */
+    public function sendContractorBillOnApproval($billData, $status, $approverId)
+    {
+        try {
+            $mail = $this->getMailer();
+
+            $isPartial  = ($status === 'partial' || $status === 'partially_paid');
+            $statusText = $isPartial ? 'Partially Approved' : 'Approved';
+
+            $mail->Subject = "Contractor Bill {$statusText}";
+
+            $approvedAmount = number_format((float)($billData['approved_amount'] ?? $billData['bill_amount'] ?? 0), 2);
+            $contractorName = htmlspecialchars($billData['contractor_name'] ?? 'N/A');
+
+            $requester     = $this->getUserById($billData['created_by'] ?? 0);
+            $requesterName = $requester ? htmlspecialchars($requester['full_name']) : 'Unknown User';
+
+            $approver     = $this->getUserById($approverId);
+            $approverName = $approver ? htmlspecialchars($approver['full_name']) : 'System/Admin';
+
+            $projectName = '';
+            if (!empty($billData['project_name'])) {
+                $projectName = htmlspecialchars($billData['project_name']);
+            } elseif (!empty($billData['project_id'])) {
+                $projectName = htmlspecialchars($this->getProjectNames($billData['project_id']) ?? '');
+            }
+
+            $extraDetails = "";
+            if (!empty($projectName)) {
+                $extraDetails .= "<strong style='color: #000000;'>Project:</strong> {$projectName}<br>";
+            }
+
+            $amountLabel = $isPartial ? 'Partially Approved Amount' : 'Approved Amount';
+            $billId      = (int)($billData['id'] ?? 0);
+
+            $headerTitle = "Contractor Bill {$statusText}";
+            $greeting    = "Hello,";
+            $message     = "A contractor bill has been processed and updated to {$statusText}.";
+            $buttonText  = "View Bills";
+            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/con-contractor-bills";
+
+            $detailsHtml = "
+                <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Approval Details:</h4>
+                <div style='color: #333333; font-size: 15px; line-height: 1.6;'>
+                    <strong style='color: #000000;'>Submitted By:</strong> {$requesterName}<br>
+                    <strong style='color: #000000;'>Approved By:</strong> {$approverName}<br>
+                    <strong style='color: #000000;'>Contractor:</strong> {$contractorName}<br>
+                    {$extraDetails}
+                    <strong style='color: #000000;'>{$amountLabel}:</strong> BDT {$approvedAmount}
+                </div>
+            ";
+
+            $mail->Body    = $this->getHtmlTemplate($headerTitle, $greeting, $message, $buttonText, $buttonUrl, $detailsHtml);
+            $mail->AltBody = "Contractor Bill {$statusText}. Contractor: {$contractorName}. {$amountLabel}: BDT {$approvedAmount}. Approved By: {$approverName}.";
+
+            $recipients = $this->getUsersByRoles([1, 3, 6]);
+
+            $requesterEmailAdded = false;
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addAddress($recipient['email'], $recipient['full_name']);
+                    if ($requester && $recipient['email'] === $requester['email']) {
+                        $requesterEmailAdded = true;
+                    }
+                }
+            }
+
+            // Ensure Requester gets the email
+            if (!$requesterEmailAdded && $requester && filter_var($requester['email'], FILTER_VALIDATE_EMAIL)) {
+                $mail->addAddress($requester['email'], $requester['full_name']);
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Contractor Bill Approval): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // =========================================================================
+    // CLIENT REFUND NOTIFICATIONS
+    // =========================================================================
+
+    /**
+     * Notification: Client Refund Request Submitted
+     * Sent to Management (1, 3) and Accounts (6)
+     */
+    public function sendRefundOnSubmission($refundData)
+    {
+        try {
+            $mail = $this->getMailer();
+            $mail->Subject = 'New Client Refund Request';
+
+            $clientName      = htmlspecialchars($refundData['client_name'] ?? 'N/A');
+            $flatName        = htmlspecialchars($refundData['flat_name'] ?? 'N/A');
+            $projectName     = htmlspecialchars($refundData['project_name'] ?? 'N/A');
+            $totalPaid       = number_format((float)($refundData['total_paid'] ?? 0), 2);
+            $retentionAmount = number_format((float)($refundData['retention_amount'] ?? 0), 2);
+            $refundAmount    = number_format((float)($refundData['refund_amount'] ?? 0), 2);
+            $reason          = nl2br(htmlspecialchars($refundData['reason'] ?? ''));
+
+            $requester     = $this->getUserById($refundData['requested_by'] ?? 0);
+            $requesterName = $requester ? htmlspecialchars($requester['full_name']) : 'Unknown User';
+
+            $headerTitle = "New Client Refund Request";
+            $greeting    = "Hello,";
+            $message     = "A client refund request has been submitted and is pending your approval.";
+            $buttonText  = "View Refunds";
+            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/client-refunds";
+
+            $detailsHtml = "
+                <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Refund Details:</h4>
+                <div style='color: #333333; font-size: 15px; line-height: 1.6;'>
+                    <strong style='color: #000000;'>Requested By:</strong> {$requesterName}<br>
+                    <strong style='color: #000000;'>Client:</strong> {$clientName}<br>
+                    <strong style='color: #000000;'>Project:</strong> {$projectName}<br>
+                    <strong style='color: #000000;'>Flat:</strong> {$flatName}<br>
+                    <strong style='color: #000000;'>Total Paid:</strong> BDT {$totalPaid}<br>
+                    <strong style='color: #000000;'>Retention:</strong> BDT {$retentionAmount}<br>
+                    <strong style='color: #000000;'>Refund Amount:</strong> BDT {$refundAmount}<br>
+                    <strong style='color: #000000;'>Reason:</strong> {$reason}
+                </div>
+            ";
+
+            $mail->Body    = $this->getHtmlTemplate($headerTitle, $greeting, $message, $buttonText, $buttonUrl, $detailsHtml);
+            $mail->AltBody = "Client Refund Request by {$requesterName}. Client: {$clientName}. Refund: BDT {$refundAmount}.";
+
+            $recipients = $this->getUsersByRoles([1, 3, 6]);
+            if (empty($recipients)) return false;
+
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addAddress($recipient['email'], $recipient['full_name']);
+                }
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Refund Submission): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Notification: Client Refund Approved
+     * Sent to Management (1, 3), Accounts (6), and original Requester
+     */
+    public function sendRefundOnApproval($refundData, $approverId)
+    {
+        try {
+            $mail = $this->getMailer();
+            $mail->Subject = 'Client Refund Approved';
+
+            $clientName   = htmlspecialchars($refundData['client_name'] ?? 'N/A');
+            $flatName     = htmlspecialchars($refundData['flat_name'] ?? 'N/A');
+            $projectName  = htmlspecialchars($refundData['project_name'] ?? 'N/A');
+            $refundAmount = number_format((float)($refundData['refund_amount'] ?? 0), 2);
+            $retention    = number_format((float)($refundData['retention_amount'] ?? 0), 2);
+
+            $requester     = $this->getUserById($refundData['requested_by'] ?? 0);
+            $requesterName = $requester ? htmlspecialchars($requester['full_name']) : 'Unknown User';
+
+            $approver     = $this->getUserById($approverId);
+            $approverName = $approver ? htmlspecialchars($approver['full_name']) : 'System/Admin';
+
+            $headerTitle = "Client Refund Approved";
+            $greeting    = "Hello,";
+            $message     = "A client refund has been approved. The booking has been cancelled and the flat released. A cashout request has been auto-created for disbursement.";
+            $buttonText  = "View Refunds";
+            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/client-refunds";
+
+            $detailsHtml = "
+                <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Approval Details:</h4>
+                <div style='color: #333333; font-size: 15px; line-height: 1.6;'>
+                    <strong style='color: #000000;'>Approved By:</strong> {$approverName}<br>
+                    <strong style='color: #000000;'>Client:</strong> {$clientName}<br>
+                    <strong style='color: #000000;'>Project:</strong> {$projectName}<br>
+                    <strong style='color: #000000;'>Flat:</strong> {$flatName}<br>
+                    <strong style='color: #000000;'>Retention:</strong> BDT {$retention}<br>
+                    <strong style='color: #000000;'>Refund Amount:</strong> BDT {$refundAmount}<br>
+                    <strong style='color: #000000;'>Requested By:</strong> {$requesterName}
+                </div>
+            ";
+
+            $mail->Body    = $this->getHtmlTemplate($headerTitle, $greeting, $message, $buttonText, $buttonUrl, $detailsHtml);
+            $mail->AltBody = "Client Refund Approved. Client: {$clientName}. Refund: BDT {$refundAmount}. Approved By: {$approverName}.";
+
+            $recipients = $this->getUsersByRoles([1, 3, 6]);
+
+            $requesterEmailAdded = false;
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addAddress($recipient['email'], $recipient['full_name']);
+                    if ($requester && $recipient['email'] === $requester['email']) {
+                        $requesterEmailAdded = true;
+                    }
+                }
+            }
+
+            if (!$requesterEmailAdded && $requester && filter_var($requester['email'], FILTER_VALIDATE_EMAIL)) {
+                $mail->addAddress($requester['email'], $requester['full_name']);
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Refund Approval): " . $e->getMessage());
+            return false;
+        }
+    }
 }
+

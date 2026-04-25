@@ -8,6 +8,9 @@ use Con_PurchaseOrder;
 use Con_FinancialTransaction;
 use ApprovalRequest;
 use Project;
+use AccountMailService;
+
+require_once __DIR__ . '/../../views/accounts/AccountMailService.php';
 
 class Con_VendorPaymentRequestController extends Controller
 {
@@ -18,6 +21,7 @@ class Con_VendorPaymentRequestController extends Controller
     protected $poModel;
     protected $txnModel;
     protected $approvalModel;
+    protected $mailService;
     protected $userRole;
     protected $userId;
 
@@ -30,6 +34,7 @@ class Con_VendorPaymentRequestController extends Controller
         $this->poModel       = new Con_PurchaseOrder($db);
         $this->txnModel      = new Con_FinancialTransaction($db);
         $this->approvalModel = new ApprovalRequest($db);
+        $this->mailService   = new AccountMailService($db);
 
         if (session_status() === PHP_SESSION_NONE) session_start();
         $this->userId   = $_SESSION['user']['id'] ?? null;
@@ -172,6 +177,21 @@ class Con_VendorPaymentRequestController extends Controller
                 'request_amount' => $netPayable,
             ]);
 
+            // Send email notification to Management + Accounts
+            try {
+                $this->mailService->sendVendorPaymentOnSubmission([
+                    'invoice_amount' => $invoiceAmt,
+                    'net_payable'    => $netPayable,
+                    'payment_type'   => $paymentType,
+                    'vendor_name'    => $vendor['name'] ?? '',
+                    'project_name'   => $project['name'] ?? '',
+                    'project_id'     => $data['project_id'],
+                    'created_by'     => $userId,
+                ]);
+            } catch (\Exception $e) {
+                error_log("Vendor Payment email (submission) failed: " . $e->getMessage());
+            }
+
             $msg = ($paymentType === 'Advance')
                 ? "Advance Payment Request created. Amount: ৳ " . number_format($invoiceAmt, 2)
                 : "Payment Request created. Penalty deducted: ৳ " . number_format($penaltyDeducted, 2);
@@ -282,6 +302,27 @@ class Con_VendorPaymentRequestController extends Controller
         if ($this->model->approve($id, $this->userId, $approvedAmount)) {
             // Sync approval_requests table
             $this->syncApprovalRequest($id, 'approved');
+
+            // Send email notification on approval
+            try {
+                $updatedRequest = $this->model->find($id);
+                if ($updatedRequest) {
+                    // Fetch vendor name for the email
+                    $vendor = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
+                    $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($request['project_id'] ?? 0))->fetch_assoc();
+                    $updatedRequest['vendor_name']  = $vendor['name'] ?? '';
+                    $updatedRequest['project_name'] = $project['name'] ?? '';
+
+                    $this->mailService->sendVendorPaymentOnApproval(
+                        $updatedRequest,
+                        'approved',
+                        $this->userId
+                    );
+                }
+            } catch (\Exception $e) {
+                error_log("Vendor Payment email (approval) failed: " . $e->getMessage());
+            }
+
             setSuccess('Payment Request Approved with amount ৳' . number_format($approvedAmount, 2));
         } else {
             setError('Failed to approve or request already processed.');

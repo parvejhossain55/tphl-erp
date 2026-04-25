@@ -196,7 +196,7 @@ class Con_FinancialTransaction extends Model
             // 1. Insert transaction record
             $sql = "INSERT INTO {$this->table}
                     (ref_type, ref_id, project_id, amount_paid, payment_type, payment_method,
-                     transaction_date_str, reference_number, notes, disbursement_proof,
+                     transaction_date, reference_number, notes, disbursement_proof,
                      processed_by, update_status, created_by, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Completed', ?, NOW())";
             $stmt = $this->db->prepare($sql);
