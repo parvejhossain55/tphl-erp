@@ -190,42 +190,34 @@ class Lead extends Model
 
     public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null, $search = null)
     {
+        // Optimized query: server e large dataset (3000+) handle korte
+        // Correlated subquery replace kora hoyeche simpler LEFT JOIN diye
         $sql = "SELECT 
         l.*,
-        u.id AS assigned_id,
         u.full_name AS agent_name,
         p.name AS project_name,
         lf.next_action,
         lf.follow_up_type,
         lf.next_follow_up_date
     FROM leads AS l
-
-    LEFT JOIN (
-        SELECT t1.*
-        FROM lead_follow_ups t1
-        INNER JOIN (
-            SELECT lead_id, MAX(id) AS max_id
-            FROM lead_follow_ups
-            GROUP BY lead_id
-        ) t2 
-        ON t1.id = t2.max_id
-    ) lf ON lf.lead_id = l.id
-
     LEFT JOIN users AS u ON l.assigned_id = u.id
-
     LEFT JOIN (
-        SELECT t1.*
-        FROM lead_bookings t1
-        INNER JOIN (
-            SELECT lead_id, MAX(id) AS max_id
-            FROM lead_bookings
-            GROUP BY lead_id
-        ) t2 
-        ON t1.id = t2.max_id
+        SELECT lf1.lead_id, lf1.next_action, lf1.follow_up_type, lf1.next_follow_up_date
+        FROM lead_follow_ups lf1
+        WHERE lf1.id = (
+            SELECT MAX(lf2.id) FROM lead_follow_ups lf2
+            WHERE lf2.lead_id = lf1.lead_id
+        )
+    ) lf ON lf.lead_id = l.id
+    LEFT JOIN (
+        SELECT lb1.lead_id, lb1.project_id
+        FROM lead_bookings lb1
+        WHERE lb1.id = (
+            SELECT MAX(lb2.id) FROM lead_bookings lb2
+            WHERE lb2.lead_id = lb1.lead_id
+        )
     ) lb ON lb.lead_id = l.id
-
     LEFT JOIN projects AS p ON lb.project_id = p.id
-
     WHERE l.deleted_at IS NULL
     ";
 

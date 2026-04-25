@@ -247,6 +247,28 @@ class FollowUp extends Model
         return $data;
     }
 
+    // ✅ Optimized: শুধু current page এর lead IDs এর জন্য count করে
+    public function getFollowUpCountByLeadIds(array $leadIds)
+    {
+        if (empty($leadIds)) return [];
+
+        $ids = implode(',', array_map('intval', $leadIds));
+        $sql = "SELECT lead_id, COUNT(*) AS follow_up_count
+                FROM lead_follow_ups
+                WHERE deleted_at IS NULL
+                  AND lead_id IN ($ids)
+                GROUP BY lead_id";
+
+        $result = $this->db->query($sql);
+        $data = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $data[$row['lead_id']] = $row['follow_up_count'];
+            }
+        }
+        return $data;
+    }
+
     public function getTodayFollowUpCountByLead()
     {
         $sql = "SELECT lf.lead_id, COUNT(*) AS follow_up_count

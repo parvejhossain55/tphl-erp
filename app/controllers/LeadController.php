@@ -136,6 +136,9 @@ class LeadController extends Controller
 
     public function getLeadsAjax()
     {
+        // Server e 3000+ leads এর complex JOIN query র জন্য timeout বাড়ানো হলো
+        set_time_limit(120);
+        ini_set('memory_limit', '256M');
         header('Content-Type: application/json');
         
         $draw = isset($_POST['draw']) ? (int)$_POST['draw'] : 1;
@@ -168,8 +171,13 @@ class LeadController extends Controller
 
         $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date, $length, $start, $search);
 
-        $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
-        $bookingCount = $this->leadBookedModel->getBookingCountByLead();
+        // ✅ FIXED: শুধু current page এর lead IDs দিয়ে count করা হচ্ছে
+        // আগে সব 3900+ leads এর count একসাথে আনা হতো → server এ memory fail হতো
+        $leadIds = array_column($leads, 'id');
+        $followUpCounts = !empty($leadIds) ? (new FollowUp($this->db))->getFollowUpCountByLeadIds($leadIds) : [];
+        $bookingCounts  = !empty($leadIds) ? $this->leadBookedModel->getBookingCountByLeadIds($leadIds) : [];
+        // backward compat: alias
+        $bookingCount = $bookingCounts;
 
         $data = [];
         foreach ($leads as $key => $lead) {
