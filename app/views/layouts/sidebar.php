@@ -1091,7 +1091,6 @@
                         </a>
                     </li>
                 <?php endif; ?>
-
                 <!-- ══ Project Architecture Dashboard ════════════════════════════
                      Project Architecture has: Project Draft Design + Architect Design
                      Unique: Architect Design + Project Draft Design + NO Material Issue

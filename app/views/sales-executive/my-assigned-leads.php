@@ -277,7 +277,8 @@
                                 <th style="min-width: 160px;">Change Client Action</th>
                                 <th style="min-width: 160px;" class="text-center">Call Statas</th>
                                 <th style="min-width: 160px;" class="text-center">Communtication Type</th>
-                                <th style="min-width: 160px;" class="text-center">Lead Quality</th>
+                                <th style="min-width: 160px;" class="text-center">Lead Status</th>
+                                <th style="min-width: 130px;" class="text-center">Follow Up Status</th>
                                 <th style="min-width: 250px;" class="text-center">Communicate Note</th>
                                 <th style="min-width: 140px;">Next Follow-Up</th>
                                 <th style="min-width: 180px;">Action</th>
@@ -435,24 +436,76 @@
                                         </select>
                                     </td>
                                     <?php
-                                    $quality = $lead['lead_quality'] ?? 'Pending';
+                                    $statusVal = $lead['lead_type'] ?? 'Pending';
 
                                     $class = '';
-                                    if ($quality == 'Prospect') {
+                                    if ($statusVal == 'Prospect' || $statusVal == 'High Prospect') {
                                         $class = 'bg-received';
-                                    } elseif ($quality == 'Not Interested') {
+                                    } elseif ($statusVal == 'Not Interested' || $statusVal == "Don't Call Again" || $statusVal == 'Cold' || $statusVal == 'Refund') {
                                         $class = 'bg-not-received';
                                     }
                                     ?>
 
                                     <td>
                                         <select
-                                            class="lead-quality <?= $class ?> form-control select-form"
+                                            class="lead-status <?= $class ?> form-control select-form"
                                             data-id="<?= $lead['id'] ?>">
-                                            <option value="Pending" <?= $quality == 'Pending' ? 'selected' : '' ?>>Pending</option>
-                                            <option value="Prospect" <?= $quality == 'Prospect' ? 'selected' : '' ?>>Prospect</option>
-                                            <option value="Not Interested" <?= $quality == 'Not Interested' ? 'selected' : '' ?>>Not Interested</option>
+                                            <?php
+                                            $statuses = [
+                                                'No Response', 'Pending', 'Prospect', 'High Prospect', 
+                                                'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
+                                                'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
+                                                'Refund', 'Future', 'Cold', 'Hot', 'Warm'
+                                            ];
+                                            foreach($statuses as $st) {
+                                                $selected = ($statusVal == $st) ? 'selected' : '';
+                                                echo "<option value=\"$st\" $selected>$st</option>";
+                                            }
+                                            ?>
                                         </select>
+                                    </td>
+
+                                    <!-- Follow Up Status -->
+                                    <td class="text-center">
+                                        <?php
+                                        $fuStatus   = $lead['last_follow_up_status'] ?? null;
+                                        $nextDate   = $lead['next_follow_up_date'] ?? null;
+                                        $today      = date('Y-m-d');
+
+                                        if ($fuStatus === 'completed') {
+                                            $fuBadgeClass = 'bg-success';
+                                            $fuLabel      = '✔ Completed';
+                                        } elseif ($fuStatus === 'missed') {
+                                            $fuBadgeClass = 'bg-danger';
+                                            $fuLabel      = '✘ Missed';
+                                        } elseif ($fuStatus === 'canceled') {
+                                            $fuBadgeClass = 'bg-secondary';
+                                            $fuLabel      = 'Canceled';
+                                        } elseif ($fuStatus === 'pending' && !empty($nextDate)) {
+                                            if ($nextDate < $today) {
+                                                // Overdue
+                                                $fuBadgeClass = 'bg-danger';
+                                                $fuLabel      = '⚠ Overdue';
+                                            } elseif ($nextDate === $today) {
+                                                // Due Today
+                                                $fuBadgeClass = 'bg-warning text-dark';
+                                                $fuLabel      = '🔔 Due Today';
+                                            } else {
+                                                // Upcoming
+                                                $fuBadgeClass = 'bg-info text-dark';
+                                                $fuLabel      = '📅 Upcoming';
+                                            }
+                                        } elseif ($fuStatus === 'pending') {
+                                            $fuBadgeClass = 'bg-warning text-dark';
+                                            $fuLabel      = 'Pending';
+                                        } else {
+                                            $fuBadgeClass = 'bg-light text-muted border';
+                                            $fuLabel      = 'No Follow Up';
+                                        }
+                                        ?>
+                                        <span class="badge <?= $fuBadgeClass ?>" style="font-size:11px; padding:5px 8px; white-space:nowrap;">
+                                            <?= $fuLabel ?>
+                                        </span>
                                     </td>
 
                                     <!-- Interactive Note -->
@@ -461,8 +514,9 @@
                                             <textarea
                                                 class="call-note"
                                                 data-id="<?= $lead['id'] ?>"
-                                                placeholder="Click to add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
-                                            <button type="button" class="btn btn-sm btn-success note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
+                                                placeholder="No follow-up note yet..."
+                                                readonly
+                                                style="background:#f8f9fa; cursor:default;"><?= htmlspecialchars($lead['last_follow_up_note'] ?? '') ?></textarea>
                                         </div>
                                     </td>
 
@@ -672,11 +726,70 @@
                     </div>
                 </div>
 
-                <!-- Last Contacted Note -->
+                <!-- Lead Status (inline AJAX) -->
                 <div class="mt-2">
-                    <label class="info-label d-block mb-1">Note</label>
-                    <textarea class="form-control call-note" data-id="<?= $lead['id'] ?>" placeholder="Add note..."><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
-                    <button type="button" class="btn btn-sm btn-success mt-1 note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
+                    <div class="info-label">Lead Status</div>
+                    <?php
+                    $statusVal = $lead['lead_type'] ?? 'Pending';
+                    $statusClass = '';
+                    if (in_array($statusVal, ['Prospect', 'High Prospect'])) {
+                        $statusClass = 'bg-received';
+                    } elseif (in_array($statusVal, ['Not Interested', "Don't Call Again", 'Cold', 'Refund'])) {
+                        $statusClass = 'bg-not-received';
+                    }
+                    ?>
+                    <select class="lead-status <?= $statusClass ?> form-control form-select-sm select-form mt-1"
+                        data-id="<?= $lead['id'] ?>">
+                        <?php
+                        $statuses = [
+                            'No Response', 'Pending', 'Prospect', 'High Prospect',
+                            'Will Visit', 'Visited', 'Sold', 'Lead Transferred',
+                            'Project Transferred', 'Not Interested', "Don't Call Again",
+                            'Refund', 'Future', 'Cold', 'Hot', 'Warm'
+                        ];
+                        foreach ($statuses as $st) {
+                            $selected = ($statusVal == $st) ? 'selected' : '';
+                            echo "<option value=\"$st\" $selected>$st</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+
+                <!-- Follow Up Status Badge -->
+                <div class="mt-2">
+                    <div class="info-label">Follow Up Status</div>
+                    <?php
+                    $fuStatus = $lead['last_follow_up_status'] ?? null;
+                    $nextDate = $lead['next_follow_up_date'] ?? null;
+                    $today    = date('Y-m-d');
+                    if ($fuStatus === 'completed') {
+                        $fuBadgeClass = 'bg-success'; $fuLabel = '✔ Completed';
+                    } elseif ($fuStatus === 'missed') {
+                        $fuBadgeClass = 'bg-danger'; $fuLabel = '✘ Missed';
+                    } elseif ($fuStatus === 'canceled') {
+                        $fuBadgeClass = 'bg-secondary'; $fuLabel = 'Canceled';
+                    } elseif ($fuStatus === 'pending' && !empty($nextDate)) {
+                        if ($nextDate < $today)      { $fuBadgeClass = 'bg-danger';           $fuLabel = '⚠ Overdue'; }
+                        elseif ($nextDate === $today) { $fuBadgeClass = 'bg-warning text-dark'; $fuLabel = '🔔 Due Today'; }
+                        else                          { $fuBadgeClass = 'bg-info text-dark';    $fuLabel = '📅 Upcoming'; }
+                    } elseif ($fuStatus === 'pending') {
+                        $fuBadgeClass = 'bg-warning text-dark'; $fuLabel = 'Pending';
+                    } else {
+                        $fuBadgeClass = 'bg-light text-muted border'; $fuLabel = 'No Follow Up';
+                    }
+                    ?>
+                    <span class="badge <?= $fuBadgeClass ?> mt-1" style="font-size:11px; padding:5px 8px; white-space:nowrap;">
+                        <?= $fuLabel ?>
+                    </span>
+                </div>
+
+                <!-- Last Follow-up Communicate Note (read-only) -->
+                <div class="mt-2">
+                    <label class="info-label d-block mb-1">Communicate Note</label>
+                    <textarea class="form-control" rows="2"
+                        placeholder="No follow-up note yet..."
+                        readonly
+                        style="background:#f8f9fa; cursor:default; font-size:12px;"><?= htmlspecialchars($lead['last_follow_up_note'] ?? '') ?></textarea>
                 </div>
 
                 <!-- Next Follow-Up -->
@@ -898,16 +1011,16 @@
         });
     });
 
-    // lead quality
-    document.querySelectorAll('.lead-quality').forEach(select => {
+    // lead status
+    document.querySelectorAll('.lead-status').forEach(select => {
         select.addEventListener('change', function() {
 
-            fetch(base_url + '/update-lead-quality', {
+            fetch(base_url + '/update-lead-status', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
                     },
-                    body: 'lead_id=' + this.dataset.id + '&lead_quality=' + encodeURIComponent(this.value)
+                    body: 'lead_id=' + this.dataset.id + '&lead_status=' + encodeURIComponent(this.value)
                 })
                 .then(res => res.json())
                 .then(data => {

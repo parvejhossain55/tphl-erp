@@ -65,13 +65,57 @@
                         <!-- Follow Up Type -->
                         <div class="col-lg-6">
                             <label class="form-label">Follow Up Type*</label>
-                            <select name="follow_up_type" class="form-select" required>
+                            <select name="follow_up_type" id="edit_follow_up_type" class="form-select" required>
                                 <option value="">Select Type</option>
-                                <option value="call">Call</option>
-                                <option value="visit">Visit</option>
-                                <option value="meeting">Meeting</option>
-                                <option value="whatsapp">WhatsApp</option>
-                                <option value="email">Email</option>
+                                <option value="Inbound Call">Inbound Call</option>
+                                <option value="Phone Call">Phone Call</option>
+                                <option value="WA Call">WA Call</option>
+                                <option value="Imo Call">Imo Call</option>
+                                <option value="Messenger Call">Messenger Call</option>
+                                <option value="Messenger Conversesion">Messenger Conversesion</option>
+                                <option value="WA Conversesion">WA Conversesion</option>
+                                <option value="Imo Message">Imo Message</option>
+                                <option value="Phone Massaging">Phone Massaging</option>
+                                <option value="Email">Email</option>
+                                <option value="Number Off">Number Off</option>
+                                <option value="Wrong Number">Wrong Number</option>
+                                <option value="Invalid Number">Invalid Number</option>
+                                <option value="Face To Face">Face To Face</option>
+                                <option value="call">Call (Legacy)</option>
+                                <option value="visit">Visit (Legacy)</option>
+                                <option value="meeting">Meeting (Legacy)</option>
+                                <option value="whatsapp">WhatsApp (Legacy)</option>
+                                <option value="email">Email (Legacy)</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Lead Status -->
+                        <div class="col-lg-6">
+                            <label class="form-label">Lead Status*</label>
+                            <select name="lead_status" id="edit_lead_status" class="form-select" required>
+                                <option value="">Select Status</option>
+                                <?php
+                                $statuses = [
+                                    'No Response', 'Pending', 'Prospect', 'High Prospect', 
+                                    'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
+                                    'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
+                                    'Refund', 'Future', 'Cold', 'Hot', 'Warm'
+                                ];
+                                foreach($statuses as $st) {
+                                    echo "<option value=\"$st\">$st</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        
+                        <!-- Follow Up Agent (Optional) -->
+                        <div class="col-lg-6">
+                            <label class="form-label">Follow-up Agent (Optional)</label>
+                            <select name="follow_up_agent_id" id="edit_follow_up_agent_id" class="form-select">
+                                <option value="">Myself (Default)</option>
+                                <?php foreach (($teamMembers ?? []) as $member): ?>
+                                    <option value="<?= $member['id'] ?>"><?= htmlspecialchars($member['full_name']) ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
 
@@ -97,6 +141,12 @@
                                 <option value="call_back">Call Back</option>
                                 <option value="take_time">Take Time</option>
                             </select>
+                        </div>
+
+                        <!-- Next Follow Up Plan Notes -->
+                        <div class="col-lg-12">
+                            <label class="form-label">Next Follow Up Plan Notes</label>
+                            <textarea name="next_follow_up_plan_notes" class="form-control" rows="2"></textarea>
                         </div>
 
                     </div>

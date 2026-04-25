@@ -299,7 +299,7 @@ class UserDashboardController extends Controller
         $stmt->bind_param("si", $status, $id);
         $stmt->execute();
     }
-    public function updateLeadQuality()
+    public function updateLeadStatus()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
@@ -307,30 +307,22 @@ class UserDashboardController extends Controller
             exit;
         }
 
-        if (!isset($_POST['lead_id'], $_POST['lead_quality'])) {
+        if (!isset($_POST['lead_id'], $_POST['lead_status'])) {
             http_response_code(400);
             echo json_encode(['error' => 'Missing data']);
             exit;
         }
 
         $id = (int) $_POST['lead_id'];
-        $quality = $_POST['lead_quality'];
+        $status = $_POST['lead_status'];
 
-        // Optional: whitelist validation
-        $allowed = ['Not Interested', 'Prospect', 'Pending'];
-        if (!in_array($quality, $allowed)) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Invalid quality']);
-            exit;
-        }
-
-        $stmt = $this->db->prepare("UPDATE leads SET lead_quality=? WHERE id=?");
-        $stmt->bind_param("si", $quality, $id);
+        $stmt = $this->db->prepare("UPDATE leads SET lead_type=? WHERE id=?");
+        $stmt->bind_param("si", $status, $id);
 
         if ($stmt->execute()) {
             echo json_encode([
                 'success' => true,
-                'message' => 'Lead quality updated'
+                'message' => 'Lead status updated'
             ]);
         } else {
             http_response_code(500);

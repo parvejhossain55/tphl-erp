@@ -86,9 +86,9 @@ $routes = [
     "today-leads" => ["controller" => "UserDashboardController", "method" => "todayLead"],
     "update-call-status" => ["controller" => "UserDashboardController", "method" => "updateCallStatus"],
     "update-communication-type" => ["controller" => "UserDashboardController", "method" => "updateCommunicationStatus"],
-    "update-lead-quality" => [
+    "update-lead-status" => [
         "controller" => "UserDashboardController",
-        "method" => "updateLeadQuality"
+        "method" => "updateLeadStatus"
     ],
     "update-call-notes" => ["controller" => "UserDashboardController", "method" => "updateCallNote"],
     "today-follow-up" => ["controller" => "UserDashboardController", "method" => "todayFollowUp"],
@@ -284,6 +284,7 @@ $routes = [
     // leads
     "lead-lists" => ["controller" => "LeadController", "method" => "index"],
     "leads-ajax-data" => ["controller" => "LeadController", "method" => "getLeadsAjax"],
+    "leads-ajax-debug" => ["controller" => "LeadController", "method" => "debugLeadsAjax"],
     "create-lead" => ["controller" => "LeadController", "method" => "create"],
     "store-lead" => ["controller" => "LeadController", "method" => "store"],
     "store-location-lead" => ["controller" => "LeadController", "method" => "storeLocation"],

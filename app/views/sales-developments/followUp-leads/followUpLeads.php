@@ -83,14 +83,58 @@ $show_breadcrumb = true;
                         <label class="form__input-title">Follow Up Type*</label>
                         <select name="follow_up_type" class="form-select" required>
                             <option value="">Select Type</option>
-                            <option value="call">Call</option>
-                            <option value="visit">Visit</option>
-                            <option value="meeting">Meeting</option>
-                            <option value="whatsapp">WhatsApp</option>
-                            <option value="email">Email</option>
+                            <option value="Inbound Call">Inbound Call</option>
+                            <option value="Phone Call">Phone Call</option>
+                            <option value="WA Call">WA Call</option>
+                            <option value="Imo Call">Imo Call</option>
+                            <option value="Messenger Call">Messenger Call</option>
+                            <option value="Messenger Conversesion">Messenger Conversesion</option>
+                            <option value="WA Conversesion">WA Conversesion</option>
+                            <option value="Imo Message">Imo Message</option>
+                            <option value="Phone Massaging">Phone Massaging</option>
+                            <option value="Email">Email</option>
+                            <option value="Number Off">Number Off</option>
+                            <option value="Wrong Number">Wrong Number</option>
+                            <option value="Invalid Number">Invalid Number</option>
+                            <option value="Face To Face">Face To Face</option>
+                            <option value="call">Call (Legacy)</option>
+                            <option value="visit">Visit (Legacy)</option>
+                            <option value="meeting">Meeting (Legacy)</option>
+                            <option value="whatsapp">WhatsApp (Legacy)</option>
+                            <option value="email">Email (Legacy)</option>
                         </select>
                     </div>
-                    <!-- Follow Up Type -->
+                    <!-- Lead Status -->
+                    <div class="col-lg-6">
+                        <label class="form__input-title">Lead Status*</label>
+                        <select name="lead_status" id="create_lead_status" class="form-select" required>
+                            <option value="">Select Status</option>
+                            <?php
+                            $statuses = [
+                                'No Response', 'Pending', 'Prospect', 'High Prospect', 
+                                'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
+                                'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
+                                'Refund', 'Future', 'Cold', 'Hot', 'Warm'
+                            ];
+                            foreach($statuses as $st) {
+                                echo "<option value=\"$st\">$st</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    
+                    <!-- Team Re-assign (Hidden by default) -->
+                    <div class="col-lg-6" id="reassign_team_div" style="display: none;">
+                        <label class="form__input-title">Re-assigned to (Team)*</label>
+                        <select name="team_id" id="reassign_team_id" class="form-select">
+                            <option value="">Select Team</option>
+                            <?php foreach (($teams ?? []) as $team): ?>
+                                <option value="<?= $team['id'] ?>"><?= htmlspecialchars($team['name'] ?? '') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <!-- Follow Up Status -->
                     <div class="col-lg-6">
                         <label class="form__input-title">Follow Up Status*</label>
                         <select name="status" class="form-select" required>
@@ -101,16 +145,14 @@ $show_breadcrumb = true;
                             <option value="canceled">Canceled</option>
                         </select>
                     </div>
+                    <!-- Follow Up Agent (Optional) -->
                     <div class="col-lg-6">
-                        <label class="form__input-title">Assign user For follow up*</label>
-                        <select name="assigned_with" class="form-select select2" required>
-                            <option value="">Select User</option>
-                            <?php foreach ($assignedUsers as $user): ?>
-                                <option value="<?= $user['id'] ?>">
-                                    <?= htmlspecialchars($user['full_name']) ?>
-                                </option>
+                        <label class="form__input-title">Follow-up Agent (Optional)</label>
+                        <select name="follow_up_agent_id" class="form-select">
+                            <option value="">Myself (Default)</option>
+                            <?php foreach (($teamMembers ?? []) as $member): ?>
+                                <option value="<?= $member['id'] ?>"><?= htmlspecialchars($member['full_name']) ?></option>
                             <?php endforeach; ?>
-
                         </select>
                     </div>
 
@@ -138,8 +180,15 @@ $show_breadcrumb = true;
                         </select>
                     </div>
 
+                    <!-- Next Follow Up Plan Notes -->
+                    <div class="col-lg-6 mt-2">
+                        <label class="form__input-title">Next Follow Up Plan Notes</label>
+                        <textarea name="next_follow_up_plan_notes" class="form-control" rows="2"></textarea>
+                    </div>
+
                 </div>
                 <div class="mt-3">
+                    <input type="hidden" name="assigned_with" value="<?= $_SESSION['user']['id'] ?? 1 ?>">
                     <input type="hidden" name="created_by" value="<?= $_SESSION['user_id'] ?? 1 ?>">
                     <button type="submit" class="btn btn-primary">Save Follow Up</button>
                 </div>
@@ -205,7 +254,10 @@ $show_breadcrumb = true;
                                             data-type="<?= $fu['follow_up_type'] ?>"
                                             data-note="<?= htmlspecialchars($fu['discussion_note']) ?>"
                                             data-next-date="<?= $fu['next_follow_up_date'] ?>"
-                                            data-next-action="<?= $fu['next_action'] ?>">
+                                            data-next-action="<?= $fu['next_action'] ?>"
+                                            data-lead-status="<?= $fu['lead_status'] ?? '' ?>"
+                                            data-agent-id="<?= $fu['follow_up_agent_id'] ?? '' ?>"
+                                            data-plan-notes="<?= htmlspecialchars($fu['next_follow_up_plan_notes'] ?? '') ?>">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </button>
 
@@ -265,5 +317,55 @@ $show_breadcrumb = true;
         else flatSel.innerHTML = '<option value="">Select Flat</option>';
     });
 
-    // Edit modal JS remains same
+    // Lead Transferred toggle logic
+    document.getElementById('create_lead_status').addEventListener('change', function() {
+        const reassignDiv = document.getElementById('reassign_team_div');
+        const reassignSelect = document.getElementById('reassign_team_id');
+        if (this.value === 'Lead Transferred') {
+            reassignDiv.style.display = 'block';
+            reassignSelect.required = true;
+        } else {
+            reassignDiv.style.display = 'none';
+            reassignSelect.required = false;
+        }
+    });
+
+    // Edit Modal JS
+    document.querySelectorAll('.table__icon.edit').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const modal = document.getElementById('followUpModalEdit');
+            if(!modal) return;
+            
+            // Basic fields
+            modal.querySelector('input[name="id"]').value = this.dataset.id;
+            modal.querySelector('select[name="lead_id"]').value = this.dataset.leadId;
+            modal.querySelector('select[name="project_id"]').value = this.dataset.projectId;
+            
+            // Load flats for project and set selected
+            if (this.dataset.projectId) {
+                loadFlats(this.dataset.projectId, this.dataset.flatId, document.getElementById('editFlatSelect'));
+            } else {
+                document.getElementById('editFlatSelect').innerHTML = '<option value="">Select Flat</option>';
+            }
+
+            modal.querySelector('input[name="follow_up_date"]').value = this.dataset.date;
+            modal.querySelector('input[name="follow_up_time"]').value = this.dataset.time;
+            modal.querySelector('select[name="follow_up_type"]').value = this.dataset.type;
+            modal.querySelector('textarea[name="discussion_note"]').value = this.dataset.note;
+            modal.querySelector('input[name="next_follow_up_date"]').value = this.dataset.nextDate;
+            modal.querySelector('select[name="next_action"]').value = this.dataset.nextAction;
+
+            // New fields
+            if (modal.querySelector('select[name="lead_status"]')) {
+                modal.querySelector('select[name="lead_status"]').value = this.dataset.leadStatus;
+            }
+            if (modal.querySelector('select[name="follow_up_agent_id"]')) {
+                modal.querySelector('select[name="follow_up_agent_id"]').value = this.dataset.agentId;
+            }
+            if (modal.querySelector('textarea[name="next_follow_up_plan_notes"]')) {
+                modal.querySelector('textarea[name="next_follow_up_plan_notes"]').value = this.dataset.planNotes;
+            }
+        });
+    });
+
 </script>

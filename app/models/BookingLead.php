@@ -482,6 +482,28 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $data;
     }
 
+    // ✅ Optimized: শুধু current page এর lead IDs এর জন্য count করে
+    public function getBookingCountByLeadIds(array $leadIds)
+    {
+        if (empty($leadIds)) return [];
+
+        $ids = implode(',', array_map('intval', $leadIds));
+        $sql = "SELECT lb.lead_id, COUNT(DISTINCT lb.id) AS booking_count
+                FROM lead_bookings lb
+                INNER JOIN lead_payments lp ON lp.booking_id = lb.id
+                WHERE lb.lead_id IN ($ids)
+                GROUP BY lb.lead_id";
+
+        $result = $this->db->query($sql);
+        $data = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $data[$row['lead_id']] = $row['booking_count'];
+            }
+        }
+        return $data;
+    }
+
     public function getById($id)
     {
         $stmt = $this->db->prepare("SELECT lb.*, 

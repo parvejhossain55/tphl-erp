@@ -444,7 +444,7 @@ $show_breadcrumb = true;
             </div>
         </div>
 
-        <div class="">
+        <div class="row g-3" id="mobileLeadCards">
             <?php foreach ($leads as $key => $lead): ?>
                 <?php
                 $displayName = !empty($lead['campaign_name'])
@@ -577,6 +577,20 @@ $show_breadcrumb = true;
             <?php endforeach; ?>
         </div>
 
+        <!-- Mobile Load More -->
+        <div class="text-center py-3" id="mobileLoadMoreWrapper">
+            <div class="small text-muted mb-2" id="mobileLeadCount">Showing <?= count($leads) ?> of <?= $leadCounts ?> leads</div>
+            <?php if (count($leads) < $leadCounts): ?>
+            <button id="mobileLoadMoreBtn" class="btn btn-outline-success px-4">
+                <i class="bi bi-arrow-down-circle me-1"></i> Load More
+            </button>
+            <?php endif; ?>
+            <div id="mobileLoader" class="py-2" style="display:none;">
+                <div class="spinner-border spinner-border-sm text-success"></div>
+                <span class="small text-muted ms-2">Loading...</span>
+            </div>
+        </div>
+
         <!-- FAB Button -->
         <button class="fab-button d-none">
             <i class="bi bi-plus-lg"></i>
@@ -697,254 +711,306 @@ $show_breadcrumb = true;
     // campaign full show
 </script>
 
-<!-- Lead Selection & Assignment Logic -->
+<!-- Lead Selection, Assignment & DataTables — unified block -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const selectedLeadsSet = new Set();
-        const assignCard = document.getElementById('assignCard');
-        const assignCardMobile = document.getElementById('assignCardMobile');
-        const selectAll = document.getElementById('selectAllLeads');
+// Global so mobile Load More cards can also trigger these
+let selectedLeadsSet = new Set();
+let updateAssignUIData;
 
-        // Function to update the visible state of the assign card
-        function updateAssignUIData() {
-            const count = selectedLeadsSet.size;
-            const anySelected = count > 0;
-            if (assignCard) assignCard.style.display = anySelected ? 'flex' : 'none';
-            if (assignCardMobile) assignCardMobile.style.display = anySelected ? 'block' : 'none';
+document.addEventListener('DOMContentLoaded', function () {
 
-            const countEl = document.getElementById('selectedCount');
-            if (countEl) countEl.innerText = count;
+    const assignCard       = document.getElementById('assignCard');
+    const assignCardMobile = document.getElementById('assignCardMobile');
+    const selectAll        = document.getElementById('selectAllLeads');
 
-            const countMobileEl = document.getElementById('selectedCountMobile');
-            if (countMobileEl) countMobileEl.innerText = count;
+    // ── Update assign card visibility ─────────────────────────────────
+    updateAssignUIData = function () {
+        const count = selectedLeadsSet.size;
+        const any   = count > 0;
+        if (assignCard)       assignCard.style.display       = any ? 'flex'  : 'none';
+        if (assignCardMobile) assignCardMobile.style.display = any ? 'block' : 'none';
+
+        const countEl       = document.getElementById('selectedCount');
+        const countMobileEl = document.getElementById('selectedCountMobile');
+        if (countEl)       countEl.innerText       = count;
+        if (countMobileEl) countMobileEl.innerText = count;
+    };
+
+    // ── Sync checkboxes with Set (called after DataTables page change) ─
+    function syncCheckboxes() {
+        document.querySelectorAll('.selectedId').forEach(cb => {
+            cb.checked = selectedLeadsSet.has(cb.dataset.id);
+        });
+        document.querySelectorAll('.selectedIdMobile').forEach(cb => {
+            cb.checked = selectedLeadsSet.has(cb.dataset.id);
+        });
+        // Update header checkbox state
+        const deskCbs = Array.from(document.querySelectorAll('.selectedId'));
+        if (deskCbs.length > 0 && selectAll) {
+            selectAll.checked = deskCbs.every(cb => cb.checked);
         }
+    }
 
-        // Function to sync checkboxes with the Set
-        function syncCheckboxes() {
-            // Desk checkboxes
-            document.querySelectorAll('.selectedId').forEach(cb => {
-                cb.checked = selectedLeadsSet.has(cb.dataset.id);
-            });
-            // Mobile checkboxes
-            document.querySelectorAll('.selectedIdMobile').forEach(cb => {
-                cb.checked = selectedLeadsSet.has(cb.dataset.id);
-            });
+    // ── Submit assignment form ─────────────────────────────────────────
+    function submitAssignForm(userId, selectedLeads, assignedDate) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<?= $base_url ?>/assign-multiple-leads';
+        const addHidden = (name, val) => {
+            const inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = name; inp.value = val;
+            form.appendChild(inp);
+        };
+        addHidden('user_id',       userId);
+        addHidden('lead_ids',      selectedLeads.join(','));
+        addHidden('assigned_date', assignedDate);
+        document.body.appendChild(form);
+        form.submit();
+    }
 
-            // Update header checkbox
-            const currentDeskCheckboxes = Array.from(document.querySelectorAll('.selectedId'));
-            if (currentDeskCheckboxes.length > 0) {
-                const allCheckedOnPage = currentDeskCheckboxes.every(cb => cb.checked);
-                if (selectAll) selectAll.checked = allCheckedOnPage;
-            }
+    // ── Desktop Assign button ─────────────────────────────────────────
+    const assignBtn = document.getElementById('assignUserBtn');
+    if (assignBtn) {
+        assignBtn.addEventListener('click', function () {
+            const userId       = document.getElementById('assignUserSelect').value;
+            const assignedDate = document.getElementById('assignedDate').value;
+            const leads        = Array.from(selectedLeadsSet);
+            if (!userId || leads.length === 0) { alert('Select leads and a user.'); return; }
+            submitAssignForm(userId, leads, assignedDate);
+        });
+    }
+
+    // ── Mobile Assign button ──────────────────────────────────────────
+    const assignBtnMobile = document.getElementById('assignUserBtnMobile');
+    if (assignBtnMobile) {
+        assignBtnMobile.addEventListener('click', function () {
+            const userId       = document.getElementById('assignUserSelectMobile').value;
+            const assignedDate = document.getElementById('assignedDateMobile').value;
+            const leads        = Array.from(selectedLeadsSet);
+            if (!userId || leads.length === 0) { alert('Select leads and a user.'); return; }
+            submitAssignForm(userId, leads, assignedDate);
+        });
+    }
+
+    // ── Header "Select All" checkbox (current DataTables page) ────────
+    if (selectAll) {
+        selectAll.addEventListener('click',  e => e.stopPropagation());
+        selectAll.addEventListener('change', function () {
+            const isChecked = this.checked;
+            document.querySelectorAll('#serverSideLeadTable tbody .selectedId').forEach(cb => {
+                cb.checked = isChecked;
+                const id   = cb.dataset.id;
+                isChecked ? selectedLeadsSet.add(id) : selectedLeadsSet.delete(id);
+                const mob = document.querySelector(`.selectedIdMobile[data-id="${id}"]`);
+                if (mob) mob.checked = isChecked;
+            });
+            updateAssignUIData();
+        });
+    }
+
+    // ── Individual checkbox change (event delegation — works for AJAX rows too) ──
+    document.addEventListener('change', function (e) {
+        if (e.target.classList.contains('selectedId') || e.target.classList.contains('selectedIdMobile')) {
+            const id = e.target.dataset.id;
+            e.target.checked ? selectedLeadsSet.add(id) : selectedLeadsSet.delete(id);
+            // Mirror to the sibling view
+            const mirror = e.target.classList.contains('selectedId')
+                ? document.querySelector(`.selectedIdMobile[data-id="${id}"]`)
+                : document.querySelector(`.selectedId[data-id="${id}"]`);
+            if (mirror) mirror.checked = e.target.checked;
+            syncCheckboxes();
+            updateAssignUIData();
         }
+    });
 
-        // Shared function to submit the assignment form
-        function submitAssignForm(userId, selectedLeads, assignedDate) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '<?= $base_url ?>/assign-multiple-leads';
-
-            const inputUser = document.createElement('input');
-            inputUser.type = 'hidden';
-            inputUser.name = 'user_id';
-            inputUser.value = userId;
-            form.appendChild(inputUser);
-
-            const inputLeads = document.createElement('input');
-            inputLeads.type = 'hidden';
-            inputLeads.name = 'lead_ids';
-            inputLeads.value = selectedLeads.join(',');
-            form.appendChild(inputLeads);
-
-            const inputDate = document.createElement('input');
-            inputDate.type = 'hidden';
-            inputDate.name = 'assigned_date';
-            inputDate.value = assignedDate;
-            form.appendChild(inputDate);
-
-            document.body.appendChild(form);
-            form.submit();
+    // Prevent table sort when clicking checkboxes
+    document.addEventListener('click', function (e) {
+        if (e.target.classList.contains('selectedId') || e.target.classList.contains('selectedIdMobile')) {
+            e.stopPropagation();
         }
+    });
 
-        // --- DESKTOP ASSIGN ---
-        const assignBtn = document.getElementById('assignUserBtn');
-        if (assignBtn) {
-            assignBtn.addEventListener('click', function() {
-                const userId = document.getElementById('assignUserSelect').value;
-                const assignedDate = document.getElementById('assignedDate').value;
-                const selectedLeads = Array.from(selectedLeadsSet);
+    // ── importCsvBtn null-safe ────────────────────────────────────────
+    const importBtn = document.getElementById('importCsvBtn');
+    if (importBtn) {
+        importBtn.addEventListener('click', e => e.preventDefault());
+    }
 
-                if (!userId || selectedLeads.length === 0) {
-                    alert('Select leads and a user to assign.');
-                    return;
-                }
-                submitAssignForm(userId, selectedLeads, assignedDate);
-            });
-        }
+    // ── DataTables (server-side) init ─────────────────────────────────
+    if ($('#serverSideLeadTable').length > 0) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ajaxUrl   = base_url + '/leads-ajax-data?' + urlParams.toString();
 
-        // --- MOBILE ASSIGN ---
-        const assignBtnMobile = document.getElementById('assignUserBtnMobile');
-        if (assignBtnMobile) {
-            assignBtnMobile.addEventListener('click', function() {
-                const selectedLeads = Array.from(selectedLeadsSet);
-                const userId = document.getElementById('assignUserSelectMobile').value;
-                const assignedDate = document.getElementById('assignedDateMobile').value;
-
-                if (!userId || selectedLeads.length === 0) {
-                    alert('Select leads and a user to assign.');
-                    return;
-                }
-                submitAssignForm(userId, selectedLeads, assignedDate);
-            });
-        }
-
-        // Handle header checkbox (Select All on current page)
-        if (selectAll) {
-            // Prevent DataTables scaling/sorting when clicking the checkbox
-            selectAll.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
-
-            selectAll.addEventListener('change', function() {
-                const table = $('.multiple_tables').DataTable();
-                const currentPageNodes = table.rows({
-                    page: 'current'
-                }).nodes();
-                const isChecked = this.checked;
-
-                // Only toggle leads on the current page
-                $(currentPageNodes).find('.selectedId').each(function() {
-                    this.checked = isChecked;
-                    const id = this.dataset.id;
-
-                    if (isChecked) {
-                        selectedLeadsSet.add(id);
-                    } else {
-                        selectedLeadsSet.delete(id);
-                    }
-
-                    // Sync the mobile version for this specific lead only
-                    const mobileCb = document.querySelector(`.selectedIdMobile[data-id="${id}"]`);
-                    if (mobileCb) mobileCb.checked = isChecked;
-                });
-
-                updateAssignUIData();
-            });
-        }
-
-        // Event delegation for individual row checkboxes
-        document.addEventListener('change', function(e) {
-            if (e.target.classList.contains('selectedId') || e.target.classList.contains('selectedIdMobile')) {
-                const id = e.target.dataset.id;
-                if (e.target.checked) {
-                    selectedLeadsSet.add(id);
-                } else {
-                    selectedLeadsSet.delete(id);
-                }
+        const dtTable = $('#serverSideLeadTable').DataTable({
+            serverSide : true,
+            processing : true,
+            ajax       : { url: ajaxUrl, type: 'POST' },
+            lengthMenu : [[10, 25, 50, 100], [10, 25, 50, 100]],
+            order      : [],
+            columnDefs : [
+                { targets: 0, orderable: false },
+                { targets: 8, orderable: false }
+            ],
+            drawCallback: function () {
+                // After each page draw: re-sync checkbox states
                 syncCheckboxes();
-                updateAssignUIData();
-            }
-        });
 
-        // Prevent sorting when clicking row checkboxes
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('selectedId') || e.target.classList.contains('selectedIdMobile')) {
-                e.stopPropagation();
-            }
-        });
-
-        // Hook into DataTables 'draw' event
-        const dtTable = $('.multiple_tables');
-        if (dtTable.length > 0) {
-            // Get DataTable instance
-            const table = dtTable.DataTable();
-
-            // Disable sorting on the first column (where the checkbox is)
-            table.settings()[0].aoColumns[0].bSortable = false;
-
-            table.on('draw', function() {
-                syncCheckboxes();
-            });
-        }
-    });
-</script>
-
-<script>
-    document.querySelectorAll('[id^="viewCampaignBtn"]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            //From data-description  full text 
-            const description = this.getAttribute('data-description');
-            // textarea  set 
-            document.getElementById('view_campaign_id').value = description;
-        });
-    });
-</script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Prevent page reload when Import CSV clicked
-        const importBtn = document.getElementById('importCsvBtn');
-        importBtn.addEventListener('click', function(e) {
-            e.preventDefault(); // ensures no form submit
-            // Bootstrap modal opens automatically via data-bs-toggle="modal"
-        });
-    });
-</script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        if ($('#serverSideLeadTable').length > 0) {
-            // Build the AJAX URL with all the query parameters for filtering
-            const urlParams = new URLSearchParams(window.location.search);
-            const ajaxUrl = base_url + '/leads-ajax-data?' + urlParams.toString();
-
-            const dtTable = $('#serverSideLeadTable').DataTable({
-                serverSide: true,
-                processing: true,
-                ajax: {
-                    url: ajaxUrl,
-                    type: 'POST'
-                },
-                lengthMenu: [
-                    [10, 25, 50, 100],
-                    [10, 25, 50, 100]
-                ],
-                order: [], // Let backend handle default sorting
-                columnDefs: [
-                    { targets: 0, orderable: false }, // SL/Checkbox
-                    { targets: 8, orderable: false }  // Action
-                ],
-                drawCallback: function(settings) {
-                    // Re-bind events for dynamically loaded content
-                    
-                    // 1. Note View Buttons
-                    $('.note-view-btn').off('click').on('click', function() {
-                        document.getElementById('view_note_text').value = this.getAttribute('data-note');
-                    });
-                    
-                    // 2. View Campaign Buttons
-                    $('.viewCampaignBtnDynamic').off('click').on('click', function() {
-                        document.getElementById('view_campaign_id').value = this.getAttribute('data-description');
-                    });
-                }
-            });
-            
-            // Handle Select All checkbox logic specifically for serverSide
-            $('#selectAllLeads').off('change').on('change', function() {
-                const isChecked = this.checked;
-                $('#serverSideLeadTable tbody .selectedId').each(function() {
-                    this.checked = isChecked;
-                    const id = this.dataset.id;
-                    if (isChecked) {
-                        selectedLeadsSet.add(id);
-                    } else {
-                        selectedLeadsSet.delete(id);
-                    }
-                    // Sync mobile if needed
-                    const mobileCb = document.querySelector('.selectedIdMobile[data-id="' + id + '"]');
-                    if (mobileCb) mobileCb.checked = isChecked;
+                // Re-bind note view buttons
+                $('.note-view-btn').off('click').on('click', function () {
+                    const noteEl = document.getElementById('view_note_text');
+                    if (noteEl) noteEl.value = this.getAttribute('data-note');
                 });
-                if(typeof updateAssignUIData === 'function') updateAssignUIData();
-            });
-        }
-    });
+                // Re-bind campaign view buttons
+                $('.viewCampaignBtnDynamic').off('click').on('click', function () {
+                    const camEl = document.getElementById('view_campaign_id');
+                    if (camEl) camEl.value = this.getAttribute('data-description');
+                });
+            }
+        });
+    }
+
+}); // end DOMContentLoaded
 </script>
+
+
+
+
+<script>
+// ── Mobile Lead Cards: Load More via AJAX ───────────────────────────
+(function () {
+    const cardsContainer = document.getElementById('mobileLeadCards');
+    const loadMoreBtn    = document.getElementById('mobileLoadMoreBtn');
+    const loader         = document.getElementById('mobileLoader');
+    const countEl        = document.getElementById('mobileLeadCount');
+
+    if (!cardsContainer || !loadMoreBtn) return;
+
+    const PAGE_SIZE = 20;
+    let currentStart = <?= count($leads) ?>;  // PHP already rendered these
+    let totalRecords = <?= (int)$leadCounts ?>;
+    let isLoading    = false;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('mobile', '1');
+    const ajaxUrl = base_url + '/leads-ajax-data?' + urlParams.toString();
+
+    const actionColors = {
+        'new':       'bg-info-subtle text-info',
+        'booked':    'bg-success-subtle text-success',
+        'follow up': 'bg-warning-subtle text-warning',
+        'visited':   'bg-primary-subtle text-primary',
+        'cancel':    'bg-danger-subtle text-danger',
+    };
+
+    function buildCard(lead) {
+        const ac    = actionColors[lead.last_lead_action] || 'bg-secondary-subtle text-secondary';
+        const label = lead.last_lead_action
+            ? lead.last_lead_action.charAt(0).toUpperCase() + lead.last_lead_action.slice(1)
+            : 'No Action';
+        const nextFU = lead.next_follow_up
+            ? new Date(lead.next_follow_up).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})
+            : 'No Schedule';
+        const fuBadge = lead.follow_up_count > 0
+            ? `<span class="badge bg-white text-dark rounded-circle" style="font-size:10px;min-width:18px;height:18px;line-height:18px;">${lead.follow_up_count}</span>` : '';
+        const bkBadge = lead.booking_count > 0
+            ? `<span class="badge bg-white text-dark rounded-circle" style="font-size:10px;min-width:18px;height:18px;line-height:18px;">${lead.booking_count}</span>` : '';
+        const name    = lead.full_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const project = (lead.campaign_name || '-').substring(0, 20);
+
+        return `
+        <div class="col-12 col-sm-6">
+          <div class="lead-card h-100" data-id="${lead.id}">
+            <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
+              <div class="flex-grow-1 overflow-hidden">
+                <div class="d-flex align-items-center gap-1">
+                  <input type="checkbox" class="selectedIdMobile me-1" data-id="${lead.id}">
+                  <span class="lead-name text-truncate">${name}</span>
+                </div>
+                <div class="lead-phone text-truncate small">${lead.phone || ''}</div>
+              </div>
+              <div class="dropdown">
+                <button class="action-dot-btn" type="button" data-bs-toggle="dropdown">
+                  <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                  <li><a class="dropdown__item" href="${base_url}/edit-lead/${lead.id}"><i class="bi bi-pencil-square me-2 text-primary"></i>Edit</a></li>
+                  <li><a class="dropdown__item" href="${base_url}/view-lead/${lead.id}"><i class="bi bi-eye me-2 text-success"></i>View</a></li>
+                </ul>
+              </div>
+            </div>
+            <div class="mt-2">
+              <span class="badge ${ac} rounded-pill px-2 py-1 mb-2" style="font-size:.78rem;">${label}</span>
+              <div class="d-flex flex-column gap-2">
+                <a href="${base_url}/follow-up-leads/${lead.id}" class="btn btn-primary btn-sm w-100 d-flex align-items-center gap-2 px-2">
+                  <span>Follow Up</span>${fuBadge}
+                </a>
+                <a href="${base_url}/booking-leads/${lead.id}" class="btn btn-secondary btn-sm w-100 d-flex align-items-center gap-2 px-2">
+                  <span>Booking</span>${bkBadge}
+                </a>
+              </div>
+            </div>
+            <div class="project-detail mt-2">
+              <div class="info-label">Project</div>
+              <span class="project-badge mb-0 mt-1"><i class="bi bi-building"></i> ${project}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-2">
+              <div class="info-label flex-shrink-0">Next Follow-Up</div>
+              <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:.75rem;">
+                <i class="bi bi-calendar2-check me-1"></i>${nextFU}
+              </span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-2">
+              <div class="info-label flex-shrink-0">Executive</div>
+              <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:.75rem;">
+                <i class="bi bi-person me-1"></i>${lead.agent_name || 'No Agent'}
+              </span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function loadMore() {
+        if (isLoading) return;
+        isLoading = true;
+        loadMoreBtn.disabled = true;
+        if (loader) loader.style.display = 'block';
+
+        const form = new FormData();
+        form.append('draw', Math.ceil(currentStart / PAGE_SIZE) + 1);
+        form.append('start', currentStart);
+        form.append('length', PAGE_SIZE);
+        form.append('search[value]', '');
+
+        fetch(ajaxUrl, { method: 'POST', body: form, credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(json => {
+                totalRecords = json.recordsTotal || totalRecords;
+                const newCards = (json.data || []).map(buildCard).join('');
+                cardsContainer.insertAdjacentHTML('beforeend', newCards);
+                currentStart += (json.data || []).length;
+
+                if (countEl) countEl.textContent = `Showing ${currentStart} of ${totalRecords} leads`;
+
+                if (currentStart >= totalRecords) {
+                    loadMoreBtn.style.display = 'none';
+                    if (countEl) countEl.textContent = `All ${totalRecords} leads loaded ✓`;
+                }
+            })
+            .catch(() => {
+                cardsContainer.insertAdjacentHTML('beforeend',
+                    `<div class="col-12"><div class="alert alert-warning py-2">Failed to load. <a href="#" onclick="location.reload()">Refresh</a></div></div>`);
+            })
+            .finally(() => {
+                isLoading = false;
+                loadMoreBtn.disabled = false;
+                if (loader) loader.style.display = 'none';
+            });
+    }
+
+    loadMoreBtn.addEventListener('click', loadMore);
+})();
+</script>
+
+
+
+<!-- my old lead-lists page where assigned user show and checkbox dile first page er ata a time select by row ata one page row paginate all 10 row selcted  -->
