@@ -1,3 +1,5 @@
+-- phase 2 er jonno column lagche 
+
 architect_engineering
 
 banks (আপনার drop তে আছে, উপরের লিস্টে যোগ করেছি, চেক করুন)
@@ -77,3 +79,9 @@ vendor_penalties
 vendor_ratings
 
 weekly_progress_report
+
+-- akhon aro modify hoye lead_payments table e ]
+lead_payments
+4 ta
+emi_schedules  
+2 ta
