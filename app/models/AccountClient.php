@@ -527,9 +527,9 @@ ORDER BY lb.booking_date DESC
             $remainingLandShare       = max(0, $effectiveLandShareTarget - $landSharePaymentsOnly);
             $isLandShareCompleted     = ($remainingLandShare <= 0);
 
-            // Total Construction Fee = Total Price - (Land Share - Dev Charges)
+            // Total Construction Fee = Total Price - (Land Share + Dev Charges)
             // Discount only affects land share remaining, NOT the construction fee
-            $constructionFee = max(0, $totalPrice - ($totalLandShare - $flatDevCharges));
+            $constructionFee = max(0, $totalPrice - ($totalLandShare + $flatDevCharges));
 
             // Fixed Per-EMI Amount = Construction Fee / Total EMI count
             $emiStats = $this->getEMIStatistics($bookingId);
@@ -543,8 +543,8 @@ ORDER BY lb.booking_date DESC
                 $isDevChargeCompleted = true;
             }
 
-            // Construction fee paid = EMI paid only
-            $constructionFeePaid         = max(0, $emiPaid);
+            // Construction fee paid = EMI paid minus Service Fee
+            $constructionFeePaid         = max(0, $emiPaid - $totalServiceFee);
             $totalBulkEmiDiscount        = (float) ($clientDetails['total_bulk_emi_discount'] ?? 0);
             $remainingConstructionFee    = max(0, round($constructionFee - $constructionFeePaid - $totalBulkEmiDiscount));
 
@@ -552,7 +552,8 @@ ORDER BY lb.booking_date DESC
             $isRegistrationPaid = ($registrationPaid > 0);
 
             // Total due and net received
-            $totalDue     = max(0, $totalPrice - $totalPaid);
+            // Bulk EMI discount reduces the client's total obligation
+            $totalDue     = max(0, $totalPrice - $totalPaid - $totalBulkEmiDiscount);
             $netReceived  = $totalPaid - $totalServiceFee;
             $totalEmiDue  = (float) ($clientDetails['total_emi_due'] ?? 0);
 

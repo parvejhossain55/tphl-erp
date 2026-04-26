@@ -23,9 +23,9 @@ if (isset($error_message) && !empty($error_message)):
 <?php else: ?>
 
 <?php
-// Check if registration is paid (enables Add Transaction for dev charges & EMI)
+// Check if land share is completed (enables Add Transaction for dev charges & EMI)
 $accountModel = new AccountClient();
-$isRegistrationPaid = $accountModel->isRegistrationPaid($clientDetails['booking_id'] ?? 0);
+$isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
 ?>
 
 <div class="row">
@@ -169,7 +169,7 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($clientDetails['booking_
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Registration Money</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['registration_money'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['registration_paid'] ?? 0, 2) ?></h4>
                         </div>
                     </div>
                 </div>
@@ -295,6 +295,44 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($clientDetails['booking_
                                     Fully Paid ✓
                                 <?php else: ?>
                                     TK.<?= number_format($paymentSummary['remaining_construction_fee'], 2) ?>
+                                <?php endif; ?>
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span><i class="fa-light fa-sack-dollar"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Net Received</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['net_received'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span style="color:#e74c3c;"><i class="fa-light fa-file-invoice-dollar"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Due</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title" style="color:<?= ($paymentSummary['total_due'] ?? 0) <= 0 ? '#27ae60' : '#e74c3c' ?>;">
+                                <?php if (($paymentSummary['total_due'] ?? 0) <= 0): ?>
+                                    All Clear ✓
+                                <?php else: ?>
+                                    TK.<?= number_format($paymentSummary['total_due'], 2) ?>
                                 <?php endif; ?>
                             </h4>
                         </div>
@@ -482,13 +520,13 @@ $isRegistrationPaid = $accountModel->isRegistrationPaid($clientDetails['booking_
                         <button class="btn btn-secondary mb-3" disabled title="A refund has been requested for this booking">
                             <i class="fa-light fa-plus me-2"></i> Add Transaction
                         </button>
-                    <?php elseif ($isRegistrationPaid): ?>
+                    <?php elseif ($isLandShareCompleted): ?>
                         <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                             <i class="fa-light fa-plus me-2"></i> Add Transaction
                         </a>
                     <?php else: ?>
-                        <button class="btn btn-secondary mb-3" disabled title="Registration must be paid before adding transactions">
-                            <i class="fa-light fa-lock me-2"></i> Add Transaction (Requires Registration)
+                        <button class="btn btn-secondary mb-3" disabled title="Land share must be completed before adding transactions">
+                            <i class="fa-light fa-lock me-2"></i> Add Transaction (Requires Land Share)
                         </button>
                     <?php endif; ?>
                     <a href="<?= $GLOBALS['base_url'] ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">

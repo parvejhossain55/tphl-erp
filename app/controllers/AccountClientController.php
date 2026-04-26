@@ -381,22 +381,15 @@ public function addCedTransaction()
         exit;
     }
 
-    // Registration must be paid
-    if (!$this->clientModel->isRegistrationPaid($bookingId)) {
-        setError("Registration payment must be made before adding transactions.");
+    // Land Share must be completed
+    $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+    if (empty($paymentSummary['is_land_share_completed'])) {
+        setError("Land share payment must be fully completed before adding CED transactions.");
         header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
         exit;
     }
 
-    // EMI requires land share completed
-    if ($paymentType === 'emi') {
-        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
-        if (empty($paymentSummary['is_land_share_completed'])) {
-            setError("Land share must be fully paid before adding EMI transactions.");
-            header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
-            exit;
-        }
-    }
+
 
     // Handle multi-file proof uploads
     $uploadedPaths = [];

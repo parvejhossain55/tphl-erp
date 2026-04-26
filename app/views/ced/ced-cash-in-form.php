@@ -12,7 +12,7 @@ $accountModel = new AccountClient();
 $paymentSummary = $accountModel->getPaymentSummaryByBookingId($bookingId);
 
 $isLandShareCompleted  = $paymentSummary['is_land_share_completed'] ?? false;
-$isRegistrationPaid    = $accountModel->isRegistrationPaid($bookingId);
+$isRegistrationPaid    = $paymentSummary['is_registration_paid'] ?? false;
 $devChargePaid         = $paymentSummary['development_charge_paid'] ?? 0;
 $flatDevCharges        = (float)($paymentSummary['flat_development_charges'] ?? 0);
 $isDevChargeCompleted  = !empty($paymentSummary['is_dev_charge_completed']);
@@ -50,10 +50,10 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
 
-                <?php if (!$isRegistrationPaid): ?>
+                <?php if (!$isLandShareCompleted): ?>
                     <div class="alert alert-danger mb-4">
-                        <strong><i class="fa-light fa-lock me-1"></i>Registration Required!</strong>
-                        Registration payment must be completed before adding any transactions from CED.
+                        <strong><i class="fa-light fa-lock me-1"></i>Land Share Required!</strong>
+                        Land share payment must be completed before adding any transactions from CED.
                     </div>
                 <?php else: ?>
                 <!-- Transaction Form -->
