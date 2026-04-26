@@ -975,7 +975,7 @@ ORDER BY lb.booking_date DESC
             $p_createdBy = (int) ($transactionData['created_by'] ?? 0);
 
             $stmt->bind_param(
-                "isdddsdssisssssdisi",
+                "isdddssssisssssdisi",
                 $bookingId,
                 $paymentType,
                 $amount,

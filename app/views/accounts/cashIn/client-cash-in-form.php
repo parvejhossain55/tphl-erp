@@ -139,12 +139,12 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- EMI — requires dev charge completed -->
-                                <?php if ($isDevChargeCompleted && $remainingCF > 0): ?>
+                                <!-- EMI — requires dev charge and land share completed -->
+                                <?php if ($isLandShareCompleted && $isDevChargeCompleted && $remainingCF > 0): ?>
                                     <option value="emi" data-details="true">
                                         EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?php endif; ?>
                                     </option>
-                                <?php elseif ($isDevChargeCompleted && $remainingCF <= 0): ?>
+                                <?php elseif ($isLandShareCompleted && $isDevChargeCompleted && $remainingCF <= 0): ?>
                                     <option value="emi" disabled>
                                         EMI — All Paid ✓ (Construction Fee Completed)
                                     </option>
@@ -449,7 +449,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         helpText = 'Construction fee fully paid — no more EMI needed.';
                         amountField.setAttribute('disabled', 'disabled');
                     } else if (perEmiAmount > 0) {
-                        const svcPct = serviceChargeRate > 0 ? ' + ' + serviceChargeRate + '% service charge' : '';
+                        const svcPct = serviceChargeRate > 0 ? ' + ' + serviceChargeRate  '% service charge included' : '';
                         const totalDue = <?= json_encode((float)$totalEmiDue) ?>;
                         let dueNote = totalDue > 0 ? ' Outstanding due: TK.' + totalDue.toLocaleString('en-IN', {minimumFractionDigits:2}) + ' (auto-cleared first).' : '';
                         const effectiveMax = Math.min(perEmiAmount, remainingCF);

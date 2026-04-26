@@ -262,9 +262,15 @@ public function indexTwoView($bookingId = null)
     $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
 
     if (!$clientDetails) {
-        setError("Client not found");
-        header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
-        exit;
+        $this->view("ced/clients-cash-in-history-view", [
+            "current_route" => "clients-cash-in-history-view",
+            "page_title" => "Transaction History - Error",
+            "clientDetails" => null,
+            "transactions" => [],
+            "paymentSummary" => [],
+            "error_message" => "Booking not found or Configuration error. The land share or client data could not be resolved."
+        ]);
+        return;
     }
 
     $transactions = $this->clientModel->getTransactionsByBookingId($bookingId);

@@ -6078,10 +6078,12 @@ INSERT INTO `lead_follow_ups` (`id`, `lead_id`, `project_id`, `flat_id`, `follow
 CREATE TABLE `lead_payments` (
   `id` int(10) UNSIGNED NOT NULL,
   `booking_id` int(10) UNSIGNED NOT NULL,
-  `payment_type` enum('booking_money','registration','emi','land_share','development_charge') NOT NULL,
+  `payment_type` enum('booking_money','registration','emi','land_share','development_charge','emi_due_settlement') NOT NULL,
   `amount` decimal(12,2) NOT NULL,
   `bulk_emi_discount` decimal(15,2) DEFAULT 0.00,
   `due_emi_amount` decimal(12,2) DEFAULT 0.00,
+  `parent_payment_id` int(10) UNSIGNED DEFAULT NULL,
+  `settlement_type` enum('emi_due_settlement') DEFAULT NULL,
   `land_share_amount` decimal(12,2) DEFAULT 0.00,
   `payment_method` enum('cash','bank','online','cheque') DEFAULT 'cash',
   `payment_status` enum('paid','partially_paid','pending','failed') DEFAULT 'paid',
