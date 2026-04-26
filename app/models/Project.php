@@ -112,8 +112,7 @@ $price_range = !empty($data['price_range']) ? $data['price_range'] : null;
         return false;
     }
 
-    
-    $bindTypes = "ssiisiiisssssssissssisssssiiiiiiiissd";
+$bindTypes = "ssiisiisssssssssssssisssssiiiiiiiisd";
 
     $stmt->bind_param(
         $bindTypes,
@@ -271,7 +270,7 @@ $plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
             return false;
         }
         $stmt->bind_param(
-            "sssssssssssssssssssssssssssssssisssdi",
+            "ssiisssiisssssssissssiiiiiisssiisssdi",
             $data['name'],
             $data['slug'],
             $data['location_id'],

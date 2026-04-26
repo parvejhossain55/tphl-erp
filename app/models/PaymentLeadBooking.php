@@ -30,12 +30,12 @@ class PaymentLeadBooking extends Model
 
     // Create a new follow-up
 
-public function create($data)
-{
-    $this->db->begin_transaction();
+    public function create($data)
+    {
+        $this->db->begin_transaction();
 
-    try {
-        $stmt = $this->db->prepare("
+        try {
+            $stmt = $this->db->prepare("
             INSERT INTO lead_payments
             (booking_id, bank_name, bank_account_no, cheque_no, online_type, 
              payment_type, amount, payment_method, payment_status, verification_status, 
@@ -43,41 +43,40 @@ public function create($data)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
-        $verificationStatus = $data['verification_status'] ?? 'pending';
-        $attachment_image = $data['attachment_image'] ?? '';
+            $verificationStatus = $data['verification_status'] ?? 'pending';
+            $attachment_image = $data['attachment_image'] ?? '';
 
-        $stmt->bind_param(
-            "isssssdsssssiss",
-            $data['booking_id'],
-            $data['bank_name'],
-            $data['bank_account_no'],
-            $data['cheque_no'],
-            $data['online_type'],
-            $data['payment_type'],
-            $data['amount'],
-            $data['payment_method'],
-            $data['payment_status'],
-            $verificationStatus,
-            $data['payment_date'],
-            $data['transaction_ref'],
-            $data['total_emi_no'],
-            $data['created_by'],
-            $attachment_image
-        );
+            $stmt->bind_param(
+                "isssssdsssssiss",
+                $data['booking_id'],
+                $data['bank_name'],
+                $data['bank_account_no'],
+                $data['cheque_no'],
+                $data['online_type'],
+                $data['payment_type'],
+                $data['amount'],
+                $data['payment_method'],
+                $data['payment_status'],
+                $verificationStatus,
+                $data['payment_date'],
+                $data['transaction_ref'],
+                $data['total_emi_no'],
+                $data['created_by'],
+                $attachment_image
+            );
 
-        if (!$stmt->execute()) {
-            throw new Exception("Payment insert failed: " . $stmt->error);
+            if (!$stmt->execute()) {
+                throw new Exception("Payment insert failed: " . $stmt->error);
+            }
+
+            $this->db->commit();
+            return $this->db->insert_id;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            error_log($e->getMessage());
+            return false;
         }
-
-        $this->db->commit();
-        return $this->db->insert_id;
-
-    } catch (Exception $e) {
-        $this->db->rollback();
-        error_log($e->getMessage());
-        return false;
     }
-}
 
 
 
@@ -98,14 +97,18 @@ public function create($data)
     // All payments for a booking
     public function getByBooking($booking_id)
     {
-        $stmt = $this->db->prepare("
-            SELECT p.*, u.full_name AS created_by_name,lb.agreement_value,lb.discount_amount,us.full_name AS verified_by_name
-            FROM lead_payments p
-            LEFT JOIN users u ON p.created_by = u.id
-            LEFT JOIN lead_bookings lb ON p.booking_id = lb.id
-            LEFT JOIN users us On us.id = p.verified_by
-            WHERE p.booking_id = ?
-            ORDER BY p.id ASC
+        $stmt = $this->db->prepare("SELECT p.*, 
+                    u.full_name AS created_by_name,
+                    lb.agreement_value,
+                    lb.discount_amount,
+                    us.full_name AS verified_by_name
+                FROM lead_payments p
+                LEFT JOIN users u ON p.created_by = u.id
+                LEFT JOIN lead_bookings lb ON p.booking_id = lb.id
+                LEFT JOIN users us ON us.id = p.verified_by
+                WHERE p.booking_id = ?
+                AND p.payment_type IN('booking_money','registration')
+                ORDER BY p.id ASC
         ");
         $stmt->bind_param("i", $booking_id);
         $stmt->execute();
