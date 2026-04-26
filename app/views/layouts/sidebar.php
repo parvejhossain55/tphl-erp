@@ -151,7 +151,7 @@
                     <li class="slide ">
                         <a href="<?= $base_url ?>/inventory-lists" class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
-                            <span class="sidebar__menu-label">Project Wise Inventory</span>
+                            <span class="sidebar__menu-label">Project Wise Flat Stock</span>
                         </a>
                     </li>
 

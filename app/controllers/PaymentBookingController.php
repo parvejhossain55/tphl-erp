@@ -277,11 +277,14 @@ class PaymentBookingController extends Controller
             die("Invoice not found");
         }
 
+        // Fetch all payments for this booking to show payment history (step by step)
+        $all_payments = $this->paymentModel->getByBooking($invoice['booking_id']);
+
         $this->view("sales-developments/payments/payment-invoice", [
             "invoice" => $invoice,
+            "all_payments" => $all_payments,
             "current_route" => 'payment-booking-invoice',
             "page_title" => "Payment Invoice",
-
         ], false);
     }
 

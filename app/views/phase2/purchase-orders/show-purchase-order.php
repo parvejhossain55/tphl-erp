@@ -268,6 +268,22 @@ $sb = $statusBadge[$po['status']] ?? ['bg'=>'rgba(107,114,128,.15)','color'=>'#6
 
 <style>
 @media print {
-  .po-hero .d-flex.gap-2, .sidebar, .main-header-container, .main-footer { display:none!important; }
+  .po-hero .d-flex.gap-2, 
+  .po-btn-w,
+  .app-sidebar, 
+  .sidebar, 
+  .app__header__area, 
+  .main-header-container, 
+  .main-footer { 
+      display: none !important; 
+  }
+  
+  .page__full-wrapper,
+  .page__body-wrapper {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+  }
 }
 </style>

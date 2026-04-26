@@ -91,7 +91,23 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
 .empty-state i{font-size:32px;opacity:.25;display:block;margin-bottom:8px;}
 
 @media print {
-  .boq-hero .boq-btn-w, .boq-action-card { display:none!important; }
+  .boq-hero .boq-btn-w, 
+  .boq-action-card,
+  .app-sidebar, 
+  .sidebar, 
+  .app__header__area, 
+  .main-header-container, 
+  .main-footer { 
+      display: none !important; 
+  }
+  
+  .page__full-wrapper,
+  .page__body-wrapper {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+  }
 }
 </style>
 

@@ -7,30 +7,24 @@
         padding: 0 !important;
     }
 
-    /* সবকিছু hide */
-    body * {
-        visibility: hidden;
-    }
-
-    /* শুধু printArea show */
-    #printArea, #printArea * {
-        visibility: visible;
-    }
-
-    /* printArea কে full page এ আনো */
-    #printArea {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-    }
-
     /* sidebar, navbar force remove */
+    .app-sidebar,
     .sidebar,
     .navbar,
     .header,
+    .app__header__area,
+    .app-header,
     .action-bar {
         display: none !important;
+    }
+
+    /* Reset page wrapper margins/padding that leave empty space */
+    .page__full-wrapper,
+    .page__body-wrapper {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
     /* Bootstrap grid remove */

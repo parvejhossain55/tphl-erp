@@ -1297,3 +1297,47 @@ input:checked + .slider:before {
   border-color: #0d6efd;
   box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.25);
 }
+
+/* =========================================
+   Global Print Styles
+   ========================================= */
+@media print {
+    /* Hide the sidebar, header, and other non-printable elements */
+    .app-sidebar,
+    .app__header__area,
+    .app-header,
+    .sidebar-wrapper,
+    header,
+    aside,
+    .breadcrumb-area,
+    .footer-area {
+        display: none !important;
+    }
+
+    /* Reset margins and paddings for the main wrapper */
+    body, 
+    html,
+    .page__full-wrapper,
+    .page__body-wrapper,
+    .main-content,
+    .content-wrapper,
+    .app-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        background-color: #fff !important;
+    }
+
+    /* Hide UI controls during print */
+    .btn:not(.print-show), 
+    .print-hide,
+    .dataTables_filter,
+    .dataTables_paginate,
+    .dataTables_length,
+    .dt-buttons,
+    form .row .col-xxl-4, /* Hide common filter inputs if needed, though mostly we just hide .print-hide */
+    .dt-button {
+        display: none !important;
+    }
+}
