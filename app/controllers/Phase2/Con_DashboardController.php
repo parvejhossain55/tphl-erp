@@ -1196,4 +1196,78 @@ class Con_DashboardController extends Controller
             'pendingBudgetsList'      => $pendingBudgetsList,
         ]);
     }
+
+    // =========================================================================
+    // PROJECT STRUCTURAL DESIGN DASHBOARD
+    // Permissions: Structure Design module
+    // =========================================================================
+    public function projectStructuralDesignDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // KPI 1: Total Structural Design records
+        $r1 = $this->db->query("SELECT COUNT(*) AS c FROM project_structural_designs");
+        $totalDesigns = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
+
+        // KPI 2: Projects with Structural Design
+        $r2 = $this->db->query("SELECT COUNT(DISTINCT project_id) AS c FROM project_structural_designs");
+        $projectsWithDesign = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+
+        // KPI 3: Internal Designers
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM project_structural_designs WHERE designer_type = 'internal'");
+        $internalDesigners = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
+
+        // KPI 4: External / Firm Designers
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM project_structural_designs WHERE designer_type = 'external'");
+        $externalDesigners = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
+
+        // KPI 5: Total Projects (for coverage calculation)
+        $r5 = $this->db->query("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NULL");
+        $totalProjects = $r5 ? (int)$r5->fetch_assoc()['c'] : 0;
+
+        // Projects WITHOUT structural design
+        $projectsNoDesign = max(0, $totalProjects - $projectsWithDesign);
+
+        // Recent Structural Designs (last 8)
+        $rRecent = $this->db->query("
+            SELECT sd.*, p.name AS project_name,
+                   COALESCE(l.name,'') AS location_name,
+                   p.project_status
+            FROM project_structural_designs sd
+            LEFT JOIN projects   p ON p.id  = sd.project_id
+            LEFT JOIN locations  l ON l.id  = p.location_id
+            ORDER BY sd.id DESC LIMIT 8");
+        $recentDesigns = $rRecent ? $rRecent->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Projects needing structural design (no design yet)
+        $rNeed = $this->db->query("
+            SELECT p.id, p.name, p.project_status,
+                   COALESCE(l.name,'') AS location_name
+            FROM projects p
+            LEFT JOIN locations l ON l.id = p.location_id
+            LEFT JOIN project_structural_designs sd ON sd.project_id = p.id
+            WHERE p.deleted_at IS NULL AND sd.id IS NULL
+            ORDER BY p.id DESC LIMIT 6");
+        $projectsNeedingDesign = $rNeed ? $rNeed->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Designer type breakdown
+        $rByType = $this->db->query("
+            SELECT designer_type, COUNT(*) AS cnt
+            FROM project_structural_designs
+            GROUP BY designer_type");
+        $byDesignerType = $rByType ? $rByType->fetch_all(MYSQLI_ASSOC) : [];
+
+        return $this->view('phase2/dashboard/project-structural-design-dashboard', [
+            'current_route'         => 'project-structural-design-dashboard',
+            'totalDesigns'          => $totalDesigns,
+            'projectsWithDesign'    => $projectsWithDesign,
+            'internalDesigners'     => $internalDesigners,
+            'externalDesigners'     => $externalDesigners,
+            'totalProjects'         => $totalProjects,
+            'projectsNoDesign'      => $projectsNoDesign,
+            'recentDesigns'         => $recentDesigns,
+            'projectsNeedingDesign' => $projectsNeedingDesign,
+            'byDesignerType'        => $byDesignerType,
+        ]);
+    }
 }

@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../core/ProjectWorkflowMailService.php';
+
 class ProjectController extends Controller
 {
     protected $db;
@@ -42,6 +44,7 @@ class ProjectController extends Controller
     {
         $locations   = $this->locationModel->getAll();
         $communities = $this->communityModel->getAll();
+        $teamUsers   = $this->getTeamUsersByRole();
 
         $this->view("sales-developments/projects/create-project", [
             "current_route"   => "create-project",
@@ -50,6 +53,7 @@ class ProjectController extends Controller
             "show_breadcrumb" => true,
             "locations"       => $locations,
             "communities"     => $communities,
+            "teamUsers"       => $teamUsers,
         ]);
     }
 
@@ -102,6 +106,16 @@ class ProjectController extends Controller
             'project_map_location' => $_POST['project_map_location'] ?? null,
             'service_charge_per_emi' => !empty($_POST['service_charge_per_emi']) ? (float)$_POST['service_charge_per_emi'] : null,
             'created_by'        => $_SESSION['user']['id'] ?? null,
+            // Project Team Assignment
+            'pm_id'               => !empty($_POST['pm_id']) ? (int)$_POST['pm_id'] : null,
+            'site_engineer_id'    => !empty($_POST['site_engineer_id']) ? (int)$_POST['site_engineer_id'] : null,
+            'landman_id'          => !empty($_POST['landman_id']) ? (int)$_POST['landman_id'] : null,
+            'struct_engineer_id'  => !empty($_POST['struct_engineer_id']) ? (int)$_POST['struct_engineer_id'] : null,
+            'draftsman_id'        => !empty($_POST['draftsman_id']) ? (int)$_POST['draftsman_id'] : null,
+            'architect_id'        => !empty($_POST['architect_id']) ? (int)$_POST['architect_id'] : null,
+            'estimator_id'        => !empty($_POST['estimator_id']) ? (int)$_POST['estimator_id'] : null,
+            'qc_id'               => !empty($_POST['qc_id']) ? (int)$_POST['qc_id'] : null,
+            'operator_id'         => !empty($_POST['operator_id']) ? (int)$_POST['operator_id'] : null,
         ];
 
         // ======================
@@ -140,6 +154,16 @@ class ProjectController extends Controller
         // Store via Model
         // ======================
         if ($this->projectModel->create($data)) {
+            // ── Batch 1: Send assignment emails to all team members ──
+            $newProjectId = $this->db->insert_id;
+            if ($newProjectId > 0) {
+                try {
+                    $wfMail = new ProjectWorkflowMailService($this->db);
+                    $wfMail->sendProjectAssignmentEmails($newProjectId, $data['name']);
+                } catch (\Throwable $e) {
+                    error_log('[ProjectController] Assignment email error: ' . $e->getMessage());
+                }
+            }
             setSuccess("Project created successfully!");
             header("Location: {$GLOBALS['base_url']}/project-lists");
             exit;
@@ -165,24 +189,27 @@ class ProjectController extends Controller
     // Edit Employee Page
     public function edit($id)
     {
-        $project = $this->projectModel->find($id);
+        $project     = $this->projectModel->find($id);
         $locations   = $this->locationModel->getAll();
         $communities = $this->communityModel->getAll();
+        $teamUsers   = $this->getTeamUsersByRole();
+
         $this->view("sales-developments/projects/edit-project", [
             "current_route"   => "project-lists",
             "page_title"      => "Edit Project",
-            "locations"        => $locations,
-            "communities"        => $communities,
-            "project" => $project,
+            "locations"       => $locations,
+            "communities"     => $communities,
+            "project"         => $project,
             "show_breadcrumb" => true,
+            "teamUsers"       => $teamUsers,
         ]);
     }
 
     public function update($id)
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
-        // Fetch existing project
-        $project = $this->projectModel->find($id);
+        // Fetch existing project BEFORE update (to compare team changes)
+        $oldProject = $this->projectModel->find($id);
         $data = [
             'name' => $_POST['name'] ?? null,
             'location_id' => $_POST['location_id'] ?? null,
@@ -209,9 +236,19 @@ class ProjectController extends Controller
             'amenities_details' => $_POST['amenities_details'] ?? null,
             'map_link' => $_POST['map_link'] ?? null,
             'description' => $_POST['description'] ?? null,
-            'project_map_location' => $_POST['project_map_location'] ?? null,
+            'project_map_location'   => $_POST['project_map_location'] ?? null,
             'service_charge_per_emi' => !empty($_POST['service_charge_per_emi']) ? (float)$_POST['service_charge_per_emi'] : null,
-            'created_by' => $_SESSION['user']['id'] ?? null,
+            'created_by'             => $_SESSION['user']['id'] ?? null,
+            // Project Team Assignment
+            'pm_id'               => !empty($_POST['pm_id']) ? (int)$_POST['pm_id'] : null,
+            'site_engineer_id'    => !empty($_POST['site_engineer_id']) ? (int)$_POST['site_engineer_id'] : null,
+            'landman_id'          => !empty($_POST['landman_id']) ? (int)$_POST['landman_id'] : null,
+            'struct_engineer_id'  => !empty($_POST['struct_engineer_id']) ? (int)$_POST['struct_engineer_id'] : null,
+            'draftsman_id'        => !empty($_POST['draftsman_id']) ? (int)$_POST['draftsman_id'] : null,
+            'architect_id'        => !empty($_POST['architect_id']) ? (int)$_POST['architect_id'] : null,
+            'estimator_id'        => !empty($_POST['estimator_id']) ? (int)$_POST['estimator_id'] : null,
+            'qc_id'               => !empty($_POST['qc_id']) ? (int)$_POST['qc_id'] : null,
+            'operator_id'         => !empty($_POST['operator_id']) ? (int)$_POST['operator_id'] : null,
         ];
 
         // ======================
@@ -241,7 +278,103 @@ class ProjectController extends Controller
         }
         $data['floor_wise_unit_meta'] = $floorWiseUnitMeta;
 
+
+        // ══════════════════════════════════════════════════════
+        // DEBUG MODE — ?debug=1 URL parameter দিলে activate হবে
+        // Project update না করে শুধু email check করবে
+        // ══════════════════════════════════════════════════════
+        if (!empty($_GET['debug']) && $_GET['debug'] === '1') {
+            header('Content-Type: text/html; charset=utf-8');
+            echo "<style>body{font-family:Arial;padding:20px;background:#f5f5f5}
+                  .card{background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+                  .ok{color:#198754;font-weight:700} .warn{color:#f59e0b;font-weight:700}
+                  .err{color:#dc3545;font-weight:700} table{width:100%;border-collapse:collapse}
+                  th,td{padding:8px 10px;border:1px solid #ddd;font-size:13px;text-align:left}
+                  th{background:#f0f0f0}</style>";
+
+            echo "<div class='card'><h2 style='color:#198754;margin-top:0'>🔍 Project Update Email Debug</h2>";
+            echo "<p>Project ID: <b>{$id}</b> | Name: <b>" . htmlspecialchars($data['name'] ?? '') . "</b></p></div>";
+
+            // Show OLD vs NEW team comparison
+            echo "<div class='card'><h3>Team Assignment Comparison</h3>";
+            echo "<table><tr><th>Role</th><th>Column</th><th>OLD ID</th><th>NEW ID</th><th>Changed?</th><th>Will Email?</th></tr>";
+
+            $roleMap = [
+                'pm_id'              => 'Project Manager',
+                'site_engineer_id'   => 'Site Engineer',
+                'landman_id'         => 'Land Manager',
+                'struct_engineer_id' => 'Structural Engineer',
+                'draftsman_id'       => 'Draftsman',
+                'architect_id'       => 'Architect',
+                'estimator_id'       => 'Estimator',
+                'qc_id'              => 'Quality Controller',
+                'operator_id'        => 'Site Operator',
+            ];
+
+            $willEmail = [];
+            foreach ($roleMap as $col => $label) {
+                $oldId = (int)($oldProject[$col] ?? 0);
+                $newId = (int)($data[$col] ?? 0);
+                $changed = $newId > 0 && $newId !== $oldId;
+                $color = $changed ? 'background:#d1e7dd' : '';
+                echo "<tr style='{$color}'>";
+                echo "<td>{$label}</td><td><code>{$col}</code></td>";
+                echo "<td>" . ($oldId ?: '<span class="warn">NULL</span>') . "</td>";
+                echo "<td>" . ($newId ?: '<span class="warn">NULL</span>') . "</td>";
+                echo "<td>" . ($changed ? '<span class="ok">✅ YES</span>' : 'No') . "</td>";
+
+                if ($changed) {
+                    $uRow = $this->db->query("SELECT full_name, email FROM users WHERE id = {$newId} LIMIT 1")->fetch_assoc();
+                    $emailStr = $uRow['email'] ?? '—';
+                    $willEmail[] = ['name' => $uRow['full_name'] ?? '?', 'email' => $emailStr, 'role' => $label];
+                    echo "<td class='ok'>" . htmlspecialchars($emailStr) . "</td>";
+                } else {
+                    echo "<td style='color:#888'>—</td>";
+                }
+                echo "</tr>";
+            }
+            echo "</table></div>";
+
+            // Actually send emails now
+            if (!empty($willEmail)) {
+                echo "<div class='card'><h3>📧 Sending Emails Now...</h3>";
+                try {
+                    $wfMail = new ProjectWorkflowMailService($this->db);
+                    $results = [];
+                    foreach ($willEmail as $m) {
+                        // Use reflection to call private send method — or just use sendProjectReassignmentEmails
+                        echo "<p>Attempting: <b>" . htmlspecialchars($m['name']) . "</b> → " . htmlspecialchars($m['email']) . " (" . $m['role'] . ")</p>";
+                    }
+                    $wfMail->sendProjectReassignmentEmails($oldProject ?? [], $data, $data['name']);
+                    echo "<p class='ok'>✅ sendProjectReassignmentEmails() called — check inboxes!</p>";
+                } catch (\Throwable $e) {
+                    echo "<p class='err'>❌ Error: " . htmlspecialchars($e->getMessage()) . "</p>";
+                }
+                echo "</div>";
+            } else {
+                echo "<div class='card'><p class='warn'>⚠️ No team changes detected — no emails will be sent.</p></div>";
+            }
+
+            echo "<div class='card' style='background:#fff3cd'><b>⚠️ NOTE:</b> Project was NOT updated (debug mode). Remove <code>?debug=1</code> to actually save.</div>";
+            echo "<a href='" . $GLOBALS['base_url'] . "/project-lists' style='display:inline-block;margin-top:10px;padding:10px 20px;background:#198754;color:#fff;border-radius:6px;text-decoration:none'>← Back to Projects</a>";
+            exit;
+        }
+        // ══════════════════════════════════════════════════════
+        // END DEBUG — Normal update below
+        // ══════════════════════════════════════════════════════
+
         if ($this->projectModel->update($id, $data)) {
+            // ── Batch 1 (UPDATE): Smart reassignment — only email newly assigned/changed members ──
+            try {
+                $wfMail = new ProjectWorkflowMailService($this->db);
+                $wfMail->sendProjectReassignmentEmails(
+                    $oldProject ?? [],
+                    $data,
+                    $data['name']
+                );
+            } catch (\Throwable $e) {
+                error_log('[ProjectController] Reassignment email error: ' . $e->getMessage());
+            }
             setSuccess("Project updated successfully!");
             header("Location: {$GLOBALS['base_url']}/project-lists");
             exit;
@@ -262,5 +395,58 @@ class ProjectController extends Controller
             setSuccess("Failed To  Deleted Temporaly Project");
             header("Location:{$GLOBALS['base_url']}/project-lists");
         };
+    }
+
+    /**
+     * Fetch users grouped by construction roles
+     * Returns array keyed by role slug
+     */
+    private function getTeamUsersByRole()
+    {
+        // role_id => key mapping
+        $roleMap = [
+            15 => 'project_managers',    // Project Manager
+            12 => 'site_engineers',      // Site Engineer
+            14 => 'land_managers',       // Land Manager
+            16 => 'draftsmen',           // Draftsman
+            18 => 'architects',          // Project Architecture
+            19 => 'estimators',          // Estimator
+            13 => 'qc_controllers',      // Quality Controller
+            20 => 'site_operators',      // Site Operator
+            21 => 'struct_engineers',    // Structure designer
+        ];
+
+        $result = [
+            'project_managers'  => [],
+            'site_engineers'    => [],
+            'land_managers'     => [],
+            'struct_engineers'  => [],
+            'draftsmen'         => [],
+            'architects'        => [],
+            'estimators'        => [],
+            'qc_controllers'    => [],
+            'site_operators'    => [],
+        ];
+
+        $roleIds = implode(',', array_keys($roleMap));
+        $stmt = $this->db->prepare("
+            SELECT id, full_name, role_id
+            FROM users
+            WHERE role_id IN ($roleIds)
+            ORDER BY full_name ASC
+        ");
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        foreach ($rows as $user) {
+            $key = $roleMap[$user['role_id']] ?? null;
+            if ($key) {
+                $result[$key][] = $user;
+            }
+        }
+
+
+
+        return $result;
     }
 }

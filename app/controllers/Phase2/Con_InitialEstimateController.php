@@ -7,6 +7,7 @@ use Project;
 use Con_ArchitectEngineering;
 use Con_DesignType;
 use Con_Material;
+use Con_WorkType;
 
 class Con_InitialEstimateController extends Controller
 {
@@ -16,6 +17,7 @@ class Con_InitialEstimateController extends Controller
     protected $archModel;
     protected $designTypeModel;
     protected $materialModel;
+    protected $workTypeModel;
 
     public function __construct($db)
     {
@@ -25,6 +27,7 @@ class Con_InitialEstimateController extends Controller
         $this->archModel       = new Con_ArchitectEngineering($db);
         $this->designTypeModel = new Con_DesignType($db);
         $this->materialModel   = new Con_Material($db);
+        $this->workTypeModel   = new Con_WorkType($db);
     }
 
     // =========================================================================
@@ -52,6 +55,7 @@ class Con_InitialEstimateController extends Controller
         $archs       = $this->archModel->getAll();
         $designTypes = $this->designTypeModel->getAll();
         $materials   = $this->materialModel->getAll();
+        $workTypes   = $this->model->getWorkTypes();
 
         $this->view('phase2/initial_estimates/create-initial-budget', [
             'current_route' => 'con-estimate-create',
@@ -60,6 +64,7 @@ class Con_InitialEstimateController extends Controller
             'archs'         => $archs,
             'designTypes'   => $designTypes,
             'materials'     => $materials,
+            'workTypes'     => $workTypes,
         ]);
     }
 
@@ -72,13 +77,20 @@ class Con_InitialEstimateController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         // ── Header ──────────────────────────────────────────────────────────
+        $workTypeId = (int)($_POST['work_type_id'] ?? 0);
+        // Fetch design_type_id from the selected work_type
+        $wtRow = $workTypeId ? $this->workTypeModel->find($workTypeId) : null;
+        $designTypeId = $wtRow ? (int)$wtRow['design_type_id'] : 0;
+
         $header = [
             'project_id'       => (int)   ($_POST['project_id']       ?? 0),
             'architecture_id'  => (int)   ($_POST['architecture_id']  ?? 0),
+            'work_type_id'     => $workTypeId,
             'start_date'       =>         ($_POST['start_date']       ?? null),
             'end_date'         =>         ($_POST['end_date']         ?? null),
             'total_area_sqft'  => (float) ($_POST['total_area_sqft']  ?? 0),
             'other_costs'      => (float) ($_POST['other_costs']      ?? 0),
+            'other_cost_detail'=>         ($_POST['other_cost_detail']?? null),
             'created_by'       => (int)   ($_SESSION['user']['id']    ?? 0),
         ];
 
@@ -97,6 +109,7 @@ class Con_InitialEstimateController extends Controller
         }
 
         // ── Material Items ───────────────────────────────────────────────────
+        $matWorkTypes    = $_POST['item_work_type_id']    ?? [];
         $matDesignTypes  = $_POST['item_design_type_id']  ?? [];
         $matMaterialIds  = $_POST['item_material_id']     ?? [];
         $matUnits        = $_POST['item_material_unit']   ?? [];
@@ -107,8 +120,16 @@ class Con_InitialEstimateController extends Controller
         $items = [];
         foreach ($matMaterialIds as $i => $mid) {
             if (empty($mid)) continue;
+            $wtId     = (int)($matWorkTypes[$i]  ?? 0);
+            $dtId     = (int)($matDesignTypes[$i] ?? 0);
+            // fallback: fetch from work_type if design_type_id not posted
+            if (!$dtId && $wtId) {
+                $wr = $this->workTypeModel->find($wtId);
+                $dtId = $wr ? (int)$wr['design_type_id'] : 0;
+            }
             $items[] = [
-                'design_type_id'  => (int)   ($matDesignTypes[$i] ?? 0),
+                'work_type_id'    => $wtId,
+                'design_type_id'  => $dtId,
                 'material_id'     => (int)   $mid,
                 'material_unit'   =>          $matUnits[$i] ?? '',
                 'estimated_qty'   => (float) ($matQtys[$i]  ?? 0),
@@ -121,6 +142,7 @@ class Con_InitialEstimateController extends Controller
         }
 
         // ── Labor Rows ───────────────────────────────────────────────────────
+        $labWorkTypes    = $_POST['labor_work_type_id']    ?? [];
         $labDesignTypes  = $_POST['labor_design_type_id']  ?? [];
         $labTypeNames    = $_POST['labor_type_name']        ?? [];
         $labRates        = $_POST['labor_rate_per_sqft']    ?? [];
@@ -129,8 +151,15 @@ class Con_InitialEstimateController extends Controller
         $labors = [];
         foreach ($labTypeNames as $i => $name) {
             if (empty($name)) continue;
+            $wtId = (int)($labWorkTypes[$i]  ?? 0);
+            $dtId = (int)($labDesignTypes[$i] ?? 0);
+            if (!$dtId && $wtId) {
+                $wr = $this->workTypeModel->find($wtId);
+                $dtId = $wr ? (int)$wr['design_type_id'] : 0;
+            }
             $labors[] = [
-                'design_type_id'  => (int)   ($labDesignTypes[$i] ?? 0),
+                'work_type_id'    => $wtId,
+                'design_type_id'  => $dtId,
                 'labor_type_name' =>          $name,
                 'rate_per_sqft'   => (float) ($labRates[$i] ?? 0),
                 'area_sqft'       => (float) ($labAreas[$i] ?? 0),
@@ -236,6 +265,7 @@ class Con_InitialEstimateController extends Controller
         $archs       = $this->archModel->getAll();
         $designTypes = $this->designTypeModel->getAll();
         $materials   = $this->materialModel->getAll();
+        $workTypes   = $this->model->getWorkTypes();
 
         $this->view('phase2/initial_estimates/edit-initial-budget', [
             'current_route' => 'con-estimates',
@@ -247,6 +277,7 @@ class Con_InitialEstimateController extends Controller
             'archs'         => $archs,
             'designTypes'   => $designTypes,
             'materials'     => $materials,
+            'workTypes'     => $workTypes,
         ]);
     }
 
@@ -265,13 +296,19 @@ class Con_InitialEstimateController extends Controller
         }
 
         // ── Header ──────────────────────────────────────────────────────────
+        $workTypeId   = (int)($_POST['work_type_id']      ?? 0);
+        $wtRow        = $workTypeId ? $this->workTypeModel->find($workTypeId) : null;
+        $designTypeId = $wtRow ? (int)$wtRow['design_type_id'] : 0;
+
         $header = [
             'project_id'      => (int)   ($_POST['project_id']      ?? 0),
             'architecture_id' => (int)   ($_POST['architecture_id'] ?? 0),
+            'work_type_id'    => $workTypeId,
             'start_date'      =>         ($_POST['start_date']      ?? null),
             'end_date'        =>         ($_POST['end_date']        ?? null),
             'total_area_sqft' => (float) ($_POST['total_area_sqft'] ?? 0),
             'other_costs'     => (float) ($_POST['other_costs']     ?? 0),
+            'other_cost_detail'=>         ($_POST['other_cost_detail']?? null),
             'updated_by'      => (int)   ($_SESSION['user']['id']   ?? 0),
         ];
 
@@ -286,6 +323,7 @@ class Con_InitialEstimateController extends Controller
         // ── Replace items (delete all → re-insert) ───────────────────────
         $this->model->deleteItemsByBudget($id);
 
+        $matWorkTypes   = $_POST['item_work_type_id']   ?? [];
         $matDesignTypes = $_POST['item_design_type_id'] ?? [];
         $matMaterialIds = $_POST['item_material_id']    ?? [];
         $matUnits       = $_POST['item_material_unit']  ?? [];
@@ -296,8 +334,15 @@ class Con_InitialEstimateController extends Controller
         $items = [];
         foreach ($matMaterialIds as $i => $mid) {
             if (empty($mid)) continue;
+            $wtId = (int)($matWorkTypes[$i]  ?? 0);
+            $dtId = (int)($matDesignTypes[$i] ?? 0);
+            if (!$dtId && $wtId) {
+                $wr = $this->workTypeModel->find($wtId);
+                $dtId = $wr ? (int)$wr['design_type_id'] : 0;
+            }
             $items[] = [
-                'design_type_id'   => (int)   ($matDesignTypes[$i] ?? 0),
+                'work_type_id'     => $wtId,
+                'design_type_id'   => $dtId,
                 'material_id'      => (int)   $mid,
                 'material_unit'    =>          $matUnits[$i] ?? '',
                 'estimated_qty'    => (float) ($matQtys[$i]  ?? 0),
@@ -310,6 +355,7 @@ class Con_InitialEstimateController extends Controller
         // ── Replace labors (delete all → re-insert) ──────────────────────
         $this->model->deleteLaborsByBudget($id);
 
+        $labWorkTypes   = $_POST['labor_work_type_id']   ?? [];
         $labDesignTypes = $_POST['labor_design_type_id'] ?? [];
         $labTypeNames   = $_POST['labor_type_name']       ?? [];
         $labRates       = $_POST['labor_rate_per_sqft']   ?? [];
@@ -318,8 +364,15 @@ class Con_InitialEstimateController extends Controller
         $labors = [];
         foreach ($labTypeNames as $i => $name) {
             if (empty($name)) continue;
+            $wtId = (int)($labWorkTypes[$i]  ?? 0);
+            $dtId = (int)($labDesignTypes[$i] ?? 0);
+            if (!$dtId && $wtId) {
+                $wr = $this->workTypeModel->find($wtId);
+                $dtId = $wr ? (int)$wr['design_type_id'] : 0;
+            }
             $labors[] = [
-                'design_type_id'  => (int)   ($labDesignTypes[$i] ?? 0),
+                'work_type_id'    => $wtId,
+                'design_type_id'  => $dtId,
                 'labor_type_name' =>          $name,
                 'rate_per_sqft'   => (float) ($labRates[$i] ?? 0),
                 'area_sqft'       => (float) ($labAreas[$i] ?? 0),

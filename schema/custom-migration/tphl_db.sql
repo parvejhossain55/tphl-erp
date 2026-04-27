@@ -77,6 +77,9 @@ CREATE TABLE `architect_engineering` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+ALTER TABLE architect_engineering
+ADD COLUMN status ENUM('draft','partially','fully') 
+DEFAULT 'draft' AFTER notes;
 -- --------------------------------------------------------
 
 --
@@ -1349,6 +1352,9 @@ CREATE TABLE `initial_estimate_budgets` (
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+
+ALTER TABLE `initial_estimate_budgets` ADD `other_cost_detail` TEXT NULL DEFAULT NULL AFTER `other_costs`;
+ALTER TABLE `initial_estimate_budgets` ADD `work_type_id` INT NULL DEFAULT NULL AFTER `architecture_id`;
 -- --------------------------------------------------------
 
 --
@@ -6686,9 +6692,14 @@ CREATE TABLE `platform_budgets` (
 -- Dumping data for table `platform_budgets`
 --
 
-INSERT INTO `platform_budgets` (`id`, `source_id`, `month`, `budget`, `spent`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, '2026-04-01', 300000.00, 200000.00, 94, '2026-04-04 11:49:29', '2026-04-04 11:49:29'),
-(2, 2, '2026-04-01', 50000.00, 40000.00, 94, '2026-04-10 10:33:09', '2026-04-10 10:33:09');
+
+ALTER TABLE platform_budgets
+ADD COLUMN platform_name VARCHAR(250) DEFAULT NULL;
+
+INSERT INTO `platform_budgets` (`id`, `source_id`, `platform_name`, `month`, `budget`, `spent`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 1, 'Meta', '2026-04-01', 300000.00, 200000.00, 94, '2026-04-04 11:49:29', '2026-04-15 10:30:40'),
+(2, 2, 'Google', '2026-04-01', 50000.00, 40000.00, 94, '2026-04-10 10:33:09', '2026-04-15 10:30:55'),
+(3, 0, 'LinkedIn', '2026-04-01', 60000.00, 56757.00, 94, '2026-04-15 11:23:06', '2026-04-15 11:23:06');
 
 -- --------------------------------------------------------
 
@@ -7634,6 +7645,26 @@ CREATE TABLE `whatsapp_messages` (
 --
 -- Indexes for dumped tables
 --
+
+
+CREATE TABLE `project_structural_designs` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `project_id` BIGINT UNSIGNED NOT NULL,
+    
+    -- Designer Info
+    `designer_type` ENUM('internal', 'external') NOT NULL DEFAULT 'internal',
+    `designer_name` VARCHAR(255) NOT NULL,
+    `designer_phone` VARCHAR(20) NULL,
+    `designer_address` TEXT NULL, -- External designer hole address lagte pare
+    
+    -- Design File/Link
+    `design_link` TEXT NOT NULL, -- Designer je link upload korbe
+    
+    -- Metadata
+    `created_by` BIGINT UNSIGNED NOT NULL, -- User ID (je entry korche)
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
 --
 -- Indexes for table `approval_requests`

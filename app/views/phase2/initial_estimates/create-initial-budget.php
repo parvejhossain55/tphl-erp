@@ -1,6 +1,6 @@
 <div class="pagetitle d-flex justify-content-between align-items-center">
-    <div>
-        <h1><?= htmlspecialchars($page_title) ?></h1>
+    <div class="mb-3">
+        <h3><?= htmlspecialchars($page_title) ?></h3>
         <nav>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
@@ -25,7 +25,7 @@
             <div class="card__body p-4">
                 <div class="row">
                     <div class="col-md-4">
-                        <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
+                        <label class="form-label fw-bold text-muted">Project <span class="text-danger">*</span></label>
                         <select name="project_id" id="estimateProjectId" class="form-select" required>
                             <option value="">-- Choose Project --</option>
                             <?php foreach ($projects as $p): ?>
@@ -34,7 +34,7 @@
                         </select>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-bold">Architecture Record <span class="text-danger">*</span></label>
+                        <label class="form-label fw-bold text-muted">Architecture Record <span class="text-danger">*</span></label>
                         <select name="architecture_id" id="archSelect" class="form-select" required>
                             <option value="">-- Select Project First --</option>
                         </select>
@@ -42,21 +42,36 @@
                             <i class="bi bi-hourglass-split me-1"></i> Loading...
                         </div>
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label fw-bold">Start Date</label>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-muted">Work Type <span class="text-danger">*</span></label>
+                        <select name="work_type_id" id="headerWorkType" class="form-select" required>
+                            <option value="">-- Select Work Type --</option>
+                            <?php foreach ($workTypes as $wt): ?>
+                                <option value="<?= $wt['id'] ?>" data-design-type-id="<?= $wt['design_type_id'] ?>">
+                                    <?= htmlspecialchars($wt['label']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mt-3">
+                        <label class="form-label fw-bold text-muted">Start Date</label>
                         <input type="date" name="start_date" class="form-control">
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label fw-bold">End Date</label>
+                    <div class="col-md-2 mt-3">
+                        <label class="form-label fw-bold text-muted">End Date</label>
                         <input type="date" name="end_date" class="form-control">
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label fw-bold">Total Area (sqft)</label>
+                    <div class="col-md-2 mt-3">
+                        <label class="form-label fw-bold text-muted">Total Area (sqft)</label>
                         <input type="number" step="0.01" name="total_area_sqft" id="totalAreaSqft"
                                class="form-control" placeholder="0.00">
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label fw-bold">Other Costs (৳)</label>
+                    <div class="col-md-4 mt-3">
+                        <label class="form-label fw-bold text-muted">Other Cost Detail / Note</label>
+                        <textarea name="other_cost_detail" class="form-control" rows="1" placeholder="Title or detail for other costs..."></textarea>
+                    </div>
+                    <div class="col-md-2 mt-3">
+                        <label class="form-label fw-bold text-muted">Other Costs (৳)</label>
                         <input type="number" step="0.01" name="other_costs" id="otherCosts"
                                class="form-control" value="0" placeholder="Transport, Permit…">
                     </div>
@@ -80,8 +95,8 @@
                     <table class="table table-bordered align-middle mb-0" id="itemsTable">
                         <thead class="table-light">
                             <tr>
-                                <th style="width:18%">Design Type</th>
-                                <th style="width:25%">Material</th>
+                                <th style="width:20%">Work Type</th>
+                                <th style="width:23%">Material</th>
                                 <th style="width:8%">Unit</th>
                                 <th style="width:13%">Qty</th>
                                 <th style="width:13%">Unit Cost (৳)</th>
@@ -92,10 +107,13 @@
                         <tbody id="itemsBody">
                             <tr class="item-row">
                                 <td>
-                                    <select name="item_design_type_id[]" class="form-select form-select-sm" required>
-                                        <option value="">-- Type --</option>
-                                        <?php foreach ($designTypes as $dt): ?>
-                                            <option value="<?= $dt['id'] ?>"><?= htmlspecialchars($dt['name']) ?></option>
+                                    <input type="hidden" name="item_design_type_id[]" class="item-design-type-id" value="">
+                                    <select name="item_work_type_id[]" class="form-select form-select-sm wt-select" required>
+                                        <option value="">-- Work Type --</option>
+                                        <?php foreach ($workTypes as $wt): ?>
+                                            <option value="<?= $wt['id'] ?>" data-design-type-id="<?= $wt['design_type_id'] ?>">
+                                                <?= htmlspecialchars($wt['label']) ?>
+                                            </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </td>
@@ -158,7 +176,7 @@
                     <table class="table table-bordered align-middle mb-0" id="laborsTable">
                         <thead class="table-light">
                             <tr>
-                                <th style="width:20%">Design Type</th>
+                                <th style="width:20%">Work Type</th>
                                 <th style="width:30%">Labor Type Name</th>
                                 <th style="width:15%">Rate / sqft (৳)</th>
                                 <th style="width:15%">Area (sqft)</th>
@@ -169,10 +187,13 @@
                         <tbody id="laborsBody">
                             <tr class="labor-row">
                                 <td>
-                                    <select name="labor_design_type_id[]" class="form-select form-select-sm" required>
-                                        <option value="">-- Type --</option>
-                                        <?php foreach ($designTypes as $dt): ?>
-                                            <option value="<?= $dt['id'] ?>"><?= htmlspecialchars($dt['name']) ?></option>
+                                    <input type="hidden" name="labor_design_type_id[]" class="labor-design-type-id" value="">
+                                    <select name="labor_work_type_id[]" class="form-select form-select-sm labor-wt-select" required>
+                                        <option value="">-- Work Type --</option>
+                                        <?php foreach ($workTypes as $wt): ?>
+                                            <option value="<?= $wt['id'] ?>" data-design-type-id="<?= $wt['design_type_id'] ?>">
+                                                <?= htmlspecialchars($wt['label']) ?>
+                                            </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </td>
@@ -357,13 +378,27 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('summaryGrand').textContent    = '৳ ' + fmt(grand);
     }
 
-    // Material select → auto-fill unit field (event delegation)
+    // Material wt-select → auto-fill hidden design_type_id
     document.getElementById('itemsBody').addEventListener('change', function (e) {
+        if (e.target.classList.contains('wt-select')) {
+            var sel    = e.target.options[e.target.selectedIndex];
+            var dtId   = sel ? (sel.getAttribute('data-design-type-id') || '') : '';
+            e.target.closest('tr').querySelector('.item-design-type-id').value = dtId;
+        }
         if (e.target.classList.contains('mat-select')) {
             var sel  = e.target.options[e.target.selectedIndex];
             var unit = sel ? (sel.getAttribute('data-unit') || '') : '';
             e.target.closest('tr').querySelector('.unit-display').value = unit;
             recalc();
+        }
+    });
+
+    // Labor labor-wt-select → auto-fill hidden design_type_id
+    document.getElementById('laborsBody').addEventListener('change', function (e) {
+        if (e.target.classList.contains('labor-wt-select')) {
+            var sel  = e.target.options[e.target.selectedIndex];
+            var dtId = sel ? (sel.getAttribute('data-design-type-id') || '') : '';
+            e.target.closest('tr').querySelector('.labor-design-type-id').value = dtId;
         }
     });
 
@@ -393,6 +428,7 @@ document.addEventListener('DOMContentLoaded', function () {
         newRow.querySelectorAll('input').forEach(function (el) { el.value = ''; });
         newRow.querySelectorAll('select').forEach(function (el) { el.selectedIndex = 0; });
         newRow.querySelector('.item-subtotal').textContent = '0.00';
+        newRow.querySelector('.item-design-type-id').value = '';
         var btn = newRow.querySelector('.remove-item-row');
         if (btn) btn.style.display = 'inline-block';
         tbody.appendChild(newRow);
@@ -418,6 +454,7 @@ document.addEventListener('DOMContentLoaded', function () {
         newRow.querySelectorAll('input').forEach(function (el) { el.value = ''; });
         newRow.querySelectorAll('select').forEach(function (el) { el.selectedIndex = 0; });
         newRow.querySelector('.labor-subtotal').textContent = '0.00';
+        newRow.querySelector('.labor-design-type-id').value = '';
         var btn = newRow.querySelector('.remove-labor-row');
         if (btn) btn.style.display = 'inline-block';
         tbody.appendChild(newRow);

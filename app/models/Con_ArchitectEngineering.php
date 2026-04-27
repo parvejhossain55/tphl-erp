@@ -27,8 +27,8 @@ class Con_ArchitectEngineering extends Model {
     public function create($data) {
         $stmt = $this->db->prepare("
             INSERT INTO architect_engineering 
-            (project_id, user_id, full_architecture_design_link, notes, created_by) 
-            VALUES (?, ?, ?, ?, ?)
+            (project_id, user_id, full_architecture_design_link, notes, status, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
         
         $params = [
@@ -36,17 +36,18 @@ class Con_ArchitectEngineering extends Model {
             $data['user_id'],
             $data['full_architecture_design_link'] ?? null,
             $data['notes'] ?? null,
+            $data['status'] ?? 'draft',
             $data['created_by']
         ];
         
-        $stmt->bind_param("iissi", ...$params);
+        $stmt->bind_param("iisssi", ...$params);
         return $stmt->execute();
     }
 
     public function update($id, $data) {
         $stmt = $this->db->prepare("
             UPDATE architect_engineering 
-            SET project_id = ?, user_id = ?, full_architecture_design_link = ?, notes = ? 
+            SET project_id = ?, user_id = ?, full_architecture_design_link = ?, notes = ?, status = ? 
             WHERE id = ?
         ");
         
@@ -55,10 +56,11 @@ class Con_ArchitectEngineering extends Model {
             $data['user_id'],
             $data['full_architecture_design_link'] ?? null,
             $data['notes'] ?? null,
+            $data['status'] ?? 'draft',
             $id
         ];
         
-        $stmt->bind_param("iissi", ...$params);
+        $stmt->bind_param("iisssi", ...$params);
         return $stmt->execute();
     }
     public function delete($id) {

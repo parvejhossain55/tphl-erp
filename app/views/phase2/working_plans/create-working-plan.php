@@ -48,8 +48,15 @@
                                                 data-project="<?= $b['project_id'] ?>"
                                                 data-total="<?= $b['total_estimated_cost'] ?>"
                                                 data-start="<?= $b['start_date'] ?? '' ?>"
-                                                data-end="<?= $b['end_date'] ?? '' ?>">
-                                            #<?= $b['id'] ?> — <?= htmlspecialchars($b['project_name']) ?>
+                                                data-end="<?= $b['end_date'] ?? '' ?>"
+                                                data-work-type-id="<?= $b['work_type_id'] ?? '' ?>"
+                                                data-design-type-id="<?= $b['design_type_id'] ?? '' ?>">
+                                            #<?= $b['id'] ?> &mdash; <?= htmlspecialchars($b['project_name']) ?>
+                                            <?php if (!empty($b['work_type_label'])): ?>
+                                                [<?= htmlspecialchars($b['work_type_label']) ?>]
+                                            <?php elseif(!empty($b['work_type_name'])): ?>
+                                                [<?= htmlspecialchars($b['work_type_name']) ?>]
+                                            <?php endif; ?>
                                             (৳<?= number_format($b['total_estimated_cost'], 0) ?>)
                                         </option>
                                     <?php endforeach; ?>
@@ -62,12 +69,13 @@
                         <div class="row  mb-3">
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Design Type <span class="text-danger">*</span></label>
-                                <select name="design_type_id" class="form-select" required>
+                                <select name="design_type_id" id="designTypeSelect" class="form-select" required>
                                     <option value="">-- Select --</option>
                                     <?php foreach ($designTypes as $dt): ?>
                                         <option value="<?= $dt['id'] ?>"><?= htmlspecialchars($dt['name']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <div class="form-text text-info" id="designTypeHint"></div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Year <span class="text-danger">*</span></label>
@@ -129,12 +137,34 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    var projectSelect = document.getElementById('projectSelect');
-    var budgetSelect  = document.getElementById('budgetSelect');
-    var yearSelect    = document.getElementById('yearSelect');
-    var budgetInfo    = document.getElementById('budgetInfo');
-    var allBudgetOpts = budgetSelect.querySelectorAll('option[data-project]');
-    var currentYear   = <?= date('Y') ?>;
+    var projectSelect    = document.getElementById('projectSelect');
+    var budgetSelect     = document.getElementById('budgetSelect');
+    var yearSelect       = document.getElementById('yearSelect');
+    var budgetInfo       = document.getElementById('budgetInfo');
+    var designTypeSelect = document.getElementById('designTypeSelect');
+    var designTypeHint   = document.getElementById('designTypeHint');
+    var allBudgetOpts    = budgetSelect.querySelectorAll('option[data-project]');
+    var currentYear      = <?= date('Y') ?>;
+
+    // ── Auto-select Design Type based on selected budget ──────────────
+    function applyDesignTypeFromBudget(opt) {
+        if (!opt) { return; }
+        var dtId = opt.getAttribute('data-design-type-id') || '';
+        if (dtId && designTypeSelect) {
+            designTypeSelect.value = dtId;
+            var dtLabel = '';
+            var selOpt = designTypeSelect.options[designTypeSelect.selectedIndex];
+            if (selOpt) dtLabel = selOpt.textContent.trim();
+            if (designTypeSelect.value == dtId && dtLabel) {
+                if (designTypeHint) designTypeHint.innerHTML =
+                    '<i class="bi bi-check-circle me-1"></i>Auto-selected: <strong>' + dtLabel + '</strong>';
+            } else {
+                if (designTypeHint) designTypeHint.textContent = '';
+            }
+        } else {
+            if (designTypeHint) designTypeHint.textContent = '';
+        }
+    }
 
     // ── Rebuild Year Dropdown from Budget date range ───────────────
     function rebuildYears(opt) {
@@ -168,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var hint = document.getElementById('yearHint');
         if (hint) {
             if (startDate && endDate) {
-                hint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Budget period: ' + startDate + ' → ' + endDate;
+                hint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Budget period: ' + startDate + ' &rarr; ' + endDate;
             } else {
                 hint.textContent = 'No date range set for this budget.';
             }
@@ -184,6 +214,7 @@ document.addEventListener('DOMContentLoaded', function () {
         yearSelect.innerHTML = '<option value="">-- Select Budget First --</option>';
         var hint = document.getElementById('yearHint');
         if (hint) hint.textContent = '';
+        if (designTypeHint) designTypeHint.textContent = '';
 
         var firstMatch = null;
         allBudgetOpts.forEach(function (opt) {
@@ -202,22 +233,26 @@ document.addEventListener('DOMContentLoaded', function () {
             budgetInfo.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Budget Total: ৳ ' +
                 parseFloat(firstMatch.getAttribute('data-total')).toLocaleString('en-BD') + '</span>';
             rebuildYears(firstMatch);
+            applyDesignTypeFromBudget(firstMatch);
         } else {
             budgetInfo.innerHTML = '<span class="text-warning">No budget found for this project.</span>';
             rebuildYears(null);
         }
     });
 
-    // ── Budget manual change → update info + rebuild years ────────
+    // ── Budget manual change → update info + rebuild years + auto design type ──
     budgetSelect.addEventListener('change', function () {
         var opt = this.options[this.selectedIndex];
         if (opt && opt.getAttribute('data-total')) {
             budgetInfo.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Budget Total: ৳ ' +
                 parseFloat(opt.getAttribute('data-total')).toLocaleString('en-BD') + '</span>';
             rebuildYears(opt);
+            applyDesignTypeFromBudget(opt);
         } else {
             budgetInfo.textContent = '';
             yearSelect.innerHTML = '<option value="">-- Select Budget First --</option>';
+            if (designTypeSelect) designTypeSelect.value = '';
+            if (designTypeHint) designTypeHint.textContent = '';
         }
     });
 });

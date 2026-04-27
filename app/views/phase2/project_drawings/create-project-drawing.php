@@ -6,7 +6,7 @@
 
             <div class="col-xl-6">
                 <label>Project <span class="text-danger">*</span></label>
-                <select name="project_id" class="form-control" required>
+                <select name="project_id" class="form-control select2" required>
                     <option value="">Select Project</option>
                     <?php foreach ($projects as $p): ?>
                         <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
@@ -27,23 +27,23 @@
             <div class="col-xl-6">
                 <label>Designer Type</label>
                 <select name="is_in_house" class="form-control" id="designer_type">
-                    <option value="1">In-House</option>
+                    <option value="1">In-House (Internal)</option>
                     <option value="0">External</option>
                 </select>
             </div>
 
+            <!-- Internal: auto from session, show current user info -->
             <div class="col-xl-6" id="internal_designer_wrap">
-                <label>Internal Designer (User)</label>
-                <select name="user_id" class="form-control">
-                    <option value="">Select User</option>
-                    <?php foreach ($users as $u): ?>
-                        <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <label>Internal Designer</label>
+                <input type="text" class="form-control"
+                       value="<?= htmlspecialchars($_SESSION['user']['full_name'] ?? 'Current User') ?>"
+                       readonly style="cursor:not-allowed">
+                <small class="text-muted">Auto-filled from your login session</small>
             </div>
 
+            <!-- External: show these fields -->
             <div class="col-xl-6 d-none" id="ext_name_wrap">
-                <label>External Designer Name</label>
+                <label>External Designer Name <span class="text-danger">*</span></label>
                 <input type="text" name="designer_name" class="form-control" placeholder="Full Name">
             </div>
             <div class="col-xl-6 d-none" id="ext_desig_wrap">

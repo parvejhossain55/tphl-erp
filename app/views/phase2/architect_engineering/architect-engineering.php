@@ -30,6 +30,7 @@ $show_breadcrumb = false;
                             <th>Designer</th>
                             <th>Design Link</th>
                             <th>Notes</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -50,6 +51,15 @@ $show_breadcrumb = false;
                                         <?php endif; ?>
                                     </td>
                                     <td><?= htmlspecialchars($row['notes'] ?? '—') ?></td>
+                                    <td>
+                                        <?php 
+                                            $status = $row['status'] ?? 'draft';
+                                            $badgeClass = 'bg-secondary';
+                                            if ($status == 'partially') $badgeClass = 'bg-warning text-dark';
+                                            elseif ($status == 'fully') $badgeClass = 'bg-success';
+                                        ?>
+                                        <span class="badge <?= $badgeClass ?>"><?= ucfirst(htmlspecialchars($status)) ?></span>
+                                    </td>
                                     <td class="table__icon-box">
                                         <div class="d-flex align-items-center justify-content-center gap-10">
                                             <a href="<?= $GLOBALS['base_url'] ?>/con-architect-engineering/edit?id=<?= $row['id'] ?>" class="table__icon edit">

@@ -48,6 +48,18 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Work Type <span class="text-danger">*</span></label>
+                        <select name="work_type_id" class="form-select" required>
+                            <option value="">-- Select Work Type --</option>
+                            <?php foreach ($workTypes as $wt): ?>
+                                <option value="<?= $wt['id'] ?>" data-design-type-id="<?= $wt['design_type_id'] ?>"
+                                    <?= $wt['id'] == ($budget['work_type_id'] ?? 0) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($wt['label']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold">Start Date</label>
                         <input type="date" name="start_date" class="form-control"
@@ -65,7 +77,11 @@
                                value="<?= htmlspecialchars($budget['total_area_sqft'] ?? '') ?>"
                                placeholder="0.00">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-6 mt-3">
+                        <label class="form-label fw-bold">Other Cost Detail / Note</label>
+                        <textarea name="other_cost_detail" class="form-control" rows="1" placeholder="Title or detail for other costs..."><?= htmlspecialchars($budget['other_cost_detail'] ?? '') ?></textarea>
+                    </div>
+                    <div class="col-md-2 mt-3">
                         <label class="form-label fw-bold">Other Costs (৳)</label>
                         <input type="number" step="0.01" name="other_costs" id="otherCosts"
                                class="form-control"
@@ -92,8 +108,8 @@
                     <table class="table table-bordered align-middle mb-0" id="itemsTable">
                         <thead class="table-light">
                             <tr>
-                                <th style="width:18%">Design Type</th>
-                                <th style="width:25%">Material</th>
+                                <th style="width:20%">Work Type</th>
+                                <th style="width:23%">Material</th>
                                 <th style="width:8%">Unit</th>
                                 <th style="width:13%">Qty</th>
                                 <th style="width:13%">Unit Cost (৳)</th>
@@ -106,11 +122,13 @@
                                 <?php foreach ($existingItems as $item): ?>
                                 <tr class="item-row">
                                     <td>
-                                        <select name="item_design_type_id[]" class="form-select form-select-sm" required>
-                                            <option value="">-- Type --</option>
-                                            <?php foreach ($designTypes as $dt): ?>
-                                                <option value="<?= $dt['id'] ?>" <?= $dt['id'] == $item['design_type_id'] ? 'selected' : '' ?>>
-                                                    <?= htmlspecialchars($dt['name']) ?>
+                                        <input type="hidden" name="item_design_type_id[]" class="item-design-type-id" value="<?= $item['design_type_id'] ?? '' ?>">
+                                        <select name="item_work_type_id[]" class="form-select form-select-sm wt-select" required>
+                                            <option value="">-- Work Type --</option>
+                                            <?php foreach ($workTypes as $wt): ?>
+                                                <option value="<?= $wt['id'] ?>" data-design-type-id="<?= $wt['design_type_id'] ?>"
+                                                    <?= $wt['id'] == ($item['work_type_id'] ?? 0) ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($wt['label']) ?>
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>
@@ -157,10 +175,13 @@
                                 <!-- Empty default row -->
                                 <tr class="item-row">
                                     <td>
-                                        <select name="item_design_type_id[]" class="form-select form-select-sm" required>
-                                            <option value="">-- Type --</option>
-                                            <?php foreach ($designTypes as $dt): ?>
-                                                <option value="<?= $dt['id'] ?>"><?= htmlspecialchars($dt['name']) ?></option>
+                                        <input type="hidden" name="item_design_type_id[]" class="item-design-type-id" value="">
+                                        <select name="item_work_type_id[]" class="form-select form-select-sm wt-select" required>
+                                            <option value="">-- Work Type --</option>
+                                            <?php foreach ($workTypes as $wt): ?>
+                                                <option value="<?= $wt['id'] ?>" data-design-type-id="<?= $wt['design_type_id'] ?>">
+                                                    <?= htmlspecialchars($wt['label']) ?>
+                                                </option>
                                             <?php endforeach; ?>
                                         </select>
                                     </td>
@@ -220,7 +241,7 @@
                     <table class="table table-bordered align-middle mb-0" id="laborsTable">
                         <thead class="table-light">
                             <tr>
-                                <th style="width:20%">Design Type</th>
+                                <th style="width:20%">Work Type</th>
                                 <th style="width:30%">Labor Type Name</th>
                                 <th style="width:15%">Rate / sqft (৳)</th>
                                 <th style="width:15%">Area (sqft)</th>
@@ -233,11 +254,13 @@
                                 <?php foreach ($existingLabors as $lb): ?>
                                 <tr class="labor-row">
                                     <td>
-                                        <select name="labor_design_type_id[]" class="form-select form-select-sm" required>
-                                            <option value="">-- Type --</option>
-                                            <?php foreach ($designTypes as $dt): ?>
-                                                <option value="<?= $dt['id'] ?>" <?= $dt['id'] == $lb['design_type_id'] ? 'selected' : '' ?>>
-                                                    <?= htmlspecialchars($dt['name']) ?>
+                                        <input type="hidden" name="labor_design_type_id[]" class="labor-design-type-id" value="<?= $lb['design_type_id'] ?? '' ?>">
+                                        <select name="labor_work_type_id[]" class="form-select form-select-sm labor-wt-select" required>
+                                            <option value="">-- Work Type --</option>
+                                            <?php foreach ($workTypes as $wt): ?>
+                                                <option value="<?= $wt['id'] ?>" data-design-type-id="<?= $wt['design_type_id'] ?>"
+                                                    <?= $wt['id'] == ($lb['work_type_id'] ?? 0) ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($wt['label']) ?>
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>
@@ -270,10 +293,13 @@
                             <?php else: ?>
                                 <tr class="labor-row">
                                     <td>
-                                        <select name="labor_design_type_id[]" class="form-select form-select-sm" required>
-                                            <option value="">-- Type --</option>
-                                            <?php foreach ($designTypes as $dt): ?>
-                                                <option value="<?= $dt['id'] ?>"><?= htmlspecialchars($dt['name']) ?></option>
+                                        <input type="hidden" name="labor_design_type_id[]" class="labor-design-type-id" value="">
+                                        <select name="labor_work_type_id[]" class="form-select form-select-sm labor-wt-select" required>
+                                            <option value="">-- Work Type --</option>
+                                            <?php foreach ($workTypes as $wt): ?>
+                                                <option value="<?= $wt['id'] ?>" data-design-type-id="<?= $wt['design_type_id'] ?>">
+                                                    <?= htmlspecialchars($wt['label']) ?>
+                                                </option>
                                             <?php endforeach; ?>
                                         </select>
                                     </td>
@@ -397,13 +423,27 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('summaryGrand').textContent    = '৳ ' + fmt(grand);
     }
 
-    // Material select → auto-fill unit field
+    // Work type select → auto-fill hidden design_type_id
     document.getElementById('itemsBody').addEventListener('change', function (e) {
+        if (e.target.classList.contains('wt-select')) {
+            var sel  = e.target.options[e.target.selectedIndex];
+            var dtId = sel ? (sel.getAttribute('data-design-type-id') || '') : '';
+            e.target.closest('tr').querySelector('.item-design-type-id').value = dtId;
+        }
         if (e.target.classList.contains('mat-select')) {
             var sel  = e.target.options[e.target.selectedIndex];
             var unit = sel ? (sel.getAttribute('data-unit') || '') : '';
             e.target.closest('tr').querySelector('.unit-display').value = unit;
             recalc();
+        }
+    });
+
+    // Labor work type select → auto-fill hidden design_type_id
+    document.getElementById('laborsBody').addEventListener('change', function (e) {
+        if (e.target.classList.contains('labor-wt-select')) {
+            var sel  = e.target.options[e.target.selectedIndex];
+            var dtId = sel ? (sel.getAttribute('data-design-type-id') || '') : '';
+            e.target.closest('tr').querySelector('.labor-design-type-id').value = dtId;
         }
     });
 
@@ -430,6 +470,8 @@ document.addEventListener('DOMContentLoaded', function () {
         newRow.querySelectorAll('input').forEach(function (el) { el.value = ''; });
         newRow.querySelectorAll('select').forEach(function (el) { el.selectedIndex = 0; });
         newRow.querySelector('.item-subtotal').textContent = '0.00';
+        var dtHidden = newRow.querySelector('.item-design-type-id');
+        if (dtHidden) dtHidden.value = '';
         var btn = newRow.querySelector('.remove-item-row');
         if (btn) btn.style.display = 'inline-block';
         tbody.appendChild(newRow);

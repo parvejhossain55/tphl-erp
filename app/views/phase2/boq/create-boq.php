@@ -21,31 +21,48 @@ $months     = ['','January','February','March','April','May','June',
 </div>
 
 <section class="section">
+    <?php if (!empty($targetData)): ?>
+        <?php 
+            $target = $targetData;
+            // Ensure no duplicate variable conflicts and include the full target view
+            include __DIR__ . '/../target-fixed/show-target.php'; 
+        ?>
+    <?php endif; ?>
+
     <div class="row justify-content-center">
-        <div class="col-lg-11">
+        <div class="col-lg-12">
             <div class="card__wrapper shadow-sm">
-                <div class="card__header">
+                <div class="card__header" style="background-color: #f8f9fa;">
                     <h6 class="card__title mb-0">
-                        <i class="bi bi-clipboard-data me-2"></i>Set New Bill of Quantities
+                        <i class="bi bi-clipboard-data me-2 text-primary"></i>Create Bill of Quantities (BOM)
                     </h6>
                 </div>
-                <div class="card__body p-4">
+                <div class="card__body p-4 border-top">
                     <form action="<?= $base_url ?>/con-boq-store" method="POST" id="boqForm">
 
                         <!-- Hidden: target_id & design_type_id saved on target selection -->
-                        <input type="hidden" name="target_id"      id="target_id_hidden">
-                        <input type="hidden" name="design_type_id" id="design_type_id_hidden">
+                        <input type="hidden" name="target_id"      id="target_id_hidden" value="<?= $target_id ?: '' ?>">
+                        <input type="hidden" name="design_type_id" id="design_type_id_hidden" value="<?= $targetData['design_type_id'] ?? '' ?>">
 
                         <!-- ── Row 1: Project + Version + Status ── -->
                         <div class="row mb-3">
                             <div class="col-md-5">
                                 <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
-                                <select name="project_id" id="project_id" class="form-select" required>
-                                    <option value="">-- Select Project --</option>
-                                    <?php foreach ($projects as $p): ?>
-                                        <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <?php if (!empty($targetData)): ?>
+                                    <input type="hidden" name="project_id" value="<?= $targetData['project_id'] ?>">
+                                    <select id="project_id" class="form-select" disabled>
+                                        <?php foreach ($projects as $p): ?>
+                                            <option value="<?= $p['id'] ?>" <?= ($targetData['project_id'] == $p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                <?php else: ?>
+                                    <select name="project_id" id="project_id" class="form-select" required>
+                                        <option value="">-- Select Project --</option>
+                                        <?php foreach ($projects as $p): ?>
+                                            <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                <?php endif; ?>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">Version</label>
@@ -61,7 +78,7 @@ $months     = ['','January','February','March','April','May','June',
                         </div>
 
                         <!-- ── Row 2: Target Selection (loads after project select) ── -->
-                        <div class="row mb-3">
+                        <div class="row mb-3" <?= !empty($targetData) ? 'style="display:none;"' : '' ?>>
                             <div class="col-md-8">
                                 <label class="form-label fw-bold">
                                     <i class="bi bi-bullseye me-1 text-primary"></i>
@@ -80,15 +97,24 @@ $months     = ['','January','February','March','April','May','June',
                                     <i class="bi bi-layers me-1 text-info"></i>Design Type
                                 </label>
                                 <input type="text" id="design_type_display" class="form-control bg-light" readonly
-                                       placeholder="Auto-filled from target">
+                                       placeholder="Auto-filled from target" value="<?= htmlspecialchars($targetData['design_type_name'] ?? '') ?>">
                             </div>
                         </div>
 
                         <!-- ── Target Info Card (shown when target selected) ── -->
-                        <div id="targetInfoCard" class="alert alert-info d-none mb-3 py-2" style="font-size:12.5px">
+                        <div id="targetInfoCard" class="alert alert-info <?= empty($targetData) ? 'd-none' : '' ?> mb-3 py-2" style="font-size:12.5px">
                             <i class="bi bi-info-circle me-1"></i>
                             <strong>Selected Target:</strong>
-                            <span id="targetInfoText">—</span>
+                            <span id="targetInfoText">
+                                <?php if (!empty($targetData)): ?>
+                                    <strong><?= htmlspecialchars($targetData['target_title'] ?? '—') ?></strong> | 
+                                    Period: <?= $months[(int)($targetData['month'] ?? 0)] ?? '' ?> <?= $targetData['year'] ?? '' ?> <?= $targetData['week_number'] ? ' · Week ' . $targetData['week_number'] : '' ?> | 
+                                    Target: <strong><?= number_format($targetData['target_percentage'] ?? 0, 1) ?>%</strong> | 
+                                    Design: <strong><?= htmlspecialchars($targetData['design_type_name'] ?? '—') ?></strong>
+                                <?php else: ?>
+                                    —
+                                <?php endif; ?>
+                            </span>
                         </div>
 
                         <hr class="my-3">
