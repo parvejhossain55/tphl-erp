@@ -505,9 +505,12 @@ $show_breadcrumb = true;
             // Determine status classes
             const bookingStatusClass = getStatusClass(land.booking_status);
             const landshareStatusClass = getStatusClass(land.landshare_status);
+            const transferBadge = parseInt(land.transfer_status) === 1 
+                ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.7em;">Transferred</span>' 
+                : '<span class="badge bg-success ms-1" style="font-size:0.7em;">Current</span>';
 
             row.innerHTML = `
-            <td>${escapeHtml(land.project_name)}</td>
+            <td>${escapeHtml(land.project_name)} ${transferBadge}</td>
             <td>${escapeHtml(land.unit_name)} - Floor ${escapeHtml(land.flat_no)}</td>
             <td>${escapeHtml(land.booking_agent_name || 'System')}</td>
             <td>${Number(land.flat_size).toLocaleString('en-BD')} sqft</td>

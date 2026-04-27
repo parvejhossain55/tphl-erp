@@ -1716,4 +1716,49 @@ public function viewClientStatement($bookingId = null)
         ]);
         exit;
     }
+
+    public function saveTransferNote()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $bookingId = $_POST['booking_id'] ?? null;
+        $transferDate = $_POST['transfer_date'] ?? null;
+        $transferNote = $_POST['transfer_note'] ?? null;
+        $transferStatus = isset($_POST['transfer_status']) ? (int)$_POST['transfer_status'] : 0;
+        $updatedBy = $_SESSION['user']['id'] ?? null;
+        $sourcePage = $_POST['source_page'] ?? 'accounts'; // accounts or ced
+
+        if (!$bookingId || !$updatedBy) {
+            setError('Invalid request or user not authenticated.');
+            $redirectUrl = $sourcePage === 'ced' 
+                ? "{$GLOBALS['base_url']}/clients-cash-in-history-view?booking_id={$bookingId}"
+                : "{$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}";
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        // Empty strings to null
+        $transferDate = !empty($transferDate) ? $transferDate : null;
+        $transferNote = !empty($transferNote) ? $transferNote : null;
+
+        $success = $this->clientModel->saveTransferNote($bookingId, $transferDate, $transferNote, $transferStatus, $updatedBy);
+
+        if ($success) {
+            setSuccess('Transfer note updated successfully.');
+        } else {
+            setError('Failed to update transfer note.');
+        }
+
+        $redirectUrl = $sourcePage === 'ced' 
+            ? "{$GLOBALS['base_url']}/clients-cash-in-history-view?booking_id={$bookingId}"
+            : "{$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}";
+        
+        header("Location: {$redirectUrl}");
+        exit;
+    }
 }

@@ -174,6 +174,7 @@ class AccountClient extends Model
             lb.booking_status,
             lb.landshare_status,
             lb.service_fee_balance,
+            lb.transfer_status,
             
             p.id as project_id,
             p.name as project_name,
@@ -470,12 +471,17 @@ ORDER BY lb.booking_date DESC
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'), 
                     NULL
-                ) as last_payment_date
+                ) as last_payment_date,
+                lb.transfer_date,
+                lb.transfer_note,
+                lb.transfer_status,
+                transfer_u.full_name as transfer_updated_by_name
             FROM lead_bookings lb
             INNER JOIN leads l ON lb.lead_id = l.id
             INNER JOIN projects p ON lb.project_id = p.id
             INNER JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN users u ON l.assigned_id = u.id
+            LEFT JOIN users transfer_u ON lb.transfer_updated_by = transfer_u.id
             WHERE lb.id = ?
         ");
 
@@ -2538,5 +2544,28 @@ ORDER BY lb.booking_date DESC
         $stmt3->close();
 
         return $stats;
+    }
+
+    public function saveTransferNote($bookingId, $transferDate, $transferNote, $transferStatus, $updatedBy)
+    {
+        $stmt = $this->db->prepare("
+            UPDATE lead_bookings 
+            SET transfer_date = ?, 
+                transfer_note = ?, 
+                transfer_status = ?, 
+                transfer_updated_by = ?
+            WHERE id = ?
+        ");
+        
+        if (!$stmt) {
+            error_log("Prepare statement failed: " . $this->db->error);
+            return false;
+        }
+
+        $stmt->bind_param("ssiii", $transferDate, $transferNote, $transferStatus, $updatedBy, $bookingId);
+        $result = $stmt->execute();
+        $stmt->close();
+        
+        return $result;
     }
 }
