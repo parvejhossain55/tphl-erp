@@ -10,6 +10,14 @@ $totalAE                 = $totalAE                 ?? 0;
 $drawingsByType          = $drawingsByType          ?? [];
 $recentDrawings          = $recentDrawings          ?? [];
 $projectsNeedingDrawings = $projectsNeedingDrawings ?? [];
+$projectsWaitingForAE    = $projectsWaitingForAE    ?? [];
+
+$aeStatusLabel = [
+    'not_started' => ['label' => 'Not Started', 'color' => '#ef4444', 'icon' => 'fa-circle-xmark'],
+    'draft'       => ['label' => 'Draft',       'color' => '#94a3b8', 'icon' => 'fa-file-dashed-line'],
+    'partially'   => ['label' => 'In Progress', 'color' => '#f59e0b', 'icon' => 'fa-spinner'],
+    'fully'       => ['label' => 'Complete',    'color' => '#10b981', 'icon' => 'fa-circle-check'],
+];
 ?>
 <style>
 :root {
@@ -90,7 +98,7 @@ $projectsNeedingDrawings = $projectsNeedingDrawings ?? [];
   <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
     <div>
       <div class="dr-role-badge"><i class="fa-solid fa-drafting-compass"></i> Draftsman</div>
-      <h4 class="dr-hero-title">Design & Drafting Dashboard</h4>
+      <h4 class="dr-hero-title">Design &amp; Drafting Dashboard</h4>
       <p class="dr-hero-sub">Real-time design overview · <?= date('d M Y, h:i A') ?></p>
     </div>
   </div>
@@ -100,6 +108,35 @@ $projectsNeedingDrawings = $projectsNeedingDrawings ?? [];
     <a href="<?= $base ?>/con-architect-engineering" class="dr-btn-white"><i class="fal fa-building"></i> Architecture</a>
   </div>
 </div>
+
+<?php if (!empty($projectsWaitingForAE)): ?>
+<!-- ═════ WORKFLOW GATE ALERT ═════ -->
+<div style="background:linear-gradient(135deg,#78350f,#d97706);border-radius:14px;padding:18px 22px;margin-bottom:20px;border:1px solid #fbbf24;">
+  <div style="display:flex;align-items:flex-start;gap:14px;">
+    <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;color:#fff;">
+      <i class="fal fa-clock"></i>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.7);font-weight:700;margin-bottom:4px;">Workflow Locked</div>
+      <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:6px;">Waiting for Architect &amp; Engineering to Complete</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.8);margin-bottom:12px;">You cannot upload Project Drawings for the following projects until the Architect marks the A&amp;E work as <strong style="color:#fde68a;">Fully Complete</strong>.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <?php foreach ($projectsWaitingForAE as $wp):
+          $aeInfo = $aeStatusLabel[$wp['ae_status']] ?? ['label' => 'Unknown', 'color' => '#ccc', 'icon' => 'fa-question'];
+        ?>
+        <div style="background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px;">
+          <i class="fal <?= $aeInfo['icon'] ?>" style="color:<?= $aeInfo['color'] ?>;font-size:13px;"></i>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#fff;"><?= htmlspecialchars($wp['name']) ?></div>
+            <div style="font-size:10px;color:rgba(255,255,255,.65);">A&amp;E: <?= $aeInfo['label'] ?> &bull; Architect: <?= htmlspecialchars($wp['architect_name']) ?></div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- ═════ KPI GRID ═════ -->
 <div class="kpi-grid-4">

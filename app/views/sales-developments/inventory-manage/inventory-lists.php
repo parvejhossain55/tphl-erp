@@ -1,223 +1,274 @@
 <?php
 $addPage = true;
 $show_breadcrumb = false;
-
 ?>
 
+<style>
+/* Premium Inventory CSS */
+.kpi-card card__wrapper {
+    /* background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); */
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    padding: 20px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+.kpi-card card__wrapper:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+.kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-right: 15px;
+}
+.kpi-primary { background: rgba(13, 110, 253, 0.1); color: #0d6efd; }
+.kpi-success { background: rgba(25, 135, 84, 0.1); color: #198754; }
+.kpi-danger { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+.kpi-info { background: rgba(13, 202, 240, 0.1); color: #0dcaf0; }
 
-<h4 class="mb-4">
-    Project Inventory Lists
-</h4>
-<form action="" method="get">
-    <div class="row flat-select">
+.project-accordion .accordion-item {
+    border: none;
+    background: #fff;
+    border-radius: 15px !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+.project-accordion .accordion-button {
+    background: #ffffff;
+    padding: 20px 25px;
+    border: none;
+    box-shadow: none;
+    font-weight: 600;
+    color: #2b3445;
+}
+.project-accordion .accordion-button:not(.collapsed) {
+    background: #fdfdfe;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    box-shadow: none;
+}
+.project-accordion .accordion-button:focus {
+    box-shadow: none;
+}
+.project-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
 
-        <!-- Search -->
-        <!-- Department Filter -->
-        <div class="row d-none">
+.flat-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    height: 100%;
+    position: relative;
+}
+.flat-card:hover {
+    box-shadow: 0 10px 20px rgba(0,0,0,0.06);
+    transform: translateY(-3px);
+}
+.flat-header {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.flat-available .flat-header { border-top: 4px solid #198754; background: rgba(25, 135, 84, 0.02); }
+.flat-booked .flat-header { border-top: 4px solid #dc3545; background: rgba(220, 53, 69, 0.02); }
+.flat-sold .flat-header { border-top: 4px solid #343a40; background: rgba(52, 58, 64, 0.02); }
 
-            <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
-                <div class="card__wrapper">
-                    <div class="from__input-box">
-                        <select class="form-control" name="department_id">
-                            <option value="">Select Project</option>
-                            <?php foreach ($projects as $project): ?>
-                                <option value="<?= $project['id'] ?>"
-                                    <?= $selectedProject == $project['id'] ? 'selected' : '' ?>>
-                                    <?= $project['name'] ?>
-                                </option>
-                            <?php endforeach ?>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
-                <div class="card__wrapper">
-                    <div class="search-box">
-                        <input type="text" class="form-control" name="q" id="bookedOrAvailable"
-                            placeholder="Booked/"
-                            value="">
-                    </div>
-                </div>
-            </div>
+.flat-title { font-size: 17px; font-weight: 700; color: #2b3445; margin: 0; }
+.flat-body { padding: 20px; }
+.flat-detail-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #495057;
+}
+.flat-detail-val { font-weight: 600; color: #212529; }
+.flat-footer {
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-top: 1px solid rgba(0,0,0,0.05);
+    display: flex;
+    gap: 10px;
+}
+.price-tag {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f4c3a; /* TPHL Green */
+    margin-top: 5px;
+    margin-bottom: 5px;
+    display: block;
+}
+.booking-money-tag {
+    font-size: 14px;
+    color: #dc3545;
+    font-weight: 700;
+    background: rgba(220,53,69,0.08);
+    padding: 6px 12px;
+    border-radius: 8px;
+    display: inline-block;
+}
 
-            <!-- Submit -->
-            <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
-                <div class="card__wrapper">
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-secondary w-100">
-                            Filter
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xxl-3 col-xl-3 col-lg-3 col-12">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
-                    <div class="card__icon">
-                        <span><i class="fa-solid fa-building"></i>
-                        </span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Projects </h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $totalProjects ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xxl-3 col-xl-3 col-lg-3 col-12">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
-                    <div class="card__icon">
-                        <span><i class="fa-solid fa-building"></i>
-                        </span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Flats</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $totalFlatCount ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xxl-3 col-xl-3 col-lg-3 col-12">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
-                    <div class="card__icon">
-                        <span><i class="fa-solid fa-building"></i>
-                        </span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Flat Available</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $availableFlats ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .project-accordion .accordion-button > div {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 15px;
+    }
+}
+</style>
 
-        <div class="col-xxl-3 col-xl-3 col-lg-3 col-12">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-sm">
-                    <div class="card__icon">
-                        <span><i class="fa-solid fa-building"></i>
-                        </span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Flat Booked</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $bookedFlats ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+<div class="container-fluid p-0">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold m-0">Project Inventory Dashboard</h4>
     </div>
-</form>
 
-<div class="row">
-    <div class="col-xxl-12">
-        <div class="card__wrapper p-3">
-            <div class="table__wrapper table-responsive">
-                <table class="table table-bordered table-hover mb-0 text-center align-middle" id="inventoryTable">
-                    <thead class="table-dark">
-                        <tr>
-                            <th class="th_1">Project Name</th>
-                            <th>Total Flats</th>
-                            <th>Stock/Available</th>
-                            <th>Booked</th>
-                            <th class="d-none">Sold</th>
-                            <th>Net Value (৳)</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($inventoryProjects as $index => $row): ?>
-                            <!-- Project Summary Row -->
-                            <tr class="fw-bold table-secondary">
-                                <td class="text-start td_1"><?= htmlspecialchars($row['project_name']) ?></td>
-                                <td>
-                                    <span class=" bd-badge border border-secondary  bg-secondary bg-opacity-10 px-3 py-1 mt-2">
-                                        <?= $row['total_flats'] ?>
-                                    </span>
-                                </td>
-                                <td><span class="badge bg-success p-2"><?= $row['available_flats'] ?></span></td>
-                                <td><span class="badge bg-danger p-2"><?= $row['booked_flats'] ?></span></td>
-                                <td class="d-none"><span class="badge bg-dark text-white p-2"><?= $row['sold_flats'] ?? 0 ?></span></td>
-                                <td><strong><?= format_bdt($row['total_flat_value']) ?> ৳</strong></td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary show-flats-btn" data-target="flats<?= $index ?>">Show Details</button>
-                                </td>
-                            </tr>
-
-                            <!-- Hidden Flat Rows -->
-                            <?php if (!empty($row['flats'])): ?>
-                                <?php foreach ($row['flats'] as $flat): ?>
-                                    <tr class="flat-details-row" id="flats<?= $index ?>" style="display:none; background-color:rgb(251 240 240);">
-
-                                        <td class="text-start ps-4 td_1"><strong class="me-1">Flat: </strong><?= htmlspecialchars($flat['flat_name']) ?>; <span><strong class="ms-2">Size:</strong><?= $flat['sqft'] ?> sqft</span></td>
-                                        <td><strong class="pe-3">BHK-</strong><span><?= $flat['bhk'] ?></span></td>
-                                        <td>
-
-                                            <?= isset($flat['agreement_value']) && $flat['agreement_value'] > 0
-                                                ?       '<span class="fw-semibold "> Booking Money: </span>' . format_bdt($flat['agreement_value']) . " ৳"
-                                                : '<span class="bd-badge bg-primary  p-2">Not Yet Booked</span>'; ?>
-                                        </td>
-
-
-                                        <td>
-                                            <?php
-                                            switch ($flat['status']) {
-                                                case 'available':
-                                                    echo '<span class=" badge bg-success p-2">Available</span>';
-                                                    break;
-                                                case 'booked':
-                                                    echo '<span class="badge bg-danger p-2">Booked</span>';
-                                                    break;
-                                                case 'sold':
-                                                    echo '<span class="badge bg-dark text-white p-2">Sold</span>';
-                                                    break;
-                                            }
-                                            ?>
-                                        </td>
-                                        <td><span class="fw-semibold ">Price:</span><?= format_bdt($flat['price_value']) ?> ৳</td>
-
-                                        <td>
-                                            <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>" class="btn btn-sm btn-secondary ">Edit</a>
-                                            <a href="<?= $GLOBALS['base_url'] ?>/flat-details/<?= $flat['id'] ?>" class="btn btn-sm btn-primary m-1">Details</a>
-
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+    <!-- KPI Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="kpi-card card__wrapper d-flex align-items-center">
+                <div class="kpi-icon kpi-primary"><i class="fa-solid fa-building"></i></div>
+                <div>
+                    <p class="text-muted mb-1 fs-13 fw-semibold">Total Projects</p>
+                    <h3 class="mb-0 fw-bold"><?= $totalProjects ?></h3>
+                </div>
             </div>
         </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="kpi-card card__wrapper d-flex align-items-center">
+                <div class="kpi-icon kpi-info"><i class="fa-solid fa-city"></i></div>
+                <div>
+                    <p class="text-muted mb-1 fs-13 fw-semibold">Total Flats</p>
+                    <h3 class="mb-0 fw-bold"><?= $totalFlatCount ?></h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="kpi-card card__wrapper d-flex align-items-center">
+                <div class="kpi-icon kpi-success"><i class="fa-solid fa-door-open"></i></div>
+                <div>
+                    <p class="text-muted mb-1 fs-13 fw-semibold">Available Flats</p>
+                    <h3 class="mb-0 fw-bold"><?= $availableFlats ?></h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="kpi-card card__wrapper d-flex align-items-center">
+                <div class="kpi-icon kpi-danger"><i class="fa-solid fa-lock"></i></div>
+                <div>
+                    <p class="text-muted mb-1 fs-13 fw-semibold">Booked Flats</p>
+                    <h3 class="mb-0 fw-bold"><?= $bookedFlats ?></h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Accordion -->
+    <div class="accordion project-accordion" id="inventoryAccordion">
+        <?php foreach ($inventoryProjects as $index => $row): ?>
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading<?= $index ?>">
+                    <button class="accordion-button <?= $index === 0 ? '' : 'collapsed' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<?= $index ?>" aria-expanded="<?= $index === 0 ? 'true' : 'false' ?>" aria-controls="collapse<?= $index ?>">
+                        <div class="d-flex w-100 align-items-center justify-content-between pe-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <h5 class="mb-0 fw-bold"><i class="fa-solid fa-building me-2"></i> <?= htmlspecialchars($row['project_name']) ?></h5>
+                                <span class="badge bg-secondary rounded-pill">Total Flats: <?= $row['total_flats'] ?></span>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="project-badge bg-success bg-opacity-10 text-light border border-success border-opacity-25">
+                                    <i class="fa-solid fa-door-open me-1"></i> Available: <?= $row['available_flats'] ?>
+                                </span>
+                                <span class="project-badge bg-danger bg-opacity-10 text-light border border-danger border-opacity-25">
+                                    <i class="fa-solid fa-lock me-1"></i> Booked: <?= $row['booked_flats'] ?>
+                                </span>
+                                <span class="project-badge bg-primary bg-opacity-10 text-light border border-primary border-opacity-25 ms-lg-2">
+                                    <i class="fa-solid fa-sack-dollar me-1"></i> Value: <?= format_bdt($row['total_flat_value']) ?> ৳
+                                </span>
+                            </div>
+                        </div>
+                    </button>
+                </h2>
+                
+                <div id="collapse<?= $index ?>" class="accordion-collapse collapse <?= $index === 0 ? 'show' : '' ?>" aria-labelledby="heading<?= $index ?>" data-bs-parent="#inventoryAccordion">
+                    <div class="accordion-body  p-4">
+                        
+                        <?php if (!empty($row['flats'])): ?>
+                            <div class="row g-4">
+                                <?php foreach ($row['flats'] as $flat): 
+                                    $statusClass = 'flat-available';
+                                    $statusBadge = '<span class="badge bg-success px-3 py-2 rounded-pill">Available</span>';
+                                    if ($flat['status'] == 'booked') {
+                                        $statusClass = 'flat-booked';
+                                        $statusBadge = '<span class="badge bg-danger px-3 py-2 rounded-pill">Booked</span>';
+                                    } elseif ($flat['status'] == 'sold') {
+                                        $statusClass = 'flat-sold';
+                                        $statusBadge = '<span class="badge bg-dark px-3 py-2 rounded-pill">Sold</span>';
+                                    }
+                                ?>
+                                    <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
+                                        <div class="flat-card <?= $statusClass ?>">
+                                            <div class="flat-header">
+                                                <h4 class="flat-title">Flat: <?= htmlspecialchars($flat['flat_name']) ?></h4>
+                                                <?= $statusBadge ?>
+                                            </div>
+                                            <div class="flat-body">
+                                                <div class="flat-detail-item">
+                                                    <span><i class="fa-solid fa-vector-square text-muted me-2"></i>Size</span>
+                                                    <span class="flat-detail-val"><?= $flat['sqft'] ?> sqft</span>
+                                                </div>
+                                                <div class="flat-detail-item">
+                                                    <span><i class="fa-solid fa-bed text-muted me-2"></i>BHK</span>
+                                                    <span class="flat-detail-val"><?= $flat['bhk'] ?></span>
+                                                </div>
+                                                
+                                                <div class="mt-4 pt-3 border-top border-light">
+                                                    <span class="text-muted fs-13 d-block text-uppercase fw-semibold">Net Price</span>
+                                                    <span class="price-tag"><?= format_bdt($flat['price_value']) ?> ৳</span>
+                                                </div>
+                                                
+                                                <?php if(isset($flat['agreement_value']) && $flat['agreement_value'] > 0): ?>
+                                                    <div class="booking-money-tag mt-3 w-100 text-center">
+                                                        <i class="fa-solid fa-money-check-dollar me-1"></i> Booking: <?= format_bdt($flat['agreement_value']) ?> ৳
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="text-muted mt-3 fs-13 w-100 text-center py-1 opacity-75">
+                                                        <i class="fa-solid fa-info-circle me-1"></i> Not Yet Booked
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="flat-footer">
+                                                <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>" class="btn btn-outline-secondary btn-sm w-50 rounded-pill fw-semibold"><i class="fa-solid fa-pen-to-square me-1"></i> Edit</a>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/flat-details/<?= $flat['id'] ?>" class="btn btn-primary btn-sm w-50 rounded-pill fw-semibold"><i class="fa-solid fa-eye me-1"></i> Details</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="text-center py-5 bg-white rounded-3 border">
+                                <div class="text-muted mb-3"><i class="fa-regular fa-folder-open display-4"></i></div>
+                                <h5 class="text-muted">No flats found for this project.</h5>
+                            </div>
+                        <?php endif; ?>
+
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
     </div>
 </div>
-
-<!-- JS for Toggle -->
-<script>
-    document.querySelectorAll('.show-flats-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const targetId = this.dataset.target;
-            const flatRows = document.querySelectorAll(`#${targetId}`);
-            flatRows.forEach(row => {
-                if (row.style.display === 'none') {
-                    row.style.display = 'table-row';
-                    btn.innerText = 'Hide Details';
-                } else {
-                    row.style.display = 'none';
-                    btn.innerText = 'Show Details';
-                }
-            });
-        });
-    });
-</script>

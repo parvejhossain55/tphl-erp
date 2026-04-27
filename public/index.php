@@ -2,8 +2,8 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
+// error_reporting(E_ALL);
+// ini_set('display_errors', 0);
 
 mysqli_report(MYSQLI_REPORT_OFF);
 
@@ -21,8 +21,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // Enable debug
-// error_reporting(E_ALL);
-// ini_set('display_errors', 1);
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 $root = dirname(__DIR__);
 $GLOBALS['base_url'] = '/TPHL-ERP';
@@ -704,12 +704,26 @@ $routes['con-design-types/edit'] = ['controller' => 'Phase2\DesignTypeController
 $routes['con-design-types/update'] = ['controller' => 'Phase2\DesignTypeController', 'method' => 'update'];
 $routes['delete-design-type']                   = ['controller' => 'Phase2\DesignTypeController', 'method' => 'delete'];
 
+$routes['con-work-types']                = ['controller' => 'Phase2\Con_WorkTypeController', 'method' => 'index'];
+$routes['con-work-type-create']          = ['controller' => 'Phase2\Con_WorkTypeController', 'method' => 'create'];
+$routes['con-work-type-store']           = ['controller' => 'Phase2\Con_WorkTypeController', 'method' => 'store'];
+$routes['con-work-type-edit/(\d+)']      = ['controller' => 'Phase2\Con_WorkTypeController', 'method' => 'edit'];
+$routes['con-work-type-update/(\d+)']    = ['controller' => 'Phase2\Con_WorkTypeController', 'method' => 'update'];
+$routes['con-work-type-delete']          = ['controller' => 'Phase2\Con_WorkTypeController', 'method' => 'delete'];
+
 $routes['con-project-drawings'] = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'index'];
 $routes['con-project-drawings/create'] = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'create'];
 $routes['con-project-drawings/store'] = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'store'];
 $routes['con-project-drawings/edit'] = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'edit'];
 $routes['con-project-drawings/update'] = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'update'];
 $routes['delete-project-drawing']               = ['controller' => 'Phase2\ProjectDrawingController', 'method' => 'delete'];
+
+$routes['structure-design'] = ['controller' => 'Phase2\ProjectStructuralDesignController', 'method' => 'index'];
+$routes['structure-design/create'] = ['controller' => 'Phase2\ProjectStructuralDesignController', 'method' => 'create'];
+$routes['structure-design/store'] = ['controller' => 'Phase2\ProjectStructuralDesignController', 'method' => 'store'];
+$routes['structure-design/edit'] = ['controller' => 'Phase2\ProjectStructuralDesignController', 'method' => 'edit'];
+$routes['structure-design/update'] = ['controller' => 'Phase2\ProjectStructuralDesignController', 'method' => 'update'];
+$routes['delete-structure-design'] = ['controller' => 'Phase2\ProjectStructuralDesignController', 'method' => 'delete'];
 
 $routes['con-soil-tests'] = ['controller' => 'Phase2\SoilTestController', 'method' => 'index'];
 $routes['con-soil-tests/create'] = ['controller' => 'Phase2\SoilTestController', 'method' => 'create'];
@@ -730,8 +744,9 @@ $routes['qc-dashboard']                   = ['controller' => 'Phase2\Con_Dashboa
 $routes['purchase-team-lead-dashboard']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'purchaseTeamLeadDashboard'];
 $routes['draft-dashboard']                = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'draftDashboard'];
 $routes['land-dashboard']                 = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'landDashboard'];
-$routes['project-architecture-dashboard'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectArchitectureDashboard'];
-$routes['estimator-dashboard']            = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'estimatorDashboard'];
+$routes['project-architecture-dashboard']        = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectArchitectureDashboard'];
+$routes['project-structural-design-dashboard']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectStructuralDesignDashboard'];
+$routes['estimator-dashboard']                   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'estimatorDashboard'];
 
 // ── Operators / Contractors ────────────────────────────────────────────────
 $routes['con-contractors']              = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'index'];

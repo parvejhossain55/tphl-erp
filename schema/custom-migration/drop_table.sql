@@ -102,3 +102,4 @@ DROP TABLE IF EXISTS vendor_penalties;
 DROP TABLE IF EXISTS vendor_ratings;
 DROP TABLE IF EXISTS weekly_progress_report;
 DROP TABLE IF EXISTS vendors;
+DROP TABLE IF EXISTS project_structural_designs;

@@ -71,7 +71,7 @@ class LeadController extends Controller
 
         // Fetch paginated records
         $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date, $limit, $offset);
-        
+
         $totalPages = ceil($leadCounts / $limit);
 
         // Build pagination route query string (excluding 'page')
@@ -151,25 +151,25 @@ class LeadController extends Controller
         $t1 = microtime(true);
         $countQuery = $this->db->query("SELECT COUNT(*) AS total FROM leads WHERE deleted_at IS NULL");
         $total = $countQuery ? $countQuery->fetch_assoc()['total'] : 'ERROR: ' . $this->db->error;
-        echo "<p><b>Total Leads:</b> $total | Time: " . round((microtime(true)-$t1)*1000) . "ms</p>";
+        echo "<p><b>Total Leads:</b> $total | Time: " . round((microtime(true) - $t1) * 1000) . "ms</p>";
 
         // 2. Simple paginated query
         $t2 = microtime(true);
         $r2 = $this->db->query("SELECT l.id FROM leads l WHERE l.deleted_at IS NULL ORDER BY l.created_at DESC LIMIT 10");
         $rows2 = $r2 ? $r2->num_rows : 0;
-        echo "<p><b>Simple LIMIT 10 query:</b> $rows2 rows | Time: " . round((microtime(true)-$t2)*1000) . "ms</p>";
+        echo "<p><b>Simple LIMIT 10 query:</b> $rows2 rows | Time: " . round((microtime(true) - $t2) * 1000) . "ms</p>";
 
         // 3. Follow-up count ALL (old method)
         $t3 = microtime(true);
         $r3 = $this->db->query("SELECT lead_id, COUNT(*) AS c FROM lead_follow_ups WHERE deleted_at IS NULL GROUP BY lead_id");
         $rows3 = $r3 ? $r3->num_rows : 'ERROR: ' . $this->db->error;
-        echo "<p><b>getAllFollowUpCounts (OLD - slow):</b> $rows3 rows | Time: " . round((microtime(true)-$t3)*1000) . "ms</p>";
+        echo "<p><b>getAllFollowUpCounts (OLD - slow):</b> $rows3 rows | Time: " . round((microtime(true) - $t3) * 1000) . "ms</p>";
 
         // 4. Booking count ALL (old method)
         $t4 = microtime(true);
         $r4 = $this->db->query("SELECT lb.lead_id, COUNT(DISTINCT lb.id) AS c FROM lead_bookings lb INNER JOIN lead_payments lp ON lp.booking_id = lb.id GROUP BY lb.lead_id");
         $rows4 = $r4 ? $r4->num_rows : 'ERROR: ' . $this->db->error;
-        echo "<p><b>getAllBookingCounts (OLD - slow):</b> $rows4 rows | Time: " . round((microtime(true)-$t4)*1000) . "ms</p>";
+        echo "<p><b>getAllBookingCounts (OLD - slow):</b> $rows4 rows | Time: " . round((microtime(true) - $t4) * 1000) . "ms</p>";
 
         // 5. Test WITH new method (only 10 IDs)
         $t5 = microtime(true);
@@ -179,9 +179,9 @@ class LeadController extends Controller
         $idStr = implode(',', $ids);
         $r5 = $this->db->query("SELECT lead_id, COUNT(*) AS c FROM lead_follow_ups WHERE deleted_at IS NULL AND lead_id IN ($idStr) GROUP BY lead_id");
         $rows5 = $r5 ? $r5->num_rows : 'ERROR';
-        echo "<p><b>getFollowUpCounts for 10 IDs (NEW - fast):</b> $rows5 rows | Time: " . round((microtime(true)-$t5)*1000) . "ms</p>";
+        echo "<p><b>getFollowUpCounts for 10 IDs (NEW - fast):</b> $rows5 rows | Time: " . round((microtime(true) - $t5) * 1000) . "ms</p>";
 
-        echo "<hr><p><b>Total time:</b> " . round((microtime(true)-$start_time)*1000) . "ms</p>";
+        echo "<hr><p><b>Total time:</b> " . round((microtime(true) - $start_time) * 1000) . "ms</p>";
         echo "<p style='color:red'><b>⚠️ DELETE leads-ajax-debug route after testing!</b></p>";
         exit;
     }
@@ -193,7 +193,7 @@ class LeadController extends Controller
         set_time_limit(120);
         ini_set('memory_limit', '256M');
         header('Content-Type: application/json');
-        
+
         $draw = isset($_POST['draw']) ? (int)$_POST['draw'] : 1;
         $start = isset($_POST['start']) ? (int)$_POST['start'] : 0;
         $length = isset($_POST['length']) ? (int)$_POST['length'] : 10;
@@ -206,7 +206,7 @@ class LeadController extends Controller
         $assigned   = $_GET['assigned']    ?? null;
         $assigned_user = $_GET['assigned_user'] ?? null;
         $date = $_GET['date'] ?? null;
-        
+
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -215,7 +215,7 @@ class LeadController extends Controller
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
 
         $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date);
-        
+
         if (!empty($search)) {
             $filteredRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date, $search);
         } else {
@@ -224,7 +224,7 @@ class LeadController extends Controller
 
         $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date, $length, $start, $search);
 
-        // ✅ FIXED: শুধু current page এর lead IDs দিয়ে count করা হচ্ছে
+        // FIXED: শুধু current page এর lead IDs দিয়ে count করা হচ্ছে
         $leadIds = array_column($leads, 'id');
         $followUpCounts = !empty($leadIds) ? (new FollowUp($this->db))->getFollowUpCountByLeadIds($leadIds) : [];
         $bookingCounts  = !empty($leadIds) ? $this->leadBookedModel->getBookingCountByLeadIds($leadIds) : [];
@@ -260,79 +260,79 @@ class LeadController extends Controller
         $data = [];
         foreach ($leads as $key => $lead) {
             $row = [];
-            
+
             $row[] = '
-                <input type="checkbox" class="me-2 selectedId" data-id="'.$lead['id'].'">
-                '.($start + $key + 1).'
+                <input type="checkbox" class="me-2 selectedId" data-id="' . $lead['id'] . '">
+                ' . ($start + $key + 1) . '
             ';
-            
+
             $row[] = $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '';
-            
-            $row[] = '<strong>'.htmlspecialchars($lead['full_name'] ?? '').'</strong>';
-            
+
+            $row[] = '<strong>' . htmlspecialchars($lead['full_name'] ?? '') . '</strong>';
+
             $phone = $lead['phone_number'] ?? $lead['phone'];
             $clean_phone = preg_replace('/[^0-9]/', '', $phone);
-            $row[] = '<a href="https://wa.me/'.$clean_phone.'" target="_blank">'.htmlspecialchars($phone).'</a>';
-            
+            $row[] = '<a href="https://wa.me/' . $clean_phone . '" target="_blank">' . htmlspecialchars($phone) . '</a>';
+
             $displayName = !empty($lead['campaign_name']) ? $lead['campaign_name'] : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
             $plainText = strip_tags($displayName);
             $truncatedDisplayName = (mb_strlen($plainText) > 15) ? mb_substr($plainText, 0, 15) . '...' : $displayName;
             $campaignHtml = '<div class="d-flex align-items-center gap-2 flex-nowrap">
                 <span class="project-badge mb-0">
-                    <i class="bi bi-building"></i> '.htmlspecialchars($truncatedDisplayName).'
+                    <i class="bi bi-building"></i> ' . htmlspecialchars($truncatedDisplayName) . '
                 </span>';
             if (mb_strlen($plainText) > 15) {
-                $campaignHtml .= '<button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 viewCampaignBtnDynamic" data-description="'.htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8').'" data-bs-toggle="modal" data-bs-target="#viewProjectCampaignName">View</button>';
+                $campaignHtml .= '<button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 viewCampaignBtnDynamic" data-description="' . htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') . '" data-bs-toggle="modal" data-bs-target="#viewProjectCampaignName">View</button>';
             }
             $campaignHtml .= '</div>';
             $row[] = $campaignHtml;
-            
+
             $last_action = $lead['last_lead_action'] ?? 'not_called';
             $base_url = $GLOBALS['base_url'];
             $statusHtml = '
-            <form method="POST" action="'.$base_url.'/update-last_leadAction/'.$lead['id'].'" class="m-0 p-0">
-                <select name="last_lead_action" class="form-select form-select-sm last-action-select action-'.$last_action.'" onchange="this.form.submit()">
+            <form method="POST" action="' . $base_url . '/update-last_leadAction/' . $lead['id'] . '" class="m-0 p-0">
+                <select name="last_lead_action" class="form-select form-select-sm last-action-select action-' . $last_action . '" onchange="this.form.submit()">
                     <option value=""> Update action </option>
-                    <option value="new" '.($last_action == 'new' ? 'selected' : '').'>New</option>
-                    <option value="booked" '.($last_action == 'booked' ? 'selected' : '').'>Booked</option>
-                    <option value="follow up" '.($last_action == 'follow up' ? 'selected' : '').'>Follow Up</option>
-                    <option value="visited" '.($last_action == 'visited' ? 'selected' : '').'>Visited</option>
-                    <option value="cancel" '.($last_action == 'cancel' ? 'selected' : '').'>Cancel</option>
+                    <option value="new" ' . ($last_action == 'new' ? 'selected' : '') . '>New</option>
+                    <option value="booked" ' . ($last_action == 'booked' ? 'selected' : '') . '>Booked</option>
+                    <option value="follow up" ' . ($last_action == 'follow up' ? 'selected' : '') . '>Follow Up</option>
+                    <option value="visited" ' . ($last_action == 'visited' ? 'selected' : '') . '>Visited</option>
+                    <option value="cancel" ' . ($last_action == 'cancel' ? 'selected' : '') . '>Cancel</option>
                 </select>
             </form>';
             $row[] = $statusHtml;
-            
+
             $next_date = (!empty($lead['next_follow_up_date']) && $lead['next_follow_up_date'] !== '0000-00-00') ? date('d-M-Y', strtotime($lead['next_follow_up_date'])) : 'No Schedule';
-            $row[] = '<div>'.$next_date.'</div>';
-            
+            $row[] = '<div>' . $next_date . '</div>';
+
             $agent_name = htmlspecialchars($lead['agent_name'] ?? 'No Agent Assigned');
             $noteHtml = '<div class="d-flex align-items-center gap-2 flex-nowrap">
-                <span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">'.$agent_name.'</span>
+                <span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">' . $agent_name . '</span>
                 <span class="bd-badge bg-success">';
             if (!empty($lead['call_note'])) {
-                $noteHtml .= '<button type="button" class="btn btn-sm p-0  note-view-btn" style="font-size:11px; vertical-align:baseline; color:#fff;" data-note="'.htmlspecialchars($lead['call_note'], ENT_QUOTES, 'UTF-8').'" data-bs-toggle="modal" data-bs-target="#viewNoteModal">View Note</button>';
+                $noteHtml .= '<button type="button" class="btn btn-sm p-0  note-view-btn" style="font-size:11px; vertical-align:baseline; color:#fff;" data-note="' . htmlspecialchars($lead['call_note'], ENT_QUOTES, 'UTF-8') . '" data-bs-toggle="modal" data-bs-target="#viewNoteModal">View Note</button>';
             } else {
                 $noteHtml .= 'No Note';
             }
             $noteHtml .= '</span></div>';
             $row[] = $noteHtml;
-            
+
             $actionHtml = '';
             if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9])) {
-                $fu_count = !empty($followUpCounts[$lead['id']]) ? '<span class="action-badge">'.$followUpCounts[$lead['id']].'</span>' : '';
-                $bk_count = !empty($bookingCount[$lead['id']]) ? '<span class="action-badge">'.$bookingCount[$lead['id']].'</span>' : '';
+                $fu_count = !empty($followUpCounts[$lead['id']]) ? '<span class="action-badge">' . $followUpCounts[$lead['id']] . '</span>' : '';
+                $bk_count = !empty($bookingCount[$lead['id']]) ? '<span class="action-badge">' . $bookingCount[$lead['id']] . '</span>' : '';
                 $bk_text = !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking';
-                
+
                 $actionHtml = '
                 <div class="d-flex align-items-center gap-1">
-                    <a href="'.$base_url.'/follow-up-leads/'.$lead['id'].'" class="btn btn-primary btn-sm position-relative" style="white-space:nowrap;">Follow Up '.$fu_count.'</a>
-                    <a href="'.$base_url.'/booking-leads/'.$lead['id'].'" class="btn btn-secondary btn-sm position-relative" style="white-space:nowrap;">'.$bk_text.' '.$bk_count.'</a>
+                    <a href="' . $base_url . '/follow-up-leads/' . $lead['id'] . '" class="btn btn-primary btn-sm position-relative" style="white-space:nowrap;">Follow Up ' . $fu_count . '</a>
+                    <a href="' . $base_url . '/booking-leads/' . $lead['id'] . '" class="btn btn-secondary btn-sm position-relative" style="white-space:nowrap;">' . $bk_text . ' ' . $bk_count . '</a>
                     <div class="dropdown">
                         <button class="action-dot-btn btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
-                            <li><a class="dropdown__item" href="'.$base_url.'/edit-lead/'.$lead['id'].'"><i class="bi bi-pencil-square me-2 text-primary"></i> Edit</a></li>
-                            <li><a class="dropdown__item" href="'.$base_url.'/view-lead/'.$lead['id'].'"><i class="bi bi-eye me-2 text-success"></i> View</a></li>
-                            <li><button class="dropdown__item text-danger removeBtnCust" data-name="'.htmlspecialchars($lead['full_name'], ENT_QUOTES, 'UTF-8').'" data-action="lead-delete" data-id="'.$lead['id'].'"><i class="bi bi-trash me-2"></i> Delete</button></li>
+                            <li><a class="dropdown__item" href="' . $base_url . '/edit-lead/' . $lead['id'] . '"><i class="bi bi-pencil-square me-2 text-primary"></i> Edit</a></li>
+                            <li><a class="dropdown__item" href="' . $base_url . '/view-lead/' . $lead['id'] . '"><i class="bi bi-eye me-2 text-success"></i> View</a></li>
+                            <li><button class="dropdown__item text-danger removeBtnCust" data-name="' . htmlspecialchars($lead['full_name'], ENT_QUOTES, 'UTF-8') . '" data-action="lead-delete" data-id="' . $lead['id'] . '"><i class="bi bi-trash me-2"></i> Delete</button></li>
                         </ul>
                     </div>
                 </div>';
@@ -340,17 +340,17 @@ class LeadController extends Controller
                 $fu_count = $followUpCounts[$lead['id']] ?? 0;
                 $bk_count = $bookingCount[$lead['id']] ?? 0;
                 $bk_text = !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking';
-                
+
                 $actionHtml = '
                 <div class="d-flex align-items-center gap-1 flex-nowrap">
-                    <button class="btn btn-success btn-sm position-relative" disabled>Follow Up <span class="action-badge">'.$fu_count.'</span></button>
-                    <button class="btn btn-secondary btn-sm position-relative" disabled>'.$bk_text.' <span class="action-badge">'.$bk_count.'</span></button>
+                    <button class="btn btn-success btn-sm position-relative" disabled>Follow Up <span class="action-badge">' . $fu_count . '</span></button>
+                    <button class="btn btn-secondary btn-sm position-relative" disabled>' . $bk_text . ' <span class="action-badge">' . $bk_count . '</span></button>
                 </div>';
             }
             $row[] = $actionHtml;
-            
+
             $row['DT_RowAttr'] = ['data-id' => $lead['id']];
-            
+
             $data[] = $row;
         }
 

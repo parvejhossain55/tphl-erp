@@ -214,7 +214,34 @@
             dropdownParent: $(this).parent() // 🔥 IMPORTANT
         });
     });
+
+    // ✅ Fix scroll-to-top for team assignment dropdowns
+    $(parent).find('.select2-no-scroll').each(function () {
+        if ($(this).hasClass('select2-hidden-accessible')) return;
+
+        var placeholder = $(this).data('placeholder') || 'Select option';
+
+        $(this).select2({
+            placeholder: placeholder,
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('body'), // append to body to avoid positioning/scroll issues
+            scrollAfterSelect: false
+        });
+    });
 }
+
+// ✅ Global: Prevent Select2 from scrolling page to top when search input gets focus
+$(document).on('select2:open', function () {
+    var scrollY = $(window).scrollTop();
+    var scrollX = $(window).scrollLeft();
+
+    // Use setTimeout(0) so scroll restores AFTER browser processes the focus event
+    setTimeout(function () {
+        $(window).scrollTop(scrollY);
+        $(window).scrollLeft(scrollX);
+    }, 0);
+});
          
 
             /**

@@ -46,8 +46,15 @@
                                         <option value="<?= $b['id'] ?>"
                                                 data-project="<?= $b['project_id'] ?>"
                                                 data-total="<?= $b['total_estimated_cost'] ?>"
+                                                data-work-type-id="<?= $b['work_type_id'] ?? '' ?>"
+                                                data-design-type-id="<?= $b['design_type_id'] ?? '' ?>"
                                                 <?= $b['id'] == $plan['initial_budget_id'] ? 'selected' : '' ?>>
-                                            #<?= $b['id'] ?> — <?= htmlspecialchars($b['project_name']) ?>
+                                            #<?= $b['id'] ?> &mdash; <?= htmlspecialchars($b['project_name']) ?>
+                                            <?php if (!empty($b['work_type_label'])): ?>
+                                                [<?= htmlspecialchars($b['work_type_label']) ?>]
+                                            <?php elseif(!empty($b['work_type_name'])): ?>
+                                                [<?= htmlspecialchars($b['work_type_name']) ?>]
+                                            <?php endif; ?>
                                             (৳<?= number_format($b['total_estimated_cost'], 0) ?>)
                                         </option>
                                     <?php endforeach; ?>
@@ -58,7 +65,7 @@
                         <div class="row  mb-3">
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Design Type <span class="text-danger">*</span></label>
-                                <select name="design_type_id" class="form-select" required>
+                                <select name="design_type_id" id="designTypeSelect" class="form-select" required>
                                     <option value="">-- Select --</option>
                                     <?php foreach ($designTypes as $dt): ?>
                                         <option value="<?= $dt['id'] ?>" <?= $dt['id'] == $plan['design_type_id'] ? 'selected' : '' ?>>
@@ -66,6 +73,7 @@
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <div class="form-text text-info" id="designTypeHint"></div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Year <span class="text-danger">*</span></label>
@@ -122,3 +130,37 @@
         </div>
     </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var budgetSelect     = document.getElementById('budgetSelect');
+    var designTypeSelect = document.getElementById('designTypeSelect');
+    var designTypeHint   = document.getElementById('designTypeHint');
+
+    function applyDesignTypeFromBudget(opt) {
+        if (!opt || !designTypeSelect) return;
+        var dtId = opt.getAttribute('data-design-type-id') || '';
+        if (dtId) {
+            designTypeSelect.value = dtId;
+            var selOpt = designTypeSelect.options[designTypeSelect.selectedIndex];
+            var dtLabel = selOpt ? selOpt.textContent.trim() : '';
+            if (designTypeSelect.value == dtId && dtLabel) {
+                if (designTypeHint) designTypeHint.innerHTML =
+                    '<i class="bi bi-check-circle me-1"></i>Auto-selected: <strong>' + dtLabel + '</strong>';
+            } else {
+                if (designTypeHint) designTypeHint.textContent = '';
+            }
+        } else {
+            if (designTypeHint) designTypeHint.textContent = '';
+        }
+    }
+
+    // On budget change → auto-select design type
+    if (budgetSelect) {
+        budgetSelect.addEventListener('change', function () {
+            var opt = this.options[this.selectedIndex];
+            applyDesignTypeFromBudget(opt);
+        });
+    }
+});
+</script>

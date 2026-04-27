@@ -194,6 +194,11 @@ function sib_fmt($n) {
     <div class="sib-kpi-icon" style="background:rgba(245,158,11,.12);color:var(--sib-amber)"><i class="fal fa-receipt"></i></div>
     <div class="sib-kpi-lbl">Other Costs</div>
     <div class="sib-kpi-val" style="color:var(--sib-amber)"><?= sib_fmt($budget['other_costs'] ?? 0) ?></div>
+    <?php if (!empty($budget['other_cost_detail'])): ?>
+    <div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.3;max-height:28px;overflow:hidden" title="<?= htmlspecialchars($budget['other_cost_detail']) ?>">
+        <?= htmlspecialchars($budget['other_cost_detail']) ?>
+    </div>
+    <?php endif; ?>
   </div>
   <div class="sib-kpi">
     <div class="sib-kpi-accent" style="background:var(--sib-purple)"></div>
@@ -343,7 +348,7 @@ function sib_fmt($n) {
       <thead>
         <tr>
           <th>#</th>
-          <th>Design Type</th>
+          <th>Work Type</th>
           <th>Material</th>
           <th class="text-right">Unit</th>
           <th class="text-right">Est. Qty</th>
@@ -361,7 +366,7 @@ function sib_fmt($n) {
           <td>
             <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
               background:rgba(139,92,246,.1);color:#8b5cf6">
-              <?= htmlspecialchars($item['design_type_name'] ?? '—') ?>
+              <?= htmlspecialchars($item['work_type_label'] ?? $item['design_type_name'] ?? '—') ?>
             </span>
           </td>
           <td style="font-weight:600"><?= htmlspecialchars($item['material_name'] ?? '—') ?></td>
@@ -393,7 +398,7 @@ function sib_fmt($n) {
       <thead>
         <tr>
           <th>#</th>
-          <th>Design Type</th>
+          <th>Work Type</th>
           <th>Labor Type</th>
           <th class="text-right">Rate / sqft</th>
           <th class="text-right">Area (sqft)</th>
@@ -410,7 +415,7 @@ function sib_fmt($n) {
           <td>
             <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
               background:rgba(59,130,246,.1);color:#3b82f6">
-              <?= htmlspecialchars($lb['design_type_name'] ?? '—') ?>
+              <?= htmlspecialchars($lb['work_type_label'] ?? $lb['design_type_name'] ?? '—') ?>
             </span>
           </td>
           <td style="font-weight:600"><?= htmlspecialchars($lb['labor_type_name']) ?></td>

@@ -74,10 +74,13 @@ $page_title = $page_title ?? 'Site Targets';
                                         <span class="badge bg-<?= $badge ?>"><?= $totalApprovals ?>/2 Approved</span>
                                     </td>
                                     <td>
-                                        <a href="<?= $base_url ?>/con-target/<?= $t['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                        <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>" class="btn btn-sm btn-outline-info" title="Create BOM">
+                                            <i class="bi bi-box-seam"></i> BOM
+                                        </a>
+                                        <a href="<?= $base_url ?>/con-target/<?= $t['id'] ?>" class="btn btn-sm btn-outline-primary" title="View">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <a href="<?= $base_url ?>/con-target-edit/<?= $t['id'] ?>" class="btn btn-sm btn-outline-secondary">
+                                        <a href="<?= $base_url ?>/con-target-edit/<?= $t['id'] ?>" class="btn btn-sm btn-outline-secondary" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                     </td>

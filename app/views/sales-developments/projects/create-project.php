@@ -285,6 +285,116 @@ $show_breadcrumb = true;
                     <textarea id="tinymce_simple_textarea" name="description"></textarea>
                 </div>
 
+                <!-- ════════════════════════════════════
+                     PROJECT TEAM ASSIGNMENT
+                ════════════════════════════════════ -->
+                <div class="col-12 mt-3">
+                    <h5 class="mb-3" style="border-bottom:2px solid #e2e8f0;padding-bottom:8px;">
+                        <i class="fa-regular fa-users-gear text-primary me-2"></i>Project Team Assignment
+                    </h5>
+                </div>
+
+                <!-- Project Manager -->
+                <div class="col-xl-4 col-md-6">
+                    <label for="team_pm_id">Project Manager (PM)</label>
+                    <select id="team_pm_id" name="pm_id" class="form-control select2-no-scroll">
+                        <option value="">-- Select PM --</option>
+                        <?php foreach ($teamUsers['project_managers'] ?? [] as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Site Engineer -->
+                <div class="col-xl-4 col-md-6">
+                    <label for="team_site_engineer_id">Site Engineer</label>
+                    <select id="team_site_engineer_id" name="site_engineer_id" class="form-control select2-no-scroll">
+                        <option value="">-- Select Site Engineer --</option>
+                        <?php foreach ($teamUsers['site_engineers'] ?? [] as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Land Manager -->
+                <div class="col-xl-4 col-md-6">
+                    <label for="team_landman_id">Land Manager</label>
+                    <select id="team_landman_id" name="landman_id" class="form-control select2-no-scroll">
+                        <option value="">-- Select Land Manager --</option>
+                        <?php foreach ($teamUsers['land_managers'] ?? [] as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Structural Engineer -->
+                <div class="col-xl-4 col-md-6">
+                    <label for="team_struct_engineer_id">Structural Engineer</label>
+                    <select id="team_struct_engineer_id" name="struct_engineer_id" class="form-control select2-no-scroll">
+                        <option value="">-- Select Structural Engineer --</option>
+                        <?php foreach ($teamUsers['struct_engineers'] ?? [] as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+ 
+
+                <!-- Draftsman -->
+                <div class="col-xl-4 col-md-6">
+                    <label for="team_draftsman_id">Draftsman</label>
+                    <select id="team_draftsman_id" name="draftsman_id" class="form-control select2-no-scroll">
+                        <option value="">-- Select Draftsman --</option>
+                        <?php foreach ($teamUsers['draftsmen'] ?? [] as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Architect -->
+                <div class="col-xl-4 col-md-6">
+                    <label for="team_architect_id">Architect</label>
+                    <select id="team_architect_id" name="architect_id" class="form-control select2-no-scroll">
+                        <option value="">-- Select Architect --</option>
+                        <?php foreach ($teamUsers['architects'] ?? [] as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Estimator -->
+                <div class="col-xl-4 col-md-6">
+                    <label for="team_estimator_id">Estimator</label>
+                    <select id="team_estimator_id" name="estimator_id" class="form-control select2-no-scroll">
+                        <option value="">-- Select Estimator --</option>
+                        <?php foreach ($teamUsers['estimators'] ?? [] as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Quality Controller -->
+                <div class="col-xl-4 col-md-6">
+                    <label for="team_qc_id">Quality Controller (QC)</label>
+                    <select id="team_qc_id" name="qc_id" class="form-control select2-no-scroll">
+                        <option value="">-- Select QC --</option>
+                        <?php foreach ($teamUsers['qc_controllers'] ?? [] as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Site Operator -->
+                <div class="col-xl-4 col-md-6">
+                    <label for="team_operator_id">Site Operator</label>
+                    <select id="team_operator_id" name="operator_id" class="form-control select2-no-scroll">
+                        <option value="">-- Select Site Operator --</option>
+                        <?php foreach ($teamUsers['site_operators'] ?? [] as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
                 <div class="col-12 text-center mt-4">
                     <button class="btn btn-primary">Create Project</button>
                 </div>
@@ -293,6 +403,7 @@ $show_breadcrumb = true;
         </form>
     </div>
 </div>
+
 
 
 <script>

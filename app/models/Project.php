@@ -102,8 +102,10 @@ $price_range = !empty($data['price_range']) ? $data['price_range'] : null;
                 apartment_count, amenities_details, amenities_image, map_image, map_link, 
                 project_map_location, passenger_lift, cargo_lift, created_by, rooftop_gardening, 
                 swimming_pool, convention, electricity_backup, car_parking, project_sale_status,
-                service_charge_per_emi
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                service_charge_per_emi,
+                pm_id, site_engineer_id, landman_id, struct_engineer_id,
+                draftsman_id, architect_id, estimator_id, qc_id, operator_id
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
     $stmt = $this->db->prepare($sql);
 
@@ -112,7 +114,17 @@ $price_range = !empty($data['price_range']) ? $data['price_range'] : null;
         return false;
     }
 
-$bindTypes = "ssiisiisssssssssssssisssssiiiiiiiisd";
+$bindTypes = "ssiisiisssssssssssssisssssiiiiiiiisd" . "iiiiiiiii";
+
+    $pm_id             = !empty($data['pm_id']) ? (int)$data['pm_id'] : null;
+    $site_engineer_id  = !empty($data['site_engineer_id']) ? (int)$data['site_engineer_id'] : null;
+    $landman_id        = !empty($data['landman_id']) ? (int)$data['landman_id'] : null;
+    $struct_engineer_id = !empty($data['struct_engineer_id']) ? (int)$data['struct_engineer_id'] : null;
+    $draftsman_id      = !empty($data['draftsman_id']) ? (int)$data['draftsman_id'] : null;
+    $architect_id      = !empty($data['architect_id']) ? (int)$data['architect_id'] : null;
+    $estimator_id      = !empty($data['estimator_id']) ? (int)$data['estimator_id'] : null;
+    $qc_id             = !empty($data['qc_id']) ? (int)$data['qc_id'] : null;
+    $operator_id       = !empty($data['operator_id']) ? (int)$data['operator_id'] : null;
 
     $stmt->bind_param(
         $bindTypes,
@@ -129,7 +141,7 @@ $bindTypes = "ssiisiisssssssssssssisssssiiiiiiiisd";
         $image2,                        // 11
         $image3,                        // 12
         $data['front_road'],            // 13
-        $price_range,           // 14
+        $price_range,                   // 14
         $data['hover_text'],            // 15
         $data['plot_size'],             // 16 (s)
         $data['plot_no'],               // 17
@@ -150,8 +162,17 @@ $bindTypes = "ssiisiisssssssssssssisssssiiiiiiiisd";
         $convention,                    // 32 (i)
         $electricity_backup,            // 33 (i)
         $car_parking,                   // 34 (i)
-        $data['project_sale_status'],    // 35 (s)
-        $data['service_charge_per_emi']  // 36 (d)
+        $data['project_sale_status'],   // 35 (s)
+        $data['service_charge_per_emi'],// 36 (d)
+        $pm_id,                         // 37 (i)
+        $site_engineer_id,              // 38 (i)
+        $landman_id,                    // 39 (i)
+        $struct_engineer_id,            // 40 (i)
+        $draftsman_id,                  // 41 (i)
+        $architect_id,                  // 43 (i)
+        $estimator_id,                  // 44 (i)
+        $qc_id,                         // 45 (i)
+        $operator_id                    // 46 (i)
     );
 
     return $stmt->execute();
@@ -260,7 +281,16 @@ $plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
         floor_wise_unit_meta = ?,
         project_map_location = ?,
         project_sale_status = ?,
-        service_charge_per_emi = ?
+        service_charge_per_emi = ?,
+        pm_id = ?,
+        site_engineer_id = ?,
+        landman_id = ?,
+        struct_engineer_id = ?,
+        draftsman_id = ?,
+        architect_id = ?,
+        estimator_id = ?,
+        qc_id = ?,
+        operator_id = ?
     WHERE id = ?
 ");
 
@@ -269,8 +299,18 @@ $plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
             setError($this->db->error);
             return false;
         }
+        $pm_id             = !empty($data['pm_id']) ? (int)$data['pm_id'] : null;
+        $site_engineer_id  = !empty($data['site_engineer_id']) ? (int)$data['site_engineer_id'] : null;
+        $landman_id        = !empty($data['landman_id']) ? (int)$data['landman_id'] : null;
+        $struct_engineer_id= !empty($data['struct_engineer_id']) ? (int)$data['struct_engineer_id'] : null;
+        $draftsman_id      = !empty($data['draftsman_id']) ? (int)$data['draftsman_id'] : null;
+        $architect_id      = !empty($data['architect_id']) ? (int)$data['architect_id'] : null;
+        $estimator_id      = !empty($data['estimator_id']) ? (int)$data['estimator_id'] : null;
+        $qc_id             = !empty($data['qc_id']) ? (int)$data['qc_id'] : null;
+        $operator_id       = !empty($data['operator_id']) ? (int)$data['operator_id'] : null;
+
         $stmt->bind_param(
-            "ssiisssiisssssssissssiiiiiisssiisssdi",
+            "ssiisssiissssdssissssssiiiisssiisssd" . "iiiiiiiiii",
             $data['name'],
             $data['slug'],
             $data['location_id'],
@@ -285,7 +325,6 @@ $plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
             $data['hover_text'],
             $data['price_range'],
             $plot_size,
-
             $data['brochure_link'],
             $data['description'],
             $data['apartment_count'],
@@ -308,6 +347,15 @@ $plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
             $data['project_map_location'],
             $data['project_sale_status'],
             $data['service_charge_per_emi'],
+            $pm_id,
+            $site_engineer_id,
+            $landman_id,
+            $struct_engineer_id,
+            $draftsman_id,
+            $architect_id,
+            $estimator_id,
+            $qc_id,
+            $operator_id,
             $id
         );
 

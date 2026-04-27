@@ -45,11 +45,20 @@ class Con_BOQController extends Controller
         $projects  = $this->projectModel->getAll();
         $materials = $this->materialModel->getAll();
 
+        $target_id = isset($_GET['target_id']) ? (int)$_GET['target_id'] : 0;
+        $targetData = null;
+        if ($target_id) {
+            $targetModel = new \Phase2\Con_TargetFixed($this->db);
+            $targetData = $targetModel->find($target_id);
+        }
+
         $this->view('phase2/boq/create-boq', [
             'current_route' => 'con-boq-create',
             'page_title'    => 'New Bill of Quantities',
             'projects'      => $projects,
             'materials'     => $materials,
+            'targetData'    => $targetData,
+            'target_id'     => $target_id,
         ]);
     }
 
