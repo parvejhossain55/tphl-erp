@@ -809,8 +809,17 @@ $amountInWords    = numberToWords($actualPaidAmount);
                 </tr>
                 <?php endif; ?>
                 <?php if ($bulkEmiDiscount > 0): ?>
+                <?php
+                    // Get the bulk pay amount from the first discounted installment
+                    $bulkPayAmount = 0;
+                    foreach ($validTransactions as $t) {
+                        if (!empty($t['bulk_pay_amount']) && $t['bulk_pay_amount'] > 0) {
+                            $bulkPayAmount += (float)$t['bulk_pay_amount'];
+                        }
+                    }
+                ?>
                 <tr>
-                    <td class="totals-label" style="font-weight:normal;">Less: Bulk EMI Discount</td>
+                    <td class="totals-label" style="font-weight:normal;">Less: Bulk EMI Discount<?= $bulkPayAmount > 0 ? ' (against bulk payment of ৳'.number_format($bulkPayAmount, 2).')' : '' ?></td>
                     <td class="totals-value">(-)  ৳<?= number_format($bulkEmiDiscount, 2) ?></td>
                 </tr>
                 <?php endif; ?>

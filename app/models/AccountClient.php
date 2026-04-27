@@ -552,8 +552,8 @@ ORDER BY lb.booking_date DESC
             $isRegistrationPaid = ($registrationPaid > 0);
 
             // Total due and net received
-            // Bulk EMI discount reduces the client's total obligation
-            $totalDue     = max(0, $totalPrice - $totalPaid - $totalBulkEmiDiscount);
+            // Booking discount + Bulk EMI discount both reduce the client's total obligation
+            $totalDue     = max(0, $totalPrice - $discountAmount - $totalPaid - $totalBulkEmiDiscount);
             $netReceived  = $totalPaid - $totalServiceFee;
             $totalEmiDue  = (float) ($clientDetails['total_emi_due'] ?? 0);
 
@@ -2061,22 +2061,23 @@ ORDER BY lb.booking_date DESC
                         booking_id, payment_type, amount, land_share_amount, service_fee,
                         payment_method, payment_status, payment_date, transaction_ref,
                         bank_name, bank_account_no, cheque_no, online_type,
-                        attachment_paths, due_emi_amount, bulk_emi_discount, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        attachment_paths, due_emi_amount, bulk_emi_discount, bulk_pay_amount, created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$emiStmt) throw new Exception("EMI payment prepare failed: " . $this->db->error);
 
                 $emiPayType = 'emi';
                 $emiLandShare = 0.0;
-                // Attach discount only to the FIRST installment
+                // Attach discount + bulk pay amount only to the FIRST installment
                 $thisDiscount = (!$firstPaymentId && $bulkEmiDiscount > 0) ? $bulkEmiDiscount : 0.0;
+                $thisBulkPayAmount = (!$firstPaymentId && $newInstallments === 0) ? $totalAmount : null;
 
                 $emiStmt->bind_param(
-                    "isdddsssssssssddi",
+                    "isdddsssssssssdddi",
                     $bookingId, $emiPayType, $thisEmi, $emiLandShare, $thisSvcFee,
                     $paymentMethod, $thisStatus, $paymentDate, $transactionRef,
                     $bankName, $bankAccNo, $chequeNo, $onlineType,
-                    $attachmentPathsJson, $thisDue, $thisDiscount, $createdBy
+                    $attachmentPathsJson, $thisDue, $thisDiscount, $thisBulkPayAmount, $createdBy
                 );
 
                 if (!$emiStmt->execute()) throw new Exception("EMI payment insert failed: " . $emiStmt->error);

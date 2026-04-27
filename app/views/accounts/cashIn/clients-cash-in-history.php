@@ -436,6 +436,11 @@ $show_breadcrumb = true;
                                             <br><span class="badge mt-1" style="background:#6c5ffc;font-size:10px;">
                                                 <i class="fa-light fa-tags me-1"></i>Discount: TK.<?= number_format($transaction['bulk_emi_discount'], 2) ?>
                                             </span>
+                                            <?php if (!empty($transaction['bulk_pay_amount']) && $transaction['bulk_pay_amount'] > 0): ?>
+                                                <br><span class="badge mt-1" style="background:#2d8cf0;font-size:10px;">
+                                                    <i class="fa-light fa-layer-group me-1"></i>Against bulk pay: TK.<?= number_format($transaction['bulk_pay_amount'], 2) ?>
+                                                </span>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     </td>
                                     <td><?php echo htmlspecialchars($transaction['payment_details'] ?? '', ENT_QUOTES); ?></td>

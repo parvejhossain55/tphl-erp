@@ -146,7 +146,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </option>
                                 <?php elseif ($isLandShareCompleted && $isDevChargeCompleted && $remainingCF <= 0): ?>
                                     <option value="emi" disabled>
-                                        EMI — All Paid ✓ (Construction Fee Completed)
+                                        EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
                                     </option>
                                 <?php elseif ($isLandShareCompleted): ?>
                                     <option value="emi" disabled>

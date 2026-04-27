@@ -374,11 +374,21 @@ public function addCedTransaction()
 
     $paymentType = $_POST['payment_type'] ?? '';
 
-    // CED can only add development_charge or emi
-    if (!in_array($paymentType, ['development_charge', 'emi'])) {
-        setError("CED can only add Development Charges or EMI transactions.");
+    // CED can only add development_charge, emi, or emi_due_settlement
+    if (!in_array($paymentType, ['development_charge', 'emi', 'emi_due_settlement'])) {
+        setError("CED can only add Development Charges, EMI, or EMI Settlement transactions.");
         header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
         exit;
+    }
+
+    // CHECK: EMI due settlement requires a parent payment ID
+    if ($paymentType === 'emi_due_settlement') {
+        $parentPaymentId = !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : 0;
+        if (!$parentPaymentId) {
+            setError("EMI settlement requires selecting the original EMI payment.");
+            header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+            exit;
+        }
     }
 
     // Land Share must be completed
@@ -425,6 +435,9 @@ public function addCedTransaction()
         'online_type'     => $_POST['online_type'] ?? null,
         'attachment_paths' => $uploadedPaths ?: null,
         'bulk_emi_discount'=> isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
+        'due_emi_amount'   => isset($_POST['due_emi_amount']) ? (float)$_POST['due_emi_amount'] : 0,
+        'parent_payment_id'=> !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null,
+        'settlement_type'  => !empty($_POST['settlement_type']) ? $_POST['settlement_type'] : null,
         'created_by'      => $_SESSION['user']['id'] ?? 1
     ];
 
@@ -444,8 +457,13 @@ public function addCedTransaction()
         }
     }
 
-    // Add transaction (same model method as Accounts)
-    $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
+    // Route to correct model method
+    if ($transactionData['payment_type'] === 'emi_due_settlement') {
+        // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id are handled
+        $result = $this->clientModel->addTransaction($transactionData, null);
+    } else {
+        $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
+    }
 
     if ($result['success']) {
         setSuccess($result['message'] . " — Pending verification by Accounts.");
