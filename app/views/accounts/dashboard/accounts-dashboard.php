@@ -140,6 +140,33 @@ function getStatusBadge($status)
         margin-bottom: 15px;
         opacity: 0.5;
     }
+
+    /* ── Operations Quick-Link Cards ── */
+    .ops-card {
+        transition: all 0.25s ease;
+        border-left: 3px solid transparent;
+        cursor: pointer;
+    }
+    .ops-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        border-left-color: var(--clr-theme-primary, #6366f1);
+    }
+
+    /* Color utility helpers */
+    .icon-success span  { color: #10b981; background: rgba(16,185,129,0.12); }
+    .icon-primary span  { color: #6366f1; background: rgba(99,102,241,0.12); }
+    .icon-danger span   { color: #ef4444; background: rgba(239,68,68,0.12);  }
+    .icon-warning span  { color: #f59e0b; background: rgba(245,158,11,0.12); }
+    .icon-info span     { color: #06b6d4; background: rgba(6,182,212,0.12);  }
+    .icon-purple span   { color: #a855f7; background: rgba(168,85,247,0.12); }
+    .icon-teal span     { color: #14b8a6; background: rgba(20,184,166,0.12); }
+    .icon-orange span   { color: #f97316; background: rgba(249,115,22,0.12); }
+    .icon-indigo span   { color: #6366f1; background: rgba(99,102,241,0.12); }
+
+    .text-purple { color: #a855f7 !important; }
+    .text-teal   { color: #14b8a6 !important; }
+    .text-orange { color: #f97316 !important; }
 </style>
 
 <div class="row">
@@ -188,6 +215,7 @@ function getStatusBadge($status)
     </div>
 
     <!-- Overview Cards Row -->
+    <?php if ($viewType === 'cashin'): ?>
     <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card card-success">
             <div class="d-flex align-items-center gap-2 h-100">
@@ -228,6 +256,164 @@ function getStatusBadge($status)
                 </div>
             </div>
         </div>
+    </div>
+    <?php else: ?>
+    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <div class="card__wrapper h-100 dashboard-card card-danger">
+            <div class="d-flex align-items-center gap-2 h-100">
+                <div class="card__icon icon-danger">
+                    <span><i class="fa-light fa-arrow-up"></i></span>
+                </div>
+                <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                    <h6 class="card__sub-title mb-2 text-muted">Total Expenses</h6>
+                    <h4 class="card__title mb-0 text-danger text-break">TK.<?= number_format($overviewStats['total_cashout'] ?? 0, 2) ?></h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">All Outflows</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <div class="card__wrapper h-100 dashboard-card card-warning">
+            <div class="d-flex align-items-center gap-2 h-100">
+                <div class="card__icon icon-warning">
+                    <span><i class="fa-light fa-money-bill"></i></span>
+                </div>
+                <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                    <h6 class="card__sub-title mb-2 text-muted">Cashouts</h6>
+                    <h4 class="card__title mb-0 text-warning text-break">TK.<?= number_format($statistics['management_cashout'] ?? 0, 2) ?></h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Operational Expenses</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <div class="card__wrapper h-100 dashboard-card card-info">
+            <div class="d-flex align-items-center gap-2 h-100">
+                <div class="card__icon icon-info">
+                    <span><i class="fa-light fa-users"></i></span>
+                </div>
+                <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                    <h6 class="card__sub-title mb-2 text-muted">Salary Payments</h6>
+                    <h4 class="card__title mb-0 text-info text-break">TK.<?= number_format($statistics['salary_payments'] ?? 0, 2) ?></h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Payroll</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- ══ ACCOUNTS OPERATIONS — Quick-Link Cards ══ -->
+    <div class="col-12 mb-3 mt-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-3">
+                <i class="fa-light fa-grid-2 me-2"></i>Accounts Operations
+            </h5>
+            <span class="period-badge">Actionable Items</span>
+        </div>
+    </div>
+
+    <?php $ops = $operationsStats ?? []; ?>
+
+    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
+        <a href="<?= $GLOBALS['base_url'] ?>/clients-cash-in" class="text-decoration-none">
+            <div class="card__wrapper h-100 dashboard-card ops-card">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-warning">
+                        <span><i class="fa-light fa-shield-check"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Pending Verifications</h6>
+                        <h4 class="card__title mb-0"><?= $ops['pending_verifications'] ?? 0 ?></h4>
+                        <small class="text-warning" style="font-size:0.68rem;">TK.<?= number_format($ops['pending_verification_amt'] ?? 0, 0) ?></small>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
+        <a href="<?= $GLOBALS['base_url'] ?>/con-vendor-payment-requests" class="text-decoration-none">
+            <div class="card__wrapper h-100 dashboard-card ops-card">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-purple">
+                        <span><i class="fa-light fa-truck"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Vendor Payments</h6>
+                        <h4 class="card__title mb-0"><?= $ops['pending_vendor_payments'] ?? 0 ?></h4>
+                        <small class="text-purple" style="font-size:0.68rem;">TK.<?= number_format($ops['pending_vendor_amt'] ?? 0, 0) ?></small>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
+        <a href="<?= $GLOBALS['base_url'] ?>/con-contractor-bills" class="text-decoration-none">
+            <div class="card__wrapper h-100 dashboard-card ops-card">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-teal">
+                        <span><i class="fa-light fa-helmet-safety"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Contractor Bills</h6>
+                        <h4 class="card__title mb-0"><?= $ops['pending_contractor_bills'] ?? 0 ?></h4>
+                        <small class="text-teal" style="font-size:0.68rem;">TK.<?= number_format($ops['pending_contractor_amt'] ?? 0, 0) ?></small>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
+        <a href="<?= $GLOBALS['base_url'] ?>/admin-cashout-requests" class="text-decoration-none">
+            <div class="card__wrapper h-100 dashboard-card ops-card">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-danger">
+                        <span><i class="fa-light fa-arrow-up-from-bracket"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Cashout Requests</h6>
+                        <h4 class="card__title mb-0"><?= $ops['pending_cashout_requests'] ?? 0 ?></h4>
+                        <small class="text-danger" style="font-size:0.68rem;">TK.<?= number_format($ops['pending_cashout_amt'] ?? 0, 0) ?></small>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
+        <a href="<?= $GLOBALS['base_url'] ?>/client-refunds" class="text-decoration-none">
+            <div class="card__wrapper h-100 dashboard-card ops-card">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-orange">
+                        <span><i class="fa-light fa-arrow-rotate-left"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Client Refunds</h6>
+                        <h4 class="card__title mb-0"><?= $ops['pending_refunds'] ?? 0 ?></h4>
+                        <small class="text-orange" style="font-size:0.68rem;">TK.<?= number_format($ops['pending_refund_amt'] ?? 0, 0) ?></small>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
+        <a href="<?= $GLOBALS['base_url'] ?>/central-statement" class="text-decoration-none">
+            <div class="card__wrapper h-100 dashboard-card ops-card">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-info">
+                        <span><i class="fa-light fa-users"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Total Clients</h6>
+                        <h4 class="card__title mb-0"><?= $ops['total_clients'] ?? 0 ?></h4>
+                        <small class="text-info" style="font-size:0.68rem;">Active Bookings</small>
+                    </div>
+                </div>
+            </div>
+        </a>
     </div>
 
     <!-- Charts Section -->
@@ -366,22 +552,8 @@ function getStatusBadge($status)
                         <span><i class="fa-light fa-hand-holding-usd"></i></span>
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Land Share <br><small>(booking money excluded)</small></h6>
-                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['booking_money'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-            <div class="card__wrapper h-100 dashboard-card">
-                <div class="d-flex align-items-center gap-2 h-100">
-                    <div class="card__icon icon-indigo">
-                        <span><i class="fa-light fa-file-certificate"></i></span>
-                    </div>
-                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-2 text-muted">Registration Money</h6>
-                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['registration_money'] ?? 0, 2) ?></h4>
+                        <h6 class="card__sub-title mb-2 text-muted">Land Share <br><small>(Booking + Registration)</small></h6>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format(($statistics['land_share_payments'] ?? 0) + ($statistics['booking_money'] ?? 0) + ($statistics['registration_money'] ?? 0), 2) ?></h4>
                     </div>
                 </div>
             </div>
@@ -496,6 +668,34 @@ function getStatusBadge($status)
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
                         <h6 class="card__sub-title mb-2 text-muted">This Month</h6>
                         <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['this_month'] ?? 0, 2) ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+            <div class="card__wrapper h-100 dashboard-card">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-info">
+                        <span><i class="fa-light fa-tools"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-2 text-muted">Contractor Bills</h6>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['contractor_bills'] ?? 0, 2) ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+            <div class="card__wrapper h-100 dashboard-card">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-purple">
+                        <span><i class="fa-light fa-truck-fast"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-2 text-muted">Vendor Payments</h6>
+                        <h4 class="card__title mb-0 text-break">TK.<?= number_format($statistics['vendor_payments'] ?? 0, 2) ?></h4>
                     </div>
                 </div>
             </div>
