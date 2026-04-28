@@ -903,17 +903,60 @@ class Con_DashboardController extends Controller
             GROUP BY m.id ORDER BY total_qty ASC LIMIT 8");
         $stockOverview = $rStock ? $rStock->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── Approved BOQs that have NO purchase request yet ──────────────────
+        // Procurement Head must create a PR for each of these
+        $rPendingBOQs = $this->db->query("
+            SELECT bm.id AS boq_id, bm.version, bm.approved_at,
+                   p.id  AS project_id, p.name AS project_name,
+                   u.full_name  AS creator_name,
+                   COUNT(bi.id) AS item_count,
+                   COALESCE(SUM(bi.total_cost), 0) AS grand_total
+            FROM boq_master bm
+            LEFT JOIN projects p   ON p.id  = bm.project_id
+            LEFT JOIN users u      ON u.id  = bm.created_by
+            LEFT JOIN boq_items bi ON bi.boq_id = bm.id
+            WHERE bm.status = 'Approved'
+              AND NOT EXISTS (
+                    SELECT 1 FROM purchase_requests pr
+                    WHERE pr.bom_id = bm.id
+              )
+            GROUP BY bm.id, bm.version, bm.approved_at,
+                     p.id, p.name, u.full_name
+            ORDER BY bm.approved_at DESC
+            LIMIT 15");
+        $pendingBOQsForPR = $rPendingBOQs ? $rPendingBOQs->fetch_all(MYSQLI_ASSOC) : [];
+
+        // ── Pending Purchase Requests (not yet converted to PO) ───────────────
+        $rPendingPRs = $this->db->query("
+            SELECT pr.id, pr.status, pr.created_at, pr.notes,
+                   p.name AS project_name,
+                   u.full_name AS created_by_name,
+                   COUNT(pri.id) AS item_count
+            FROM purchase_requests pr
+            LEFT JOIN projects p ON p.id = pr.project_id
+            LEFT JOIN users u ON u.id = pr.created_by
+            LEFT JOIN purchase_request_items pri ON pri.request_id = pr.id
+            WHERE pr.status IN ('Draft','Submitted','Approved')
+              AND NOT EXISTS (
+                    SELECT 1 FROM purchase_orders po WHERE po.request_id = pr.id
+              )
+            GROUP BY pr.id, pr.status, pr.created_at, pr.notes, p.name, u.full_name
+            ORDER BY pr.id DESC LIMIT 10");
+        $pendingPRsForPO = $rPendingPRs ? $rPendingPRs->fetch_all(MYSQLI_ASSOC) : [];
+
         return $this->view('phase2/dashboard/purchase-team-lead-dashboard', [
-            'current_route'   => 'purchase-team-lead-dashboard',
-            'totalPOs'        => $totalPOs,
-            'totalVendors'    => $totalVendors,
-            'totalPenalties'  => $totalPenalties,
-            'totalIssues'     => $totalIssues,
-            'totalMaterials'  => $totalMaterials,
-            'pendingPayments' => $pendingPayments,
-            'recentVendors'   => $recentVendors,
-            'recentPOs'       => $recentPOs,
-            'stockOverview'   => $stockOverview,
+            'current_route'    => 'purchase-team-lead-dashboard',
+            'totalPOs'         => $totalPOs,
+            'totalVendors'     => $totalVendors,
+            'totalPenalties'   => $totalPenalties,
+            'totalIssues'      => $totalIssues,
+            'totalMaterials'   => $totalMaterials,
+            'pendingPayments'  => $pendingPayments,
+            'recentVendors'    => $recentVendors,
+            'recentPOs'        => $recentPOs,
+            'stockOverview'    => $stockOverview,
+            'pendingBOQsForPR' => $pendingBOQsForPR,
+            'pendingPRsForPO'  => $pendingPRsForPO,
         ]);
     }
 

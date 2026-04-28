@@ -111,11 +111,13 @@ class Con_PurchaseRequest extends Model
         $this->db->begin_transaction();
         try {
             $stmt = $this->db->prepare(
-                "INSERT INTO {$this->table} (project_id, created_by, status, notes)
-                 VALUES (?, ?, ?, ?)"
+                "INSERT INTO {$this->table} (project_id, bom_id, created_by, status, notes)
+                 VALUES (?, ?, ?, ?, ?)"
             );
-            $stmt->bind_param('iiss',
+            $bomId = $data['bom_id'] ?? null;
+            $stmt->bind_param('iiiss',
                 $data['project_id'],
+                $bomId,
                 $data['created_by'],
                 $data['status'],
                 $data['notes']

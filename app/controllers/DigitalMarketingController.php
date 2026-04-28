@@ -238,10 +238,11 @@ public function deleteBudget($id)
         $leads = [];
         $teamId = $_GET['team_id'] ?? null;
         
-        // New Filters
+        // Filters
         $dateAge = $_GET['date_age'] ?? '7days'; // default to last 7 days
         $sortOrder = $_GET['sort'] ?? 'newest';
         $duplicatesOnly = isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1';
+        $contactStatusFilter = $_GET['contact_status'] ?? ''; // 'contacted', 'not_contacted', or ''
 
         $sqlSort = ($sortOrder === 'oldest') ? 'ASC' : 'DESC';
 
@@ -254,7 +255,7 @@ public function deleteBudget($id)
             );
         }
 
-        // Calculate duplicate frequencies
+        // Calculate duplicate frequencies (before any filtering)
         $phoneFreq = [];
         foreach ($leads as $l) {
             $p = $l['phone_number'] ?? '';
@@ -269,12 +270,21 @@ public function deleteBudget($id)
                 $p = $l['phone_number'] ?? '';
                 return !empty($p) && ($phoneFreq[$p] ?? 0) > 1;
             });
+            $leads = array_values($leads);
+        }
+
+        // Contact status summary counts (based on full unfiltered leads)
+        $totalContacted = 0;
+        $totalNotContacted = 0;
+        foreach ($leads as $l) {
+            if (($l['contact_status'] ?? '') === 'Contacted') {
+                $totalContacted++;
+            } else {
+                $totalNotContacted++;
+            }
         }
 
         $duplicateLeadsCount = 0;
-        // recalculate duplicate count for the stats based on the FULL dataset if possible, 
-        // but the stats method usually handles this across the whole DB.
-        // For the Executive, let's keep the existing logic but use the full fetched list.
         foreach ($phoneFreq as $p => $count) {
             if ($count > 1) {
                 $duplicateLeadsCount += $count;
@@ -282,17 +292,20 @@ public function deleteBudget($id)
         }
 
         return $this->view("digital-marketing-team/digital-marketing-executive", [
-            "current_route"       => "digital-marketing-executive-dashboard",
-            "page_title"          => "Digital Marketing Executive Dashboard",
-            "teams"               => $teams,
-            "stats"               => $stats,
-            "leads"               => $leads,
-            "selected_team_id"    => $teamId,
-            "phoneFreq"           => $phoneFreq,
-            "duplicateLeadsCount" => $duplicateLeadsCount,
-            "date_age"            => $dateAge,
-            "sort_order"          => $sortOrder,
-            "duplicates_only"     => $duplicatesOnly
+            "current_route"        => "digital-marketing-executive-dashboard",
+            "page_title"           => "Digital Marketing Executive Dashboard",
+            "teams"                => $teams,
+            "stats"                => $stats,
+            "leads"                => $leads,
+            "selected_team_id"     => $teamId,
+            "phoneFreq"            => $phoneFreq,
+            "duplicateLeadsCount"  => $duplicateLeadsCount,
+            "date_age"             => $dateAge,
+            "sort_order"           => $sortOrder,
+            "duplicates_only"      => $duplicatesOnly,
+            "contact_status_filter"=> $contactStatusFilter,
+            "totalContacted"       => $totalContacted,
+            "totalNotContacted"    => $totalNotContacted,
         ]);
     }
 

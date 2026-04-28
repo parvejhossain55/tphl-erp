@@ -37,7 +37,7 @@ class FollowUp extends Model
         // ==============================
         $follow_up_date = !empty($data['follow_up_date'])
             ? date('Y-m-d', strtotime($data['follow_up_date']))
-            : null;
+            : date('Y-m-d'); // fallback: today (follow_up_date is NOT NULL in DB)
 
         $next_follow_up_date = !empty($data['next_follow_up_date'])
             ? date('Y-m-d', strtotime($data['next_follow_up_date']))
@@ -219,8 +219,8 @@ class FollowUp extends Model
         LEFT JOIN users ur ON f.assigned_with = ur.id
         WHERE f.deleted_at IS NULL
           AND f.lead_id = ?
-          AND fl.deleted_at IS NULL
-          AND p.deleted_at IS NULL
+          AND (fl.deleted_at IS NULL OR fl.id IS NULL)
+          AND (p.deleted_at IS NULL OR p.id IS NULL)
         ORDER BY f.follow_up_date DESC, f.follow_up_time DESC
     ");
 

@@ -1,4 +1,9 @@
-<?php $base_url = $GLOBALS['base_url']; ?>
+<?php
+$base_url     = $GLOBALS['base_url'];
+$preBoqId     = $preBoqId     ?? 0;
+$preProjectId = $preProjectId ?? 0;
+$preBoqData   = $preBoqData   ?? null;
+?>
 <div class="pagetitle d-flex justify-content-between align-items-center">
     <div class="mb-4">
         <h4><?= htmlspecialchars($page_title) ?></h4>
@@ -27,6 +32,35 @@
                 <div class="card__body p-4">
                     <form action="<?= $base_url ?>/con-purchase-request-store" method="POST" id="prForm">
 
+                        <!-- Hidden BOQ/BOM link (if coming from Procurement Dashboard) -->
+                        <?php if ($preBoqId): ?>
+                        <input type="hidden" name="bom_id" value="<?= $preBoqId ?>">
+                        <!-- BOQ Prefill Banner -->
+                        <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:12px;
+                            background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(5,150,105,.05));
+                            border:1.5px solid rgba(16,185,129,.25);margin-bottom:18px">
+                            <div style="width:40px;height:40px;border-radius:10px;background:rgba(16,185,129,.12);
+                                display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                <i class="bi bi-clipboard-check" style="color:#059669;font-size:18px"></i>
+                            </div>
+                            <div style="flex:1">
+                                <div style="font-size:12.5px;font-weight:800;color:#065f46">
+                                    Creating PR from BOQ #<?= $preBoqId ?> — <?= htmlspecialchars($preBoqData['project_name'] ?? '') ?>
+                                </div>
+                                <div style="font-size:11px;color:#6b7280;margin-top:2px">
+                                    <?= (int)($preBoqData['item_count'] ?? 0) ?> materials &nbsp;·&nbsp;
+                                    BOQ v<?= htmlspecialchars($preBoqData['version'] ?? '1.0') ?>
+                                    &nbsp;·&nbsp; Approved <?= !empty($preBoqData['approved_at']) ? date('d M Y', strtotime($preBoqData['approved_at'])) : '' ?>
+                                </div>
+                            </div>
+                            <a href="<?= $base_url ?>/con-boq-show/<?= $preBoqId ?>" target="_blank"
+                               style="font-size:11px;color:#2563eb;text-decoration:none;white-space:nowrap">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>View BOQ
+                            </a>
+                        </div>
+                        <?php endif; ?>
+
+
                         <!-- ── Row 1: Project + Status + Notes ── -->
                         <div class="row mb-3">
                             <div class="col-md-4">
@@ -34,7 +68,9 @@
                                 <select name="project_id" id="prProjectSelect" class="form-select" required>
                                     <option value="">-- Select Project --</option>
                                     <?php foreach ($projects as $p): ?>
-                                        <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
+                                        <option value="<?= $p['id'] ?>" <?= ($preProjectId && $preProjectId == $p['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($p['name']) ?>
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -376,4 +412,39 @@ document.getElementById('prForm').addEventListener('submit', function (e) {
 
 // Initial hint
 updateEmptyHint();
+
+// ── Auto-trigger if coming from Procurement Dashboard with preBoqId ──────
+const PRE_BOQ_ID     = <?= $preBoqId     ? (int)$preBoqId     : 0 ?>;
+const PRE_PROJECT_ID = <?= $preProjectId ? (int)$preProjectId : 0 ?>;
+
+if (PRE_BOQ_ID && PRE_PROJECT_ID) {
+    // Project is already pre-selected (PHP selected attr). Fire change to load BOQs.
+    const projSel = document.getElementById('prProjectSelect');
+    if (projSel && projSel.value) {
+        // dispatch change to trigger AJAX BOQ load
+        projSel.dispatchEvent(new Event('change'));
+
+        // After BOQs load, auto-select the correct one
+        // We re-subscribe once using MutationObserver on #prBoqSelect
+        const boqSel = document.getElementById('prBoqSelect');
+        const observer = new MutationObserver(() => {
+            for (let i = 0; i < boqSel.options.length; i++) {
+                const boqIdx = parseInt(boqSel.options[i].value);
+                if (!isNaN(boqIdx) && allBoqsForProject[boqIdx] &&
+                    allBoqsForProject[boqIdx].id == PRE_BOQ_ID) {
+                    boqSel.value = boqIdx;
+                    boqSel.dispatchEvent(new Event('change'));
+                    // Auto-load items
+                    setTimeout(() => {
+                        const loadBtn = document.getElementById('prLoadBoqItems');
+                        if (loadBtn && !loadBtn.disabled) loadBtn.click();
+                    }, 200);
+                    observer.disconnect();
+                    break;
+                }
+            }
+        });
+        observer.observe(boqSel, { childList: true });
+    }
+}
 </script>

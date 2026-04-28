@@ -142,6 +142,14 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
             <i class="fal fa-pencil"></i>Edit BOQ
           </a>
           <?php endif; ?>
+          <?php if ($status === 'Approved'): ?>
+          <a href="<?= $base ?>/con-purchase-request-create?boq_id=<?= $boq['id'] ?>&project_id=<?= $boq['project_id'] ?>"
+             style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;border-radius:10px;
+                    padding:7px 18px;font-size:12px;font-weight:700;text-decoration:none;
+                    display:inline-flex;align-items:center;gap:6px;border:none">
+            <i class="fal fa-cart-plus"></i>Create Purchase Request
+          </a>
+          <?php endif; ?>
           <a href="<?= $base ?>/con-boq" class="boq-btn-w">
             <i class="fal fa-arrow-left"></i>Back to List
           </a>

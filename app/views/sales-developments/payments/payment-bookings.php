@@ -205,6 +205,7 @@ if (!$is_booking_fully_paid) {
                         } else {
                             if ($booking_pending_and_paid == 0) {
                                 $placeholderText = ($booking['approved_amount'] > 0)
+                                
                                     ? "After Discount: " . number_format($finalAmount, 2)
                                     : "Final Amount: " . number_format($finalAmount, 2);
                             } else {
@@ -363,7 +364,7 @@ if (!$is_booking_fully_paid) {
                                         <?php endif; ?>
                                     </td>
 
-                                    <td>
+                                    <td style="white-space: nowrap;">
                                         <?php if ($p['verification_status'] == 'verified'): ?>
                                             <a target="_blank"
                                                 href="<?= $GLOBALS['base_url'] ?>/payment-booking-invoice/<?= $p['id'] ?>"

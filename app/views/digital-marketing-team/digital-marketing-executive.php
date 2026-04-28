@@ -381,6 +381,54 @@
     color: #c62828;
   }
 
+  /* ── Contact Status Badges ── */
+  .badge-contacted {
+    background: linear-gradient(135deg, #d4edda, #b8dfc5);
+    color: #155724;
+    font-size: .68rem;
+    font-weight: 700;
+    padding: .28rem .75rem;
+    border-radius: 20px;
+    border: 1px solid #c3e6cb;
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+  }
+
+  .badge-not-contacted {
+    background: linear-gradient(135deg, #fdecea, #fbc7c0);
+    color: #721c24;
+    font-size: .68rem;
+    font-weight: 700;
+    padding: .28rem .75rem;
+    border-radius: 20px;
+    border: 1px solid #f5c6cb;
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+  }
+
+  /* ── Lead Type Badges ── */
+  .lead-type-badge {
+    font-size: .65rem;
+    font-weight: 700;
+    padding: .22rem .65rem;
+    border-radius: 20px;
+    display: inline-block;
+    letter-spacing: .02em;
+  }
+  .lt-hot { background:#fff3cd; color:#856404; border:1px solid #ffc107; }
+  .lt-warm { background:#fff8e1; color:#f57f17; border:1px solid #ffca28; }
+  .lt-cold { background:#e3f2fd; color:#0d47a1; border:1px solid #90caf9; }
+  .lt-prospect { background:#e8f5e9; color:#1b5e20; border:1px solid #a5d6a7; }
+  .lt-visited { background:#ede7f6; color:#4527a0; border:1px solid #ce93d8; }
+  .lt-sold { background:#e0f2f1; color:#004d40; border:1px solid #80cbc4; }
+  .lt-not-interested { background:#ffebee; color:#b71c1c; border:1px solid #ef9a9a; }
+  .lt-pending { background:#e8eaf6; color:#283593; border:1px solid #9fa8da; }
+  .lt-future { background:#f3e5f5; color:#6a1b9a; border:1px solid #ce93d8; }
+  .lt-no-response { background:#f5f5f5; color:#424242; border:1px solid #bdbdbd; }
+  .lt-default { background:#f0f0f0; color:#555; border:1px solid #ccc; }
+
   /* ── Buttons ── */
   .btn-brand {
     background: var(--brand);
@@ -474,6 +522,63 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- Contact Status Summary -->
+  <div class="row mb-4">
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
+      <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard?contact_status=contacted&date_age=<?= $date_age ?? 'all' ?>" class="text-decoration-none">
+        <div class="card border-0 shadow-sm" style="border-radius:12px; border-left:4px solid #28a745 !important; border-left-width:4px;">
+          <div class="card-body py-3 px-4 d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:linear-gradient(135deg,#d4edda,#b8dfc5);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-telephone-check-fill text-success fs-5"></i>
+            </div>
+            <div>
+              <div class="text-muted" style="font-size:.72rem;font-weight:600;letter-spacing:.05em;">CONTACTED</div>
+              <div style="font-size:1.6rem;font-weight:800;color:#155724;line-height:1.1;"><?= number_format($totalContacted ?? 0) ?></div>
+              <div style="font-size:.68rem;color:#28a745;">Touch hua leads</div>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
+      <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard?contact_status=not_contacted&date_age=<?= $date_age ?? 'all' ?>" class="text-decoration-none">
+        <div class="card border-0 shadow-sm" style="border-radius:12px; border-left:4px solid #dc3545 !important; border-left-width:4px;">
+          <div class="card-body py-3 px-4 d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:linear-gradient(135deg,#fdecea,#fbc7c0);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-telephone-x-fill text-danger fs-5"></i>
+            </div>
+            <div>
+              <div class="text-muted" style="font-size:.72rem;font-weight:600;letter-spacing:.05em;">NOT CONTACTED</div>
+              <div style="font-size:1.6rem;font-weight:800;color:#721c24;line-height:1.1;"><?= number_format($totalNotContacted ?? 0) ?></div>
+              <div style="font-size:.68rem;color:#dc3545;">Touch hoini yet</div>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <?php
+      $totalShown = ($totalContacted ?? 0) + ($totalNotContacted ?? 0);
+      $contactedPct = $totalShown > 0 ? round(($totalContacted / $totalShown) * 100) : 0;
+    ?>
+    <div class="col-xl-6 col-sm-12 mb-2">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:12px;">
+        <div class="card-body py-3 px-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span style="font-size:.78rem;font-weight:700;color:#1a2744;">Contact Progress</span>
+            <span style="font-size:.78rem;color:#6c757d;"><?= $contactedPct ?>% Contacted</span>
+          </div>
+          <div class="progress" style="height:12px;border-radius:8px;background:#f0f4f8;">
+            <div class="progress-bar bg-success" role="progressbar" style="width:<?= $contactedPct ?>%; border-radius:8px;" aria-valuenow="<?= $contactedPct ?>" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <div class="d-flex justify-content-between mt-2">
+            <small class="text-success fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalContacted ?? 0) ?> Contacted</small>
+            <small class="text-danger fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalNotContacted ?? 0) ?> Pending</small>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="row">
@@ -595,13 +700,22 @@
             </select>
           </div>
 
+          <!-- Contact Status Filter -->
+          <div class="col-md-2 col-6">
+            <label class="form-label small text-muted fw-semibold">Contact Status</label>
+            <select name="contact_status" class="form-select form-select-sm">
+              <option value="" <?= empty($_GET['contact_status']) ? 'selected' : '' ?>>All</option>
+              <option value="contacted" <?= ($_GET['contact_status'] ?? '') == 'contacted' ? 'selected' : '' ?>>✅ Contacted</option>
+              <option value="not_contacted" <?= ($_GET['contact_status'] ?? '') == 'not_contacted' ? 'selected' : '' ?>>❌ Not Contacted</option>
+            </select>
+          </div>
+
           <!-- Duplicate Toggle -->
           <div class="col-md-2 col-6">
             <label class="form-label small text-muted fw-semibold d-block">Duplicates</label>
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" name="duplicates_only" id="duplicates_only" value="1" <?= ($duplicates_only ?? false) ? 'checked' : '' ?>>
-              <label c
-              lass="form-check-label fw-bold small text-muted" for="duplicates_only">Show Duplicates Only</label>
+              <label class="form-check-label fw-bold small text-muted" for="duplicates_only">Show Duplicates Only</label>
             </div>
           </div>
 
@@ -682,6 +796,8 @@
                   </th>
                   <th class="ps-4">Lead Name</th>
                   <th>Contact Info</th>
+                  <th>Contact Status</th>
+                  <th>Lead Type</th>
                   <th>Platform & Campaign</th>
                   <th>Team Name</th>
                   <th>Sales Team Lead</th>
@@ -692,7 +808,7 @@
               <tbody>
                 <?php if (empty($leads)): ?>
                   <tr>
-                    <td colspan="8" class="text-center py-5">
+                    <td colspan="10" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                         No leads uploaded in the last 7 days.
@@ -701,6 +817,29 @@
                   </tr>
                 <?php else: ?>
                   <?php foreach ($leads as $lead): ?>
+                    <?php
+                      // Contact Status filter (client-side PHP filter)
+                      $contactStatusFilter = $_GET['contact_status'] ?? '';
+                      $cs = $lead['contact_status'] ?? 'Not Contacted';
+                      if ($contactStatusFilter === 'contacted' && $cs !== 'Contacted') continue;
+                      if ($contactStatusFilter === 'not_contacted' && $cs !== 'Not Contacted') continue;
+
+                      // Lead type badge class
+                      $leadType = $lead['lead_type'] ?? '';
+                      $ltClass = match(strtolower($leadType)) {
+                        'hot'             => 'lt-hot',
+                        'warm'            => 'lt-warm',
+                        'cold'            => 'lt-cold',
+                        'prospect','high prospect' => 'lt-prospect',
+                        'visited','will visit' => 'lt-visited',
+                        'sold'            => 'lt-sold',
+                        'not interested','don\'t call again','refund' => 'lt-not-interested',
+                        'pending'         => 'lt-pending',
+                        'future'          => 'lt-future',
+                        'no response'     => 'lt-no-response',
+                        default           => 'lt-default',
+                      };
+                    ?>
                     <tr>
                       <!-- Checkbox for each row -->
                       <td class="text-center">
@@ -722,6 +861,35 @@
                           <span><i class="bi bi-telephone text-muted me-2"></i><span class="<?= $textClass ?>"><?= htmlspecialchars($p ?: 'N/A') ?></span></span>
                           <small class="text-muted"><i class="bi bi-envelope me-2"></i><?= htmlspecialchars($lead['email'] ?? 'N/A') ?></small>
                         </div>
+                      </td>
+
+                      <!-- Contact Status Column -->
+                      <td>
+                        <?php if ($cs === 'Contacted'): ?>
+                          <span class="badge-contacted">
+                            <i class="bi bi-check-circle-fill"></i> Contacted
+                          </span>
+                          <?php if (!empty($lead['last_follow_up_type'])): ?>
+                            <div class="mt-1">
+                              <small class="text-muted" style="font-size:.65rem;">
+                                <i class="bi bi-arrow-right-short"></i><?= htmlspecialchars($lead['last_follow_up_type']) ?>
+                              </small>
+                            </div>
+                          <?php endif; ?>
+                        <?php else: ?>
+                          <span class="badge-not-contacted">
+                            <i class="bi bi-x-circle-fill"></i> Not Contacted
+                          </span>
+                        <?php endif; ?>
+                      </td>
+
+                      <!-- Lead Type Column -->
+                      <td>
+                        <?php if (!empty($leadType)): ?>
+                          <span class="lead-type-badge <?= $ltClass ?>"><?= htmlspecialchars($leadType) ?></span>
+                        <?php else: ?>
+                          <span class="text-muted" style="font-size:.75rem;">—</span>
+                        <?php endif; ?>
                       </td>
 
                       <td>

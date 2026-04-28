@@ -1147,11 +1147,24 @@ class Lead extends Model
              FROM users u 
              INNER JOIN employees e ON u.id = e.user_id 
              WHERE e.team_id = l.team_id AND u.role_id = 5 
-             LIMIT 1) AS sales_team_lead_name
+             LIMIT 1) AS sales_team_lead_name,
+            CASE WHEN lfu.lead_id IS NOT NULL THEN 'Contacted' ELSE 'Not Contacted' END AS contact_status,
+            lfu.follow_up_type AS last_follow_up_type,
+            lfu.created_at AS last_follow_up_at
         FROM leads l
         LEFT JOIN lead_sources ls ON l.source_type_id = ls.id
         LEFT JOIN projects p ON l.project_id = p.id
         LEFT JOIN teams t ON l.team_id = t.id
+        LEFT JOIN (
+            SELECT lf1.lead_id, lf1.follow_up_type, lf1.created_at
+            FROM lead_follow_ups lf1
+            WHERE lf1.id = (
+                SELECT MAX(lf2.id) FROM lead_follow_ups lf2
+                WHERE lf2.lead_id = lf1.lead_id
+                AND lf2.deleted_at IS NULL
+            )
+            AND lf1.deleted_at IS NULL
+        ) lfu ON lfu.lead_id = l.id
         WHERE l.deleted_at IS NULL
     ";
 
