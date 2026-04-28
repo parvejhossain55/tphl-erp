@@ -43,24 +43,31 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             <div class="card__body">
 
                 <!-- Info Alert -->
-                <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
-                    <strong><i class="fa-light fa-info-circle me-1"></i>CED Payment Entry</strong>
-                    Transactions submitted here will be marked as <em>Pending Verification</em>.
-                    The Accounts team must verify them before they appear in fiscal reports.
+                <div class="alert alert-info alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
+                    <div>
+                        <strong>CED Payment Entry</strong>
+                        Transactions submitted here will be marked as <em>Pending Verification</em>.
+                        The Accounts team must verify them before they appear in fiscal reports.
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
 
                 <?php if (!$isLandShareCompleted): ?>
-                    <div class="alert alert-danger mb-4">
-                        <strong><i class="fa-light fa-lock me-1"></i>Land Share Required!</strong>
-                        Land share payment must be completed before adding any transactions from CED.
+                    <div class="alert alert-danger mb-4 d-flex align-items-center">
+                        <div>
+                            <strong>Land Share Required!</strong>
+                            Land share payment must be completed before adding any transactions from CED.
+                        </div>
                     </div>
                 <?php else: ?>
 
                 <?php if ($hasOutstandingDues): ?>
-                    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
-                        <strong><i class="fa-light fa-exclamation-circle me-1"></i>Outstanding EMI Due: TK.<?= number_format($totalEmiDue, 2) ?></strong>
-                        — Select <em>"Settle EMI Due"</em> below to clear the balance.
+                    <div class="alert alert-danger alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
+                      
+                        <div>
+                            <strong>Outstanding EMI Due: TK.<?= number_format($totalEmiDue, 2) ?></strong>
+                            — Select <em>"Settle EMI Due"</em> below to clear the balance.
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 <?php endif; ?>

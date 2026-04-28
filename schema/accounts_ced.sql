@@ -13,4 +13,4 @@ ADD COLUMN `transfer_note` TEXT NULL DEFAULT NULL AFTER `transfer_date`,
 ADD COLUMN `transfer_status` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '0 = Current, 1 = Transferred' AFTER `transfer_note`,
 ADD COLUMN `transfer_updated_by` INT(11) NULL DEFAULT NULL AFTER `transfer_status`;
 
--- ====================
+-- ============================

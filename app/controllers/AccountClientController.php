@@ -1485,6 +1485,30 @@ public function viewClientStatement($bookingId = null)
             exit;
         }
 
+        // ====== RESTORE PARENT DUE ON SETTLEMENT REJECTION ======
+        if ($action === 'reject') {
+            $checkSettlementStmt = $this->db->prepare("SELECT settlement_type, parent_payment_id, amount FROM lead_payments WHERE id = ?");
+            if ($checkSettlementStmt) {
+                $checkSettlementStmt->bind_param("i", $paymentId);
+                $checkSettlementStmt->execute();
+                $settlementRow = $checkSettlementStmt->get_result()->fetch_assoc();
+                if ($settlementRow && $settlementRow['settlement_type'] === 'emi_due_settlement' && !empty($settlementRow['parent_payment_id'])) {
+                    $parentId = (int)$settlementRow['parent_payment_id'];
+                    $settlementAmount = (float)$settlementRow['amount'];
+                    $restoreParentStmt = $this->db->prepare("
+                        UPDATE lead_payments 
+                        SET due_emi_amount = due_emi_amount + ?, payment_status = 'partially_paid' 
+                        WHERE id = ?
+                    ");
+                    if ($restoreParentStmt) {
+                        $restoreParentStmt->bind_param("di", $settlementAmount, $parentId);
+                        $restoreParentStmt->execute();
+                    }
+                }
+            }
+        }
+        // =========================================================
+
         // ====== SYNC BOOKING & PAYMENT STATUS ======
         if ($action === 'verify') {
             $getBookingIdStmt = $this->db->prepare("SELECT booking_id FROM lead_payments WHERE id = ?");

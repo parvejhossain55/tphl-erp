@@ -1091,7 +1091,7 @@ ORDER BY lb.booking_date DESC
             $bookingId = (int) $bookingId;
 
             // Verify the payment exists and belongs to this booking
-            $chk = $this->db->prepare("SELECT id, payment_type, parent_payment_id, amount FROM lead_payments WHERE id = ? AND booking_id = ?");
+            $chk = $this->db->prepare("SELECT id, payment_type, parent_payment_id, amount, verification_status FROM lead_payments WHERE id = ? AND booking_id = ?");
             $chk->bind_param("ii", $paymentId, $bookingId);
             $chk->execute();
             $row = $chk->get_result()->fetch_assoc();
@@ -1103,7 +1103,8 @@ ORDER BY lb.booking_date DESC
             $paymentType = $row['payment_type'];
 
             // 0. If deleting a settlement, restore the parent EMI's outstanding due
-            if ($paymentType === 'emi_due_settlement' && !empty($row['parent_payment_id'])) {
+            // Only restore if the settlement was NOT rejected (because rejection already restores it)
+            if ($paymentType === 'emi_due_settlement' && !empty($row['parent_payment_id']) && $row['verification_status'] !== 'rejected') {
                 $parentId = (int) $row['parent_payment_id'];
                 $settlementAmount = (float) $row['amount'];
 
