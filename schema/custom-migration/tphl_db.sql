@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 27, 2026 at 02:50 PM
+-- Generation Time: Apr 29, 2026 at 03:00 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -68,7 +68,7 @@ INSERT INTO `approval_requests` (`id`, `department`, `request_type`, `title`, `s
 --
 
 CREATE TABLE `architect_engineering` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL COMMENT 'Internal architect FK users.id',
   `full_architecture_design_link` varchar(500) DEFAULT NULL,
@@ -77,13 +77,6 @@ CREATE TABLE `architect_engineering` (
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `architect_engineering`
---
-
-INSERT INTO `architect_engineering` (`id`, `project_id`, `user_id`, `full_architecture_design_link`, `notes`, `status`, `created_by`, `created_at`) VALUES
-(2, 9, 122, 'https://kgarch.com/how-does-the-architectural-design-process-work', 'partially complete', 'partially', 122, '2026-04-27 12:28:01');
 
 -- --------------------------------------------------------
 
@@ -184,9 +177,9 @@ CREATE TABLE `blogs` (
 --
 
 CREATE TABLE `boq_items` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `boq_id` int(11) UNSIGNED NOT NULL,
-  `material_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `boq_id` int(10) UNSIGNED NOT NULL,
+  `material_id` int(10) UNSIGNED NOT NULL,
   `quantity` decimal(12,3) NOT NULL,
   `unit_cost` decimal(14,4) NOT NULL,
   `total_cost` decimal(16,4) GENERATED ALWAYS AS (`quantity` * `unit_cost`) STORED
@@ -199,7 +192,7 @@ CREATE TABLE `boq_items` (
 --
 
 CREATE TABLE `boq_master` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
   `target_id` int(11) DEFAULT NULL,
   `design_type_id` int(11) DEFAULT NULL,
@@ -219,9 +212,9 @@ CREATE TABLE `boq_master` (
 --
 
 CREATE TABLE `budget_extend_requests` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
-  `initial_budget_id` int(11) UNSIGNED NOT NULL,
+  `initial_budget_id` int(10) UNSIGNED NOT NULL,
   `requested_by` int(11) NOT NULL,
   `title` varchar(255) NOT NULL,
   `amount` decimal(16,4) NOT NULL,
@@ -460,10 +453,10 @@ INSERT INTO `company_bank_accounts` (`id`, `bank_name`, `account_name`, `account
 --
 
 CREATE TABLE `comparison_items` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `comparison_id` int(11) UNSIGNED NOT NULL,
-  `material_id` int(11) UNSIGNED NOT NULL,
-  `vendor_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `comparison_id` int(10) UNSIGNED NOT NULL,
+  `material_id` int(10) UNSIGNED NOT NULL,
+  `vendor_id` int(10) UNSIGNED NOT NULL,
   `unit_price` decimal(14,4) NOT NULL,
   `is_selected` tinyint(1) NOT NULL DEFAULT 0,
   `created_by` int(11) NOT NULL
@@ -501,7 +494,7 @@ INSERT INTO `contacts` (`id`, `name`, `email`, `phone`, `subject`, `message`, `c
 --
 
 CREATE TABLE `contractors` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `name` varchar(255) NOT NULL,
   `role` enum('Contractor','Subcontractor','Supervisor','Worker') NOT NULL DEFAULT 'Contractor',
   `trade` varchar(150) DEFAULT NULL,
@@ -522,9 +515,9 @@ CREATE TABLE `contractors` (
 --
 
 CREATE TABLE `contractor_bill_requests` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
-  `operator_id` int(11) UNSIGNED NOT NULL,
+  `operator_id` int(10) UNSIGNED NOT NULL,
   `target_id` int(11) DEFAULT NULL,
   `created_by` int(11) NOT NULL,
   `bill_date` date NOT NULL,
@@ -549,9 +542,9 @@ CREATE TABLE `contractor_bill_requests` (
 --
 
 CREATE TABLE `con_approval_logs` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `ref_table` varchar(100) NOT NULL,
-  `ref_id` int(11) UNSIGNED NOT NULL,
+  `ref_id` int(10) UNSIGNED NOT NULL,
   `step_name` varchar(100) NOT NULL,
   `actioned_by` int(11) NOT NULL,
   `status` enum('approved','rejected') NOT NULL,
@@ -567,10 +560,10 @@ CREATE TABLE `con_approval_logs` (
 --
 
 CREATE TABLE `con_financial_transactions` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `ref_type` enum('contractor_bill','operational_fund','vendor_payment') NOT NULL,
   `project_id` int(11) DEFAULT NULL,
-  `ref_id` int(11) UNSIGNED NOT NULL,
+  `ref_id` int(10) UNSIGNED NOT NULL,
   `payment_type` enum('Advance','Partial','Full','Refund') NOT NULL,
   `payment_method` enum('Cash','Cheque','BankTransfer','MobileWallet','Other') NOT NULL,
   `amount_paid` decimal(15,2) NOT NULL,
@@ -593,7 +586,7 @@ CREATE TABLE `con_financial_transactions` (
 --
 
 CREATE TABLE `con_materials` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `name` varchar(255) NOT NULL,
   `unit` varchar(50) NOT NULL,
   `min_stock_level` decimal(12,3) NOT NULL DEFAULT 0.000,
@@ -644,9 +637,9 @@ CREATE TABLE `con_material_issue_items` (
 --
 
 CREATE TABLE `con_stocks` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `material_id` int(11) UNSIGNED NOT NULL,
-  `warehouse_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `material_id` int(10) UNSIGNED NOT NULL,
+  `warehouse_id` int(10) UNSIGNED NOT NULL,
   `current_quantity` decimal(12,3) NOT NULL DEFAULT 0.000,
   `unit_price` decimal(15,2) DEFAULT 0.00,
   `total_value` decimal(15,2) DEFAULT 0.00,
@@ -660,13 +653,13 @@ CREATE TABLE `con_stocks` (
 --
 
 CREATE TABLE `con_stock_movements` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `material_id` int(11) UNSIGNED NOT NULL,
-  `warehouse_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `material_id` int(10) UNSIGNED NOT NULL,
+  `warehouse_id` int(10) UNSIGNED NOT NULL,
   `type` enum('IN','OUT') NOT NULL,
   `quantity` decimal(12,3) NOT NULL,
   `ref_type` varchar(100) DEFAULT NULL,
-  `ref_id` int(11) UNSIGNED DEFAULT NULL,
+  `ref_id` int(10) UNSIGNED DEFAULT NULL,
   `moved_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -678,7 +671,7 @@ CREATE TABLE `con_stock_movements` (
 --
 
 CREATE TABLE `con_warehouses` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `name` varchar(150) NOT NULL,
   `project_id` int(11) DEFAULT NULL,
   `location` varchar(255) DEFAULT NULL,
@@ -760,18 +753,7 @@ INSERT INTO `designations` (`id`, `name`, `department_id`, `created_by`, `create
 (29, 'CEO', 19, NULL, '2026-04-04 11:33:25', '2026-04-04 11:33:25'),
 (30, 'COO', 19, NULL, '2026-04-04 12:26:44', '2026-04-04 12:26:44'),
 (31, 'DCEO', 19, NULL, '2026-04-04 12:27:04', '2026-04-04 12:27:04'),
-(32, 'PD', 19, NULL, '2026-04-04 12:27:16', '2026-04-04 12:27:16'),
-(33, 'Land Manager', 18, NULL, '2026-04-21 22:53:29', '2026-04-21 22:53:29'),
-(34, 'Project Architecture ', 21, NULL, '2026-04-21 22:54:22', '2026-04-21 22:54:22'),
-(35, 'Draftsman ', 24, NULL, '2026-04-21 22:55:32', '2026-04-21 22:55:32'),
-(36, 'Project Engineer', 21, NULL, '2026-04-21 22:56:01', '2026-04-21 22:56:01'),
-(37, 'Estimator', 25, NULL, '2026-04-21 22:56:55', '2026-04-21 22:56:55'),
-(38, 'Site Engineer ', 21, NULL, '2026-04-21 22:57:37', '2026-04-21 22:57:37'),
-(39, 'Construction Manager', 21, NULL, '2026-04-21 22:58:02', '2026-04-21 22:58:02'),
-(40, 'Purchase Head', 20, NULL, '2026-04-21 22:59:29', '2026-04-21 22:59:29'),
-(41, 'Purchase Executive', 20, NULL, '2026-04-21 23:00:47', '2026-04-21 23:00:47'),
-(42, 'Purchase team leader', 20, NULL, '2026-04-21 23:01:16', '2026-04-21 23:01:16'),
-(43, 'Quality Controller(QC)', 23, NULL, '2026-04-21 23:02:11', '2026-04-21 23:02:11');
+(32, 'PD', 19, NULL, '2026-04-04 12:27:16', '2026-04-04 12:27:16');
 
 -- --------------------------------------------------------
 
@@ -780,19 +762,12 @@ INSERT INTO `designations` (`id`, `name`, `department_id`, `created_by`, `create
 --
 
 CREATE TABLE `design_types` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `name` varchar(100) NOT NULL,
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
   `created_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `design_types`
---
-
-INSERT INTO `design_types` (`id`, `name`, `status`, `created_by`, `created_at`) VALUES
-(1, 'Architectural', 'active', 6, '2026-04-27 07:35:42');
 
 -- --------------------------------------------------------
 
@@ -821,7 +796,13 @@ INSERT INTO `emi_schedules` (`id`, `lead_booking_id`, `emi_no`, `emi_amount`, `d
 (1, 2, 1, 50000.00, '2026-04-10', 'paid', 5, '2026-04-10 11:15:14', 0.00, 5000),
 (2, 1, 1, 300000.00, '2026-04-17', 'paid', 6, '2026-04-17 11:19:27', 10000.00, 30000),
 (3, 1, 2, 17000000.00, '2026-04-17', 'paid', 7, '2026-04-17 11:22:15', 0.00, 1700000),
-(4, 1, 3, 17000000.00, '2026-04-17', 'paid', 8, '2026-04-17 11:24:57', 0.00, 1700000);
+(4, 1, 3, 17000000.00, '2026-04-17', 'paid', 8, '2026-04-17 11:24:57', 0.00, 1700000),
+(5, 2, 1, 118750.00, '2026-04-26', 'paid', 12, '2026-04-26 07:27:48', 0.00, 11875),
+(6, 2, 2, 118750.00, '2026-04-26', 'paid', 13, '2026-04-26 07:46:57', 0.00, 11875),
+(7, 2, 3, 118750.00, '2026-04-26', 'paid', 14, '2026-04-26 07:46:57', 0.00, 11875),
+(8, 2, 4, 118750.00, '2026-04-26', 'paid', 15, '2026-04-26 07:46:57', 0.00, 11875),
+(9, 2, 5, 118750.00, '2026-04-26', 'paid', 16, '2026-04-26 07:46:57', 0.00, 11875),
+(10, 2, 6, 118750.00, '2026-04-26', 'paid', 17, '2026-04-26 07:46:57', 0.00, 11875);
 
 -- --------------------------------------------------------
 
@@ -1280,8 +1261,9 @@ INSERT INTO `flats` (`id`, `project_id`, `sqft`, `bhk`, `land_share_value`, `dev
 (2, 3, 1200, 3, 100000, NULL, 3, 3, 1, 1, 1, 1, 'Unit-A2', 'north', 5000000.00, 'Gym, Mosque etc', 2, 'booked', '2026-04-06 12:58:19', '2026-04-08 06:18:11', '2026-04-06 12:58:19', 1),
 (3, 9, 1200, 3, 2000000, NULL, 3, 3, 4, 1, 1, 1, 'Unit-A1', 'north', 6000000.00, 'Gym', 6, 'booked', '2026-04-08 09:56:17', '2026-04-17 05:47:40', '2026-04-08 09:56:17', 1),
 (4, 7, 1200, 3, 1200000, NULL, 3, 3, 3, 1, 1, 1, 'Unit-A2', 'north south', 7000000.00, 'Gym, Mosque etc', 6, 'booked', '2026-04-08 10:02:16', '2026-04-17 05:47:48', '2026-04-08 10:02:16', 1),
-(5, 12, 1310, 3, 1637500, NULL, 3, 3, 3, 1, 0, 6, '6 A', 'South-East', 5109000.00, '', 23, 'booked', '2026-04-19 04:14:16', NULL, '2026-04-19 04:14:16', 1),
-(6, 12, 800, 2, 100000, NULL, 2, 1, 1, 1, 1, 6, '6 B', 'East', 3120000.00, '', 23, 'available', '2026-04-19 04:45:18', NULL, '2026-04-19 04:45:18', 0);
+(5, 12, 1310, 3, 1637500, NULL, 3, 3, 3, 1, 0, 6, '6 A', 'South-East', 5109000.00, '', 23, 'available', '2026-04-19 04:14:16', NULL, '2026-04-19 04:14:16', 0),
+(6, 12, 800, 2, 100000, NULL, 2, 1, 1, 1, 1, 6, '6 B', 'East', 3120000.00, '', 23, 'available', '2026-04-19 04:45:18', NULL, '2026-04-19 04:45:18', 0),
+(7, 13, 1200, 3, 1200000, 100000.00, 3, 3, 4, 0, 0, 4, 'Unit-A2', 'north', 7000000.00, 'Gym', 6, 'booked', '2026-04-26 06:30:56', NULL, '2026-04-26 06:30:56', 1);
 
 -- --------------------------------------------------------
 
@@ -1357,14 +1339,16 @@ INSERT INTO `holidays` (`id`, `title`, `start_date`, `end_date`, `created_at`, `
 --
 
 CREATE TABLE `initial_estimate_budgets` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
-  `architecture_id` int(11) UNSIGNED NOT NULL,
-  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `architecture_id` int(10) UNSIGNED NOT NULL,
+  `work_type_id` int(11) DEFAULT NULL,
   `total_area_sqft` decimal(12,2) DEFAULT NULL,
   `material_cost_total` decimal(15,2) DEFAULT 0.00,
   `labor_cost_total` decimal(15,2) DEFAULT 0.00,
   `other_costs` decimal(15,2) DEFAULT 0.00,
+  `budget_link` varchar(255) DEFAULT NULL,
+  `work_details` text DEFAULT NULL,
   `other_cost_detail` text DEFAULT NULL,
   `total_estimated_cost` decimal(15,2) DEFAULT 0.00,
   `status` enum('pending','approved','cancelled') DEFAULT 'pending',
@@ -1384,15 +1368,15 @@ CREATE TABLE `initial_estimate_budgets` (
 --
 
 CREATE TABLE `initial_estimate_items` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `budget_id` int(11) UNSIGNED NOT NULL,
-  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `design_type_id` int(11) UNSIGNED NOT NULL,
-  `material_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `budget_id` int(10) UNSIGNED NOT NULL,
+  `design_type_id` int(10) UNSIGNED NOT NULL,
+  `material_id` int(10) UNSIGNED NOT NULL,
   `material_unit` varchar(50) NOT NULL,
   `estimated_qty` decimal(12,3) NOT NULL DEFAULT 0.000,
   `unit_cost_approx` decimal(12,2) NOT NULL DEFAULT 0.00,
-  `remarks` varchar(255) DEFAULT NULL
+  `remarks` varchar(255) DEFAULT NULL,
+  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -1402,13 +1386,13 @@ CREATE TABLE `initial_estimate_items` (
 --
 
 CREATE TABLE `initial_estimate_labors` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `budget_id` int(11) UNSIGNED NOT NULL,
-  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `design_type_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `budget_id` int(10) UNSIGNED NOT NULL,
+  `design_type_id` int(10) UNSIGNED NOT NULL,
   `labor_type_name` varchar(100) NOT NULL,
   `rate_per_sqft` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `area_sqft` decimal(12,2) NOT NULL
+  `area_sqft` decimal(12,2) NOT NULL,
+  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -1418,7 +1402,7 @@ CREATE TABLE `initial_estimate_labors` (
 --
 
 CREATE TABLE `land_visibility_study` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
   `land_legal_doc_status` enum('Pending','Verified','Rejected') NOT NULL DEFAULT 'Pending',
   `digital_survey_report_link` varchar(500) DEFAULT NULL,
@@ -2996,7 +2980,7 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (1635, 'Royel City', 'fb', NULL, NULL, NULL, NULL, NULL, 'Sharif Mohammad', 'ptnaer', 'khashab al sunobr car pentry shop llc', 'p:+971588304526', 'not_called', 'msg and vedio sent', 'Sharjah', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 59, '2026-04-09 09:53:51', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-08 04:33:34', '2026-04-17 05:55:29', 'local', 6, NULL, NULL, 0),
 (1636, 'Royel City', 'fb', NULL, NULL, NULL, NULL, NULL, 'Biplob Khondokar', 'à¦ªà§à¦°à¦¬à¦¾à¦¸à§€', 'Manhattan, New York', 'p:+19293328853', 'not_called', 'all details sent', 'New York', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 59, '2026-04-09 09:53:51', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-08 04:33:34', '2026-04-17 04:31:00', 'local', 6, NULL, NULL, 0),
 (1637, 'Royel City', 'fb', NULL, NULL, NULL, NULL, NULL, 'Ù…Ø­Ù…Ø¯ Ù…Ø¹ÙŠÙ† Ø§Ù„Ø¥Ø³Ù„Ø§Ù…. Ù…Ø¹ÙŠÙ†', 'Imam mosque .', 'Al Wakrah Doha Qatar', 'p:+97431300145', 'not_called', 'wa greetings sent with brochure', 'Doha', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-09 09:53:00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-08 04:33:34', '2026-04-18 05:27:03', 'local', 6, NULL, NULL, 0),
-(1639, 'Royel City', 'fb', NULL, NULL, NULL, NULL, NULL, 'Mainal Hossain', 'La Dolce Vita', 'Sicilia', 'p:+393291253079', 'not_called', 'kal sunday call korte hobe...', 'Palermo', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-09 09:53:00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-08 04:33:34', '2026-04-18 10:16:32', 'local', 6, NULL, NULL, 0),
+(1639, 'Royel City', 'fb', NULL, NULL, NULL, NULL, NULL, 'Mainal Hossain', 'La Dolce Vita', 'Sicilia', 'p:+393291253079', 'not_received', 'kal sunday call korte hobe...', 'Palermo', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-09 09:53:00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-08 04:33:34', '2026-04-28 05:34:32', 'local', 6, NULL, NULL, 0),
 (1640, 'Royel City', 'fb', NULL, NULL, NULL, NULL, NULL, 'Zakir Hossain', 'Network/Telecom Engineer', 'IT Networking', 'p:+966573407873', 'not_received', 'wa brochure sent with brochure', 'Dammam', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-09 09:53:00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-08 04:33:34', '2026-04-18 10:08:12', 'local', 6, NULL, NULL, 0),
 (1641, 'Royel City', 'fb', NULL, NULL, NULL, NULL, NULL, 'Maruf Billah', '', 'senior executive sales', 'p:+8801731630002', 'not_received', 'Wa brochure sent', 'Dhaka', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-09 09:53:00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-08 04:33:34', '2026-04-18 04:23:32', 'local', 6, NULL, NULL, 0),
 (1642, 'Royel City', 'fb', NULL, NULL, NULL, NULL, NULL, 'Sheikh Rajj', 'forklift', 'mink', 'p:+8801777656693', 'not_received', 'WA brochure sent', 'Paris', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-09 09:53:00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-08 04:33:34', '2026-04-17 05:29:03', 'local', 6, NULL, NULL, 0),
@@ -4455,7 +4439,7 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (3189, '', 'whatsapp', NULL, NULL, NULL, NULL, NULL, 'No Name', '', '', '00971509347287', 'not_called', 'WA msg sent', 'UAE', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-18 06:48:51', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-18 06:10:52', '2026-04-18 06:55:56', 'local', 11, NULL, NULL, 0),
 (3190, '', 'whatsapp', NULL, NULL, NULL, NULL, NULL, 'No Name', '', '', '8801635048916', 'not_received', 'didnt pick, msg sent', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-18 06:48:51', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-18 06:10:52', '2026-04-18 07:24:28', 'local', 11, NULL, NULL, 0),
 (3191, '', 'whatsapp', NULL, NULL, NULL, NULL, NULL, 'No Name', '', '', '8801676120720', 'received', 'ati sent', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-18 06:48:51', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-18 06:10:52', '2026-04-18 07:16:05', 'local', 11, NULL, NULL, 0),
-(3192, '', 'whatsapp', NULL, NULL, NULL, NULL, NULL, 'No Name', '', '', '00966576397703', 'not_called', 'Wa msg sent', 'Saudi Arabia', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-18 06:48:51', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-18 06:10:52', '2026-04-18 06:53:42', 'local', 11, NULL, NULL, 0),
+(3192, '', 'whatsapp', NULL, NULL, NULL, NULL, NULL, 'No Name', '', '', '00966576397703', 'not_called', 'Wa msg sent', 'Saudi Arabia', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-18 06:48:51', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-18 06:10:52', '2026-04-29 08:01:15', 'local', 11, NULL, NULL, 0),
 (3193, '', 'whatsapp', NULL, NULL, NULL, NULL, NULL, 'No Name', '', '', '8801839300418', 'received', 'ati sent', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-18 06:48:51', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Conversion', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-18 06:10:52', '2026-04-18 07:35:08', 'local', 11, NULL, NULL, 0),
 (3194, '', 'whatsapp', NULL, NULL, NULL, NULL, NULL, 'No Name', '', '', '00966573323997', 'not_called', 'wa text sent', 'Saudi Arabia', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 53, '2026-04-18 06:48:10', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-18 06:10:52', '2026-04-18 09:05:22', 'local', 11, NULL, NULL, 0),
 (3195, '', 'whatsapp', NULL, NULL, NULL, NULL, NULL, 'No Name', '', '', '8801626751269', 'not_received', 'wa texxt sent', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 53, '2026-04-18 06:48:10', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-18 06:10:52', '2026-04-18 08:58:59', 'local', 11, NULL, NULL, 0),
@@ -4769,7 +4753,7 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (3518, 'Royel City ll 2. Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Khorshed Shaheen', 'service', 'sonali Bank', '8801626519082', 'received', 'arekjon agent er sathe kotha hoyeche......', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-18 10:40:41', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-18 08:21:34', '2026-04-20 06:55:22', 'local', 6, NULL, NULL, 0),
 (3519, 'Royel City ll Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Kashem Bhuiyan', 'labour', 'Self-employed', '966576742243', 'not_received', 'greetings sent', 'Saudi Arabia', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-18 10:40:41', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-18 08:21:34', '2026-04-20 06:00:08', 'local', 6, NULL, NULL, 0),
 (3520, 'Royel City ll 2. Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Irfan Khan Abhi', 'Key Account Manager', 'Shokti+', '8801732619202', 'not_received', 'Greetings sent', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-18 10:40:41', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Conversion', NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-18 08:21:34', '2026-04-20 05:55:37', 'local', 6, NULL, NULL, 0),
-(3521, 'Royel City ll Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'MD Pranto Hossain', 'Owner and CEO', 'Saudia Ø§Ù„Ø³Ø¹ÙˆØ¯ÙŠØ©', '8801310636224', 'not_called', 'invalid number..no wa...no imo..', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-18 10:40:41', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-18 08:21:34', '2026-04-20 05:24:24', 'local', 6, NULL, NULL, 0),
+(3521, 'Royel City ll Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'MD Pranto Hossain', 'Owner and CEO', 'Saudia Ø§Ù„Ø³Ø¹ÙˆØ¯ÙŠØ©', '8801310636224', 'not_received', 'invalid number..no wa...no imo..', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-18 10:40:41', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-18 08:21:34', '2026-04-28 05:39:09', 'local', 6, NULL, NULL, 0),
 (3522, 'Royel City ll 2. Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Mohammad Rihad', 'yes', 'yes', '8801334280593', 'received', 'greetings sent in phone message', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-18 10:40:41', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-18 08:21:34', '2026-04-20 05:21:15', 'local', 6, NULL, NULL, 0),
 (3523, 'Royel City ll 2. Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Rashedul Khan', 'à¦ªà§à¦°à¦¬à¦¾à¦¸à§€', 'Rashidul', '8801850077720', 'not_received', 'imo greetings sent', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-18 10:40:41', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-18 08:21:34', '2026-04-20 05:12:22', 'local', 6, NULL, NULL, 0),
 (3524, 'Royel City ll Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md Emon', 'basnes', 'Business Standard', '8801889005008', 'received', 'busy.....pore call korte hobe', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 35, '2026-04-18 10:40:41', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Conversion', NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 23, '2026-04-18 08:21:34', '2026-04-20 05:06:24', 'local', 6, NULL, NULL, 0),
@@ -4835,7 +4819,7 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (3584, 'Royel City ll 2. Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Abul Rashed', 'Director', 'businessman', '8801911765688', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 78, '2026-04-20 05:29:22', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 32, '2026-04-18 08:22:32', '2026-04-20 05:29:22', 'local', 12, NULL, NULL, 0),
 (3585, '2. Royel City RJ Kibria Commercial ll Mar 09, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Qazi Noim Uddin', 'stay in Italy', 'Corghi', '00393277849421', 'not_called', NULL, 'Italy', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 78, '2026-04-20 05:29:22', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 32, '2026-04-18 08:22:32', '2026-04-20 05:29:22', 'local', 12, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
-(3586, 'Royel City ll 2. Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'SMporanur Rahman Poran', 'Studying', 'Student', '8801834784228', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 78, '2026-04-20 05:29:22', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 32, '2026-04-18 08:22:32', '2026-04-20 05:29:22', 'local', 12, NULL, NULL, 0),
+(3586, 'Royel City ll 2. Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'SMporanur Rahman Poran', 'Studying', 'Student', '8801834784228', 'called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 78, '2026-04-20 05:29:22', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'cancel', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 32, '2026-04-18 08:22:32', '2026-04-28 05:23:20', 'local', 12, NULL, NULL, 0),
 (3587, '2. Royel City RJ Kibria Commercial ll Mar 09, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Fatima Islam', 'HOUSE WIFE', 'Family Centre', '8801339313109', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 78, '2026-04-20 05:29:22', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 32, '2026-04-18 08:22:32', '2026-04-20 05:29:22', 'local', 12, NULL, NULL, 0),
 (3588, 'Royel City ll Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Mahmud', 'police', 'Bd police', '8801726702709', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 78, '2026-04-20 05:29:22', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 32, '2026-04-18 08:22:32', '2026-04-20 05:29:22', 'local', 12, NULL, NULL, 0),
 (3589, 'Royel City ll 2. Free motion ll Feb 28, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Amdad Ullah', 'Teacher Arabic Lecturar', 'Tanzimul Ummah Madrasah', '8801831124207', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 78, '2026-04-20 05:29:22', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 32, '2026-04-18 08:22:32', '2026-04-20 05:29:22', 'local', 12, NULL, NULL, 0),
@@ -5531,7 +5515,68 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (4271, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'SM Nazrul Islam', 'DQ', 'Govt job', '8801717584043', 'called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:41:38', 'local', 9, NULL, NULL, 0),
 (4272, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'A K M Akramul Bari', 'Doctor', 'MOHFW', '8801819633993', 'called', 'busy ..wp text sent', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:41:23', 'local', 9, NULL, NULL, 0),
 (4273, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Kazi Khorshd', 'à¦¸à§à¦¬à¦ªà§à¦¨ à¦šà¦¾à¦•à¦°à¦¿ à¦•à¦°à¦¿', 'Kazi Khorshd', '8801606095151', 'called', 'wp msg sent..call didn\'t rcv', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:30:23', 'local', 9, NULL, NULL, 0),
-(4274, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Atikur Rahman', 'mid lavel job', 'ABC', '8801875293008', 'called', 'busy now..contact with me eveninig,wp knock', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'booked', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-26 06:38:00', 'local', 9, NULL, NULL, 0);
+(4274, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Atikur Rahman', 'mid lavel job', 'ABC', '8801875293008', 'called', 'busy now..contact with me eveninig,wp knock', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:27:04', 'local', 9, NULL, NULL, 0),
+(4275, '', 'facebook', '1200 sqft', '2', '2026-04-14', '1', 'at holiday', 'test lead from developer', 'Business owner', 'ABC', '01234567891', 'not_called', NULL, 'Dhaka', NULL, 'Hot', NULL, NULL, 'BDT', NULL, '01944667441', 'admin@socialorg.com', 1, 0, NULL, 'afasdfasd', 'father', 'mother', '2026-04-22', '', NULL, NULL, NULL, 'asdfasd', NULL, '', 12, '', 'WA Messaging', 'asdf', NULL, 'public', 'active', 'booked', NULL, 'Not Interested', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-04-26 06:13:22', '2026-04-26 06:32:56', 'local', 0, NULL, NULL, 0),
+(4276, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Ahammed Bashir', 'Italy\'', 'Fincantieri', '00393200456037', 'received', NULL, 'Italy', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 87, '2026-04-28 07:22:15', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 08:59:41', 'local', 2, NULL, NULL, 0),
+(4277, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Mohammad Kawser Ahmed', 'Student', 'Student', '8801935624571', 'received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 87, '2026-04-28 07:22:15', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 09:29:19', 'local', 2, NULL, NULL, 0),
+(4278, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'rofi gaji', 'kkko', 'rofi gaji', '00393487007432', 'not_received', NULL, 'Italy', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 87, '2026-04-28 07:22:15', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 09:29:25', 'local', 2, NULL, NULL, 0),
+(4279, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Gulam Masoum', 'Negocio', 'InversiÃ³nesmasoum sl', '0034672808088', 'received', NULL, 'Spain', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 87, '2026-04-28 07:22:53', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 09:29:08', 'local', 2, NULL, NULL, 0),
+(4280, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Rubel Hossain Mozumdar', 'Manager', 'self employed', '0013475919668', 'not_called', NULL, 'USA', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 87, '2026-04-28 07:22:53', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 07:22:53', 'local', 2, NULL, NULL, 0),
+(4281, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Ali Azzam', 'Je intÃ©resse', 'Peninsula', '0033650334866', 'not_received', NULL, 'France', NULL, 'Pending', NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 87, '2026-04-28 07:22:53', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 09:51:30', 'local', 2, NULL, NULL, 0),
+(4282, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Zafar Chowdhury', 'Government officer in Australia', 'Department of Home Affairs', '0061406909701', 'not_called', NULL, 'Australia', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 33, '2026-04-28 07:22:38', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 07:22:38', 'local', 2, NULL, NULL, 0),
+(4283, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'md abdur rob rasel', 'waiter', 'turistica konrad', '0034613946591', 'not_called', NULL, 'Spain', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 33, '2026-04-28 07:22:38', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 07:22:38', 'local', 2, NULL, NULL, 0),
+(4284, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Sagor Howlader', 'cuisine', 'Kook Il Kwan', '0033753026533', 'not_called', NULL, 'France', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 33, '2026-04-28 07:22:38', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 07:22:38', 'local', 2, NULL, NULL, 0),
+(4285, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Nasir Uddin', 'Pressing', 'INTIMATE APPARELS LTD', '0033751041619', 'not_called', NULL, 'France', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 33, '2026-04-28 07:22:38', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 07:22:38', 'local', 2, NULL, NULL, 0),
+(4286, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Zahir Ahmed', 'Business', 'Mobile zone', '0034663538388', 'not_called', NULL, 'Spain', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 33, '2026-04-28 07:22:38', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 07:22:38', 'local', 2, NULL, NULL, 0),
+(4287, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Rakibur Rahman', 'Customer Service Assistant', 'Coles', '0061451859292', 'not_called', NULL, 'Australia', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 33, '2026-04-28 07:22:38', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 07:22:38', 'local', 2, NULL, NULL, 0),
+(4288, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Raja Suhan', 'customer service', 'Cwh', '8801717980204', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 33, '2026-04-28 07:22:38', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 07:22:38', 'local', 2, NULL, NULL, 0),
+(4289, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Mohiuddin Ahy', 'self employed', 'Milon Enterprise inc', '0017163563519', 'not_called', NULL, 'USA', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 36, '2026-04-28 05:20:08', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'cancel', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 06:11:34', 'local', 3, NULL, NULL, 0),
+(4290, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Robin Bhuyain', 'Works', 'Business', '8801924127778', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 36, '2026-04-28 05:20:08', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 05:20:08', 'local', 3, NULL, NULL, 0),
+(4291, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Mahmuda Yeasmin', 'probasi', 'tafsin frutas', '0034641710720', 'not_called', NULL, 'Spain', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 36, '2026-04-28 05:20:08', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 06:07:09', 'local', 3, NULL, NULL, 0),
+(4292, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Eamin Ahmed', 'Business', 'Facebook', '0046769634934', 'not_called', NULL, 'Sweden', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 36, '2026-04-28 05:20:08', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 06:07:08', 'local', 3, NULL, NULL, 0),
+(4293, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'MUZAMMAL MUZAMMAL', 'Aiuto cuoco', 'Restorante Caina pizzeria, Aiuto Cuoco Italy', '00393281894329', 'not_called', NULL, 'Italy', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 36, '2026-04-28 05:20:08', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 06:07:06', 'local', 3, NULL, NULL, 0),
+(4294, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Sheela Moni', 'self', 'Self-Employed', '0016469345047', 'not_called', NULL, 'USA', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 36, '2026-04-28 05:20:08', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 06:02:15', 'local', 3, NULL, NULL, 0),
+(4295, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md Masiur Rahman', 'It', 'Distribution Hub Ltd.', '8801716405544', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 41, '2026-04-28 05:19:13', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 05:19:13', 'local', 3, NULL, NULL, 0),
+(4296, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Shameem Ahmed', 'GM', 'Abdul Monem Ltd.', '8801713020650', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 41, '2026-04-28 05:19:13', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 05:19:13', 'local', 3, NULL, NULL, 0),
+(4297, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Hasan Imam Masud', 'Branch manager', 'City Bank', '8801937570275', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 41, '2026-04-28 05:19:13', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 05:19:13', 'local', 3, NULL, NULL, 0),
+(4298, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Mohammad Mainuddin Hassan', 'Managing director', 'my own business', '8801753086774', 'received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 41, '2026-04-28 05:19:13', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 05:49:02', 'local', 3, NULL, NULL, 0),
+(4299, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Imran Sarker', 'Web Application Developer', 'Fiverr', '8801689148210', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 62, '2026-04-28 05:16:40', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 05:16:40', 'local', 3, NULL, NULL, 0),
+(4300, 'The Premium Signature Heights ll Apr 16, 2026', 'ig', NULL, NULL, NULL, NULL, NULL, 'Sabrina Hossain', 'Lecturer', 'Quantum Education Group', '8801674043381', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 31, '2026-04-28 05:17:05', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 05:17:05', 'local', 3, NULL, NULL, 0),
+(4301, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'A.i. Faisal', 'Washing department', 'Poeticgem International Limited', '8801682828615', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 31, '2026-04-28 05:17:05', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 05:17:05', 'local', 3, NULL, NULL, 0),
+(4302, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Rohul Amin', 'owner', 'Modern General Hospital and Diabetic Center, Bhairab.', '8801740603047', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 31, '2026-04-28 05:17:05', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 36, '2026-04-28 05:11:18', '2026-04-28 05:17:05', 'local', 3, NULL, NULL, 0),
+(4303, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Harun Rashid', 'Private service', 'Arbella Fashion Limited', '8801713273056', 'not_received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 20, '2026-04-28 05:49:07', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 08:38:58', 'local', 10, NULL, NULL, 0),
+(4304, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Morshed Chowdhury', 'Senior Merchandiser', 'Zxy International', '8801673214463', 'received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 20, '2026-04-28 05:49:07', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 08:37:43', 'local', 10, NULL, NULL, 0),
+(4305, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Robin', 'Private job', 'Jacky\'s Business Solution PLC', '8801673129983', 'received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 20, '2026-04-28 05:49:07', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 08:29:25', 'local', 10, NULL, NULL, 0),
+(4306, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Rokibul Hasan', 'PO', 'Sonali bank Plc', '8801673313257', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 60, '2026-04-28 05:48:38', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 05:48:38', 'local', 10, NULL, NULL, 0),
+(4307, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'MD SUJAN ALI', 'Founder', 'ICON APPAREL', '8801638864730', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 60, '2026-04-28 05:48:07', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 05:48:07', 'local', 10, NULL, NULL, 0),
+(4308, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Asma Akter', 'Technical Manager-Hygiene Promotion, under WASH sector,CARE', 'CARE Bangladesh', '8801775520356', 'received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 60, '2026-04-28 05:48:07', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Conversion', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 06:45:06', 'local', 10, NULL, NULL, 0);
+INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(4309, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Abid Mahbub', 'govt job', 'Bangladesh', '8801705616136', 'not_received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 20, '2026-04-28 08:16:08', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 08:25:15', 'local', 10, NULL, NULL, 0),
+(4310, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md.Mainul Hasan', 'Co -ordinator Engineer', 'Sheva Design and Constraction Consultancy', '8801841001451', 'not_received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 73, '2026-04-28 05:47:47', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 06:33:40', 'local', 10, NULL, NULL, 0),
+(4311, 'The Premium Signature Heights ll Apr 16, 2026', 'ig', NULL, NULL, NULL, NULL, NULL, 'Sakib Nur', 'Co-founder & CEO', 'TechVengers LTD', '8801677890945', 'not_received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 73, '2026-04-28 05:47:47', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 06:26:23', 'local', 10, NULL, NULL, 0),
+(4312, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'M. M. Rahman Tipu', 'CEO', 'Daneen IELTS Point', '8801714107543', 'received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 73, '2026-04-28 05:47:47', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 06:33:20', 'local', 10, NULL, NULL, 0),
+(4313, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'saif', 'self', 'nothing', '8801716277600', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 26, '2026-04-28 05:47:19', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 05:47:19', 'local', 10, NULL, NULL, 0),
+(4314, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Prf. Dr Ibrahim Khalil', 'dr', 'Buet Medical Centre', '8801911386083', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 26, '2026-04-28 05:47:19', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 05:47:19', 'local', 10, NULL, NULL, 0),
+(4315, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'D Akib', 'Manager', 'Leading Edge', '8801959902552', 'called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 26, '2026-04-28 05:47:19', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Conversion', NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 09:40:36', 'local', 10, NULL, NULL, 0),
+(4316, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Mousumi Akter', 'bijness', 'shop', '8801799118895', 'called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 26, '2026-04-28 05:47:19', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Conversion', NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 20, '2026-04-28 05:11:51', '2026-04-28 07:40:11', 'local', 10, NULL, NULL, 0),
+(4318, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Ashik Ahamed', 'founder and detector', 'A2Z Trading Co', '8801714829511', 'called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-28 05:52:43', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 10:20:01', 'local', 11, NULL, NULL, 0),
+(4319, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Shah Azam', 'General Member', 'Catharsis International', '8801818210316', 'received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-28 05:52:43', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 10:13:58', 'local', 11, NULL, NULL, 0),
+(4320, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'MD Abdullah AL Mamun', 'Partner, rebate provider & Brand promoter', 'Md Abdullah Al Mamun', '8801646502508', 'received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-28 05:52:43', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 10:05:11', 'local', 11, NULL, NULL, 0),
+(4321, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Abdullah Al Jihan', 'Business', 'Jihan', '8801560000758', 'not_received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-28 05:52:43', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 09:58:15', 'local', 11, NULL, NULL, 0),
+(4322, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Masud', 'Business', 'SM international', '8801781187226', 'received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-28 05:52:43', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 09:54:33', 'local', 11, NULL, NULL, 0),
+(4323, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md Nazim Uddin', 'Business', 'Radiant industry pvt ltd.', '8801999997276', 'received', NULL, 'Bangladesh', NULL, 'Not Interested', NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 29, '2026-04-28 05:52:43', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 09:51:28', 'local', 11, NULL, NULL, 0),
+(4324, 'The Premium Armonia Leads ll Mar 30, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'RM.Shihab Uddin', 'Manager -Commercial Department', 'Student', '8801717430605', 'not_received', NULL, 'Bangladesh', NULL, 'Pending', NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 28, '2026-04-28 05:52:06', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 7, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'follow up', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 10:56:37', 'local', 11, NULL, NULL, 0),
+(4325, 'The Premium Armonia Leads ll Mar 30, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Jobayer Bappy', 'business', 'no', '8801676623507', 'called', NULL, 'Bangladesh', NULL, 'Pending', NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 28, '2026-04-28 05:51:45', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 09:51:22', 'local', 11, NULL, NULL, 0),
+(4326, 'The Premium Armonia Leads ll Mar 30, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Mehonaz Sharmin Tonny', 'Housewife', 'Home', '8801703828307', 'received', NULL, 'Bangladesh', NULL, 'Pending', NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 28, '2026-04-28 05:51:45', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 09:44:38', 'local', 11, NULL, NULL, 0),
+(4327, 'The Premium Armonia Leads ll Mar 30, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Rokibul Hasan', 'PO', 'Sonali bank PLC', '8801673313257', 'called', NULL, 'Bangladesh', NULL, 'Don\'t Call Again', NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 28, '2026-04-28 05:51:45', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 09:34:01', 'local', 11, NULL, NULL, 0),
+(4328, 'The Premium Armonia Leads ll Mar 30, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md. Al-Amin Pavel', 'Govt Officer', 'Bureau of Manpower Employment and Training', '8801670836713', 'received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 28, '2026-04-28 05:51:45', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'WA Messaging', NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 09:16:15', 'local', 11, NULL, NULL, 0),
+(4329, 'The Premium Armonia Leads ll Mar 30, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Sohel', 'Education Manager', 'EdUSA', '8801720092911', 'not_received', '', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 53, '2026-04-28 05:51:17', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 06:53:31', 'local', 11, NULL, NULL, 0),
+(4330, 'The Premium Armonia Leads ll Mar 30, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Sadia Sharmin', 'CEO', 'S.A international', '8801864051707', 'received', '', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 53, '2026-04-28 05:51:17', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 06:42:40', 'local', 11, NULL, NULL, 0),
+(4331, 'The Premium Armonia Leads ll Mar 30, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Hasan', 'chief', 'jaytuna', '8801630442630', 'not_received', '', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 53, '2026-04-28 05:51:17', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 06:34:27', 'local', 11, NULL, NULL, 0),
+(4332, 'The Premium Armonia Leads ll Mar 30, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md Sohag', 'business', 'Al Baraka Hotel & Resturant', '8801712125557', 'received', '', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 53, '2026-04-28 05:51:17', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 06:25:33', 'local', 11, NULL, NULL, 0),
+(4333, 'The Premium Armonia Leads ll Mar 30, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Homira Jaman', 'businessman', 'H Threat international', '8801320787306', 'received', '', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 53, '2026-04-28 05:51:17', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 06:17:20', 'local', 11, NULL, NULL, 0),
+(4334, 'The Premium Armonia Leads ll Mar 30, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Afroza Begum', 'house wife', 'Housewife', '8801718963770', 'received', '', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 53, '2026-04-28 05:51:17', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 29, '2026-04-28 05:12:16', '2026-04-28 06:09:32', 'local', 11, NULL, NULL, 0),
+(4353, '', '', '', '', '', '', '', 'test lead', 'business', '', '017674873856', 'not_called', NULL, '', NULL, 'Pending', NULL, NULL, 'BDT', NULL, '', 'test@gmail.com', 1, 0, NULL, 'Dhaka', '', '', NULL, '', NULL, NULL, NULL, '', NULL, '', NULL, '', 'WA Messaging', '', NULL, 'public', 'active', 'follow up', NULL, 'Not Interested', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2026-04-29 04:08:31', '2026-04-29 04:09:17', 'local', 0, NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -5566,7 +5611,7 @@ CREATE TABLE `lead_bookings` (
 --
 
 INSERT INTO `lead_bookings` (`id`, `lead_id`, `project_id`, `flat_id`, `agreement_value`, `discount_amount`, `booking_date`, `booking_status`, `created_by`, `sales_by_id`, `deleted_at`, `created_at`, `updated_at`, `approval_status`, `approved_amount`, `service_fee_balance`, `landshare_status`, `payment_status`, `attachment_image`) VALUES
-(2, 4274, 12, 5, 1000000.00, NULL, '2026-04-26', 'completed', 6, 34, NULL, '2026-04-26 06:15:10', '2026-04-26 07:06:08', 'not_required', NULL, NULL, 'active', 'paid', NULL);
+(2, 4275, 13, 7, 1000000.00, NULL, '2026-04-26', 'completed', 6, 0, NULL, '2026-04-26 06:31:43', '2026-04-26 07:48:15', 'not_required', NULL, NULL, 'active', 'paid', NULL);
 
 -- --------------------------------------------------------
 
@@ -5581,13 +5626,16 @@ CREATE TABLE `lead_follow_ups` (
   `flat_id` int(11) DEFAULT NULL,
   `follow_up_date` date NOT NULL,
   `follow_up_time` time DEFAULT NULL,
-  `follow_up_type` enum('Inbound Call','Phone Call','WA Call','Imo Call','Messenger Call','Messenger Conversesion','WA Conversesion','Imo Message','Phone Massaging','Email','Number Off','Wrong Number','Invalid Number','Face To Face','call','visit','meeting','whatsapp','email') NOT NULL,
+  `follow_up_type` enum('Inbound Call','Phone Call','WA Call','Imo Call','Messenger Call','Messenger Conversesion','WA Conversesion','Imo Message','Phone Massaging','Email','Number Off','Wrong Number','Invalid Number','Face To Face','call','visit','meeting','whatsapp') DEFAULT NULL,
   `status` enum('pending','completed','missed','canceled') DEFAULT 'pending',
   `discussion_note` text DEFAULT NULL,
   `next_follow_up_date` date DEFAULT NULL,
   `assigned_with` int(11) DEFAULT NULL,
   `next_action` enum('site visit','booking','call_back','take_time') DEFAULT NULL,
   `created_by` int(10) UNSIGNED NOT NULL,
+  `follow_up_agent_id` int(11) DEFAULT NULL,
+  `lead_status` varchar(100) DEFAULT NULL,
+  `next_follow_up_plan_notes` text DEFAULT NULL,
   `deleted_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -5597,514 +5645,516 @@ CREATE TABLE `lead_follow_ups` (
 -- Dumping data for table `lead_follow_ups`
 --
 
-INSERT INTO `lead_follow_ups` (`id`, `lead_id`, `project_id`, `flat_id`, `follow_up_date`, `follow_up_time`, `follow_up_type`, `status`, `discussion_note`, `next_follow_up_date`, `assigned_with`, `next_action`, `created_by`, `deleted_at`, `created_at`, `updated_at`) VALUES
-(1, 670, NULL, NULL, '2026-04-04', '00:00:00', 'call', 'pending', '', '2026-04-06', NULL, 'call_back', 41, NULL, '2026-04-04 10:59:37', '2026-04-04 10:59:37'),
-(2, 1244, 1, NULL, '2026-04-05', '00:00:00', 'call', 'pending', '', '2026-04-06', 20, 'call_back', 20, '2026-04-07 10:44:56', '2026-04-05 06:58:20', '2026-04-07 10:44:56'),
-(3, 1244, NULL, NULL, '2026-04-05', '12:59:00', 'call', 'pending', '', '2026-04-07', 20, 'call_back', 20, NULL, '2026-04-05 06:58:58', '2026-04-05 06:58:58'),
-(4, 154, NULL, NULL, '2026-04-06', '10:10:00', 'call', 'completed', 'didnt pick the call, WA msg sent', '2026-04-07', 29, 'call_back', 29, NULL, '2026-04-06 04:13:58', '2026-04-06 04:13:58'),
-(5, 153, NULL, NULL, '2025-04-06', '10:50:00', 'call', 'completed', 'didnt pick, WA msg sent', '2026-04-07', 29, 'call_back', 29, NULL, '2026-04-06 04:51:23', '2026-04-06 04:51:23'),
-(6, 151, NULL, NULL, '2026-04-06', '16:18:00', 'call', 'completed', 'brochure of double and 12th heights sent', '2026-04-08', 29, 'call_back', 29, NULL, '2026-04-06 10:20:06', '2026-04-06 10:20:06'),
-(7, 145, NULL, NULL, '2026-04-06', '16:39:00', 'call', 'completed', 'klk sokale call diye visit er appointment nite hobe, will visit soon', '2026-04-07', 29, 'call_back', 29, NULL, '2026-04-06 10:40:33', '2026-04-06 10:40:33'),
-(8, 1060, 3, 2, '2026-04-06', '21:40:00', 'call', 'pending', 'Tomorrow Again Follow up', '2026-04-07', 44, 'call_back', 68, '2026-04-08 06:18:11', '2026-04-06 15:41:41', '2026-04-08 06:18:11'),
-(9, 145, NULL, NULL, '2026-04-07', '10:04:00', 'call', 'completed', 'visit scheduled on 21 Apr 2026 at 3 pm', '2026-04-20', 29, 'call_back', 29, NULL, '2026-04-07 04:20:42', '2026-04-07 04:20:42'),
-(10, 1052, 2, 1, '2026-04-07', '10:25:00', 'call', 'pending', 'Test', '2026-04-07', 3, 'call_back', 3, '2026-04-07 10:45:05', '2026-04-07 04:26:10', '2026-04-07 10:45:05'),
-(11, 1052, 2, 1, '2026-04-07', '10:26:00', 'call', 'pending', '', '2026-04-09', 3, 'call_back', 3, '2026-04-07 10:45:05', '2026-04-07 04:28:35', '2026-04-07 10:45:05'),
-(12, 1246, 2, 1, '2026-04-07', '10:32:00', 'call', 'pending', '', '2026-04-07', 68, 'call_back', 68, '2026-04-07 10:45:05', '2026-04-07 04:33:11', '2026-04-07 10:45:05'),
-(13, 1246, 2, 1, '2026-04-07', '10:33:00', 'call', 'pending', '', '2026-04-08', 68, 'call_back', 68, '2026-04-07 10:45:05', '2026-04-07 04:34:04', '2026-04-07 10:45:05'),
-(14, 1060, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'pending', '', '2026-04-10', 77, 'call_back', 77, NULL, '2026-04-07 06:50:37', '2026-04-07 06:50:37'),
-(16, 1479, NULL, NULL, '2026-04-15', '15:12:00', 'call', 'pending', 'Rate kotha bolben ekhon busy achen ', '2026-04-23', 64, 'call_back', 64, NULL, '2026-04-07 07:14:06', '2026-04-07 07:14:06'),
-(17, 1479, NULL, NULL, '2026-04-15', '15:12:00', 'call', 'pending', 'Rate kotha bolben ekhon busy achen ', '2026-04-23', 64, 'call_back', 64, NULL, '2026-04-07 07:14:18', '2026-04-07 07:14:18'),
-(18, 1248, 2, 1, '2026-04-07', '14:45:00', 'call', 'pending', '', '2026-04-08', 2, 'site visit', 2, '2026-04-07 10:45:05', '2026-04-07 08:46:19', '2026-04-07 10:45:05'),
-(24, 1354, NULL, NULL, '2026-04-15', '00:00:00', 'call', 'pending', '', '2026-04-15', NULL, NULL, 73, NULL, '2026-04-07 11:42:49', '2026-04-07 11:42:49'),
-(25, 1352, NULL, NULL, '2026-04-14', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, '2026-04-07 11:43:34', '2026-04-07 11:43:34'),
-(26, 1352, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, '2026-04-07 11:44:01', '2026-04-07 11:44:01'),
-(27, 1352, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, '2026-04-07 11:44:13', '2026-04-07 11:44:13'),
-(28, 1353, NULL, NULL, '2026-02-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, '2026-04-07 11:46:13', '2026-04-07 11:46:13'),
-(29, 1353, NULL, NULL, '2026-01-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, '2026-04-07 11:46:41', '2026-04-07 11:46:41'),
-(30, 1351, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, '2026-04-07 11:47:10', '2026-04-07 11:47:10'),
-(31, 64, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, '2026-04-07 11:48:04', '2026-04-07 11:48:04'),
-(32, 164, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, '2026-04-07 11:49:33', '2026-04-07 11:49:33'),
-(33, 1372, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', '2026-04-10', NULL, NULL, 38, NULL, '2026-04-07 11:54:07', '2026-04-07 11:54:07'),
-(34, 1368, NULL, NULL, '2026-10-04', '00:00:00', 'call', 'pending', '', NULL, 30, NULL, 30, NULL, '2026-04-07 11:54:08', '2026-04-07 11:54:08'),
-(35, 1357, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, '2026-04-07 11:54:40', '2026-04-07 11:54:40'),
-(36, 1371, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, '2026-04-07 11:54:53', '2026-04-07 11:54:53'),
-(37, 1372, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, '2026-04-07 11:55:24', '2026-04-07 11:55:24'),
-(38, 1367, NULL, NULL, '2026-04-07', '00:00:00', 'whatsapp', 'missed', '', NULL, NULL, NULL, 30, NULL, '2026-04-07 11:56:24', '2026-04-07 11:56:24'),
-(39, 1370, NULL, NULL, '2026-04-11', '00:00:00', 'whatsapp', 'pending', '', NULL, NULL, NULL, 38, NULL, '2026-04-07 11:56:29', '2026-04-07 11:56:29'),
-(40, 1355, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, '2026-04-07 11:56:49', '2026-04-07 11:56:49'),
-(41, 1369, NULL, NULL, '2026-04-11', '00:00:00', 'whatsapp', 'pending', '', NULL, NULL, NULL, 38, NULL, '2026-04-07 11:57:03', '2026-04-07 11:57:03'),
-(42, 1366, NULL, NULL, '2026-04-07', '00:00:00', 'call', 'pending', '', NULL, 30, NULL, 30, NULL, '2026-04-07 11:57:05', '2026-04-07 11:57:05'),
-(43, 1365, NULL, NULL, '2026-04-07', '00:00:00', 'call', 'missed', '', NULL, 30, NULL, 30, NULL, '2026-04-07 11:58:17', '2026-04-07 11:58:17'),
-(44, 163, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, '2026-04-07 11:58:19', '2026-04-07 11:58:19'),
-(45, 162, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, '2026-04-07 11:58:47', '2026-04-07 11:58:47'),
-(46, 1356, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, '2026-04-07 11:58:48', '2026-04-07 11:58:48'),
-(47, 161, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, '2026-04-07 11:59:36', '2026-04-07 11:59:36'),
-(48, 669, NULL, NULL, '2026-10-04', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 33, NULL, '2026-04-08 04:09:53', '2026-04-08 04:09:53'),
-(49, 164, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'in hospital will call me later\r\n', NULL, NULL, NULL, 38, NULL, '2026-04-08 04:32:16', '2026-04-08 04:32:16'),
-(50, 159, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'looking for better opportunity that suits him', NULL, NULL, NULL, 38, NULL, '2026-04-08 04:38:57', '2026-04-08 04:38:57'),
-(51, 163, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'will contact me after 15 apr', NULL, NULL, NULL, 38, NULL, '2026-04-08 05:22:29', '2026-04-08 05:22:29'),
-(52, 156, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Didnt pick up Wa vm sent', NULL, NULL, NULL, 38, NULL, '2026-04-08 05:40:35', '2026-04-08 05:40:35'),
-(53, 93, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'didnt pick up wa follow up vm sent\r\n', NULL, NULL, NULL, 38, NULL, '2026-04-08 05:55:04', '2026-04-08 05:55:04'),
-(54, 90, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Will call me later maybe not interested\r\n', NULL, NULL, NULL, 38, NULL, '2026-04-08 05:57:44', '2026-04-08 05:57:44'),
-(55, 1059, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', '2026-04-12', 77, NULL, 77, NULL, '2026-04-08 05:59:45', '2026-04-08 05:59:45'),
-(56, 1058, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'pending', '', '2026-04-12', 77, NULL, 77, NULL, '2026-04-08 06:02:24', '2026-04-08 06:02:24'),
-(57, 445, NULL, NULL, '2026-04-08', '00:00:00', 'whatsapp', 'completed', '', '2026-04-15', 55, NULL, 55, NULL, '2026-04-08 06:08:13', '2026-04-08 06:08:13'),
-(58, 685, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 31, NULL, 31, NULL, '2026-04-08 06:14:15', '2026-04-08 06:14:15'),
-(59, 444, NULL, NULL, '2026-04-08', '00:00:00', 'whatsapp', 'completed', 'Wa massage send ', '2026-04-15', 55, NULL, 55, NULL, '2026-04-08 06:15:31', '2026-04-08 06:15:31'),
-(60, 443, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Number off & wa,imo not found ', '2026-04-15', 55, NULL, 55, NULL, '2026-04-08 06:20:29', '2026-04-08 06:20:29'),
-(61, 91, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Call in 4 pm', NULL, NULL, NULL, 38, NULL, '2026-04-08 06:21:22', '2026-04-08 06:21:22'),
-(62, 89, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'didnt pick up wa followup vm sent\r\n', NULL, NULL, NULL, 38, NULL, '2026-04-08 06:24:53', '2026-04-08 06:24:53'),
-(63, 442, NULL, NULL, '2026-04-08', '00:00:00', 'whatsapp', 'completed', 'Wa massage send ', '2026-04-15', 55, NULL, 55, NULL, '2026-04-08 06:26:38', '2026-04-08 06:26:38'),
-(64, 88, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Wa followup msg sent\r\n', NULL, NULL, NULL, 38, NULL, '2026-04-08 06:27:17', '2026-04-08 06:27:17'),
-(65, 809, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Wa followup vm sent', NULL, NULL, NULL, 38, NULL, '2026-04-08 06:29:29', '2026-04-08 06:29:29'),
-(66, 441, NULL, NULL, '2026-04-08', '12:32:00', 'whatsapp', 'completed', 'wa massage send ', '2026-04-15', 55, NULL, 55, NULL, '2026-04-08 06:32:44', '2026-04-08 06:32:44'),
-(67, 440, NULL, NULL, '2026-04-08', '12:37:00', 'whatsapp', 'completed', 'Wa massage send ', '2026-04-15', 55, NULL, 55, NULL, '2026-04-08 06:38:15', '2026-04-08 06:38:15'),
-(68, 439, NULL, NULL, '2026-04-08', '12:41:00', 'call', 'completed', 'Number off, wa or imo not found ', '2026-04-15', 55, NULL, 55, NULL, '2026-04-08 06:41:37', '2026-04-08 06:41:37'),
-(69, 438, NULL, NULL, '2026-04-08', '12:44:00', 'whatsapp', 'pending', 'Wa massage send ', '2026-04-15', 55, NULL, 55, NULL, '2026-04-08 06:45:29', '2026-04-08 06:45:29'),
-(70, 438, NULL, NULL, '2026-04-08', '12:47:00', 'whatsapp', 'completed', 'Phon ko off ache and wa massage send ', '2026-04-15', 55, NULL, 55, NULL, '2026-04-08 06:48:02', '2026-04-08 06:48:02'),
-(71, 1681, 7, NULL, '2026-04-09', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, '2026-04-08 06:59:55', '2026-04-08 06:59:55'),
-(72, 1680, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, '2026-04-08 07:26:30', '2026-04-08 07:26:30'),
-(73, 151, NULL, NULL, '2026-04-08', '13:41:00', 'whatsapp', 'completed', 'cut the call, voice sent', '2026-04-10', 29, 'call_back', 29, NULL, '2026-04-08 07:41:40', '2026-04-08 07:41:40'),
-(74, 1396, NULL, NULL, '2026-04-07', '20:20:00', 'call', 'completed', 'didnt pick', '2026-04-08', 29, 'call_back', 29, NULL, '2026-04-08 07:46:19', '2026-04-08 07:46:19'),
-(75, 1391, NULL, NULL, '0206-04-07', '22:25:00', 'whatsapp', 'completed', 'duplex sent', '2026-04-08', 29, 'call_back', 29, NULL, '2026-04-08 07:48:34', '2026-04-08 07:48:34'),
-(76, 1392, NULL, NULL, '2026-04-08', '13:50:00', 'whatsapp', 'completed', 'voice sent', '2026-04-09', 29, 'call_back', 29, NULL, '2026-04-08 07:51:27', '2026-04-08 07:51:27'),
-(77, 1381, NULL, NULL, '2026-04-07', '22:37:00', 'call', 'completed', 'double sent, visit himself', '2026-04-09', 29, 'call_back', 29, NULL, '2026-04-08 07:54:22', '2026-04-08 07:54:22'),
-(78, 1378, NULL, NULL, '2026-04-08', '22:19:00', 'whatsapp', 'completed', 'cancelled the visit', '2026-04-10', 29, 'call_back', 29, NULL, '2026-04-08 08:17:11', '2026-04-08 08:17:11'),
-(79, 1377, NULL, NULL, '2026-04-08', '11:37:00', 'whatsapp', 'completed', 'will call in free time', '2026-04-09', 29, 'call_back', 29, NULL, '2026-04-08 08:20:54', '2026-04-08 08:20:54'),
-(80, 1377, NULL, NULL, '2026-04-08', '14:40:00', 'call', 'completed', 'rat 8 tay call diben', '2026-04-08', 29, 'call_back', 29, NULL, '2026-04-08 08:46:33', '2026-04-08 08:46:33'),
-(83, 1277, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'pending', '', NULL, 53, NULL, 53, NULL, '2026-04-08 09:26:20', '2026-04-08 09:26:20'),
-(84, 1277, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'completed', 'only BH BUT 70 te  3 bedroom  budget', '2026-04-09', 53, 'call_back', 53, NULL, '2026-04-08 09:27:12', '2026-04-09 05:19:42'),
-(86, 1276, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'completed', 'wa text sent', '2026-04-09', 53, 'call_back', 53, NULL, '2026-04-08 09:31:55', '2026-04-09 05:21:18'),
-(87, 1274, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', '', '2026-04-12', 53, NULL, 53, NULL, '2026-04-08 09:40:47', '2026-04-12 05:04:41'),
-(88, 89, NULL, NULL, '2026-04-08', '00:00:00', 'whatsapp', 'completed', 'Gave info about signeture ', NULL, NULL, NULL, 38, NULL, '2026-04-08 09:43:20', '2026-04-08 09:43:20'),
-(89, 1275, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'pending', '', NULL, 53, NULL, 53, NULL, '2026-04-08 09:43:45', '2026-04-08 09:43:45'),
-(90, 1273, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'completed', 'al ready someone contract', '2026-04-09', 53, NULL, 53, NULL, '2026-04-08 09:50:36', '2026-04-09 05:25:30'),
-(92, 1320, 7, NULL, '2026-04-16', '00:00:00', 'call', 'pending', '', '2026-04-13', 87, NULL, 87, NULL, '2026-04-08 10:25:21', '2026-04-08 10:25:21'),
-(93, 1277, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', 'low budget investment, brochure sent', '2026-04-12', 53, NULL, 53, NULL, '2026-04-09 05:09:36', '2026-04-12 05:06:40'),
-(94, 1276, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', 'not interested', '2026-04-12', 53, NULL, 53, NULL, '2026-04-09 05:22:06', '2026-04-12 05:09:18'),
-(95, 1273, NULL, NULL, '2026-04-15', '00:00:00', 'call', 'pending', 'visit jaba dhaka asla ,but someone contract already\r\n', '2026-04-15', 53, NULL, 53, NULL, '2026-04-09 05:27:31', '2026-04-09 05:27:31'),
-(97, 1783, 7, NULL, '2026-04-09', '12:02:00', 'call', 'pending', 'Test Note', '2026-04-11', 20, 'call_back', 20, NULL, '2026-04-09 06:02:44', '2026-04-09 06:02:44'),
-(98, 1681, 7, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, '2026-04-09 06:04:00', '2026-04-09 06:04:00'),
-(99, 1783, 7, NULL, '2026-04-10', '12:05:00', 'call', 'pending', 'Test', '2026-04-10', 29, 'call_back', 29, NULL, '2026-04-09 06:06:00', '2026-04-09 06:06:00'),
-(100, 152, NULL, NULL, '2026-04-09', '12:13:00', 'whatsapp', 'completed', 'signature sent', '2026-04-11', 29, 'call_back', 29, NULL, '2026-04-09 06:14:21', '2026-04-09 06:14:21'),
-(101, 133, 7, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 36, NULL, 36, NULL, '2026-04-09 06:14:28', '2026-04-09 06:14:28'),
-(102, 150, NULL, NULL, '0026-04-09', '12:21:00', 'call', 'completed', 'didnt pick', NULL, 29, NULL, 29, NULL, '2026-04-09 06:22:17', '2026-04-09 06:22:17'),
-(103, 149, NULL, NULL, '0026-04-09', '12:23:00', 'call', 'completed', 'cut the call', NULL, 29, NULL, 29, NULL, '2026-04-09 06:26:58', '2026-04-09 06:26:58'),
-(104, 1395, NULL, NULL, '0026-04-09', '12:32:00', 'call', 'completed', 'baire, pore call', '2026-04-09', 29, 'call_back', 29, NULL, '2026-04-09 06:32:58', '2026-04-09 06:32:58'),
-(105, 126, NULL, NULL, '2026-04-09', '12:33:00', 'call', 'completed', '', NULL, 41, NULL, 41, NULL, '2026-04-09 06:34:02', '2026-04-09 06:34:02'),
-(106, 124, NULL, NULL, '2026-04-09', '12:40:00', 'call', 'completed', 'Busy. WA text sent', NULL, 41, NULL, 41, NULL, '2026-04-09 06:42:10', '2026-04-09 06:42:10'),
-(107, 670, NULL, NULL, '2026-04-09', '12:47:00', 'call', 'completed', 'Not interested in land share model. Wants urgent flat.', NULL, 41, NULL, 41, NULL, '2026-04-09 06:48:29', '2026-04-09 06:48:29'),
-(108, 1800, NULL, NULL, '2026-04-12', '00:00:00', 'visit', 'completed', 'duplex ,interested highly dhaka baira ache , 12 tarik call debo office a asba', '2026-04-12', 53, NULL, 53, NULL, '2026-04-09 06:55:31', '2026-04-12 09:52:40'),
-(109, 1799, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, '2026-04-09 07:08:53', '2026-04-09 07:08:53'),
-(110, 1808, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 73, NULL, 73, NULL, '2026-04-09 07:09:17', '2026-04-09 07:09:17'),
-(111, 1794, NULL, NULL, '2026-04-12', '00:00:00', 'visit', 'completed', 'duplex sent 12 tarikh call debo visit a aste pare', '2026-04-12', 53, NULL, 53, NULL, '2026-04-09 07:11:43', '2026-04-12 06:03:40'),
-(112, 1798, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, '2026-04-09 07:19:04', '2026-04-09 07:19:04'),
-(113, 40, 7, NULL, '2026-04-09', '00:00:00', 'call', 'pending', 'We had a talk then send Armonia Brochure send. shiddhadhanto nile tini call dibe.\r\n', NULL, 60, NULL, 60, NULL, '2026-04-09 07:19:14', '2026-04-09 07:19:14'),
-(114, 1797, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, '2026-04-09 07:20:55', '2026-04-09 07:20:55'),
-(115, 39, 7, NULL, '2026-04-10', '00:00:00', 'call', 'pending', 'Interested in Armonia but today dont pickup the phone.', NULL, 60, NULL, 60, NULL, '2026-04-09 07:22:46', '2026-04-09 07:22:46'),
-(116, 1785, NULL, NULL, '2026-04-09', '17:00:00', 'call', 'pending', '5 tay call dite bolechen', NULL, 29, NULL, 29, NULL, '2026-04-09 07:28:18', '2026-04-09 07:28:18'),
-(117, 37, 7, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, '2026-04-09 07:47:06', '2026-04-09 07:47:06'),
-(118, 24, NULL, NULL, '2026-04-09', '14:24:00', 'call', 'completed', 'didnt pick', NULL, 29, NULL, 29, NULL, '2026-04-09 08:24:38', '2026-04-09 08:24:38'),
-(119, 23, NULL, NULL, '0026-04-09', '14:30:00', 'call', 'completed', 'didnt pick', '0026-04-11', 29, 'call_back', 29, NULL, '2026-04-09 08:31:16', '2026-04-09 08:31:16'),
-(120, 116, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 36, NULL, 36, NULL, '2026-04-09 08:44:11', '2026-04-09 08:44:11'),
-(121, 24, NULL, NULL, '0026-04-09', '14:45:00', 'call', 'completed', 'armonia 2025 sent', '0026-04-10', 29, 'call_back', 29, NULL, '2026-04-09 08:47:07', '2026-04-09 08:47:07'),
-(122, 22, NULL, NULL, '0026-04-09', '14:50:00', 'call', 'completed', 'legacy and signature sent', '0026-04-11', 29, 'call_back', 29, NULL, '2026-04-09 08:52:19', '2026-04-09 08:52:19'),
-(123, 1493, NULL, NULL, '0026-04-09', '14:54:00', 'call', 'completed', 'bahire, pore call dibe', '0026-04-11', 29, 'call_back', 29, NULL, '2026-04-09 08:56:11', '2026-04-09 08:56:11'),
-(124, 1398, NULL, NULL, '0025-04-09', '15:00:00', 'call', 'completed', 'cut the call, WA msg sent', '0026-04-11', 29, 'call_back', 29, NULL, '2026-04-09 09:02:02', '2026-04-09 09:02:02'),
-(125, 1948, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'missed', '', '2026-04-11', 67, 'take_time', 67, NULL, '2026-04-09 09:55:48', '2026-04-11 16:13:20'),
-(126, 1948, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', NULL, 67, NULL, 67, NULL, '2026-04-09 10:11:11', '2026-04-09 10:11:11'),
-(127, 1881, NULL, NULL, '2026-04-09', '16:10:00', 'whatsapp', 'pending', '', '2026-04-13', 65, 'site visit', 65, NULL, '2026-04-09 10:11:59', '2026-04-09 10:11:59'),
-(128, 1384, NULL, NULL, '0026-04-09', '16:14:00', 'call', 'completed', 'visit scheduled tomorrow at 10 am', '2026-04-10', 29, 'site visit', 29, NULL, '2026-04-09 10:17:10', '2026-04-09 10:17:10'),
-(129, 1947, NULL, NULL, '2026-04-09', '16:20:00', 'call', 'completed', 'Wa call receive,busy ase pore Kotha bolbe ', '2026-04-16', 67, 'call_back', 67, NULL, '2026-04-09 10:21:21', '2026-04-09 10:21:21'),
-(130, 1390, NULL, NULL, '0026-04-09', '16:20:00', 'call', 'completed', 'didnt pick', NULL, 29, NULL, 29, NULL, '2026-04-09 10:24:47', '2026-04-09 10:24:47'),
-(131, 1391, NULL, NULL, '0026-04-09', '16:28:00', 'call', 'completed', 'nibe na ekhn,pore nile janaben', NULL, 29, NULL, 29, NULL, '2026-04-09 10:28:55', '2026-04-09 10:28:55'),
-(132, 1392, NULL, NULL, '0026-04-09', '16:36:00', 'call', 'completed', 'sleeping, will call', '0026-04-10', 29, 'call_back', 29, NULL, '2026-04-09 10:37:21', '2026-04-09 10:37:21'),
-(133, 1946, NULL, NULL, '2026-04-09', '17:15:00', 'call', 'pending', 'Phone call did not receive, WhatsApp message send ', '2026-04-16', 67, 'call_back', 67, NULL, '2026-04-09 11:16:47', '2026-04-09 11:16:47'),
-(134, 1805, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'pending', '', NULL, 73, NULL, 73, NULL, '2026-04-09 11:20:20', '2026-04-09 11:20:20'),
-(135, 1828, NULL, NULL, '2026-04-16', '00:00:00', 'call', 'pending', '', NULL, 36, NULL, 36, NULL, '2026-04-09 11:28:26', '2026-04-09 11:28:26'),
-(136, 1945, NULL, NULL, '2026-04-09', '17:35:00', 'call', 'pending', 'Call did not receive, WhatsApp message send ', '2026-04-16', 67, 'call_back', 67, NULL, '2026-04-09 11:36:12', '2026-04-09 11:36:12'),
-(138, 1381, NULL, NULL, '0026-04-09', '17:50:00', 'call', 'completed', 'visited himself, not interested', NULL, 29, NULL, 29, NULL, '2026-04-09 11:51:10', '2026-04-09 11:51:10'),
-(139, 1785, NULL, NULL, '0026-04-09', '17:55:00', 'call', 'completed', 'plot niben, not flat', NULL, 29, NULL, 29, NULL, '2026-04-09 11:57:09', '2026-04-09 11:57:09'),
-(140, 1624, NULL, NULL, '2026-04-15', '00:00:00', 'call', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-10 05:18:03', '2026-04-10 05:18:03'),
-(141, 1624, NULL, NULL, '2026-04-15', '00:00:00', 'call', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-10 05:18:19', '2026-04-10 05:18:19'),
-(142, 1060, NULL, NULL, '2026-04-15', '00:00:00', 'call', 'pending', '', '2026-04-20', 77, NULL, 77, NULL, '2026-04-10 06:21:15', '2026-04-10 06:21:15'),
-(143, 807, 7, NULL, '2026-04-11', '00:00:00', 'call', 'completed', 'Will call me later', NULL, 38, NULL, 38, NULL, '2026-04-11 04:26:03', '2026-04-11 04:26:03'),
-(144, 1678, NULL, NULL, '2026-04-11', '00:00:00', 'whatsapp', 'completed', 'Wa followup msg sent', NULL, 38, NULL, 38, NULL, '2026-04-11 04:31:11', '2026-04-11 04:31:11'),
-(145, 1384, NULL, NULL, '0026-04-10', '09:30:00', 'call', 'completed', 'cancelled the visit', '2026-04-11', 29, 'call_back', 29, NULL, '2026-04-11 05:11:04', '2026-04-11 05:11:04'),
-(146, 1384, NULL, NULL, '0026-04-11', '10:35:00', 'whatsapp', 'completed', 'will let me know when he will visit', '0026-04-12', 29, 'call_back', 29, NULL, '2026-04-11 05:12:47', '2026-04-11 05:12:47'),
-(147, 1398, NULL, NULL, '0026-04-10', '10:00:00', 'whatsapp', 'completed', 'want to buy multiple studio aprtmnts', NULL, 29, NULL, 29, NULL, '2026-04-11 05:16:51', '2026-04-11 05:16:51'),
-(148, 1398, NULL, NULL, '0026-04-11', '09:58:00', 'whatsapp', 'completed', 'he will call later, in a meeting', '0026-04-12', 29, 'call_back', 29, NULL, '2026-04-11 05:18:03', '2026-04-11 05:18:03'),
-(149, 1788, NULL, NULL, '0026-04-11', '09:45:00', 'whatsapp', 'completed', 'cut the call, msg sent', NULL, 29, NULL, 29, NULL, '2026-04-11 05:20:11', '2026-04-11 05:20:11'),
-(150, 24, NULL, NULL, '0026-04-11', '09:47:00', 'call', 'completed', 'cut the line, msg sent', NULL, 29, NULL, 29, NULL, '2026-04-11 05:23:46', '2026-04-11 05:23:46'),
-(151, 1662, NULL, NULL, '0026-04-11', '11:44:00', 'call', 'completed', 'free hoye cll dibe', NULL, 29, NULL, 29, NULL, '2026-04-11 05:45:06', '2026-04-11 05:45:06'),
-(152, 1659, NULL, NULL, '0026-04-11', '11:54:00', 'whatsapp', 'completed', 'msg sent', NULL, 29, NULL, 29, NULL, '2026-04-11 05:56:02', '2026-04-11 05:56:02'),
-(153, 1654, NULL, NULL, '0026-04-11', '12:15:00', 'call', 'completed', 'I- extension e nite chan', NULL, 29, NULL, 29, NULL, '2026-04-11 06:17:03', '2026-04-11 06:17:03'),
-(154, 1651, NULL, NULL, '0026-04-11', '12:22:00', 'call', 'completed', 'double unit sent', '0026-04-12', 29, 'call_back', 29, NULL, '2026-04-11 06:24:05', '2026-04-11 06:24:05'),
-(155, 1650, NULL, NULL, '0026-04-11', '12:32:00', 'call', 'completed', 'signature, 12 duplex sent', '0026-04-18', 29, 'call_back', 29, NULL, '2026-04-11 06:34:20', '2026-04-11 06:34:20'),
-(156, 1648, NULL, NULL, '0026-04-11', '12:36:00', 'call', 'completed', 'didnt rcv, voice sent', '0026-04-12', 29, 'call_back', 29, NULL, '2026-04-11 06:38:23', '2026-04-11 06:38:23'),
-(157, 1948, NULL, NULL, '2026-04-11', '22:13:00', 'whatsapp', 'pending', 'WhatsApp message send ', '2026-04-22', 67, 'call_back', 67, NULL, '2026-04-11 16:14:42', '2026-04-11 16:14:42'),
-(158, 28, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', NULL, 69, NULL, 69, NULL, '2026-04-12 04:07:04', '2026-04-12 04:07:04'),
-(159, 27, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', 'uni land nibe flat na', NULL, 69, NULL, 69, NULL, '2026-04-12 04:11:16', '2026-04-12 04:11:16'),
-(160, 25, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', 'now they chaged their paln need ready flat\r\n', NULL, 69, NULL, 69, NULL, '2026-04-12 04:21:19', '2026-04-12 04:21:19'),
-(161, 1796, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'pending', 'dore nai wp msg sent\r\n', NULL, 69, NULL, 69, NULL, '2026-04-12 04:31:45', '2026-04-12 04:31:45'),
-(164, 1800, NULL, NULL, '2026-04-12', '00:00:00', 'whatsapp', 'completed', 'pospect ,duplex\r\n', '2026-04-13', 53, NULL, 53, NULL, '2026-04-12 04:54:07', '2026-04-12 04:54:07'),
-(166, 1794, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', '', '2026-04-13', 53, NULL, 53, NULL, '2026-04-12 06:04:14', '2026-04-12 06:04:14'),
-(168, 1800, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', '', '2026-04-13', 53, 'call_back', 53, NULL, '2026-04-12 09:53:29', '2026-04-12 09:53:29'),
-(169, 1677, NULL, NULL, '2026-04-16', '00:00:00', 'call', 'completed', 'Gave signeture details\r\n\r\n', NULL, 38, NULL, 38, NULL, '2026-04-16 06:23:56', '2026-04-16 06:23:56'),
-(170, 1676, NULL, NULL, '2026-04-16', '00:00:00', 'call', 'completed', 'will call me in his free time', NULL, 38, NULL, 38, NULL, '2026-04-16 06:27:45', '2026-04-16 06:27:45'),
-(171, 806, NULL, NULL, '2026-04-16', '00:00:00', 'whatsapp', 'completed', 'wa followup msg sent\r\n', NULL, 38, NULL, 38, NULL, '2026-04-16 06:31:13', '2026-04-16 06:31:13'),
-(172, 804, NULL, NULL, '2026-04-16', '00:00:00', 'call', 'completed', 'sick right now will talk later', NULL, 38, NULL, 38, NULL, '2026-04-16 06:34:46', '2026-04-16 06:34:46'),
-(173, 803, NULL, NULL, '2026-04-16', '00:00:00', 'whatsapp', 'completed', 'didnt received wa followup msg sent\r\n', NULL, 38, NULL, 38, NULL, '2026-04-16 06:40:50', '2026-04-16 06:40:50'),
-(174, 2194, 7, NULL, '2026-04-19', '00:00:00', 'visit', 'pending', '', NULL, 28, NULL, 28, NULL, '2026-04-16 10:30:16', '2026-04-16 10:30:16'),
-(176, 2311, NULL, NULL, '2026-04-24', '00:00:00', 'whatsapp', 'pending', '', NULL, 55, 'take_time', 55, NULL, '2026-04-17 04:09:44', '2026-04-17 04:09:44'),
-(178, 1636, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', NULL, 59, NULL, 59, NULL, '2026-04-17 04:31:00', '2026-04-17 04:31:00'),
-(179, 999, NULL, NULL, '2026-04-30', '12:00:00', 'whatsapp', 'pending', 'site visit ashar jonno', '2026-04-30', 35, 'site visit', 35, NULL, '2026-04-17 04:31:23', '2026-04-17 04:31:23'),
-(180, 998, NULL, NULL, '2026-04-30', '12:00:00', 'whatsapp', 'pending', 'project brief', '2026-05-07', 35, 'site visit', 35, NULL, '2026-04-17 04:39:46', '2026-04-17 04:39:46'),
-(181, 1944, NULL, NULL, '2026-04-23', '00:00:00', 'call', 'pending', '', '2026-04-22', 67, 'call_back', 67, NULL, '2026-04-17 04:41:37', '2026-04-17 04:41:37'),
-(182, 998, NULL, NULL, '2026-04-30', '11:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-30', 35, 'site visit', 35, NULL, '2026-04-17 04:41:44', '2026-04-17 04:41:44'),
-(183, 997, NULL, NULL, '2026-04-30', '11:00:00', 'whatsapp', 'pending', 'visit alarm', '2026-04-30', 35, 'site visit', 35, NULL, '2026-04-17 04:53:32', '2026-04-17 04:53:32'),
-(184, 1943, NULL, NULL, '2026-04-23', '10:57:00', 'whatsapp', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, '2026-04-17 04:58:05', '2026-04-17 04:58:05'),
-(185, 1942, NULL, NULL, '2026-04-25', '01:02:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, '2026-04-17 05:03:02', '2026-04-17 05:03:02'),
-(186, 1941, NULL, NULL, '2026-04-26', '02:06:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, '2026-04-17 05:07:22', '2026-04-17 05:07:22'),
-(187, 1942, NULL, NULL, '2026-04-24', '04:09:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, '2026-04-17 05:10:03', '2026-04-17 05:10:03'),
-(188, 1940, NULL, NULL, '2026-04-27', '15:12:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, '2026-04-17 05:13:20', '2026-04-17 05:13:20'),
-(190, 1942, NULL, NULL, '2026-04-26', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 67, 'call_back', 67, NULL, '2026-04-17 05:18:41', '2026-04-17 05:18:41'),
-(191, 996, NULL, NULL, '2026-04-30', '11:00:00', 'call', 'pending', 'project discussion', '2026-04-30', 35, 'site visit', 35, NULL, '2026-04-17 05:20:18', '2026-04-17 05:20:18'),
-(192, 995, NULL, NULL, '2026-04-30', '11:30:00', 'call', 'pending', 'project briefing', NULL, 35, NULL, 35, NULL, '2026-04-17 05:24:04', '2026-04-17 05:24:04'),
-(193, 995, NULL, NULL, '2026-04-30', '11:30:00', 'call', 'pending', 'project briefing', '2026-04-30', 35, 'call_back', 35, NULL, '2026-04-17 05:25:42', '2026-04-17 05:25:42'),
-(194, 1642, NULL, NULL, '2026-04-30', '12:00:00', 'call', 'pending', 'project discussion', '2026-04-30', 35, 'call_back', 35, NULL, '2026-04-17 05:29:03', '2026-04-17 05:29:03'),
-(195, 1938, NULL, NULL, '2026-04-27', '00:00:00', 'whatsapp', 'pending', '', '2026-04-27', 67, 'take_time', 67, NULL, '2026-04-17 05:42:56', '2026-04-17 05:42:56'),
-(196, 1937, NULL, NULL, '2026-04-28', '15:21:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, '2026-04-17 05:52:27', '2026-04-17 05:52:27'),
-(197, 1937, NULL, NULL, '2026-04-28', '15:21:00', 'whatsapp', 'pending', '', '2026-04-28', 67, 'call_back', 67, NULL, '2026-04-17 05:53:09', '2026-04-17 05:53:09'),
-(198, 2148, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-04-18', 22, NULL, 22, NULL, '2026-04-17 05:55:09', '2026-04-17 05:55:09'),
-(199, 1936, NULL, NULL, '2026-04-28', '14:00:00', 'whatsapp', 'pending', '', '2026-04-28', 67, 'call_back', 67, NULL, '2026-04-17 06:00:46', '2026-04-17 06:00:46'),
-(200, 1935, NULL, NULL, '2026-04-29', '18:15:00', 'whatsapp', 'pending', '', '2026-04-29', 67, 'call_back', 67, NULL, '2026-04-17 06:16:19', '2026-04-17 06:16:19'),
-(201, 1934, NULL, NULL, '2026-04-29', '16:18:00', 'whatsapp', 'pending', '', '2026-04-29', 67, 'call_back', 67, NULL, '2026-04-17 06:19:06', '2026-04-17 06:19:06'),
-(202, 1933, NULL, NULL, '2026-04-29', '17:23:00', 'call', 'pending', '', '2026-04-29', 67, 'call_back', 67, NULL, '2026-04-17 06:24:06', '2026-04-17 06:24:06'),
-(203, 1932, NULL, NULL, '2026-04-29', '16:40:00', 'whatsapp', 'pending', '', '2026-04-29', 67, 'call_back', 67, NULL, '2026-04-17 06:40:25', '2026-04-17 06:40:25'),
-(204, 1931, NULL, NULL, '2026-04-29', '16:23:00', 'call', 'pending', '', '2026-04-29', 67, 'call_back', 67, NULL, '2026-04-17 06:53:50', '2026-04-17 06:53:50'),
-(205, 1930, NULL, NULL, '2026-04-30', '16:33:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, '2026-04-17 06:59:42', '2026-04-17 06:59:42'),
-(206, 1929, NULL, NULL, '2026-04-30', '17:35:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, '2026-04-17 07:04:51', '2026-04-17 07:04:51'),
-(207, 2122, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', NULL, 19, NULL, 105, NULL, '2026-04-17 08:30:21', '2026-04-17 08:30:21'),
-(208, 581, NULL, NULL, '2026-04-30', '00:00:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, '2026-04-17 09:04:42', '2026-04-17 09:04:42'),
-(209, 580, NULL, NULL, '2026-04-30', '14:40:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, '2026-04-17 09:08:37', '2026-04-17 09:08:37'),
-(210, 579, NULL, NULL, '2026-04-30', '00:00:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, '2026-04-17 09:13:00', '2026-04-17 09:13:00'),
-(211, 578, NULL, NULL, '2026-10-10', '15:46:00', 'call', 'canceled', '', '2026-10-10', 67, 'take_time', 67, NULL, '2026-04-17 09:17:14', '2026-04-17 09:17:14'),
-(212, 577, NULL, NULL, '2026-04-30', '15:54:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, '2026-04-17 09:23:58', '2026-04-17 09:23:58'),
-(213, 576, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', '2026-04-20', 67, 'call_back', 67, NULL, '2026-04-17 09:35:08', '2026-04-17 09:35:08'),
-(214, 576, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', '2026-04-20', 67, 'call_back', 67, NULL, '2026-04-17 09:35:08', '2026-04-17 09:35:08'),
-(215, 575, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', '2026-04-20', 67, 'call_back', 67, NULL, '2026-04-17 09:55:48', '2026-04-17 09:55:48'),
-(216, 1927, NULL, NULL, '0026-04-22', '16:30:00', 'call', 'pending', 'IMO call to brief the project', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-17 12:10:53', '2026-04-17 12:10:53'),
-(217, 1926, NULL, NULL, '2026-04-23', '16:30:00', 'call', 'completed', 'project discusiion on wa....discussed project 830,1230 flat,eid er age deshe eshe janabe', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-17 12:16:17', '2026-04-23 06:56:10'),
-(218, 1641, NULL, NULL, '2026-04-23', '12:00:00', 'whatsapp', 'completed', 'project brief...busy....pore call korte hobe', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 04:23:32', '2026-04-23 05:45:03'),
-(219, 587, NULL, NULL, '2026-04-23', '12:00:00', 'call', 'completed', 'imo project brief.....visit a ashte bola hoyeche..', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 04:52:51', '2026-04-23 05:56:57'),
-(220, 2734, NULL, NULL, '2026-04-21', '00:00:00', 'call', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, '2026-04-18 04:59:07', '2026-04-18 04:59:07'),
-(221, 582, NULL, NULL, '2026-04-23', '11:30:00', 'whatsapp', 'pending', 'project discussion', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 04:59:32', '2026-04-18 04:59:32'),
-(222, 2735, 9, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', '2026-04-24', 68, NULL, 68, NULL, '2026-04-18 05:03:30', '2026-04-18 05:03:30'),
-(223, 1491, NULL, NULL, '2026-04-21', '15:05:00', 'call', 'pending', '', '2026-04-21', 2, NULL, 32, NULL, '2026-04-18 05:04:29', '2026-04-18 05:04:29'),
-(224, 1491, NULL, NULL, '2026-04-21', '15:05:00', 'call', 'pending', '', '2026-04-21', 32, NULL, 32, NULL, '2026-04-18 05:05:21', '2026-04-18 05:05:21'),
-(225, 2354, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, '2026-04-18 05:07:15', '2026-04-18 05:07:15'),
-(226, 584, NULL, NULL, '2026-04-23', '11:30:00', 'call', 'pending', 'imo project discussion', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 05:09:29', '2026-04-18 05:09:29'),
-(227, 584, NULL, NULL, '2026-04-23', '11:30:00', 'call', 'pending', 'imo project discussion', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 05:09:31', '2026-04-18 05:09:31'),
-(228, 2287, NULL, NULL, '2026-04-18', '11:10:00', 'call', 'pending', 'NO RESPONS', '2026-04-25', 78, 'call_back', 78, NULL, '2026-04-18 05:11:31', '2026-04-18 05:11:31'),
-(229, 2353, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, '2026-04-18 05:11:50', '2026-04-18 05:11:50'),
-(230, 2727, NULL, NULL, '2026-04-30', '05:11:00', 'call', 'completed', '', '2026-04-30', 64, NULL, 64, NULL, '2026-04-18 05:12:46', '2026-04-18 05:12:46'),
-(231, 2733, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, '2026-04-18 05:13:25', '2026-04-18 05:13:25'),
-(232, 585, NULL, NULL, '2026-04-23', '12:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 05:14:21', '2026-04-18 05:14:21'),
-(233, 2730, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, '2026-04-18 05:18:21', '2026-04-18 05:18:21'),
-(234, 586, NULL, NULL, '2026-04-23', '15:00:00', 'call', 'completed', 'project briefing.......free time jante chawa hoyeche', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 05:19:17', '2026-04-23 09:05:01'),
-(235, 995, NULL, NULL, '2026-04-23', '11:30:00', 'call', 'pending', 'project briefing', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 05:22:38', '2026-04-18 05:22:38'),
-(236, 2732, NULL, NULL, '2026-04-18', '11:21:00', 'whatsapp', 'pending', '', '2026-04-30', 64, 'call_back', 64, NULL, '2026-04-18 05:23:52', '2026-04-18 05:23:52'),
-(237, 1642, NULL, NULL, '2026-04-23', '11:30:00', 'call', 'pending', 'discussion', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 05:23:58', '2026-04-18 05:23:58'),
-(238, 2351, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, '2026-04-18 05:24:00', '2026-04-18 05:24:00'),
-(239, 1637, NULL, NULL, '2026-04-23', '15:00:00', 'call', 'completed', 'project discussion....free time jante chawa hoyeche', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 05:27:03', '2026-04-23 09:09:01'),
-(240, 2720, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, '2026-04-18 05:27:47', '2026-04-18 05:27:47'),
-(241, 2348, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, '2026-04-18 05:29:15', '2026-04-18 05:29:15'),
-(242, 2352, NULL, NULL, '2026-04-23', '15:00:00', 'call', 'pending', 'project discussion', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 05:32:30', '2026-04-18 05:32:30'),
-(243, 2728, NULL, NULL, '2026-04-18', '11:32:00', 'whatsapp', 'pending', '', '2026-04-30', 64, 'call_back', 64, NULL, '2026-04-18 05:33:05', '2026-04-18 05:33:05'),
-(244, 2719, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, '2026-04-18 05:33:27', '2026-04-18 05:33:27'),
-(245, 2656, NULL, NULL, '2026-04-18', '11:32:00', 'whatsapp', 'pending', 'WA TEX ,VOICE SEND ', '2026-04-25', 78, NULL, 78, NULL, '2026-04-18 05:33:50', '2026-04-18 05:33:50'),
-(246, 2726, NULL, NULL, '2026-04-18', '11:37:00', 'whatsapp', 'pending', '', '2026-04-30', 64, 'call_back', 64, NULL, '2026-04-18 05:37:43', '2026-04-18 05:37:43'),
-(247, 2327, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, '2026-04-18 05:37:46', '2026-04-18 05:37:46'),
-(248, 2654, NULL, NULL, '2026-04-18', '11:36:00', 'whatsapp', 'pending', 'WA TAX , VOICE ,SEND ', '2026-04-26', 78, 'take_time', 78, NULL, '2026-04-18 05:38:52', '2026-04-18 05:38:52'),
-(249, 2724, NULL, NULL, '2026-04-18', '11:39:00', 'whatsapp', 'pending', '', '2026-04-30', 64, 'call_back', 64, NULL, '2026-04-18 05:40:19', '2026-04-18 05:40:19'),
-(250, 2323, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, '2026-04-18 05:44:06', '2026-04-18 05:44:06'),
-(251, 2652, NULL, NULL, '2026-04-18', '12:43:00', 'whatsapp', 'pending', '', '2026-04-26', 78, 'call_back', 78, NULL, '2026-04-18 05:44:36', '2026-04-18 05:44:36'),
-(252, 2707, NULL, NULL, '2026-04-18', '11:45:00', 'call', 'completed', '', '2026-04-30', 64, 'call_back', 64, NULL, '2026-04-18 05:46:25', '2026-04-18 05:46:25'),
-(253, 2322, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, '2026-04-18 05:49:55', '2026-04-18 05:49:55'),
-(254, 2705, NULL, NULL, '2026-04-18', '11:50:00', 'whatsapp', 'pending', '', '2026-04-30', 64, 'call_back', 64, NULL, '2026-04-18 05:51:29', '2026-04-18 05:51:29'),
-(255, 2201, NULL, NULL, '2026-04-18', '11:50:00', 'call', 'completed', 'brochure sent', '0026-04-19', 29, 'call_back', 29, NULL, '2026-04-18 05:52:01', '2026-04-18 05:52:01'),
-(256, 1788, NULL, NULL, '0026-04-18', '11:54:00', 'call', 'completed', 'cut the line, msg sent', NULL, 29, NULL, 29, NULL, '2026-04-18 05:55:07', '2026-04-18 05:55:07'),
-(257, 2350, NULL, NULL, '2026-04-23', '12:00:00', 'call', 'pending', 'husband baire thake...number diyeche kina jante hobe', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 05:57:05', '2026-04-18 05:57:05'),
-(258, 1662, NULL, NULL, '0026-04-18', '11:59:00', 'call', 'completed', 'free hoye office e asbe', NULL, 29, NULL, 29, NULL, '2026-04-18 06:00:08', '2026-04-18 06:00:08'),
-(259, 2703, NULL, NULL, '2026-04-18', '12:05:00', 'call', 'completed', '', '2026-04-30', 64, 'call_back', 64, NULL, '2026-04-18 06:06:05', '2026-04-18 06:06:05'),
-(260, 1659, NULL, NULL, '0026-04-18', '12:06:00', 'call', 'completed', 'free hoye visit schedule korben, ekhon jhamelay achen', NULL, 29, NULL, 29, NULL, '2026-04-18 06:07:23', '2026-04-18 06:07:23'),
-(261, 2033, NULL, NULL, '2026-04-18', '11:00:00', 'call', 'missed', 'DIDNT PICK', '2026-04-19', 14, 'call_back', 14, NULL, '2026-04-18 06:07:56', '2026-04-18 06:07:56'),
-(262, 2349, NULL, NULL, '2026-04-22', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 59, NULL, 59, NULL, '2026-04-18 06:11:44', '2026-04-18 06:11:44'),
-(263, 1788, NULL, NULL, '0026-04-18', '12:10:00', 'whatsapp', 'completed', 'niben na', NULL, 29, NULL, 29, NULL, '2026-04-18 06:14:19', '2026-04-18 06:14:19'),
-(264, 2700, NULL, NULL, '2026-04-18', '12:17:00', 'whatsapp', 'pending', '', '2026-05-02', 64, 'call_back', 64, NULL, '2026-04-18 06:17:56', '2026-04-18 06:17:56'),
-(265, 1648, NULL, NULL, '0026-04-18', '12:20:00', 'call', 'completed', 'didnt pick, msg sent', NULL, 29, NULL, 29, NULL, '2026-04-18 06:22:29', '2026-04-18 06:22:29'),
-(266, 2699, NULL, NULL, '2026-04-18', '15:23:00', 'whatsapp', 'pending', '', '2026-05-02', 64, 'call_back', 64, NULL, '2026-04-18 06:24:10', '2026-04-18 06:24:10'),
-(267, 574, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, '2026-04-18 06:25:37', '2026-04-18 06:25:37'),
-(268, 1647, NULL, NULL, '0026-04-13', '21:28:00', 'whatsapp', 'completed', 'didnt pick, msg sent', NULL, 29, NULL, 29, NULL, '2026-04-18 06:26:39', '2026-04-18 06:26:39'),
-(269, 2338, NULL, NULL, '2026-04-23', '12:00:00', 'call', 'pending', 'visit decision jante hobe', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 06:27:05', '2026-04-18 06:27:05'),
-(270, 2698, NULL, NULL, '2026-04-18', '15:28:00', 'whatsapp', 'pending', '', '2026-05-02', 64, 'call_back', 64, NULL, '2026-04-18 06:28:54', '2026-04-18 06:28:54'),
-(271, 1647, NULL, NULL, '0026-04-18', '12:29:00', 'call', 'completed', 'he will study the brochure and may visit signature heights', '0026-04-19', 29, 'call_back', 29, NULL, '2026-04-18 06:31:06', '2026-04-18 06:31:06'),
-(272, 2342, NULL, NULL, '2026-04-23', '15:00:00', 'call', 'pending', 'wa project briefing', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 06:38:08', '2026-04-18 06:38:08'),
-(273, 1392, NULL, NULL, '0026-04-18', '12:37:00', 'call', 'completed', 'brochure check kore janaben', NULL, 29, NULL, 29, NULL, '2026-04-18 06:38:22', '2026-04-18 06:38:22'),
-(274, 573, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'pemium homes name sunei kete dise', '2026-04-21', 67, 'call_back', 67, NULL, '2026-04-18 06:40:40', '2026-04-21 06:04:49'),
-(275, 1395, NULL, NULL, '0026-04-18', '12:40:00', 'call', 'completed', 'didnt pick', NULL, 29, NULL, 29, NULL, '2026-04-18 06:41:16', '2026-04-18 06:41:16'),
-(276, 2339, NULL, NULL, '2026-04-23', '15:00:00', 'call', 'pending', 'project discussion', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 06:42:41', '2026-04-18 06:42:41'),
-(277, 2718, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, '2026-04-18 06:43:31', '2026-04-18 06:43:31'),
-(278, 2331, NULL, NULL, '2026-04-23', '12:30:00', 'whatsapp', 'completed', 'product discussion....project discussed,brochure sent,janabe pore', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 06:47:01', '2026-04-23 05:53:03'),
-(279, 2717, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, '2026-04-18 06:50:59', '2026-04-18 06:50:59'),
-(280, 1925, NULL, NULL, '2026-04-23', '15:30:00', 'whatsapp', 'completed', 'project discussion.....kaje ache, free hoye call korbe', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 06:51:08', '2026-04-23 08:58:53'),
-(281, 435, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-02', 67, 'call_back', 67, NULL, '2026-04-18 06:56:09', '2026-04-18 06:56:09'),
-(283, 3249, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', '', NULL, 31, NULL, 31, NULL, '2026-04-18 08:12:21', '2026-04-18 08:12:21'),
-(284, 3215, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, '2026-04-18 08:42:47', '2026-04-18 08:42:47'),
-(285, 3199, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', 'wa text sent', '2026-04-21', 53, 'call_back', 53, NULL, '2026-04-18 08:43:15', '2026-04-18 08:43:15'),
-(286, 3213, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, '2026-04-18 08:45:14', '2026-04-18 08:45:14'),
-(287, 3210, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, '2026-04-18 08:47:18', '2026-04-18 08:47:18'),
-(288, 3214, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, '2026-04-18 08:58:50', '2026-04-18 08:58:50'),
-(289, 3212, 7, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'Will call free time', NULL, 28, NULL, 28, NULL, '2026-04-18 09:01:46', '2026-04-18 09:01:46'),
-(290, 1800, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', 'call not pick', '2026-04-19', 53, 'call_back', 53, NULL, '2026-04-18 09:10:10', '2026-04-18 09:10:10'),
-(291, 3211, 7, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'Didn\'t pick, ', NULL, 28, NULL, 28, NULL, '2026-04-18 09:11:14', '2026-04-18 09:11:14'),
-(292, 1794, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'ai week a time hba nh , avarage client duplex', '2026-04-26', 53, 'call_back', 53, NULL, '2026-04-18 09:15:26', '2026-04-18 09:15:26'),
-(293, 3209, 7, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'Didn\'t pick ', NULL, 28, NULL, 28, NULL, '2026-04-18 09:19:12', '2026-04-18 09:19:12'),
-(294, 3211, 9, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'Talk about Crown, will inform', NULL, 28, NULL, 28, NULL, '2026-04-18 09:20:36', '2026-04-18 09:20:36'),
-(295, 1277, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'call not pick', '2026-04-20', 53, NULL, 53, NULL, '2026-04-18 09:26:03', '2026-04-18 09:26:03'),
-(296, 2924, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'Will call in free time', NULL, 28, NULL, 28, NULL, '2026-04-18 09:29:48', '2026-04-18 09:29:48'),
-(297, 1275, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'not interested\r\n', NULL, 53, NULL, 53, NULL, '2026-04-18 09:37:39', '2026-04-18 09:37:39'),
-(298, 1274, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'someone already contract him ,not interested', NULL, 53, NULL, 53, NULL, '2026-04-18 09:42:14', '2026-04-18 09:42:14'),
-(299, 1640, NULL, NULL, '2026-04-23', '15:20:00', 'call', 'completed', 'project discussion......free time jante chawa hoyeche', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 10:08:12', '2026-04-23 09:01:34'),
-(300, 1639, NULL, NULL, '2026-04-19', '16:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-19', 35, 'call_back', 35, NULL, '2026-04-18 10:16:32', '2026-04-18 10:16:32'),
-(301, 994, NULL, NULL, '2026-04-23', '16:00:00', 'call', 'completed', 'imo project discussion.....wa greetings sent', '2026-04-23', 35, 'take_time', 35, NULL, '2026-04-18 10:21:25', '2026-04-23 07:03:47'),
-(302, 993, NULL, NULL, '2026-04-23', '16:00:00', 'call', 'completed', 'imo project discussion......free time jante chawa hoyeche', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 10:27:52', '2026-04-23 06:59:56'),
-(303, 992, NULL, NULL, '2026-04-23', '15:45:00', 'call', 'completed', 'imo project discusiion.....WA greetings sent', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 10:32:41', '2026-04-23 07:07:21'),
-(304, 2324, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'Will caome to BD in July26.', '2026-07-01', 23, 'site visit', 23, NULL, '2026-04-18 10:44:00', '2026-04-18 10:44:00'),
-(305, 3532, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-02', 67, 'call_back', 67, NULL, '2026-04-18 10:54:07', '2026-04-18 10:54:07'),
-(306, 991, NULL, NULL, '2026-04-23', '15:40:00', 'whatsapp', 'completed', 'project briefing....free time jante chawa hoyeche..', '2026-04-23', 35, 'call_back', 35, NULL, '2026-04-18 10:54:31', '2026-04-23 08:41:05'),
-(307, 2033, NULL, NULL, '2026-04-19', '19:03:00', 'call', 'pending', 'Missed', '2026-04-19', 14, 'call_back', 14, NULL, '2026-04-18 11:04:27', '2026-04-18 11:04:27'),
-(308, 3531, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', NULL, 67, 'call_back', 67, NULL, '2026-04-18 11:18:58', '2026-04-18 11:18:58'),
-(309, 2716, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, '2026-04-18 11:21:13', '2026-04-18 11:21:13'),
-(310, 2729, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, '2026-04-18 11:23:27', '2026-04-18 11:23:27'),
-(311, 3530, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, '2026-04-18 11:43:50', '2026-04-18 11:43:50'),
-(312, 3568, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-19 04:32:49', '2026-04-19 04:32:49'),
-(313, 3500, NULL, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'completed', 'WA text', '2026-04-21', 23, NULL, 23, NULL, '2026-04-19 04:55:56', '2026-04-19 04:55:56'),
-(314, 3564, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-19 05:06:37', '2026-04-19 05:06:37'),
-(315, 3560, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-19 05:08:49', '2026-04-19 05:08:49');
-INSERT INTO `lead_follow_ups` (`id`, `lead_id`, `project_id`, `flat_id`, `follow_up_date`, `follow_up_time`, `follow_up_type`, `status`, `discussion_note`, `next_follow_up_date`, `assigned_with`, `next_action`, `created_by`, `deleted_at`, `created_at`, `updated_at`) VALUES
-(316, 3499, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'No response', '2026-04-20', 23, NULL, 23, NULL, '2026-04-19 05:20:40', '2026-04-19 05:20:40'),
-(317, 3554, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, '2026-04-19 05:29:18', '2026-04-19 05:29:18'),
-(318, 3550, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, 'call_back', 77, NULL, '2026-04-19 05:34:38', '2026-04-19 05:34:38'),
-(319, 3546, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-19 05:44:21', '2026-04-19 05:44:21'),
-(320, 2278, NULL, NULL, '2026-04-20', '11:58:00', 'call', 'pending', '', '2026-04-22', 58, NULL, 58, NULL, '2026-04-19 05:58:54', '2026-04-19 05:58:54'),
-(321, 2277, 12, NULL, '2026-04-19', '12:02:00', 'call', 'pending', '', '2026-04-20', 58, NULL, 58, NULL, '2026-04-19 06:03:52', '2026-04-19 06:03:52'),
-(322, 2272, NULL, NULL, '2026-04-19', '12:05:00', 'call', 'pending', '', '2026-04-20', 58, NULL, 58, NULL, '2026-04-19 06:06:15', '2026-04-19 06:06:15'),
-(323, 3545, 12, NULL, '2026-04-19', '00:00:00', 'visit', 'pending', 'visit korese. janabe.', '2026-04-21', 77, 'site visit', 77, NULL, '2026-04-19 06:22:43', '2026-04-21 11:06:11'),
-(324, 3544, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-19 06:44:51', '2026-04-19 06:44:51'),
-(325, 1878, NULL, NULL, '2026-04-20', '12:46:00', 'call', 'pending', '', '2026-04-20', 58, NULL, 58, NULL, '2026-04-19 06:46:42', '2026-04-19 06:46:42'),
-(326, 3543, 12, NULL, '2026-04-19', '00:00:00', 'call', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-19 06:48:47', '2026-04-19 06:48:47'),
-(327, 3537, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-19', 77, NULL, 77, NULL, '2026-04-19 06:55:31', '2026-04-19 06:55:31'),
-(328, 3537, NULL, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-19 06:56:17', '2026-04-19 06:56:17'),
-(329, 3536, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-19 07:01:37', '2026-04-19 07:01:37'),
-(330, 2715, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-19 07:48:31', '2026-04-19 07:48:31'),
-(331, 3744, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'WA sent, will call later', NULL, 28, NULL, 28, NULL, '2026-04-19 08:25:22', '2026-04-19 08:25:22'),
-(332, 3743, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '01937824119-wa, will call later', NULL, 28, NULL, 28, NULL, '2026-04-19 08:30:27', '2026-04-19 08:30:27'),
-(333, 3740, 7, NULL, '2026-04-19', '00:00:00', 'call', 'canceled', 'Wants 4 bed in 17 katha', NULL, 28, NULL, 28, NULL, '2026-04-19 08:44:51', '2026-04-19 08:44:51'),
-(334, 2281, NULL, NULL, '2026-04-19', '14:47:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, '2026-04-19 08:48:14', '2026-04-19 08:48:14'),
-(335, 4111, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'office asa kotha bolba , 22 april call debo location sent ', '2026-04-22', 53, 'site visit', 53, NULL, '2026-04-19 08:55:32', '2026-04-19 08:55:32'),
-(336, 3738, 7, NULL, '2026-04-21', '00:00:00', 'call', 'pending', 'Send sign details, will inform soon', NULL, 28, NULL, 28, NULL, '2026-04-19 08:58:01', '2026-04-19 08:58:01'),
-(337, 3737, 7, NULL, '2026-04-21', '00:00:00', 'call', 'pending', 'Send sign and arma details, she\'ll check and inform', NULL, 28, NULL, 28, NULL, '2026-04-19 09:16:20', '2026-04-19 09:16:20'),
-(338, 3736, 7, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'Land share price onk beshii ', NULL, 28, NULL, 28, NULL, '2026-04-19 09:25:40', '2026-04-19 09:25:40'),
-(339, 3735, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'Send Armania details, he\'ll check and inform', NULL, 28, NULL, 28, NULL, '2026-04-19 09:58:36', '2026-04-19 09:58:36'),
-(340, 3734, 7, NULL, '2026-04-21', '00:00:00', 'call', 'pending', 'Sent sign details, he\'ll check and inform', NULL, 28, NULL, 28, NULL, '2026-04-19 10:04:07', '2026-04-19 10:04:07'),
-(341, 3733, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'Number off, WA sent ', NULL, 28, NULL, 28, NULL, '2026-04-19 10:08:14', '2026-04-19 10:08:14'),
-(342, 3731, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'Cut the call, WA sent ', NULL, 28, NULL, 28, NULL, '2026-04-19 10:17:57', '2026-04-19 10:17:57'),
-(343, 3730, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'Didn\'t pick, WA sent ', NULL, 28, NULL, 28, NULL, '2026-04-19 10:21:07', '2026-04-19 10:21:07'),
-(344, 3739, 7, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'WA sent, waiting for his reply', NULL, 28, NULL, 28, NULL, '2026-04-19 10:25:37', '2026-04-19 10:25:37'),
-(345, 3742, 7, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'wA sent, waiting for his reply ', NULL, 28, NULL, 28, NULL, '2026-04-19 10:27:39', '2026-04-19 10:27:39'),
-(346, 4111, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', '21 tarik visit ', '2026-04-21', 53, 'site visit', 53, NULL, '2026-04-19 10:30:37', '2026-04-19 10:30:37'),
-(347, 4110, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', '', '2026-04-22', 53, 'call_back', 53, NULL, '2026-04-19 10:38:55', '2026-04-19 10:38:55'),
-(348, 4109, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'call not pick', '2026-04-20', 53, 'call_back', 53, NULL, '2026-04-19 10:42:58', '2026-04-19 10:42:58'),
-(349, 4108, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'busy', '2026-04-20', 53, 'call_back', 53, NULL, '2026-04-19 10:45:31', '2026-04-19 10:45:31'),
-(350, 4106, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'meeting a', '2026-04-21', 53, 'call_back', 53, NULL, '2026-04-19 10:52:38', '2026-04-21 10:15:50'),
-(351, 4105, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'busy', '2026-04-21', 53, NULL, 53, NULL, '2026-04-19 10:56:18', '2026-04-19 10:56:18'),
-(352, 4104, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'busy brocheure sent', '2026-04-21', 53, NULL, 53, NULL, '2026-04-19 11:00:35', '2026-04-19 11:00:35'),
-(353, 4103, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'brocheure sent', '2026-04-21', 53, NULL, 53, NULL, '2026-04-19 11:07:37', '2026-04-19 11:07:37'),
-(354, 4102, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'call not pick', '2026-04-21', 53, NULL, 53, NULL, '2026-04-19 11:15:23', '2026-04-19 11:15:23'),
-(355, 4101, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'busy', '2026-04-21', 53, NULL, 53, NULL, '2026-04-19 11:19:38', '2026-04-19 11:19:38'),
-(356, 4100, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'all details niya kotha hoitasa', '2026-04-23', 53, NULL, 53, NULL, '2026-04-19 11:30:23', '2026-04-23 04:10:37'),
-(357, 4098, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'call not pick wa text sent ', '2026-04-20', 53, NULL, 53, NULL, '2026-04-19 11:34:17', '2026-04-19 11:34:17'),
-(358, 4099, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'add sent', '2026-04-22', 53, NULL, 53, NULL, '2026-04-19 11:39:14', '2026-04-19 11:39:14'),
-(359, 3529, NULL, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, '2026-04-20 03:49:20', '2026-04-20 03:49:20'),
-(360, 3524, NULL, NULL, '2026-04-24', '11:30:00', 'whatsapp', 'completed', 'project discussion....free time jante chawa hoyeche..', '2026-04-24', 35, 'call_back', 35, NULL, '2026-04-20 05:06:24', '2026-04-24 04:19:55'),
-(361, 3523, NULL, NULL, '2026-04-24', '14:30:00', 'call', 'completed', 'imo call,project discussion...free time jante chawa hoyeche', '2026-04-24', 35, 'call_back', 35, NULL, '2026-04-20 05:12:22', '2026-04-24 04:46:55'),
-(362, 3522, NULL, NULL, '2026-04-24', '11:30:00', 'call', 'completed', 'call on phone for project brief.....monthly 1 lac installment flat + shop, 830+227(4thfloor),2/1 din er vitor janabe', '2026-04-24', 35, 'call_back', 35, NULL, '2026-04-20 05:21:15', '2026-04-24 04:12:27'),
-(363, 4109, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'call not pick', NULL, 53, NULL, 53, NULL, '2026-04-20 05:36:25', '2026-04-20 05:36:25'),
-(364, 3570, 12, NULL, '2026-04-20', '11:38:00', 'whatsapp', 'pending', '', '2026-05-03', 64, 'call_back', 64, NULL, '2026-04-20 05:38:43', '2026-04-20 05:38:43'),
-(365, 4108, NULL, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'completed', 'wa text sent', NULL, 53, NULL, 53, NULL, '2026-04-20 05:48:35', '2026-04-20 05:48:35'),
-(366, 1277, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'completed', '', NULL, 53, NULL, 53, NULL, '2026-04-20 05:50:31', '2026-04-20 05:50:31'),
-(367, 3932, NULL, NULL, '2026-04-20', '16:15:00', 'whatsapp', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, '2026-04-20 05:50:39', '2026-04-20 05:50:39'),
-(368, 3559, 12, NULL, '2026-04-20', '11:50:00', 'whatsapp', 'pending', '', '2026-05-03', 64, 'call_back', 64, NULL, '2026-04-20 05:51:39', '2026-04-20 05:51:39'),
-(369, 3931, NULL, NULL, '2026-04-20', '11:54:00', 'whatsapp', 'pending', '', '2026-05-02', 67, 'call_back', 67, NULL, '2026-04-20 05:54:38', '2026-04-20 05:54:38'),
-(370, 3520, NULL, NULL, '2026-04-24', '11:45:00', 'call', 'completed', 'project briefing....free time jante chawa hoyeche', '2026-04-24', 35, 'call_back', 35, NULL, '2026-04-20 05:55:24', '2026-04-24 04:24:46'),
-(371, 3558, 12, NULL, '2026-04-20', '11:55:00', 'call', 'pending', '', '2026-05-03', 64, 'call_back', 64, NULL, '2026-04-20 05:55:47', '2026-04-20 05:55:47'),
-(372, 3519, NULL, NULL, '2026-04-24', '14:30:00', 'call', 'completed', 'imo project discussion....free time jante chawa hoyeche', '2026-04-24', 35, 'call_back', 35, NULL, '2026-04-20 06:00:08', '2026-04-24 10:25:51'),
-(373, 3557, 12, NULL, '2026-04-20', '12:02:00', 'call', 'pending', '', '2026-05-04', 64, 'call_back', 64, NULL, '2026-04-20 06:02:33', '2026-04-20 06:02:33'),
-(374, 3930, NULL, NULL, '2026-04-20', '12:12:00', 'whatsapp', 'completed', '', '2026-05-02', 67, 'call_back', 67, NULL, '2026-04-20 06:12:45', '2026-04-20 06:12:45'),
-(375, 3556, 12, NULL, '2026-04-20', '12:14:00', 'call', 'completed', '', '2026-05-04', 64, 'call_back', 64, NULL, '2026-04-20 06:14:27', '2026-04-20 06:14:27'),
-(376, 3929, NULL, NULL, '2026-04-20', '15:16:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, '2026-04-20 06:17:10', '2026-04-20 06:17:10'),
-(377, 3928, NULL, NULL, '2026-04-20', '14:20:00', 'whatsapp', 'canceled', '', '2026-09-26', 67, 'take_time', 67, NULL, '2026-04-20 06:20:39', '2026-04-20 06:20:39'),
-(378, 4008, 12, NULL, '2026-04-23', '12:21:00', 'call', 'pending', '1230 or Ground floor electronic shop \r\nTotal pay', '2026-04-23', 58, NULL, 58, NULL, '2026-04-20 06:23:15', '2026-04-20 06:23:15'),
-(379, 3927, NULL, NULL, '2026-05-02', '09:35:00', 'whatsapp', 'pending', '', '2026-05-02', 67, 'call_back', 67, NULL, '2026-04-20 06:24:44', '2026-04-20 06:24:44'),
-(380, 4007, 12, NULL, '2026-04-23', '12:25:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, '2026-04-20 06:26:15', '2026-04-20 06:26:15'),
-(381, 3926, NULL, NULL, '2026-04-20', '13:28:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, '2026-04-20 06:28:46', '2026-04-20 06:28:46'),
-(382, 4006, 12, NULL, '2026-04-23', '12:30:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, '2026-04-20 06:30:27', '2026-04-20 06:30:27'),
-(383, 3925, NULL, NULL, '2026-04-20', '12:33:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, '2026-04-20 06:34:14', '2026-04-20 06:34:14'),
-(384, 3547, 12, NULL, '2026-04-20', '12:34:00', 'call', 'completed', '', '2026-05-04', 64, 'call_back', 64, NULL, '2026-04-20 06:34:46', '2026-04-20 06:34:46'),
-(385, 4004, 12, NULL, '2026-04-23', '12:35:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, '2026-04-20 06:35:25', '2026-04-20 06:35:25'),
-(386, 3518, NULL, NULL, '2026-04-24', '12:00:00', 'whatsapp', 'completed', 'project decision......unar dorkar hole uni nije theke call korbe,dont call him again', '2026-04-24', 35, 'call_back', 35, NULL, '2026-04-20 06:36:55', '2026-04-24 04:40:52'),
-(387, 3924, NULL, NULL, '2026-04-20', '12:38:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, '2026-04-20 06:38:43', '2026-04-20 06:38:43'),
-(388, 4003, 12, NULL, '2026-04-23', '12:39:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, '2026-04-20 06:40:39', '2026-04-20 06:40:39'),
-(389, 3923, NULL, NULL, '2026-04-20', '12:42:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, '2026-04-20 06:43:25', '2026-04-20 06:43:25'),
-(390, 3542, 12, NULL, '2026-04-20', '12:45:00', 'call', 'completed', '', '2026-05-04', 64, 'call_back', 64, NULL, '2026-04-20 06:46:34', '2026-04-20 06:46:34'),
-(391, 3541, 12, NULL, '2026-04-20', '12:52:00', 'call', 'completed', '', '2026-05-04', 64, 'call_back', 64, NULL, '2026-04-20 06:53:12', '2026-04-20 06:53:12'),
-(392, 4002, 12, NULL, '2026-04-23', '12:53:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, '2026-04-20 06:53:46', '2026-04-20 06:53:46'),
-(393, 3517, NULL, NULL, '2026-04-24', '15:00:00', 'call', 'completed', 'project discussion...free time jante chawa hoyeche', '2026-04-24', 35, 'call_back', 35, NULL, '2026-04-20 06:55:03', '2026-04-24 10:35:50'),
-(394, 3540, 12, NULL, '2026-04-20', '13:01:00', 'whatsapp', 'completed', '', '2026-05-05', 64, 'call_back', 64, NULL, '2026-04-20 07:02:00', '2026-04-20 07:02:00'),
-(395, 3498, NULL, NULL, '2026-04-20', '12:55:00', 'whatsapp', 'pending', '', '2026-05-04', 67, 'call_back', 67, NULL, '2026-04-20 07:04:11', '2026-04-20 07:04:11'),
-(396, 3902, NULL, NULL, '2026-04-24', '12:00:00', 'call', 'completed', 'project visit schedule....busy,pore kotha bolbe', '2026-04-24', 35, 'call_back', 35, NULL, '2026-04-20 07:06:55', '2026-04-24 04:34:56'),
-(397, 2696, 12, NULL, '2026-04-20', '13:11:00', 'whatsapp', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, '2026-04-20 07:11:46', '2026-04-20 07:11:46'),
-(398, 3497, NULL, NULL, '2026-04-20', '13:17:00', 'whatsapp', 'pending', '', '2026-05-04', 67, 'call_back', 67, NULL, '2026-04-20 07:18:11', '2026-04-20 07:18:11'),
-(399, 2321, 12, NULL, '2026-04-20', '13:18:00', 'call', 'completed', '', '2026-05-05', 64, 'call_back', 64, NULL, '2026-04-20 07:18:56', '2026-04-20 07:18:56'),
-(400, 3496, NULL, NULL, '2026-04-20', '13:22:00', 'whatsapp', 'pending', '', '2026-05-04', 67, 'call_back', 67, NULL, '2026-04-20 07:22:28', '2026-04-20 07:22:28'),
-(401, 2320, 12, NULL, '2026-04-20', '13:22:00', 'whatsapp', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, '2026-04-20 07:22:59', '2026-04-20 07:22:59'),
-(402, 2318, 12, NULL, '2026-04-20', '13:26:00', 'whatsapp', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, '2026-04-20 07:27:14', '2026-04-20 07:27:14'),
-(403, 4001, NULL, NULL, '2026-04-23', '13:27:00', 'call', 'pending', '580 & ground floor grocery or bakery shop. Will discuss with family thrn let me know', NULL, 58, NULL, 58, NULL, '2026-04-20 07:28:04', '2026-04-20 07:28:04'),
-(404, 4000, 12, NULL, '2026-04-23', '13:31:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, '2026-04-20 07:32:16', '2026-04-20 07:32:16'),
-(405, 2317, 12, NULL, '2026-04-20', '13:36:00', 'call', 'completed', '', '2026-05-05', 64, 'call_back', 64, NULL, '2026-04-20 07:37:20', '2026-04-20 07:37:20'),
-(406, 4005, 12, NULL, '2026-04-23', '13:44:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, '2026-04-20 07:45:12', '2026-04-20 07:45:12'),
-(407, 4005, 12, NULL, '2026-04-23', '13:45:00', 'call', 'pending', 'Not very interested need to follow up flat pallabi ', NULL, 58, NULL, 58, NULL, '2026-04-20 07:46:07', '2026-04-20 07:46:07'),
-(408, 2316, 12, NULL, '2026-04-20', '13:46:00', 'call', 'completed', '', '2026-05-06', 64, 'call_back', 64, NULL, '2026-04-20 07:47:16', '2026-04-20 07:47:16'),
-(409, 3999, NULL, NULL, '2026-04-23', '13:47:00', 'call', 'pending', 'Don\'t have wa, need to call ', NULL, 58, NULL, 58, NULL, '2026-04-20 07:48:05', '2026-04-20 07:48:05'),
-(410, 3495, NULL, NULL, '2026-04-20', '13:49:00', 'call', 'completed', 'mgs send to whatsapp,n response', '2026-04-23', 67, 'call_back', 67, NULL, '2026-04-20 07:49:30', '2026-04-23 04:31:05'),
-(411, 2315, 12, NULL, '2026-04-20', '13:49:00', 'whatsapp', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, '2026-04-20 07:50:04', '2026-04-20 07:50:04'),
-(412, 3998, NULL, NULL, '2026-04-23', '13:57:00', 'call', 'pending', 'Will inform me after seeing brochure ', NULL, 58, NULL, 58, NULL, '2026-04-20 07:57:52', '2026-04-20 07:57:52'),
-(413, 3997, NULL, NULL, '2026-04-23', '14:02:00', 'call', 'pending', 'Didn\'t pick call text send ', NULL, 58, NULL, 58, NULL, '2026-04-20 08:02:49', '2026-04-20 08:02:49'),
-(414, 3494, NULL, NULL, '2026-04-20', '14:04:00', 'whatsapp', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, '2026-04-20 08:05:21', '2026-04-20 08:05:21'),
-(415, 3996, NULL, NULL, '2026-04-23', '14:06:00', 'call', 'pending', 'Asked to call 10 pm', NULL, 58, NULL, 58, NULL, '2026-04-20 08:06:20', '2026-04-20 08:06:20'),
-(416, 3493, NULL, NULL, '2026-04-20', '14:10:00', 'whatsapp', 'pending', '', '2026-05-05', 67, 'call_back', 67, NULL, '2026-04-20 08:10:46', '2026-04-20 08:10:46'),
-(417, 3492, NULL, NULL, '2026-04-20', '14:37:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, '2026-04-20 08:38:19', '2026-04-20 08:38:19'),
-(418, 3995, NULL, NULL, '2026-04-23', '14:38:00', 'call', 'pending', 'Didn\'t pick call, don\'t have wa ', NULL, 58, NULL, 58, NULL, '2026-04-20 08:38:41', '2026-04-20 08:38:41'),
-(419, 3994, NULL, NULL, '2026-04-23', '14:46:00', 'call', 'pending', 'Didn\'t pick call text send ', NULL, 58, NULL, 58, NULL, '2026-04-20 08:47:14', '2026-04-20 08:47:14'),
-(420, 2313, 12, NULL, '2026-04-20', '14:54:00', 'call', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, '2026-04-20 08:54:29', '2026-04-20 08:54:29'),
-(421, 1601, NULL, NULL, '2026-04-20', '14:55:00', 'call', 'pending', 'Didn\'t pick call text send ', '2026-04-23', 58, NULL, 58, NULL, '2026-04-20 08:56:23', '2026-04-20 08:56:23'),
-(422, 3528, NULL, NULL, '2026-04-23', '10:10:00', 'call', 'completed', 'mgs send to whatsapp,no response', '2026-04-23', 67, 'call_back', 67, NULL, '2026-04-20 09:11:19', '2026-04-23 04:26:05'),
-(423, 3527, NULL, NULL, '2026-04-20', '15:17:00', 'whatsapp', 'pending', '', '2026-05-04', 67, 'call_back', 67, NULL, '2026-04-20 09:18:45', '2026-04-20 09:18:45'),
-(424, 3526, NULL, NULL, '2026-04-20', '15:29:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, '2026-04-20 09:29:32', '2026-04-20 09:29:32'),
-(425, 3525, NULL, NULL, '2026-04-20', '15:30:00', 'whatsapp', 'pending', '', '2026-04-20', 67, 'call_back', 67, NULL, '2026-04-20 09:32:27', '2026-04-20 09:32:27'),
-(426, 3969, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, '2026-04-20 10:20:05', '2026-04-20 10:20:05'),
-(427, 3968, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, '2026-04-20 10:50:27', '2026-04-20 10:50:27'),
-(428, 3967, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, '2026-04-20 10:52:45', '2026-04-20 10:52:45'),
-(429, 3966, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, '2026-04-20 10:55:16', '2026-04-20 10:55:16'),
-(430, 3965, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, '2026-04-20 10:57:44', '2026-04-20 10:57:44'),
-(431, 3964, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, '2026-04-20 11:01:53', '2026-04-20 11:01:53'),
-(432, 3963, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-20', 77, NULL, 77, NULL, '2026-04-20 11:05:09', '2026-04-20 11:05:09'),
-(433, 3962, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, '2026-04-20 11:07:21', '2026-04-20 11:07:21'),
-(434, 3961, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, '2026-04-20 11:08:58', '2026-04-20 11:08:58'),
-(435, 3960, 12, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, '2026-04-20 11:21:07', '2026-04-20 11:21:07'),
-(436, 3951, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, '2026-04-20 11:23:16', '2026-04-20 11:23:16'),
-(437, 3958, 12, NULL, '2026-04-21', '10:42:00', 'whatsapp', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, '2026-04-21 04:43:06', '2026-04-21 04:43:06'),
-(438, 2276, 12, NULL, '2026-04-21', '10:41:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, '2026-04-21 04:43:09', '2026-04-21 04:43:09'),
-(439, 2279, NULL, NULL, '2026-04-21', '18:30:00', 'call', 'pending', 'Don\'t have wa, Asked to call evening ', '2026-04-22', 58, NULL, 58, NULL, '2026-04-21 04:46:13', '2026-04-21 04:46:13'),
-(440, 3956, 12, NULL, '2026-04-21', '10:46:00', 'whatsapp', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, '2026-04-21 04:46:49', '2026-04-21 04:46:49'),
-(441, 2275, NULL, NULL, '2026-04-21', '00:47:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, '2026-04-21 04:48:07', '2026-04-21 04:48:07'),
-(442, 3955, 12, NULL, '2026-04-21', '10:54:00', 'call', 'completed', '', '2026-05-06', 64, 'call_back', 64, NULL, '2026-04-21 04:54:19', '2026-04-21 04:54:19'),
-(443, 3954, 12, NULL, '2026-04-21', '10:58:00', 'whatsapp', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, '2026-04-21 04:58:37', '2026-04-21 04:58:37'),
-(444, 2271, NULL, NULL, '2026-04-21', '13:00:00', 'call', 'pending', '', '2026-04-24', 58, NULL, 58, NULL, '2026-04-21 04:58:59', '2026-04-21 04:58:59'),
-(445, 2268, NULL, NULL, '2026-04-21', '13:02:00', 'call', 'pending', '', '2026-04-24', 58, NULL, 58, NULL, '2026-04-21 05:03:15', '2026-04-21 05:03:15'),
-(446, 3938, 12, NULL, '2026-04-21', '11:14:00', 'call', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, '2026-04-21 05:14:25', '2026-04-21 05:14:25'),
-(447, 3898, NULL, NULL, '2026-04-25', '12:00:00', 'whatsapp', 'completed', 'project discussion....free time jante chawa hoyeche', '2026-04-25', 35, 'call_back', 35, NULL, '2026-04-21 05:24:51', '2026-04-25 04:31:25'),
-(448, 573, NULL, NULL, '2026-04-21', '11:33:00', 'call', 'completed', 'premium homes namw sune kete dise,,', '2026-05-07', 67, 'call_back', 67, NULL, '2026-04-21 06:04:13', '2026-04-21 06:04:13'),
-(449, 3895, NULL, NULL, '2026-04-24', '15:00:00', 'call', 'completed', 'visit decision decision....free time jante chawa hoyeche', '2026-04-24', 35, 'call_back', 35, NULL, '2026-04-21 06:06:54', '2026-04-24 10:42:58'),
-(450, 3894, NULL, NULL, '2026-04-25', '09:45:00', 'whatsapp', 'completed', 'project brief....1230 flat,layout,pricing,location sent,janabe baby er sathe alochna kore', '2026-04-25', 35, 'call_back', 35, NULL, '2026-04-21 06:14:02', '2026-04-25 04:16:55'),
-(451, 3896, NULL, NULL, '2026-04-25', '15:00:00', 'whatsapp', 'completed', 'project discussion...wa free time jante chawa hoyeche', '2026-04-25', 35, 'call_back', 35, NULL, '2026-04-21 06:19:18', '2026-04-25 09:58:28'),
-(452, 3897, NULL, NULL, '2026-04-25', '15:00:00', 'whatsapp', 'completed', 'project discussion....fre time jante chawa hoyeche', '2026-04-25', 35, 'call_back', 35, NULL, '2026-04-21 06:23:35', '2026-04-25 10:01:17'),
-(453, 3901, NULL, NULL, '2026-04-25', '12:00:00', 'call', 'completed', 'visit discussion....free time jante chawa hoyeche', '2026-04-25', 35, 'call_back', 35, NULL, '2026-04-21 06:24:48', '2026-04-25 10:11:06'),
-(454, 3900, NULL, NULL, '2026-04-25', '15:00:00', 'call', 'completed', 'imo call: video deklhe kono decision niyeche kina jante hobe...decision jante chawa hhoyeche', '2026-04-25', 35, 'call_back', 35, NULL, '2026-04-21 06:45:49', '2026-04-25 10:05:53'),
-(455, 3899, NULL, NULL, '2026-04-25', '15:30:00', 'whatsapp', 'completed', 'project discussion...free time jante chawa hoyeche', '2026-04-25', 35, 'call_back', 35, NULL, '2026-04-21 06:49:17', '2026-04-25 09:57:23'),
-(456, 1607, NULL, NULL, '2026-04-24', '12:51:00', 'call', 'pending', 'Didn\'t pick call text send ', NULL, 58, NULL, 58, NULL, '2026-04-21 06:51:32', '2026-04-21 06:51:32'),
-(457, 2887, NULL, NULL, '2026-04-24', '00:00:00', 'call', 'pending', '', NULL, 27, NULL, 27, NULL, '2026-04-21 06:56:58', '2026-04-21 06:56:58'),
-(458, 1605, 12, 5, '2026-04-23', '12:57:00', 'call', 'pending', '1230 Elephant road will visit ', NULL, 58, NULL, 58, NULL, '2026-04-21 06:57:51', '2026-04-21 06:57:51'),
-(459, 3936, 12, NULL, '2026-04-21', '13:23:00', 'whatsapp', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, '2026-04-21 07:24:39', '2026-04-21 07:24:39'),
-(460, 3935, 12, NULL, '2026-04-21', '13:27:00', 'call', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, '2026-04-21 07:28:05', '2026-04-21 07:28:05'),
-(461, 3934, 12, NULL, '2026-04-21', '13:29:00', 'call', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, '2026-04-21 07:30:16', '2026-04-21 07:30:16'),
-(462, 3933, 12, NULL, '2026-05-06', '13:32:00', 'whatsapp', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, '2026-04-21 07:32:56', '2026-04-21 07:32:56'),
-(463, 4102, NULL, NULL, '2026-04-21', '00:00:00', 'call', 'completed', 'ceo sir er upor client er akta good impression ache , mainly single unite floor demand , armonia 9A and signature A,B unit gula suggest korse  ', '2026-04-22', 53, NULL, 53, NULL, '2026-04-21 09:38:02', '2026-04-21 09:38:02'),
-(464, 4111, NULL, NULL, '2026-04-21', '00:00:00', 'visit', 'completed', 'signature A,B ,payment prblm asa ,visit done ', '2026-04-22', 53, NULL, 53, NULL, '2026-04-21 10:09:48', '2026-04-21 10:09:48'),
-(465, 4106, NULL, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'completed', 'wa text sent', '2026-04-23', 53, NULL, 53, NULL, '2026-04-21 10:15:19', '2026-04-21 10:15:19'),
-(466, 4105, NULL, NULL, '2026-04-21', '00:00:00', 'call', 'completed', 'meeting a busy ,call night', NULL, 53, NULL, 53, NULL, '2026-04-21 10:19:56', '2026-04-21 10:19:56'),
-(467, 3947, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-21 11:01:00', '2026-04-21 11:01:00'),
-(468, 3946, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-21 11:03:11', '2026-04-21 11:03:11'),
-(469, 3945, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '', '2026-04-21', 77, NULL, 77, NULL, '2026-04-21 11:04:10', '2026-04-21 11:04:10'),
-(470, 3944, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-21 11:05:10', '2026-04-21 11:05:10'),
-(471, 3545, 12, NULL, '2026-04-21', '00:00:00', 'visit', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-21 11:06:52', '2026-04-21 11:06:52'),
-(472, 3943, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-21 11:09:53', '2026-04-21 11:09:53'),
-(473, 3937, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-21 11:12:24', '2026-04-21 11:12:24'),
-(474, 2714, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-21 11:18:46', '2026-04-21 11:18:46'),
-(475, 2713, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-21 11:25:07', '2026-04-21 11:25:07'),
-(476, 2712, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-21 11:30:34', '2026-04-21 11:30:34'),
-(477, 2711, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-21 11:33:26', '2026-04-21 11:33:26'),
-(478, 1623, 12, NULL, '2026-04-09', '00:00:00', 'whatsapp', 'pending', '', '2026-04-22', 77, 'call_back', 77, NULL, '2026-04-22 04:30:57', '2026-04-22 04:32:24'),
-(479, 1623, 12, NULL, '2026-04-22', '00:00:00', 'whatsapp', 'pending', 'wa call but don\'t rcv ,voice send.', '2026-04-23', 77, 'call_back', 77, NULL, '2026-04-22 04:33:10', '2026-04-23 10:43:04'),
-(480, 4111, NULL, NULL, '2026-04-22', '00:00:00', 'call', 'completed', 'disscuss kora janabe', '2026-04-25', 53, NULL, 53, NULL, '2026-04-22 06:16:20', '2026-04-22 06:16:20'),
-(481, 4110, NULL, NULL, '2026-04-22', '00:00:00', 'whatsapp', 'completed', 'call not rec ,voice sent', '2026-04-23', 53, NULL, 53, NULL, '2026-04-22 06:19:30', '2026-04-22 06:19:30'),
-(482, 4099, NULL, NULL, '2026-04-22', '00:00:00', 'call', 'completed', 'busy ,,i feel not interested but he want to came our office\r\n', '2026-04-27', 53, NULL, 53, NULL, '2026-04-22 06:23:08', '2026-04-22 06:23:08'),
-(483, 1800, NULL, NULL, '2026-04-22', '00:00:00', 'call', 'completed', 'maybe interested nh , always busy dakhai tasa  ', NULL, 53, NULL, 53, NULL, '2026-04-22 07:16:13', '2026-04-22 07:16:13'),
-(484, 3528, NULL, NULL, '2026-04-23', '09:57:00', 'whatsapp', 'completed', '', '2026-04-27', 67, 'call_back', 67, NULL, '2026-04-23 04:27:45', '2026-04-23 04:27:45'),
-(485, 3495, NULL, NULL, '2026-04-23', '00:00:00', 'whatsapp', 'completed', '', '2026-04-28', 67, 'call_back', 67, NULL, '2026-04-23 04:32:07', '2026-04-23 04:32:07'),
-(486, 1641, NULL, NULL, '2026-04-24', '15:00:00', 'call', 'completed', 'project brief...brochure check kore janabe', '2026-04-24', 35, 'call_back', 35, NULL, '2026-04-23 05:45:40', '2026-04-24 10:45:54'),
-(487, 2331, NULL, NULL, '2026-04-30', '12:00:00', 'whatsapp', 'pending', 'brochure dekhe janabe dicision', '2026-04-30', 35, 'call_back', 35, NULL, '2026-04-23 05:54:00', '2026-04-23 05:54:00'),
-(488, 587, NULL, NULL, '2026-04-30', '15:00:00', 'call', 'pending', 'imo project discussion\r\n', '2026-04-30', 35, 'call_back', 35, NULL, '2026-04-23 05:57:40', '2026-04-23 05:57:40'),
-(489, 989, NULL, NULL, '2026-04-26', '15:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, '2026-04-23 06:07:59', '2026-04-23 06:07:59'),
-(490, 988, NULL, NULL, '2026-04-26', '15:00:00', 'call', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, '2026-04-23 06:11:59', '2026-04-23 06:11:59'),
-(491, 987, NULL, NULL, '2026-04-26', '15:00:00', 'call', 'pending', 'imo project discussion', '2026-04-26', 35, 'call_back', 35, NULL, '2026-04-23 06:15:41', '2026-04-23 06:15:41'),
-(492, 987, NULL, NULL, '2026-04-26', '15:15:00', 'call', 'pending', 'imo project discussion', '2026-04-26', 35, 'call_back', 35, NULL, '2026-04-23 06:16:52', '2026-04-23 06:16:52'),
-(493, 1643, NULL, NULL, '2026-04-26', '17:00:00', 'call', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, '2026-04-23 06:17:48', '2026-04-23 06:17:48'),
-(494, 1926, NULL, NULL, '2026-04-30', '14:00:00', 'whatsapp', 'pending', 'bashay kotha boleche kina jante hobe', '2026-04-30', 35, 'call_back', 35, NULL, '2026-04-23 06:57:02', '2026-04-23 06:57:02'),
-(495, 993, NULL, NULL, '2026-04-26', '14:00:00', 'call', 'pending', 'project discussion on imo', '2026-04-30', 35, 'call_back', 35, NULL, '2026-04-23 07:01:03', '2026-04-23 07:01:03'),
-(496, 994, NULL, NULL, '2026-04-26', '14:00:00', 'call', 'pending', 'call on WA for project discussion', '2026-04-26', 35, 'call_back', 35, NULL, '2026-04-23 07:04:51', '2026-04-23 07:04:51'),
-(497, 992, NULL, NULL, '2026-04-26', '14:00:00', 'whatsapp', 'pending', 'WA project discussion', '2026-04-26', 35, 'call_back', 35, NULL, '2026-04-23 07:08:01', '2026-04-23 07:08:01'),
-(498, 1764, 5, NULL, '2026-04-23', '00:00:00', 'call', 'pending', '', '2026-04-25', 54, 'site visit', 54, NULL, '2026-04-23 07:51:57', '2026-04-23 07:51:57'),
-(499, 991, NULL, NULL, '2026-04-26', '15:20:00', 'whatsapp', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, '2026-04-23 08:42:33', '2026-04-23 08:42:33'),
-(500, 1925, NULL, NULL, '2026-04-26', '14:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, '2026-04-23 08:59:38', '2026-04-23 08:59:38'),
-(501, 1640, NULL, NULL, '2026-04-26', '14:30:00', 'call', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, '2026-04-23 09:02:31', '2026-04-23 09:02:31'),
-(502, 586, NULL, NULL, '2026-04-26', '14:40:00', 'whatsapp', 'pending', 'project discussion WA', '2026-04-26', 35, 'call_back', 35, NULL, '2026-04-23 09:07:00', '2026-04-23 09:07:00'),
-(503, 1623, 12, NULL, '2026-04-23', '00:00:00', 'whatsapp', 'pending', '', '2026-04-30', 77, NULL, 77, NULL, '2026-04-23 10:44:19', '2026-04-23 10:44:19'),
-(504, 987, NULL, NULL, '2026-05-14', '14:00:00', 'whatsapp', 'pending', 'deshe eseche kina? visit a ashbe', '2026-05-14', 35, 'site visit', 35, NULL, '2026-04-23 11:33:57', '2026-04-23 11:33:57'),
-(505, 3522, NULL, NULL, '2026-04-27', '12:00:00', 'call', 'completed', 'decision janabe monthly 1 lac installment', '2026-04-27', 35, 'call_back', 35, NULL, '2026-04-24 04:13:33', '2026-04-24 04:13:33'),
-(506, 2298, 12, NULL, '2026-04-17', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-24 04:13:44', '2026-04-24 04:13:44'),
-(507, 2304, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-24 04:19:24', '2026-04-24 04:19:24'),
-(508, 2303, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-19', 77, NULL, 77, NULL, '2026-04-24 04:20:13', '2026-04-24 04:20:13'),
-(509, 3524, NULL, NULL, '2026-04-27', '12:00:00', 'call', 'pending', 'project discussion', '2026-04-27', 35, 'call_back', 35, NULL, '2026-04-24 04:20:40', '2026-04-24 04:20:40'),
-(510, 2299, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-20', 77, NULL, 77, NULL, '2026-04-24 04:21:09', '2026-04-24 04:21:09'),
-(511, 2296, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-24 04:21:57', '2026-04-24 04:21:57'),
-(512, 2294, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-28', 77, NULL, 77, NULL, '2026-04-24 04:22:35', '2026-04-24 04:22:35'),
-(513, 3520, NULL, NULL, '2026-04-27', '12:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-27', 35, 'call_back', 35, NULL, '2026-04-24 04:25:27', '2026-04-24 04:25:27'),
-(514, 3902, NULL, NULL, '2026-04-27', '12:15:00', 'call', 'pending', 'visit schedule taking', '2026-04-27', 35, 'site visit', 35, NULL, '2026-04-24 04:35:44', '2026-04-24 04:35:44'),
-(515, 3523, NULL, NULL, '2026-04-27', '14:00:00', 'call', 'pending', 'project discussion', '2026-04-27', 35, 'call_back', 35, NULL, '2026-04-24 04:47:49', '2026-04-24 04:47:49'),
-(516, 3517, NULL, NULL, '2026-04-27', '14:00:00', 'call', 'pending', 'project discussion', '2026-04-27', 35, 'call_back', 35, NULL, '2026-04-24 10:36:30', '2026-04-24 10:36:30'),
-(517, 3519, NULL, NULL, '2026-04-27', '13:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-27', 35, 'call_back', 35, NULL, '2026-04-24 10:37:11', '2026-04-24 10:37:11'),
-(518, 3895, NULL, NULL, '2026-04-27', '12:00:00', 'call', 'pending', 'visit decision', '2026-04-27', 35, 'call_back', 35, NULL, '2026-04-24 10:46:34', '2026-04-24 10:46:34'),
-(519, 1641, NULL, NULL, '2026-04-27', '13:00:00', 'whatsapp', 'pending', 'brochure check koreche kina jante hobe', '2026-04-27', 35, 'call_back', 35, NULL, '2026-04-24 10:47:16', '2026-04-24 10:47:16'),
-(520, 3894, NULL, NULL, '2026-04-27', '09:30:00', 'call', 'completed', '1230 flat,location,layout,pricing sent,kalke call korbe...decision jante chawa hooyeche', '2026-04-25', 35, 'call_back', 35, NULL, '2026-04-25 04:26:35', '2026-04-25 10:12:11'),
-(521, 3898, NULL, NULL, '2026-04-28', '10:30:00', 'whatsapp', 'pending', 'project discussion', '2026-04-28', 35, 'call_back', 35, NULL, '2026-04-25 04:32:19', '2026-04-25 04:32:19'),
-(522, 4111, NULL, NULL, '2026-04-25', '00:00:00', 'call', 'completed', 'location choice hoi nai ,', NULL, 53, NULL, 53, NULL, '2026-04-25 07:17:22', '2026-04-25 07:17:22'),
-(523, 3899, NULL, NULL, '2026-04-28', '14:00:00', 'whatsapp', 'pending', 'project deiscussion', '2026-04-28', 35, 'call_back', 35, NULL, '2026-04-25 09:59:11', '2026-04-25 09:59:11'),
-(524, 3900, NULL, NULL, '2026-04-28', '15:00:00', 'call', 'pending', 'decision jante chawa hobe', '2026-04-28', 35, 'call_back', 35, NULL, '2026-04-25 10:06:38', '2026-04-25 10:06:38'),
-(525, 3896, NULL, NULL, '2026-04-29', '15:00:00', 'call', 'pending', 'project discussion', '2026-04-29', 35, 'call_back', 35, NULL, '2026-04-25 10:08:26', '2026-04-25 10:08:26'),
-(526, 3897, NULL, NULL, '2026-04-29', '15:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-29', 35, 'call_back', 35, NULL, '2026-04-25 10:09:04', '2026-04-25 10:09:04');
+INSERT INTO `lead_follow_ups` (`id`, `lead_id`, `project_id`, `flat_id`, `follow_up_date`, `follow_up_time`, `follow_up_type`, `status`, `discussion_note`, `next_follow_up_date`, `assigned_with`, `next_action`, `created_by`, `follow_up_agent_id`, `lead_status`, `next_follow_up_plan_notes`, `deleted_at`, `created_at`, `updated_at`) VALUES
+(1, 670, NULL, NULL, '2026-04-04', '00:00:00', 'call', 'pending', '', '2026-04-06', NULL, 'call_back', 41, NULL, NULL, NULL, NULL, '2026-04-04 10:59:37', '2026-04-04 10:59:37'),
+(2, 1244, 1, NULL, '2026-04-05', '00:00:00', 'call', 'pending', '', '2026-04-06', 20, 'call_back', 20, NULL, NULL, NULL, '2026-04-07 10:44:56', '2026-04-05 06:58:20', '2026-04-07 10:44:56'),
+(3, 1244, NULL, NULL, '2026-04-05', '12:59:00', 'call', 'pending', '', '2026-04-07', 20, 'call_back', 20, NULL, NULL, NULL, NULL, '2026-04-05 06:58:58', '2026-04-05 06:58:58'),
+(4, 154, NULL, NULL, '2026-04-06', '10:10:00', 'call', 'completed', 'didnt pick the call, WA msg sent', '2026-04-07', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-06 04:13:58', '2026-04-06 04:13:58'),
+(5, 153, NULL, NULL, '2025-04-06', '10:50:00', 'call', 'completed', 'didnt pick, WA msg sent', '2026-04-07', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-06 04:51:23', '2026-04-06 04:51:23'),
+(6, 151, NULL, NULL, '2026-04-06', '16:18:00', 'call', 'completed', 'brochure of double and 12th heights sent', '2026-04-08', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-06 10:20:06', '2026-04-06 10:20:06'),
+(7, 145, NULL, NULL, '2026-04-06', '16:39:00', 'call', 'completed', 'klk sokale call diye visit er appointment nite hobe, will visit soon', '2026-04-07', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-06 10:40:33', '2026-04-06 10:40:33'),
+(8, 1060, 3, 2, '2026-04-06', '21:40:00', 'call', 'pending', 'Tomorrow Again Follow up', '2026-04-07', 44, 'call_back', 68, NULL, NULL, NULL, '2026-04-08 06:18:11', '2026-04-06 15:41:41', '2026-04-08 06:18:11'),
+(9, 145, NULL, NULL, '2026-04-07', '10:04:00', 'call', 'completed', 'visit scheduled on 21 Apr 2026 at 3 pm', '2026-04-20', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-07 04:20:42', '2026-04-07 04:20:42'),
+(10, 1052, 2, 1, '2026-04-07', '10:25:00', 'call', 'pending', 'Test', '2026-04-07', 3, 'call_back', 3, NULL, NULL, NULL, '2026-04-07 10:45:05', '2026-04-07 04:26:10', '2026-04-07 10:45:05'),
+(11, 1052, 2, 1, '2026-04-07', '10:26:00', 'call', 'pending', '', '2026-04-09', 3, 'call_back', 3, NULL, NULL, NULL, '2026-04-07 10:45:05', '2026-04-07 04:28:35', '2026-04-07 10:45:05'),
+(12, 1246, 2, 1, '2026-04-07', '10:32:00', 'call', 'pending', '', '2026-04-07', 68, 'call_back', 68, NULL, NULL, NULL, '2026-04-07 10:45:05', '2026-04-07 04:33:11', '2026-04-07 10:45:05'),
+(13, 1246, 2, 1, '2026-04-07', '10:33:00', 'call', 'pending', '', '2026-04-08', 68, 'call_back', 68, NULL, NULL, NULL, '2026-04-07 10:45:05', '2026-04-07 04:34:04', '2026-04-07 10:45:05'),
+(14, 1060, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'pending', '', '2026-04-10', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-07 06:50:37', '2026-04-07 06:50:37'),
+(16, 1479, NULL, NULL, '2026-04-15', '15:12:00', 'call', 'pending', 'Rate kotha bolben ekhon busy achen ', '2026-04-23', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-07 07:14:06', '2026-04-07 07:14:06'),
+(17, 1479, NULL, NULL, '2026-04-15', '15:12:00', 'call', 'pending', 'Rate kotha bolben ekhon busy achen ', '2026-04-23', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-07 07:14:18', '2026-04-07 07:14:18'),
+(18, 1248, 2, 1, '2026-04-07', '14:45:00', 'call', 'pending', '', '2026-04-08', 2, 'site visit', 2, NULL, NULL, NULL, '2026-04-07 10:45:05', '2026-04-07 08:46:19', '2026-04-07 10:45:05'),
+(24, 1354, NULL, NULL, '2026-04-15', '00:00:00', 'call', 'pending', '', '2026-04-15', NULL, NULL, 73, NULL, NULL, NULL, NULL, '2026-04-07 11:42:49', '2026-04-07 11:42:49'),
+(25, 1352, NULL, NULL, '2026-04-14', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, NULL, NULL, NULL, '2026-04-07 11:43:34', '2026-04-07 11:43:34'),
+(26, 1352, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, NULL, NULL, NULL, '2026-04-07 11:44:01', '2026-04-07 11:44:01'),
+(27, 1352, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, NULL, NULL, NULL, '2026-04-07 11:44:13', '2026-04-07 11:44:13'),
+(28, 1353, NULL, NULL, '2026-02-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, NULL, NULL, NULL, '2026-04-07 11:46:13', '2026-04-07 11:46:13'),
+(29, 1353, NULL, NULL, '2026-01-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, NULL, NULL, NULL, '2026-04-07 11:46:41', '2026-04-07 11:46:41'),
+(30, 1351, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, NULL, NULL, NULL, '2026-04-07 11:47:10', '2026-04-07 11:47:10'),
+(31, 64, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 73, NULL, NULL, NULL, NULL, '2026-04-07 11:48:04', '2026-04-07 11:48:04'),
+(32, 164, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-07 11:49:33', '2026-04-07 11:49:33'),
+(33, 1372, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', '2026-04-10', NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-07 11:54:07', '2026-04-07 11:54:07'),
+(34, 1368, NULL, NULL, '2026-10-04', '00:00:00', 'call', 'pending', '', NULL, 30, NULL, 30, NULL, NULL, NULL, NULL, '2026-04-07 11:54:08', '2026-04-07 11:54:08'),
+(35, 1357, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, NULL, NULL, NULL, '2026-04-07 11:54:40', '2026-04-07 11:54:40'),
+(36, 1371, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-07 11:54:53', '2026-04-07 11:54:53'),
+(37, 1372, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-07 11:55:24', '2026-04-07 11:55:24'),
+(38, 1367, NULL, NULL, '2026-04-07', '00:00:00', 'whatsapp', 'missed', '', NULL, NULL, NULL, 30, NULL, NULL, NULL, NULL, '2026-04-07 11:56:24', '2026-04-07 11:56:24'),
+(39, 1370, NULL, NULL, '2026-04-11', '00:00:00', 'whatsapp', 'pending', '', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-07 11:56:29', '2026-04-07 11:56:29'),
+(40, 1355, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, NULL, NULL, NULL, '2026-04-07 11:56:49', '2026-04-07 11:56:49'),
+(41, 1369, NULL, NULL, '2026-04-11', '00:00:00', 'whatsapp', 'pending', '', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-07 11:57:03', '2026-04-07 11:57:03'),
+(42, 1366, NULL, NULL, '2026-04-07', '00:00:00', 'call', 'pending', '', NULL, 30, NULL, 30, NULL, NULL, NULL, NULL, '2026-04-07 11:57:05', '2026-04-07 11:57:05'),
+(43, 1365, NULL, NULL, '2026-04-07', '00:00:00', 'call', 'missed', '', NULL, 30, NULL, 30, NULL, NULL, NULL, NULL, '2026-04-07 11:58:17', '2026-04-07 11:58:17'),
+(44, 163, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-07 11:58:19', '2026-04-07 11:58:19'),
+(45, 162, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-07 11:58:47', '2026-04-07 11:58:47'),
+(46, 1356, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, NULL, NULL, NULL, '2026-04-07 11:58:48', '2026-04-07 11:58:48'),
+(47, 161, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-07 11:59:36', '2026-04-07 11:59:36'),
+(48, 669, NULL, NULL, '2026-10-04', '00:00:00', 'call', 'pending', '', NULL, NULL, NULL, 33, NULL, NULL, NULL, NULL, '2026-04-08 04:09:53', '2026-04-08 04:09:53'),
+(49, 164, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'in hospital will call me later\r\n', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-08 04:32:16', '2026-04-08 04:32:16'),
+(50, 159, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'looking for better opportunity that suits him', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-08 04:38:57', '2026-04-08 04:38:57'),
+(51, 163, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'will contact me after 15 apr', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-08 05:22:29', '2026-04-08 05:22:29'),
+(52, 156, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Didnt pick up Wa vm sent', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-08 05:40:35', '2026-04-08 05:40:35'),
+(53, 93, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'didnt pick up wa follow up vm sent\r\n', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-08 05:55:04', '2026-04-08 05:55:04'),
+(54, 90, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Will call me later maybe not interested\r\n', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-08 05:57:44', '2026-04-08 05:57:44'),
+(55, 1059, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', '2026-04-12', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-08 05:59:45', '2026-04-08 05:59:45'),
+(56, 1058, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'pending', '', '2026-04-12', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-08 06:02:24', '2026-04-08 06:02:24'),
+(57, 445, NULL, NULL, '2026-04-08', '00:00:00', 'whatsapp', 'completed', '', '2026-04-15', 55, NULL, 55, NULL, NULL, NULL, NULL, '2026-04-08 06:08:13', '2026-04-08 06:08:13'),
+(58, 685, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 31, NULL, 31, NULL, NULL, NULL, NULL, '2026-04-08 06:14:15', '2026-04-08 06:14:15'),
+(59, 444, NULL, NULL, '2026-04-08', '00:00:00', 'whatsapp', 'completed', 'Wa massage send ', '2026-04-15', 55, NULL, 55, NULL, NULL, NULL, NULL, '2026-04-08 06:15:31', '2026-04-08 06:15:31'),
+(60, 443, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Number off & wa,imo not found ', '2026-04-15', 55, NULL, 55, NULL, NULL, NULL, NULL, '2026-04-08 06:20:29', '2026-04-08 06:20:29'),
+(61, 91, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Call in 4 pm', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-08 06:21:22', '2026-04-08 06:21:22'),
+(62, 89, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'didnt pick up wa followup vm sent\r\n', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-08 06:24:53', '2026-04-08 06:24:53'),
+(63, 442, NULL, NULL, '2026-04-08', '00:00:00', 'whatsapp', 'completed', 'Wa massage send ', '2026-04-15', 55, NULL, 55, NULL, NULL, NULL, NULL, '2026-04-08 06:26:38', '2026-04-08 06:26:38'),
+(64, 88, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Wa followup msg sent\r\n', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-08 06:27:17', '2026-04-08 06:27:17'),
+(65, 809, NULL, NULL, '2026-04-08', '00:00:00', 'call', 'completed', 'Wa followup vm sent', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-08 06:29:29', '2026-04-08 06:29:29'),
+(66, 441, NULL, NULL, '2026-04-08', '12:32:00', 'whatsapp', 'completed', 'wa massage send ', '2026-04-15', 55, NULL, 55, NULL, NULL, NULL, NULL, '2026-04-08 06:32:44', '2026-04-08 06:32:44'),
+(67, 440, NULL, NULL, '2026-04-08', '12:37:00', 'whatsapp', 'completed', 'Wa massage send ', '2026-04-15', 55, NULL, 55, NULL, NULL, NULL, NULL, '2026-04-08 06:38:15', '2026-04-08 06:38:15'),
+(68, 439, NULL, NULL, '2026-04-08', '12:41:00', 'call', 'completed', 'Number off, wa or imo not found ', '2026-04-15', 55, NULL, 55, NULL, NULL, NULL, NULL, '2026-04-08 06:41:37', '2026-04-08 06:41:37'),
+(69, 438, NULL, NULL, '2026-04-08', '12:44:00', 'whatsapp', 'pending', 'Wa massage send ', '2026-04-15', 55, NULL, 55, NULL, NULL, NULL, NULL, '2026-04-08 06:45:29', '2026-04-08 06:45:29'),
+(70, 438, NULL, NULL, '2026-04-08', '12:47:00', 'whatsapp', 'completed', 'Phon ko off ache and wa massage send ', '2026-04-15', 55, NULL, 55, NULL, NULL, NULL, NULL, '2026-04-08 06:48:02', '2026-04-08 06:48:02'),
+(71, 1681, 7, NULL, '2026-04-09', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, NULL, NULL, NULL, '2026-04-08 06:59:55', '2026-04-08 06:59:55'),
+(72, 1680, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, NULL, NULL, NULL, '2026-04-08 07:26:30', '2026-04-08 07:26:30'),
+(73, 151, NULL, NULL, '2026-04-08', '13:41:00', 'whatsapp', 'completed', 'cut the call, voice sent', '2026-04-10', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-08 07:41:40', '2026-04-08 07:41:40'),
+(74, 1396, NULL, NULL, '2026-04-07', '20:20:00', 'call', 'completed', 'didnt pick', '2026-04-08', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-08 07:46:19', '2026-04-08 07:46:19'),
+(75, 1391, NULL, NULL, '0206-04-07', '22:25:00', 'whatsapp', 'completed', 'duplex sent', '2026-04-08', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-08 07:48:34', '2026-04-08 07:48:34'),
+(76, 1392, NULL, NULL, '2026-04-08', '13:50:00', 'whatsapp', 'completed', 'voice sent', '2026-04-09', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-08 07:51:27', '2026-04-08 07:51:27'),
+(77, 1381, NULL, NULL, '2026-04-07', '22:37:00', 'call', 'completed', 'double sent, visit himself', '2026-04-09', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-08 07:54:22', '2026-04-08 07:54:22'),
+(78, 1378, NULL, NULL, '2026-04-08', '22:19:00', 'whatsapp', 'completed', 'cancelled the visit', '2026-04-10', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-08 08:17:11', '2026-04-08 08:17:11'),
+(79, 1377, NULL, NULL, '2026-04-08', '11:37:00', 'whatsapp', 'completed', 'will call in free time', '2026-04-09', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-08 08:20:54', '2026-04-08 08:20:54'),
+(80, 1377, NULL, NULL, '2026-04-08', '14:40:00', 'call', 'completed', 'rat 8 tay call diben', '2026-04-08', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-08 08:46:33', '2026-04-08 08:46:33'),
+(83, 1277, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'pending', '', NULL, 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-08 09:26:20', '2026-04-08 09:26:20'),
+(84, 1277, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'completed', 'only BH BUT 70 te  3 bedroom  budget', '2026-04-09', 53, 'call_back', 53, NULL, NULL, NULL, NULL, '2026-04-08 09:27:12', '2026-04-09 05:19:42'),
+(86, 1276, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'completed', 'wa text sent', '2026-04-09', 53, 'call_back', 53, NULL, NULL, NULL, NULL, '2026-04-08 09:31:55', '2026-04-09 05:21:18'),
+(87, 1274, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', '', '2026-04-12', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-08 09:40:47', '2026-04-12 05:04:41'),
+(88, 89, NULL, NULL, '2026-04-08', '00:00:00', 'whatsapp', 'completed', 'Gave info about signeture ', NULL, NULL, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-08 09:43:20', '2026-04-08 09:43:20'),
+(89, 1275, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'pending', '', NULL, 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-08 09:43:45', '2026-04-08 09:43:45'),
+(90, 1273, NULL, NULL, '2026-04-09', '00:00:00', 'call', 'completed', 'al ready someone contract', '2026-04-09', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-08 09:50:36', '2026-04-09 05:25:30'),
+(92, 1320, 7, NULL, '2026-04-16', '00:00:00', 'call', 'pending', '', '2026-04-13', 87, NULL, 87, NULL, NULL, NULL, NULL, '2026-04-08 10:25:21', '2026-04-08 10:25:21'),
+(93, 1277, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', 'low budget investment, brochure sent', '2026-04-12', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-09 05:09:36', '2026-04-12 05:06:40'),
+(94, 1276, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', 'not interested', '2026-04-12', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-09 05:22:06', '2026-04-12 05:09:18'),
+(95, 1273, NULL, NULL, '2026-04-15', '00:00:00', 'call', 'pending', 'visit jaba dhaka asla ,but someone contract already\r\n', '2026-04-15', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-09 05:27:31', '2026-04-09 05:27:31'),
+(97, 1783, 7, NULL, '2026-04-09', '12:02:00', 'call', 'pending', 'Test Note', '2026-04-11', 20, 'call_back', 20, NULL, NULL, NULL, NULL, '2026-04-09 06:02:44', '2026-04-09 06:02:44'),
+(98, 1681, 7, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, NULL, NULL, NULL, '2026-04-09 06:04:00', '2026-04-09 06:04:00'),
+(99, 1783, 7, NULL, '2026-04-10', '12:05:00', 'call', 'pending', 'Test', '2026-04-10', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-09 06:06:00', '2026-04-09 06:06:00'),
+(100, 152, NULL, NULL, '2026-04-09', '12:13:00', 'whatsapp', 'completed', 'signature sent', '2026-04-11', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-09 06:14:21', '2026-04-09 06:14:21'),
+(101, 133, 7, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 36, NULL, 36, NULL, NULL, NULL, NULL, '2026-04-09 06:14:28', '2026-04-09 06:14:28'),
+(102, 150, NULL, NULL, '0026-04-09', '12:21:00', 'call', 'completed', 'didnt pick', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-09 06:22:17', '2026-04-09 06:22:17'),
+(103, 149, NULL, NULL, '0026-04-09', '12:23:00', 'call', 'completed', 'cut the call', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-09 06:26:58', '2026-04-09 06:26:58'),
+(104, 1395, NULL, NULL, '0026-04-09', '12:32:00', 'call', 'completed', 'baire, pore call', '2026-04-09', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-09 06:32:58', '2026-04-09 06:32:58'),
+(105, 126, NULL, NULL, '2026-04-09', '12:33:00', 'call', 'completed', '', NULL, 41, NULL, 41, NULL, NULL, NULL, NULL, '2026-04-09 06:34:02', '2026-04-09 06:34:02'),
+(106, 124, NULL, NULL, '2026-04-09', '12:40:00', 'call', 'completed', 'Busy. WA text sent', NULL, 41, NULL, 41, NULL, NULL, NULL, NULL, '2026-04-09 06:42:10', '2026-04-09 06:42:10'),
+(107, 670, NULL, NULL, '2026-04-09', '12:47:00', 'call', 'completed', 'Not interested in land share model. Wants urgent flat.', NULL, 41, NULL, 41, NULL, NULL, NULL, NULL, '2026-04-09 06:48:29', '2026-04-09 06:48:29'),
+(108, 1800, NULL, NULL, '2026-04-12', '00:00:00', 'visit', 'completed', 'duplex ,interested highly dhaka baira ache , 12 tarik call debo office a asba', '2026-04-12', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-09 06:55:31', '2026-04-12 09:52:40'),
+(109, 1799, NULL, NULL, '2026-04-10', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-09 07:08:53', '2026-04-09 07:08:53'),
+(110, 1808, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 73, NULL, 73, NULL, NULL, NULL, NULL, '2026-04-09 07:09:17', '2026-04-09 07:09:17'),
+(111, 1794, NULL, NULL, '2026-04-12', '00:00:00', 'visit', 'completed', 'duplex sent 12 tarikh call debo visit a aste pare', '2026-04-12', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-09 07:11:43', '2026-04-12 06:03:40'),
+(112, 1798, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-09 07:19:04', '2026-04-09 07:19:04'),
+(113, 40, 7, NULL, '2026-04-09', '00:00:00', 'call', 'pending', 'We had a talk then send Armonia Brochure send. shiddhadhanto nile tini call dibe.\r\n', NULL, 60, NULL, 60, NULL, NULL, NULL, NULL, '2026-04-09 07:19:14', '2026-04-09 07:19:14'),
+(114, 1797, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-09 07:20:55', '2026-04-09 07:20:55'),
+(115, 39, 7, NULL, '2026-04-10', '00:00:00', 'call', 'pending', 'Interested in Armonia but today dont pickup the phone.', NULL, 60, NULL, 60, NULL, NULL, NULL, NULL, '2026-04-09 07:22:46', '2026-04-09 07:22:46'),
+(116, 1785, NULL, NULL, '2026-04-09', '17:00:00', 'call', 'pending', '5 tay call dite bolechen', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-09 07:28:18', '2026-04-09 07:28:18'),
+(117, 37, 7, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 60, NULL, 60, NULL, NULL, NULL, NULL, '2026-04-09 07:47:06', '2026-04-09 07:47:06'),
+(118, 24, NULL, NULL, '2026-04-09', '14:24:00', 'call', 'completed', 'didnt pick', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-09 08:24:38', '2026-04-09 08:24:38'),
+(119, 23, NULL, NULL, '0026-04-09', '14:30:00', 'call', 'completed', 'didnt pick', '0026-04-11', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-09 08:31:16', '2026-04-09 08:31:16'),
+(120, 116, NULL, NULL, '2026-04-11', '00:00:00', 'call', 'pending', '', NULL, 36, NULL, 36, NULL, NULL, NULL, NULL, '2026-04-09 08:44:11', '2026-04-09 08:44:11'),
+(121, 24, NULL, NULL, '0026-04-09', '14:45:00', 'call', 'completed', 'armonia 2025 sent', '0026-04-10', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-09 08:47:07', '2026-04-09 08:47:07'),
+(122, 22, NULL, NULL, '0026-04-09', '14:50:00', 'call', 'completed', 'legacy and signature sent', '0026-04-11', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-09 08:52:19', '2026-04-09 08:52:19'),
+(123, 1493, NULL, NULL, '0026-04-09', '14:54:00', 'call', 'completed', 'bahire, pore call dibe', '0026-04-11', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-09 08:56:11', '2026-04-09 08:56:11'),
+(124, 1398, NULL, NULL, '0025-04-09', '15:00:00', 'call', 'completed', 'cut the call, WA msg sent', '0026-04-11', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-09 09:02:02', '2026-04-09 09:02:02'),
+(125, 1948, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'missed', '', '2026-04-11', 67, 'take_time', 67, NULL, NULL, NULL, NULL, '2026-04-09 09:55:48', '2026-04-11 16:13:20'),
+(126, 1948, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', NULL, 67, NULL, 67, NULL, NULL, NULL, NULL, '2026-04-09 10:11:11', '2026-04-09 10:11:11'),
+(127, 1881, NULL, NULL, '2026-04-09', '16:10:00', 'whatsapp', 'pending', '', '2026-04-13', 65, 'site visit', 65, NULL, NULL, NULL, NULL, '2026-04-09 10:11:59', '2026-04-09 10:11:59'),
+(128, 1384, NULL, NULL, '0026-04-09', '16:14:00', 'call', 'completed', 'visit scheduled tomorrow at 10 am', '2026-04-10', 29, 'site visit', 29, NULL, NULL, NULL, NULL, '2026-04-09 10:17:10', '2026-04-09 10:17:10'),
+(129, 1947, NULL, NULL, '2026-04-09', '16:20:00', 'call', 'completed', 'Wa call receive,busy ase pore Kotha bolbe ', '2026-04-16', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-09 10:21:21', '2026-04-09 10:21:21'),
+(130, 1390, NULL, NULL, '0026-04-09', '16:20:00', 'call', 'completed', 'didnt pick', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-09 10:24:47', '2026-04-09 10:24:47'),
+(131, 1391, NULL, NULL, '0026-04-09', '16:28:00', 'call', 'completed', 'nibe na ekhn,pore nile janaben', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-09 10:28:55', '2026-04-09 10:28:55'),
+(132, 1392, NULL, NULL, '0026-04-09', '16:36:00', 'call', 'completed', 'sleeping, will call', '0026-04-10', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-09 10:37:21', '2026-04-09 10:37:21'),
+(133, 1946, NULL, NULL, '2026-04-09', '17:15:00', 'call', 'pending', 'Phone call did not receive, WhatsApp message send ', '2026-04-16', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-09 11:16:47', '2026-04-09 11:16:47'),
+(134, 1805, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'pending', '', NULL, 73, NULL, 73, NULL, NULL, NULL, NULL, '2026-04-09 11:20:20', '2026-04-09 11:20:20'),
+(135, 1828, NULL, NULL, '2026-04-16', '00:00:00', 'call', 'pending', '', NULL, 36, NULL, 36, NULL, NULL, NULL, NULL, '2026-04-09 11:28:26', '2026-04-09 11:28:26'),
+(136, 1945, NULL, NULL, '2026-04-09', '17:35:00', 'call', 'pending', 'Call did not receive, WhatsApp message send ', '2026-04-16', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-09 11:36:12', '2026-04-09 11:36:12'),
+(138, 1381, NULL, NULL, '0026-04-09', '17:50:00', 'call', 'completed', 'visited himself, not interested', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-09 11:51:10', '2026-04-09 11:51:10'),
+(139, 1785, NULL, NULL, '0026-04-09', '17:55:00', 'call', 'completed', 'plot niben, not flat', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-09 11:57:09', '2026-04-09 11:57:09'),
+(140, 1624, NULL, NULL, '2026-04-15', '00:00:00', 'call', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-10 05:18:03', '2026-04-10 05:18:03'),
+(141, 1624, NULL, NULL, '2026-04-15', '00:00:00', 'call', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-10 05:18:19', '2026-04-10 05:18:19'),
+(142, 1060, NULL, NULL, '2026-04-15', '00:00:00', 'call', 'pending', '', '2026-04-20', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-10 06:21:15', '2026-04-10 06:21:15'),
+(143, 807, 7, NULL, '2026-04-11', '00:00:00', 'call', 'completed', 'Will call me later', NULL, 38, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-11 04:26:03', '2026-04-11 04:26:03'),
+(144, 1678, NULL, NULL, '2026-04-11', '00:00:00', 'whatsapp', 'completed', 'Wa followup msg sent', NULL, 38, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-11 04:31:11', '2026-04-11 04:31:11'),
+(145, 1384, NULL, NULL, '0026-04-10', '09:30:00', 'call', 'completed', 'cancelled the visit', '2026-04-11', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-11 05:11:04', '2026-04-11 05:11:04'),
+(146, 1384, NULL, NULL, '0026-04-11', '10:35:00', 'whatsapp', 'completed', 'will let me know when he will visit', '0026-04-12', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-11 05:12:47', '2026-04-11 05:12:47'),
+(147, 1398, NULL, NULL, '0026-04-10', '10:00:00', 'whatsapp', 'completed', 'want to buy multiple studio aprtmnts', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-11 05:16:51', '2026-04-11 05:16:51'),
+(148, 1398, NULL, NULL, '0026-04-11', '09:58:00', 'whatsapp', 'completed', 'he will call later, in a meeting', '0026-04-12', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-11 05:18:03', '2026-04-11 05:18:03'),
+(149, 1788, NULL, NULL, '0026-04-11', '09:45:00', 'whatsapp', 'completed', 'cut the call, msg sent', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-11 05:20:11', '2026-04-11 05:20:11'),
+(150, 24, NULL, NULL, '0026-04-11', '09:47:00', 'call', 'completed', 'cut the line, msg sent', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-11 05:23:46', '2026-04-11 05:23:46'),
+(151, 1662, NULL, NULL, '0026-04-11', '11:44:00', 'call', 'completed', 'free hoye cll dibe', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-11 05:45:06', '2026-04-11 05:45:06'),
+(152, 1659, NULL, NULL, '0026-04-11', '11:54:00', 'whatsapp', 'completed', 'msg sent', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-11 05:56:02', '2026-04-11 05:56:02'),
+(153, 1654, NULL, NULL, '0026-04-11', '12:15:00', 'call', 'completed', 'I- extension e nite chan', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-11 06:17:03', '2026-04-11 06:17:03'),
+(154, 1651, NULL, NULL, '0026-04-11', '12:22:00', 'call', 'completed', 'double unit sent', '0026-04-12', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-11 06:24:05', '2026-04-11 06:24:05'),
+(155, 1650, NULL, NULL, '0026-04-11', '12:32:00', 'call', 'completed', 'signature, 12 duplex sent', '0026-04-18', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-11 06:34:20', '2026-04-11 06:34:20'),
+(156, 1648, NULL, NULL, '0026-04-11', '12:36:00', 'call', 'completed', 'didnt rcv, voice sent', '0026-04-12', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-11 06:38:23', '2026-04-11 06:38:23'),
+(157, 1948, NULL, NULL, '2026-04-11', '22:13:00', 'whatsapp', 'pending', 'WhatsApp message send ', '2026-04-22', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-11 16:14:42', '2026-04-11 16:14:42'),
+(158, 28, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', NULL, 69, NULL, 69, NULL, NULL, NULL, NULL, '2026-04-12 04:07:04', '2026-04-12 04:07:04'),
+(159, 27, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', 'uni land nibe flat na', NULL, 69, NULL, 69, NULL, NULL, NULL, NULL, '2026-04-12 04:11:16', '2026-04-12 04:11:16'),
+(160, 25, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', 'now they chaged their paln need ready flat\r\n', NULL, 69, NULL, 69, NULL, NULL, NULL, NULL, '2026-04-12 04:21:19', '2026-04-12 04:21:19'),
+(161, 1796, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'pending', 'dore nai wp msg sent\r\n', NULL, 69, NULL, 69, NULL, NULL, NULL, NULL, '2026-04-12 04:31:45', '2026-04-12 04:31:45'),
+(164, 1800, NULL, NULL, '2026-04-12', '00:00:00', 'whatsapp', 'completed', 'pospect ,duplex\r\n', '2026-04-13', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-12 04:54:07', '2026-04-12 04:54:07'),
+(166, 1794, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', '', '2026-04-13', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-12 06:04:14', '2026-04-12 06:04:14'),
+(168, 1800, NULL, NULL, '2026-04-12', '00:00:00', 'call', 'completed', '', '2026-04-13', 53, 'call_back', 53, NULL, NULL, NULL, NULL, '2026-04-12 09:53:29', '2026-04-12 09:53:29'),
+(169, 1677, NULL, NULL, '2026-04-16', '00:00:00', 'call', 'completed', 'Gave signeture details\r\n\r\n', NULL, 38, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-16 06:23:56', '2026-04-16 06:23:56'),
+(170, 1676, NULL, NULL, '2026-04-16', '00:00:00', 'call', 'completed', 'will call me in his free time', NULL, 38, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-16 06:27:45', '2026-04-16 06:27:45'),
+(171, 806, NULL, NULL, '2026-04-16', '00:00:00', 'whatsapp', 'completed', 'wa followup msg sent\r\n', NULL, 38, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-16 06:31:13', '2026-04-16 06:31:13'),
+(172, 804, NULL, NULL, '2026-04-16', '00:00:00', 'call', 'completed', 'sick right now will talk later', NULL, 38, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-16 06:34:46', '2026-04-16 06:34:46'),
+(173, 803, NULL, NULL, '2026-04-16', '00:00:00', 'whatsapp', 'completed', 'didnt received wa followup msg sent\r\n', NULL, 38, NULL, 38, NULL, NULL, NULL, NULL, '2026-04-16 06:40:50', '2026-04-16 06:40:50'),
+(174, 2194, 7, NULL, '2026-04-19', '00:00:00', 'visit', 'pending', '', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-16 10:30:16', '2026-04-16 10:30:16'),
+(176, 2311, NULL, NULL, '2026-04-24', '00:00:00', 'whatsapp', 'pending', '', NULL, 55, 'take_time', 55, NULL, NULL, NULL, NULL, '2026-04-17 04:09:44', '2026-04-17 04:09:44'),
+(178, 1636, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', NULL, 59, NULL, 59, NULL, NULL, NULL, NULL, '2026-04-17 04:31:00', '2026-04-17 04:31:00'),
+(179, 999, NULL, NULL, '2026-04-30', '12:00:00', 'whatsapp', 'pending', 'site visit ashar jonno', '2026-04-30', 35, 'site visit', 35, NULL, NULL, NULL, NULL, '2026-04-17 04:31:23', '2026-04-17 04:31:23'),
+(180, 998, NULL, NULL, '2026-04-30', '12:00:00', 'whatsapp', 'pending', 'project brief', '2026-05-07', 35, 'site visit', 35, NULL, NULL, NULL, NULL, '2026-04-17 04:39:46', '2026-04-17 04:39:46'),
+(181, 1944, NULL, NULL, '2026-04-23', '00:00:00', 'call', 'pending', '', '2026-04-22', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 04:41:37', '2026-04-17 04:41:37'),
+(182, 998, NULL, NULL, '2026-04-30', '11:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-30', 35, 'site visit', 35, NULL, NULL, NULL, NULL, '2026-04-17 04:41:44', '2026-04-17 04:41:44'),
+(183, 997, NULL, NULL, '2026-04-30', '11:00:00', 'whatsapp', 'pending', 'visit alarm', '2026-04-30', 35, 'site visit', 35, NULL, NULL, NULL, NULL, '2026-04-17 04:53:32', '2026-04-17 04:53:32'),
+(184, 1943, NULL, NULL, '2026-04-23', '10:57:00', 'whatsapp', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 04:58:05', '2026-04-17 04:58:05'),
+(185, 1942, NULL, NULL, '2026-04-25', '01:02:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 05:03:02', '2026-04-17 05:03:02'),
+(186, 1941, NULL, NULL, '2026-04-26', '02:06:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 05:07:22', '2026-04-17 05:07:22'),
+(187, 1942, NULL, NULL, '2026-04-24', '04:09:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 05:10:03', '2026-04-17 05:10:03'),
+(188, 1940, NULL, NULL, '2026-04-27', '15:12:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 05:13:20', '2026-04-17 05:13:20'),
+(190, 1942, NULL, NULL, '2026-04-26', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 05:18:41', '2026-04-17 05:18:41'),
+(191, 996, NULL, NULL, '2026-04-30', '11:00:00', 'call', 'pending', 'project discussion', '2026-04-30', 35, 'site visit', 35, NULL, NULL, NULL, NULL, '2026-04-17 05:20:18', '2026-04-17 05:20:18'),
+(192, 995, NULL, NULL, '2026-04-30', '11:30:00', 'call', 'pending', 'project briefing', NULL, 35, NULL, 35, NULL, NULL, NULL, NULL, '2026-04-17 05:24:04', '2026-04-17 05:24:04'),
+(193, 995, NULL, NULL, '2026-04-30', '11:30:00', 'call', 'pending', 'project briefing', '2026-04-30', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-17 05:25:42', '2026-04-17 05:25:42'),
+(194, 1642, NULL, NULL, '2026-04-30', '12:00:00', 'call', 'pending', 'project discussion', '2026-04-30', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-17 05:29:03', '2026-04-17 05:29:03'),
+(195, 1938, NULL, NULL, '2026-04-27', '00:00:00', 'whatsapp', 'pending', '', '2026-04-27', 67, 'take_time', 67, NULL, NULL, NULL, NULL, '2026-04-17 05:42:56', '2026-04-17 05:42:56'),
+(196, 1937, NULL, NULL, '2026-04-28', '15:21:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 05:52:27', '2026-04-17 05:52:27'),
+(197, 1937, NULL, NULL, '2026-04-28', '15:21:00', 'whatsapp', 'pending', 'mgs send to wbatsapp no response', '2026-04-28', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 05:53:09', '2026-04-28 06:09:58'),
+(198, 2148, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-04-18', 22, NULL, 22, NULL, NULL, NULL, NULL, '2026-04-17 05:55:09', '2026-04-17 05:55:09'),
+(199, 1936, NULL, NULL, '2026-04-28', '14:00:00', 'whatsapp', 'pending', 'mgs send to whatsapp no response', '2026-04-28', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 06:00:46', '2026-04-28 06:13:25'),
+(200, 1935, NULL, NULL, '2026-04-29', '18:15:00', 'whatsapp', 'pending', '', '2026-04-29', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 06:16:19', '2026-04-17 06:16:19'),
+(201, 1934, NULL, NULL, '2026-04-29', '16:18:00', 'whatsapp', 'pending', '', '2026-04-29', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 06:19:06', '2026-04-17 06:19:06'),
+(202, 1933, NULL, NULL, '2026-04-29', '17:23:00', 'call', 'pending', '', '2026-04-29', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 06:24:06', '2026-04-17 06:24:06'),
+(203, 1932, NULL, NULL, '2026-04-29', '16:40:00', 'whatsapp', 'pending', '', '2026-04-29', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 06:40:25', '2026-04-17 06:40:25'),
+(204, 1931, NULL, NULL, '2026-04-29', '16:23:00', 'call', 'pending', '', '2026-04-29', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 06:53:50', '2026-04-17 06:53:50'),
+(205, 1930, NULL, NULL, '2026-04-30', '16:33:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 06:59:42', '2026-04-17 06:59:42'),
+(206, 1929, NULL, NULL, '2026-04-30', '17:35:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 07:04:51', '2026-04-17 07:04:51'),
+(207, 2122, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', NULL, 19, NULL, 105, NULL, NULL, NULL, NULL, '2026-04-17 08:30:21', '2026-04-17 08:30:21'),
+(208, 581, NULL, NULL, '2026-04-30', '00:00:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 09:04:42', '2026-04-17 09:04:42'),
+(209, 580, NULL, NULL, '2026-04-30', '14:40:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 09:08:37', '2026-04-17 09:08:37'),
+(210, 579, NULL, NULL, '2026-04-30', '00:00:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 09:13:00', '2026-04-17 09:13:00'),
+(211, 578, NULL, NULL, '2026-10-10', '15:46:00', 'call', 'canceled', '', '2026-10-10', 67, 'take_time', 67, NULL, NULL, NULL, NULL, '2026-04-17 09:17:14', '2026-04-17 09:17:14'),
+(212, 577, NULL, NULL, '2026-04-30', '15:54:00', 'call', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 09:23:58', '2026-04-17 09:23:58'),
+(213, 576, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', '2026-04-20', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 09:35:08', '2026-04-17 09:35:08'),
+(214, 576, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', '2026-04-20', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 09:35:08', '2026-04-17 09:35:08'),
+(215, 575, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', '2026-04-20', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-17 09:55:48', '2026-04-17 09:55:48'),
+(216, 1927, NULL, NULL, '0026-04-22', '16:30:00', 'call', 'pending', 'IMO call to brief the project', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-17 12:10:53', '2026-04-17 12:10:53'),
+(217, 1926, NULL, NULL, '2026-04-23', '16:30:00', 'call', 'completed', 'project discusiion on wa....discussed project 830,1230 flat,eid er age deshe eshe janabe', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-17 12:16:17', '2026-04-23 06:56:10'),
+(218, 1641, NULL, NULL, '2026-04-23', '12:00:00', 'whatsapp', 'completed', 'project brief...busy....pore call korte hobe', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 04:23:32', '2026-04-23 05:45:03'),
+(219, 587, NULL, NULL, '2026-04-23', '12:00:00', 'call', 'completed', 'imo project brief.....visit a ashte bola hoyeche..', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 04:52:51', '2026-04-23 05:56:57'),
+(220, 2734, NULL, NULL, '2026-04-21', '00:00:00', 'call', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-18 04:59:07', '2026-04-18 04:59:07'),
+(221, 582, NULL, NULL, '2026-04-23', '11:30:00', 'whatsapp', 'pending', 'project discussion', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 04:59:32', '2026-04-18 04:59:32'),
+(222, 2735, 9, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', '2026-04-24', 68, NULL, 68, NULL, NULL, NULL, NULL, '2026-04-18 05:03:30', '2026-04-18 05:03:30'),
+(223, 1491, NULL, NULL, '2026-04-21', '15:05:00', 'call', 'pending', '', '2026-04-21', 2, NULL, 32, NULL, NULL, NULL, NULL, '2026-04-18 05:04:29', '2026-04-18 05:04:29'),
+(224, 1491, NULL, NULL, '2026-04-21', '15:05:00', 'call', 'pending', '', '2026-04-21', 32, NULL, 32, NULL, NULL, NULL, NULL, '2026-04-18 05:05:21', '2026-04-18 05:05:21'),
+(225, 2354, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 05:07:15', '2026-04-18 05:07:15'),
+(226, 584, NULL, NULL, '2026-04-23', '11:30:00', 'call', 'pending', 'imo project discussion', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 05:09:29', '2026-04-18 05:09:29'),
+(227, 584, NULL, NULL, '2026-04-23', '11:30:00', 'call', 'pending', 'imo project discussion', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 05:09:31', '2026-04-18 05:09:31'),
+(228, 2287, NULL, NULL, '2026-04-18', '11:10:00', 'call', 'pending', 'NO RESPONS', '2026-04-25', 78, 'call_back', 78, NULL, NULL, NULL, NULL, '2026-04-18 05:11:31', '2026-04-18 05:11:31'),
+(229, 2353, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 05:11:50', '2026-04-18 05:11:50'),
+(230, 2727, NULL, NULL, '2026-04-30', '05:11:00', 'call', 'completed', '', '2026-04-30', 64, NULL, 64, NULL, NULL, NULL, NULL, '2026-04-18 05:12:46', '2026-04-18 05:12:46'),
+(231, 2733, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-18 05:13:25', '2026-04-18 05:13:25'),
+(232, 585, NULL, NULL, '2026-04-23', '12:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 05:14:21', '2026-04-18 05:14:21'),
+(233, 2730, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-18 05:18:21', '2026-04-18 05:18:21'),
+(234, 586, NULL, NULL, '2026-04-23', '15:00:00', 'call', 'completed', 'project briefing.......free time jante chawa hoyeche', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 05:19:17', '2026-04-23 09:05:01'),
+(235, 995, NULL, NULL, '2026-04-23', '11:30:00', 'call', 'pending', 'project briefing', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 05:22:38', '2026-04-18 05:22:38'),
+(236, 2732, NULL, NULL, '2026-04-18', '11:21:00', 'whatsapp', 'pending', '', '2026-04-30', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-18 05:23:52', '2026-04-18 05:23:52'),
+(237, 1642, NULL, NULL, '2026-04-23', '11:30:00', 'call', 'pending', 'discussion', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 05:23:58', '2026-04-18 05:23:58'),
+(238, 2351, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 05:24:00', '2026-04-18 05:24:00'),
+(239, 1637, NULL, NULL, '2026-04-23', '15:00:00', 'call', 'completed', 'project discussion....free time jante chawa hoyeche', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 05:27:03', '2026-04-23 09:09:01'),
+(240, 2720, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-18 05:27:47', '2026-04-18 05:27:47'),
+(241, 2348, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 05:29:15', '2026-04-18 05:29:15'),
+(242, 2352, NULL, NULL, '2026-04-23', '15:00:00', 'call', 'pending', 'project discussion', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 05:32:30', '2026-04-18 05:32:30'),
+(243, 2728, NULL, NULL, '2026-04-18', '11:32:00', 'whatsapp', 'pending', '', '2026-04-30', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-18 05:33:05', '2026-04-18 05:33:05'),
+(244, 2719, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-18 05:33:27', '2026-04-18 05:33:27'),
+(245, 2656, NULL, NULL, '2026-04-18', '11:32:00', 'whatsapp', 'pending', 'WA TEX ,VOICE SEND ', '2026-04-25', 78, NULL, 78, NULL, NULL, NULL, NULL, '2026-04-18 05:33:50', '2026-04-18 05:33:50'),
+(246, 2726, NULL, NULL, '2026-04-18', '11:37:00', 'whatsapp', 'pending', '', '2026-04-30', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-18 05:37:43', '2026-04-18 05:37:43'),
+(247, 2327, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 05:37:46', '2026-04-18 05:37:46'),
+(248, 2654, NULL, NULL, '2026-04-18', '11:36:00', 'whatsapp', 'pending', 'WA TAX , VOICE ,SEND ', '2026-04-26', 78, 'take_time', 78, NULL, NULL, NULL, NULL, '2026-04-18 05:38:52', '2026-04-18 05:38:52'),
+(249, 2724, NULL, NULL, '2026-04-18', '11:39:00', 'whatsapp', 'pending', '', '2026-04-30', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-18 05:40:19', '2026-04-18 05:40:19'),
+(250, 2323, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 05:44:06', '2026-04-18 05:44:06'),
+(251, 2652, NULL, NULL, '2026-04-18', '12:43:00', 'whatsapp', 'pending', '', '2026-04-26', 78, 'call_back', 78, NULL, NULL, NULL, NULL, '2026-04-18 05:44:36', '2026-04-18 05:44:36'),
+(252, 2707, NULL, NULL, '2026-04-18', '11:45:00', 'call', 'completed', '', '2026-04-30', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-18 05:46:25', '2026-04-18 05:46:25'),
+(253, 2322, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', NULL, 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 05:49:55', '2026-04-18 05:49:55'),
+(254, 2705, NULL, NULL, '2026-04-18', '11:50:00', 'whatsapp', 'pending', '', '2026-04-30', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-18 05:51:29', '2026-04-18 05:51:29'),
+(255, 2201, NULL, NULL, '2026-04-18', '11:50:00', 'call', 'completed', 'brochure sent', '0026-04-19', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-18 05:52:01', '2026-04-18 05:52:01'),
+(256, 1788, NULL, NULL, '0026-04-18', '11:54:00', 'call', 'completed', 'cut the line, msg sent', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-18 05:55:07', '2026-04-18 05:55:07'),
+(257, 2350, NULL, NULL, '2026-04-23', '12:00:00', 'call', 'pending', 'husband baire thake...number diyeche kina jante hobe', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 05:57:05', '2026-04-18 05:57:05'),
+(258, 1662, NULL, NULL, '0026-04-18', '11:59:00', 'call', 'completed', 'free hoye office e asbe', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-18 06:00:08', '2026-04-18 06:00:08'),
+(259, 2703, NULL, NULL, '2026-04-18', '12:05:00', 'call', 'completed', '', '2026-04-30', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-18 06:06:05', '2026-04-18 06:06:05'),
+(260, 1659, NULL, NULL, '0026-04-18', '12:06:00', 'call', 'completed', 'free hoye visit schedule korben, ekhon jhamelay achen', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-18 06:07:23', '2026-04-18 06:07:23'),
+(261, 2033, NULL, NULL, '2026-04-18', '11:00:00', 'call', 'missed', 'DIDNT PICK', '2026-04-19', 14, 'call_back', 14, NULL, NULL, NULL, NULL, '2026-04-18 06:07:56', '2026-04-18 06:07:56'),
+(262, 2349, NULL, NULL, '2026-04-22', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 59, NULL, 59, NULL, NULL, NULL, NULL, '2026-04-18 06:11:44', '2026-04-18 06:11:44'),
+(263, 1788, NULL, NULL, '0026-04-18', '12:10:00', 'whatsapp', 'completed', 'niben na', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-18 06:14:19', '2026-04-18 06:14:19'),
+(264, 2700, NULL, NULL, '2026-04-18', '12:17:00', 'whatsapp', 'pending', '', '2026-05-02', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-18 06:17:56', '2026-04-18 06:17:56'),
+(265, 1648, NULL, NULL, '0026-04-18', '12:20:00', 'call', 'completed', 'didnt pick, msg sent', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-18 06:22:29', '2026-04-18 06:22:29'),
+(266, 2699, NULL, NULL, '2026-04-18', '15:23:00', 'whatsapp', 'pending', '', '2026-05-02', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-18 06:24:10', '2026-04-18 06:24:10'),
+(267, 574, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-01', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 06:25:37', '2026-04-18 06:25:37'),
+(268, 1647, NULL, NULL, '0026-04-13', '21:28:00', 'whatsapp', 'completed', 'didnt pick, msg sent', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-18 06:26:39', '2026-04-18 06:26:39'),
+(269, 2338, NULL, NULL, '2026-04-23', '12:00:00', 'call', 'pending', 'visit decision jante hobe', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 06:27:05', '2026-04-18 06:27:05'),
+(270, 2698, NULL, NULL, '2026-04-18', '15:28:00', 'whatsapp', 'pending', '', '2026-05-02', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-18 06:28:54', '2026-04-18 06:28:54'),
+(271, 1647, NULL, NULL, '0026-04-18', '12:29:00', 'call', 'completed', 'he will study the brochure and may visit signature heights', '0026-04-19', 29, 'call_back', 29, NULL, NULL, NULL, NULL, '2026-04-18 06:31:06', '2026-04-18 06:31:06'),
+(272, 2342, NULL, NULL, '2026-04-23', '15:00:00', 'call', 'pending', 'wa project briefing', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 06:38:08', '2026-04-18 06:38:08'),
+(273, 1392, NULL, NULL, '0026-04-18', '12:37:00', 'call', 'completed', 'brochure check kore janaben', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-18 06:38:22', '2026-04-18 06:38:22'),
+(274, 573, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'pemium homes name sunei kete dise', '2026-04-21', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 06:40:40', '2026-04-21 06:04:49'),
+(275, 1395, NULL, NULL, '0026-04-18', '12:40:00', 'call', 'completed', 'didnt pick', NULL, 29, NULL, 29, NULL, NULL, NULL, NULL, '2026-04-18 06:41:16', '2026-04-18 06:41:16'),
+(276, 2339, NULL, NULL, '2026-04-23', '15:00:00', 'call', 'pending', 'project discussion', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 06:42:41', '2026-04-18 06:42:41'),
+(277, 2718, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-18 06:43:31', '2026-04-18 06:43:31'),
+(278, 2331, NULL, NULL, '2026-04-23', '12:30:00', 'whatsapp', 'completed', 'product discussion....project discussed,brochure sent,janabe pore', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 06:47:01', '2026-04-23 05:53:03'),
+(279, 2717, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-18 06:50:59', '2026-04-18 06:50:59'),
+(280, 1925, NULL, NULL, '2026-04-23', '15:30:00', 'whatsapp', 'completed', 'project discussion.....kaje ache, free hoye call korbe', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 06:51:08', '2026-04-23 08:58:53'),
+(281, 435, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-02', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 06:56:09', '2026-04-18 06:56:09'),
+(283, 3249, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', '', NULL, 31, NULL, 31, NULL, NULL, NULL, NULL, '2026-04-18 08:12:21', '2026-04-18 08:12:21'),
+(284, 3215, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-18 08:42:47', '2026-04-18 08:42:47'),
+(285, 3199, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', 'wa text sent', '2026-04-21', 53, 'call_back', 53, NULL, NULL, NULL, NULL, '2026-04-18 08:43:15', '2026-04-18 08:43:15'),
+(286, 3213, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-18 08:45:14', '2026-04-18 08:45:14');
+INSERT INTO `lead_follow_ups` (`id`, `lead_id`, `project_id`, `flat_id`, `follow_up_date`, `follow_up_time`, `follow_up_type`, `status`, `discussion_note`, `next_follow_up_date`, `assigned_with`, `next_action`, `created_by`, `follow_up_agent_id`, `lead_status`, `next_follow_up_plan_notes`, `deleted_at`, `created_at`, `updated_at`) VALUES
+(287, 3210, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-18 08:47:18', '2026-04-18 08:47:18'),
+(288, 3214, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-18 08:58:50', '2026-04-18 08:58:50'),
+(289, 3212, 7, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'Will call free time', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-18 09:01:46', '2026-04-18 09:01:46'),
+(290, 1800, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', 'call not pick', '2026-04-19', 53, 'call_back', 53, NULL, NULL, NULL, NULL, '2026-04-18 09:10:10', '2026-04-18 09:10:10'),
+(291, 3211, 7, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'Didn\'t pick, ', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-18 09:11:14', '2026-04-18 09:11:14'),
+(292, 1794, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'ai week a time hba nh , avarage client duplex', '2026-04-26', 53, 'call_back', 53, NULL, NULL, NULL, NULL, '2026-04-18 09:15:26', '2026-04-18 09:15:26'),
+(293, 3209, 7, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'Didn\'t pick ', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-18 09:19:12', '2026-04-18 09:19:12'),
+(294, 3211, 9, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'Talk about Crown, will inform', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-18 09:20:36', '2026-04-18 09:20:36'),
+(295, 1277, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'call not pick', '2026-04-20', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-18 09:26:03', '2026-04-18 09:26:03'),
+(296, 2924, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'Will call in free time', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-18 09:29:48', '2026-04-18 09:29:48'),
+(297, 1275, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'not interested\r\n', NULL, 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-18 09:37:39', '2026-04-18 09:37:39'),
+(298, 1274, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'someone already contract him ,not interested', NULL, 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-18 09:42:14', '2026-04-18 09:42:14'),
+(299, 1640, NULL, NULL, '2026-04-23', '15:20:00', 'call', 'completed', 'project discussion......free time jante chawa hoyeche', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 10:08:12', '2026-04-23 09:01:34'),
+(300, 1639, NULL, NULL, '2026-04-19', '16:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-19', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 10:16:32', '2026-04-18 10:16:32'),
+(301, 994, NULL, NULL, '2026-04-23', '16:00:00', 'call', 'completed', 'imo project discussion.....wa greetings sent', '2026-04-23', 35, 'take_time', 35, NULL, NULL, NULL, NULL, '2026-04-18 10:21:25', '2026-04-23 07:03:47'),
+(302, 993, NULL, NULL, '2026-04-23', '16:00:00', 'call', 'completed', 'imo project discussion......free time jante chawa hoyeche', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 10:27:52', '2026-04-23 06:59:56'),
+(303, 992, NULL, NULL, '2026-04-23', '15:45:00', 'call', 'completed', 'imo project discusiion.....WA greetings sent', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 10:32:41', '2026-04-23 07:07:21'),
+(304, 2324, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'completed', 'Will caome to BD in July26.', '2026-07-01', 23, 'site visit', 23, NULL, NULL, NULL, NULL, '2026-04-18 10:44:00', '2026-04-18 10:44:00'),
+(305, 3532, NULL, NULL, '2026-04-18', '00:00:00', 'whatsapp', 'pending', '', '2026-05-02', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 10:54:07', '2026-04-18 10:54:07'),
+(306, 991, NULL, NULL, '2026-04-23', '15:40:00', 'whatsapp', 'completed', 'project briefing....free time jante chawa hoyeche..', '2026-04-23', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-18 10:54:31', '2026-04-23 08:41:05'),
+(307, 2033, NULL, NULL, '2026-04-19', '19:03:00', 'call', 'pending', 'Missed', '2026-04-19', 14, 'call_back', 14, NULL, NULL, NULL, NULL, '2026-04-18 11:04:27', '2026-04-18 11:04:27'),
+(308, 3531, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', NULL, 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 11:18:58', '2026-04-18 11:18:58'),
+(309, 2716, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-18 11:21:13', '2026-04-18 11:21:13'),
+(310, 2729, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-04-23', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-18 11:23:27', '2026-04-18 11:23:27'),
+(311, 3530, NULL, NULL, '2026-04-18', '00:00:00', 'call', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-18 11:43:50', '2026-04-18 11:43:50'),
+(312, 3568, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-19 04:32:49', '2026-04-19 04:32:49'),
+(313, 3500, NULL, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'completed', 'WA text', '2026-04-21', 23, NULL, 23, NULL, NULL, NULL, NULL, '2026-04-19 04:55:56', '2026-04-19 04:55:56'),
+(314, 3564, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-19 05:06:37', '2026-04-19 05:06:37'),
+(315, 3560, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-19 05:08:49', '2026-04-19 05:08:49'),
+(316, 3499, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'No response', '2026-04-20', 23, NULL, 23, NULL, NULL, NULL, NULL, '2026-04-19 05:20:40', '2026-04-19 05:20:40'),
+(317, 3554, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-19 05:29:18', '2026-04-19 05:29:18'),
+(318, 3550, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-19 05:34:38', '2026-04-19 05:34:38'),
+(319, 3546, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-19 05:44:21', '2026-04-19 05:44:21'),
+(320, 2278, NULL, NULL, '2026-04-20', '11:58:00', 'call', 'pending', '', '2026-04-22', 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-19 05:58:54', '2026-04-19 05:58:54'),
+(321, 2277, 12, NULL, '2026-04-19', '12:02:00', 'call', 'pending', '', '2026-04-20', 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-19 06:03:52', '2026-04-19 06:03:52'),
+(322, 2272, NULL, NULL, '2026-04-19', '12:05:00', 'call', 'pending', '', '2026-04-20', 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-19 06:06:15', '2026-04-19 06:06:15'),
+(323, 3545, 12, NULL, '2026-04-19', '00:00:00', 'visit', 'pending', 'visit korese. janabe.', '2026-04-21', 77, 'site visit', 77, NULL, NULL, NULL, NULL, '2026-04-19 06:22:43', '2026-04-21 11:06:11'),
+(324, 3544, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-19 06:44:51', '2026-04-19 06:44:51'),
+(325, 1878, NULL, NULL, '2026-04-20', '12:46:00', 'call', 'pending', '', '2026-04-20', 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-19 06:46:42', '2026-04-19 06:46:42'),
+(326, 3543, 12, NULL, '2026-04-19', '00:00:00', 'call', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-19 06:48:47', '2026-04-19 06:48:47'),
+(327, 3537, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-19', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-19 06:55:31', '2026-04-19 06:55:31'),
+(328, 3537, NULL, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-19 06:56:17', '2026-04-19 06:56:17'),
+(329, 3536, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-19 07:01:37', '2026-04-19 07:01:37'),
+(330, 2715, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-19 07:48:31', '2026-04-19 07:48:31'),
+(331, 3744, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'WA sent, will call later', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 08:25:22', '2026-04-19 08:25:22'),
+(332, 3743, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '01937824119-wa, will call later', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 08:30:27', '2026-04-19 08:30:27'),
+(333, 3740, 7, NULL, '2026-04-19', '00:00:00', 'call', 'canceled', 'Wants 4 bed in 17 katha', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 08:44:51', '2026-04-19 08:44:51'),
+(334, 2281, NULL, NULL, '2026-04-19', '14:47:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-19 08:48:14', '2026-04-19 08:48:14'),
+(335, 4111, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'office asa kotha bolba , 22 april call debo location sent ', '2026-04-22', 53, 'site visit', 53, NULL, NULL, NULL, NULL, '2026-04-19 08:55:32', '2026-04-19 08:55:32'),
+(336, 3738, 7, NULL, '2026-04-21', '00:00:00', 'call', 'pending', 'Send sign details, will inform soon', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 08:58:01', '2026-04-19 08:58:01'),
+(337, 3737, 7, NULL, '2026-04-21', '00:00:00', 'call', 'pending', 'Send sign and arma details, she\'ll check and inform', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 09:16:20', '2026-04-19 09:16:20'),
+(338, 3736, 7, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'Land share price onk beshii ', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 09:25:40', '2026-04-19 09:25:40'),
+(339, 3735, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'Send Armania details, he\'ll check and inform', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 09:58:36', '2026-04-19 09:58:36'),
+(340, 3734, 7, NULL, '2026-04-21', '00:00:00', 'call', 'pending', 'Sent sign details, he\'ll check and inform', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 10:04:07', '2026-04-19 10:04:07'),
+(341, 3733, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'Number off, WA sent ', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 10:08:14', '2026-04-19 10:08:14'),
+(342, 3731, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'Cut the call, WA sent ', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 10:17:57', '2026-04-19 10:17:57'),
+(343, 3730, 7, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'Didn\'t pick, WA sent ', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 10:21:07', '2026-04-19 10:21:07'),
+(344, 3739, 7, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'WA sent, waiting for his reply', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 10:25:37', '2026-04-19 10:25:37'),
+(345, 3742, 7, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'wA sent, waiting for his reply ', NULL, 28, NULL, 28, NULL, NULL, NULL, NULL, '2026-04-19 10:27:39', '2026-04-19 10:27:39'),
+(346, 4111, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', '21 tarik visit ', '2026-04-21', 53, 'site visit', 53, NULL, NULL, NULL, NULL, '2026-04-19 10:30:37', '2026-04-19 10:30:37'),
+(347, 4110, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', '', '2026-04-22', 53, 'call_back', 53, NULL, NULL, NULL, NULL, '2026-04-19 10:38:55', '2026-04-19 10:38:55'),
+(348, 4109, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'call not pick', '2026-04-20', 53, 'call_back', 53, NULL, NULL, NULL, NULL, '2026-04-19 10:42:58', '2026-04-19 10:42:58'),
+(349, 4108, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'busy', '2026-04-20', 53, 'call_back', 53, NULL, NULL, NULL, NULL, '2026-04-19 10:45:31', '2026-04-19 10:45:31'),
+(350, 4106, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'meeting a', '2026-04-21', 53, 'call_back', 53, NULL, NULL, NULL, NULL, '2026-04-19 10:52:38', '2026-04-21 10:15:50'),
+(351, 4105, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'busy', '2026-04-21', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-19 10:56:18', '2026-04-19 10:56:18'),
+(352, 4104, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'busy brocheure sent', '2026-04-21', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-19 11:00:35', '2026-04-19 11:00:35'),
+(353, 4103, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'brocheure sent', '2026-04-21', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-19 11:07:37', '2026-04-19 11:07:37'),
+(354, 4102, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'call not pick', '2026-04-21', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-19 11:15:23', '2026-04-19 11:15:23'),
+(355, 4101, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'busy', '2026-04-21', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-19 11:19:38', '2026-04-19 11:19:38'),
+(356, 4100, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'all details niya kotha hoitasa', '2026-04-23', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-19 11:30:23', '2026-04-23 04:10:37'),
+(357, 4098, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'pending', 'call not pick wa text sent ', '2026-04-20', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-19 11:34:17', '2026-04-19 11:34:17'),
+(358, 4099, NULL, NULL, '2026-04-19', '00:00:00', 'call', 'completed', 'add sent', '2026-04-22', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-19 11:39:14', '2026-04-19 11:39:14'),
+(359, 3529, NULL, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 03:49:20', '2026-04-20 03:49:20'),
+(360, 3524, NULL, NULL, '2026-04-24', '11:30:00', 'whatsapp', 'completed', 'project discussion....free time jante chawa hoyeche..', '2026-04-24', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-20 05:06:24', '2026-04-24 04:19:55'),
+(361, 3523, NULL, NULL, '2026-04-24', '14:30:00', 'call', 'completed', 'imo call,project discussion...free time jante chawa hoyeche', '2026-04-24', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-20 05:12:22', '2026-04-24 04:46:55'),
+(362, 3522, NULL, NULL, '2026-04-24', '11:30:00', 'call', 'completed', 'call on phone for project brief.....monthly 1 lac installment flat + shop, 830+227(4thfloor),2/1 din er vitor janabe', '2026-04-24', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-20 05:21:15', '2026-04-24 04:12:27'),
+(363, 4109, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'pending', 'call not pick', NULL, 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-20 05:36:25', '2026-04-20 05:36:25'),
+(364, 3570, 12, NULL, '2026-04-20', '11:38:00', 'whatsapp', 'pending', '', '2026-05-03', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 05:38:43', '2026-04-20 05:38:43'),
+(365, 4108, NULL, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'completed', 'wa text sent', NULL, 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-20 05:48:35', '2026-04-20 05:48:35'),
+(366, 1277, NULL, NULL, '2026-04-20', '00:00:00', 'call', 'completed', '', NULL, 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-20 05:50:31', '2026-04-20 05:50:31'),
+(367, 3932, NULL, NULL, '2026-04-20', '16:15:00', 'whatsapp', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 05:50:39', '2026-04-20 05:50:39'),
+(368, 3559, 12, NULL, '2026-04-20', '11:50:00', 'whatsapp', 'pending', '', '2026-05-03', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 05:51:39', '2026-04-20 05:51:39'),
+(369, 3931, NULL, NULL, '2026-04-20', '11:54:00', 'whatsapp', 'pending', '', '2026-05-02', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 05:54:38', '2026-04-20 05:54:38'),
+(370, 3520, NULL, NULL, '2026-04-24', '11:45:00', 'call', 'completed', 'project briefing....free time jante chawa hoyeche', '2026-04-24', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-20 05:55:24', '2026-04-24 04:24:46'),
+(371, 3558, 12, NULL, '2026-04-20', '11:55:00', 'call', 'pending', '', '2026-05-03', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 05:55:47', '2026-04-20 05:55:47'),
+(372, 3519, NULL, NULL, '2026-04-24', '14:30:00', 'call', 'completed', 'imo project discussion....free time jante chawa hoyeche', '2026-04-24', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-20 06:00:08', '2026-04-24 10:25:51'),
+(373, 3557, 12, NULL, '2026-04-20', '12:02:00', 'call', 'pending', '', '2026-05-04', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 06:02:33', '2026-04-20 06:02:33'),
+(374, 3930, NULL, NULL, '2026-04-20', '12:12:00', 'whatsapp', 'completed', '', '2026-05-02', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 06:12:45', '2026-04-20 06:12:45'),
+(375, 3556, 12, NULL, '2026-04-20', '12:14:00', 'call', 'completed', '', '2026-05-04', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 06:14:27', '2026-04-20 06:14:27'),
+(376, 3929, NULL, NULL, '2026-04-20', '15:16:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 06:17:10', '2026-04-20 06:17:10'),
+(377, 3928, NULL, NULL, '2026-04-20', '14:20:00', 'whatsapp', 'canceled', '', '2026-09-26', 67, 'take_time', 67, NULL, NULL, NULL, NULL, '2026-04-20 06:20:39', '2026-04-20 06:20:39'),
+(378, 4008, 12, NULL, '2026-04-23', '12:21:00', 'call', 'pending', '1230 or Ground floor electronic shop \r\nTotal pay', '2026-04-23', 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 06:23:15', '2026-04-20 06:23:15'),
+(379, 3927, NULL, NULL, '2026-05-02', '09:35:00', 'whatsapp', 'pending', '', '2026-05-02', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 06:24:44', '2026-04-20 06:24:44'),
+(380, 4007, 12, NULL, '2026-04-23', '12:25:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 06:26:15', '2026-04-20 06:26:15'),
+(381, 3926, NULL, NULL, '2026-04-20', '13:28:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 06:28:46', '2026-04-20 06:28:46'),
+(382, 4006, 12, NULL, '2026-04-23', '12:30:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 06:30:27', '2026-04-20 06:30:27'),
+(383, 3925, NULL, NULL, '2026-04-20', '12:33:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 06:34:14', '2026-04-20 06:34:14'),
+(384, 3547, 12, NULL, '2026-04-20', '12:34:00', 'call', 'completed', '', '2026-05-04', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 06:34:46', '2026-04-20 06:34:46'),
+(385, 4004, 12, NULL, '2026-04-23', '12:35:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 06:35:25', '2026-04-20 06:35:25'),
+(386, 3518, NULL, NULL, '2026-04-24', '12:00:00', 'whatsapp', 'completed', 'project decision......unar dorkar hole uni nije theke call korbe,dont call him again', '2026-04-24', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-20 06:36:55', '2026-04-24 04:40:52'),
+(387, 3924, NULL, NULL, '2026-04-20', '12:38:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 06:38:43', '2026-04-20 06:38:43'),
+(388, 4003, 12, NULL, '2026-04-23', '12:39:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 06:40:39', '2026-04-20 06:40:39'),
+(389, 3923, NULL, NULL, '2026-04-20', '12:42:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 06:43:25', '2026-04-20 06:43:25'),
+(390, 3542, 12, NULL, '2026-04-20', '12:45:00', 'call', 'completed', '', '2026-05-04', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 06:46:34', '2026-04-20 06:46:34'),
+(391, 3541, 12, NULL, '2026-04-20', '12:52:00', 'call', 'completed', '', '2026-05-04', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 06:53:12', '2026-04-20 06:53:12'),
+(392, 4002, 12, NULL, '2026-04-23', '12:53:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 06:53:46', '2026-04-20 06:53:46'),
+(393, 3517, NULL, NULL, '2026-04-24', '15:00:00', 'call', 'completed', 'project discussion...free time jante chawa hoyeche', '2026-04-24', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-20 06:55:03', '2026-04-24 10:35:50'),
+(394, 3540, 12, NULL, '2026-04-20', '13:01:00', 'whatsapp', 'completed', '', '2026-05-05', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 07:02:00', '2026-04-20 07:02:00'),
+(395, 3498, NULL, NULL, '2026-04-20', '12:55:00', 'whatsapp', 'pending', '', '2026-05-04', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 07:04:11', '2026-04-20 07:04:11'),
+(396, 3902, NULL, NULL, '2026-04-24', '12:00:00', 'call', 'completed', 'project visit schedule....busy,pore kotha bolbe', '2026-04-24', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-20 07:06:55', '2026-04-24 04:34:56'),
+(397, 2696, 12, NULL, '2026-04-20', '13:11:00', 'whatsapp', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 07:11:46', '2026-04-20 07:11:46'),
+(398, 3497, NULL, NULL, '2026-04-20', '13:17:00', 'whatsapp', 'pending', '', '2026-05-04', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 07:18:11', '2026-04-20 07:18:11'),
+(399, 2321, 12, NULL, '2026-04-20', '13:18:00', 'call', 'completed', '', '2026-05-05', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 07:18:56', '2026-04-20 07:18:56'),
+(400, 3496, NULL, NULL, '2026-04-20', '13:22:00', 'whatsapp', 'pending', '', '2026-05-04', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 07:22:28', '2026-04-20 07:22:28'),
+(401, 2320, 12, NULL, '2026-04-20', '13:22:00', 'whatsapp', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 07:22:59', '2026-04-20 07:22:59'),
+(402, 2318, 12, NULL, '2026-04-20', '13:26:00', 'whatsapp', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 07:27:14', '2026-04-20 07:27:14'),
+(403, 4001, NULL, NULL, '2026-04-23', '13:27:00', 'call', 'pending', '580 & ground floor grocery or bakery shop. Will discuss with family thrn let me know', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 07:28:04', '2026-04-20 07:28:04'),
+(404, 4000, 12, NULL, '2026-04-23', '13:31:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 07:32:16', '2026-04-20 07:32:16'),
+(405, 2317, 12, NULL, '2026-04-20', '13:36:00', 'call', 'completed', '', '2026-05-05', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 07:37:20', '2026-04-20 07:37:20'),
+(406, 4005, 12, NULL, '2026-04-23', '13:44:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 07:45:12', '2026-04-20 07:45:12'),
+(407, 4005, 12, NULL, '2026-04-23', '13:45:00', 'call', 'pending', 'Not very interested need to follow up flat pallabi ', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 07:46:07', '2026-04-20 07:46:07'),
+(408, 2316, 12, NULL, '2026-04-20', '13:46:00', 'call', 'completed', '', '2026-05-06', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 07:47:16', '2026-04-20 07:47:16'),
+(409, 3999, NULL, NULL, '2026-04-23', '13:47:00', 'call', 'pending', 'Don\'t have wa, need to call ', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 07:48:05', '2026-04-20 07:48:05'),
+(410, 3495, NULL, NULL, '2026-04-20', '13:49:00', 'call', 'completed', 'mgs send to whatsapp,n response', '2026-04-23', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 07:49:30', '2026-04-23 04:31:05'),
+(411, 2315, 12, NULL, '2026-04-20', '13:49:00', 'whatsapp', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 07:50:04', '2026-04-20 07:50:04'),
+(412, 3998, NULL, NULL, '2026-04-23', '13:57:00', 'call', 'pending', 'Will inform me after seeing brochure ', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 07:57:52', '2026-04-20 07:57:52'),
+(413, 3997, NULL, NULL, '2026-04-23', '14:02:00', 'call', 'pending', 'Didn\'t pick call text send ', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 08:02:49', '2026-04-20 08:02:49'),
+(414, 3494, NULL, NULL, '2026-04-20', '14:04:00', 'whatsapp', 'pending', '', '2026-04-30', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 08:05:21', '2026-04-20 08:05:21'),
+(415, 3996, NULL, NULL, '2026-04-23', '14:06:00', 'call', 'pending', 'Asked to call 10 pm', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 08:06:20', '2026-04-20 08:06:20'),
+(416, 3493, NULL, NULL, '2026-04-20', '14:10:00', 'whatsapp', 'pending', '', '2026-05-05', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 08:10:46', '2026-04-20 08:10:46'),
+(417, 3492, NULL, NULL, '2026-04-20', '14:37:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 08:38:19', '2026-04-20 08:38:19'),
+(418, 3995, NULL, NULL, '2026-04-23', '14:38:00', 'call', 'pending', 'Didn\'t pick call, don\'t have wa ', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 08:38:41', '2026-04-20 08:38:41'),
+(419, 3994, NULL, NULL, '2026-04-23', '14:46:00', 'call', 'pending', 'Didn\'t pick call text send ', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 08:47:14', '2026-04-20 08:47:14'),
+(420, 2313, 12, NULL, '2026-04-20', '14:54:00', 'call', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-20 08:54:29', '2026-04-20 08:54:29'),
+(421, 1601, NULL, NULL, '2026-04-20', '14:55:00', 'call', 'pending', 'Didn\'t pick call text send ', '2026-04-23', 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-20 08:56:23', '2026-04-20 08:56:23'),
+(422, 3528, NULL, NULL, '2026-04-23', '10:10:00', 'call', 'completed', 'mgs send to whatsapp,no response', '2026-04-23', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 09:11:19', '2026-04-23 04:26:05'),
+(423, 3527, NULL, NULL, '2026-04-20', '15:17:00', 'whatsapp', 'pending', '', '2026-05-04', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 09:18:45', '2026-04-20 09:18:45'),
+(424, 3526, NULL, NULL, '2026-04-20', '15:29:00', 'whatsapp', 'pending', '', '2026-05-03', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 09:29:32', '2026-04-20 09:29:32'),
+(425, 3525, NULL, NULL, '2026-04-20', '15:30:00', 'whatsapp', 'pending', '', '2026-04-20', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-20 09:32:27', '2026-04-20 09:32:27'),
+(426, 3969, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-25', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-20 10:20:05', '2026-04-20 10:20:05'),
+(427, 3968, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-20 10:50:27', '2026-04-20 10:50:27'),
+(428, 3967, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-20 10:52:45', '2026-04-20 10:52:45'),
+(429, 3966, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-20 10:55:16', '2026-04-20 10:55:16'),
+(430, 3965, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-20 10:57:44', '2026-04-20 10:57:44'),
+(431, 3964, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-20 11:01:53', '2026-04-20 11:01:53'),
+(432, 3963, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-20', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-20 11:05:09', '2026-04-20 11:05:09'),
+(433, 3962, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-20 11:07:21', '2026-04-20 11:07:21'),
+(434, 3961, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-20 11:08:58', '2026-04-20 11:08:58'),
+(435, 3960, 12, NULL, '2026-04-20', '00:00:00', 'call', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-20 11:21:07', '2026-04-20 11:21:07'),
+(436, 3951, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-26', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-20 11:23:16', '2026-04-20 11:23:16'),
+(437, 3958, 12, NULL, '2026-04-21', '10:42:00', 'whatsapp', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-21 04:43:06', '2026-04-21 04:43:06'),
+(438, 2276, 12, NULL, '2026-04-21', '10:41:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-21 04:43:09', '2026-04-21 04:43:09'),
+(439, 2279, NULL, NULL, '2026-04-21', '18:30:00', 'call', 'pending', 'Don\'t have wa, Asked to call evening ', '2026-04-22', 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-21 04:46:13', '2026-04-21 04:46:13'),
+(440, 3956, 12, NULL, '2026-04-21', '10:46:00', 'whatsapp', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-21 04:46:49', '2026-04-21 04:46:49'),
+(441, 2275, NULL, NULL, '2026-04-21', '00:47:00', 'call', 'pending', '', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-21 04:48:07', '2026-04-21 04:48:07'),
+(442, 3955, 12, NULL, '2026-04-21', '10:54:00', 'call', 'completed', '', '2026-05-06', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-21 04:54:19', '2026-04-21 04:54:19'),
+(443, 3954, 12, NULL, '2026-04-21', '10:58:00', 'whatsapp', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-21 04:58:37', '2026-04-21 04:58:37'),
+(444, 2271, NULL, NULL, '2026-04-21', '13:00:00', 'call', 'pending', '', '2026-04-24', 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-21 04:58:59', '2026-04-21 04:58:59'),
+(445, 2268, NULL, NULL, '2026-04-21', '13:02:00', 'call', 'pending', '', '2026-04-24', 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-21 05:03:15', '2026-04-21 05:03:15'),
+(446, 3938, 12, NULL, '2026-04-21', '11:14:00', 'call', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-21 05:14:25', '2026-04-21 05:14:25'),
+(447, 3898, NULL, NULL, '2026-04-25', '12:00:00', 'whatsapp', 'completed', 'project discussion....free time jante chawa hoyeche', '2026-04-25', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-21 05:24:51', '2026-04-25 04:31:25'),
+(448, 573, NULL, NULL, '2026-04-21', '11:33:00', 'call', 'completed', 'premium homes namw sune kete dise,,', '2026-05-07', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-21 06:04:13', '2026-04-21 06:04:13'),
+(449, 3895, NULL, NULL, '2026-04-24', '15:00:00', 'call', 'completed', 'visit decision decision....free time jante chawa hoyeche', '2026-04-24', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-21 06:06:54', '2026-04-24 10:42:58'),
+(450, 3894, NULL, NULL, '2026-04-25', '09:45:00', 'whatsapp', 'completed', 'project brief....1230 flat,layout,pricing,location sent,janabe baby er sathe alochna kore', '2026-04-25', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-21 06:14:02', '2026-04-25 04:16:55'),
+(451, 3896, NULL, NULL, '2026-04-25', '15:00:00', 'whatsapp', 'completed', 'project discussion...wa free time jante chawa hoyeche', '2026-04-25', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-21 06:19:18', '2026-04-25 09:58:28'),
+(452, 3897, NULL, NULL, '2026-04-25', '15:00:00', 'whatsapp', 'completed', 'project discussion....fre time jante chawa hoyeche', '2026-04-25', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-21 06:23:35', '2026-04-25 10:01:17'),
+(453, 3901, NULL, NULL, '2026-04-25', '12:00:00', 'call', 'completed', 'visit discussion....free time jante chawa hoyeche', '2026-04-25', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-21 06:24:48', '2026-04-25 10:11:06'),
+(454, 3900, NULL, NULL, '2026-04-25', '15:00:00', 'call', 'completed', 'imo call: video deklhe kono decision niyeche kina jante hobe...decision jante chawa hhoyeche', '2026-04-25', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-21 06:45:49', '2026-04-25 10:05:53'),
+(455, 3899, NULL, NULL, '2026-04-25', '15:30:00', 'whatsapp', 'completed', 'project discussion...free time jante chawa hoyeche', '2026-04-25', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-21 06:49:17', '2026-04-25 09:57:23'),
+(456, 1607, NULL, NULL, '2026-04-24', '12:51:00', 'call', 'pending', 'Didn\'t pick call text send ', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-21 06:51:32', '2026-04-21 06:51:32'),
+(457, 2887, NULL, NULL, '2026-04-24', '00:00:00', 'call', 'pending', '', NULL, 27, NULL, 27, NULL, NULL, NULL, NULL, '2026-04-21 06:56:58', '2026-04-21 06:56:58'),
+(458, 1605, 12, 5, '2026-04-23', '12:57:00', 'call', 'pending', '1230 Elephant road will visit ', NULL, 58, NULL, 58, NULL, NULL, NULL, NULL, '2026-04-21 06:57:51', '2026-04-21 06:57:51'),
+(459, 3936, 12, NULL, '2026-04-21', '13:23:00', 'whatsapp', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-21 07:24:39', '2026-04-21 07:24:39'),
+(460, 3935, 12, NULL, '2026-04-21', '13:27:00', 'call', 'pending', '', '2026-05-05', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-21 07:28:05', '2026-04-21 07:28:05'),
+(461, 3934, 12, NULL, '2026-04-21', '13:29:00', 'call', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-21 07:30:16', '2026-04-21 07:30:16'),
+(462, 3933, 12, NULL, '2026-05-06', '13:32:00', 'whatsapp', 'pending', '', '2026-05-06', 64, 'call_back', 64, NULL, NULL, NULL, NULL, '2026-04-21 07:32:56', '2026-04-21 07:32:56'),
+(463, 4102, NULL, NULL, '2026-04-21', '00:00:00', 'call', 'completed', 'ceo sir er upor client er akta good impression ache , mainly single unite floor demand , armonia 9A and signature A,B unit gula suggest korse  ', '2026-04-22', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-21 09:38:02', '2026-04-21 09:38:02'),
+(464, 4111, NULL, NULL, '2026-04-21', '00:00:00', 'visit', 'completed', 'signature A,B ,payment prblm asa ,visit done ', '2026-04-22', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-21 10:09:48', '2026-04-21 10:09:48'),
+(465, 4106, NULL, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'completed', 'wa text sent', '2026-04-23', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-21 10:15:19', '2026-04-21 10:15:19'),
+(466, 4105, NULL, NULL, '2026-04-21', '00:00:00', 'call', 'completed', 'meeting a busy ,call night', NULL, 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-21 10:19:56', '2026-04-21 10:19:56'),
+(467, 3947, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'wa call don\'t rcv , wa voice send.', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-21 11:01:00', '2026-04-28 04:04:01'),
+(468, 3946, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'wa call don\'t rcv , wa voice send.', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-21 11:03:11', '2026-04-28 04:14:15'),
+(469, 3945, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '', '2026-04-21', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-21 11:04:10', '2026-04-21 11:04:10'),
+(470, 3944, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'Ashilia intersted . se dekhe janabe.', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-21 11:05:10', '2026-04-28 04:18:58'),
+(471, 3545, 12, NULL, '2026-04-21', '00:00:00', 'visit', 'pending', 'time nisse ,, zanabe..', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-21 11:06:52', '2026-04-28 04:22:00'),
+(472, 3943, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'wa details  send..', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-21 11:09:53', '2026-04-28 04:56:45'),
+(473, 3937, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', '28 tarikh janabe . friday asbe kina,', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-21 11:12:24', '2026-04-28 06:10:47'),
+(474, 2714, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'project nia jiggasa .', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-21 11:18:46', '2026-04-28 06:11:45'),
+(475, 2713, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'wa call don\'t rcv , wa voice send.', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-21 11:25:07', '2026-04-28 06:15:43'),
+(476, 2712, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'wa call don\'t rcv , wa voice send.', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-21 11:30:34', '2026-04-28 06:17:14'),
+(477, 2711, 12, NULL, '2026-04-21', '00:00:00', 'whatsapp', 'pending', 'wa call don\'t rcv , wa voice send.', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-21 11:33:26', '2026-04-28 06:19:39'),
+(478, 1623, 12, NULL, '2026-04-09', '00:00:00', 'whatsapp', 'pending', '', '2026-04-22', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-22 04:30:57', '2026-04-22 04:32:24'),
+(479, 1623, 12, NULL, '2026-04-22', '00:00:00', 'whatsapp', 'pending', 'wa call but don\'t rcv ,voice send.', '2026-04-23', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-22 04:33:10', '2026-04-23 10:43:04'),
+(480, 4111, NULL, NULL, '2026-04-22', '00:00:00', 'call', 'completed', 'disscuss kora janabe', '2026-04-25', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-22 06:16:20', '2026-04-22 06:16:20'),
+(481, 4110, NULL, NULL, '2026-04-22', '00:00:00', 'whatsapp', 'completed', 'call not rec ,voice sent', '2026-04-23', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-22 06:19:30', '2026-04-22 06:19:30'),
+(482, 4099, NULL, NULL, '2026-04-22', '00:00:00', 'call', 'completed', 'busy ,,i feel not interested but he want to came our office\r\n', '2026-04-27', 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-22 06:23:08', '2026-04-22 06:23:08'),
+(483, 1800, NULL, NULL, '2026-04-22', '00:00:00', 'call', 'completed', 'maybe interested nh , always busy dakhai tasa  ', NULL, 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-22 07:16:13', '2026-04-22 07:16:13'),
+(484, 3528, NULL, NULL, '2026-04-23', '09:57:00', 'whatsapp', 'completed', '', '2026-04-27', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-23 04:27:45', '2026-04-23 04:27:45'),
+(485, 3495, NULL, NULL, '2026-04-23', '00:00:00', 'whatsapp', 'completed', 'mhs send to whatsapp', '2026-04-28', 67, 'call_back', 67, NULL, NULL, NULL, NULL, '2026-04-23 04:32:07', '2026-04-28 07:09:03'),
+(486, 1641, NULL, NULL, '2026-04-24', '15:00:00', 'call', 'completed', 'project brief...brochure check kore janabe', '2026-04-24', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 05:45:40', '2026-04-24 10:45:54'),
+(487, 2331, NULL, NULL, '2026-04-30', '12:00:00', 'whatsapp', 'pending', 'brochure dekhe janabe dicision', '2026-04-30', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 05:54:00', '2026-04-23 05:54:00'),
+(488, 587, NULL, NULL, '2026-04-30', '15:00:00', 'call', 'pending', 'imo project discussion\r\n', '2026-04-30', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 05:57:40', '2026-04-23 05:57:40'),
+(489, 989, NULL, NULL, '2026-04-26', '15:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 06:07:59', '2026-04-23 06:07:59'),
+(490, 988, NULL, NULL, '2026-04-26', '15:00:00', 'call', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 06:11:59', '2026-04-23 06:11:59'),
+(491, 987, NULL, NULL, '2026-04-26', '15:00:00', 'call', 'pending', 'imo project discussion', '2026-04-26', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 06:15:41', '2026-04-23 06:15:41'),
+(492, 987, NULL, NULL, '2026-04-26', '15:15:00', 'call', 'pending', 'imo project discussion', '2026-04-26', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 06:16:52', '2026-04-23 06:16:52'),
+(493, 1643, NULL, NULL, '2026-04-26', '17:00:00', 'call', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 06:17:48', '2026-04-23 06:17:48'),
+(494, 1926, NULL, NULL, '2026-04-30', '14:00:00', 'whatsapp', 'pending', 'bashay kotha boleche kina jante hobe', '2026-04-30', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 06:57:02', '2026-04-23 06:57:02'),
+(495, 993, NULL, NULL, '2026-04-26', '14:00:00', 'call', 'pending', 'project discussion on imo', '2026-04-30', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 07:01:03', '2026-04-23 07:01:03'),
+(496, 994, NULL, NULL, '2026-04-26', '14:00:00', 'call', 'pending', 'call on WA for project discussion', '2026-04-26', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 07:04:51', '2026-04-23 07:04:51'),
+(497, 992, NULL, NULL, '2026-04-26', '14:00:00', 'whatsapp', 'pending', 'WA project discussion', '2026-04-26', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 07:08:01', '2026-04-23 07:08:01'),
+(498, 1764, 5, NULL, '2026-04-23', '00:00:00', 'call', 'pending', '', '2026-04-25', 54, 'site visit', 54, NULL, NULL, NULL, NULL, '2026-04-23 07:51:57', '2026-04-23 07:51:57'),
+(499, 991, NULL, NULL, '2026-04-26', '15:20:00', 'whatsapp', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 08:42:33', '2026-04-23 08:42:33'),
+(500, 1925, NULL, NULL, '2026-04-26', '14:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 08:59:38', '2026-04-23 08:59:38'),
+(501, 1640, NULL, NULL, '2026-04-26', '14:30:00', 'call', 'pending', 'project discussion', '2026-04-26', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 09:02:31', '2026-04-23 09:02:31'),
+(502, 586, NULL, NULL, '2026-04-26', '14:40:00', 'whatsapp', 'pending', 'project discussion WA', '2026-04-26', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-23 09:07:00', '2026-04-23 09:07:00'),
+(503, 1623, 12, NULL, '2026-04-23', '00:00:00', 'whatsapp', 'pending', '', '2026-04-30', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-23 10:44:19', '2026-04-23 10:44:19'),
+(504, 987, NULL, NULL, '2026-05-14', '14:00:00', 'whatsapp', 'pending', 'deshe eseche kina? visit a ashbe', '2026-05-14', 35, 'site visit', 35, NULL, NULL, NULL, NULL, '2026-04-23 11:33:57', '2026-04-23 11:33:57'),
+(505, 3522, NULL, NULL, '2026-04-27', '12:00:00', 'call', 'completed', 'decision janabe monthly 1 lac installment....not interested...interested in ready project', '2026-04-27', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-24 04:13:33', '2026-04-27 09:27:48'),
+(506, 2298, 12, NULL, '2026-04-17', '00:00:00', 'whatsapp', 'pending', 'wa call don\'t rcv , wa voice send.', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-24 04:13:44', '2026-04-28 06:27:01'),
+(507, 2304, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', 'wa call don\'t rcv , wa voice send.', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-24 04:19:24', '2026-04-28 06:27:02'),
+(508, 2303, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-19', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-24 04:20:13', '2026-04-24 04:20:13'),
+(509, 3524, NULL, NULL, '2026-04-27', '12:00:00', 'call', 'completed', 'project discussion.....phone message: free time jante chawa hoyeche', '2026-04-27', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-24 04:20:40', '2026-04-27 09:33:31'),
+(510, 2299, 12, NULL, '2026-04-20', '00:00:00', 'whatsapp', 'pending', '', '2026-04-20', 77, NULL, 77, NULL, NULL, NULL, NULL, '2026-04-24 04:21:09', '2026-04-24 04:21:09'),
+(511, 2296, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', 'EID er por deshe asbe. tokon koths bolbe,', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-24 04:21:57', '2026-04-28 06:27:02'),
+(512, 2294, 12, NULL, '2026-04-19', '00:00:00', 'whatsapp', 'pending', 'wa call don\'t rcv , wa voice send.', '2026-04-28', 77, 'call_back', 77, NULL, NULL, NULL, NULL, '2026-04-24 04:22:35', '2026-04-28 06:27:01'),
+(513, 3520, NULL, NULL, '2026-04-27', '12:00:00', 'whatsapp', 'completed', 'project discussion......1230 flat janabe', '2026-04-27', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-24 04:25:27', '2026-04-27 09:40:37'),
+(514, 3902, NULL, NULL, '2026-04-27', '12:15:00', 'call', 'completed', 'visit schedule taking....decision jante chawa hoyeche', '2026-04-27', 35, 'site visit', 35, NULL, NULL, NULL, NULL, '2026-04-24 04:35:44', '2026-04-27 04:54:20'),
+(515, 3523, NULL, NULL, '2026-04-27', '14:00:00', 'call', 'completed', 'project discussion....imo free time jante chawa hoyeche', '2026-04-27', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-24 04:47:49', '2026-04-27 04:03:26'),
+(516, 3517, NULL, NULL, '2026-04-27', '14:00:00', 'call', 'completed', 'project discussion...decision jante chawa hoyeche', '2026-04-27', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-24 10:36:30', '2026-04-27 04:33:16'),
+(517, 3519, NULL, NULL, '2026-04-27', '13:00:00', 'whatsapp', 'completed', 'project discussion.......free time jante chawa hoyeche', '2026-04-27', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-24 10:37:11', '2026-04-27 09:16:21'),
+(518, 3895, NULL, NULL, '2026-04-27', '12:00:00', 'call', 'completed', 'visit decision....not interested...don\'t call again', '2026-04-27', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-24 10:46:34', '2026-04-27 09:45:58'),
+(519, 1641, NULL, NULL, '2026-04-27', '13:00:00', 'whatsapp', 'completed', 'brochure check koreche kina jante hobe.....shop interested...janabe pore', '2026-04-27', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-24 10:47:16', '2026-04-27 04:47:40'),
+(520, 3894, NULL, NULL, '2026-04-27', '09:30:00', 'call', 'completed', '1230 flat,location,layout,pricing sent,kalke call korbe...decision jante chawa hooyeche', '2026-04-25', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-25 04:26:35', '2026-04-25 10:12:11'),
+(521, 3898, NULL, NULL, '2026-04-28', '10:30:00', 'whatsapp', 'completed', 'project discussion....not interested right now', '2026-04-28', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-25 04:32:19', '2026-04-28 05:30:19'),
+(522, 4111, NULL, NULL, '2026-04-25', '00:00:00', 'call', 'completed', 'location choice hoi nai ,', NULL, 53, NULL, 53, NULL, NULL, NULL, NULL, '2026-04-25 07:17:22', '2026-04-25 07:17:22'),
+(523, 3899, NULL, NULL, '2026-04-28', '14:00:00', 'whatsapp', 'completed', 'project deiscussion....free time jante chawa hoyeche', '2026-04-28', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-25 09:59:11', '2026-04-28 05:28:21'),
+(524, 3900, NULL, NULL, '2026-04-28', '15:00:00', 'call', 'completed', 'decision jante chawa hobe.......free time jante chawa hoyeche', '2026-04-28', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-25 10:06:38', '2026-04-28 05:22:24'),
+(525, 3896, NULL, NULL, '2026-04-29', '15:00:00', 'call', 'pending', 'project discussion', '2026-04-29', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-25 10:08:26', '2026-04-25 10:08:26'),
+(526, 3897, NULL, NULL, '2026-04-29', '15:00:00', 'whatsapp', 'pending', 'project discussion', '2026-04-29', 35, 'call_back', 35, NULL, NULL, NULL, NULL, '2026-04-25 10:09:04', '2026-04-25 10:09:04'),
+(527, 4324, 7, NULL, '2026-04-30', '00:00:00', 'Phone Call', 'pending', 'Didn\'t pick, WA sent ', NULL, 28, NULL, 28, 28, 'Pending', '', NULL, '2026-04-28 10:56:37', '2026-04-28 10:56:37'),
+(528, 4353, NULL, NULL, '2026-04-29', '10:08:00', 'WA Call', 'pending', 'Test', '2026-04-29', 2, 'call_back', 2, NULL, 'Pending', 'fghfh', NULL, '2026-04-29 04:09:17', '2026-04-29 04:09:17');
 
 -- --------------------------------------------------------
 
@@ -6149,9 +6199,15 @@ CREATE TABLE `lead_payments` (
 --
 
 INSERT INTO `lead_payments` (`id`, `booking_id`, `payment_type`, `amount`, `bulk_emi_discount`, `due_emi_amount`, `parent_payment_id`, `settlement_type`, `land_share_amount`, `payment_method`, `payment_status`, `payment_date`, `emi_no`, `total_emi_no`, `transaction_ref`, `bank_name`, `bank_id`, `bank_account_no`, `cheque_no`, `service_fee`, `online_type`, `created_by`, `created_at`, `verification_status`, `attachment_image`, `verified_by`, `verified_at`, `attachment_paths`, `rejection_reason`) VALUES
-(9, 2, 'booking_money', 800000.00, 0.00, 0.00, NULL, NULL, 0.00, 'bank', 'partially_paid', '2026-04-26', NULL, 40, '123456', 'City Bank', NULL, '34287545', '', NULL, '', 6, '2026-04-26 06:16:23', 'verified', 'payments_69edadb7045a4.png', 5, '2026-04-26 06:19:08', NULL, NULL),
-(10, 2, 'booking_money', 200000.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, 40, '12313', '', NULL, '', '', NULL, '', 6, '2026-04-26 06:37:47', 'verified', '', 5, '2026-04-26 06:38:00', NULL, NULL),
-(11, 2, 'registration', 637500.00, 0.00, 0.00, NULL, NULL, 0.00, 'bank', 'paid', '2026-04-26', NULL, NULL, '122334', 'City Bank', NULL, '34287545', '', NULL, '', 6, '2026-04-26 07:05:24', 'verified', '', 5, '2026-04-26 07:06:08', NULL, NULL);
+(9, 2, 'booking_money', 1000000.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, 48, '122334', '', NULL, '', '', NULL, '', 6, '2026-04-26 06:32:23', 'verified', '', 6, '2026-04-26 06:32:56', NULL, NULL),
+(10, 2, 'land_share', 200000.00, 0.00, 0.00, NULL, NULL, 200000.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-04-26 06:35:57', 'verified', NULL, 6, '2026-04-26 06:36:04', NULL, NULL),
+(11, 2, 'development_charge', 100000.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-04-26 06:47:57', 'verified', NULL, 6, '2026-04-26 06:48:06', NULL, NULL),
+(12, 2, 'emi', 118750.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:27:48', 'verified', NULL, 6, '2026-04-26 07:37:30', NULL, NULL),
+(13, 2, 'emi', 118750.00, 9999.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:46:57', 'verified', NULL, 6, '2026-04-26 07:47:46', NULL, NULL),
+(14, 2, 'emi', 118750.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:46:57', 'verified', NULL, 6, '2026-04-26 07:47:53', NULL, NULL),
+(15, 2, 'emi', 118750.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:46:57', 'verified', NULL, 6, '2026-04-26 07:48:00', NULL, NULL),
+(16, 2, 'emi', 118750.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:46:57', 'verified', NULL, 6, '2026-04-26 07:48:07', NULL, NULL),
+(17, 2, 'emi', 118750.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:46:57', 'verified', NULL, 6, '2026-04-26 07:48:15', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -6301,6 +6357,14 @@ CREATE TABLE `management_cashin` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `management_cashin`
+--
+
+INSERT INTO `management_cashin` (`id`, `role_name`, `role_id`, `person_name`, `transaction_date`, `source`, `description`, `amount`, `payment_method`, `payment_status`, `transaction_ref`, `bank_name`, `bank_account_no`, `cheque_no`, `online_type`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'CEO', 1, 'Mainul Hassan Dulon', '2026-04-10', 'Investement', 'test', 50000000.00, 'cash', 'paid', 'trx345', '', '', '', '', 5, '2026-04-10 10:54:35', '2026-04-10 10:54:35'),
+(2, 'CEO', 1, 'Mainul Hassan Dulon', '2026-04-17', '1110', '', 11111.00, 'cash', 'paid', '', '', '', '', '', 5, '2026-04-17 08:55:39', '2026-04-17 08:55:39');
+
 -- --------------------------------------------------------
 
 --
@@ -6406,8 +6470,8 @@ CREATE TABLE `manpower_requisitions` (
 --
 
 CREATE TABLE `material_receiving` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `purchase_order_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `purchase_order_id` int(10) UNSIGNED NOT NULL,
   `received_by` int(11) NOT NULL,
   `receiving_date` date NOT NULL,
   `received_status` enum('Full','Partial','Rejected') NOT NULL DEFAULT 'Partial',
@@ -6421,7 +6485,10 @@ CREATE TABLE `material_receiving` (
   `warehouse_id` int(11) NOT NULL,
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  `pm_checked_by` int(11) DEFAULT NULL,
+  `pm_note` text DEFAULT NULL,
+  `pm_approved_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -6431,9 +6498,9 @@ CREATE TABLE `material_receiving` (
 --
 
 CREATE TABLE `material_receiving_items` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `receiving_id` int(11) UNSIGNED NOT NULL,
-  `purchase_order_item_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `receiving_id` int(10) UNSIGNED NOT NULL,
+  `purchase_order_item_id` int(10) UNSIGNED NOT NULL,
   `ordered_quantity` decimal(12,3) NOT NULL,
   `received_quantity` decimal(12,3) NOT NULL DEFAULT 0.000,
   `status` enum('Accepted','Partially Accepted','Rejected','Pending QC') NOT NULL DEFAULT 'Pending QC',
@@ -6505,10 +6572,10 @@ CREATE TABLE `onboard_clients` (
 --
 
 CREATE TABLE `operational_fund_requests` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
   `requester_id` int(11) NOT NULL,
-  `operator_id` int(11) UNSIGNED DEFAULT NULL,
+  `operator_id` int(10) UNSIGNED DEFAULT NULL,
   `amount` decimal(15,2) NOT NULL,
   `purpose` text NOT NULL,
   `fund_date` date NOT NULL,
@@ -6542,6 +6609,14 @@ CREATE TABLE `payslips` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `payslips`
+--
+
+INSERT INTO `payslips` (`id`, `employee_id`, `designation_id`, `payslip_month`, `total_earning`, `total_deduction`, `net_salary`, `company_bank_id`, `status`, `payment_method`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 1, 0, '2026-03-01', 22100.00, 1000.00, 21100.00, 1, 'paid', 'bank', 4, '2026-03-31 11:47:19', '2026-03-31 11:48:20'),
+(2, 1, 0, '2026-04-01', 30000.00, 1000.00, 29000.00, NULL, 'pending', 'bank', 4, '2026-04-10 10:20:42', '2026-04-10 10:20:42');
 
 -- --------------------------------------------------------
 
@@ -6662,7 +6737,7 @@ INSERT INTO `permissions` (`id`, `name`, `status`, `created_by`, `created_at`, `
 (45, 'Contractor Bill', 1, 6, '2026-04-22 00:12:47', '2026-04-22 00:12:47'),
 (46, 'Project Report', 1, 6, '2026-04-22 00:13:06', '2026-04-22 00:13:06'),
 (47, 'Bill & Payments', 1, 122, '2026-04-23 01:38:32', '2026-04-23 01:38:32'),
-(48, 'Project structure design', 1, 6, '2026-04-26 12:32:57', '2026-04-26 12:32:57');
+(48, 'Project structure design', 1, 6, '2026-04-29 06:04:01', '2026-04-29 06:04:01');
 
 -- --------------------------------------------------------
 
@@ -6779,27 +6854,28 @@ CREATE TABLE `projects` (
   `architect_id` int(11) DEFAULT NULL,
   `estimator_id` int(11) DEFAULT NULL,
   `qc_id` int(11) DEFAULT NULL,
-  `operator_id` int(11) DEFAULT NULL,
-  `deleted_at` datetime DEFAULT NULL
+  `deleted_at` datetime DEFAULT NULL,
+  `operator_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `projects`
 --
 
-INSERT INTO `projects` (`id`, `name`, `slug`, `location_id`, `community_id`, `building_type`, `total_share`, `unit_per_floor`, `floor_wise_unit_meta`, `types`, `image`, `image2`, `image3`, `front_road`, `price_range`, `hover_text`, `tag`, `plot_size`, `plot_no`, `block_no`, `brochure_link`, `description`, `apartment_count`, `amenities_details`, `amenities_image`, `map_image`, `map_link`, `project_map_location`, `passenger_lift`, `cargo_lift`, `created_by`, `created_at`, `updated_at`, `rooftop_gardening`, `swimming_pool`, `convention`, `electricity_backup`, `car_parking`, `project_sale_status`, `service_charge_per_emi`, `project_status`, `pm_id`, `site_engineer_id`, `landman_id`, `struct_engineer_id`, `operation_head_id`, `draftsman_id`, `architect_id`, `estimator_id`, `qc_id`, `operator_id`, `deleted_at`) VALUES
-(1, 'The Premium Nobel Court', 'the-premium-nobel-court', 1, 1, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', 20, 4, '{\"typical_floor\":[{\"unit_name\":\"Unit - A\",\"sqft\":1200},{\"unit_name\":\"Unit - B\",\"sqft\":1100},{\"unit_name\":\"Unit - C\",\"sqft\":1400},{\"unit_name\":\"Unit - D\",\"sqft\":1300}]}', 'Test', '', '', '', '40', 'Under 50 Lac BDT', 'The Premium Nobel Court', NULL, 70, '5', NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 2, '', '', '', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', 1, 1, 3, '2026-02-19 17:05:16', '2026-04-07 10:44:56', 1, NULL, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:44:56'),
-(2, 'The Premium Legacy Residence', 'the-premium-legacy-residence', 2, 2, 'B2+B1+G+15', 5, 2, '{\"typical_floor\":[{\"unit_name\":\"Unit - A\",\"sqft\":1300},{\"unit_name\":\"Unit - B\",\"sqft\":1400}]}', 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', 'projects_69cdf159e1742.jpg', '', '', '40', 'Under 50 Lac BDT', '', NULL, 3.5, '', NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 1, '', '', '', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '4 Block: D Plot: 43 Land Size: 2.5 Katha Land Area: 36/50 Ashulia Model Town,', 1, 1, 2, '2026-04-02 04:32:26', '2026-04-07 10:45:05', 1, NULL, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:45:05'),
-(3, 'The Premium Glory Garden', 'the-premium-glory-garden', 2, 2, 'B+G+9', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1200},{\"unit_name\":\"B\",\"sqft\":1300},{\"unit_name\":\"C\",\"sqft\":1100}]}', '3  Bedrooms', '', '', '', '40 Feet', '50 Lac - 1 Crore BDT', 'Ashulia Model town ', NULL, 5, '', NULL, '', '', 1, '', '', '', '', '', 1, 1, 2, '2026-04-06 12:56:04', '2026-04-08 06:18:11', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 06:18:11'),
-(4, 'The Premium Twelfth Heights', 'the-premium-twelfth-heights', 1, 3, '', 32, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1550},{\"unit_name\":\"B\",\"sqft\":1550},{\"unit_name\":\"C\",\"sqft\":1600},{\"unit_name\":\"D\",\"sqft\":1600}]}', '', '', '', '', '25', '50 Lac - 1 Crore BDT', '', NULL, 12, '6460,6061,6092,6493', NULL, '', '', 0, '', '', '', '', '', 2, 1, 21, '2026-04-07 04:52:51', '2026-04-07 10:44:49', 1, NULL, 1, 0, 0, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:44:49'),
+INSERT INTO `projects` (`id`, `name`, `slug`, `location_id`, `community_id`, `building_type`, `total_share`, `unit_per_floor`, `floor_wise_unit_meta`, `types`, `image`, `image2`, `image3`, `front_road`, `price_range`, `hover_text`, `tag`, `plot_size`, `plot_no`, `block_no`, `brochure_link`, `description`, `apartment_count`, `amenities_details`, `amenities_image`, `map_image`, `map_link`, `project_map_location`, `passenger_lift`, `cargo_lift`, `created_by`, `created_at`, `updated_at`, `rooftop_gardening`, `swimming_pool`, `convention`, `electricity_backup`, `car_parking`, `project_sale_status`, `service_charge_per_emi`, `project_status`, `pm_id`, `site_engineer_id`, `landman_id`, `struct_engineer_id`, `operation_head_id`, `draftsman_id`, `architect_id`, `estimator_id`, `qc_id`, `deleted_at`, `operator_id`) VALUES
+(1, 'The Premium Nobel Court', 'the-premium-nobel-court', 1, 1, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', 20, 4, '{\"typical_floor\":[{\"unit_name\":\"Unit - A\",\"sqft\":1200},{\"unit_name\":\"Unit - B\",\"sqft\":1100},{\"unit_name\":\"Unit - C\",\"sqft\":1400},{\"unit_name\":\"Unit - D\",\"sqft\":1300}]}', 'Test', '', '', '', '40', 'Under 50 Lac BDT', 'The Premium Nobel Court', NULL, 70, '5', NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 2, '', '', '', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', 1, 1, 3, '2026-02-19 17:05:16', '2026-04-07 10:44:56', 1, NULL, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:44:56', NULL),
+(2, 'The Premium Legacy Residence', 'the-premium-legacy-residence', 2, 2, 'B2+B1+G+15', 5, 2, '{\"typical_floor\":[{\"unit_name\":\"Unit - A\",\"sqft\":1300},{\"unit_name\":\"Unit - B\",\"sqft\":1400}]}', 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', 'projects_69cdf159e1742.jpg', '', '', '40', 'Under 50 Lac BDT', '', NULL, 3.5, '', NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 1, '', '', '', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '4 Block: D Plot: 43 Land Size: 2.5 Katha Land Area: 36/50 Ashulia Model Town,', 1, 1, 2, '2026-04-02 04:32:26', '2026-04-07 10:45:05', 1, NULL, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:45:05', NULL),
+(3, 'The Premium Glory Garden', 'the-premium-glory-garden', 2, 2, 'B+G+9', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1200},{\"unit_name\":\"B\",\"sqft\":1300},{\"unit_name\":\"C\",\"sqft\":1100}]}', '3  Bedrooms', '', '', '', '40 Feet', '50 Lac - 1 Crore BDT', 'Ashulia Model town ', NULL, 5, '', NULL, '', '', 1, '', '', '', '', '', 1, 1, 2, '2026-04-06 12:56:04', '2026-04-08 06:18:11', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 06:18:11', NULL),
+(4, 'The Premium Twelfth Heights', 'the-premium-twelfth-heights', 1, 3, '', 32, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1550},{\"unit_name\":\"B\",\"sqft\":1550},{\"unit_name\":\"C\",\"sqft\":1600},{\"unit_name\":\"D\",\"sqft\":1600}]}', '', '', '', '', '25', '50 Lac - 1 Crore BDT', '', NULL, 12, '6460,6061,6092,6493', NULL, '', '', 0, '', '', '', '', '', 2, 1, 21, '2026-04-07 04:52:51', '2026-04-07 10:44:49', 1, NULL, 1, 0, 0, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:44:49', NULL),
 (5, 'The Legacy Residence', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1790},{\"unit_name\":\"B\",\"sqft\":1790},{\"unit_name\":\"C\",\"sqft\":1790},{\"unit_name\":\"D\",\"sqft\":1790}]}', '3 Bedroom', 'projects_69d5fee900d47.jpeg', '', '', '50 ', '50 Lac - 1 Crore BDT', NULL, NULL, 13.91, '2', 'B', 'https://drive.google.com/file/d/1PF3KEcpfxBw0Ecz9pHzBsCkFk2SaMgoT/view?usp=drive_link', '<p>The Legacy Residence represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:17:20', '2026-04-08 07:08:25', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (6, 'The Maple Heights', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":2150},{\"unit_name\":\"C\",\"sqft\":2190},{\"unit_name\":\"D\",\"sqft\":2190}]}', '4 Bedroom', 'projects_69d5ff07e1c77.jpeg', '', '', '30', '1 Crore - 2 Crore BDT', NULL, NULL, 14.58, '2', 'B', 'https://drive.google.com/file/d/1MeywaLCcU3IET53mkHMnL4dXiukEvQ-5/view?usp=drive_link', '<p>The Maple Heights represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:22:49', '2026-04-08 07:08:55', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(7, 'The Premium Signature Heights', NULL, 1, 3, 'B+G+12', 36, 3, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1950}]}', '3 Bedroom', 'projects_69d5ff409b76f.jpeg', '', '', '25', '1 Crore - 2 Crore BDT', NULL, NULL, 16.88, '6168 U, 6168 M, 6168 T', 'N', 'https://drive.google.com/file/d/1MDZY987dskuwdA2n-zH68W6XsjCSNgUc/view?usp=drive_link', '<p class=\"text-base sm:text-lg leading-relaxed text-neutral-700 max-w-xl animate-fade-up delay-200\">The Signature Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/nVMLyaaQGiqZn6fi6', '23°48\'38.2', 2, 0, 2, '2026-04-08 06:57:40', '2026-04-08 07:09:52', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(8, 'Test project ', 'test-project', 1, 1, 'test', NULL, NULL, NULL, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', NULL, NULL, NULL, '40 Feet', 'Under 50 Lac BDT', 'The Premium Nobel Court', NULL, 3, '0', '3', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 1, '0', NULL, NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '4 Block: D Plot: 43 Land Size: 2.5 Katha Land Area: 36/50 Ashulia Model Town,', 1, NULL, 2, '2026-04-08 07:03:35', '2026-04-08 07:03:44', 1, 0, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 07:03:44'),
-(9, 'The Crown Pavilion', 'the-crown-pavilion', 2, 2, 'B1+G+14', 126, 9, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":635},{\"unit_name\":\"B\",\"sqft\":900},{\"unit_name\":\"C\",\"sqft\":680},{\"unit_name\":\"D\",\"sqft\":785},{\"unit_name\":\"E\",\"sqft\":715},{\"unit_name\":\"F\",\"sqft\":755},{\"unit_name\":\"G\",\"sqft\":610},{\"unit_name\":\"H\",\"sqft\":1100},{\"unit_name\":\"I\",\"sqft\":1140}]}', '1, 2, 3 Bedroom', 'projects_69d5fe85e4a00.jpeg', '', '', '30', 'Under 50 Lac BDT', NULL, NULL, 12.77, '2', 'B', 'https://drive.google.com/file/d/1WWOYZU0AGGHb6uJDe1SOhOEHsIbJFGpN/view?usp=drive_link', '<p>The Premium Crown Pavilion is designed as an studio oasis, where lush greenery meets contemporary modern architecture. With coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 6, '2026-04-08 07:06:45', '2026-04-27 10:55:02', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, 120, 123, 121, 129, NULL, 124, 122, 125, 126, 128, NULL),
-(10, 'Test Project', 'test-project-1', 1, 2, '', NULL, NULL, NULL, '', NULL, NULL, NULL, '', 'Under 50 Lac BDT', '', NULL, 0, '', '', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 2, '2026-04-08 07:14:10', '2026-04-08 07:14:27', 0, 0, 0, 0, 0, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 07:14:27'),
-(11, 'The Premium Royel City Commercial', 'the-premium-royel-city-commercial', 2, 1, 'B2+B1+G+14', NULL, NULL, NULL, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', NULL, NULL, NULL, '40', 'Under 50 Lac BDT', '', NULL, 0, '', '', '', '', 1, '', NULL, NULL, '', '', 1, 1, 23, '2026-04-18 15:36:19', '2026-04-19 04:10:16', 1, 0, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-19 04:10:16'),
-(12, 'TPRC Crown Tower', 'tprc-crown-tower', 3, 1, 'B3+B2+B1+G+20', 135, 9, '0', 'Residential', NULL, NULL, NULL, '40,30,25 Feet', NULL, '', NULL, 71, '14', 'I', '', '', NULL, '', NULL, NULL, '', '', 2, 1, 23, '2026-04-19 04:09:44', '2026-04-19 04:09:44', 1, 0, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+(7, 'The Premium Signature Heights', NULL, 1, 3, 'B+G+12', 36, 3, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1950},{\"unit_name\":\"B\",\"sqft\":2000},{\"unit_name\":\"C\",\"sqft\":1750}]}', '3 Bedroom', 'projects_69d5ff409b76f.jpeg', '', '', '25', '1 Crore - 2 Crore BDT', NULL, NULL, 16.88, '6168 U, 6168 M, 6168 T', 'N', 'https://drive.google.com/file/d/1MDZY987dskuwdA2n-zH68W6XsjCSNgUc/view?usp=drive_link', '<p class=\"text-base sm:text-lg leading-relaxed text-neutral-700 max-w-xl animate-fade-up delay-200\">The Signature Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/nVMLyaaQGiqZn6fi6', '23°48\'38.2', 2, 0, 29, '2026-04-08 06:57:40', '2026-04-29 05:45:26', 1, NULL, 1, 1, 1, 'On Sale', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(8, 'Test project ', 'test-project', 1, 1, 'test', NULL, NULL, NULL, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', NULL, NULL, NULL, '40 Feet', 'Under 50 Lac BDT', 'The Premium Nobel Court', NULL, 3, '0', '3', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 1, '0', NULL, NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '4 Block: D Plot: 43 Land Size: 2.5 Katha Land Area: 36/50 Ashulia Model Town,', 1, NULL, 2, '2026-04-08 07:03:35', '2026-04-08 07:03:44', 1, 0, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 07:03:44', NULL),
+(9, 'The Crown Pavilion', 'the-crown-pavilion', 2, 2, 'B1+G+14', 126, 9, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":635},{\"unit_name\":\"B\",\"sqft\":900},{\"unit_name\":\"C\",\"sqft\":680},{\"unit_name\":\"D\",\"sqft\":785},{\"unit_name\":\"E\",\"sqft\":715},{\"unit_name\":\"F\",\"sqft\":755},{\"unit_name\":\"G\",\"sqft\":610},{\"unit_name\":\"H\",\"sqft\":1100},{\"unit_name\":\"I\",\"sqft\":1140}]}', '1, 2, 3 Bedroom', 'projects_69d5fe85e4a00.jpeg', '', '', '30', 'Under 50 Lac BDT', '', NULL, 12.77, '2', 'B', 'https://drive.google.com/file/d/1WWOYZU0AGGHb6uJDe1SOhOEHsIbJFGpN/view?usp=drive_link', '<p>The Premium Crown Pavilion is designed as an studio oasis, where lush greenery meets contemporary modern architecture. With coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 07:06:45', '2026-04-08 07:06:45', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(10, 'Test Project', 'test-project-1', 1, 2, '', NULL, NULL, NULL, '', NULL, NULL, NULL, '', 'Under 50 Lac BDT', '', NULL, 0, '', '', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 2, '2026-04-08 07:14:10', '2026-04-08 07:14:27', 0, 0, 0, 0, 0, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 07:14:27', NULL),
+(11, 'The Premium Royel City Commercial', 'the-premium-royel-city-commercial', 2, 1, 'B2+B1+G+14', NULL, NULL, NULL, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', NULL, NULL, NULL, '40', 'Under 50 Lac BDT', '', NULL, 0, '', '', '', '', 1, '', NULL, NULL, '', '', 1, 1, 23, '2026-04-18 15:36:19', '2026-04-19 04:10:16', 1, 0, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-19 04:10:16', NULL),
+(12, 'TPRC Crown Tower', 'tprc-crown-tower', 3, 1, 'B3+B2+B1+G+20', 135, 9, '0', 'Residential', NULL, NULL, NULL, '40,30,25 Feet', NULL, '', NULL, 71, '14', 'I', '', '', NULL, '', NULL, NULL, '', '', 2, 1, 23, '2026-04-19 04:09:44', '2026-04-19 04:09:44', 1, 0, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(13, 'test project from developer', 'test-project-from-developer', 2, 2, 'B+G+9', 10, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1200}]}', '3  Bedrooms', NULL, NULL, NULL, '30', '50 Lac - 1 Crore BDT', 'Ashulia Model town ', NULL, 72.5, '12', 'B', 'link', '', 1, '', NULL, NULL, '', '', 2, 1, 6, '2026-04-26 06:18:34', '2026-04-26 06:18:34', 0, 0, 0, 0, 0, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -6808,9 +6884,9 @@ INSERT INTO `projects` (`id`, `name`, `slug`, `location_id`, `community_id`, `bu
 --
 
 CREATE TABLE `project_drawings` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
-  `design_type_id` int(11) UNSIGNED NOT NULL,
+  `design_type_id` int(10) UNSIGNED NOT NULL,
   `is_in_house` tinyint(1) NOT NULL DEFAULT 1,
   `user_id` int(11) DEFAULT NULL,
   `designer_name` varchar(150) DEFAULT NULL,
@@ -6852,10 +6928,10 @@ CREATE TABLE `project_structural_designs` (
 --
 
 CREATE TABLE `project_working_plans` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
-  `initial_budget_id` int(11) UNSIGNED NOT NULL,
-  `design_type_id` int(11) UNSIGNED NOT NULL,
+  `initial_budget_id` int(10) UNSIGNED NOT NULL,
+  `design_type_id` int(10) UNSIGNED NOT NULL,
   `year` smallint(5) UNSIGNED NOT NULL,
   `month` tinyint(3) UNSIGNED NOT NULL,
   `work_description` text NOT NULL,
@@ -6898,8 +6974,8 @@ CREATE TABLE `property_reviews` (
 --
 
 CREATE TABLE `purchase_orders` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `request_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `request_id` int(10) UNSIGNED NOT NULL,
   `created_by` int(11) NOT NULL,
   `status` enum('Draft','Issued','Partially Received','Fully Received','Cancelled') NOT NULL DEFAULT 'Draft',
   `order_date` date NOT NULL,
@@ -6918,10 +6994,10 @@ CREATE TABLE `purchase_orders` (
 --
 
 CREATE TABLE `purchase_order_items` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `purchase_order_id` int(11) UNSIGNED NOT NULL,
-  `material_id` int(11) UNSIGNED NOT NULL,
-  `selected_vendor_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `purchase_order_id` int(10) UNSIGNED NOT NULL,
+  `material_id` int(10) UNSIGNED NOT NULL,
+  `selected_vendor_id` int(10) UNSIGNED NOT NULL,
   `quantity` decimal(12,3) NOT NULL,
   `unit_price` decimal(14,4) NOT NULL,
   `total_price` decimal(16,4) GENERATED ALWAYS AS (`quantity` * `unit_price`) STORED,
@@ -6935,7 +7011,7 @@ CREATE TABLE `purchase_order_items` (
 --
 
 CREATE TABLE `purchase_requests` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
   `bom_id` int(11) DEFAULT NULL,
   `created_by` int(11) NOT NULL,
@@ -6952,9 +7028,9 @@ CREATE TABLE `purchase_requests` (
 --
 
 CREATE TABLE `purchase_request_items` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `request_id` int(11) UNSIGNED NOT NULL,
-  `material_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `request_id` int(10) UNSIGNED NOT NULL,
+  `material_id` int(10) UNSIGNED NOT NULL,
   `quantity` decimal(12,3) NOT NULL,
   `created_by` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -6966,9 +7042,9 @@ CREATE TABLE `purchase_request_items` (
 --
 
 CREATE TABLE `quotations` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `request_id` int(11) UNSIGNED NOT NULL,
-  `vendor_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `request_id` int(10) UNSIGNED NOT NULL,
+  `vendor_id` int(10) UNSIGNED NOT NULL,
   `validity_date` date DEFAULT NULL,
   `status` enum('Received','Shortlisted','Rejected') NOT NULL DEFAULT 'Received',
   `created_by` int(11) NOT NULL,
@@ -6982,8 +7058,8 @@ CREATE TABLE `quotations` (
 --
 
 CREATE TABLE `quotation_comparisons` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `request_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `request_id` int(10) UNSIGNED NOT NULL,
   `prepared_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -6995,9 +7071,9 @@ CREATE TABLE `quotation_comparisons` (
 --
 
 CREATE TABLE `quotation_items` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `quotation_id` int(11) UNSIGNED NOT NULL,
-  `material_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `quotation_id` int(10) UNSIGNED NOT NULL,
+  `material_id` int(10) UNSIGNED NOT NULL,
   `quantity` decimal(12,3) NOT NULL,
   `unit_price` decimal(14,4) NOT NULL,
   `total_price` decimal(16,4) GENERATED ALWAYS AS (`quantity` * `unit_price`) STORED,
@@ -7041,9 +7117,7 @@ INSERT INTO `roles` (`id`, `name`, `created_by`, `created_at`, `updated_at`) VAL
 (16, 'Draftsman ', NULL, '2026-04-21 23:15:23', '2026-04-21 23:15:23'),
 (17, 'Purchase team leader', NULL, '2026-04-21 23:17:55', '2026-04-21 23:17:55'),
 (18, 'Project Architecture ', NULL, '2026-04-21 23:25:26', '2026-04-21 23:25:26'),
-(19, 'Estimator', NULL, '2026-04-22 02:35:08', '2026-04-22 02:35:08'),
-(20, 'Site Operator', NULL, '2026-04-26 10:03:50', '2026-04-26 10:03:50'),
-(21, 'Structure designer', NULL, '2026-04-26 11:13:09', '2026-04-26 11:13:09');
+(19, 'Estimator', NULL, '2026-04-22 02:35:08', '2026-04-22 02:35:08');
 
 -- --------------------------------------------------------
 
@@ -7108,48 +7182,43 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (178, 6, 25, '2026-04-10 08:55:37', '2026-04-10 08:55:37'),
 (179, 6, 20, '2026-04-10 08:55:37', '2026-04-10 08:55:37'),
 (180, 6, 13, '2026-04-10 08:55:37', '2026-04-10 08:55:37'),
-(256, 3, 10, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(257, 3, 3, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(258, 3, 1, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(259, 3, 5, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(260, 3, 39, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(261, 3, 47, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(262, 3, 41, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(263, 3, 21, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(264, 3, 12, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(265, 3, 26, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(266, 3, 45, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(267, 3, 40, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(268, 3, 31, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(269, 3, 6, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(270, 3, 28, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(271, 3, 27, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(272, 3, 25, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(273, 3, 33, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(274, 3, 44, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(275, 3, 43, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(276, 3, 14, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(277, 3, 8, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(278, 3, 38, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(279, 3, 34, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(280, 3, 29, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(281, 3, 46, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(282, 3, 48, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(283, 3, 32, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(284, 3, 35, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(285, 3, 11, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(286, 3, 7, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(287, 3, 24, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(288, 3, 4, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(289, 3, 30, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(290, 3, 13, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(291, 3, 36, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(292, 3, 37, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(293, 3, 2, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(294, 3, 42, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
-(295, 14, 27, '2026-04-27 11:14:27', '2026-04-27 11:14:27'),
-(296, 16, 34, '2026-04-27 11:14:41', '2026-04-27 11:14:41'),
-(298, 18, 39, '2026-04-27 12:24:50', '2026-04-27 12:24:50');
+(358, 3, 10, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(359, 3, 3, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(360, 3, 1, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(361, 3, 5, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(362, 3, 39, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(363, 3, 47, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(364, 3, 41, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(365, 3, 21, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(366, 3, 12, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(367, 3, 26, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(368, 3, 45, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(369, 3, 31, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(370, 3, 6, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(371, 3, 28, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(372, 3, 27, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(373, 3, 25, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(374, 3, 33, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(375, 3, 44, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(376, 3, 43, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(377, 3, 14, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(378, 3, 8, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(379, 3, 38, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(380, 3, 34, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(381, 3, 29, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(382, 3, 46, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(383, 3, 48, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(384, 3, 32, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(385, 3, 35, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(386, 3, 11, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(387, 3, 7, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(388, 3, 24, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(389, 3, 4, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(390, 3, 30, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(391, 3, 13, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(392, 3, 36, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(393, 3, 37, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(394, 3, 42, '2026-04-29 06:04:18', '2026-04-29 06:04:18');
 
 -- --------------------------------------------------------
 
@@ -7269,7 +7338,7 @@ INSERT INTO `sliders` (`id`, `title`, `subtitle`, `link`, `image`, `status`, `cr
 --
 
 CREATE TABLE `soil_tests` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
   `site_engineer_id` int(11) NOT NULL,
   `field_data` text DEFAULT NULL,
@@ -7287,7 +7356,7 @@ CREATE TABLE `soil_tests` (
 --
 
 CREATE TABLE `target_fixed` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
   `work_plan_id` int(11) DEFAULT NULL,
   `target_title` varchar(200) DEFAULT NULL,
@@ -7447,12 +7516,12 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `email`, `designation_id`, `address`, `nid`, `role_id`, `password`, `photo`, `media_link1`, `media_link2`, `last_logout`, `created_by`, `created_at`, `updated_at`, `team_id`) VALUES
-(1, NULL, 'Farzana', 'farzana', '01873244236', 'farzana.tphl@gmail.com', 28, 'Dhaka', '123', 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, '', '', '2026-04-09 05:34:11', 6, '2026-02-22 06:47:08', '2026-04-27 11:13:27', 0),
+(1, 0, 'Farzana', 'farzana', '01873244236', 'farzana.tphl13@gmail.com', 28, 'Dhaka', '123', 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, '', '', '2026-04-09 05:34:11', 6, '2026-02-22 06:47:08', '2026-04-09 05:34:11', 0),
 (2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-04-19 09:43:10', NULL, '2026-02-22 06:47:08', '2026-04-19 09:43:10', NULL),
 (3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 0, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-04-19 05:54:47', 4, '2026-02-23 03:24:25', '2026-04-19 05:54:47', 0),
 (4, 1008, 'Md. Jasim Uddin', 'Jasim Uddin', '01762013007', 'hr@gmail.com', 14, 'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.', '1903663282', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, '', '', '2026-04-24 12:21:28', 4, '2026-02-23 05:44:19', '2026-04-24 12:21:28', NULL),
 (5, 0, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 3, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, '', '', '2026-04-08 09:48:37', 6, '2026-02-23 06:11:06', '2026-04-08 09:48:37', NULL),
-(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-04-27 17:57:16', 110, '2026-03-29 03:44:44', '2026-04-27 11:57:16', 0),
+(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-04-29 06:06:44', 110, '2026-03-29 03:44:44', '2026-04-29 06:06:44', 0),
 (7, NULL, 'CED', 'CED', '01872364346', 'ced@gmail.com', 1, 'Dhaka', '823445', 7, '$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.', NULL, '', '', '2026-03-31 12:05:54', 6, '2026-03-29 04:01:38', '2026-03-31 12:05:54', NULL),
 (8, NULL, 'Sales Team Head', 'Sales Head', '01327488234', 'sales-head@gmail.com', 1, 'Dhaka', '09231943', 9, '$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.', NULL, '', '', '2026-04-08 09:30:55', 1, '2026-03-29 04:16:47', '2026-04-08 09:30:55', NULL),
 (9, 3, 'Md. rafi', 'admin_39_', '01234567890', 'rafi@easytechx.com', 9, 'ADDL Tower, Dhanmondi 27/A', '', 8, '$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG', NULL, '', '', '2026-03-29 10:24:18', 0, '2026-03-29 10:23:39', '2026-03-30 16:36:23', NULL),
@@ -7472,7 +7541,7 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (26, 18, 'Md. Nazmul Khan Shihab', 'khan Shihab', '01958253326', 'shihab.tphl@gmail.com', 20, '2450/11,East Dandabor, Palashbari, Savar cantonment -1344, Savar, Dhaka', '', 8, '$2y$10$b/geGkDCcdjnJY4j931Ia.YyXu1/FBrONUVr8jCr9csPFZXJ8BYMi', NULL, '', '', '2026-03-30 06:50:40', 0, '2026-03-30 06:50:40', '2026-04-12 11:58:01', 10),
 (27, 19, 'Munshi Aiman Kabir', 'aiman kabir', '01958253318', 'aiman.tphl@gmail.com', 20, 'Savar, Dhaka', '', 8, '$2y$10$lxze0zOCDKCiYZanahnfO.8tgO6v4MZiK8OBHsMxiXr7/4qH3s2FO', NULL, '', '', '2026-03-30 07:01:11', 0, '2026-03-30 07:01:11', '2026-04-16 07:46:31', 4),
 (28, 20, 'Md. Tariqul Islam Illion', 'tariqul islam', '0 1958-2533', 'illion.tphl@gmail.com', 20, 'Ashulia Model Town, Khagan Bazar, Birulia, Savar, Dhaka', '', 8, '$2y$10$Sj/S3IIUnt4EttdRVs/lXOCGvn9i/funVCadYEXd0ENgLdmEXSZF6', NULL, '', '', '2026-03-30 07:06:02', 0, '2026-03-30 07:06:02', '2026-04-16 08:25:07', 11),
-(29, 21, 'Shafia Afrin Shahana', 'Shafia Afrin Shahana', '01335258332', 'shafia.tphl@gmail.com', 15, 'Apon Bazar Samiti Market, Rayerbag, Jatrabari, Dhaka', '', 5, '$2y$10$jg9yoH8rHsH2A7wrOb6D8urj1iUv889LWfvhL3dU95RDg8t7HIYpK', NULL, '', '', '2026-04-20 08:39:03', 0, '2026-03-30 07:56:24', '2026-04-20 08:39:03', 11),
+(29, 21, 'Shafia Afrin Shahana', 'Shafia Afrin Shahana', '01335258332', 'shafia.tphl@gmail.com', 15, 'Apon Bazar Samiti Market, Rayerbag, Jatrabari, Dhaka', '', 5, '$2y$10$jg9yoH8rHsH2A7wrOb6D8urj1iUv889LWfvhL3dU95RDg8t7HIYpK', NULL, '', '', '2026-04-28 05:54:59', 0, '2026-03-30 07:56:24', '2026-04-28 05:54:59', 11),
 (30, 22, 'Abir Ahmed', 'Abir Ahmed', '01335258328', 'abir0.tphl@gmail.com', 15, 'Poshu Hospital Para, Magura Sadar,Magura', '', 8, '$2y$10$IU8I8sJvyYl06UUHgy8XHuzHv66J7mAfVdPACHogEpVjTZ8Wuq2bG', NULL, '', '', '2026-03-30 08:29:14', 0, '2026-03-30 08:29:14', '2026-04-12 11:58:59', 10),
 (31, 23, 'Shanawaz Khan', 'Shanawaz Khan', '01335258330', 'shanawaz.tphl@gmail.com', 15, 'House-12,Road-4,Block-J,Banasree Meradia Khilgaon Dhaka 1219', '', 8, '$2y$10$Px7TN7veOADIqwYdPfISbOLfxqwEkSq9S1R8sTPWDUpAYRo4hb4uS', NULL, '', '', '2026-03-30 08:42:17', 0, '2026-03-30 08:42:17', '2026-04-12 11:57:10', 3),
 (32, 24, 'Md. Saiful Islam Jony', 'saiful jony', '01958253340', 'saif.thpl@gmail.com', 21, '104/A/9 Buddhibi Road,Mohammadpur,Dhaka-1207', '', 5, '$2y$10$iJlvDYNOYQ5.AFtGpin74uRVIvXn//mKEgfeHXBvVTXXvqLEteiJa', NULL, '', '', '2026-04-20 05:23:04', 0, '2026-03-30 08:46:37', '2026-04-20 05:23:04', 12),
@@ -7497,7 +7566,7 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (59, 45, 'Kazi Jahid Hasan', 'Kazi Jahid Hasan', '01335258339', 'jahid.tphl@gmail.com', 23, 'Shah Ali Thana, Mirpur 1, Dhaka, 1229', '', 8, '$2y$10$o1c8bwaEWyTgxCs8OKnmy.155Q2E1XV.Y5Zt2/N.AwJB9HhD39PbC', NULL, '', '', '2026-03-30 10:03:44', 0, '2026-03-30 10:03:44', '2026-04-12 12:10:37', 6),
 (60, 46, 'H M Nazmul Alam', 'H M Nazmul Alam', '01335258313', 'nazmulshakib.tphl@gmail.com', 15, 'Tulashar, Shilpakala Academy, Aminbag, Shariatpur Sadar', '', 8, '$2y$10$j8oSuPOI0BarG10VQLdlgu3XQLs9u4HXgl7l1S1GgnNFTSjDm5X2C', 'users_69cb86772a604.jpg', '', '', '2026-03-30 10:05:23', 0, '2026-03-30 10:05:23', '2026-04-12 11:58:36', 10),
 (61, 47, 'Mst. Tamanna Aktar Meghna', 'Mst. Tamanna Aktar Meghna', '01958253348', 'tamanna.tphl@gmail.com', 23, 'Khagan, Birulia, savar, 1340', '', 8, '$2y$10$GAromZnC1DJDwjgu1qW4.eU0/aoDJbqvJPr3oyFS3HflvESXRJTwi', NULL, '', '', '2026-03-30 10:07:57', 0, '2026-03-30 10:07:57', '2026-04-12 11:53:50', 8),
-(62, 48, 'Md. Rayhan Kabir Roni', 'Md. Rayhan Kabir Roni', '01335-25832', 'rayhan.tphl@gmail.com', 15, 'Palashbari,Gaibandha', '', 8, '$2y$10$nN8hAqbsVXHTLsh.zHew2.nqBcRmvzezxII7SAQl3DPS8vx9/0NHy', NULL, '', '', '2026-03-30 10:09:50', 0, '2026-03-30 10:09:50', '2026-04-12 11:56:44', 3),
+(62, 48, 'Md. Rayhan Kabir Roni', 'Md. Rayhan Kabir Roni', '01335-25832', 'rayhan.tphl@gmail.com', 15, 'Palashbari,Gaibandha', '', 8, '$2y$10$nN8hAqbsVXHTLsh.zHew2.nqBcRmvzezxII7SAQl3DPS8vx9/0NHy', NULL, '', '', '2026-04-28 10:40:13', 0, '2026-03-30 10:09:50', '2026-04-28 10:40:13', 3),
 (63, 49, 'Sayed Al Shahab', 'Sayed Al Shahab', '01335258322', 'shahab.tphl@gmail.com', 15, '\" Village/Street: Rouha, Post Office:Niamatpur - 2310, Karimganj, Kishoreganj\"', '', 8, '$2y$10$bjXDvIEqOg9VeQ5bhNDq5exrakmbZyDeQ9w8WES/Ia06fay.8Mfgi', NULL, '', '', '2026-03-30 10:16:53', 0, '2026-03-30 10:16:53', '2026-04-12 12:15:37', 13),
 (64, 50, 'Rafiqul Islam', 'Rafiqul Islam', '01958253345', 'rafiqul.tphl@gmail.com', 20, 'Khalpar,Tarabo,Rupganj,Narayanganj, post code:1460', '', 8, '$2y$10$2N5KDT5gZ0UCL6S8SeRxWuZ3fxTOOWUgw3LABYD4NHzmf06UsJGNS', 'users_69d34f1238f61.jpeg', '', '', '2026-03-30 10:20:00', 0, '2026-03-30 10:20:00', '2026-04-12 12:11:33', 7),
 (65, 51, 'Md. Mahabubur Rahman Mehedee', 'Md. Mahabubur Rahman Mehedee', '01335258307', 'mehedee.tphl@gmail.com', 21, 'N/A', '', 8, '$2y$10$8RKSqAv7Ir8wx2sEjdhPR.h.toEB4e5Xhoj1IGdstx2f89Hd/gKse', NULL, '', '', '2026-03-30 10:24:57', 0, '2026-03-30 10:24:57', '2026-04-12 12:13:29', 12),
@@ -7527,11 +7596,11 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (90, 79, 'Moonmoon Akter Oishy', 'Moonmoon Akter Oishy', '01958253355', 'oishytphl@gmail.com', 24, 'Road No -1,  B - 45 Bank Town,  Savar', '1047316906', 2, '$2y$10$Sdqb84cXh8GKU9Okw2rRSe7k3N6a0riQJVPBDqnRhqa9px28WsDY.', NULL, '', '', '2026-03-30 11:43:09', 0, '2026-03-30 11:43:09', '2026-03-30 16:36:23', NULL),
 (91, 76, 'Rubina Islam', 'Rubina Islam', '01958253349', 'rubinatphl49@gmail.com', 15, '', '', 2, '$2y$10$r8GdWRKSpeZjr24W1pjGn.uaye6s/.clnO7G8ESZI3NnV844NrnCS', NULL, '', '', '2026-03-30 11:44:43', 0, '2026-03-30 11:44:43', '2026-03-30 16:36:23', NULL),
 (92, 80, 'Afrin Jahan Anika', 'Afrin Jahan Anika', '01958253335', 'anika.tphl@gmail.com', 13, '39/b senpara porbota mirpur 10', '1032936708', 2, '$2y$10$nBTOuqyG5vmEhBfJADloguSRdoA383Hrd.mFIuseKxOXG3bkfZYZG', NULL, '', '', '2026-03-30 11:52:36', 0, '2026-03-30 11:52:36', '2026-03-30 16:36:23', NULL),
-(94, 0, 'Mehedi H. Jony', 'Mehedi H. Jony', '01861685153', 'mehedihjony.tphl@gmail.com', 28, 'Dhaka', '', 10, '$2y$10$YO/Y1hPq8lo0NTFbWbSX5u1hyUYn.i0F1s3KcNN9Xx8Askz3/5q0O', NULL, '', '', '2026-04-27 12:09:24', 6, '2026-03-30 16:43:54', '2026-04-27 06:09:24', 0),
+(94, 0, 'Mehedi H. Jony', 'Mehedi H. Jony', '01861685153', 'mehedihjony.tphl@gmail.com', 28, 'Dhaka', '', 10, '$2y$10$YO/Y1hPq8lo0NTFbWbSX5u1hyUYn.i0F1s3KcNN9Xx8Askz3/5q0O', NULL, '', '', '2026-04-27 06:07:13', 6, '2026-03-30 16:43:54', '2026-04-27 06:07:13', 0),
 (95, 81, 'Riya', 'Riya', '01778234546', 'riya@gmail.com', 28, 'Dhaka', '34', 5, '$2y$10$cUYgCjvi4yiNDYS8mTGWsOkEvOJR32hiN/5Dsku7ULURP.tcviqpK', NULL, '', '', '2026-04-04 11:27:15', 4, '2026-03-31 06:40:46', '2026-04-04 11:27:15', 0),
 (98, 82, 'S.A Arnob', 'S.A Arnob', '01958253347', 'arnob.tphl@gmail.com', 20, 'Dottopara, Asuliya, Dhaka', '', 8, '$2y$10$aaooqfFW63prXcheowgGMeuZAHV88qpV1JQMljfQiHbOv2qCKtFdy', NULL, '', '', '2026-03-31 08:18:16', 0, '2026-03-31 08:18:16', '2026-04-12 11:41:08', 4),
 (100, 83, 'Md. Mamunur Rahman', 'Md. Mamunur Rahman', '01958253342', 'mamunur.tphl@gmail.com', 19, '', '1947418776', 7, '$2y$10$ADpw3aS2xygSq6zySs.GaOoDAhv9XTdf3jXLxpZeyQ8fJinfXiZwG', NULL, '', '', '2026-03-31 08:58:36', 0, '2026-03-31 08:58:36', '2026-03-31 08:58:36', 2),
-(102, 84, 'Mehedi Hasan Rudro', 'Rudro', '01872356456', 'rudro@gmail.com', 21, 'N/A', '', 11, '$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra', NULL, '', '', '2026-04-27 12:10:30', 4, '2026-04-02 08:14:46', '2026-04-27 06:10:30', 0),
+(102, 84, 'Mehedi Hasan Rudro', 'Rudro', '01872356456', 'rudro@gmail.com', 21, 'N/A', '', 11, '$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra', NULL, '', '', '2026-04-29 06:46:23', 4, '2026-04-02 08:14:46', '2026-04-29 06:46:23', 0),
 (103, 85, 'Mehedi Hasan Shuvo', 'hasan shuvo', '01901365048', 'shuvo.tphl@gmail.com', 17, 'Dhaka', '', 5, '$2y$10$IQykvHC0cycV2VPhGMjfz.h6JdRuJzPkX4fw20XGlbQlHrPo4hKbu', NULL, '', '', '2026-04-09 04:00:41', 0, '2026-04-03 13:29:06', '2026-04-09 04:00:41', 5),
 (105, 11, 'Mr. Ibrahim Khalil', 'ibrahim khalil', '01958253319', 'ibrahimkhalil.tphl@gmail.com', 20, '5/9, Dakkhin Rajashon, Savar, Dhaka', '', 8, '$2y$10$qExZ9v2Jozj5g9ct4UC3TeFToO.2UTmVBXrWXXmDmmjelR0co0hTG', NULL, '', '', '2026-04-04 05:57:01', 0, '2026-04-04 05:57:01', '2026-04-12 11:54:39', 9),
 (110, NULL, 'Mainul Hassan Dulon', 'Mainul H. Dulon', '01933657804', 'ceo@dpremiumhomes.com', 29, 'Dhaka', '', 3, '$2y$10$8Z5Mj0/6UMu4MDupWjOnGOv6CvqtAqS5E0SdhEiOBvEp.oUszI5/e', NULL, '', '', '2026-04-08 11:18:00', 6, '2026-04-04 11:35:30', '2026-04-08 11:18:00', 0),
@@ -7542,17 +7611,7 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (116, 12, 'Nahian', 'rafi', '01123456789', 'nahian.easytechx@gmail.com', 14, 'asdfadf', '55555534434', 8, '$2y$10$RHjmhMhmgwE/OuuD2c92suYCaEZlm5RN0UhhFbAz2hRBKdeXj6Fe2', NULL, '', '', '2026-04-08 10:14:38', 6, '2026-04-08 10:14:38', '2026-04-08 10:15:58', 0),
 (117, 86, 'Test Employee', 'Test', '01790128472', 'test3@gmail.com', 32, 'Mohammadpur, Dhaka-1207', '', 0, '$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW', NULL, '', '', '2026-04-10 10:07:16', 0, '2026-04-10 10:07:16', '2026-04-10 10:07:16', 0),
 (118, 87, 'Shazzadur Rahman Shoumic', 'Shazzad', '01765562314', 'shazzadur.tphl@gmail.com', 20, '', '', 8, '$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6', NULL, '', '', '2026-04-12 11:46:52', 0, '2026-04-12 11:46:52', '2026-04-12 11:46:52', 5),
-(119, 90, 'Shohanur Rahaman', 'Shohanur Rahaman', '01958253372', 'shohan.tphl@gmail.com', 13, 'Khagan Ashulia', '', 11, '$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK', NULL, '', '', '2026-04-19 04:42:58', 119, '2026-04-17 13:13:21', '2026-04-19 04:42:58', 0),
-(120, NULL, 'Project Manager1', 'Project Manager1', '01876123454', 'farzana.tphl13@gmail.com', 36, 'Dhaka', '', 15, '$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu', NULL, '', '', '2026-04-26 15:55:58', 6, '2026-04-26 09:55:58', '2026-04-27 11:13:54', 0),
-(121, NULL, 'Land Man1', 'Land Man1', '01993878733', 'farzana.tech24@gmail.com', 33, 'Dhaka', '', 14, '$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO', NULL, '', '', '2026-04-27 17:55:26', 6, '2026-04-26 09:56:52', '2026-04-27 11:55:26', 0),
-(122, NULL, 'Mr. Architect1', 'Mr. Architect1', '01875438578', 'architect1@gmail.com', 34, 'Dhaka', '', 18, '$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2', NULL, '', '', '2026-04-27 18:23:24', 6, '2026-04-26 09:58:02', '2026-04-27 12:23:24', 0),
-(123, NULL, 'Mr. Site Engineer1', 'Mr. Site Engineer1', '01987328476', 'se1@gmail.com', 37, 'Dhaka', '', 12, '$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi', NULL, '', '', '2026-04-26 15:58:54', 6, '2026-04-26 09:58:54', '2026-04-26 09:58:54', 0),
-(124, NULL, 'Mr. Draftsman1', 'Mr. Draftsman1', '', 'draft1@gmail.com', 35, 'dhaka', '', 16, '$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De', NULL, '', '', '2026-04-26 15:59:33', 6, '2026-04-26 09:59:33', '2026-04-26 09:59:33', 0),
-(125, NULL, 'Mr Estimator1', 'Mr Estimator1', '', 'estimator1@gmail.com', 37, 'dhaka', '', 19, '$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay', NULL, '', '', '2026-04-26 16:00:08', 6, '2026-04-26 10:00:08', '2026-04-26 10:00:08', 0),
-(126, NULL, 'Mr. QC1', 'Mr. QC1', '01986378256', 'qc1@gmail.com', 43, 'Dhaka', '', 13, '$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi', NULL, '', '', '2026-04-26 16:00:52', 6, '2026-04-26 10:00:52', '2026-04-26 10:00:52', 0),
-(127, NULL, 'Mr Purchase Head1', 'Mr Purchase Head1', '', 'pd1@gmail.com', 42, 'Dhaka', '', 17, '$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe', NULL, '', '', '2026-04-26 16:01:41', 6, '2026-04-26 10:01:41', '2026-04-26 10:01:41', 0),
-(128, NULL, 'Mr Site Operators1', 'Mr Site Operators1', '01723876324', 'sadikaafrin170043@gmail.com', 38, 'Dhaka', '', 20, '$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q', NULL, '', '', '2026-04-26 16:05:25', 6, '2026-04-26 10:05:25', '2026-04-27 10:24:32', 0),
-(129, NULL, 'Mr Structure Designer1', 'Mr Structure Designer1', '01653247632', 'nahian.tphl@gmail.com', 15, 'Dhaka', '', 21, '$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G', NULL, '', '', '2026-04-26 17:41:57', 6, '2026-04-26 11:41:57', '2026-04-27 10:21:38', 0);
+(119, 90, 'Shohanur Rahaman', 'Shohanur Rahaman', '01958253372', 'shohan.tphl@gmail.com', 13, 'Khagan Ashulia', '', 11, '$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK', NULL, '', '', '2026-04-19 04:42:58', 119, '2026-04-17 13:13:21', '2026-04-19 04:42:58', 0);
 
 -- --------------------------------------------------------
 
@@ -7561,7 +7620,7 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 --
 
 CREATE TABLE `vendors` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `name` varchar(255) NOT NULL,
   `phone` varchar(30) DEFAULT NULL,
   `email` varchar(191) DEFAULT NULL,
@@ -7581,10 +7640,10 @@ CREATE TABLE `vendors` (
 --
 
 CREATE TABLE `vendor_payment_requests` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `vendor_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `vendor_id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) DEFAULT NULL,
-  `purchase_order_id` int(11) UNSIGNED NOT NULL,
+  `purchase_order_id` int(10) UNSIGNED NOT NULL,
   `payment_type` enum('Advance','Partial','Final') NOT NULL DEFAULT 'Final',
   `created_by` int(11) NOT NULL,
   `invoice_number` varchar(100) DEFAULT NULL,
@@ -7610,12 +7669,12 @@ CREATE TABLE `vendor_payment_requests` (
 --
 
 CREATE TABLE `vendor_penalties` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `vendor_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `vendor_id` int(10) UNSIGNED NOT NULL,
   `is_deducted_from_bill` tinyint(1) NOT NULL DEFAULT 0,
-  `purchase_order_id` int(11) UNSIGNED NOT NULL,
-  `receiving_id` int(11) UNSIGNED DEFAULT NULL,
-  `payment_request_id` int(11) UNSIGNED DEFAULT NULL,
+  `purchase_order_id` int(10) UNSIGNED NOT NULL,
+  `receiving_id` int(10) UNSIGNED DEFAULT NULL,
+  `payment_request_id` int(10) UNSIGNED DEFAULT NULL,
   `penalty_category` enum('Late Delivery','Quality Issue','Shortage','Others') NOT NULL,
   `penalty_amount` decimal(14,2) NOT NULL DEFAULT 0.00,
   `is_fixed_amount` tinyint(1) DEFAULT 1,
@@ -7634,8 +7693,8 @@ CREATE TABLE `vendor_penalties` (
 --
 
 CREATE TABLE `vendor_ratings` (
-  `id` int(11) UNSIGNED NOT NULL,
-  `vendor_id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
+  `vendor_id` int(10) UNSIGNED NOT NULL,
   `rated_by` int(11) NOT NULL,
   `rating` decimal(2,1) NOT NULL,
   `reason` text DEFAULT NULL,
@@ -7649,7 +7708,7 @@ CREATE TABLE `vendor_ratings` (
 --
 
 CREATE TABLE `weekly_progress_report` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
   `site_engineer_id` int(11) NOT NULL,
   `work_plan_id` int(11) DEFAULT NULL,
@@ -7716,13 +7775,6 @@ CREATE TABLE `work_types` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `work_types`
---
-
-INSERT INTO `work_types` (`id`, `design_type_id`, `work_type_name`, `description`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Civil Work', '', 6, '2026-04-27 07:36:43', '2026-04-27 07:36:43');
 
 --
 -- Indexes for dumped tables
@@ -8509,7 +8561,7 @@ ALTER TABLE `approval_requests`
 -- AUTO_INCREMENT for table `architect_engineering`
 --
 ALTER TABLE `architect_engineering`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `banks`
@@ -8527,19 +8579,19 @@ ALTER TABLE `blogs`
 -- AUTO_INCREMENT for table `boq_items`
 --
 ALTER TABLE `boq_items`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `boq_master`
 --
 ALTER TABLE `boq_master`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `budget_extend_requests`
 --
 ALTER TABLE `budget_extend_requests`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `cameras`
@@ -8593,7 +8645,7 @@ ALTER TABLE `company_bank_accounts`
 -- AUTO_INCREMENT for table `comparison_items`
 --
 ALTER TABLE `comparison_items`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `contacts`
@@ -8605,31 +8657,31 @@ ALTER TABLE `contacts`
 -- AUTO_INCREMENT for table `contractors`
 --
 ALTER TABLE `contractors`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `contractor_bill_requests`
 --
 ALTER TABLE `contractor_bill_requests`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_approval_logs`
 --
 ALTER TABLE `con_approval_logs`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_financial_transactions`
 --
 ALTER TABLE `con_financial_transactions`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_materials`
 --
 ALTER TABLE `con_materials`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_material_issues`
@@ -8647,19 +8699,19 @@ ALTER TABLE `con_material_issue_items`
 -- AUTO_INCREMENT for table `con_stocks`
 --
 ALTER TABLE `con_stocks`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_stock_movements`
 --
 ALTER TABLE `con_stock_movements`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_warehouses`
 --
 ALTER TABLE `con_warehouses`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `departments`
@@ -8671,19 +8723,19 @@ ALTER TABLE `departments`
 -- AUTO_INCREMENT for table `designations`
 --
 ALTER TABLE `designations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
 -- AUTO_INCREMENT for table `design_types`
 --
 ALTER TABLE `design_types`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `emi_schedules`
 --
 ALTER TABLE `emi_schedules`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `employees`
@@ -8725,7 +8777,7 @@ ALTER TABLE `emp_weekly_day_off`
 -- AUTO_INCREMENT for table `flats`
 --
 ALTER TABLE `flats`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `flat_purchase_rules`
@@ -8749,31 +8801,31 @@ ALTER TABLE `holidays`
 -- AUTO_INCREMENT for table `initial_estimate_budgets`
 --
 ALTER TABLE `initial_estimate_budgets`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `initial_estimate_items`
 --
 ALTER TABLE `initial_estimate_items`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `initial_estimate_labors`
 --
 ALTER TABLE `initial_estimate_labors`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `land_visibility_study`
 --
 ALTER TABLE `land_visibility_study`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `leads`
 --
 ALTER TABLE `leads`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4275;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4354;
 
 --
 -- AUTO_INCREMENT for table `lead_bookings`
@@ -8785,13 +8837,13 @@ ALTER TABLE `lead_bookings`
 -- AUTO_INCREMENT for table `lead_follow_ups`
 --
 ALTER TABLE `lead_follow_ups`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=527;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=529;
 
 --
 -- AUTO_INCREMENT for table `lead_payments`
 --
 ALTER TABLE `lead_payments`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `lead_sources`
@@ -8815,7 +8867,7 @@ ALTER TABLE `locations`
 -- AUTO_INCREMENT for table `management_cashin`
 --
 ALTER TABLE `management_cashin`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `management_cashout`
@@ -8845,13 +8897,13 @@ ALTER TABLE `manpower_requisitions`
 -- AUTO_INCREMENT for table `material_receiving`
 --
 ALTER TABLE `material_receiving`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `material_receiving_items`
 --
 ALTER TABLE `material_receiving_items`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `notifications`
@@ -8869,13 +8921,13 @@ ALTER TABLE `onboard_clients`
 -- AUTO_INCREMENT for table `operational_fund_requests`
 --
 ALTER TABLE `operational_fund_requests`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `payslips`
 --
 ALTER TABLE `payslips`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `payslip_details`
@@ -8911,13 +8963,13 @@ ALTER TABLE `platform_budgets`
 -- AUTO_INCREMENT for table `projects`
 --
 ALTER TABLE `projects`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `project_drawings`
 --
 ALTER TABLE `project_drawings`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `project_structural_designs`
@@ -8929,7 +8981,7 @@ ALTER TABLE `project_structural_designs`
 -- AUTO_INCREMENT for table `project_working_plans`
 --
 ALTER TABLE `project_working_plans`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `property_reviews`
@@ -8941,55 +8993,55 @@ ALTER TABLE `property_reviews`
 -- AUTO_INCREMENT for table `purchase_orders`
 --
 ALTER TABLE `purchase_orders`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `purchase_order_items`
 --
 ALTER TABLE `purchase_order_items`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `purchase_requests`
 --
 ALTER TABLE `purchase_requests`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `purchase_request_items`
 --
 ALTER TABLE `purchase_request_items`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `quotations`
 --
 ALTER TABLE `quotations`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `quotation_comparisons`
 --
 ALTER TABLE `quotation_comparisons`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `quotation_items`
 --
 ALTER TABLE `quotation_items`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `roles`
 --
 ALTER TABLE `roles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT for table `role_permissions`
 --
 ALTER TABLE `role_permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=299;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=395;
 
 --
 -- AUTO_INCREMENT for table `sales_targets`
@@ -9019,13 +9071,13 @@ ALTER TABLE `sliders`
 -- AUTO_INCREMENT for table `soil_tests`
 --
 ALTER TABLE `soil_tests`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `target_fixed`
 --
 ALTER TABLE `target_fixed`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `tasks`
@@ -9049,37 +9101,37 @@ ALTER TABLE `units`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=130;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=120;
 
 --
 -- AUTO_INCREMENT for table `vendors`
 --
 ALTER TABLE `vendors`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `vendor_payment_requests`
 --
 ALTER TABLE `vendor_payment_requests`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `vendor_penalties`
 --
 ALTER TABLE `vendor_penalties`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `vendor_ratings`
 --
 ALTER TABLE `vendor_ratings`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `weekly_progress_report`
 --
 ALTER TABLE `weekly_progress_report`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `whatsapp_campaigns`
@@ -9097,7 +9149,7 @@ ALTER TABLE `whatsapp_messages`
 -- AUTO_INCREMENT for table `work_types`
 --
 ALTER TABLE `work_types`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
