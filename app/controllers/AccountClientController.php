@@ -374,11 +374,21 @@ public function addCedTransaction()
 
     $paymentType = $_POST['payment_type'] ?? '';
 
-    // CED can only add development_charge or emi
-    if (!in_array($paymentType, ['development_charge', 'emi'])) {
-        setError("CED can only add Development Charges or EMI transactions.");
+    // CED can only add development_charge, emi, or emi_due_settlement
+    if (!in_array($paymentType, ['development_charge', 'emi', 'emi_due_settlement'])) {
+        setError("CED can only add Development Charges, EMI, or EMI Settlement transactions.");
         header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
         exit;
+    }
+
+    // CHECK: EMI due settlement requires a parent payment ID
+    if ($paymentType === 'emi_due_settlement') {
+        $parentPaymentId = !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : 0;
+        if (!$parentPaymentId) {
+            setError("EMI settlement requires selecting the original EMI payment.");
+            header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+            exit;
+        }
     }
 
     // Land Share must be completed
@@ -425,6 +435,9 @@ public function addCedTransaction()
         'online_type'     => $_POST['online_type'] ?? null,
         'attachment_paths' => $uploadedPaths ?: null,
         'bulk_emi_discount'=> isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
+        'due_emi_amount'   => isset($_POST['due_emi_amount']) ? (float)$_POST['due_emi_amount'] : 0,
+        'parent_payment_id'=> !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null,
+        'settlement_type'  => !empty($_POST['settlement_type']) ? $_POST['settlement_type'] : null,
         'created_by'      => $_SESSION['user']['id'] ?? 1
     ];
 
@@ -444,8 +457,13 @@ public function addCedTransaction()
         }
     }
 
-    // Add transaction (same model method as Accounts)
-    $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
+    // Route to correct model method
+    if ($transactionData['payment_type'] === 'emi_due_settlement') {
+        // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id are handled
+        $result = $this->clientModel->addTransaction($transactionData, null);
+    } else {
+        $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
+    }
 
     if ($result['success']) {
         setSuccess($result['message'] . " — Pending verification by Accounts.");
@@ -1467,6 +1485,30 @@ public function viewClientStatement($bookingId = null)
             exit;
         }
 
+        // ====== RESTORE PARENT DUE ON SETTLEMENT REJECTION ======
+        if ($action === 'reject') {
+            $checkSettlementStmt = $this->db->prepare("SELECT settlement_type, parent_payment_id, amount FROM lead_payments WHERE id = ?");
+            if ($checkSettlementStmt) {
+                $checkSettlementStmt->bind_param("i", $paymentId);
+                $checkSettlementStmt->execute();
+                $settlementRow = $checkSettlementStmt->get_result()->fetch_assoc();
+                if ($settlementRow && $settlementRow['settlement_type'] === 'emi_due_settlement' && !empty($settlementRow['parent_payment_id'])) {
+                    $parentId = (int)$settlementRow['parent_payment_id'];
+                    $settlementAmount = (float)$settlementRow['amount'];
+                    $restoreParentStmt = $this->db->prepare("
+                        UPDATE lead_payments 
+                        SET due_emi_amount = due_emi_amount + ?, payment_status = 'partially_paid' 
+                        WHERE id = ?
+                    ");
+                    if ($restoreParentStmt) {
+                        $restoreParentStmt->bind_param("di", $settlementAmount, $parentId);
+                        $restoreParentStmt->execute();
+                    }
+                }
+            }
+        }
+        // =========================================================
+
         // ====== SYNC BOOKING & PAYMENT STATUS ======
         if ($action === 'verify') {
             $getBookingIdStmt = $this->db->prepare("SELECT booking_id FROM lead_payments WHERE id = ?");
@@ -1696,6 +1738,51 @@ public function viewClientStatement($bookingId = null)
             'files'               => $files,
             'file_count'          => count($files),
         ]);
+        exit;
+    }
+
+    public function saveTransferNote()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $bookingId = $_POST['booking_id'] ?? null;
+        $transferDate = $_POST['transfer_date'] ?? null;
+        $transferNote = $_POST['transfer_note'] ?? null;
+        $transferStatus = isset($_POST['transfer_status']) ? (int)$_POST['transfer_status'] : 0;
+        $updatedBy = $_SESSION['user']['id'] ?? null;
+        $sourcePage = $_POST['source_page'] ?? 'accounts'; // accounts or ced
+
+        if (!$bookingId || !$updatedBy) {
+            setError('Invalid request or user not authenticated.');
+            $redirectUrl = $sourcePage === 'ced' 
+                ? "{$GLOBALS['base_url']}/clients-cash-in-history-view?booking_id={$bookingId}"
+                : "{$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}";
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        // Empty strings to null
+        $transferDate = !empty($transferDate) ? $transferDate : null;
+        $transferNote = !empty($transferNote) ? $transferNote : null;
+
+        $success = $this->clientModel->saveTransferNote($bookingId, $transferDate, $transferNote, $transferStatus, $updatedBy);
+
+        if ($success) {
+            setSuccess('Transfer note updated successfully.');
+        } else {
+            setError('Failed to update transfer note.');
+        }
+
+        $redirectUrl = $sourcePage === 'ced' 
+            ? "{$GLOBALS['base_url']}/clients-cash-in-history-view?booking_id={$bookingId}"
+            : "{$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}";
+        
+        header("Location: {$redirectUrl}");
         exit;
     }
 }

@@ -88,6 +88,9 @@ class DashboardController extends Controller
             }
         }
 
+        // ── ACCOUNTS OPERATIONS STATS ─────────────────────────────────────
+        $operationsStats = $this->getOperationsStats();
+
         $this->view("accounts/dashboard/accounts-dashboard", [
             "current_route" => "accounts-dashboard",
             "page_title" => "Dashboard" . ($selectedProjectName ? " - " . $selectedProjectName : ""),
@@ -103,7 +106,94 @@ class DashboardController extends Controller
             "chartData" => $chartData,
             "weeklyData" => $weeklyData,
             "yearlyData" => $yearlyData,
-            "overviewStats" => $overviewStats
+            "overviewStats" => $overviewStats,
+            "operationsStats" => $operationsStats
         ]);
+    }
+
+    /**
+     * Fetch quick-glance operations stats for the Accounts dashboard.
+     * These are always "all time" counts of actionable items.
+     */
+    private function getOperationsStats()
+    {
+        $stats = [
+            'pending_verifications'     => 0,
+            'pending_verification_amt'  => 0,
+            'pending_vendor_payments'   => 0,
+            'pending_vendor_amt'        => 0,
+            'pending_contractor_bills'  => 0,
+            'pending_contractor_amt'    => 0,
+            'pending_cashout_requests'  => 0,
+            'pending_cashout_amt'       => 0,
+            'pending_refunds'           => 0,
+            'pending_refund_amt'        => 0,
+            'total_clients'             => 0,
+        ];
+
+        // 1. Pending Verifications (lead_payments waiting for Accounts to verify)
+        $r = $this->db->query("
+            SELECT COUNT(*) AS c, COALESCE(SUM(amount), 0) AS amt
+            FROM lead_payments
+            WHERE verification_status = 'pending'
+        ");
+        if ($r && $row = $r->fetch_assoc()) {
+            $stats['pending_verifications']    = (int)$row['c'];
+            $stats['pending_verification_amt'] = (float)$row['amt'];
+        }
+
+        // 2. Pending Vendor Payment Requests (Submitted or Approved but not yet Paid)
+        $r = $this->db->query("
+            SELECT COUNT(*) AS c, COALESCE(SUM(net_payable), 0) AS amt
+            FROM vendor_payment_requests
+            WHERE status IN ('Submitted', 'Approved')
+        ");
+        if ($r && $row = $r->fetch_assoc()) {
+            $stats['pending_vendor_payments'] = (int)$row['c'];
+            $stats['pending_vendor_amt']      = (float)$row['amt'];
+        }
+
+        // 3. Pending Contractor Bill Requests (submitted or verified, not yet paid)
+        $r = $this->db->query("
+            SELECT COUNT(*) AS c, COALESCE(SUM(bill_amount), 0) AS amt
+            FROM contractor_bill_requests
+            WHERE status IN ('submitted', 'verified', 'approved')
+        ");
+        if ($r && $row = $r->fetch_assoc()) {
+            $stats['pending_contractor_bills'] = (int)$row['c'];
+            $stats['pending_contractor_amt']   = (float)$row['amt'];
+        }
+
+        // 4. Pending Cashout Requests
+        $r = $this->db->query("
+            SELECT COUNT(*) AS c, COALESCE(SUM(amount), 0) AS amt
+            FROM cashout_requests
+            WHERE status = 'pending'
+        ");
+        if ($r && $row = $r->fetch_assoc()) {
+            $stats['pending_cashout_requests'] = (int)$row['c'];
+            $stats['pending_cashout_amt']      = (float)$row['amt'];
+        }
+
+        // 5. Pending Client Refunds
+        $r = $this->db->query("
+            SELECT COUNT(*) AS c, COALESCE(SUM(refund_amount), 0) AS amt
+            FROM client_refund_requests
+            WHERE status = 'pending'
+        ");
+        if ($r && $row = $r->fetch_assoc()) {
+            $stats['pending_refunds']    = (int)$row['c'];
+            $stats['pending_refund_amt'] = (float)$row['amt'];
+        }
+
+        // 6. Total active clients (bookings)
+        $r = $this->db->query("
+            SELECT COUNT(*) AS c FROM lead_bookings WHERE booking_status != 'cancelled'
+        ");
+        if ($r && $row = $r->fetch_assoc()) {
+            $stats['total_clients'] = (int)$row['c'];
+        }
+
+        return $stats;
     }
 }

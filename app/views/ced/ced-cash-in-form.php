@@ -43,19 +43,34 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             <div class="card__body">
 
                 <!-- Info Alert -->
-                <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
-                    <strong><i class="fa-light fa-info-circle me-1"></i>CED Payment Entry</strong>
-                    Transactions submitted here will be marked as <em>Pending Verification</em>.
-                    The Accounts team must verify them before they appear in fiscal reports.
+                <div class="alert alert-info alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
+                    <div>
+                        <strong>CED Payment Entry</strong>
+                        Transactions submitted here will be marked as <em>Pending Verification</em>.
+                        The Accounts team must verify them before they appear in fiscal reports.
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
 
                 <?php if (!$isLandShareCompleted): ?>
-                    <div class="alert alert-danger mb-4">
-                        <strong><i class="fa-light fa-lock me-1"></i>Land Share Required!</strong>
-                        Land share payment must be completed before adding any transactions from CED.
+                    <div class="alert alert-danger mb-4 d-flex align-items-center">
+                        <div>
+                            <strong>Land Share Required!</strong>
+                            Land share payment must be completed before adding any transactions from CED.
+                        </div>
                     </div>
                 <?php else: ?>
+
+                <?php if ($hasOutstandingDues): ?>
+                    <div class="alert alert-danger alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
+                      
+                        <div>
+                            <strong>Outstanding EMI Due: TK.<?= number_format($totalEmiDue, 2) ?></strong>
+                            — Select <em>"Settle EMI Due"</em> below to clear the balance.
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
                 <!-- Transaction Form -->
                 <form action="<?= $GLOBALS['base_url'] ?>/ced-add-transaction" method="post" id="transactionForm" enctype="multipart/form-data">
                     <input type="hidden" name="booking_id" value="<?= $bookingId ?>">
@@ -89,7 +104,7 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </option>
                                 <?php elseif ($isLandShareCompleted && $isDevChargeCompleted && $remainingCF <= 0): ?>
                                     <option value="emi" disabled>
-                                        EMI — All Paid ✓ (Construction Fee Completed)
+                                        EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
                                     </option>
                                 <?php elseif ($isLandShareCompleted): ?>
                                     <option value="emi" disabled>
@@ -100,6 +115,14 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                         EMI (Requires: Land Share Completed)
                                     </option>
                                 <?php endif; ?>
+
+                                <!-- Settle EMI Due — Advanced fallback (only shown when outstanding dues exist) -->
+                                <?php if ($hasOutstandingDues): ?>
+                                    <option value="emi_due_settlement" data-details="false">
+                                        ⚙ Advanced: Settle Specific EMI Due (Outstanding: TK.<?= number_format($totalEmiDue, 2) ?>)
+                                    </option>
+                                <?php endif; ?>
+
                             </select>
 
                             <!-- Help text -->
@@ -175,6 +198,27 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                         This discount reduces the <strong>total construction fee</strong> (separate from booking discount). Applied after verification.
                                     </small>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Settle EMI Due — parent payment selector (shown when emi_due_settlement selected) -->
+                        <div class="col-md-12 settle-due-fields" style="display:none;">
+                            <div class="from__input-box p-3" style="background:#fff3cd;border-radius:8px;border:1px solid #ffc107;">
+                                <label class="form__input-title">Select EMI to Settle <span>*</span></label>
+                                <select name="parent_payment_id" id="parentPaymentId" class="form-control">
+                                    <option value="">-- Select Outstanding EMI --</option>
+                                    <?php foreach ($outstandingDues as $due): ?>
+                                        <option value="<?= $due['id'] ?>"
+                                            data-due="<?= $due['due_emi_amount'] ?>">
+                                            EMI #<?= $due['emi_no'] > 0 ? $due['emi_no'] : '?' ?>
+                                            — Paid: TK.<?= number_format($due['amount'], 2) ?>
+                                            — Due: TK.<?= number_format($due['due_emi_amount'], 2) ?>
+                                            (<?= date('d M Y', strtotime($due['payment_date'])) ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <input type="hidden" name="settlement_type" value="emi_due_settlement">
+                                <small class="text-muted d-block mt-1">Amount field will be auto-capped to the selected EMI's remaining due. Service charge applies on settled amount.</small>
                             </div>
                         </div>
 
@@ -320,6 +364,9 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
         const existingBulkDiscount = <?= json_encode((float)$totalBulkDiscount) ?>;
         const effectiveCF          = Math.max(0, constructionFee - existingBulkDiscount);
 
+        const settleDueFields       = document.querySelectorAll('.settle-due-fields');
+        const parentPaymentIdSelect = document.getElementById('parentPaymentId');
+
         // Function to update amount field help text
         function updateAmountField() {
             if (!paymentType) return;
@@ -348,9 +395,17 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     break;
                 case 'development_charge':
                     helpText = 'Development charge payment';
+                    amountField.removeAttribute('max');
+                    amountField.removeAttribute('disabled');
+                    break;
+                case 'emi_due_settlement':
+                    helpText = 'Select an EMI above, then enter the amount to settle (≤ remaining due).';
+                    amountField.removeAttribute('disabled');
                     break;
                 default:
                     helpText = 'Enter payment amount';
+                    amountField.removeAttribute('max');
+                    amountField.removeAttribute('disabled');
             }
 
             if (amountHelp) amountHelp.textContent = helpText;
@@ -407,21 +462,42 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             }
         }
 
-        // Show/hide EMI fields when payment type changes
+        // Show/hide EMI / Settle-Due fields when payment type changes
         if (paymentType) {
             paymentType.addEventListener('change', function () {
-                const isEMI = this.value === 'emi';
+                const val = this.value;
+                const isEMI       = val === 'emi';
+                const isSettleDue = val === 'emi_due_settlement';
 
-                if (isEMI) {
-                    emiFields.forEach(field => field.style.display = 'block');
-                } else {
-                    emiFields.forEach(field => field.style.display = 'none');
-                    if (dueEmiAmountField) dueEmiAmountField.value = '';
+                // Show/hide EMI due panel
+                emiFields.forEach(f => f.style.display = isEMI ? 'block' : 'none');
+
+                // Show/hide settle-due parent selector
+                settleDueFields.forEach(f => f.style.display = isSettleDue ? 'block' : 'none');
+
+                // Reset due fields when not EMI
+                if (!isEMI) {
+                    if (dueEmiAmountField) dueEmiAmountField.value = '0';
                 }
 
                 updateAmountField();
                 controlPartiallyPaidStatus();
                 updateBulkDiscount();
+            });
+        }
+
+        // Cap amount when a parent EMI is selected for settlement
+        if (parentPaymentIdSelect) {
+            parentPaymentIdSelect.addEventListener('change', function () {
+                const selectedOption = this.options[this.selectedIndex];
+                const maxDue = parseFloat(selectedOption.dataset.due) || 0;
+                if (maxDue > 0) {
+                    amountField.setAttribute('max', maxDue);
+                    amountField.value = maxDue.toFixed(2);
+                    if (amountHelp) amountHelp.textContent = 'Max: TK.' + maxDue.toFixed(2) + ' (remaining due for this EMI)';
+                } else {
+                    amountField.removeAttribute('max');
+                }
             });
         }
 
@@ -482,6 +558,29 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                 const amount = parseFloat(amountField?.value) || 0;
                 const dueAmount = parseFloat(dueEmiAmountField?.value) || 0;
                 const paymentStatus = paymentStatusSelect ? paymentStatusSelect.value : 'paid';
+
+                // Validation for EMI due settlement
+                if (paymentTypeValue === 'emi_due_settlement') {
+                    if (!parentPaymentIdSelect || !parentPaymentIdSelect.value) {
+                        e.preventDefault();
+                        alert('Please select the EMI you want to settle.');
+                        return false;
+                    }
+                    const maxDue = parseFloat(parentPaymentIdSelect.options[parentPaymentIdSelect.selectedIndex]?.dataset?.due) || 0;
+                    if (amount <= 0) {
+                        e.preventDefault();
+                        alert('Please enter a valid settlement amount.');
+                        amountField.focus();
+                        return false;
+                    }
+                    if (amount > maxDue + 0.01) {
+                        e.preventDefault();
+                        alert('Settlement amount (TK.' + amount.toFixed(2) + ') cannot exceed remaining due (TK.' + maxDue.toFixed(2) + ').');
+                        amountField.focus();
+                        return false;
+                    }
+                    return true;
+                }
 
                 // EMI partially_paid validation
                 if (paymentTypeValue === 'emi' && paymentStatus === 'partially_paid' && dueAmount <= 0) {

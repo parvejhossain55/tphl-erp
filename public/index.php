@@ -594,7 +594,7 @@ $routes = [
     'clients-cashin-view' => ["controller" => "AccountClientController", "method" => "indexView"],
     'clients-cash-in-history-view' => ["controller" => "AccountClientController", "method" => "indexTwoView"],
     'clients-cash-in-history-view/(\d+)' => ["controller" => "AccountClientController", "method" => "indexTwoView"],
-
+    'save-transfer-note' => ["controller" => "AccountClientController", "method" => "saveTransferNote"],
 
     // ==================== CENTRAL STATEMENT ROUTES ====================
     'central-statement' => ["controller" => "CentralStatementController", "method" => "index"],

@@ -376,6 +376,18 @@ class Dashboard extends Model
                    NULL as project_id
             FROM payslips
             WHERE status = 'paid'
+            
+            UNION ALL
+            
+            SELECT COALESCE(approved_amount, bill_amount) as total_amount, COALESCE(updated_at, created_at) as date, project_id
+            FROM contractor_bill_requests
+            WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')
+            
+            UNION ALL
+            
+            SELECT COALESCE(approved_amount, net_payable) as total_amount, COALESCE(updated_at, created_at) as date, project_id
+            FROM vendor_payment_requests
+            WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
         ) combined
         WHERE date BETWEEN ? AND ?
     ";
@@ -864,7 +876,59 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        $stats['paid_amount'] = $stats['management_cashout'] + $stats['cashout_payments'] + $stats['salary_payments'];
+        // Contractor Bills
+        $sqlContractor = "
+            SELECT 
+                COALESCE(SUM(COALESCE(approved_amount, bill_amount)), 0) as total,
+                COUNT(*) as count
+            FROM contractor_bill_requests
+            WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')
+            AND COALESCE(updated_at, created_at) BETWEEN ? AND ?
+        ";
+        if ($projectId) {
+            $sqlContractor .= " AND project_id = ?";
+        }
+        $stmt = $this->db->prepare($sqlContractor);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['contractor_bills'] = floatval($row['total']);
+            $stats['total_transactions'] += intval($row['count']);
+        }
+        $stmt->close();
+
+        // Vendor Payments
+        $sqlVendor = "
+            SELECT 
+                COALESCE(SUM(COALESCE(approved_amount, net_payable)), 0) as total,
+                COUNT(*) as count
+            FROM vendor_payment_requests
+            WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+            AND COALESCE(updated_at, created_at) BETWEEN ? AND ?
+        ";
+        if ($projectId) {
+            $sqlVendor .= " AND project_id = ?";
+        }
+        $stmt = $this->db->prepare($sqlVendor);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['vendor_payments'] = floatval($row['total']);
+            $stats['total_transactions'] += intval($row['count']);
+        }
+        $stmt->close();
+
+        $stats['paid_amount'] = $stats['management_cashout'] + $stats['cashout_payments'] + $stats['salary_payments'] + ($stats['contractor_bills'] ?? 0) + ($stats['vendor_payments'] ?? 0);
         $stats['total_amount'] = $stats['paid_amount'] + $stats['pending_amount'];
 
         // This Month with project filter
@@ -891,6 +955,18 @@ class Dashboard extends Model
                        NULL as project_id
                 FROM payslips
                 WHERE status = 'paid'
+                
+                UNION ALL
+                
+                SELECT COALESCE(approved_amount, bill_amount) as total_amount, COALESCE(updated_at, created_at) as date, project_id
+                FROM contractor_bill_requests
+                WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')
+                
+                UNION ALL
+                
+                SELECT COALESCE(approved_amount, net_payable) as total_amount, COALESCE(updated_at, created_at) as date, project_id
+                FROM vendor_payment_requests
+                WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
             ) combined
             WHERE date BETWEEN ? AND ?
         ";
@@ -1125,48 +1201,116 @@ LIMIT ?
         $startDate = $dateRange['start'];
         $endDate = $dateRange['end'];
 
-        $sql = "
-        SELECT 
-            'management' as source,
-            mco.id,
-            mco.transaction_date as date,
-            mco.role_name,
-            mco.person_name,
-            mco.paid_to,
-            mco.amount,
-            mco.payment_method,
-            mco.payment_status,
-            mco.description,
-            NULL as project_id,
-            NULL as project_name
-        FROM management_cashout mco
-        WHERE mco.transaction_date BETWEEN ? AND ?
-        
-        UNION ALL
-        
-        SELECT 
-            'cashout_request' as source,
-            cp.id,
-            cp.payment_date as date,
-            'Cashout Request' as role_name,
-            u.full_name as person_name,
-            cr.purpose_paid_to as paid_to,
-            cp.amount,
-            cp.payment_method,
-            'paid' as payment_status,
-            cr.description,
-            cr.project_id,
-            p.name as project_name
-        FROM cashout_payments cp
-        LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
-        LEFT JOIN users u ON cr.requested_by = u.id
-        LEFT JOIN projects p ON cr.project_id = p.id
-        WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
-        AND cp.payment_date BETWEEN ? AND ?
-    ";
+        $sql = "SELECT * FROM (
+            SELECT 
+                'management' as source,
+                mco.id,
+                mco.transaction_date as date,
+                mco.role_name,
+                mco.person_name,
+                mco.paid_to,
+                mco.amount,
+                mco.amount as approved_amount,
+                mco.payment_method,
+                mco.payment_status,
+                mco.description,
+                NULL as project_id,
+                NULL as project_name
+            FROM management_cashout mco
+            WHERE mco.transaction_date BETWEEN ? AND ?
+            
+            UNION ALL
+            
+            SELECT 
+                'cashout_request' as source,
+                cp.id,
+                cp.payment_date as date,
+                'Cashout Request' as role_name,
+                u.full_name as person_name,
+                cr.purpose_paid_to as paid_to,
+                cp.amount,
+                cr.approved_amount,
+                cp.payment_method,
+                'paid' as payment_status,
+                cr.description,
+                cr.project_id,
+                p.name as project_name
+            FROM cashout_payments cp
+            LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+            LEFT JOIN users u ON cr.requested_by = u.id
+            LEFT JOIN projects p ON cr.project_id = p.id
+            WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
+            AND cp.payment_date BETWEEN ? AND ?
+
+            UNION ALL
+            
+            SELECT 
+                'payslip' as source,
+                ps.id,
+                STR_TO_DATE(CONCAT(ps.payslip_month, '-01'), '%Y-%m-%d') as date,
+                'Employee' as role_name,
+                u.full_name as person_name,
+                'Salary' as paid_to,
+                ps.net_salary as amount,
+                ps.net_salary as approved_amount,
+                ps.payment_method,
+                ps.status as payment_status,
+                CONCAT('Salary for ', ps.payslip_month) as description,
+                NULL as project_id,
+                NULL as project_name
+            FROM payslips ps
+            LEFT JOIN users u ON ps.employee_id = u.id
+            WHERE ps.status = 'paid'
+            AND STR_TO_DATE(CONCAT(ps.payslip_month, '-01'), '%Y-%m-%d') BETWEEN ? AND ?
+
+            UNION ALL
+            
+            SELECT 
+                'contractor_bill' as source,
+                cb.id,
+                COALESCE(cb.updated_at, cb.created_at) as date,
+                'Contractor' as role_name,
+                c.name as person_name,
+                'Contractor Bill' as paid_to,
+                cb.bill_amount as amount,
+                cb.approved_amount as approved_amount,
+                NULL as payment_method,
+                cb.status as payment_status,
+                cb.work_description as description,
+                cb.project_id,
+                p.name as project_name
+            FROM contractor_bill_requests cb
+            LEFT JOIN contractors c ON cb.operator_id = c.id
+            LEFT JOIN projects p ON cb.project_id = p.id
+            WHERE cb.status IN ('approved', 'paid', 'partially_paid', 'fully_paid')
+            AND COALESCE(cb.updated_at, cb.created_at) BETWEEN ? AND ?
+
+            UNION ALL
+            
+            SELECT 
+                'vendor_payment' as source,
+                vp.id,
+                COALESCE(vp.updated_at, vp.created_at) as date,
+                'Vendor' as role_name,
+                v.name as person_name,
+                'Vendor Payment' as paid_to,
+                vp.net_payable as amount,
+                vp.approved_amount as approved_amount,
+                NULL as payment_method,
+                vp.status as payment_status,
+                NULL as description,
+                vp.project_id,
+                p.name as project_name
+            FROM vendor_payment_requests vp
+            LEFT JOIN vendors v ON vp.vendor_id = v.id
+            LEFT JOIN projects p ON vp.project_id = p.id
+            WHERE vp.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+            AND COALESCE(vp.updated_at, vp.created_at) BETWEEN ? AND ?
+        ) as combined_transactions
+        WHERE 1=1";
 
         if ($projectId) {
-            $sql .= " AND (cr.project_id = ? OR cp.project_id = ?)";
+            $sql .= " AND project_id = ?";
         }
 
         $sql .= " ORDER BY date DESC LIMIT ?";
@@ -1174,9 +1318,9 @@ LIMIT ?
         $stmt = $this->db->prepare($sql);
 
         if ($projectId) {
-            $stmt->bind_param("ssssiii", $startDate, $endDate, $startDate, $endDate, $projectId, $projectId, $limit);
+            $stmt->bind_param("ssssssssssii", $startDate, $endDate, $startDate, $endDate, $startDate, $endDate, $startDate, $endDate, $startDate, $endDate, $projectId, $limit);
         } else {
-            $stmt->bind_param("ssssi", $startDate, $endDate, $startDate, $endDate, $limit);
+            $stmt->bind_param("ssssssssssi", $startDate, $endDate, $startDate, $endDate, $startDate, $endDate, $startDate, $endDate, $startDate, $endDate, $limit);
         }
 
         $stmt->execute();

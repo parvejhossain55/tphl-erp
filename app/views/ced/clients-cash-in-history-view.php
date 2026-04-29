@@ -51,6 +51,18 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                         <strong>Phone:</strong> <?= htmlspecialchars($clientDetails['phone'] ?? 'N/A') ?>
                     </span>
                 </div>
+                
+                <div class="mt-3 d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#transferNoteModal">
+                        <i class="fa-light fa-exchange-alt me-1"></i> Transfer Note
+                    </button>
+
+                    <?php if (isset($clientDetails['transfer_status']) && $clientDetails['transfer_status'] == 1): ?>
+                        <span class="badge bg-warning text-dark">Transferred</span>
+                    <?php else: ?>
+                        <span class="badge bg-success">Current</span>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
@@ -589,6 +601,11 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                                             <br><span class="badge mt-1" style="background:#6c5ffc;font-size:10px;">
                                                 <i class="fa-light fa-tags me-1"></i>Discount: TK.<?= number_format($transaction['bulk_emi_discount'], 2) ?>
                                             </span>
+                                            <?php if (!empty($transaction['bulk_pay_amount']) && $transaction['bulk_pay_amount'] > 0): ?>
+                                                <br><span class="badge mt-1" style="background:#2d8cf0;font-size:10px;">
+                                                    <i class="fa-light fa-layer-group me-1"></i>Against bulk pay: TK.<?= number_format($transaction['bulk_pay_amount'], 2) ?>
+                                                </span>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     </td>
                                     <td><?php echo $transaction['payment_details']; ?></td>
@@ -1040,3 +1057,42 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
     });
     </script>
 <?php endif; ?>
+
+<!-- Transfer Note Modal -->
+<div class="modal fade" id="transferNoteModal" tabindex="-1" aria-labelledby="transferNoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="<?= $GLOBALS['base_url'] ?>/save-transfer-note">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="transferNoteModalLabel">Transfer Note</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="booking_id" value="<?= $clientDetails['booking_id'] ?? '' ?>">
+                    <input type="hidden" name="source_page" value="ced">
+                    <input type="hidden" name="transfer_status" value="<?= htmlspecialchars($clientDetails['transfer_status'] ?? 0) ?>">
+                    
+                    <div class="mb-3">
+                        <label for="transfer_date" class="form-label">Transfer Date</label>
+                        <input type="date" class="form-control" id="transfer_date" name="transfer_date" value="<?= htmlspecialchars($clientDetails['transfer_date'] ?? '') ?>">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="transfer_note" class="form-label">Transfer Note</label>
+                        <textarea class="form-control" id="transfer_note" name="transfer_note" rows="4"><?= htmlspecialchars($clientDetails['transfer_note'] ?? '') ?></textarea>
+                    </div>
+                    
+                    <?php if (!empty($clientDetails['transfer_updated_by_name'])): ?>
+                    <div class="text-muted small mt-2">
+                        Last updated by: <strong><?= htmlspecialchars($clientDetails['transfer_updated_by_name']) ?></strong>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Note</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
