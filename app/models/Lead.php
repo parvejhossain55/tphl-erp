@@ -1129,6 +1129,131 @@ class Lead extends Model
     }
 
     /**
+     * Count marketing leads for AJAX pagination (mirrors getMarketingLeadsFlexible filters)
+     */
+    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null)
+    {
+        $sql = "SELECT COUNT(*) AS total FROM leads l WHERE l.deleted_at IS NULL";
+
+        $params = [];
+        $types  = "";
+
+        if ($teamId) {
+            $sql .= " AND l.team_id = ?";
+            $params[] = $teamId;
+            $types   .= "i";
+        }
+
+        if ($dateFilter === 'today') {
+            $sql .= " AND DATE(l.created_at) = CURDATE()";
+        } elseif ($dateFilter === 'old') {
+            $sql .= " AND DATE(l.created_at) < CURDATE()";
+        } elseif ($dateFilter === '15days') {
+            $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 15 DAY)";
+        }
+
+        if (!empty($search)) {
+            $sql .= " AND (l.full_name LIKE ? OR l.phone_number LIKE ? OR l.email LIKE ? OR l.campaign_name LIKE ?)";
+            $like = "%$search%";
+            $params[] = $like; $params[] = $like; $params[] = $like; $params[] = $like;
+            $types   .= "ssss";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return 0;
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        return (int)($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+    }
+
+    /**
+     * Paginated marketing leads for AJAX (same contact_status logic, adds LIMIT/OFFSET + search)
+     */
+    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null)
+    {
+        $sql = "
+        SELECT
+            l.id, l.full_name, l.phone_number, l.email, l.job_title,
+            l.platform, l.campaign_name, l.lead_type, l.call_note,
+            l.created_at,
+            ls.name  AS source_name,
+            p.name   AS project_name,
+            t.name   AS team_name,
+            (SELECT u2.full_name
+             FROM users u2
+             INNER JOIN employees e2 ON u2.id = e2.user_id
+             WHERE e2.team_id = l.team_id AND u2.role_id = 5
+             LIMIT 1) AS sales_team_lead_name,
+            -- Follow-up count
+            COALESCE((
+                SELECT COUNT(*) FROM lead_follow_ups lfc
+                WHERE lfc.lead_id = l.id AND lfc.deleted_at IS NULL
+            ), 0) AS follow_up_count,
+            -- Contact status (3 conditions)
+            CASE
+                WHEN (
+                    EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
+                    OR (l.lead_type IS NOT NULL AND l.lead_type != '')
+                    OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                ) THEN 'Contacted'
+                ELSE 'Not Contacted'
+            END AS contact_status,
+            -- Last follow-up type
+            lfu.follow_up_type AS last_follow_up_type
+        FROM leads l
+        LEFT JOIN lead_sources ls ON l.source_type_id = ls.id
+        LEFT JOIN projects     p  ON l.project_id = p.id
+        LEFT JOIN teams        t  ON l.team_id    = t.id
+        LEFT JOIN (
+            SELECT lf1.lead_id, lf1.follow_up_type
+            FROM lead_follow_ups lf1
+            WHERE lf1.id = (
+                SELECT MAX(lf2.id) FROM lead_follow_ups lf2
+                WHERE lf2.lead_id = lf1.lead_id AND lf2.deleted_at IS NULL
+            ) AND lf1.deleted_at IS NULL
+        ) lfu ON lfu.lead_id = l.id
+        WHERE l.deleted_at IS NULL
+        ";
+
+        $params = [];
+        $types  = "";
+
+        if ($teamId) {
+            $sql .= " AND l.team_id = ?";
+            $params[] = $teamId;
+            $types   .= "i";
+        }
+
+        if ($dateFilter === 'today') {
+            $sql .= " AND DATE(l.created_at) = CURDATE()";
+        } elseif ($dateFilter === 'old') {
+            $sql .= " AND DATE(l.created_at) < CURDATE()";
+        } elseif ($dateFilter === '15days') {
+            $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 15 DAY)";
+        }
+
+        if (!empty($search)) {
+            $sql .= " AND (l.full_name LIKE ? OR l.phone_number LIKE ? OR l.email LIKE ? OR l.campaign_name LIKE ?)";
+            $like = "%$search%";
+            $params[] = $like; $params[] = $like; $params[] = $like; $params[] = $like;
+            $types   .= "ssss";
+        }
+
+        $order  = ($sortOrder === 'ASC') ? 'ASC' : 'DESC';
+        $sql   .= " ORDER BY l.created_at $order LIMIT ? OFFSET ?";
+        $params[] = $limit;
+        $params[] = $offset;
+        $types   .= "ii";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return [];
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
      * Flexible marketing lead fetcher
      * @param int|null $userId
      * @param int|null $teamId
@@ -1148,7 +1273,29 @@ class Lead extends Model
              INNER JOIN employees e ON u.id = e.user_id 
              WHERE e.team_id = l.team_id AND u.role_id = 5 
              LIMIT 1) AS sales_team_lead_name,
-            CASE WHEN lfu.lead_id IS NOT NULL THEN 'Contacted' ELSE 'Not Contacted' END AS contact_status,
+            -- ── Follow-up count (batch badge) ─────────────────────────────
+            COALESCE((
+                SELECT COUNT(*)
+                FROM lead_follow_ups lfc
+                WHERE lfc.lead_id = l.id
+                  AND lfc.deleted_at IS NULL
+            ), 0) AS follow_up_count,
+            -- ── Contact status: contacted if ANY of 3 conditions met ───────
+            -- 1. lead_follow_ups e record ache
+            -- 2. lead_type NULL theke onno kichu te update hoyeche
+            -- 3. call_note te value ache
+            CASE
+                WHEN (
+                    EXISTS (
+                        SELECT 1 FROM lead_follow_ups lfe
+                        WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL
+                    )
+                    OR (l.lead_type IS NOT NULL AND l.lead_type != '')
+                    OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                ) THEN 'Contacted'
+                ELSE 'Not Contacted'
+            END AS contact_status,
+            -- ── Last follow-up type (for display) ─────────────────────────
             lfu.follow_up_type AS last_follow_up_type,
             lfu.created_at AS last_follow_up_at
         FROM leads l

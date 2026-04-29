@@ -104,6 +104,9 @@ $typeColors = [
 
 .empty-state { text-align:center; padding:28px 0; color:var(--text-muted); }
 .empty-state i { font-size:30px; opacity:.25; display:block; margin-bottom:8px; }
+html { scroll-behavior: smooth; }
+.est-kpi-a { scroll-margin-top: 80px; }
+.sec-anchor { scroll-margin-top: 80px; }
 </style>
 
 <!-- ═══════════════ HERO ═══════════════ -->
@@ -138,49 +141,57 @@ $typeColors = [
 <!-- ═══════════════ KPI GRID ═══════════════ -->
 <div class="est-kpi-grid">
 
-  <a href="<?= $base ?>/con-project-drawings" class="est-kpi est-kpi-a">
+  <!-- Total Drawings → scroll to drawings table -->
+  <a href="#sec-drawings" class="est-kpi est-kpi-a">
     <div class="est-accent" style="background:var(--est-blue)"></div>
     <div class="est-icon" style="background:rgba(59,130,246,.12);color:var(--est-blue)"><i class="fal fa-drafting-compass"></i></div>
     <div class="est-lbl">Total Drawings</div>
     <div class="est-val" style="color:var(--est-blue)"><?= $totalDrawings ?></div>
     <div class="est-sub">All project drawings</div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(59,130,246,.1);color:var(--est-blue)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
-  <div class="est-kpi">
+  <!-- Design Types → scroll to type bar -->
+  <a href="#sec-types" class="est-kpi est-kpi-a">
     <div class="est-accent" style="background:var(--est-purple)"></div>
     <div class="est-icon" style="background:rgba(139,92,246,.12);color:var(--est-purple)"><i class="fal fa-layer-group"></i></div>
     <div class="est-lbl">Design Types</div>
     <div class="est-val" style="color:var(--est-purple)"><?= $totalDesignTypes ?></div>
     <div class="est-sub">Available categories</div>
-  </div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(139,92,246,.1);color:var(--est-purple)"><i class="fal fa-arrow-down me-1"></i>View</span>
+  </a>
 
-  <a href="<?= $base ?>/con-estimate-create" class="est-kpi est-kpi-a">
+  <!-- Pending Estimates → scroll to pending table -->
+  <a href="#sec-pending" class="est-kpi est-kpi-a">
     <div class="est-accent" style="background:var(--est-amber)"></div>
     <div class="est-icon" style="background:rgba(245,158,11,.12);color:var(--est-amber)"><i class="fal fa-clock"></i></div>
     <div class="est-lbl">Pending Estimates</div>
     <div class="est-val" style="color:var(--est-amber)"><?= $pendingEstimates ?></div>
     <div class="est-sub">Awaiting approval</div>
     <?php if ($pendingEstimates > 0): ?>
-    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;
-      padding:3px 8px;border-radius:20px;background:rgba(245,158,11,.12);color:var(--est-amber)">REVIEW</span>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(245,158,11,.12);color:var(--est-amber)">REVIEW</span>
     <?php endif; ?>
   </a>
 
-  <a href="<?= $base ?>/con-estimates" class="est-kpi est-kpi-a">
+  <!-- Approved Estimates → scroll to estimates table -->
+  <a href="#sec-estimates" class="est-kpi est-kpi-a">
     <div class="est-accent" style="background:var(--est-green)"></div>
     <div class="est-icon" style="background:rgba(16,185,129,.12);color:var(--est-green)"><i class="fal fa-check-circle"></i></div>
     <div class="est-lbl">Approved Estimates</div>
     <div class="est-val" style="color:var(--est-green)"><?= $approvedEstimates ?></div>
     <div class="est-sub">Locked & finalised</div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(16,185,129,.1);color:var(--est-green)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
-  <div class="est-kpi">
+  <!-- No Estimate → scroll to needs budget -->
+  <a href="#sec-no-estimate" class="est-kpi est-kpi-a">
     <div class="est-accent" style="background:var(--est-primary)"></div>
     <div class="est-icon" style="background:rgba(25,135,84,.12);color:var(--est-primary)"><i class="fal fa-triangle-exclamation"></i></div>
     <div class="est-lbl">No Estimate Yet</div>
     <div class="est-val" style="color:var(--est-primary)"><?= count($projectsWithoutEstimate) ?></div>
     <div class="est-sub">Projects need budget</div>
-  </div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(25,135,84,.1);color:var(--est-primary)"><i class="fal fa-arrow-down me-1"></i>View</span>
+  </a>
 
 </div>
 
@@ -192,7 +203,7 @@ $typeColors = [
 
     <!-- ── Pending Submissions Awaiting Approval ── -->
     <?php if (!empty($pendingBudgetsList)): ?>
-    <div class="est-panel" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">
+    <div id="sec-pending" class="est-panel sec-anchor" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">
       <div class="est-panel-title">
         <div class="est-dot" style="background:var(--est-amber)"></div>
         Pending Budget Submissions — Awaiting Approval
@@ -261,12 +272,12 @@ $typeColors = [
     </div>
     <?php endif; ?>
 
-    <div class="est-panel">
+    <div id="sec-drawings" class="est-panel sec-anchor">
       <div class="est-panel-title">
         <div class="est-dot" style="background:var(--est-blue)"></div>
         Recent Project Drawings
         <a href="<?= $base ?>/con-project-drawings" style="font-size:10px;color:var(--est-blue);margin-left:auto;text-decoration:none">
-          View All <i class="fal fa-arrow-right ms-1"></i>
+          View All <i class="fal fa-external-link ms-1"></i>
         </a>
       </div>
       <?php if (empty($recentDrawings)): ?>
@@ -333,12 +344,12 @@ $typeColors = [
     </div>
 
     <!-- Recent Estimates Table -->
-    <div class="est-panel">
+    <div id="sec-estimates" class="est-panel sec-anchor">
       <div class="est-panel-title">
         <div class="est-dot" style="background:var(--est-green)"></div>
         Recent Estimate Budgets
         <a href="<?= $base ?>/con-estimates" style="font-size:10px;color:var(--est-blue);margin-left:auto;text-decoration:none">
-          View All <i class="fal fa-arrow-right ms-1"></i>
+          View All <i class="fal fa-external-link ms-1"></i>
         </a>
       </div>
       <?php if (empty($recentEstimates)): ?>
@@ -393,7 +404,7 @@ $typeColors = [
   <div class="col-lg-4">
 
     <!-- Drawings by Design Type -->
-    <div class="est-panel">
+    <div id="sec-types" class="est-panel sec-anchor">
       <div class="est-panel-title">
         <div class="est-dot" style="background:var(--est-purple)"></div>
         Drawings by Design Type
@@ -419,7 +430,7 @@ $typeColors = [
     </div>
 
     <!-- Projects Without Estimate -->
-    <div class="est-panel">
+    <div id="sec-no-estimate" class="est-panel sec-anchor">
       <div class="est-panel-title">
         <div class="est-dot" style="background:var(--est-amber)"></div>
         Projects Needing Budget

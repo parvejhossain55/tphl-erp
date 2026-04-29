@@ -590,7 +590,7 @@ if (!empty($pendingPOsForPM)):
     <div class="sec-title" style="margin-bottom:0">
       <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
       <i class="fal fa-file-contract me-2" style="color:var(--cd-blue)"></i>
-      Pending Purchase Orders &mdash; PM Approval Required
+      Pending Purchase Orders &mdash; Management/PM Approval Required
       <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(59,130,246,.12);color:var(--cd-blue)">
         <?= count($pendingPOsForPM) ?> Awaiting
       </span>
@@ -655,6 +655,41 @@ if (!empty($pendingWeeklyReportsPM)):
 <?php endif; ?>
 
 <?php
+$recentMaterialIssues = $recentMaterialIssues ?? [];
+if (!empty($recentMaterialIssues)):
+?>
+<div class="con-panel card__wrapper mb-4" style="border-color:rgba(236,72,153,.35);background:rgba(236,72,153,.03)">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="sec-title" style="margin-bottom:0">
+      <div class="sec-title-dot" style="background:var(--cd-pink)"></div>
+      <i class="fal fa-boxes-stacked me-2" style="color:var(--cd-pink)"></i>
+      Recent Material Issues (Stock OUT)
+    </div>
+    <a href="<?=$base?>/con-material-issues" style="font-size:11px;color:var(--cd-pink);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="proj-table">
+      <thead><tr><th>#</th><th>Date</th><th>Project</th><th>Material</th><th>Qty</th><th>Purpose</th><th>Issued By</th></tr></thead>
+      <tbody>
+        <?php foreach ($recentMaterialIssues as $pi => $issue): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
+          <td style="font-weight:800;color:var(--cd-pink)"><?= !empty($issue['issue_date']) ? date('d M Y', strtotime($issue['issue_date'])) : '&mdash;' ?></td>
+          <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($issue['project_name'] ?? '&mdash;') ?></td>
+          <td style="font-weight:600"><?= htmlspecialchars($issue['material_name'] ?? '&mdash;') ?> <span class="text-muted small">(<?= htmlspecialchars($issue['unit'] ?? '') ?>)</span></td>
+          <td style="font-weight:800;color:var(--cd-pink)"><?= number_format($issue['quantity'], 2) ?></td>
+          <td style="font-size:11px"><?= htmlspecialchars($issue['purpose'] ?? '&mdash;') ?></td>
+          <td style="font-size:11px"><?= htmlspecialchars($issue['issued_by_name'] ?? '&mdash;') ?></td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
+
+<?php
 $pendingGRNs = $pendingGRNs ?? [];
 if (!empty($pendingGRNs)):
 ?>
@@ -682,6 +717,42 @@ if (!empty($pendingGRNs)):
           <td style="font-size:11px;color:var(--text-muted)"><?= !empty($grn['receiving_date']) ? date('d M Y', strtotime($grn['receiving_date'])) : '&mdash;' ?></td>
           <td style="font-size:12px"><?= htmlspecialchars($grn['received_by_name'] ?? '&mdash;') ?></td>
           <td style="text-align:right"><a href="<?=$base?>/con-material-receiving-qc/<?= $grn['id'] ?>" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 14px;border-radius:8px;text-decoration:none;background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff"><i class="fal fa-eye"></i> View</a></td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php
+$pendingGRNsPM = $pendingGRNsPM ?? [];
+if (!empty($pendingGRNsPM)):
+?>
+<div class="con-panel card__wrapper mb-4" style="border-color:rgba(59,130,246,.35);background:rgba(59,130,246,.03)">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="sec-title" style="margin-bottom:0">
+      <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
+      <i class="fal fa-box-check me-2" style="color:var(--cd-blue)"></i>
+      Pending Material Receivings (GRN) &mdash; PM Approval Required
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(59,130,246,.12);color:var(--cd-blue)">
+        <?= count($pendingGRNsPM) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?=$base?>/con-material-receivings" style="font-size:11px;color:var(--cd-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="proj-table">
+      <thead><tr><th>#</th><th>GRN</th><th>Project</th><th>Receiving Date</th><th>Logged By</th><th style="text-align:right">Action</th></tr></thead>
+      <tbody>
+        <?php foreach ($pendingGRNsPM as $pi => $grn): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
+          <td style="font-weight:800;color:var(--cd-blue)">GRN-<?= $grn['id'] ?></td>
+          <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($grn['project_name'] ?? '&mdash;') ?></td>
+          <td style="font-size:11px;color:var(--text-muted)"><?= !empty($grn['receiving_date']) ? date('d M Y', strtotime($grn['receiving_date'])) : '&mdash;' ?></td>
+          <td style="font-size:12px"><?= htmlspecialchars($grn['received_by_name'] ?? '&mdash;') ?></td>
+          <td style="text-align:right"><a href="<?=$base?>/con-material-receiving-qc/<?= $grn['id'] ?>" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 14px;border-radius:8px;text-decoration:none;background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff"><i class="fal fa-check-circle"></i> Review &amp; Approve</a></td>
         </tr>
         <?php endforeach; ?>
       </tbody>

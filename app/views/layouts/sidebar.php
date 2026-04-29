@@ -1033,9 +1033,6 @@
                 <?php endif; ?>
 
 
-
-
-
                 <!-- ==================== PHASE 2: CONSTRUCTION MANAGEMENT ==================== -->
                 <li class="sidebar__menu-category">
                     <span class="category-name">Construction </span>
@@ -1116,11 +1113,22 @@
                      Estimator has: Project Drawing + Estimate Budget
                      Unique: Project Drawing (QC & PTL don't have it)
                      Exclude: Construction Management -->
-                <?php if (hasPermission('Project Drawing') && hasPermission('Estimate Budget') && !hasPermission('Construction Management')): ?>
+                <?php if (hasPermission('Estimate Budget') ): ?>
                     <li class="slide <?= isActive('estimator-dashboard', $current_route) ?>">
                         <a href="<?= $base_url ?>/estimator-dashboard" class="sidebar__menu-item <?= isActive('estimator-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-calculator"></i></div>
                             <span class="sidebar__menu-label">Estimator Dashboard</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <!-- ══ Project Structure Design Dashboard ════════════════════════════
+                     and NOT 'Construction Management' (PM/Admin see main dashboard) -->
+                <?php if (hasPermission('Project structure design') && !hasPermission('Construction Management')): ?>
+                    <li class="slide <?= isActive('project-structural-design-dashboard', $current_route) ?>">
+                        <a href="<?= $base_url ?>/project-structural-design-dashboard" class="sidebar__menu-item <?= isActive('project-structural-design-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-drafting-compass"></i></div>
+                            <span class="sidebar__menu-label">Structure Dashboard</span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -1169,7 +1177,7 @@
                                 </li>
                             <?php endif; ?>
 
-                            <?php if (hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Construction Management')): ?>
+                            <?php if ( hasPermission('Construction Management')): ?>
                                 <li class="slide <?= isActive(['con-work-types', 'con-work-type-create', 'con-work-type-edit'], $current_route) ? 'active' : '' ?>">
                                     <a class="sidebar__menu-item <?= isActive(['con-work-types', 'con-work-type-create', 'con-work-type-edit'], $current_route) ? 'active' : '' ?>" href="<?= $base_url ?>/con-work-types">Work Types</a>
                                 </li>
@@ -1260,26 +1268,6 @@
                 <?php endif; ?>
                 <!-- ====== END Site Operations ====== -->
 
-                <?php if (hasPermission('Operation manage')): ?>
-                    <!-- Module 2: Operators / Contractors -->
-                    <li class="slide has-sub <?= isActive(['con-contractors', 'con-contractor-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-contractors', 'con-contractor-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-person-digging"></i></div>
-                            <span class="sidebar__menu-label">Contractors</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-contractors" class="sidebar__menu-item <?= isActive('con-contractors', $current_route) ?>">Constractor List</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-contractor-create" class="sidebar__menu-item <?= isActive('con-contractor-create', $current_route) ?>">Add contractor</a>
-                            </li>
-                        </ul>
-                    </li>
-
-
-                <?php endif; ?>
                 <?php if (hasPermission('Material Manage')): ?>
                     <!-- Module 3: Materials & Inventory -->
                     <li class="slide has-sub <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks'], $current_route) ? 'active' : '' ?>">
@@ -1329,6 +1317,7 @@
                         </ul>
                     </li>
                 <?php endif; ?>
+
                 <?php if (hasPermission('Vendor Manage')): ?>
                     <!-- Module 6: Vendors -->
                     <li class="slide has-sub <?= isActive(['con-vendors', 'con-vendor-create'], $current_route) ? 'active' : '' ?>">
@@ -1358,7 +1347,8 @@
                         </ul>
                     </li>
                 <?php endif; ?>
-                <!-- Module 7: Receiving & QC -->
+
+                <!-- Module 7:Operation And  Receiving & QC -->
                 <?php if (hasPermission('Material Issue')): ?>
                     <li class="slide has-sub <?= isActive(['con-material-receivings', 'con-stocks'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-material-receivings', 'con-stocks'], $current_route) ? 'menu-open active' : '' ?>">
@@ -1393,23 +1383,28 @@
                         </ul>
                     </li>
                 <?php endif; ?>
-                <?php if (hasPermission('Vendor Penalty')): ?>
-                    <!-- Module 9: Vendor Penalties -->
-                    <li class="slide has-sub <?= isActive(['con-vendor-penalties', 'con-vendor-penalty-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-vendor-penalties', 'con-vendor-penalty-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-gavel"></i></div>
-                            <span class="sidebar__menu-label">Vendor Penalties</span>
+    
+
+                <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
+                <?php if (hasPermission('Operation manage')): ?>
+                    <!-- Module 2: Operators / Contractors -->
+                    <li class="slide has-sub <?= isActive(['con-contractors', 'con-contractor-create'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-contractors', 'con-contractor-create'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-person-digging"></i></div>
+                            <span class="sidebar__menu-label">Contractors</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide">
-                                <a href="<?= $base_url ?>/con-vendor-penalties" class="sidebar__menu-item <?= isActive('con-vendor-penalties', $current_route) ?>">Penalty List</a>
+                                <a href="<?= $base_url ?>/con-contractors" class="sidebar__menu-item <?= isActive('con-contractors', $current_route) ?>">Constractor List</a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $base_url ?>/con-vendor-penalty-create" class="sidebar__menu-item <?= isActive('con-vendor-penalty-create', $current_route) ?>">Issue Penalty</a>
+                                <a href="<?= $base_url ?>/con-contractor-create" class="sidebar__menu-item <?= isActive('con-contractor-create', $current_route) ?>">Add contractor</a>
                             </li>
                         </ul>
                     </li>
+
+
                 <?php endif; ?>
 
                 <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->

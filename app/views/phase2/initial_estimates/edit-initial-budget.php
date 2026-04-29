@@ -77,6 +77,15 @@
                                value="<?= htmlspecialchars($budget['total_area_sqft'] ?? '') ?>"
                                placeholder="0.00">
                     </div>
+                    <div class="col-md-4 mt-3">
+                        <label class="form-label fw-bold">Budget Link <small class="text-secondary">(Optional)</small></label>
+                        <input type="url" name="budget_link" class="form-control"
+                               value="<?= htmlspecialchars($budget['budget_link'] ?? '') ?>" placeholder="Google Drive/Docs link...">
+                    </div>
+                    <div class="col-md-6 mt-3">
+                        <label class="form-label fw-bold">Work Details <small class="text-secondary">(Optional)</small></label>
+                        <textarea name="work_details" class="form-control" rows="1" placeholder="Describe the work in detail..."><?= htmlspecialchars($budget['work_details'] ?? '') ?></textarea>
+                    </div>
                     <div class="col-md-6 mt-3">
                         <label class="form-label fw-bold">Other Cost Detail / Note</label>
                         <textarea name="other_cost_detail" class="form-control" rows="1" placeholder="Title or detail for other costs..."><?= htmlspecialchars($budget['other_cost_detail'] ?? '') ?></textarea>
@@ -108,13 +117,14 @@
                     <table class="table table-bordered align-middle mb-0" id="itemsTable">
                         <thead class="table-light">
                             <tr>
-                                <th style="width:20%">Work Type</th>
-                                <th style="width:23%">Material</th>
+                                <th style="width:18%">Work Type</th>
+                                <th style="width:20%">Material</th>
+                                <th style="width:15%">Description</th>
                                 <th style="width:8%">Unit</th>
-                                <th style="width:13%">Qty</th>
-                                <th style="width:13%">Unit Cost (৳)</th>
-                                <th style="width:13%">Subtotal</th>
-                                <th style="width:10%" class="text-center">Del</th>
+                                <th style="width:10%">Qty</th>
+                                <th style="width:10%">Unit Cost (৳)</th>
+                                <th style="width:11%">Subtotal</th>
+                                <th style="width:8%" class="text-center">Del</th>
                             </tr>
                         </thead>
                         <tbody id="itemsBody">
@@ -144,6 +154,10 @@
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="item_remarks[]" class="form-control form-control-sm"
+                                               value="<?= htmlspecialchars($item['remarks'] ?? '') ?>" placeholder="Description/Note">
                                     </td>
                                     <td>
                                         <input type="text" name="item_material_unit[]"
@@ -196,6 +210,9 @@
                                         </select>
                                     </td>
                                     <td>
+                                        <input type="text" name="item_remarks[]" class="form-control form-control-sm" placeholder="Description/Note">
+                                    </td>
+                                    <td>
                                         <input type="text" name="item_material_unit[]" class="form-control form-control-sm unit-display" readonly placeholder="-">
                                     </td>
                                     <td>
@@ -215,7 +232,7 @@
                         </tbody>
                         <tfoot>
                             <tr class="table-light">
-                                <td colspan="5" class="text-end fw-bold py-2">Material Total:</td>
+                                <td colspan="6" class="text-end fw-bold py-2">Material Total:</td>
                                 <td class="text-end fw-bold text-success pe-2" id="materialTotal">0.00</td>
                                 <td></td>
                             </tr>
@@ -242,10 +259,11 @@
                         <thead class="table-light">
                             <tr>
                                 <th style="width:20%">Work Type</th>
-                                <th style="width:30%">Labor Type Name</th>
+                                <th style="width:20%">Labor Type Name</th>
+                                <th style="width:15%">Description</th>
                                 <th style="width:15%">Rate / sqft (৳)</th>
-                                <th style="width:15%">Area (sqft)</th>
-                                <th style="width:12%">Subtotal</th>
+                                <th style="width:12%">Area (sqft)</th>
+                                <th style="width:10%">Subtotal</th>
                                 <th style="width:8%" class="text-center">Del</th>
                             </tr>
                         </thead>
@@ -269,6 +287,10 @@
                                         <input type="text" name="labor_type_name[]"
                                                class="form-control form-control-sm"
                                                value="<?= htmlspecialchars($lb['labor_type_name']) ?>">
+                                    </td>
+                                    <td>
+                                        <input type="text" name="labor_description[]" class="form-control form-control-sm"
+                                               value="<?= htmlspecialchars($lb['description'] ?? '') ?>" placeholder="Description/Note">
                                     </td>
                                     <td>
                                         <input type="number" step="0.01" name="labor_rate_per_sqft[]"
@@ -307,6 +329,9 @@
                                         <input type="text" name="labor_type_name[]" class="form-control form-control-sm" placeholder="e.g., Civil Work, Painting">
                                     </td>
                                     <td>
+                                        <input type="text" name="labor_description[]" class="form-control form-control-sm" placeholder="Description/Note">
+                                    </td>
+                                    <td>
                                         <input type="number" step="0.01" name="labor_rate_per_sqft[]" class="form-control form-control-sm labor-rate" placeholder="0.00" min="0">
                                     </td>
                                     <td>
@@ -323,7 +348,7 @@
                         </tbody>
                         <tfoot>
                             <tr class="table-light">
-                                <td colspan="4" class="text-end fw-bold py-2">Labor Total:</td>
+                                <td colspan="5" class="text-end fw-bold py-2">Labor Total:</td>
                                 <td class="text-end fw-bold text-info pe-2" id="laborTotal">0.00</td>
                                 <td></td>
                             </tr>

@@ -41,7 +41,7 @@ class ProjectStructuralDesign extends Model {
             $data['created_by']
         ];
         
-        $stmt->bind_param("isssssi", ...$params);
+        $stmt->bind_param("issssssi", ...$params);
         return $stmt->execute();
     }
 

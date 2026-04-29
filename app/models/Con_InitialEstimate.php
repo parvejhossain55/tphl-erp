@@ -221,11 +221,11 @@ class Con_InitialEstimate extends Model
     public function createBudget($data)
     {
         $sql = "INSERT INTO {$this->budgetTable}
-                    (project_id, architecture_id, work_type_id, start_date, end_date, total_area_sqft, other_costs, other_cost_detail, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)";
+                    (project_id, architecture_id, work_type_id, start_date, end_date, total_area_sqft, other_costs, other_cost_detail, budget_link, work_details, status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiissddsi',
+            'iiissddsssi',
             $data['project_id'],
             $data['architecture_id'],
             $data['work_type_id'],
@@ -234,6 +234,8 @@ class Con_InitialEstimate extends Model
             $data['total_area_sqft'],
             $data['other_costs'],
             $data['other_cost_detail'],
+            $data['budget_link'],
+            $data['work_details'],
             $data['created_by']
         );
         if ($stmt->execute()) {
@@ -276,19 +278,20 @@ class Con_InitialEstimate extends Model
         if (empty($labors)) return true;
 
         $sql  = "INSERT INTO {$this->laborsTable}
-                     (budget_id, work_type_id, design_type_id, labor_type_name, rate_per_sqft, area_sqft)
-                 VALUES (?, ?, ?, ?, ?, ?)";
+                     (budget_id, work_type_id, design_type_id, labor_type_name, rate_per_sqft, area_sqft, description)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
 
         foreach ($labors as $l) {
             $stmt->bind_param(
-                'iiisdd',
+                'iiisdds',
                 $budgetId,
                 $l['work_type_id'],
                 $l['design_type_id'],
                 $l['labor_type_name'],
                 $l['rate_per_sqft'],
-                $l['area_sqft']
+                $l['area_sqft'],
+                $l['description']
             );
             $stmt->execute();
         }
@@ -410,11 +413,11 @@ class Con_InitialEstimate extends Model
 
         $stmt = $this->db->prepare(
             "UPDATE {$this->budgetTable}
-             SET project_id = ?, architecture_id = ?, work_type_id = ?, start_date = ?, end_date = ?, total_area_sqft = ?, other_costs = ?, other_cost_detail = ?
+             SET project_id = ?, architecture_id = ?, work_type_id = ?, start_date = ?, end_date = ?, total_area_sqft = ?, other_costs = ?, other_cost_detail = ?, budget_link = ?, work_details = ?
              WHERE id = ? AND status = 'pending'"
         );
         $stmt->bind_param(
-            'iiissddsi',
+            'iiissddsssi',
             $data['project_id'],
             $data['architecture_id'],
             $data['work_type_id'],
@@ -423,6 +426,8 @@ class Con_InitialEstimate extends Model
             $data['total_area_sqft'],
             $data['other_costs'],
             $data['other_cost_detail'],
+            $data['budget_link'],
+            $data['work_details'],
             $id
         );
         return $stmt->execute();

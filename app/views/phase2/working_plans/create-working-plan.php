@@ -50,7 +50,9 @@
                                                 data-start="<?= $b['start_date'] ?? '' ?>"
                                                 data-end="<?= $b['end_date'] ?? '' ?>"
                                                 data-work-type-id="<?= $b['work_type_id'] ?? '' ?>"
-                                                data-design-type-id="<?= $b['design_type_id'] ?? '' ?>">
+                                                data-design-type-id="<?= $b['design_type_id'] ?? '' ?>"
+                                                data-budget-link="<?= htmlspecialchars($b['budget_link'] ?? '') ?>"
+                                                data-work-details="<?= htmlspecialchars($b['work_details'] ?? '') ?>">
                                             #<?= $b['id'] ?> &mdash; <?= htmlspecialchars($b['project_name']) ?>
                                             <?php if (!empty($b['work_type_label'])): ?>
                                                 [<?= htmlspecialchars($b['work_type_label']) ?>]
@@ -230,8 +232,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (firstMatch) {
             budgetSelect.value = firstMatch.value;
+            var bLink = firstMatch.getAttribute('data-budget-link');
+            var wDet = firstMatch.getAttribute('data-work-details');
+            var extHtml = '';
+            if (bLink) extHtml += ' | <a href="'+bLink+'" target="_blank" style="text-decoration:underline">Budget Link <i class="bi bi-box-arrow-up-right ms-1"></i></a>';
+            if (wDet) extHtml += '<br><small class="text-muted"><i class="bi bi-info-circle me-1"></i>' + wDet + '</small>';
+            
             budgetInfo.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Budget Total: ৳ ' +
-                parseFloat(firstMatch.getAttribute('data-total')).toLocaleString('en-BD') + '</span>';
+                parseFloat(firstMatch.getAttribute('data-total')).toLocaleString('en-BD') + '</span>' + extHtml;
             rebuildYears(firstMatch);
             applyDesignTypeFromBudget(firstMatch);
         } else {
@@ -244,8 +252,14 @@ document.addEventListener('DOMContentLoaded', function () {
     budgetSelect.addEventListener('change', function () {
         var opt = this.options[this.selectedIndex];
         if (opt && opt.getAttribute('data-total')) {
+            var bLink = opt.getAttribute('data-budget-link');
+            var wDet = opt.getAttribute('data-work-details');
+            var extHtml = '';
+            if (bLink) extHtml += ' | <a href="'+bLink+'" target="_blank" style="text-decoration:underline">Budget Link <i class="bi bi-box-arrow-up-right ms-1"></i></a>';
+            if (wDet) extHtml += '<br><small class="text-muted"><i class="bi bi-info-circle me-1"></i>' + wDet + '</small>';
+            
             budgetInfo.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Budget Total: ৳ ' +
-                parseFloat(opt.getAttribute('data-total')).toLocaleString('en-BD') + '</span>';
+                parseFloat(opt.getAttribute('data-total')).toLocaleString('en-BD') + '</span>' + extHtml;
             rebuildYears(opt);
             applyDesignTypeFromBudget(opt);
         } else {

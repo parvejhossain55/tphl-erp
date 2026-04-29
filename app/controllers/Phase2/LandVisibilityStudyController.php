@@ -152,4 +152,13 @@ class LandVisibilityStudyController extends Controller {
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
+
+    private function getProjectName(int $projectId): string
+    {
+        $stmt = $this->db->prepare("SELECT name FROM projects WHERE id = ?");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return $row ? $row['name'] : 'Unknown Project';
+    }
 }

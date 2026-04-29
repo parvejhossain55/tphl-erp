@@ -108,9 +108,8 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
 
                         <div class="alert alert-warning small mb-3">
                             <i class="bi bi-exclamation-triangle me-1"></i>
-                            <strong>Important:</strong> Accepted items will <strong>automatically update stock</strong>
-                            (con_stocks + con_stock_movements). Rejected items will flag a
-                            <strong>vendor penalty</strong>. This action cannot be undone.
+                            <strong>Important:</strong> Accepted items will <strong>await PM approval</strong> for stock update.
+                            Rejected items will flag a <strong>vendor penalty</strong> immediately.
                         </div>
 
                         <div class="table-responsive">
@@ -160,7 +159,7 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                         <div class="mt-4 text-end">
                             <a href="<?= $base_url ?>/con-material-receivings" class="btn btn-secondary me-2">Cancel</a>
                             <button type="submit" class="btn btn-success px-4 fw-bold"
-                                    onclick="return confirm('Submit QC Review? Accepted items will auto-update stock. This cannot be undone.');">
+                                    onclick="return confirm('Submit QC Review? Accepted items will await PM approval.');">
                                 <i class="bi bi-check-circle me-1"></i> Submit QC Review
                             </button>
                         </div>
@@ -228,13 +227,13 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                                 <span class="fw-bold text-success fs-5">
                                     <?= count(array_filter($items, fn($it) => $it['status'] === 'Accepted')) ?>
                                 </span>
-                                <div class="small text-muted">Accepted (Stock Updated)</div>
+                                <div class="small text-muted">QC Accepted</div>
                             </div>
                             <div class="col-md-4">
                                 <span class="fw-bold text-danger fs-5">
                                     <?= count(array_filter($items, fn($it) => $it['status'] === 'Rejected')) ?>
                                 </span>
-                                <div class="small text-muted">Rejected (Penalty Raised)</div>
+                                <div class="small text-muted">QC Rejected</div>
                             </div>
                             <div class="col-md-4">
                                 <span class="fw-bold fs-5">
@@ -244,6 +243,42 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                             </div>
                         </div>
                     </div>
+
+                    <!-- PM APPROVAL SECTION -->
+                    <?php if ($receiving['overall_status'] === 'Pending PM'): ?>
+                    <?php 
+                        if (session_status() === PHP_SESSION_NONE) session_start();
+                        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+                        if (in_array($roleId, [1, 3, 15, 20])): 
+                    ?>
+                    <hr class="my-4">
+                    <div class="alert alert-info border-info mb-0">
+                        <h6 class="alert-heading fw-bold"><i class="bi bi-person-check-fill me-2"></i>PM / Management Approval Required</h6>
+                        <p class="small mb-3">QC has completed their review. Please verify the QC results and approve. <strong>Stock will be updated upon your approval.</strong></p>
+                        
+                        <form action="<?= $base_url ?>/con-material-receiving-pm/<?= $receiving['id'] ?>" method="POST">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Approval Note (Optional)</label>
+                                <textarea name="pm_note" class="form-control" rows="2" placeholder="Any final remarks..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary" onclick="return confirm('Approve this GRN? Stock will be officially updated.')">
+                                <i class="bi bi-check2-all me-1"></i> Approve GRN & Update Stock
+                            </button>
+                        </form>
+                    </div>
+                    <?php else: ?>
+                        <div class="alert alert-warning mt-3 mb-0 small">
+                            <i class="bi bi-hourglass-split me-1"></i> Waiting for Management/PM Approval to update stock.
+                        </div>
+                    <?php endif; ?>
+                    <?php elseif (in_array($receiving['overall_status'], ['Accepted', 'Partially Accepted', 'Rejected']) && !empty($receiving['pm_approved_at'])): ?>
+                        <div class="mt-3 alert alert-success small mb-0">
+                            <i class="bi bi-check-circle-fill me-1"></i> Fully Approved by PM/Management on <?= date('d M Y h:i A', strtotime($receiving['pm_approved_at'])) ?>
+                            <?php if(!empty($receiving['pm_note'])): ?>
+                                <br><strong class="mt-1 d-block">PM Note:</strong> <?= htmlspecialchars($receiving['pm_note']) ?>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                     <?php endif; ?>
 
                 </div>

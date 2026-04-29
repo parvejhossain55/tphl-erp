@@ -107,6 +107,12 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                             <?php endif; ?>
                         </button>
                     </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-semibold" id="tab-budget" data-bs-toggle="tab"
+                                data-bs-target="#pane-budget" type="button" role="tab">
+                            <i class="fas fa-chart-pie me-1" style="color:#d97706"></i> Budget Tracking
+                        </button>
+                    </li>
                 </ul>
             </div>
 
@@ -443,6 +449,89 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                     <?php endif; ?>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- ─────────────────────────
+                         Tab 5: Budget Tracking
+                    ───────────────────────── -->
+                    <div class="tab-pane fade" id="pane-budget" role="tabpanel">
+                        <div class="p-3">
+                            <?php if (!empty($budgetVsReceived)): ?>
+                                <h6 class="fw-bold text-muted mb-3">
+                                    <i class="fas fa-chart-pie me-1"></i> Budget vs Received Tracking
+                                </h6>
+                                <div class="accordion mb-4" id="budgetAccordion">
+                                    <?php $bidx = 0; foreach ($budgetVsReceived as $pid => $bProj): ?>
+                                    <div class="accordion-item border-0 mb-3 shadow-sm rounded overflow-hidden">
+                                        <h2 class="accordion-header" id="bh-<?= $bidx ?>">
+                                            <button class="accordion-button <?= $bidx > 0 ? 'collapsed' : '' ?> fw-bold"
+                                                    type="button"
+                                                    data-bs-toggle="collapse"
+                                                    data-bs-target="#bc-<?= $bidx ?>"
+                                                    aria-expanded="<?= $bidx === 0 ? 'true' : 'false' ?>">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="project-dot" style="background: <?= ['#4f46e5','#059669','#d97706','#dc2626','#7c3aed'][$bidx % 5] ?>;"></div>
+                                                    Project: <?= htmlspecialchars($bProj['project_name']) ?>
+                                                </div>
+                                            </button>
+                                        </h2>
+                                        <div id="bc-<?= $bidx ?>" class="accordion-collapse collapse <?= $bidx === 0 ? 'show' : '' ?>"
+                                             data-bs-parent="#budgetAccordion">
+                                            <div class="accordion-body p-0">
+                                                <?php foreach ($bProj['work_types'] as $wname => $materials): ?>
+                                                    <div class="bg-light px-3 py-2 border-bottom fw-bold" style="color:var(--cd-blue)">
+                                                        <i class="fas fa-layer-group me-1"></i> <?= htmlspecialchars($wname) ?>
+                                                    </div>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-hover mb-0">
+                                                            <thead class="table-light">
+                                                                <tr>
+                                                                    <th style="width: 30%">Material</th>
+                                                                    <th style="width: 15%" class="text-end">Initial Budget</th>
+                                                                    <th style="width: 15%" class="text-end">Received Qty</th>
+                                                                    <th style="width: 15%" class="text-end">Available</th>
+                                                                    <th style="width: 25%">Progress</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <?php foreach ($materials as $mat): 
+                                                                    $budgetQty = (float)$mat['initial_budget_qty'];
+                                                                    $receivedQty = (float)$mat['total_received'];
+                                                                    $availQty = (float)$mat['available_qty'];
+                                                                    $pct = $budgetQty > 0 ? min(100, round(($receivedQty / $budgetQty) * 100)) : 0;
+                                                                    $barColor = $pct >= 100 ? 'bg-danger' : ($pct >= 80 ? 'bg-warning' : 'bg-success');
+                                                                ?>
+                                                                <tr>
+                                                                    <td class="fw-semibold"><?= htmlspecialchars($mat['material_name']) ?> <small class="text-muted">(<?= $mat['unit'] ?>)</small></td>
+                                                                    <td class="text-end fw-bold"><?= number_format($budgetQty, 3) ?></td>
+                                                                    <td class="text-end text-primary fw-bold"><?= number_format($receivedQty, 3) ?></td>
+                                                                    <td class="text-end text-success fw-bold"><?= number_format($availQty, 3) ?></td>
+                                                                    <td>
+                                                                        <div class="d-flex align-items-center gap-2">
+                                                                            <div class="progress flex-grow-1" style="height:6px;min-width:60px;">
+                                                                                <div class="progress-bar <?= $barColor ?>" style="width: <?= $pct ?>%;"></div>
+                                                                            </div>
+                                                                            <span class="small fw-semibold text-muted" style="min-width:35px;"><?= $pct ?>%</span>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                                <?php endforeach; ?>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php $bidx++; endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="text-center py-5 text-muted">
+                                    <i class="fas fa-chart-pie fa-2x mb-2 d-block opacity-40"></i>
+                                    No budget tracking data available yet.
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
 

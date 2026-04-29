@@ -105,6 +105,7 @@ class Con_MaterialController extends Controller
         $availableStock = $stockModel->getAvailableStock();
         $lowStockItems  = $stockModel->getLowStockItems();
         $byProject      = $stockModel->getStockByProject();
+        $budgetVsReceived = $stockModel->getBudgetVsReceived();
 
         $this->view('phase2/stocks/con-stocks', [
             'current_route'  => 'con-stocks',
@@ -114,6 +115,7 @@ class Con_MaterialController extends Controller
             'availableStock' => $availableStock,
             'lowStockItems'  => $lowStockItems,
             'byProject'      => $byProject,
+            'budgetVsReceived'=> $budgetVsReceived,
         ]);
     }
 }

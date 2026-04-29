@@ -750,7 +750,6 @@
               <i class="bi bi-arrow-clockwise"></i>
             </a>
 
-
           </div>
 
         </div>
@@ -765,165 +764,61 @@
     <div class="row mt-4">
       <div class="col-12">
         <div class="history-card shadow-sm border-0">
-          <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
+          <div class="card-header d-flex justify-content-between align-items-center bg-white py-3 flex-wrap gap-2">
             <h6 class="mb-0 fw-bold text-dark">
               <i class="bi bi-layers me-2 text-primary"></i>
-              <?php
-              $headerText = "Uploaded Leads";
-              if ($date_age == 'today') $headerText = "Today's Uploaded Leads";
-              elseif ($date_age == 'old') $headerText = "Old Uploaded Leads";
-              elseif ($date_age == '7days') $headerText = "Recent Uploaded Leads (Last 15 Days)";
-
-              if ($duplicates_only) $headerText .= " (Duplicates Only)";
-              echo $headerText;
-              ?>
+              <span id="tableHeaderText">Uploaded Leads</span>
             </h6>
-            <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($leads) ?> Leads Shown</span>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <!-- Search -->
+              <div class="input-group input-group-sm" style="width:220px;">
+                <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" id="dmLeadSearch" class="form-control" placeholder="Search name, phone, campaign...">
+              </div>
+              <!-- Per page -->
+              <select id="dmPerPage" class="form-select form-select-sm" style="width:80px;">
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+              <span class="badge bg-primary-soft text-primary rounded-pill" id="dmLeadCount">— Leads</span>
+            </div>
           </div>
+
           <div class="table__wrapper table-responsive my-3">
-            <!-- Bulk Delete Button -->
+            <!-- Bulk Delete -->
             <div class="mb-2">
               <button id="bulkDeleteBtn" class="btn btn-danger btn-sm">
                 <i class="bi bi-trash"></i> Delete Selected
               </button>
             </div>
 
-            <table class="table no-border-table mt-20 multiple_tables">
+            <table class="table no-border-table mt-20" id="dmLeadTable">
               <thead class="py-3">
                 <tr>
-                  <th class="text-center">
-                    <input type="checkbox" id="selectAll">
-                  </th>
+                  <th class="text-center"><input type="checkbox" id="selectAll"></th>
                   <th class="ps-4">Lead Name</th>
                   <th>Contact Info</th>
+                  <th class="text-center">Follow Up</th>
                   <th>Contact Status</th>
                   <th>Lead Type</th>
-                  <th>Platform & Campaign</th>
+                  <th>Platform &amp; Campaign</th>
                   <th>Team Name</th>
                   <th>Sales Team Lead</th>
                   <th class="pe-4 text-end">Upload Date</th>
                   <th class="pe-4 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody>
-                <?php if (empty($leads)): ?>
-                  <tr>
-                    <td colspan="10" class="text-center py-5">
-                      <div class="text-muted">
-                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                        No leads uploaded in the last 7 days.
-                      </div>
-                    </td>
-                  </tr>
-                <?php else: ?>
-                  <?php foreach ($leads as $lead): ?>
-                    <?php
-                      // Contact Status filter (client-side PHP filter)
-                      $contactStatusFilter = $_GET['contact_status'] ?? '';
-                      $cs = $lead['contact_status'] ?? 'Not Contacted';
-                      if ($contactStatusFilter === 'contacted' && $cs !== 'Contacted') continue;
-                      if ($contactStatusFilter === 'not_contacted' && $cs !== 'Not Contacted') continue;
-
-                      // Lead type badge class
-                      $leadType = $lead['lead_type'] ?? '';
-                      $ltClass = match(strtolower($leadType)) {
-                        'hot'             => 'lt-hot',
-                        'warm'            => 'lt-warm',
-                        'cold'            => 'lt-cold',
-                        'prospect','high prospect' => 'lt-prospect',
-                        'visited','will visit' => 'lt-visited',
-                        'sold'            => 'lt-sold',
-                        'not interested','don\'t call again','refund' => 'lt-not-interested',
-                        'pending'         => 'lt-pending',
-                        'future'          => 'lt-future',
-                        'no response'     => 'lt-no-response',
-                        default           => 'lt-default',
-                      };
-                    ?>
-                    <tr>
-                      <!-- Checkbox for each row -->
-                      <td class="text-center">
-                        <input type="checkbox" class="rowCheckbox" value="<?= $lead['id'] ?>">
-                      </td>
-
-                      <td class="ps-4">
-                        <div class="fw-bold text-dark"><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></div>
-                        <small class="text-muted"><?= htmlspecialchars($lead['job_title'] ?? 'N/A') ?></small>
-                      </td>
-
-                      <td>
-                        <div class="d-flex flex-column">
-                          <?php
-                          $p = $lead['phone_number'] ?? '';
-                          $isDuplicate = !empty($p) && isset($phoneFreq[$p]) && $phoneFreq[$p] > 1;
-                          $textClass = $isDuplicate ? 'text-danger fw-bold' : 'text-muted';
-                          ?>
-                          <span><i class="bi bi-telephone text-muted me-2"></i><span class="<?= $textClass ?>"><?= htmlspecialchars($p ?: 'N/A') ?></span></span>
-                          <small class="text-muted"><i class="bi bi-envelope me-2"></i><?= htmlspecialchars($lead['email'] ?? 'N/A') ?></small>
-                        </div>
-                      </td>
-
-                      <!-- Contact Status Column -->
-                      <td>
-                        <?php if ($cs === 'Contacted'): ?>
-                          <span class="badge-contacted">
-                            <i class="bi bi-check-circle-fill"></i> Contacted
-                          </span>
-                          <?php if (!empty($lead['last_follow_up_type'])): ?>
-                            <div class="mt-1">
-                              <small class="text-muted" style="font-size:.65rem;">
-                                <i class="bi bi-arrow-right-short"></i><?= htmlspecialchars($lead['last_follow_up_type']) ?>
-                              </small>
-                            </div>
-                          <?php endif; ?>
-                        <?php else: ?>
-                          <span class="badge-not-contacted">
-                            <i class="bi bi-x-circle-fill"></i> Not Contacted
-                          </span>
-                        <?php endif; ?>
-                      </td>
-
-                      <!-- Lead Type Column -->
-                      <td>
-                        <?php if (!empty($leadType)): ?>
-                          <span class="lead-type-badge <?= $ltClass ?>"><?= htmlspecialchars($leadType) ?></span>
-                        <?php else: ?>
-                          <span class="text-muted" style="font-size:.75rem;">—</span>
-                        <?php endif; ?>
-                      </td>
-
-                      <td>
-                        <span class="badge bg-info-soft text-info mb-1 d-inline-block"><?= htmlspecialchars($lead['platform'] ?? 'N/A') ?></span>
-                        <div class="small text-muted"><?= htmlspecialchars($lead['campaign_name'] ?? 'N/A') ?></div>
-                      </td>
-
-                      <td>
-                        <span class="text-dark"><?= htmlspecialchars($lead['team_name'] ?? 'N/A') ?></span>
-                      </td>
-
-                      <td>
-                        <div class="fw-bold text-primary"><?= htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') ?></div>
-                      </td>
-
-                      <td class="pe-4 text-end">
-                        <div class="fw-semibold"><?= date('M d, Y', strtotime($lead['created_at'])) ?></div>
-                        <small class="text-muted"><?= date('h:i A', strtotime($lead['created_at'])) ?></small>
-                      </td>
-
-                      <td class="pe-4 text-center">
-                        <!-- Single delete button -->
-                        <button type="button" class="btn btn-sm btn-outline-danger removeBtnCust cursor"
-                          data-name="<?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?>"
-                          data-action="delete-lead-permanent"
-                          data-id="<?= $lead['id'] ?>">
-                          <i class="bi bi-trash me-2"></i> Delete
-                        </button>
-                      </td>
-                    </tr>
-                  <?php endforeach; ?>
-                <?php endif; ?>
+              <tbody id="dmLeadTbody">
+                <tr><td colspan="11" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>
               </tbody>
             </table>
+
+            <!-- Pagination -->
+            <div class="d-flex justify-content-between align-items-center px-3 pb-3 flex-wrap gap-2" id="dmPaginationWrap">
+              <div class="text-muted" style="font-size:.8rem;" id="dmPaginationInfo"></div>
+              <nav><ul class="pagination pagination-sm mb-0" id="dmPagination"></ul></nav>
+            </div>
           </div>
         </div>
       </div>
@@ -973,53 +868,151 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-  const base_url = "<?= $GLOBALS['base_url'] ?>";
-  document.addEventListener('DOMContentLoaded', function() {
+  const base_url   = "<?= $GLOBALS['base_url'] ?>";
+  const dmFilters  = {
+    team_id        : "<?= htmlspecialchars($_GET['team_id']        ?? '') ?>",
+    date_age       : "<?= htmlspecialchars($_GET['date_age']       ?? 'all') ?>",
+    sort           : "<?= htmlspecialchars($_GET['sort']           ?? 'newest') ?>",
+    contact_status : "<?= htmlspecialchars($_GET['contact_status'] ?? '') ?>",
+    duplicates_only: "<?= isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1' ? '1' : '' ?>",
+  };
+
+  let dmCurrentPage = 1;
+  let dmPerPage     = 10;
+  let dmSearchTimer = null;
+  let dmSearchVal   = '';
+
+  function dmLoadLeads(page = 1) {
+    dmCurrentPage = page;
+    const tbody   = document.getElementById('dmLeadTbody');
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+
+    const params = new URLSearchParams({
+      ...dmFilters,
+      page    : page,
+      per_page: dmPerPage,
+      search  : dmSearchVal,
+    });
+
+    fetch(`${base_url}/dm-exec-leads-ajax?${params.toString()}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          tbody.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-danger">${data.error}</td></tr>`;
+          return;
+        }
+
+        // Header text
+        const headerLabels = { 'today':'Today\'s Uploaded Leads', 'old':'Old Uploaded Leads', '7days':'Recent Leads (Last 7 Days)', '15days':'Recent Leads (Last 15 Days)', 'all':'All Uploaded Leads' };
+        let headerText = headerLabels[dmFilters.date_age] || 'Uploaded Leads';
+        if (dmFilters.duplicates_only === '1') headerText += ' (Duplicates Only)';
+        document.getElementById('tableHeaderText').textContent = headerText;
+        document.getElementById('dmLeadCount').textContent = `${data.total} Leads`;
+
+        // Render rows
+        if (!data.rows || data.rows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';
+          document.getElementById('dmPaginationInfo').textContent = '';
+          document.getElementById('dmPagination').innerHTML = '';
+          return;
+        }
+
+        tbody.innerHTML = data.rows.map(row => `
+          <tr>
+            <td class="text-center">${row.checkbox}</td>
+            <td class="ps-4">${row.name}</td>
+            <td>${row.contact}</td>
+            <td class="text-center">${row.follow_up}</td>
+            <td>${row.contact_status}</td>
+            <td>${row.lead_type}</td>
+            <td>${row.platform}</td>
+            <td>${row.team}</td>
+            <td>${row.sales_lead}</td>
+            <td class="pe-4 text-end">${row.upload_date}</td>
+            <td class="pe-4 text-center">${row.action}</td>
+          </tr>
+        `).join('');
+
+        // Pagination info
+        const from = ((page - 1) * dmPerPage) + 1;
+        const to   = Math.min(page * dmPerPage, data.total);
+        document.getElementById('dmPaginationInfo').textContent = `Showing ${from}–${to} of ${data.total} leads`;
+
+        // Pagination buttons
+        const pag = document.getElementById('dmPagination');
+        pag.innerHTML = '';
+        const totalPages = data.total_pages;
+        if (totalPages <= 1) return;
+
+        const addBtn = (label, p, disabled = false, active = false) => {
+          const li = document.createElement('li');
+          li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+          li.innerHTML = `<a class="page-link" href="#">${label}</a>`;
+          if (!disabled && !active) li.querySelector('a').addEventListener('click', e => { e.preventDefault(); dmLoadLeads(p); });
+          pag.appendChild(li);
+        };
+
+        addBtn('«', 1, page === 1);
+        addBtn('‹', page - 1, page === 1);
+
+        let start = Math.max(1, page - 2);
+        let end   = Math.min(totalPages, page + 2);
+        if (start > 1) { addBtn('1', 1); if (start > 2) addBtn('...', null, true); }
+        for (let i = start; i <= end; i++) addBtn(i, i, false, i === page);
+        if (end < totalPages) { if (end < totalPages - 1) addBtn('...', null, true); addBtn(totalPages, totalPages); }
+
+        addBtn('›', page + 1, page === totalPages);
+        addBtn('»', totalPages, page === totalPages);
+      })
+      .catch(() => {
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-danger">Failed to load leads. Please refresh.</td></tr>';
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    dmLoadLeads(1);
+
+    // Per page change
+    document.getElementById('dmPerPage').addEventListener('change', function () {
+      dmPerPage = parseInt(this.value);
+      dmLoadLeads(1);
+    });
+
+    // Search with debounce
+    document.getElementById('dmLeadSearch').addEventListener('input', function () {
+      clearTimeout(dmSearchTimer);
+      dmSearchTimer = setTimeout(() => {
+        dmSearchVal = this.value.trim();
+        dmLoadLeads(1);
+      }, 400);
+    });
+
+    // Select all
+    document.getElementById('selectAll').addEventListener('click', function () {
+      document.querySelectorAll('#dmLeadTbody .rowCheckbox').forEach(cb => cb.checked = this.checked);
+    });
+
+    // Bulk delete
+    document.getElementById('bulkDeleteBtn').addEventListener('click', function () {
+      const selected = [...document.querySelectorAll('#dmLeadTbody .rowCheckbox:checked')].map(cb => cb.value);
+      if (!selected.length) { alert('Please select at least one lead'); return; }
+      if (!confirm('Are you sure you want to delete selected leads?')) return;
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `${base_url}/delete-leads-permanent-multiple`;
+      selected.forEach(id => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'ids[]'; inp.value = id;
+        form.appendChild(inp);
+      });
+      document.body.appendChild(form);
+      form.submit();
+    });
+
     // Prevent page reload when Import CSV clicked
     const importBtn = document.getElementById('importCsvBtn');
-    importBtn.addEventListener('click', function(e) {
-      e.preventDefault(); // ensures no form submit
-      // Bootstrap modal opens automatically via data-bs-toggle="modal"
-    });
-  });
-</script>
-
-<script>
-  // Select all checkbox
-  document.getElementById('selectAll').addEventListener('click', function() {
-    let checkboxes = document.querySelectorAll('.rowCheckbox');
-    checkboxes.forEach(cb => cb.checked = this.checked);
-  });
-
-  // Bulk delete
-  document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
-    let selected = [];
-
-    document.querySelectorAll('.rowCheckbox:checked').forEach(cb => {
-      selected.push(cb.value);
-    });
-
-    if (selected.length === 0) {
-      alert("Please select at least one lead");
-      return;
+    if (importBtn) {
+      importBtn.addEventListener('click', function (e) { e.preventDefault(); });
     }
-
-    if (!confirm("Are you sure you want to delete selected leads?")) return;
-
-    // Send via form
-    let form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '<?= $GLOBALS['base_url'] ?>/delete-leads-permanent-multiple';
-
-    selected.forEach(id => {
-      let input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = 'ids[]';
-      input.value = id;
-      form.appendChild(input);
-    });
-
-    document.body.appendChild(form);
-    form.submit();
   });
 </script>

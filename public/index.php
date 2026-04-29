@@ -303,6 +303,8 @@ $routes = [
     // upload Csv From Csv Digital Marketing
     "digital-marketing-dashboard" => ["controller" => "DigitalMarketingController", "method" => "index"],
     "digital-marketing-executive-dashboard" => ["controller" => "DigitalMarketingController", "method" => "executiveDashboard"],
+    "dm-exec-leads-ajax" => ["controller" => "DigitalMarketingController", "method" => "getLeadsAjax"],
+    "dm-head-leads-ajax" => ["controller" => "DigitalMarketingController", "method" => "getLeadsAjax"],
     "delete-lead-permanent" => ["controller" => "DigitalMarketingController", "method" => "deletePermanent"],
     "delete-leads-permanent-multiple" => ["controller" => "DigitalMarketingController",   "method" => "deletePermanentMultiple"],
     "store-platform-budget" => ["controller" => "DigitalMarketingController", "method" => "storeBudget"],
@@ -825,6 +827,7 @@ $routes['con-material-receivings']             = ['controller' => 'Phase2\Con_Ma
 $routes['con-material-receiving-create/(\d+)'] = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'create'];
 $routes['con-material-receiving-store']        = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'store'];
 $routes['con-material-receiving-qc/(\d+)']     = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'qcReview'];
+$routes['con-material-receiving-pm/(\d+)']     = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'pmStore'];
 
 // ── Vendor Payment Requests ────────────────────────────────────────────────
 $routes['con-vendor-payment-requests']          = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'index'];
@@ -911,6 +914,7 @@ $routes['con-estimate-approve/(\d+)'] = ['controller' => 'Phase2\Con_InitialEsti
 $routes['con-estimate-cancel/(\d+)']  = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'cancelBudget'];
 $routes['con-ajax-arch-by-project']     = ['controller' => 'Phase2\\Con_InitialEstimateController', 'method' => 'ajaxArchByProject'];
 $routes['con-ajax-designs-by-project']  = ['controller' => 'Phase2\\Con_InitialEstimateController', 'method' => 'ajaxDesignsByProject'];
+$routes['con-estimate-ajax-add-material'] = ['controller' => 'Phase2\\Con_InitialEstimateController', 'method' => 'ajaxAddMaterial'];
 
 // ── Material Issues (Stock OUT) ───────────────────────────────────────────
 $routes['con-material-issues']               = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'index'];

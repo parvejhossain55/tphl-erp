@@ -47,16 +47,16 @@ class SoilTestController extends Controller {
     }
 
     public function create() {
-        $userId    = $_SESSION['user']['id']  ?? 0;
-        $roleId    = $_SESSION['user']['role_id'] ?? 0;
-        $projects  = $this->getMyAssignedProjects($userId, $roleId, 'site_engineer_id');
-        $engineers = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name ASC")->fetch_all(MYSQLI_ASSOC);
+        $userId   = $_SESSION['user']['id']  ?? 0;
+        $roleId   = $_SESSION['user']['role_id'] ?? 0;
+        $projects = $this->getMyAssignedProjects($userId, $roleId, 'site_engineer_id');
+        $currentUserName = $_SESSION['user']['full_name'] ?? 'N/A';
 
         $this->view('phase2/soil_tests/create-soil-test', [
-            'current_route' => 'con-soil-tests',
-            'title'     => 'Add Soil Test',
-            'projects'  => $projects,
-            'engineers' => $engineers,
+            'current_route'   => 'con-soil-tests',
+            'title'           => 'Add Soil Test',
+            'projects'        => $projects,
+            'currentUserName' => $currentUserName,
         ]);
     }
 

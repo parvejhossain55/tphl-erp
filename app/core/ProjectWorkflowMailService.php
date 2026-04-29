@@ -295,6 +295,166 @@ class ProjectWorkflowMailService
     }
 
     /**
+     * BUDGET CREATION — Initial Estimate Budget submitted.
+     * → Action required: Approvers (MD=1, Director=3, PM=15)
+     */
+    public function notifyApproversForNewInitialBudget(int $projectId, string $projectName, int $budgetId): void
+    {
+        $base = $this->getBaseUrl();
+
+        // Get approvers
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3, 15) AND email IS NOT NULL AND email != ''");
+        $stmt->execute();
+        $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "⚡ Action Required: Approve Initial Estimate Budget — {$projectName}";
+
+        foreach ($approvers as $user) {
+            $stepHtml = "<div style='margin:20px 0;'>
+                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                    <div style='width:28px;height:28px;border-radius:50%;background:#0f5132;color:#fff;
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
+                    <div style='font-size:13px;color:#0f5132;'><strong>Budget Approval</strong> <em style='font-size:11px;color:#0f5132'>(Action Required)</em></div>
+                </div>
+            </div>";
+
+            $body = $this->buildHtml(
+                title:       "Action Required: Budget Approval",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "A new <strong>Initial Estimate Budget</strong> has been submitted for project <strong>{$projectName}</strong> and is waiting for your approval.",
+                stepHtml:    $stepHtml,
+                ctaLabel:    'Review & Approve Budget',
+                ctaLink:     $base . "/con-estimate-show/{$budgetId}",
+                projectName: $projectName,
+                note:        'Please review the budget items and labor costs before approving. Any of the authorized approvers can approve this.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * BOQ CREATION / SUBMISSION — BOQ submitted.
+     * → Action required: Approvers (MD=1, Director=3, PM=15)
+     */
+    public function notifyApproversForNewBOQ(int $projectId, string $projectName, int $boqId): void
+    {
+        $base = $this->getBaseUrl();
+
+        // Get approvers
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3, 15) AND email IS NOT NULL AND email != ''");
+        $stmt->execute();
+        $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "⚡ Action Required: Approve BOQ / BOM — {$projectName}";
+
+        foreach ($approvers as $user) {
+            $stepHtml = "<div style='margin:20px 0;'>
+                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                    <div style='width:28px;height:28px;border-radius:50%;background:#2563eb;color:#fff;
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
+                    <div style='font-size:13px;color:#2563eb;'><strong>BOQ Approval</strong> <em style='font-size:11px;color:#2563eb'>(Action Required)</em></div>
+                </div>
+            </div>";
+
+            $body = $this->buildHtml(
+                title:       "Action Required: BOQ Approval",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "A new <strong>Bill of Quantities (BOQ)</strong> has been submitted for project <strong>{$projectName}</strong> and is waiting for your approval.",
+                stepHtml:    $stepHtml,
+                ctaLabel:    'Review & Approve BOQ',
+                ctaLink:     $base . "/con-boq-show/{$boqId}",
+                projectName: $projectName,
+                note:        'Please review the material items and estimated quantities before approving. Any of the authorized approvers can approve this.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * PURCHASE ORDER GENERATION
+     * → Action required: SE (12) and Approvers (1, 3, 15, 20)
+     */
+    public function notifyApproversForNewPO(int $projectId, string $projectName, int $poId): void
+    {
+        $base = $this->getBaseUrl();
+
+        // Get approvers (SE=12, MD=1, Director=3, PM=15, Head of Procurement=20)
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3, 12, 15, 20) AND email IS NOT NULL AND email != ''");
+        $stmt->execute();
+        $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "⚡ Action Required: Approve Purchase Order #{$poId} — {$projectName}";
+
+        foreach ($approvers as $user) {
+            $stepHtml = "<div style='margin:20px 0;'>
+                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                    <div style='width:28px;height:28px;border-radius:50%;background:#059669;color:#fff;
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
+                    <div style='font-size:13px;color:#059669;'><strong>PO Approval</strong> <em style='font-size:11px;color:#059669'>(Action Required)</em></div>
+                </div>
+            </div>";
+
+            $body = $this->buildHtml(
+                title:       "Action Required: Purchase Order Approval",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "A new <strong>Purchase Order (PO #{$poId})</strong> has been generated for project <strong>{$projectName}</strong> and is waiting for your approval.",
+                stepHtml:    $stepHtml,
+                ctaLabel:    'Review & Approve PO',
+                ctaLink:     $base . "/con-purchase-order/{$poId}",
+                projectName: $projectName,
+                note:        'Please review the PO details before approving. The material receiving process cannot start until both SE and Top Management have approved.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * PO FULLY APPROVED — Notify Site Operator
+     * → Action required: Site Operator (20)
+     */
+    public function notifySiteOperatorForApprovedPO(int $poId, string $projectName): void
+    {
+        $base = $this->getBaseUrl();
+
+        // Get Site Operators (Role 20)
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id = 20 AND email IS NOT NULL AND email != ''");
+        $stmt->execute();
+        $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "✅ Purchase Order Approved: Ready for Material Receiving — {$projectName}";
+
+        foreach ($approvers as $user) {
+            $stepHtml = "<div style='margin:20px 0;'>
+                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                    <div style='width:28px;height:28px;border-radius:50%;background:#10b981;color:#fff;
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:13px;font-weight:700;flex-shrink:0;'>&#10003;</div>
+                    <div style='font-size:13px;color:#10b981;'><strong>PO Fully Approved</strong> <em style='font-size:11px;color:#10b981'>(Action Required: GRN)</em></div>
+                </div>
+            </div>";
+
+            $body = $this->buildHtml(
+                title:       "Action Required: Material Receiving (GRN)",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "Purchase Order <strong>#{$poId}</strong> for project <strong>{$projectName}</strong> has been fully approved by Top Management and Site Engineer. It is now unlocked for material receiving.",
+                stepHtml:    $stepHtml,
+                ctaLabel:    'Log Material Receiving (GRN)',
+                ctaLink:     $base . "/con-material-receiving-create/{$poId}",
+                projectName: $projectName,
+                note:        'You can now log the receipt of materials from the PO dashboard. Ensure you verify the quantities accurately against the invoice.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
      * Core "notify all team" engine used by Batch 2–5.
      *
      * - Responsible person  → "Action Required" email with their CTA link

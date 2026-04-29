@@ -16,12 +16,12 @@ $show_breadcrumb = true; ?>
                 </div>
                 <div class="col-xl-6">
                     <label>Site Engineer</label>
-                    <select name="site_engineer_id" class="form-control">
-                        <option value="">Select Engineer (Optional)</option>
-                        <?php foreach ($engineers as $e): ?>
-                            <option value="<?= $e['id'] ?>"><?= htmlspecialchars($e['full_name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="form-control d-flex align-items-center gap-2" style="background:var(--input-bg,#f8f9fa);cursor:default;color:var(--text-muted)">
+                        <i class="fal fa-user-hard-hat" style="color:#7c3aed"></i>
+                        <span style="font-weight:600;color:inherit"><?= htmlspecialchars($currentUserName ?? 'N/A') ?></span>
+                        <span class="ms-auto" style="font-size:10px;background:rgba(124,58,237,.1);color:#7c3aed;padding:2px 8px;border-radius:20px;font-weight:700">Auto</span>
+                    </div>
+                    <small class="text-muted">Automatically set to your account</small>
                 </div>
                 <div class="col-xl-6">
                     <label>Test Date</label>

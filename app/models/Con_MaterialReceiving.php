@@ -197,18 +197,7 @@ class Con_MaterialReceiving extends Model
 
                 if ($status === 'Accepted') {
                     $acceptedCount++;
-
-                    // 2. AUTO STOCK IN
-                    $stockModel->logMovement([
-                        'material_id'  => $item['material_id'],
-                        'warehouse_id' => $receiving['warehouse_id'],
-                        'type'         => 'IN',
-                        'quantity'     => $item['received_quantity'],
-                        'ref_type'     => 'material_receiving',
-                        'ref_id'       => $receivingId,
-                        'moved_by'     => $userId,
-                    ]);
-
+                    // Stock In moved to PM Approval
                 } elseif ($status === 'Rejected') {
                     $rejectedCount++;
 
@@ -240,14 +229,7 @@ class Con_MaterialReceiving extends Model
             }
 
             // 3. Update QC fields on header
-            $overallStatus = 'Accepted';
-            if ($acceptedCount === $totalCount) {
-                $overallStatus = 'Accepted';
-            } elseif ($rejectedCount === $totalCount) {
-                $overallStatus = 'Rejected';
-            } else {
-                $overallStatus = 'Partially Accepted';
-            }
+            $overallStatus = 'Pending PM';
             $qcNote  = $itemStatuses['qc_note'] ?? null;
             $qcPhoto = $itemStatuses['qc_photo'] ?? null;
 
@@ -257,14 +239,74 @@ class Con_MaterialReceiving extends Model
             $oStmt->bind_param('sissi', $overallStatus, $userId, $qcNote, $qcPhoto, $receivingId);
             $oStmt->execute();
 
-            // 4. Check if PO is fully received
+            $this->db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            error_log("QC Review failed: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // =========================================================================
+    // PM APPROVAL (Stock In)
+    // =========================================================================
+
+    public function pmReview($receivingId, $userId, $pmNote)
+    {
+        $receiving = $this->find($receivingId);
+        if (!$receiving || $receiving['overall_status'] !== 'Pending PM') return false;
+
+        $stockModel = new \Con_Stock($this->db);
+        $this->db->begin_transaction();
+        try {
+            $items = $this->getItems($receivingId);
+            $acceptedCount = 0;
+            $rejectedCount = 0;
+            $totalCount    = count($items);
+
+            foreach ($items as $item) {
+                if ($item['status'] === 'Accepted') {
+                    $acceptedCount++;
+                    // AUTO STOCK IN
+                    $stockModel->logMovement([
+                        'material_id'  => $item['material_id'],
+                        'warehouse_id' => $receiving['warehouse_id'],
+                        'type'         => 'IN',
+                        'quantity'     => $item['received_quantity'],
+                        'ref_type'     => 'material_receiving',
+                        'ref_id'       => $receivingId,
+                        'moved_by'     => $userId,
+                    ]);
+                } elseif ($item['status'] === 'Rejected') {
+                    $rejectedCount++;
+                }
+            }
+
+            // Update overall status
+            $overallStatus = 'Accepted';
+            if ($acceptedCount === $totalCount && $totalCount > 0) {
+                $overallStatus = 'Accepted';
+            } elseif ($rejectedCount === $totalCount && $totalCount > 0) {
+                $overallStatus = 'Rejected';
+            } else {
+                $overallStatus = 'Partially Accepted';
+            }
+
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->table} SET overall_status = ?, pm_checked_by = ?, pm_note = ?, pm_approved_at = NOW() WHERE id = ?"
+            );
+            $stmt->bind_param('sisi', $overallStatus, $userId, $pmNote, $receivingId);
+            $stmt->execute();
+
+            // Check if PO is fully received
             $this->checkAndUpdatePOStatus($receiving['purchase_order_id']);
 
             $this->db->commit();
             return true;
         } catch (\Throwable $e) {
             $this->db->rollback();
-            error_log("QC Review failed: " . $e->getMessage());
+            error_log("PM Review failed: " . $e->getMessage());
             return false;
         }
     }

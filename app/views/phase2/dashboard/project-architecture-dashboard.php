@@ -308,6 +308,9 @@ $recentAE             = $recentAE             ?? [];
     font-size: 16px;
     flex-shrink: 0;
   }
+  html { scroll-behavior: smooth; }
+  .kpi-card { cursor: pointer; }
+  .sec-anchor { scroll-margin-top: 80px; }
 </style>
 
 <!-- ═════ HERO ═════ -->
@@ -329,37 +332,45 @@ $recentAE             = $recentAE             ?? [];
 <!-- ═════ KPI GRID ═════ -->
 <div class="kpi-grid-4">
 
-  <a href="<?= $base ?>/con-architect-engineering" class="kpi-card">
+  <!-- A&E → scroll to recent AE panel -->
+  <a href="#sec-ae" class="kpi-card">
     <div class="kpi-accent" style="background:var(--pa-primary)"></div>
     <div class="kpi-icon" style="background:rgba(25,135,84,.12);color:var(--pa-primary)"><i class="fal fa-drafting-compass"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Architect & Engineering</div>
     <div class="kpi-value" style="color:var(--pa-primary)"><?= $totalAE ?></div>
     <div class="kpi-sub">Total A&E records</div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(25,135,84,.1);color:var(--pa-primary)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
-  <a href="<?= $base ?>/con-design-types" class="kpi-card">
+  <!-- Design Types → scroll to type bars -->
+  <a href="#sec-types" class="kpi-card">
     <div class="kpi-accent" style="background:var(--pa-indigo)"></div>
     <div class="kpi-icon" style="background:rgba(99,102,241,.12);color:var(--pa-indigo)"><i class="fal fa-layer-group"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Design Types</div>
     <div class="kpi-value" style="color:var(--pa-indigo)"><?= $totalDesignTypes ?></div>
     <div class="kpi-sub">Registered design categories</div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(99,102,241,.1);color:var(--pa-indigo)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
-  <a href="<?= $base ?>/con-project-drawings" class="kpi-card">
+  <!-- Drawings → scroll to drawings table -->
+  <a href="#sec-drawings" class="kpi-card">
     <div class="kpi-accent" style="background:var(--pa-teal)"></div>
     <div class="kpi-icon" style="background:rgba(20,184,166,.12);color:var(--pa-teal)"><i class="fal fa-pencil-ruler"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Project Drawings</div>
     <div class="kpi-value" style="color:var(--pa-teal)"><?= $totalDrawings ?></div>
     <div class="kpi-sub">Total drawing files</div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(20,184,166,.1);color:var(--pa-teal)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
-  <div class="kpi-card" style="cursor:default">
+  <!-- Projects with Drawings → scroll to drawings table -->
+  <a href="#sec-drawings" class="kpi-card">
     <div class="kpi-accent" style="background:var(--pa-amber)"></div>
     <div class="kpi-icon" style="background:rgba(245,158,11,.12);color:var(--pa-amber)"><i class="fal fa-folder-open"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Projects with Drawings</div>
     <div class="kpi-value" style="color:var(--pa-amber)"><?= $projectsWithDrawings ?></div>
     <div class="kpi-sub">Projects having drawings</div>
-  </div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(245,158,11,.1);color:var(--pa-amber)"><i class="fal fa-arrow-down me-1"></i>View</span>
+  </a>
 
 </div>
 
@@ -368,11 +379,11 @@ $recentAE             = $recentAE             ?? [];
 
   <!-- Recent Project Drawings -->
   <div class="col-lg-8">
-    <div class="pa-panel">
+    <div id="sec-drawings" class="pa-panel sec-anchor">
       <div class="pa-panel-title">
         <div class="pa-dot" style="background:var(--pa-teal)"></div>
         Recent Project Drawings
-        <a href="<?= $base ?>/con-project-drawings" style="font-size:10px;color:var(--pa-blue);margin-left:auto;text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+        <a href="<?= $base ?>/con-project-drawings" style="font-size:10px;color:var(--pa-blue);margin-left:auto;text-decoration:none">View All <i class="fal fa-external-link ms-1"></i></a>
       </div>
       <?php if (empty($recentDrawings)): ?>
         <div class="empty-msg"><i class="fal fa-pencil-ruler" style="font-size:24px;display:block;margin-bottom:8px"></i>No project drawings yet</div>
@@ -415,7 +426,7 @@ $recentAE             = $recentAE             ?? [];
   <div class="col-lg-4">
 
     <!-- Drawings by Design Type -->
-    <div class="pa-panel">
+    <div id="sec-types" class="pa-panel sec-anchor">
       <div class="pa-panel-title">
         <div class="pa-dot" style="background:var(--pa-indigo)"></div>
         Drawings by Design Type
@@ -479,11 +490,11 @@ $recentAE             = $recentAE             ?? [];
   <div class="col-xxl-6">
      <!-- ═════ RECENT A&E ═════ -->
     <?php if (!empty($recentAE)): ?>
-      <div class="pa-panel">
+      <div id="sec-ae" class="pa-panel sec-anchor">
         <div class="pa-panel-title">
           <div class="pa-dot" style="background:var(--pa-primary)"></div>
           Recent Architect & Engineering Records
-          <a href="<?= $base ?>/con-architect-engineering" style="font-size:10px;color:var(--pa-blue);margin-left:auto;text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+          <a href="<?= $base ?>/con-architect-engineering" style="font-size:10px;color:var(--pa-blue);margin-left:auto;text-decoration:none">View All <i class="fal fa-external-link ms-1"></i></a>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
           <?php foreach ($recentAE as $ae): ?>

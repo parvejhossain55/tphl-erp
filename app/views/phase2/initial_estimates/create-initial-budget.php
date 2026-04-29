@@ -24,7 +24,7 @@
             </div>
             <div class="card__body p-4">
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-5">
                         <label class="form-label fw-bold text-muted">Project <span class="text-danger">*</span></label>
                         <select name="project_id" id="estimateProjectId" class="form-select" required>
                             <option value="">-- Choose Project --</option>
@@ -32,8 +32,11 @@
                                 <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <?php if (empty($projects)): ?>
+                          <small class="text-danger">No projects assigned to you yet.</small>
+                        <?php endif; ?>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-5">
                         <label class="form-label fw-bold text-muted">Architecture Record <span class="text-danger">*</span></label>
                         <select name="architecture_id" id="archSelect" class="form-select" required>
                             <option value="">-- Select Project First --</option>
@@ -42,18 +45,7 @@
                             <i class="bi bi-hourglass-split me-1"></i> Loading...
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-muted">Work Type <span class="text-danger">*</span></label>
-                        <select name="work_type_id" id="headerWorkType" class="form-select" required>
-                            <option value="">-- Select Work Type --</option>
-                            <?php foreach ($workTypes as $wt): ?>
-                                <option value="<?= $wt['id'] ?>" data-design-type-id="<?= $wt['design_type_id'] ?>">
-                                    <?= htmlspecialchars($wt['label']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-2 mt-3">
+                    <div class="col-md-2 mt-0">
                         <label class="form-label fw-bold text-muted">Start Date</label>
                         <input type="date" name="start_date" class="form-control">
                     </div>
@@ -65,6 +57,10 @@
                         <label class="form-label fw-bold text-muted">Total Area (sqft)</label>
                         <input type="number" step="0.01" name="total_area_sqft" id="totalAreaSqft"
                                class="form-control" placeholder="0.00">
+                    </div>
+                    <div class="col-md-4 mt-3">
+                        <label class="form-label fw-bold text-muted">Budget Link <small class="text-secondary">(Optional)</small></label>
+                        <input type="url" name="budget_link" class="form-control" placeholder="Google Drive/Docs link...">
                     </div>
                     <div class="col-md-4 mt-3">
                         <label class="form-label fw-bold text-muted">Other Cost Detail / Note</label>
@@ -86,32 +82,39 @@
                     <i class="bi bi-boxes me-2"></i>Material Items
                     <small class="text-muted">(Design Type wise)</small>
                 </h6>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="addItemRow">
-                    <i class="bi bi-plus-circle me-1"></i> Add Row
-                </button>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-outline-success btn-sm" id="openAddMaterialModal">
+                      <i class="bi bi-plus-square me-1"></i> New Material
+                  </button>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="addItemRow">
+                      <i class="bi bi-plus-circle me-1"></i> Add Row
+                  </button>
+                </div>
             </div>
             <div class="card__body p-0">
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle mb-0" id="itemsTable">
                         <thead class="table-light">
                             <tr>
-                                <th style="width:20%">Work Type</th>
-                                <th style="width:23%">Material</th>
-                                <th style="width:8%">Unit</th>
-                                <th style="width:13%">Qty</th>
-                                <th style="width:13%">Unit Cost (৳)</th>
-                                <th style="width:13%">Subtotal</th>
-                                <th style="width:10%" class="text-center">Del</th>
+                                <th style="width:22%">Work Type</th>
+                                <th style="width:22%">Material</th>
+                                <th style="width:14%">Description</th>
+                                <th style="width:7%">Unit</th>
+                                <th style="width:10%">Qty</th>
+                                <th style="width:10%">Unit Cost (৳)</th>
+                                <th style="width:10%">Subtotal</th>
+                                <th style="width:5%" class="text-center">Del</th>
                             </tr>
                         </thead>
                         <tbody id="itemsBody">
                             <tr class="item-row">
                                 <td>
                                     <input type="hidden" name="item_design_type_id[]" class="item-design-type-id" value="">
-                                    <select name="item_work_type_id[]" class="form-select form-select-sm wt-select" required>
+                                    <select name="item_work_type_id[]" class="form-select form-select-sm wt-select">
                                         <option value="">-- Work Type --</option>
                                         <?php foreach ($workTypes as $wt): ?>
-                                            <option value="<?= $wt['id'] ?>" data-design-type-id="<?= $wt['design_type_id'] ?>">
+                                            <option value="<?= $wt['id'] ?>"
+                                                    data-design-type-id="<?= $wt['design_type_id'] ?>">
                                                 <?= htmlspecialchars($wt['label']) ?>
                                             </option>
                                         <?php endforeach; ?>
@@ -126,6 +129,9 @@
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
+                                </td>
+                                <td>
+                                    <input type="text" name="item_remarks[]" class="form-control form-control-sm" placeholder="Description/Note">
                                 </td>
                                 <td>
                                     <input type="text" name="item_material_unit[]"
@@ -150,7 +156,7 @@
                         </tbody>
                         <tfoot>
                             <tr class="table-light">
-                                <td colspan="5" class="text-end fw-bold py-2">Material Total:</td>
+                                <td colspan="6" class="text-end fw-bold py-2">Material Total:</td>
                                 <td class="text-end fw-bold text-success pe-2" id="materialTotal">0.00</td>
                                 <td></td>
                             </tr>
@@ -176,22 +182,24 @@
                     <table class="table table-bordered align-middle mb-0" id="laborsTable">
                         <thead class="table-light">
                             <tr>
-                                <th style="width:20%">Work Type</th>
-                                <th style="width:30%">Labor Type Name</th>
-                                <th style="width:15%">Rate / sqft (৳)</th>
-                                <th style="width:15%">Area (sqft)</th>
-                                <th style="width:12%">Subtotal</th>
-                                <th style="width:8%" class="text-center">Del</th>
+                                <th style="width:22%">Work Type</th>
+                                <th style="width:22%">Labor Type Name</th>
+                                <th style="width:14%">Description</th>
+                                <th style="width:13%">Rate / sqft (৳)</th>
+                                <th style="width:12%">Area (sqft)</th>
+                                <th style="width:10%">Subtotal</th>
+                                <th style="width:7%" class="text-center">Del</th>
                             </tr>
                         </thead>
                         <tbody id="laborsBody">
                             <tr class="labor-row">
                                 <td>
                                     <input type="hidden" name="labor_design_type_id[]" class="labor-design-type-id" value="">
-                                    <select name="labor_work_type_id[]" class="form-select form-select-sm labor-wt-select" required>
+                                    <select name="labor_work_type_id[]" class="form-select form-select-sm labor-wt-select">
                                         <option value="">-- Work Type --</option>
                                         <?php foreach ($workTypes as $wt): ?>
-                                            <option value="<?= $wt['id'] ?>" data-design-type-id="<?= $wt['design_type_id'] ?>">
+                                            <option value="<?= $wt['id'] ?>"
+                                                    data-design-type-id="<?= $wt['design_type_id'] ?>">
                                                 <?= htmlspecialchars($wt['label']) ?>
                                             </option>
                                         <?php endforeach; ?>
@@ -201,6 +209,9 @@
                                     <input type="text" name="labor_type_name[]"
                                            class="form-control form-control-sm"
                                            placeholder="e.g., Civil Work, Painting, Tiles">
+                                </td>
+                                <td>
+                                    <input type="text" name="labor_description[]" class="form-control form-control-sm" placeholder="Description/Note">
                                 </td>
                                 <td>
                                     <input type="number" step="0.01" name="labor_rate_per_sqft[]"
@@ -220,7 +231,7 @@
                         </tbody>
                         <tfoot>
                             <tr class="table-light">
-                                <td colspan="4" class="text-end fw-bold py-2">Labor Total:</td>
+                                <td colspan="5" class="text-end fw-bold py-2">Labor Total:</td>
                                 <td class="text-end fw-bold text-info pe-2" id="laborTotal">0.00</td>
                                 <td></td>
                             </tr>
@@ -332,6 +343,39 @@
     </div>
 
 </section>
+
+<!-- ══ Quick Add Material Modal ══════════════════════════════════════════════ -->
+<div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-plus-square me-2"></i>Quick Add Material</h6>
+        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="matModalAlert" class="alert d-none py-2" role="alert"></div>
+        <div class="mb-3">
+          <label class="form-label fw-bold text-muted">Material Name <span class="text-danger">*</span></label>
+          <input type="text" id="matModalName" class="form-control" placeholder="e.g., Cement, Rod, Sand">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold text-muted">Unit <span class="text-danger">*</span></label>
+          <input type="text" id="matModalUnit" class="form-control" placeholder="e.g., kg, bag, pcs, cft">
+        </div>
+        <div class="mb-1">
+          <label class="form-label fw-bold text-muted">Min Stock Level</label>
+          <input type="number" id="matModalMin" class="form-control" value="0" min="0">
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success btn-sm" id="saveMaterialBtn">
+          <i class="bi bi-save me-1"></i> Save Material
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Pure Vanilla JS — same pattern as lead-lists.php -->
 <script>
@@ -474,6 +518,76 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Run on page load
     recalc();
+
+    // ── Quick Add Material Modal ─────────────────────────────────────────────
+    document.getElementById('openAddMaterialModal').addEventListener('click', function () {
+        var el = document.getElementById('addMaterialModal');
+        var modal = bootstrap.Modal.getOrCreateInstance(el);
+        document.getElementById('matModalName').value = '';
+        document.getElementById('matModalUnit').value = '';
+        document.getElementById('matModalMin').value  = '0';
+        var alert = document.getElementById('matModalAlert');
+        alert.className = 'alert d-none py-2';
+        alert.textContent = '';
+        modal.show();
+    });
+
+    document.getElementById('saveMaterialBtn').addEventListener('click', function () {
+        var name = document.getElementById('matModalName').value.trim();
+        var unit = document.getElementById('matModalUnit').value.trim();
+        var min  = document.getElementById('matModalMin').value  || 0;
+        var alertEl = document.getElementById('matModalAlert');
+
+        if (!name || !unit) {
+            alertEl.className = 'alert alert-danger py-2';
+            alertEl.textContent = 'Name and Unit are required.';
+            return;
+        }
+
+        var btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+        var formData = new FormData();
+        formData.append('name', name);
+        formData.append('unit', unit);
+        formData.append('min_stock_level', min);
+
+        fetch('<?= $GLOBALS["base_url"] ?>/con-estimate-ajax-add-material', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-save me-1"></i> Save Material';
+            if (data.success) {
+                // Add new option to ALL mat-select dropdowns on the page
+                document.querySelectorAll('.mat-select').forEach(function (sel) {
+                    var opt = document.createElement('option');
+                    opt.value = data.id;
+                    opt.textContent = data.name;
+                    opt.setAttribute('data-unit', data.unit);
+                    sel.appendChild(opt);
+                });
+                alertEl.className = 'alert alert-success py-2';
+                alertEl.textContent = '"' + data.name + '" added successfully!';
+                setTimeout(function () {
+                    bootstrap.Modal.getInstance(document.getElementById('addMaterialModal')).hide();
+                }, 1200);
+            } else {
+                alertEl.className = 'alert alert-danger py-2';
+                alertEl.textContent = data.error || 'Failed to save.';
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-save me-1"></i> Save Material';
+            alertEl.className = 'alert alert-danger py-2';
+            alertEl.textContent = 'Network error. Please try again.';
+        });
+    });
+
 });
 </script>
 

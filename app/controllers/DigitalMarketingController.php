@@ -19,136 +19,84 @@ class DigitalMarketingController extends Controller
 {
     $stats = $this->leadModel->getDigitalMarketingStats();
     $teams = $this->teamsModel->getAll();
-    $leads = [];
     $teamId = $_GET['team_id'] ?? null;
 
-    // New Filters
-    $dateAge = $_GET['date_age'] ?? '7days';
-    $sortOrder = $_GET['sort'] ?? 'newest';
+    // Filters (for form state only — leads load via AJAX)
+    $dateAge        = $_GET['date_age']      ?? 'all';
+    $sortOrder      = $_GET['sort']           ?? 'newest';
     $duplicatesOnly = isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1';
 
-    $sqlSort = ($sortOrder === 'oldest') ? 'ASC' : 'DESC';
-
-    $currentMonthFilter = $_GET['budget_month'] ?? date('Y-m') . '-01'; 
-    if (strlen($currentMonthFilter) === 7) { 
+    $currentMonthFilter = $_GET['budget_month'] ?? date('Y-m') . '-01';
+    if (strlen($currentMonthFilter) === 7) {
         $currentMonthFilter .= '-01';
     }
 
-    $sources = $this->leadSourceModel->getAll();
-    
-    // Get platform budgets using the updated model (no source join needed)
+    $sources        = $this->leadSourceModel->getAll();
     $platformBudgets = $this->platformBudgetModel->getAllWithPlatforms($currentMonthFilter);
-    $budgetSummary = $this->platformBudgetModel->getMonthlySummary($currentMonthFilter);
+    $budgetSummary  = $this->platformBudgetModel->getMonthlySummary($currentMonthFilter);
 
-    // --- NEW LOGIC FOR CPL ---
+    // CPL calculation
     $platformLeadCounts = $this->leadModel->getMarketingPlatformLeadCounts($currentMonthFilter);
-    
-    // Define the broad grouping
     $platformMapping = [
-        'fb' => 'Meta',
-        'whatsapp' => 'Meta',
-        'instagram' => 'Meta',
-        'ig' => 'Meta',
-        'google' => 'Google',
-        'youtube' => 'Google',
+        'fb' => 'Meta', 'whatsapp' => 'Meta', 'instagram' => 'Meta', 'ig' => 'Meta',
+        'google' => 'Google', 'youtube' => 'Google',
         'linkedin' => 'LinkedIn'
     ];
-    
     $cplData = [];
     foreach ($platformBudgets as $pb) {
-        $parentName = $pb['platform_name'];
-        $cplData[$parentName] = [
-            'budget' => $pb['budget'],
-            'spent' => $pb['spent'],
-            'total_leads' => 0,
-            'cpl' => 0,
-            'sources' => []
-        ];
+        $cplData[$pb['platform_name']] = ['budget' => $pb['budget'], 'spent' => $pb['spent'], 'total_leads' => 0, 'cpl' => 0, 'sources' => []];
     }
-    
     foreach ($platformLeadCounts as $plc) {
-        $raw = strtolower(trim($plc['raw_platform']));
+        $raw    = strtolower(trim($plc['raw_platform']));
         $parent = $platformMapping[$raw] ?? 'Other';
-        
         if (isset($cplData[$parent])) {
             $cplData[$parent]['total_leads'] += $plc['total_leads'];
-            $cplData[$parent]['sources'][] = [
-                'raw_platform' => $raw,
-                'leads' => $plc['total_leads']
-            ];
+            $cplData[$parent]['sources'][] = ['raw_platform' => $raw, 'leads' => $plc['total_leads']];
         } else {
-            // Keep track of 'Other' unbudgeted platforms safely
-            if (!isset($cplData['Other'])) {
-                $cplData['Other'] = ['budget' => 0, 'spent' => 0, 'total_leads' => 0, 'cpl' => 0, 'sources' => []];
-            }
+            if (!isset($cplData['Other'])) $cplData['Other'] = ['budget' => 0, 'spent' => 0, 'total_leads' => 0, 'cpl' => 0, 'sources' => []];
             $cplData['Other']['total_leads'] += $plc['total_leads'];
-            $cplData['Other']['sources'][] = [
-                'raw_platform' => $raw,
-                'leads' => $plc['total_leads']
-            ];
+            $cplData['Other']['sources'][] = ['raw_platform' => $raw, 'leads' => $plc['total_leads']];
         }
     }
-    
-    // Calculate final CPL per parent platform
     foreach ($cplData as $parent => &$data) {
         if ($data['total_leads'] > 0) {
             $computed_cpl = $data['spent'] / $data['total_leads'];
-            // formatting beautifully
             $data['cpl'] = (floor($computed_cpl) == $computed_cpl) ? number_format($computed_cpl, 0) : number_format($computed_cpl, 2);
         }
     }
     unset($data);
 
-    if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 10) {
-        $leads = $this->leadModel->getMarketingLeadsFlexible(
-            null,
-            $teamId, 
-            $dateAge, 
-            $sqlSort
-        );
-    }
+    // Lightweight duplicate count only
+    $dupStmt = $this->db->query("
+        SELECT COUNT(*) AS total FROM (
+            SELECT phone_number FROM leads
+            WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
+            GROUP BY phone_number HAVING COUNT(*) > 1
+        ) dupes
+    ");
+    $duplicateLeadsCount = $dupStmt ? (int)($dupStmt->fetch_assoc()['total'] ?? 0) : 0;
 
-    // Calculate duplicate frequencies
-    $phoneFreq = [];
-    foreach ($leads as $l) {
-        $p = $l['phone_number'] ?? '';
-        if (!empty($p)) {
-            $phoneFreq[$p] = ($phoneFreq[$p] ?? 0) + 1;
-        }
-    }
-    
-    // Filter for duplicates if requested
-    if ($duplicatesOnly) {
-        $leads = array_filter($leads, function($l) use ($phoneFreq) {
-            $p = $l['phone_number'] ?? '';
-            return !empty($p) && ($phoneFreq[$p] ?? 0) > 1;
-        });
-    }
-
-    $duplicateLeadsCount = 0;
-    foreach ($phoneFreq as $p => $count) {
-        if ($count > 1) {
-            $duplicateLeadsCount += $count;
-        }
-    }
+    // Total lead count
+    $totalLeads = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge);
 
     return $this->view("digital-marketing-team/digital-marketing-head-dashboard", [
         "current_route"       => "digital-marketing-dashboard",
         "page_title"          => "Digital Marketing Dashboard",
         "teams"               => $teams,
         "stats"               => $stats,
-        "leads"               => $leads,
+        "leads"               => [],   // AJAX loads leads now
         "selected_team_id"    => $teamId,
         "sources"             => $sources,
-        "platformBudgets"     => $platformBudgets,  // Changed from $platformBudgets (commented)
+        "platformBudgets"     => $platformBudgets,
         "budgetSummary"       => $budgetSummary,
         "cplData"             => $cplData,
         "budget_month"        => substr($currentMonthFilter, 0, 7),
-        "phoneFreq"           => $phoneFreq,
+        "phoneFreq"           => [],
         "duplicateLeadsCount" => $duplicateLeadsCount,
+        "totalLeads"          => $totalLeads,
         "date_age"            => $dateAge,
         "sort_order"          => $sortOrder,
-        "duplicates_only"     => $duplicatesOnly
+        "duplicates_only"     => $duplicatesOnly,
     ]);
 }
 public function storeBudget()
@@ -235,78 +183,197 @@ public function deleteBudget($id)
     {
         $stats = $this->leadModel->getDigitalMarketingStats();
         $teams = $this->teamsModel->getAll();
-        $leads = [];
         $teamId = $_GET['team_id'] ?? null;
-        
-        // Filters
-        $dateAge = $_GET['date_age'] ?? '7days'; // default to last 7 days
-        $sortOrder = $_GET['sort'] ?? 'newest';
-        $duplicatesOnly = isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1';
-        $contactStatusFilter = $_GET['contact_status'] ?? ''; // 'contacted', 'not_contacted', or ''
 
-        $sqlSort = ($sortOrder === 'oldest') ? 'ASC' : 'DESC';
+        // Filters (passed to view for filter form state only)
+        $dateAge             = $_GET['date_age']      ?? 'all';
+        $sortOrder           = $_GET['sort']           ?? 'newest';
+        $duplicatesOnly      = isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1';
+        $contactStatusFilter = $_GET['contact_status'] ?? '';
 
-        if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 11) {
-            $leads = $this->leadModel->getMarketingLeadsFlexible(
-                $_SESSION['user']['id'], 
-                $teamId, 
-                $dateAge, 
-                $sqlSort
-            );
-        }
+        // Only load summary counts (not full lead list) — AJAX will fetch leads per page
+        $totalLeads    = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge);
+        $contactedCount    = 0;
+        $notContactedCount = 0;
 
-        // Calculate duplicate frequencies (before any filtering)
-        $phoneFreq = [];
-        foreach ($leads as $l) {
-            $p = $l['phone_number'] ?? '';
-            if (!empty($p)) {
-                $phoneFreq[$p] = ($phoneFreq[$p] ?? 0) + 1;
-            }
+        // Quick counts for the summary cards via a lightweight query
+        $stmt = $this->db->prepare("
+            SELECT
+                SUM(CASE
+                    WHEN EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
+                      OR (l.lead_type IS NOT NULL AND l.lead_type != '')
+                      OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                    THEN 1 ELSE 0
+                END) AS contacted,
+                SUM(CASE
+                    WHEN NOT (
+                        EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
+                        OR (l.lead_type IS NOT NULL AND l.lead_type != '')
+                        OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                    ) THEN 1 ELSE 0
+                END) AS not_contacted
+            FROM leads l
+            WHERE l.deleted_at IS NULL
+            " . ($teamId ? 'AND l.team_id = ?' : '')
+        );
+        if ($teamId) {
+            $stmt->bind_param('i', $teamId);
         }
-        
-        // Filter for duplicates if requested
-        if ($duplicatesOnly) {
-            $leads = array_filter($leads, function($l) use ($phoneFreq) {
-                $p = $l['phone_number'] ?? '';
-                return !empty($p) && ($phoneFreq[$p] ?? 0) > 1;
-            });
-            $leads = array_values($leads);
-        }
+        $stmt->execute();
+        $counts = $stmt->get_result()->fetch_assoc();
+        $contactedCount    = (int)($counts['contacted']     ?? 0);
+        $notContactedCount = (int)($counts['not_contacted'] ?? 0);
 
-        // Contact status summary counts (based on full unfiltered leads)
-        $totalContacted = 0;
-        $totalNotContacted = 0;
-        foreach ($leads as $l) {
-            if (($l['contact_status'] ?? '') === 'Contacted') {
-                $totalContacted++;
-            } else {
-                $totalNotContacted++;
-            }
-        }
-
-        $duplicateLeadsCount = 0;
-        foreach ($phoneFreq as $p => $count) {
-            if ($count > 1) {
-                $duplicateLeadsCount += $count;
-            }
-        }
+        // Duplicate count (lightweight)
+        $dupStmt = $this->db->query("
+            SELECT COUNT(*) AS total FROM (
+                SELECT phone_number FROM leads
+                WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
+                GROUP BY phone_number HAVING COUNT(*) > 1
+            ) dupes
+        ");
+        $duplicateLeadsCount = $dupStmt ? (int)($dupStmt->fetch_assoc()['total'] ?? 0) : 0;
 
         return $this->view("digital-marketing-team/digital-marketing-executive", [
             "current_route"        => "digital-marketing-executive-dashboard",
             "page_title"           => "Digital Marketing Executive Dashboard",
             "teams"                => $teams,
             "stats"                => $stats,
-            "leads"                => $leads,
+            "leads"                => [], // AJAX loads leads now
             "selected_team_id"     => $teamId,
-            "phoneFreq"            => $phoneFreq,
+            "phoneFreq"            => [],
             "duplicateLeadsCount"  => $duplicateLeadsCount,
             "date_age"             => $dateAge,
             "sort_order"           => $sortOrder,
             "duplicates_only"      => $duplicatesOnly,
             "contact_status_filter"=> $contactStatusFilter,
-            "totalContacted"       => $totalContacted,
-            "totalNotContacted"    => $totalNotContacted,
+            "totalContacted"       => $contactedCount,
+            "totalNotContacted"    => $notContactedCount,
+            "totalLeads"           => $totalLeads,
         ]);
+    }
+    // =========================================================================
+    // AJAX — Server-side paginated leads
+    // Supports both:
+    //   role 10 (DM Head)  → /dm-head-leads-ajax
+    //   role 11 (DM Exec)  → /dm-exec-leads-ajax
+    // =========================================================================
+    public function getLeadsAjax()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        // Role guard: allow DM Head (10) and DM Executive (11)
+        $userRoleId = $_SESSION['user']['role_id'] ?? null;
+        if (!in_array($userRoleId, [10, 11])) {
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
+
+        $page           = max(1, (int)($_GET['page']      ?? 1));
+        $perPage        = max(1, min(100, (int)($_GET['per_page'] ?? 10)));
+        $offset         = ($page - 1) * $perPage;
+        $teamId         = !empty($_GET['team_id'])        ? (int)$_GET['team_id'] : null;
+        $dateAge        = $_GET['date_age']               ?? 'all';
+        $sortOrder      = ($_GET['sort'] ?? 'newest') === 'oldest' ? 'ASC' : 'DESC';
+        $contactStatus  = $_GET['contact_status']         ?? '';
+        $duplicatesOnly = !empty($_GET['duplicates_only']);
+        $search         = trim($_GET['search'] ?? '');
+        $search         = $search === '' ? null : $search;
+
+        // Total count (pre-filter: no contact_status/duplicates which are post-DB)
+        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search);
+
+        // Fetch paginated leads
+        $leads = $this->leadModel->getMarketingLeadsPaginated(
+            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search
+        );
+
+        // Phone freq map for duplicate marking
+        $phoneFreq = [];
+        foreach ($leads as $l) {
+            $p = $l['phone_number'] ?? '';
+            if (!empty($p)) $phoneFreq[$p] = ($phoneFreq[$p] ?? 0) + 1;
+        }
+
+        // Post-filter: contact_status
+        if ($contactStatus === 'contacted') {
+            $leads = array_values(array_filter($leads, fn($l) => ($l['contact_status'] ?? '') === 'Contacted'));
+        } elseif ($contactStatus === 'not_contacted') {
+            $leads = array_values(array_filter($leads, fn($l) => ($l['contact_status'] ?? '') !== 'Contacted'));
+        }
+
+        // Post-filter: duplicates only
+        if ($duplicatesOnly) {
+            $leads = array_values(array_filter($leads, function ($l) use ($phoneFreq) {
+                $p = $l['phone_number'] ?? '';
+                return !empty($p) && ($phoneFreq[$p] ?? 0) > 1;
+            }));
+        }
+
+        // Build HTML rows
+        $rows = [];
+        foreach ($leads as $lead) {
+            $p           = $lead['phone_number'] ?? '';
+            $isDuplicate = !empty($p) && isset($phoneFreq[$p]) && $phoneFreq[$p] > 1;
+            $cs          = $lead['contact_status'] ?? 'Not Contacted';
+            $leadType    = $lead['lead_type'] ?? '';
+            $fuCount     = (int)($lead['follow_up_count'] ?? 0);
+
+            $csBadge = $cs === 'Contacted'
+                ? '<span class="badge-contacted"><i class="bi bi-check-circle-fill"></i> Contacted' .
+                  (!empty($lead['last_follow_up_type']) ? '<div class="mt-1"><small class="text-muted" style="font-size:.65rem;"><i class="bi bi-arrow-right-short"></i>' . htmlspecialchars($lead['last_follow_up_type']) . '</small></div>' : '') .
+                  '</span>'
+                : '<span class="badge-not-contacted"><i class="bi bi-x-circle-fill"></i> Not Contacted</span>';
+
+            $ltClass = match (strtolower($leadType)) {
+                'hot'         => 'lt-hot',
+                'warm'        => 'lt-warm',
+                'cold'        => 'lt-cold',
+                'prospect', 'high prospect' => 'lt-prospect',
+                'visited', 'will visit'     => 'lt-visited',
+                'sold'        => 'lt-sold',
+                'not interested', "don't call again", 'refund' => 'lt-not-interested',
+                'pending'     => 'lt-pending',
+                'future'      => 'lt-future',
+                'no response' => 'lt-no-response',
+                default       => 'lt-default',
+            };
+            $ltBadge = !empty($leadType)
+                ? '<span class="lead-type-badge ' . $ltClass . '">' . htmlspecialchars($leadType) . '</span>'
+                : '<span class="text-muted" style="font-size:.75rem;">—</span>';
+
+            $fuBadge = $fuCount > 0
+                ? '<span class="badge rounded-pill" style="background:linear-gradient(135deg,#d4edda,#a8d8b8);color:#155724;border:1px solid #c3e6cb;font-size:.7rem;font-weight:700;padding:.3rem .65rem;display:inline-flex;align-items:center;gap:.3rem;"><i class="bi bi-telephone-fill" style="font-size:.6rem;"></i>' . $fuCount . '</span>'
+                : '<span class="badge rounded-pill" style="background:#f0f4f8;color:#adb5bd;border:1px solid #dee2e6;font-size:.7rem;font-weight:700;padding:.3rem .65rem;">0</span>';
+
+            $phoneHtml = '<span class="' . ($isDuplicate ? 'text-danger fw-bold' : 'text-muted') . '">' . htmlspecialchars($p ?: 'N/A') . '</span>';
+
+            $rows[] = [
+                'id'            => $lead['id'],
+                'checkbox'      => '<input type="checkbox" class="rowCheckbox" value="' . $lead['id'] . '">',
+                'name'          => '<div class="fw-bold text-dark">' . htmlspecialchars($lead['full_name'] ?? 'N/A') . '</div><small class="text-muted">' . htmlspecialchars($lead['job_title'] ?? 'N/A') . '</small>',
+                'contact'       => '<div class="d-flex flex-column"><span><i class="bi bi-telephone text-muted me-2"></i>' . $phoneHtml . '</span><small class="text-muted"><i class="bi bi-envelope me-2"></i>' . htmlspecialchars($lead['email'] ?? 'N/A') . '</small></div>',
+                'follow_up'     => $fuBadge,
+                'contact_status'=> $csBadge,
+                'lead_type'     => $ltBadge,
+                'platform'      => '<span class="badge bg-info-soft text-info mb-1 d-inline-block">' . htmlspecialchars($lead['platform'] ?? 'N/A') . '</span><div class="small text-muted">' . htmlspecialchars($lead['campaign_name'] ?? 'N/A') . '</div>',
+                'team'          => htmlspecialchars($lead['team_name'] ?? 'N/A'),
+                'sales_lead'    => '<div class="fw-bold text-primary">' . htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') . '</div>',
+                'upload_date'   => '<div class="fw-semibold">' . date('M d, Y', strtotime($lead['created_at'])) . '</div><small class="text-muted">' . date('h:i A', strtotime($lead['created_at'])) . '</small>',
+                'action'        => '<button type="button" class="btn btn-sm btn-outline-danger removeBtnCust cursor" data-name="' . htmlspecialchars($lead['full_name'] ?? 'N/A') . '" data-action="delete-lead-permanent" data-id="' . $lead['id'] . '"><i class="bi bi-trash me-1"></i>Delete</button>',
+            ];
+        }
+
+        echo json_encode([
+            'total'       => $total,
+            'page'        => $page,
+            'per_page'    => $perPage,
+            'total_pages' => (int)ceil($total / $perPage),
+            'count'       => count($rows),
+            'rows'        => $rows,
+        ]);
+        exit;
     }
 
     public function getLeadsByTeam()
