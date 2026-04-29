@@ -46,6 +46,15 @@ $show_breadcrumb = true;
                     <textarea name="notes" class="form-control" rows="3"><?= htmlspecialchars($record['notes'] ?? '') ?></textarea>
                 </div>
 
+                <div class="col-xl-12">
+                    <label>Status</label>
+                    <select name="status" class="form-control">
+                        <option value="draft" <?= (isset($record['status']) && $record['status'] == 'draft') ? 'selected' : '' ?>>Draft</option>
+                        <option value="partially" <?= (isset($record['status']) && $record['status'] == 'partially') ? 'selected' : '' ?>>Partially Completed</option>
+                        <option value="fully" <?= (isset($record['status']) && $record['status'] == 'fully') ? 'selected' : '' ?>>Fully Completed</option>
+                    </select>
+                </div>
+
                 <div class="col-12 text-center mt-4">
                     <button type="submit" class="btn btn-primary px-5">Update Record</button>
                     <a href="<?= $GLOBALS['base_url'] ?>/con-architect-engineering" class="btn btn-secondary ms-2">Cancel</a>

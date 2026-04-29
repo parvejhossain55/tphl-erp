@@ -45,11 +45,20 @@ class Con_BOQController extends Controller
         $projects  = $this->projectModel->getAll();
         $materials = $this->materialModel->getAll();
 
+        $target_id = isset($_GET['target_id']) ? (int)$_GET['target_id'] : 0;
+        $targetData = null;
+        if ($target_id) {
+            $targetModel = new \Phase2\Con_TargetFixed($this->db);
+            $targetData = $targetModel->find($target_id);
+        }
+
         $this->view('phase2/boq/create-boq', [
             'current_route' => 'con-boq-create',
             'page_title'    => 'New Bill of Quantities',
             'projects'      => $projects,
             'materials'     => $materials,
+            'targetData'    => $targetData,
+            'target_id'     => $target_id,
         ]);
     }
 
@@ -95,6 +104,16 @@ class Con_BOQController extends Controller
 
             if (!empty($items)) {
                 $this->boqModel->addItems($boqId, $items);
+            }
+
+            // ── Send Email Notification ──────────────────────────────────────────
+            if ($data['status'] === 'Submitted') {
+                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                $mailService = new \ProjectWorkflowMailService($this->db);
+                $project = $this->projectModel->find($data['project_id']);
+                if ($project) {
+                    $mailService->notifyApproversForNewBOQ($data['project_id'], $project['name'], $boqId);
+                }
             }
 
             setSuccess('BOQ created successfully.');
@@ -149,10 +168,10 @@ class Con_BOQController extends Controller
         $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // ── Approval permission ─────────────────────────────────────────────
-        // Only PM (15) can approve BOQ. SE (12) creates but cannot approve.
+        // Roles 1 (MD), 3 (Director), 15 (PM) can approve BOQ.
         // Creator cannot approve their own submission.
         $createdBy  = (int)($boq['created_by'] ?? 0);
-        $canApprove = ($currentRoleId === 15)
+        $canApprove = in_array($currentRoleId, [1, 3, 15])
                       && ($currentUserId !== $createdBy);
 
         // Fetch creator info (name + designation)
@@ -263,24 +282,8 @@ class Con_BOQController extends Controller
     public function approve($id)
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
-
         $userId = (int)($_SESSION['user']['id']   ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-
-        // Role guard: only PM (15) can approve
-        if ($roleId !== 15) {
-            setError('Only the Project Manager can approve a BOQ.');
-            header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
-            exit;
-        }
-
-        // Creator cannot approve their own BOQ
-        $boq = $this->boqModel->find($id);
-        if ($boq && (int)($boq['created_by'] ?? 0) === $userId) {
-            setError('You cannot approve a BOQ that you created.');
-            header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
-            exit;
-        }
 
         $status = $_POST['status'] ?? 'Approved';
 
@@ -290,7 +293,43 @@ class Con_BOQController extends Controller
             exit;
         }
 
+        $boq = $this->boqModel->find($id);
+
+        if ($status === 'Submitted') {
+            // Only creator or PM/SE can submit
+            if (!$boq || ((int)($boq['created_by'] ?? 0) !== $userId && !in_array($roleId, [12, 1, 3, 15]))) {
+                setError('You do not have permission to submit this BOQ.');
+                header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
+                exit;
+            }
+        } else {
+            // 'Approved' or 'Rejected'
+            // Role guard: only 1, 3, 15 can approve/reject
+            if (!in_array($roleId, [1, 3, 15])) {
+                setError('Only authorized approvers can approve/reject a BOQ.');
+                header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
+                exit;
+            }
+
+            // Creator cannot approve their own BOQ
+            if ($boq && (int)($boq['created_by'] ?? 0) === $userId) {
+                setError('You cannot approve a BOQ that you created.');
+                header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
+                exit;
+            }
+        }
+
+
         if ($this->boqModel->updateStatus($id, $status, $userId)) {
+            // ── Send Email Notification on Submission ────────────────────────
+            if ($status === 'Submitted' && $boq) {
+                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                $mailService = new \ProjectWorkflowMailService($this->db);
+                $project = $this->projectModel->find($boq['project_id']);
+                if ($project) {
+                    $mailService->notifyApproversForNewBOQ($boq['project_id'], $project['name'], $id);
+                }
+            }
             setSuccess("BOQ status updated to {$status}.");
         } else {
             setError('Failed to update status.');

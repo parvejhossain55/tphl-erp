@@ -1,3 +1,32 @@
+<style>
+@media print {
+    /* Hide non-printable layout elements */
+    .app-sidebar,
+    .sidebar,
+    .navbar,
+    .header,
+    .app__header__area,
+    .app-header,
+    .action-bar,
+    .no-print {
+        display: none !important;
+    }
+
+    /* Reset page wrapper margins/padding that leave empty space */
+    body, html,
+    .page__full-wrapper,
+    .page__body-wrapper,
+    .main-content,
+    .content-wrapper,
+    .app-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        background-color: #fff !important;
+    }
+}
+</style>
 <div class="row">
 
     <div class="card__wrapper p-0 w-100">

@@ -10,6 +10,14 @@ $totalAE                 = $totalAE                 ?? 0;
 $drawingsByType          = $drawingsByType          ?? [];
 $recentDrawings          = $recentDrawings          ?? [];
 $projectsNeedingDrawings = $projectsNeedingDrawings ?? [];
+$projectsWaitingForAE    = $projectsWaitingForAE    ?? [];
+
+$aeStatusLabel = [
+    'not_started' => ['label' => 'Not Started', 'color' => '#ef4444', 'icon' => 'fa-circle-xmark'],
+    'draft'       => ['label' => 'Draft',       'color' => '#94a3b8', 'icon' => 'fa-file-dashed-line'],
+    'partially'   => ['label' => 'In Progress', 'color' => '#f59e0b', 'icon' => 'fa-spinner'],
+    'fully'       => ['label' => 'Complete',    'color' => '#10b981', 'icon' => 'fa-circle-check'],
+];
 ?>
 <style>
 :root {
@@ -83,6 +91,8 @@ $projectsNeedingDrawings = $projectsNeedingDrawings ?? [];
 
 /* Need-drawing badge */
 .need-badge { background:rgba(239,68,68,.1); color:#ef4444; font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; }
+html { scroll-behavior: smooth; }
+.sec-anchor { scroll-margin-top: 80px; }
 </style>
 
 <!-- ═════ HERO ═════ -->
@@ -90,50 +100,87 @@ $projectsNeedingDrawings = $projectsNeedingDrawings ?? [];
   <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
     <div>
       <div class="dr-role-badge"><i class="fa-solid fa-drafting-compass"></i> Draftsman</div>
-      <h4 class="dr-hero-title">Design & Drafting Dashboard</h4>
+      <h4 class="dr-hero-title">Design &amp; Drafting Dashboard</h4>
       <p class="dr-hero-sub">Real-time design overview · <?= date('d M Y, h:i A') ?></p>
     </div>
   </div>
   <div class="dr-hero-actions">
     <a href="<?= $base ?>/con-project-drawings" class="dr-btn-white"><i class="fal fa-pencil-ruler"></i> All Drawings</a>
     <a href="<?= $base ?>/con-design-types" class="dr-btn-white"><i class="fal fa-layer-group"></i> Design Types</a>
-    <a href="<?= $base ?>/con-architect-engineering" class="dr-btn-white"><i class="fal fa-building"></i> Architecture</a>
+    <a  href="#architecture_table"  class="dr-btn-white"><i class="fal fa-building"></i> Architecture</a>
   </div>
 </div>
+
+<?php if (!empty($projectsWaitingForAE)): ?>
+<!-- ═════ WORKFLOW GATE ALERT ═════ -->
+<div style="background:linear-gradient(135deg,#78350f,#d97706);border-radius:14px;padding:18px 22px;margin-bottom:20px;border:1px solid #fbbf24;">
+  <div style="display:flex;align-items:flex-start;gap:14px;">
+    <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;color:#fff;">
+      <i class="fal fa-clock"></i>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.7);font-weight:700;margin-bottom:4px;">Workflow Locked</div>
+      <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:6px;">Waiting for Architect &amp; Engineering to Complete</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.8);margin-bottom:12px;">You cannot upload Project Drawings for the following projects until the Architect marks the A&amp;E work as <strong style="color:#fde68a;">Fully Complete</strong>.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <?php foreach ($projectsWaitingForAE as $wp):
+          $aeInfo = $aeStatusLabel[$wp['ae_status']] ?? ['label' => 'Unknown', 'color' => '#ccc', 'icon' => 'fa-question'];
+        ?>
+        <div style="background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px;">
+          <i class="fal <?= $aeInfo['icon'] ?>" style="color:<?= $aeInfo['color'] ?>;font-size:13px;"></i>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#fff;"><?= htmlspecialchars($wp['name']) ?></div>
+            <div style="font-size:10px;color:rgba(255,255,255,.65);">A&amp;E: <?= $aeInfo['label'] ?> &bull; Architect: <?= htmlspecialchars($wp['architect_name']) ?></div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- ═════ KPI GRID ═════ -->
 <div class="kpi-grid-4">
 
-  <a href="<?= $base ?>/con-project-drawings" class="kpi-card">
+  <!-- Total Drawings → scroll to recent drawings -->
+  <a href="#sec-drawings" class="kpi-card">
     <div class="kpi-accent" style="background:var(--dr-purple)"></div>
     <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:var(--dr-purple)"><i class="fal fa-pencil-ruler"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Total Drawings</div>
     <div class="kpi-value" style="color:var(--dr-purple)"><?= $totalDrawings ?></div>
     <div class="kpi-sub">Uploaded design files</div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(139,92,246,.1);color:var(--dr-purple)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
-  <a href="<?= $base ?>/con-design-types" class="kpi-card">
+  <!-- Design Types → scroll to type bars -->
+  <a href="#sec-types" class="kpi-card">
     <div class="kpi-accent" style="background:var(--dr-blue)"></div>
     <div class="kpi-icon" style="background:rgba(59,130,246,.12);color:var(--dr-blue)"><i class="fal fa-layer-group"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Design Types</div>
     <div class="kpi-value" style="color:var(--dr-blue)"><?= $totalDesignTypes ?></div>
     <div class="kpi-sub">Design categories</div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(59,130,246,.1);color:var(--dr-blue)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
-  <a href="<?= $base ?>/con-projects" class="kpi-card">
+  <!-- Projects with Drawings → scroll to recent drawings -->
+  <a href="#sec-drawings" class="kpi-card">
     <div class="kpi-accent" style="background:var(--dr-green)"></div>
     <div class="kpi-icon" style="background:rgba(16,185,129,.12);color:var(--dr-green)"><i class="fal fa-building"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Projects w/ Drawings</div>
     <div class="kpi-value" style="color:var(--dr-green)"><?= $projectsWithDrawings ?></div>
     <div class="kpi-sub">Have ≥1 drawing</div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(16,185,129,.1);color:var(--dr-green)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
-  <a href="<?= $base ?>/con-architect-engineering" class="kpi-card">
+  <!-- Arch & Engineering → scroll to AE table -->
+  <a href="#architecture_table" class="kpi-card">
     <div class="kpi-accent" style="background:var(--dr-teal)"></div>
     <div class="kpi-icon" style="background:rgba(20,184,166,.12);color:var(--dr-teal)"><i class="fal fa-compass-drafting"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Arch. & Engineering</div>
     <div class="kpi-value" style="color:var(--dr-teal)"><?= $totalAE ?></div>
     <div class="kpi-sub">A&E studies registered</div>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(20,184,166,.1);color:var(--dr-teal)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
 </div>
@@ -143,7 +190,7 @@ $projectsNeedingDrawings = $projectsNeedingDrawings ?? [];
 
   <!-- Drawings by Type -->
   <div class="col-lg-4">
-    <div class="dr-panel">
+    <div id="sec-types" class="dr-panel sec-anchor">
       <div class="dr-panel-title">
         <div class="dr-dot" style="background:var(--dr-purple)"></div>
         Drawings by Design Type
@@ -193,11 +240,11 @@ $projectsNeedingDrawings = $projectsNeedingDrawings ?? [];
 
   <!-- Recent Drawings -->
   <div class="col-lg-8">
-    <div class="dr-panel">
+    <div id="sec-drawings" class="dr-panel sec-anchor">
       <div class="dr-panel-title">
         <div class="dr-dot" style="background:var(--dr-blue)"></div>
         Recent Project Drawings
-        <a href="<?= $base ?>/con-project-drawings" style="font-size:10px;color:var(--dr-blue);margin-left:auto;text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+        <a href="<?= $base ?>/con-project-drawings" style="font-size:10px;color:var(--dr-blue);margin-left:auto;text-decoration:none">View All <i class="fal fa-external-link ms-1"></i></a>
       </div>
       <?php if (empty($recentDrawings)): ?>
         <div class="empty-msg">No drawings uploaded yet</div>
@@ -235,7 +282,79 @@ $projectsNeedingDrawings = $projectsNeedingDrawings ?? [];
         </div>
       <?php endif; ?>
     </div>
+    </div>
   </div>
 
 </div>
+
+<!-- ═════ ROW 3: Architect & Engineering ═════ -->
+<?php
+$architectEngineeringList = $architectEngineeringList ?? [];
+if (!empty($architectEngineeringList)):
+?>
+<div id="architecture_table"  class="dr-panel mt-4" style="border-top: 4px solid var(--dr-teal)">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="dr-panel-title mb-0">
+      <div class="dr-dot" style="background:var(--dr-teal)"></div>
+      <i class="fal fa-building me-2" style="color:var(--dr-teal)"></i>
+      Recent Architect & Engineering Studies
+    </div>
+    <a href="<?= $base ?>/con-architect-engineering" style="font-size:11px;color:var(--dr-teal);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" style="font-size:13px;">
+      <thead style="background:rgba(20,184,166,.04);">
+        <tr>
+          <th class="text-uppercase text-muted" style="font-size:10px;letter-spacing:1px;padding:12px;">#</th>
+          <th class="text-uppercase text-muted" style="font-size:10px;letter-spacing:1px;padding:12px;">Project</th>
+          <th class="text-uppercase text-muted" style="font-size:10px;letter-spacing:1px;padding:12px;">Architect</th>
+          <th class="text-uppercase text-muted" style="font-size:10px;letter-spacing:1px;padding:12px;">Status</th>
+          <th class="text-uppercase text-muted" style="font-size:10px;letter-spacing:1px;padding:12px;">Design Link</th>
+          <th class="text-uppercase text-muted" style="font-size:10px;letter-spacing:1px;padding:12px;">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($architectEngineeringList as $index => $ae): ?>
+        <tr>
+          <td class="text-muted"><?= $index + 1 ?></td>
+          <td class="fw-bold text-dark"><?= htmlspecialchars($ae['project_name'] ?? 'N/A') ?></td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div style="width:24px;height:24px;border-radius:50%;background:var(--dr-teal);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;">
+                <?= strtoupper(substr($ae['internal_architect_name'] ?? 'U', 0, 1)) ?>
+              </div>
+              <span><?= htmlspecialchars($ae['internal_architect_name'] ?? 'N/A') ?></span>
+            </div>
+          </td>
+          <td>
+            <?php 
+              $status = strtolower($ae['status'] ?? 'not_started');
+              $sInfo = $aeStatusLabel[$status] ?? ['label' => ucfirst($status), 'color' => '#6c757d', 'icon' => 'fa-info-circle'];
+            ?>
+            <span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;background:<?= $sInfo['color'] ?>15;color:<?= $sInfo['color'] ?>">
+              <i class="fal <?= $sInfo['icon'] ?> me-1"></i><?= $sInfo['label'] ?>
+            </span>
+          </td>
+          <td>
+            <?php if (!empty($ae['full_architecture_design_link'])): ?>
+              <a href="<?= htmlspecialchars($ae['full_architecture_design_link']) ?>" target="_blank" class="btn btn-sm btn-light" style="font-size:11px;color:var(--dr-blue)">
+                <i class="fal fa-external-link me-1"></i> View Design
+              </a>
+            <?php else: ?>
+              <span class="text-muted" style="font-size:11px;">Not uploaded</span>
+            <?php endif; ?>
+          </td>
+          <td>
+             <span class="text-muted" style="font-size:11px;">
+               <?= !empty($ae['notes']) ? htmlspecialchars(substr($ae['notes'], 0, 30)) . '...' : '&mdash;' ?>
+             </span>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
 <div style="height:30px"></div>

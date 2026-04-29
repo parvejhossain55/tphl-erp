@@ -301,22 +301,35 @@
     $trem = $tb - $ts;
     $ap = $budgetSummary['active_platforms'] ?? 0;
     $spentPercentage = $tb > 0 ? round(($ts / $tb) * 100, 1) : 0;
+    $totalLeadsCount = $totalLeads ?? 0;
     ?>
-    <div class="col-xl-4 col-sm-6 col-6 mb-2">
+
+    <!-- Total Leads Card -->
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
+      <div class="card__wrapper stat-card" style="border-left:4px solid #2563eb;">
+        <div class="label"><i class="bi bi-people-fill me-1 text-primary"></i>Total Leads</div>
+        <div class="value" style="color:#2563eb;"><?= number_format($totalLeadsCount) ?></div>
+        <div class="change text-muted">
+          <i class="bi bi-bar-chart-fill me-1 text-primary"></i>All uploaded leads
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
         <div class="label">Total Monthly Budget</div>
         <div class="value">৳<?= number_format($tb) ?></div>
         <div class="change text-success"><i class="bi bi-arrow-up-short"></i><?= $ap ?> Active Platforms</div>
       </div>
     </div>
-    <div class="col-xl-4 col-sm-6 col-6 mb-2">
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
         <div class="label">Total Spent</div>
         <div class="value">৳<?= number_format($ts) ?></div>
         <div class="change text-danger"><i class="bi bi-arrow-up-short"></i><?= $spentPercentage ?>% of budget</div>
       </div>
     </div>
-    <div class="col-xl-4 col-sm-6 col-6 mb-2">
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card">
         <div class="label">Remaining</div>
         <div class="value">৳<?= number_format($trem) ?></div>
@@ -650,83 +663,50 @@
   <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 10): ?>
     <div class="row mt-4">
       <div class="col-12">
-        <div class="history-card shadow-sm border-0">
-          <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
+        <div class="history-card shadow-sm border-0" style="border-radius:14px;overflow:hidden;">
+          <div class="card-header d-flex justify-content-between align-items-center bg-white py-3 flex-wrap gap-2">
             <h6 class="mb-0 fw-bold text-dark">
               <i class="bi bi-clock-history me-2 text-primary"></i>
-              <?php
-              $headerText = "Uploaded Leads";
-              if ($date_age == 'today') $headerText = "Today's Uploaded Leads";
-              elseif ($date_age == 'old') $headerText = "Old Uploaded Leads";
-              elseif ($date_age == '7days') $headerText = "Recent Uploaded Leads (Last 7 Days)";
-
-              if ($duplicates_only) $headerText .= " (Duplicates Only)";
-              echo $headerText;
-              ?>
+              <span id="dmHeadTableHeader">Uploaded Leads</span>
             </h6>
-            <span class="badge bg-primary-soft text-primary rounded-pill"><?= count($leads) ?> Leads Shown</span>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <div class="input-group input-group-sm" style="width:220px;">
+                <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" id="dmHeadSearch" class="form-control" placeholder="Search name, phone, campaign...">
+              </div>
+              <select id="dmHeadPerPage" class="form-select form-select-sm" style="width:80px;">
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+              <span class="badge bg-primary-soft text-primary rounded-pill" id="dmHeadLeadCount">— Leads</span>
+            </div>
           </div>
           <div class="table__wrapper table-responsive my-3">
-            <table class="table no-border-table mt-20 multiple_tables">
-              <thead class="">
+            <table class="table no-border-table mt-20" id="dmHeadLeadTable">
+              <thead>
                 <tr>
                   <th class="ps-4">Lead Name</th>
                   <th>Contact Info</th>
-                  <th>Platform & Campaign</th>
+                  <th>Follow Up</th>
+                  <th>Contact Status</th>
+                  <th>Lead Type</th>
+                  <th>Platform &amp; Campaign</th>
                   <th>Team Name</th>
                   <th>Sales Team Lead</th>
                   <th class="pe-4 text-end">Upload Date</th>
                 </tr>
               </thead>
-              <tbody>
-                <?php if (empty($leads)): ?>
-                  <tr>
-                    <td colspan="5" class="text-center py-5">
-                      <div class="text-muted">
-                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                        No leads uploaded in the last 7 days.
-                      </div>
-                    </td>
-                  </tr>
-                <?php else: ?>
-                  <?php foreach ($leads as $lead): ?>
-                    <tr>
-                      <td class="ps-4">
-                        <div class="fw-bold text-dark"><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></div>
-                        <small class="text-muted"><?= htmlspecialchars($lead['job_title'] ?? 'N/A') ?></small>
-                      </td>
-                      <td>
-                        <div class="d-flex flex-column">
-                          <?php
-                          $p = $lead['phone_number'] ?? '';
-                          $isDuplicate = !empty($p) && isset($phoneFreq[$p]) && $phoneFreq[$p] > 1;
-                          $textClass = $isDuplicate ? 'text-danger fw-bold' : '';
-                          ?>
-                          <span class="<?= $textClass ?>"><i class="bi bi-telephone text-muted me-2"></i><?= htmlspecialchars($p ?: 'N/A') ?></span>
-                          <small class="text-muted"><i class="bi bi-envelope me-2"></i><?= htmlspecialchars($lead['email'] ?? 'N/A') ?></small>
-                        </div>
-                      </td>
-                      <td>
-                        <span class="badge bg-info-soft text-info mb-1 d-inline-block"><?= htmlspecialchars($lead['platform'] ?? 'N/A') ?></span>
-                        <div class="small text-muted"><?= htmlspecialchars($lead['campaign_name'] ?? 'N/A') ?></div>
-                      </td>
-                      <td>
-                        <span class="text-dark"><?= htmlspecialchars($lead['team_name'] ?? 'N/A') ?></span>
-                      </td>
-                      <td>
-                        <div class="fw-bold text-primary">
-                          <?= htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') ?>
-                        </div>
-                      </td>
-                      <td class="pe-4 text-end">
-                        <div class="fw-semibold"><?= date('M d, Y', strtotime($lead['created_at'])) ?></div>
-                        <small class="text-muted"><?= date('h:i A', strtotime($lead['created_at'])) ?></small>
-                      </td>
-                    </tr>
-                  <?php endforeach; ?>
-                <?php endif; ?>
+              <tbody id="dmHeadLeadTbody">
+                <tr><td colspan="9" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>
               </tbody>
             </table>
+
+            <!-- Pagination -->
+            <div class="d-flex justify-content-between align-items-center px-3 pb-3 flex-wrap gap-2">
+              <div class="text-muted" style="font-size:.8rem;" id="dmHeadPaginationInfo"></div>
+              <nav><ul class="pagination pagination-sm mb-0" id="dmHeadPagination"></ul></nav>
+            </div>
           </div>
         </div>
       </div>
@@ -745,7 +725,117 @@
     el.classList.add('active');
     if (name === 'chart') buildCharts();
   }
+</script>
 
+<?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 10): ?>
+<script>
+  const base_url      = "<?= $GLOBALS['base_url'] ?>";
+  const dmHeadFilters = {
+    team_id        : "<?= htmlspecialchars($_GET['team_id']        ?? '') ?>",
+    date_age       : "<?= htmlspecialchars($_GET['date_age']       ?? 'all') ?>",
+    sort           : "<?= htmlspecialchars($_GET['sort']           ?? 'newest') ?>",
+    contact_status : "",
+    duplicates_only: "<?= isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1' ? '1' : '' ?>",
+  };
+
+  let dmHeadPage      = 1;
+  let dmHeadPerPage   = 10;
+  let dmHeadTimer     = null;
+  let dmHeadSearch    = '';
+
+  function dmHeadLoad(page = 1) {
+    dmHeadPage = page;
+    const tbody = document.getElementById('dmHeadLeadTbody');
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+
+    const params = new URLSearchParams({
+      ...dmHeadFilters,
+      page    : page,
+      per_page: dmHeadPerPage,
+      search  : dmHeadSearch,
+    });
+
+    fetch(`${base_url}/dm-head-leads-ajax?${params.toString()}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger">${data.error}</td></tr>`;
+          return;
+        }
+
+        const headerLabels = { 'today': "Today's Uploaded Leads", 'old': 'Old Uploaded Leads', '7days': 'Recent Leads (Last 7 Days)', '15days': 'Recent Leads (Last 15 Days)', 'all': 'All Uploaded Leads' };
+        let hdr = headerLabels[dmHeadFilters.date_age] || 'Uploaded Leads';
+        if (dmHeadFilters.duplicates_only === '1') hdr += ' (Duplicates Only)';
+        document.getElementById('dmHeadTableHeader').textContent = hdr;
+        document.getElementById('dmHeadLeadCount').textContent   = `${data.total} Leads`;
+
+        if (!data.rows || data.rows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';
+          document.getElementById('dmHeadPaginationInfo').textContent = '';
+          document.getElementById('dmHeadPagination').innerHTML = '';
+          return;
+        }
+
+        tbody.innerHTML = data.rows.map(row => `
+          <tr>
+            <td class="ps-4">${row.name}</td>
+            <td>${row.contact}</td>
+            <td class="text-center">${row.follow_up}</td>
+            <td>${row.contact_status}</td>
+            <td>${row.lead_type}</td>
+            <td>${row.platform}</td>
+            <td>${row.team}</td>
+            <td>${row.sales_lead}</td>
+            <td class="pe-4 text-end">${row.upload_date}</td>
+          </tr>
+        `).join('');
+
+        const from = ((page - 1) * dmHeadPerPage) + 1;
+        const to   = Math.min(page * dmHeadPerPage, data.total);
+        document.getElementById('dmHeadPaginationInfo').textContent = `Showing ${from}–${to} of ${data.total} leads`;
+
+        const pag        = document.getElementById('dmHeadPagination');
+        pag.innerHTML    = '';
+        const totalPages = data.total_pages;
+        if (totalPages <= 1) return;
+
+        const addBtn = (label, p, disabled = false, active = false) => {
+          const li = document.createElement('li');
+          li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+          li.innerHTML = `<a class="page-link" href="#">${label}</a>`;
+          if (!disabled && !active) li.querySelector('a').addEventListener('click', e => { e.preventDefault(); dmHeadLoad(p); });
+          pag.appendChild(li);
+        };
+
+        addBtn('«', 1, page === 1);
+        addBtn('‹', page - 1, page === 1);
+        let start = Math.max(1, page - 2), end = Math.min(totalPages, page + 2);
+        if (start > 1) { addBtn('1', 1); if (start > 2) addBtn('...', null, true); }
+        for (let i = start; i <= end; i++) addBtn(i, i, false, i === page);
+        if (end < totalPages) { if (end < totalPages - 1) addBtn('...', null, true); addBtn(totalPages, totalPages); }
+        addBtn('›', page + 1, page === totalPages);
+        addBtn('»', totalPages, page === totalPages);
+      })
+      .catch(() => {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-danger">Failed to load leads.</td></tr>';
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    dmHeadLoad(1);
+    document.getElementById('dmHeadPerPage').addEventListener('change', function () {
+      dmHeadPerPage = parseInt(this.value);
+      dmHeadLoad(1);
+    });
+    document.getElementById('dmHeadSearch').addEventListener('input', function () {
+      clearTimeout(dmHeadTimer);
+      dmHeadTimer = setTimeout(() => { dmHeadSearch = this.value.trim(); dmHeadLoad(1); }, 400);
+    });
+  });
+</script>
+<?php endif; ?>
+
+<script>
   /* ── team card select ── */
   function selectTeam(el) {
     document.querySelectorAll('.team-card').forEach(c => c.classList.remove('active'));
@@ -781,26 +871,8 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          }
-        },
-        scales: {
-          y: {
-            ticks: {
-              callback: v => '৳' + (v / 1000) + 'k'
-            },
-            grid: {
-              color: '#f0f3f8'
-            }
-          },
-          x: {
-            grid: {
-              display: false
-            }
-          }
-        }
+        plugins: { legend: { display: false } },
+        scales: { y: { ticks: { callback: v => '৳' + (v / 1000) + 'k' }, grid: { color: '#f0f3f8' } }, x: { grid: { display: false } } }
       }
     });
 
@@ -817,19 +889,8 @@
         }]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: {
-              font: {
-                size: 11
-              },
-              boxWidth: 10
-            }
-          }
-        }
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 10 } } }
       }
     });
 
@@ -853,29 +914,9 @@
         ]
       },
       options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          }
-        },
-        scales: {
-          x: {
-            ticks: {
-              callback: v => '৳' + (v / 1000) + 'k'
-            },
-            grid: {
-              color: '#f0f3f8'
-            }
-          },
-          y: {
-            grid: {
-              display: false
-            }
-          }
-        }
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks: { callback: v => '৳' + (v / 1000) + 'k' }, grid: { color: '#f0f3f8' } }, y: { grid: { display: false } } }
       }
     });
   }

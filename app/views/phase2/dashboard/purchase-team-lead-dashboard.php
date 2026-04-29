@@ -19,7 +19,9 @@ $totalMaterials  = $totalMaterials  ?? 0;
 $pendingPayments = $pendingPayments ?? 0;
 $recentVendors   = $recentVendors   ?? [];
 $recentPOs       = $recentPOs       ?? [];
-$stockOverview   = $stockOverview   ?? [];
+$stockOverview    = $stockOverview    ?? [];
+$pendingBOQsForPR = $pendingBOQsForPR ?? [];
+$pendingPRsForPO  = $pendingPRsForPO  ?? [];
 ?>
 <style>
 :root {
@@ -329,4 +331,107 @@ $stockOverview   = $stockOverview   ?? [];
 
   </div>
 </div>
+
+<?php if (!empty($pendingBOQsForPR)): ?>
+<!-- ═════════════════ BOQ → PR ALERT PANEL ═════════════════ -->
+<div class="ptl-panel" style="border:2px solid rgba(245,158,11,.35);background:rgba(245,158,11,.04);margin-bottom:22px">
+  <div class="ptl-panel-title" style="color:#b45309">
+    <div class="ptl-dot" style="background:#f59e0b"></div>
+    <i class="fal fa-exclamation-triangle me-2" style="color:#f59e0b"></i>
+    BOQ Approved — Purchase Request Required
+    <span style="margin-left:auto;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(245,158,11,.15);color:#b45309">
+      <?= count($pendingBOQsForPR) ?> Pending
+    </span>
+  </div>
+  <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:14px">
+    The following BOQs have been approved by the Project Manager. Please create a <strong>Purchase Request</strong> for each.
+  </p>
+  <table class="ptl-table">
+    <thead>
+      <tr>
+        <th>BOQ #</th>
+        <th>Project</th>
+        <th>Items</th>
+        <th>Est. Value</th>
+        <th>Approved On</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php foreach ($pendingBOQsForPR as $bq): ?>
+      <tr>
+        <td style="font-size:11px;color:var(--text-muted)">BOQ #<?= $bq['boq_id'] ?> <span style="font-size:10px">(v<?= htmlspecialchars($bq['version']) ?>)</span></td>
+        <td><strong><?= htmlspecialchars($bq['project_name'] ?? 'N/A') ?></strong></td>
+        <td><span style="font-size:11px;background:rgba(59,130,246,.1);color:#2563eb;padding:2px 8px;border-radius:10px"><?= (int)$bq['item_count'] ?> items</span></td>
+        <td><strong style="color:var(--ptl-green)"><?= ptlFmt($bq['grand_total']) ?></strong></td>
+        <td style="font-size:11px;color:var(--text-muted)"><?= !empty($bq['approved_at']) ? date('d M Y', strtotime($bq['approved_at'])) : '—' ?></td>
+        <td>
+          <a href="<?= $base ?>/con-purchase-request-create?boq_id=<?= $bq['boq_id'] ?>&project_id=<?= $bq['project_id'] ?>"
+             style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;
+                    border:none;border-radius:8px;padding:5px 14px;font-size:11.5px;font-weight:700;text-decoration:none">
+            <i class="fal fa-plus-circle"></i> Create PR
+          </a>
+          <a href="<?= $base ?>/con-boq-show/<?= $bq['boq_id'] ?>" style="font-size:11px;color:var(--ptl-blue);margin-left:8px;text-decoration:none">View BOQ</a>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($pendingPRsForPO)): ?>
+<!-- ═════════════════ PR → PO PANEL ═════════════════ -->
+<div class="ptl-panel" style="border:2px solid rgba(59,130,246,.3);background:rgba(59,130,246,.03);margin-bottom:22px">
+  <div class="ptl-panel-title" style="color:#1d4ed8">
+    <div class="ptl-dot" style="background:var(--ptl-blue)"></div>
+    <i class="fal fa-file-invoice me-2" style="color:var(--ptl-blue)"></i>
+    Purchase Requests — Awaiting Purchase Order
+    <span style="margin-left:auto;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(59,130,246,.12);color:#1d4ed8">
+      <?= count($pendingPRsForPO) ?> Pending
+    </span>
+  </div>
+  <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:14px">
+    These Purchase Requests are approved but no Purchase Order has been generated yet. Open the PR to generate a PO via CST comparison.
+  </p>
+  <table class="ptl-table">
+    <thead>
+      <tr>
+        <th>#PR</th>
+        <th>Project</th>
+        <th>Created By</th>
+        <th>Items</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php foreach ($pendingPRsForPO as $pr):
+        $prSt = $pr['status'] ?? 'Draft';
+        $prSc = match($prSt) {
+          'Approved'  => ['bg'=>'rgba(16,185,129,.12)','text'=>'#10b981'],
+          'Submitted' => ['bg'=>'rgba(59,130,246,.12)', 'text'=>'#3b82f6'],
+          default     => ['bg'=>'rgba(245,158,11,.12)', 'text'=>'#f59e0b'],
+        };
+      ?>
+      <tr>
+        <td style="font-size:11px;color:var(--text-muted)">#<?= $pr['id'] ?></td>
+        <td><strong><?= htmlspecialchars($pr['project_name'] ?? 'N/A') ?></strong></td>
+        <td style="font-size:11.5px;color:var(--text-muted)"><?= htmlspecialchars($pr['created_by_name'] ?? '—') ?></td>
+        <td><span style="font-size:11px;background:rgba(139,92,246,.1);color:#7c3aed;padding:2px 8px;border-radius:10px"><?= (int)$pr['item_count'] ?> items</span></td>
+        <td><span style="background:<?= $prSc['bg'] ?>;color:<?= $prSc['text'] ?>;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px"><?= $prSt ?></span></td>
+        <td>
+          <a href="<?= $base ?>/con-purchase-request/<?= $pr['id'] ?>"
+             style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;
+                    border:none;border-radius:8px;padding:5px 14px;font-size:11.5px;font-weight:700;text-decoration:none">
+            <i class="fal fa-eye"></i> Open PR
+          </a>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
+</div>
+<?php endif; ?>
+
 <div style="height:30px"></div>

@@ -1,0 +1,779 @@
+<?php
+/**
+ * ProjectWorkflowMailService
+ * ─────────────────────────────────────────────────────────────────
+ * Handles all sequential pre-construction workflow email notifications.
+ * Used by: ProjectController (assignment), LandVisibilityStudyController,
+ *          ArchitectEngineeringController, ProjectDrawingController,
+ *          ProjectStructuralDesignController, SoilTestController
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\OAuth;
+use League\OAuth2\Client\Provider\Google;
+
+class ProjectWorkflowMailService
+{
+    private $db;
+
+    // SMTP / OAuth config (same credentials as MailService.php)
+    private $smtpHost     = 'smtp.gmail.com';
+    private $smtpPort     = 587;
+    private $senderEmail  = 'info@dpremiumhomes.com';
+    private $senderName   = 'TPHL ERP System';
+    private $clientId     = '893215055562-pbt3j7lg7ufqju370ltss46kh7pati3n.apps.googleusercontent.com';
+    private $clientSecret = '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';
+    private $refreshToken = '1//04tQCZJUfNcm7CgYIARAAGAQSNwF-L9IrFjuXh9BJ80IcIEKsg8h5m5TFRRQS6BQTt-wwIvtJKnUHd4sAtITIw8QJ0pgbijIOF0w';
+
+    public function __construct($db)
+    {
+        $this->db = $db;
+    }
+
+    /**
+     * Build full absolute URL for use in emails.
+     * $GLOBALS['base_url'] is just '/TPHL-ERP' (no host).
+     * We prefix it with scheme + host from $_SERVER.
+     */
+    private function getBaseUrl(): string
+    {
+        $base = rtrim($GLOBALS['base_url'] ?? '/TPHL-ERP', '/');
+
+        // Already a full URL (production might set it)
+        if (str_starts_with($base, 'http')) {
+            return $base;
+        }
+
+        // Build from request context
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost:8080';
+
+        return $scheme . '://' . $host . $base;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // PUBLIC API
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * BATCH 1 (CREATE) — Sent when a project is CREATED with team assignments.
+     * Sends one email to each assigned team member.
+     */
+    public function sendProjectAssignmentEmails(int $projectId, string $projectName): void
+    {
+        $team = $this->getProjectTeam($projectId);
+        if (empty($team)) return;
+
+        $base = $this->getBaseUrl();
+
+        foreach ($team as $member) {
+            if (empty($member['email'])) continue;
+
+            $subject = "Project Assignment: {$projectName}";
+            $body    = $this->buildHtml(
+                title:       "You've Been Assigned to a Project",
+                greeting:    "Dear {$member['full_name']},",
+                message:     "You have been assigned to the project <strong>{$projectName}</strong> as <strong>{$member['role_label']}</strong>.",
+                stepHtml:    $this->buildPreConstructionSteps('assignment'),
+                ctaLabel:    'Login to ERP System',
+                ctaLink:     $base . '/admin-login',
+                projectName: $projectName,
+                note:        'Please log in to the ERP system to view your tasks and responsibilities for this project.'
+            );
+
+            $this->send($member['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * BATCH 1 (UPDATE) — Smart reassignment email.
+     * Compares old team data vs new team data.
+     * Only emails users who are NEWLY assigned or CHANGED.
+     *
+     * @param array $oldProject  Row from projects table BEFORE update
+     * @param array $newData     The new POST data array being saved
+     * @param string $projectName
+     */
+    public function sendProjectReassignmentEmails(array $oldProject, array $newData, string $projectName): void
+    {
+        $base = $this->getBaseUrl();
+
+        $roleMap = [
+            'pm_id'              => 'Project Manager',
+            'site_engineer_id'   => 'Site Engineer',
+            'landman_id'         => 'Land Manager',
+            'struct_engineer_id' => 'Structural Engineer',
+            'draftsman_id'       => 'Draftsman',
+            'architect_id'       => 'Architect',
+            'estimator_id'       => 'Estimator',
+            'qc_id'              => 'Quality Controller',
+            'operator_id'        => 'Site Operator',
+        ];
+
+        foreach ($roleMap as $col => $roleLabel) {
+            $oldId = (int)($oldProject[$col] ?? 0);
+            $newId = (int)($newData[$col] ?? 0);
+
+            // Skip if nothing changed or new assignment is empty
+            if ($newId <= 0 || $newId === $oldId) continue;
+
+            // This is a new or changed assignment — email the new person
+            $user = $this->getUserById($newId);
+            if (!$user || empty($user['email'])) continue;
+
+            // Determine context message
+            if ($oldId > 0) {
+                // Replacing someone
+                $msgContext = "Your role as <strong>{$roleLabel}</strong> for project <strong>{$projectName}</strong> has been <strong>updated</strong>. You are now the assigned {$roleLabel} for this project.";
+                $emailTitle = "Project Role Updated: {$projectName}";
+            } else {
+                // Newly assigned
+                $msgContext = "You have been <strong>newly assigned</strong> to the project <strong>{$projectName}</strong> as <strong>{$roleLabel}</strong>.";
+                $emailTitle = "New Project Assignment: {$projectName}";
+            }
+
+            $subject = "{$emailTitle}";
+            $body    = $this->buildHtml(
+                title:       $emailTitle,
+                greeting:    "Dear {$user['full_name']},",
+                message:     $msgContext,
+                stepHtml:    $this->buildPreConstructionSteps('assignment'),
+                ctaLabel:    'Login to ERP System',
+                ctaLink:     $base . '/admin-login',
+                projectName: $projectName,
+                note:        'Please log in to the ERP system to check your assigned tasks for this project.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * A&E PARTIAL — Sent only to PM when Architect & Engineering is 'partially' completed.
+     */
+    public function notifyPmOnAePartial(int $projectId, string $projectName): void
+    {
+        $project = $this->getProjectRow($projectId);
+        if (!$project) return;
+
+        $pm = $this->getUserById((int)($project['pm_id'] ?? 0));
+        if (!$pm || empty($pm['email'])) return;
+
+        $base    = $this->getBaseUrl();
+        $subject = "📋 A&E In Progress: {$projectName}";
+        $body    = $this->buildHtml(
+            title:       'Architect & Engineering — Partially Completed',
+            greeting:    "Dear {$pm['full_name']},",
+            message:     "The <strong>Architect &amp; Engineering</strong> work for project <strong>{$projectName}</strong> is <strong>partially completed</strong>. The architect is still working on the design.",
+            stepHtml:    $this->buildPreConstructionSteps('architect'),
+            ctaLabel:    'Login to ERP System',
+            ctaLink:     $base . '/admin-login',
+            projectName: $projectName,
+            note:        'This is a progress update. Full notification will be sent when A&E is fully completed.'
+        );
+        $this->send($pm['email'], $subject, $body);
+    }
+
+    /**
+     * BATCH 2 — Land Visibility Study completed.
+     * → Action required: Architect
+     * → Copied: ALL team members (PM & SE always included)
+     */
+    public function notifyArchitectAfterLandStudy(int $projectId, string $projectName): void
+    {
+        $this->notifyAllTeam(
+            projectId:    $projectId,
+            projectName:  $projectName,
+            completedStep:'land',
+            activeStep:   'architect',
+            activeCol:    'architect_id',
+            activeRole:   'Architect',
+            stepTitle:    'Land Visibility Study Completed',
+            actionMsg:    "The <strong>Land Visibility Study</strong> for project <strong>{$projectName}</strong> has been completed. Please proceed with <strong>Architect &amp; Engineering</strong>.",
+            progressMsg:  "The <strong>Land Visibility Study</strong> for project <strong>{$projectName}</strong> has been completed. Next: <strong>Architect &amp; Engineering</strong>.",
+            ctaLabel:     'Go to Architect & Engineering',
+            ctaPath:      '/con-architect-engineering'
+        );
+    }
+
+    /**
+     * BATCH 3 — Architect & Engineering completed.
+     * → Action required: Draftsman
+     * → Copied: ALL team members
+     */
+    public function notifyDraftsmanAfterAE(int $projectId, string $projectName): void
+    {
+        $this->notifyAllTeam(
+            projectId:    $projectId,
+            projectName:  $projectName,
+            completedStep:'architect',
+            activeStep:   'draftsman',
+            activeCol:    'draftsman_id',
+            activeRole:   'Draftsman',
+            stepTitle:    'Architect & Engineering Completed',
+            actionMsg:    "The <strong>Architect &amp; Engineering</strong> records for project <strong>{$projectName}</strong> have been submitted. Please proceed with <strong>Design Types &amp; Project Drawings</strong>.",
+            progressMsg:  "<strong>Architect &amp; Engineering</strong> for project <strong>{$projectName}</strong> is done. Next: <strong>Project Drawings</strong>.",
+            ctaLabel:     'Go to Project Drawings',
+            ctaPath:      '/con-project-drawings'
+        );
+    }
+
+    /**
+     * BATCH 4 — Project Drawings completed.
+     * → Action required: Structural Engineer
+     * → Copied: ALL team members
+     */
+    public function notifyStructuralEngineerAfterDrawings(int $projectId, string $projectName): void
+    {
+        $this->notifyAllTeam(
+            projectId:    $projectId,
+            projectName:  $projectName,
+            completedStep:'draftsman',
+            activeStep:   'struct_engineer',
+            activeCol:    'struct_engineer_id',
+            activeRole:   'Structural Engineer',
+            stepTitle:    'Project Drawings Uploaded',
+            actionMsg:    "Project Drawings for <strong>{$projectName}</strong> have been uploaded. Please proceed with <strong>Project Structure Design</strong>.",
+            progressMsg:  "Project Drawings for <strong>{$projectName}</strong> have been uploaded. Next: <strong>Structural Design</strong>.",
+            ctaLabel:     'Go to Structure Design',
+            ctaPath:      '/structure-design'
+        );
+    }
+
+    /**
+     * BATCH 5 — Structural Design completed.
+     * → Action required: Site Engineer
+     * → Copied: ALL team members
+     */
+    public function notifySiteEngineerAfterStructuralDesign(int $projectId, string $projectName): void
+    {
+        $this->notifyAllTeam(
+            projectId:    $projectId,
+            projectName:  $projectName,
+            completedStep:'struct_engineer',
+            activeStep:   'site_engineer',
+            activeCol:    'site_engineer_id',
+            activeRole:   'Site Engineer',
+            stepTitle:    'Structural Design Completed',
+            actionMsg:    "The Structural Design for project <strong>{$projectName}</strong> is complete. Please proceed with the <strong>Soil Test</strong>.",
+            progressMsg:  "Structural Design for <strong>{$projectName}</strong> is complete. Next: <strong>Soil Test</strong>.",
+            ctaLabel:     'Go to Soil Tests',
+            ctaPath:      '/con-soil-tests'
+        );
+    }
+
+    /**
+     * BATCH 6 — Soil Test completed. Pre-construction fully done.
+     * → Notifies ALL team members with all steps checked.
+     */
+    public function notifyPreConstructionComplete(int $projectId, string $projectName): void
+    {
+        $project = $this->getProjectRow($projectId);
+        if (!$project) return;
+
+        $base    = $this->getBaseUrl();
+        $subject = "🎉 Pre-Construction Complete: {$projectName} Ready for BOQ";
+
+        // All unique team members
+        $recipients = $this->getAllTeamMembers($projectId);
+
+        foreach ($recipients as $user) {
+            $body = $this->buildHtml(
+                title:       '🎉 Pre-Construction Phase Complete!',
+                greeting:    "Dear {$user['full_name']},",
+                message:     "All pre-construction steps for project <strong>{$projectName}</strong> have been successfully completed. The project is now ready for <strong>BOQ / Initial Estimation</strong>.",
+                stepHtml:    $this->buildPreConstructionSteps('complete'),
+                ctaLabel:    'Go to Estimates',
+                ctaLink:     $base . '/con-estimates',
+                projectName: $projectName,
+                note:        'You can now start the BOQ and initial estimation process for this project.'
+            );
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * BUDGET CREATION — Initial Estimate Budget submitted.
+     * → Action required: Approvers (MD=1, Director=3, PM=15)
+     */
+    public function notifyApproversForNewInitialBudget(int $projectId, string $projectName, int $budgetId): void
+    {
+        $base = $this->getBaseUrl();
+
+        // Get approvers
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3, 15) AND email IS NOT NULL AND email != ''");
+        $stmt->execute();
+        $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "⚡ Action Required: Approve Initial Estimate Budget — {$projectName}";
+
+        foreach ($approvers as $user) {
+            $stepHtml = "<div style='margin:20px 0;'>
+                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                    <div style='width:28px;height:28px;border-radius:50%;background:#0f5132;color:#fff;
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
+                    <div style='font-size:13px;color:#0f5132;'><strong>Budget Approval</strong> <em style='font-size:11px;color:#0f5132'>(Action Required)</em></div>
+                </div>
+            </div>";
+
+            $body = $this->buildHtml(
+                title:       "Action Required: Budget Approval",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "A new <strong>Initial Estimate Budget</strong> has been submitted for project <strong>{$projectName}</strong> and is waiting for your approval.",
+                stepHtml:    $stepHtml,
+                ctaLabel:    'Review & Approve Budget',
+                ctaLink:     $base . "/con-estimate-show/{$budgetId}",
+                projectName: $projectName,
+                note:        'Please review the budget items and labor costs before approving. Any of the authorized approvers can approve this.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * BOQ CREATION / SUBMISSION — BOQ submitted.
+     * → Action required: Approvers (MD=1, Director=3, PM=15)
+     */
+    public function notifyApproversForNewBOQ(int $projectId, string $projectName, int $boqId): void
+    {
+        $base = $this->getBaseUrl();
+
+        // Get approvers
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3, 15) AND email IS NOT NULL AND email != ''");
+        $stmt->execute();
+        $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "⚡ Action Required: Approve BOQ / BOM — {$projectName}";
+
+        foreach ($approvers as $user) {
+            $stepHtml = "<div style='margin:20px 0;'>
+                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                    <div style='width:28px;height:28px;border-radius:50%;background:#2563eb;color:#fff;
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
+                    <div style='font-size:13px;color:#2563eb;'><strong>BOQ Approval</strong> <em style='font-size:11px;color:#2563eb'>(Action Required)</em></div>
+                </div>
+            </div>";
+
+            $body = $this->buildHtml(
+                title:       "Action Required: BOQ Approval",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "A new <strong>Bill of Quantities (BOQ)</strong> has been submitted for project <strong>{$projectName}</strong> and is waiting for your approval.",
+                stepHtml:    $stepHtml,
+                ctaLabel:    'Review & Approve BOQ',
+                ctaLink:     $base . "/con-boq-show/{$boqId}",
+                projectName: $projectName,
+                note:        'Please review the material items and estimated quantities before approving. Any of the authorized approvers can approve this.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * PURCHASE ORDER GENERATION
+     * → Action required: SE (12) and Approvers (1, 3, 15, 20)
+     */
+    public function notifyApproversForNewPO(int $projectId, string $projectName, int $poId): void
+    {
+        $base = $this->getBaseUrl();
+
+        // Get approvers (SE=12, MD=1, Director=3, PM=15, Head of Procurement=20)
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3, 12, 15, 20) AND email IS NOT NULL AND email != ''");
+        $stmt->execute();
+        $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "⚡ Action Required: Approve Purchase Order #{$poId} — {$projectName}";
+
+        foreach ($approvers as $user) {
+            $stepHtml = "<div style='margin:20px 0;'>
+                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                    <div style='width:28px;height:28px;border-radius:50%;background:#059669;color:#fff;
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
+                    <div style='font-size:13px;color:#059669;'><strong>PO Approval</strong> <em style='font-size:11px;color:#059669'>(Action Required)</em></div>
+                </div>
+            </div>";
+
+            $body = $this->buildHtml(
+                title:       "Action Required: Purchase Order Approval",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "A new <strong>Purchase Order (PO #{$poId})</strong> has been generated for project <strong>{$projectName}</strong> and is waiting for your approval.",
+                stepHtml:    $stepHtml,
+                ctaLabel:    'Review & Approve PO',
+                ctaLink:     $base . "/con-purchase-order/{$poId}",
+                projectName: $projectName,
+                note:        'Please review the PO details before approving. The material receiving process cannot start until both SE and Top Management have approved.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * PO FULLY APPROVED — Notify Site Operator
+     * → Action required: Site Operator (20)
+     */
+    public function notifySiteOperatorForApprovedPO(int $poId, string $projectName): void
+    {
+        $base = $this->getBaseUrl();
+
+        // Get Site Operators (Role 20)
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id = 20 AND email IS NOT NULL AND email != ''");
+        $stmt->execute();
+        $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "✅ Purchase Order Approved: Ready for Material Receiving — {$projectName}";
+
+        foreach ($approvers as $user) {
+            $stepHtml = "<div style='margin:20px 0;'>
+                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                    <div style='width:28px;height:28px;border-radius:50%;background:#10b981;color:#fff;
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:13px;font-weight:700;flex-shrink:0;'>&#10003;</div>
+                    <div style='font-size:13px;color:#10b981;'><strong>PO Fully Approved</strong> <em style='font-size:11px;color:#10b981'>(Action Required: GRN)</em></div>
+                </div>
+            </div>";
+
+            $body = $this->buildHtml(
+                title:       "Action Required: Material Receiving (GRN)",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "Purchase Order <strong>#{$poId}</strong> for project <strong>{$projectName}</strong> has been fully approved by Top Management and Site Engineer. It is now unlocked for material receiving.",
+                stepHtml:    $stepHtml,
+                ctaLabel:    'Log Material Receiving (GRN)',
+                ctaLink:     $base . "/con-material-receiving-create/{$poId}",
+                projectName: $projectName,
+                note:        'You can now log the receipt of materials from the PO dashboard. Ensure you verify the quantities accurately against the invoice.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * Core "notify all team" engine used by Batch 2–5.
+     *
+     * - Responsible person  → "Action Required" email with their CTA link
+     * - All other members   → "Progress Update" email (informational)
+     * - PM & Site Engineer  → ALWAYS included regardless of step
+     */
+    private function notifyAllTeam(
+        int    $projectId,
+        string $projectName,
+        string $completedStep,   // e.g. 'land'
+        string $activeStep,      // e.g. 'architect'
+        string $activeCol,       // e.g. 'architect_id'
+        string $activeRole,      // e.g. 'Architect'
+        string $stepTitle,
+        string $actionMsg,       // message shown TO the responsible person
+        string $progressMsg,     // message shown TO everyone else
+        string $ctaLabel,
+        string $ctaPath
+    ): void {
+        $project = $this->getProjectRow($projectId);
+        if (!$project) return;
+
+        $base        = $this->getBaseUrl();
+        $allMembers  = $this->getAllTeamMembers($projectId);
+        $activeUserId = (int)($project[$activeCol] ?? 0);
+
+        // Step HTML variants
+        $stepHtmlActive  = $this->buildPreConstructionSteps($activeStep);
+        $stepHtmlWatcher = $this->buildPreConstructionSteps($completedStep); // shows completed ✅
+
+        foreach ($allMembers as $user) {
+            if (empty($user['email'])) continue;
+
+            $isResponsible = ($user['id'] === $activeUserId);
+
+            if ($isResponsible) {
+                // ── ACTION REQUIRED email ──
+                $subject = "⚡ Action Required: {$stepTitle} — {$projectName}";
+                $body    = $this->buildHtml(
+                    title:       "Action Required: {$activeRole}",
+                    greeting:    "Dear {$user['full_name']},",
+                    message:     $actionMsg,
+                    stepHtml:    $stepHtmlActive,
+                    ctaLabel:    $ctaLabel,
+                    ctaLink:     $base . $ctaPath,
+                    projectName: $projectName,
+                    note:        'Please complete your step to keep the project on track.'
+                );
+            } else {
+                // ── PROGRESS UPDATE email ──
+                $subject = "📋 Workflow Update: {$stepTitle} — {$projectName}";
+                $body    = $this->buildHtml(
+                    title:       "Progress Update: {$stepTitle}",
+                    greeting:    "Dear {$user['full_name']},",
+                    message:     $progressMsg . " <em style='color:#888;font-size:13px'>(Action required from: <strong>{$activeRole}</strong>)</em>",
+                    stepHtml:    $stepHtmlWatcher,
+                    ctaLabel:    'Login to ERP System',
+                    ctaLink:     $base . '/admin-login',
+                    projectName: $projectName,
+                    note:        'This is a progress update. No action is required from you at this time.'
+                );
+            }
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * Returns all unique team members who have an email address.
+     * PM and Site Engineer are always included (they monitor everything).
+     */
+    private function getAllTeamMembers(int $projectId): array
+    {
+        $project = $this->getProjectRow($projectId);
+        if (!$project) return [];
+
+        // All role columns — PM & site_engineer always first (priority)
+        $cols = [
+            'pm_id', 'site_engineer_id',
+            'landman_id', 'architect_id', 'draftsman_id',
+            'struct_engineer_id', 'estimator_id', 'qc_id', 'operator_id',
+        ];
+
+        $seen    = [];
+        $members = [];
+
+        foreach ($cols as $col) {
+            $uid = (int)($project[$col] ?? 0);
+            if ($uid <= 0 || in_array($uid, $seen)) continue;
+            $user = $this->getUserById($uid);
+            if ($user && !empty($user['email'])) {
+                $seen[]    = $uid;
+                $members[] = $user;
+            }
+        }
+
+        return $members;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // PRIVATE HELPERS
+    // ─────────────────────────────────────────────────────────────
+
+    private function getProjectRow(int $projectId): ?array
+    {
+        if ($projectId <= 0) return null;
+        $stmt = $this->db->prepare(
+            "SELECT id, name, pm_id, site_engineer_id, landman_id,
+                    struct_engineer_id, draftsman_id, architect_id,
+                    estimator_id, qc_id, operator_id
+             FROM projects WHERE id = ? AND deleted_at IS NULL LIMIT 1"
+        );
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
+    private function getUserById(int $userId): ?array
+    {
+        if ($userId <= 0) return null;
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE id = ? LIMIT 1");
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
+    /**
+     * Returns all assigned team members with their role labels.
+     */
+    private function getProjectTeam(int $projectId): array
+    {
+        $project = $this->getProjectRow($projectId);
+        if (!$project) return [];
+
+        $roleMap = [
+            'pm_id'              => 'Project Manager',
+            'site_engineer_id'   => 'Site Engineer',
+            'landman_id'         => 'Land Manager',
+            'struct_engineer_id' => 'Structural Engineer',
+            'draftsman_id'       => 'Draftsman',
+            'architect_id'       => 'Architect',
+            'estimator_id'       => 'Estimator',
+            'qc_id'              => 'Quality Controller',
+            'operator_id'        => 'Site Operator',
+        ];
+
+        $team = [];
+        foreach ($roleMap as $col => $label) {
+            $uid = (int)($project[$col] ?? 0);
+            if ($uid <= 0) continue;
+            $user = $this->getUserById($uid);
+            if ($user) {
+                $user['role_label'] = $label;
+                $team[] = $user;
+            }
+        }
+        return $team;
+    }
+
+    /**
+     * Build the step-by-step progress HTML for email body.
+     * $currentStep: 'assignment'|'architect'|'draftsman'|'struct_engineer'|'site_engineer'|'complete'
+     */
+    private function buildPreConstructionSteps(string $currentStep): string
+    {
+        $steps = [
+            ['key' => 'land',          'label' => 'Land Visibility Study'],
+            ['key' => 'architect',     'label' => 'Architect & Engineering'],
+            ['key' => 'draftsman',     'label' => 'Design Types & Project Drawings'],
+            ['key' => 'struct_engineer','label' => 'Project Structure Design'],
+            ['key' => 'site_engineer', 'label' => 'Soil Tests'],
+        ];
+
+        $order = ['assignment' => -1, 'land' => 0, 'architect' => 1,
+                  'draftsman' => 2, 'struct_engineer' => 3,
+                  'site_engineer' => 4, 'complete' => 5];
+        $currentIdx = $order[$currentStep] ?? -1;
+
+        $html = "<div style='margin:20px 0;'>";
+        foreach ($steps as $i => $step) {
+            $stepIdx = $order[$step['key']] ?? $i;
+            if ($stepIdx < $currentIdx) {
+                // Done
+                $icon  = '&#10003;';
+                $bg    = '#198754';
+                $color = '#198754';
+                $label = $step['label'] . ' <em style="font-size:11px;color:#198754">(Completed)</em>';
+            } elseif ($stepIdx === $currentIdx) {
+                // Current / Active
+                $icon  = '&#9654;';
+                $bg    = '#0f5132';
+                $color = '#0f5132';
+                $label = "<strong>{$step['label']}</strong> <em style='font-size:11px;color:#0f5132'>(Your Step)</em>";
+            } else {
+                // Upcoming
+                $icon  = (string)($i + 1);
+                $bg    = '#ccc';
+                $color = '#888';
+                $label = $step['label'];
+            }
+
+            $html .= "
+            <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                <div style='width:28px;height:28px;border-radius:50%;background:{$bg};color:#fff;
+                            display:flex;align-items:center;justify-content:center;
+                            font-size:13px;font-weight:700;flex-shrink:0;'>{$icon}</div>
+                <div style='font-size:13px;color:{$color};'>{$label}</div>
+            </div>";
+        }
+        $html .= "</div>";
+        return $html;
+    }
+
+    /**
+     * Build full HTML email body.
+     */
+    private function buildHtml(
+        string $title,
+        string $greeting,
+        string $message,
+        string $stepHtml,
+        string $ctaLabel,
+        string $ctaLink,
+        string $projectName,
+        string $note = ''
+    ): string {
+        return "
+        <div style='font-family:\"Segoe UI\",Tahoma,Geneva,Verdana,sans-serif;background:#f4f4f4;padding:40px 10px;'>
+          <div style='max-width:620px;margin:0 auto;background:#fff;border-radius:10px;
+                      overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);border:1px solid #e5e5e5;'>
+
+            <!-- Header bar -->
+            <div style='background:linear-gradient(135deg,#0f5132,#198754);padding:28px 30px;'>
+              <div style='font-size:11px;letter-spacing:2px;text-transform:uppercase;
+                          color:rgba(255,255,255,.7);margin-bottom:6px;'>TPHL ERP &middot; Construction Workflow</div>
+              <h2 style='margin:0;color:#fff;font-size:20px;font-weight:800;'>{$title}</h2>
+              <div style='margin-top:8px;font-size:12px;color:rgba(255,255,255,.8);'>
+                Project: <strong style='color:#fff;'>{$projectName}</strong>
+              </div>
+            </div>
+
+            <!-- Body -->
+            <div style='padding:30px;'>
+              <p style='color:#333;font-size:15px;margin:0 0 12px;'>{$greeting}</p>
+              <p style='color:#555;font-size:14px;line-height:1.7;margin:0 0 20px;'>{$message}</p>
+
+              <!-- Pre-Construction Steps -->
+              <div style='background:#f8fdf9;border:1px solid #d1e7dd;border-radius:8px;
+                          padding:18px 20px;margin-bottom:22px;'>
+                <div style='font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+                            color:#198754;font-weight:700;margin-bottom:14px;'>
+                  Pre-Construction Workflow Progress
+                </div>
+                {$stepHtml}
+              </div>
+
+              " . ($note ? "<p style='color:#888;font-size:12px;margin:0 0 22px;'><em>{$note}</em></p>" : '') . "
+
+              <!-- CTA Button -->
+              <div style='text-align:center;margin-top:24px;'>
+                <a href='{$ctaLink}'
+                   style='background:#198754;color:#fff;padding:13px 32px;text-decoration:none;
+                          border-radius:6px;font-weight:700;font-size:14px;display:inline-block;'>
+                  {$ctaLabel} &rarr;
+                </a>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style='background:#f8f9fa;padding:16px 30px;text-align:center;border-top:1px solid #eee;'>
+              <p style='margin:0;font-size:11px;color:#aaa;'>
+                This is an automated message from TPHL ERP System. Please do not reply.
+              </p>
+            </div>
+
+          </div>
+        </div>";
+    }
+
+    /**
+     * Core send method using PHPMailer + Google XOAUTH2.
+     */
+    private function send(string $toEmail, string $subject, string $htmlBody): bool
+    {
+        try {
+            $mail = new PHPMailer(true);
+            $mail->isSMTP();
+            $mail->Host       = $this->smtpHost;
+            $mail->Port       = $this->smtpPort;
+            $mail->SMTPAuth   = true;
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+
+            $provider = new Google([
+                'clientId'     => $this->clientId,
+                'clientSecret' => $this->clientSecret,
+            ]);
+
+            $mail->AuthType = 'XOAUTH2';
+            $mail->setOAuth(new OAuth([
+                'provider'     => $provider,
+                'clientId'     => $this->clientId,
+                'clientSecret' => $this->clientSecret,
+                'refreshToken' => $this->refreshToken,
+                'userName'     => $this->senderEmail,
+            ]));
+
+            $mail->setFrom($this->senderEmail, $this->senderName);
+            $mail->addAddress($toEmail);
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body    = $htmlBody;
+            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>'], "\n", $htmlBody));
+
+            $mail->send();
+            return true;
+
+        } catch (Exception $e) {
+            error_log("[ProjectWorkflowMailService] Failed to send to {$toEmail}: " . $e->getMessage());
+            return false;
+        }
+    }
+}

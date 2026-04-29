@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Property Booking & Payment Document</title>
+    <title>Property <?= $invoice['payment_type'] === 'registration' ? 'Registration' : 'Booking' ?> Document</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Place favicon.ico in the root directory -->
@@ -515,7 +515,7 @@
 
             <div class="print-document-header">
                 <div class="print-header-content">
-                    <h3 class="print-document-title">Property Booking Document</h3>
+                    <h3 class="print-document-title">Property <?= $invoice['payment_type'] === 'registration' ? 'Registration' : 'Booking' ?> Document</h3>
                     <div class="print-company ">
                         <p class="print-title"> <?= getSetting('website_title', '') ?></p>
                         <p>Phone: <?= getSetting('address', '') ?></p>
@@ -526,7 +526,7 @@
             </div>
             <div class="document-header">
                 <div class="header-content">
-                    <h3 class="document-title">Property Booking Document</h3>
+                    <h3 class="document-title">Property <?= $invoice['payment_type'] === 'registration' ? 'Registration' : 'Booking' ?> Document</h3>
                     <div class="company ">
                         <p>Real Estate & Property Developer</p>
                         <p> <?= getSetting('website_title', '') ?></p>
@@ -884,6 +884,44 @@
                                 readonly>
                         </div>
                     </div>
+
+                    <?php if ($invoice['payment_type'] === 'booking_money' && !empty($all_payments)): ?>
+                    <div class="section mt-4">
+                        <div class="section-header">
+                            <h2 class="section-title">Payment History (Booking)</h2>
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th style="border: 1px solid #ddd; padding: 6px;">Date</th>
+                                    <th style="border: 1px solid #ddd; padding: 6px;">Type</th>
+                                    <th style="border: 1px solid #ddd; padding: 6px;">Method</th>
+                                    <th style="border: 1px solid #ddd; padding: 6px; text-align: right;">Amount (BDT)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $totalPaidHistory = 0;
+                                foreach($all_payments as $ap): 
+                                    if ($ap['payment_type'] !== 'booking_money' || $ap['verification_status'] !== 'verified') continue;
+                                    // Make sure we only show payments up to this invoice date or all verified payments
+                                    $totalPaidHistory += $ap['amount'];
+                                ?>
+                                <tr>
+                                    <td style="border: 1px solid #ddd; padding: 6px;"><?= date('d M Y', strtotime($ap['payment_date'])) ?></td>
+                                    <td style="border: 1px solid #ddd; padding: 6px;"><?= ucfirst(str_replace('_', ' ', $ap['payment_type'])) ?></td>
+                                    <td style="border: 1px solid #ddd; padding: 6px;"><?= ucfirst($ap['payment_method']) ?></td>
+                                    <td style="border: 1px solid #ddd; padding: 6px; text-align: right;"><?= number_format($ap['amount'], 2) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                                <tr>
+                                    <td colspan="3" style="border: 1px solid #ddd; padding: 6px; text-align: right; font-weight: bold;">Total Paid:</td>
+                                    <td style="border: 1px solid #ddd; padding: 6px; text-align: right; font-weight: bold;"><?= number_format($totalPaidHistory, 2) ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php endif; ?>
 
                     <div class="section-header mt-3">
                         <h2 class="section-title">RULES OF FLAT PURCHASING WITH LAND</h2>

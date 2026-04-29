@@ -203,9 +203,37 @@ class Con_MaterialReceivingController extends Controller
         $itemStatuses['qc_photo'] = $uploadPhoto('qc_photo');
 
         if ($this->receivingModel->qcReview($id, $itemStatuses, $userId)) {
-            setSuccess('QC Review completed. Stock updated for accepted items.');
+            setSuccess('QC Review completed. Awaiting PM/Management Approval.');
         } else {
             setError('QC Review failed. Please check the logs.');
+        }
+        header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // PM STORE
+    // =========================================================================
+
+    public function pmStore($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (!in_array($roleId, [1, 3, 15, 20])) {
+            setError('You do not have permission to approve GRNs.');
+            header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
+            exit;
+        }
+
+        $pmNote = trim($_POST['pm_note'] ?? '');
+
+        if ($this->receivingModel->pmReview($id, $userId, $pmNote)) {
+            setSuccess('PM/Management Approval completed. Stock has been updated.');
+        } else {
+            setError('PM Approval failed. Please check the logs.');
         }
         header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
         exit;

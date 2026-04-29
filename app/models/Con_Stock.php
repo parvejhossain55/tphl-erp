@@ -313,4 +313,75 @@ class Con_Stock extends Model
             }
         }
     }
+
+    // =========================================================================
+    // BUDGET TRACKING (Initial Budget vs Received)
+    // =========================================================================
+    public function getBudgetVsReceived()
+    {
+        $sql = "
+            SELECT
+                ieb.id AS budget_id,
+                p.id AS project_id,
+                p.name AS project_name,
+                dt.name AS design_type_name,
+                wt.work_type_name,
+                m.id AS material_id,
+                m.name AS material_name,
+                m.unit,
+                iei.estimated_qty AS initial_budget_qty,
+                COALESCE(received.total_received, 0) AS total_received,
+                (iei.estimated_qty - COALESCE(received.total_received, 0)) AS available_qty
+            FROM initial_estimate_budgets ieb
+            JOIN projects p ON p.id = ieb.project_id
+            LEFT JOIN work_types wt ON wt.id = ieb.work_type_id
+            LEFT JOIN design_types dt ON dt.id = wt.design_type_id
+            JOIN initial_estimate_items iei ON iei.budget_id = ieb.id
+            JOIN con_materials m ON m.id = iei.material_id
+            LEFT JOIN (
+                SELECT
+                    pwp.initial_budget_id,
+                    poi.material_id,
+                    SUM(mri.received_quantity) AS total_received
+                FROM material_receiving_items mri
+                JOIN material_receiving mr ON mr.id = mri.receiving_id
+                JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+                JOIN purchase_orders po ON po.id = poi.purchase_order_id
+                JOIN purchase_requests pr ON pr.id = po.request_id
+                JOIN boq_master bom ON bom.id = pr.bom_id
+                JOIN target_fixed tf ON tf.id = bom.target_id
+                JOIN project_working_plans pwp ON pwp.id = tf.work_plan_id
+                WHERE mri.status = 'Accepted' 
+                  AND mr.overall_status IN ('Accepted', 'Partially Accepted')
+                GROUP BY pwp.initial_budget_id, poi.material_id
+            ) received ON received.initial_budget_id = ieb.id AND received.material_id = iei.material_id
+            WHERE ieb.status = 'approved' AND p.deleted_at IS NULL
+            ORDER BY p.id ASC, wt.id ASC, m.name ASC
+        ";
+
+        $result = $this->db->query($sql);
+        $rows = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Group by Project -> Work Type -> Material
+        $grouped = [];
+        foreach ($rows as $row) {
+            $pid = $row['project_id'];
+            $pname = $row['project_name'];
+            $wname = trim($row['design_type_name'] . ' - ' . $row['work_type_name'], ' -');
+            if (empty($wname)) $wname = 'General / Unspecified';
+
+            if (!isset($grouped[$pid])) {
+                $grouped[$pid] = [
+                    'project_name' => $pname,
+                    'work_types' => []
+                ];
+            }
+            if (!isset($grouped[$pid]['work_types'][$wname])) {
+                $grouped[$pid]['work_types'][$wname] = [];
+            }
+            $grouped[$pid]['work_types'][$wname][] = $row;
+        }
+
+        return $grouped;
+    }
 }

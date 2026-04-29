@@ -48,7 +48,15 @@ class Con_MaterialIssueController extends Controller
 
     public function create()
     {
-        $projects   = $this->projectModel->getAll();
+        // Fetch projects that have completed material_receiving (GRNs)
+        $sqlProjects = "SELECT DISTINCT p.* 
+                        FROM projects p 
+                        JOIN material_receiving mr ON mr.project_id = p.id
+                        WHERE mr.overall_status IN ('Accepted', 'Partially Accepted')
+                        ORDER BY p.name ASC";
+        $pRes = $this->db->query($sqlProjects);
+        $projects = $pRes ? $pRes->fetch_all(MYSQLI_ASSOC) : [];
+
         $warehouses = $this->warehouseModel->getAll();
         $materials  = $this->materialModel->getAll();
         $stocks     = $this->stockModel->getCurrentStock();
@@ -59,8 +67,32 @@ class Con_MaterialIssueController extends Controller
         
         $targets = [];
         try {
-            $tRes = $this->db->query("SELECT * FROM target_fixed ORDER BY id DESC");
+            $tRes = $this->db->query("
+                SELECT tf.*, p.name AS project_name 
+                FROM target_fixed tf 
+                LEFT JOIN projects p ON p.id = tf.project_id 
+                ORDER BY tf.id DESC
+            ");
             if ($tRes) $targets = $tRes->fetch_all(MYSQLI_ASSOC);
+        } catch (\Exception $e) {}
+
+        // Fetch received materials per project
+        $receivedMaterials = [];
+        try {
+            $rmRes = $this->db->query("
+                SELECT mr.project_id, m.name AS material_name, m.unit, SUM(mri.received_quantity) AS total_received
+                FROM material_receiving_items mri
+                JOIN material_receiving mr ON mr.id = mri.receiving_id
+                JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+                JOIN con_materials m ON m.id = poi.material_id
+                WHERE mri.status = 'Accepted' AND mr.overall_status IN ('Accepted', 'Partially Accepted')
+                GROUP BY mr.project_id, m.id
+            ");
+            if ($rmRes) {
+                while ($row = $rmRes->fetch_assoc()) {
+                    $receivedMaterials[$row['project_id']][] = $row;
+                }
+            }
         } catch (\Exception $e) {}
 
         // Fetch contractors from contractors table
@@ -82,6 +114,7 @@ class Con_MaterialIssueController extends Controller
             'workPlans'     => $workPlans,
             'targets'       => $targets,
             'contractors'   => $contractors,
+            'receivedMaterials' => $receivedMaterials,
         ]);
     }
 

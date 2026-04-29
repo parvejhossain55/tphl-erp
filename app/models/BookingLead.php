@@ -512,6 +512,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                p.total_share,
                f.floor_no, 
                f.price_value,
+               f.land_share_value,
                f.sqft,
                f.flat_name AS unit_name
         FROM lead_bookings lb

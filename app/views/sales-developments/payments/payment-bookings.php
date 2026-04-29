@@ -12,8 +12,13 @@ $finalAmount = !empty($booking['approved_amount'])
 $booking_paid = 0;
 $booking_pending_and_paid = 0;
 $has_registration = false;
+$existing_emi_no = null;
 
 foreach ($payments as $p) {
+    if (!empty($p['total_emi_no'])) {
+        $existing_emi_no = $p['total_emi_no'];
+    }
+    
     if ($p['payment_type'] === 'booking_money') {
         if ($p['verification_status'] == 'verified') {
             $booking_paid += $p['amount'];
@@ -123,7 +128,7 @@ if (!$is_booking_fully_paid) {
                                 <div class="form__input-title">
                                     <label class="form__input-title">Total EMI Number</label>
                                 </div>
-                                <input type="number" name="total_emi_no" class="form-control" value="">
+                                <input type="number" name="total_emi_no" class="form-control" value="<?= htmlspecialchars($existing_emi_no ?? '') ?>" <?= !empty($existing_emi_no) ? 'readonly' : '' ?>>
                             </div>
                         <?php endif; ?>
 
@@ -190,12 +195,17 @@ if (!$is_booking_fully_paid) {
                             <label class="form__input-title">Online Type *</label>
                             <input type="text" name="online_type" class="form-control" placeholder="Enter Online Type (Bkash, Nagad, etc)">
                         </div>
+                       
                         <?php
+                        $registrationAmountValue = '';
                         if ($form_mode === 'registration') {
                             $placeholderText = "Enter Registration Amount";
+                            $calcAmount = abs((float)($booking['land_share_value'] ?? 0) - (float)($booking['agreement_value'] ?? 0));
+                            $registrationAmountValue = $calcAmount;
                         } else {
                             if ($booking_pending_and_paid == 0) {
                                 $placeholderText = ($booking['approved_amount'] > 0)
+                                
                                     ? "After Discount: " . number_format($finalAmount, 2)
                                     : "Final Amount: " . number_format($finalAmount, 2);
                             } else {
@@ -207,12 +217,13 @@ if (!$is_booking_fully_paid) {
                         <!-- Amount -->
                         <div class="col-lg-6">
                             <div class="form__input-title">
-                                <label class="form__input-title">Pay Amount *</label>
+                                <label class="form__input-title">Pay Registration Money *</label>
                             </div>
                             <input type="number" step="0.01" name="amount"
                                 class="form-control"
                                 placeholder="<?= $placeholderText ?>"
                                 <?= $form_mode === 'booking_money' ? 'max="' . $remaining . '"' : '' ?>
+                                <?= $form_mode === 'registration' ? 'value="' . $registrationAmountValue . '" readonly' : '' ?>
                                 required>
                         </div>
 
@@ -314,7 +325,7 @@ if (!$is_booking_fully_paid) {
 
                                 $row_remaining = $finalAmount - $running_paid;
                                 ?>
-
+                        
                                 <tr>
                                     <td>
                                         (<?= $index + 1 ?>) <?= date('d M Y', strtotime($p['payment_date'])) ?>
@@ -353,16 +364,16 @@ if (!$is_booking_fully_paid) {
                                         <?php endif; ?>
                                     </td>
 
-                                    <td>
+                                    <td style="white-space: nowrap;">
                                         <?php if ($p['verification_status'] == 'verified'): ?>
                                             <a target="_blank"
                                                 href="<?= $GLOBALS['base_url'] ?>/payment-booking-invoice/<?= $p['id'] ?>"
                                                 class="btn btn-success btn-sm">
-                                                Print Booking Invoice
+                                                <?= $p['payment_type'] === 'registration' ? 'Print Registration Invoice' : 'Print Booking Invoice' ?>
                                             </a>
                                         <?php else: ?>
                                             <button class="btn btn-secondary btn-sm" disabled>
-                                                Print Booking Invoice
+                                                <?= $p['payment_type'] === 'registration' ? 'Print Registration Invoice' : 'Print Booking Invoice' ?>
                                             </button>
                                         <?php endif; ?>
                                     </td>

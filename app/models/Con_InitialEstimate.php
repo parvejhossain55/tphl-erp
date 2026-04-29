@@ -24,14 +24,33 @@ class Con_InitialEstimate extends Model
                        p.name        AS project_name,
                        ae.id         AS arch_id,
                        u.full_name   AS created_by_name,
-                       ab.full_name  AS approved_by_name
+                       ab.full_name  AS approved_by_name,
+                       dt.name       AS design_type_name,
+                       wt.work_type_name,
+                       wt.design_type_id AS design_type_id,
+                       CONCAT(dt.name, ' (', wt.work_type_name, ')') AS work_type_label
                 FROM {$this->budgetTable} b
                 LEFT JOIN projects            p  ON p.id  = b.project_id
                 LEFT JOIN architect_engineering ae ON ae.id = b.architecture_id
                 LEFT JOIN users               u  ON u.id  = b.created_by
                 LEFT JOIN users               ab ON ab.id = b.approved_by
+                LEFT JOIN work_types          wt ON wt.id = b.work_type_id
+                LEFT JOIN design_types        dt ON dt.id = wt.design_type_id
                 ORDER BY b.id DESC";
 
+        $result = $this->db->query($sql);
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /** Fetch all work_types with design_type name for dropdowns */
+    public function getWorkTypes()
+    {
+        $sql = "SELECT wt.id, wt.work_type_name, wt.design_type_id,
+                       dt.name AS design_type_name,
+                       CONCAT(dt.name, ' (', wt.work_type_name, ')') AS label
+                FROM work_types wt
+                LEFT JOIN design_types dt ON dt.id = wt.design_type_id
+                ORDER BY dt.name, wt.work_type_name";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
@@ -42,11 +61,16 @@ class Con_InitialEstimate extends Model
         $sql = "SELECT b.*,
                        p.name        AS project_name,
                        u.full_name   AS created_by_name,
-                       ab.full_name  AS approved_by_name
+                       ab.full_name  AS approved_by_name,
+                       dt.name       AS design_type_name,
+                       wt.work_type_name,
+                       CONCAT(dt.name, ' (', wt.work_type_name, ')') AS work_type_label
                 FROM {$this->budgetTable} b
                 LEFT JOIN projects p  ON p.id  = b.project_id
                 LEFT JOIN users    u  ON u.id  = b.created_by
                 LEFT JOIN users    ab ON ab.id = b.approved_by
+                LEFT JOIN work_types   wt ON wt.id = b.work_type_id
+                LEFT JOIN design_types dt ON dt.id = wt.design_type_id
                 WHERE b.id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $id);
@@ -54,39 +78,46 @@ class Con_InitialEstimate extends Model
         return $stmt->get_result()->fetch_assoc();
     }
 
-    /** All material items for a budget (with design type + material name) */
+    /** All material items for a budget (with work type + design type + material name) */
     public function getItemsByBudget($budgetId)
     {
         $sql = "SELECT i.id,
                        i.budget_id,
                        i.design_type_id,
+                       i.work_type_id,
                        i.material_id,
                        i.estimated_qty,
                        i.unit_cost_approx,
                        i.remarks,
                        COALESCE(i.material_unit, m.unit, '')   AS material_unit,
                        COALESCE(m.name, CONCAT('Material #', i.material_id)) AS material_name,
-                       COALESCE(dt.name, CONCAT('Type #', i.design_type_id)) AS design_type_name
+                       COALESCE(dt.name, CONCAT('Type #', i.design_type_id)) AS design_type_name,
+                       wt.work_type_name,
+                       CONCAT(dt.name, ' (', wt.work_type_name, ')') AS work_type_label
                 FROM {$this->itemsTable} i
-                LEFT JOIN design_types  dt ON dt.id = i.design_type_id
+                LEFT JOIN work_types    wt ON wt.id = i.work_type_id
+                LEFT JOIN design_types  dt ON dt.id = COALESCE(wt.design_type_id, i.design_type_id)
                 LEFT JOIN con_materials m  ON m.id  = i.material_id
                 WHERE i.budget_id = ?
-                ORDER BY i.design_type_id ASC, i.id ASC";
+                ORDER BY i.work_type_id ASC, i.id ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $budgetId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    /** All labor items for a budget (with design type) */
+    /** All labor items for a budget (with work type + design type) */
     public function getLaborsByBudget($budgetId)
     {
         $sql = "SELECT l.*,
-                       dt.name AS design_type_name
+                       dt.name AS design_type_name,
+                       wt.work_type_name,
+                       CONCAT(dt.name, ' (', wt.work_type_name, ')') AS work_type_label
                 FROM {$this->laborsTable} l
-                LEFT JOIN design_types dt ON dt.id = l.design_type_id
+                LEFT JOIN work_types    wt ON wt.id = l.work_type_id
+                LEFT JOIN design_types  dt ON dt.id = COALESCE(wt.design_type_id, l.design_type_id)
                 WHERE l.budget_id = ?
-                ORDER BY dt.name, l.labor_type_name";
+                ORDER BY wt.work_type_name, l.labor_type_name";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $budgetId);
         $stmt->execute();
@@ -190,17 +221,21 @@ class Con_InitialEstimate extends Model
     public function createBudget($data)
     {
         $sql = "INSERT INTO {$this->budgetTable}
-                    (project_id, architecture_id, start_date, end_date, total_area_sqft, other_costs, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)";
+                    (project_id, architecture_id, work_type_id, start_date, end_date, total_area_sqft, other_costs, other_cost_detail, budget_link, work_details, status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iissddi',
+            'iiissddsssi',
             $data['project_id'],
             $data['architecture_id'],
+            $data['work_type_id'],
             $data['start_date'],
             $data['end_date'],
             $data['total_area_sqft'],
             $data['other_costs'],
+            $data['other_cost_detail'],
+            $data['budget_link'],
+            $data['work_details'],
             $data['created_by']
         );
         if ($stmt->execute()) {
@@ -215,15 +250,16 @@ class Con_InitialEstimate extends Model
         if (empty($items)) return true;
 
         $sql  = "INSERT INTO {$this->itemsTable}
-                     (budget_id, design_type_id, material_id, material_unit,
+                     (budget_id, work_type_id, design_type_id, material_id, material_unit,
                       estimated_qty, unit_cost_approx, remarks)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)";
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
 
         foreach ($items as $item) {
             $stmt->bind_param(
-                'iiisdds',
+                'iiiisdds',
                 $budgetId,
+                $item['work_type_id'],
                 $item['design_type_id'],
                 $item['material_id'],
                 $item['material_unit'],
@@ -242,18 +278,20 @@ class Con_InitialEstimate extends Model
         if (empty($labors)) return true;
 
         $sql  = "INSERT INTO {$this->laborsTable}
-                     (budget_id, design_type_id, labor_type_name, rate_per_sqft, area_sqft)
-                 VALUES (?, ?, ?, ?, ?)";
+                     (budget_id, work_type_id, design_type_id, labor_type_name, rate_per_sqft, area_sqft, description)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
 
         foreach ($labors as $l) {
             $stmt->bind_param(
-                'iisdd',
+                'iiisdds',
                 $budgetId,
+                $l['work_type_id'],
                 $l['design_type_id'],
                 $l['labor_type_name'],
                 $l['rate_per_sqft'],
-                $l['area_sqft']
+                $l['area_sqft'],
+                $l['description']
             );
             $stmt->execute();
         }
@@ -375,17 +413,21 @@ class Con_InitialEstimate extends Model
 
         $stmt = $this->db->prepare(
             "UPDATE {$this->budgetTable}
-             SET project_id = ?, architecture_id = ?, start_date = ?, end_date = ?, total_area_sqft = ?, other_costs = ?
+             SET project_id = ?, architecture_id = ?, work_type_id = ?, start_date = ?, end_date = ?, total_area_sqft = ?, other_costs = ?, other_cost_detail = ?, budget_link = ?, work_details = ?
              WHERE id = ? AND status = 'pending'"
         );
         $stmt->bind_param(
-            'iissddi',
+            'iiissddsssi',
             $data['project_id'],
             $data['architecture_id'],
+            $data['work_type_id'],
             $data['start_date'],
             $data['end_date'],
             $data['total_area_sqft'],
             $data['other_costs'],
+            $data['other_cost_detail'],
+            $data['budget_link'],
+            $data['work_details'],
             $id
         );
         return $stmt->execute();

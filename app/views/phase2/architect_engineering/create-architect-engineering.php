@@ -1,8 +1,4 @@
-<?php
-$page_title = "Add Architect & Engineering";
-$page = 'Add Architect & Engineering';
-$show_breadcrumb = true;
-?>
+<?php $page_title = "Add Architect & Engineering"; $page = 'Add Architect & Engineering'; $show_breadcrumb = true; ?>
 
 <div class="row">
     <div class="card__wrapper">
@@ -11,7 +7,7 @@ $show_breadcrumb = true;
 
                 <div class="col-xl-6">
                     <label>Project <span class="text-danger">*</span></label>
-                    <select name="project_id" class="form-control" required>
+                    <select name="project_id" class="form-control select2" required>
                         <option value="">Select Project</option>
                         <?php foreach ($projects as $p): ?>
                             <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
@@ -19,19 +15,20 @@ $show_breadcrumb = true;
                     </select>
                 </div>
 
-                <div class="col-xl-6">
-                    <label>Internal Designer (User)</label>
-                    <select name="user_id" class="form-control">
-                        <option value="">Select User (Optional)</option>
-                        <?php foreach ($users as $u): ?>
-                            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+                <!-- user_id auto from session — no dropdown needed -->
 
-                <div class="col-xl-12">
+                <div class="col-xl-6">
                     <label>Full Architecture Design Link</label>
                     <input type="url" name="full_architecture_design_link" class="form-control" placeholder="https://...">
+                </div>
+
+                <div class="col-xl-6">
+                    <label>Status</label>
+                    <select name="status" class="form-control">
+                        <option value="draft">Draft</option>
+                        <option value="partially">Partially Completed</option>
+                        <option value="fully">Fully Completed</option>
+                    </select>
                 </div>
 
                 <div class="col-xl-12">

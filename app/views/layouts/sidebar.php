@@ -151,7 +151,7 @@
                     <li class="slide ">
                         <a href="<?= $base_url ?>/inventory-lists" class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
                             <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
-                            <span class="sidebar__menu-label">Project Wise Inventory</span>
+                            <span class="sidebar__menu-label">Project Wise Flat Stock</span>
                         </a>
                     </li>
 
@@ -735,8 +735,8 @@
 
                 <?php endif; ?>
                 <!--End CED CATEGORY -->
-                
-       
+
+
                 <!--Accounts CATEGORY -->
                 <?php if (hasPermission("accounts manage")):  ?>
                     <li class="sidebar__menu-category">
@@ -1033,9 +1033,6 @@
                 <?php endif; ?>
 
 
-
-
-
                 <!-- ==================== PHASE 2: CONSTRUCTION MANAGEMENT ==================== -->
                 <li class="sidebar__menu-category">
                     <span class="category-name">Construction </span>
@@ -1116,7 +1113,7 @@
                      Estimator has: Project Drawing + Estimate Budget
                      Unique: Project Drawing (QC & PTL don't have it)
                      Exclude: Construction Management -->
-                <?php if (hasPermission('Project Drawing') && hasPermission('Estimate Budget') && !hasPermission('Construction Management')): ?>
+                <?php if (hasPermission('Estimate Budget') ): ?>
                     <li class="slide <?= isActive('estimator-dashboard', $current_route) ?>">
                         <a href="<?= $base_url ?>/estimator-dashboard" class="sidebar__menu-item <?= isActive('estimator-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-calculator"></i></div>
@@ -1125,12 +1122,23 @@
                     </li>
                 <?php endif; ?>
 
+                <!-- ══ Project Structure Design Dashboard ════════════════════════════
+                     and NOT 'Construction Management' (PM/Admin see main dashboard) -->
+                <?php if (hasPermission('Project structure design') && !hasPermission('Construction Management')): ?>
+                    <li class="slide <?= isActive('project-structural-design-dashboard', $current_route) ?>">
+                        <a href="<?= $base_url ?>/project-structural-design-dashboard" class="sidebar__menu-item <?= isActive('project-structural-design-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-drafting-compass"></i></div>
+                            <span class="sidebar__menu-label">Structure Dashboard</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
 
                 <!-- Pre-Construction — only show if user has at least one permission -->
-                <?php if (hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Soil tests') || hasPermission('Construction Management')): ?>
-                    <li class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests'], $current_route) ? 'active' : '' ?>">
+                <?php if (hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Project structure design') || hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Soil tests') || hasPermission('Construction Management')): ?>
+                    <li class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests'], $current_route) ? 'active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit'], $current_route) ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon">
                                 <i class="bi bi-building"></i>
@@ -1157,9 +1165,21 @@
                                     <a class="sidebar__menu-item <?= isActive('con-project-drawings', $current_route) ?>" href="<?= $base_url ?>/con-project-drawings">Project Drawings</a>
                                 </li>
                             <?php endif; ?>
+                            <?php if (hasPermission('Project structure design')): ?>
+                                <li class="slide <?= isActive('structure-design', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('structure-design', $current_route) ?>" href="<?= $base_url ?>/structure-design">Project Structure Design</a>
+                                </li>
+                            <?php endif; ?>
+
                             <?php if (hasPermission('Soil tests') || hasPermission('Construction Management')): ?>
                                 <li class="slide <?= isActive('con-soil-tests', $current_route) ?>">
                                     <a class="sidebar__menu-item <?= isActive('con-soil-tests', $current_route) ?>" href="<?= $base_url ?>/con-soil-tests">Soil Tests</a>
+                                </li>
+                            <?php endif; ?>
+
+                            <?php if ( hasPermission('Construction Management')): ?>
+                                <li class="slide <?= isActive(['con-work-types', 'con-work-type-create', 'con-work-type-edit'], $current_route) ? 'active' : '' ?>">
+                                    <a class="sidebar__menu-item <?= isActive(['con-work-types', 'con-work-type-create', 'con-work-type-edit'], $current_route) ? 'active' : '' ?>" href="<?= $base_url ?>/con-work-types">Work Types</a>
                                 </li>
                             <?php endif; ?>
                         </ul>
@@ -1248,41 +1268,6 @@
                 <?php endif; ?>
                 <!-- ====== END Site Operations ====== -->
 
-                <?php if (hasPermission('Operation manage')): ?>
-                    <!-- Module 2: Operators / Contractors -->
-                    <li class="slide has-sub <?= isActive(['con-contractors', 'con-contractor-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-contractors', 'con-contractor-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-person-digging"></i></div>
-                            <span class="sidebar__menu-label">Contractors</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-contractors" class="sidebar__menu-item <?= isActive('con-contractors', $current_route) ?>">Constractor List</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-contractor-create" class="sidebar__menu-item <?= isActive('con-contractor-create', $current_route) ?>">Add contractor</a>
-                            </li>
-                        </ul>
-                    </li>
-
-                    <!-- Module 4: BOQ (Bill of Quantities) -->
-                    <li class="slide has-sub <?= isActive(['con-boq', 'con-boq-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-boq', 'con-boq-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-clipboard-list"></i></div>
-                            <span class="sidebar__menu-label">BOM</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-boq" class="sidebar__menu-item <?= isActive('con-boq', $current_route) ?>">BOM List</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-boq-create" class="sidebar__menu-item <?= isActive('con-boq-create', $current_route) ?>">New BOM</a>
-                            </li>
-                        </ul>
-                    </li>
-                <?php endif; ?>
                 <?php if (hasPermission('Material Manage')): ?>
                     <!-- Module 3: Materials & Inventory -->
                     <li class="slide has-sub <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks'], $current_route) ? 'active' : '' ?>">
@@ -1332,6 +1317,7 @@
                         </ul>
                     </li>
                 <?php endif; ?>
+
                 <?php if (hasPermission('Vendor Manage')): ?>
                     <!-- Module 6: Vendors -->
                     <li class="slide has-sub <?= isActive(['con-vendors', 'con-vendor-create'], $current_route) ? 'active' : '' ?>">
@@ -1361,7 +1347,8 @@
                         </ul>
                     </li>
                 <?php endif; ?>
-                <!-- Module 7: Receiving & QC -->
+
+                <!-- Module 7:Operation And  Receiving & QC -->
                 <?php if (hasPermission('Material Issue')): ?>
                     <li class="slide has-sub <?= isActive(['con-material-receivings', 'con-stocks'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-material-receivings', 'con-stocks'], $current_route) ? 'menu-open active' : '' ?>">
@@ -1396,23 +1383,28 @@
                         </ul>
                     </li>
                 <?php endif; ?>
-                <?php if (hasPermission('Vendor Penalty')): ?>
-                    <!-- Module 9: Vendor Penalties -->
-                    <li class="slide has-sub <?= isActive(['con-vendor-penalties', 'con-vendor-penalty-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-vendor-penalties', 'con-vendor-penalty-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-gavel"></i></div>
-                            <span class="sidebar__menu-label">Vendor Penalties</span>
+    
+
+                <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
+                <?php if (hasPermission('Operation manage')): ?>
+                    <!-- Module 2: Operators / Contractors -->
+                    <li class="slide has-sub <?= isActive(['con-contractors', 'con-contractor-create'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-contractors', 'con-contractor-create'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-person-digging"></i></div>
+                            <span class="sidebar__menu-label">Contractors</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide">
-                                <a href="<?= $base_url ?>/con-vendor-penalties" class="sidebar__menu-item <?= isActive('con-vendor-penalties', $current_route) ?>">Penalty List</a>
+                                <a href="<?= $base_url ?>/con-contractors" class="sidebar__menu-item <?= isActive('con-contractors', $current_route) ?>">Constractor List</a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $base_url ?>/con-vendor-penalty-create" class="sidebar__menu-item <?= isActive('con-vendor-penalty-create', $current_route) ?>">Issue Penalty</a>
+                                <a href="<?= $base_url ?>/con-contractor-create" class="sidebar__menu-item <?= isActive('con-contractor-create', $current_route) ?>">Add contractor</a>
                             </li>
                         </ul>
                     </li>
+
+
                 <?php endif; ?>
 
                 <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
@@ -1471,28 +1463,28 @@
                 <?php endif; ?>
                 <!-- ====== END Operators & Bills ====== -->
 
-             <?php if (hasPermission('Bill & Payments')): ?>
-                <!-- ====== Finance & Accounts (Batch 3 NEW) ====== -->
-                <li class="slide has-sub <?= isActive(['con-transactions', 'con-pending-payments'], $current_route) ? 'active' : '' ?>">
-                    <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-transactions', 'con-pending-payments'], $current_route) ? 'menu-open active' : '' ?>">
-                        <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
-                        <span class="sidebar__menu-label">Bill & Payments</span>
-                        <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                    </a>
-                    <ul class="sidebar-menu child2" style="display:block;">
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/con-transactions" class="sidebar__menu-item <?= isActive('con-transactions', $current_route) ?>">
-                                <i class="bi bi-journal-check me-1"></i> Transactions Ledger
-                            </a>
-                        </li>
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/con-pending-payments" class="sidebar__menu-item <?= isActive('con-pending-payments', $current_route) ?>">
-                                <i class="bi bi-clock me-1"></i> Pending Payments
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                <?php endif;?>
+                <?php if (hasPermission('Bill & Payments')): ?>
+                    <!-- ====== Finance & Accounts (Batch 3 NEW) ====== -->
+                    <li class="slide has-sub <?= isActive(['con-transactions', 'con-pending-payments'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['con-transactions', 'con-pending-payments'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
+                            <span class="sidebar__menu-label">Bill & Payments</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-transactions" class="sidebar__menu-item <?= isActive('con-transactions', $current_route) ?>">
+                                    <i class="bi bi-journal-check me-1"></i> Transactions Ledger
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-pending-payments" class="sidebar__menu-item <?= isActive('con-pending-payments', $current_route) ?>">
+                                    <i class="bi bi-clock me-1"></i> Pending Payments
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                <?php endif; ?>
                 <!-- ====== END Finance & Accounts ====== -->
 
 
@@ -1572,5 +1564,3 @@
 </div>
 <div class="app__offcanvas-overlay"></div>
 <!-- app-sidebar-end -->
-
-

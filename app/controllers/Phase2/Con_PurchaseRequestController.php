@@ -49,11 +49,39 @@ class Con_PurchaseRequestController extends Controller
         $projects  = $this->projectModel->getAll();
         $materials = $this->materialModel->getAll();
 
+        // Support ?boq_id=N coming from Procurement Dashboard "Create PR" button
+        $preBoqId     = (int)($_GET['boq_id']     ?? 0);
+        $preProjectId = (int)($_GET['project_id'] ?? 0);
+
+        $preBoqData = null;
+        if ($preBoqId) {
+            $stmtBoq = $this->db->prepare("
+                SELECT bm.*, p.name AS project_name,
+                       COUNT(bi.id) AS item_count,
+                       COALESCE(SUM(bi.total_cost), 0) AS grand_total
+                FROM boq_master bm
+                LEFT JOIN projects p ON p.id = bm.project_id
+                LEFT JOIN boq_items bi ON bi.boq_id = bm.id
+                WHERE bm.id = ? AND bm.status = 'Approved'
+                GROUP BY bm.id");
+            $stmtBoq->bind_param('i', $preBoqId);
+            $stmtBoq->execute();
+            $preBoqData = $stmtBoq->get_result()->fetch_assoc();
+
+            // If BOQ found and no project_id given, derive from BOQ
+            if ($preBoqData && !$preProjectId) {
+                $preProjectId = (int)$preBoqData['project_id'];
+            }
+        }
+
         $this->view('phase2/purchase-requests/create-purchase-request', [
             'current_route' => 'con-purchase-request-create',
             'page_title'    => 'New Purchase Request',
             'projects'      => $projects,
             'materials'     => $materials,
+            'preBoqId'      => $preBoqId,
+            'preProjectId'  => $preProjectId,
+            'preBoqData'    => $preBoqData,
         ]);
     }
 
@@ -67,6 +95,7 @@ class Con_PurchaseRequestController extends Controller
 
         $data = [
             'project_id' => (int)($_POST['project_id'] ?? 0),
+            'bom_id'     => !empty($_POST['bom_id']) ? (int)$_POST['bom_id'] : null,
             'created_by' => (int)($_SESSION['user']['id'] ?? 0),
             'status'     => $_POST['status'] ?? 'Draft',
             'notes'      => trim($_POST['notes'] ?? ''),

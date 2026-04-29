@@ -99,6 +99,9 @@ $sc = $statusMap[$overallStatus];
           <a href="<?= $base_url ?>/con-targets" class="tgt-btn-w">
             <i class="fal fa-arrow-left"></i>Back
           </a>
+          <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>" class="tgt-btn-w" style="background:linear-gradient(135deg,#2563eb,#3b82f6);border:none">
+            <i class="fal fa-plus-circle"></i>Create BOM
+          </a>
         </div>
       </div>
       <div style="text-align:right">

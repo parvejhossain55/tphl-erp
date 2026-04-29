@@ -165,4 +165,72 @@ class Con_PurchaseOrder extends Model
         $stmt->bind_param('si', $status, $id);
         return $stmt->execute();
     }
+
+    // =========================================================================
+    // BOQ REFERENCE — Trace PO → PR → BOQ
+    // =========================================================================
+
+    /**
+     * Get the BOQ (master + items) that is linked to a PO via purchase_requests.bom_id.
+     * Returns ['boq' => [...], 'items' => [...]] or null if no BOQ linked.
+     */
+    public function getLinkedBoq($poId)
+    {
+        // Step 1: get bom_id from the purchase_request linked to this PO
+        $stmt = $this->db->prepare("
+            SELECT pr.bom_id, pr.project_id, p.name AS project_name
+            FROM purchase_orders po
+            JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN projects p ON p.id = pr.project_id
+            WHERE po.id = ?
+            LIMIT 1");
+        $stmt->bind_param('i', $poId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+
+        if (!$row || empty($row['bom_id'])) {
+            return null;
+        }
+
+        $boqId = (int)$row['bom_id'];
+
+        // Step 2: get BOQ master info
+        $stmtBoq = $this->db->prepare("
+            SELECT bm.*, p.name AS project_name,
+                   tf.target_title, tf.year AS target_year,
+                   tf.month AS target_month, tf.week_number AS target_week,
+                   dt.name AS design_type_name,
+                   u.full_name AS created_by_name
+            FROM boq_master bm
+            LEFT JOIN projects     p  ON p.id  = bm.project_id
+            LEFT JOIN target_fixed tf ON tf.id = bm.target_id
+            LEFT JOIN design_types dt ON dt.id = bm.design_type_id
+            LEFT JOIN users        u  ON u.id  = bm.created_by
+            WHERE bm.id = ?
+            LIMIT 1");
+        $stmtBoq->bind_param('i', $boqId);
+        $stmtBoq->execute();
+        $boq = $stmtBoq->get_result()->fetch_assoc();
+
+        if (!$boq) {
+            return null;
+        }
+
+        // Step 3: get BOQ items
+        $stmtItems = $this->db->prepare("
+            SELECT bi.*, m.name AS material_name, m.unit,
+                   (bi.quantity * bi.unit_cost) AS line_total
+            FROM boq_items bi
+            JOIN con_materials m ON m.id = bi.material_id
+            WHERE bi.boq_id = ?
+            ORDER BY m.name ASC");
+        $stmtItems->bind_param('i', $boqId);
+        $stmtItems->execute();
+        $items = $stmtItems->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        return [
+            'boq'   => $boq,
+            'items' => $items,
+        ];
+    }
 }

@@ -65,7 +65,7 @@ class SalesDashboardController extends Controller
         $onboardedClients = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
 
         //  Booking Money Collected
-        $bookingCollectedQuery = "SELECT SUM(lp.amount) AS total_collected FROM lead_payments lp JOIN lead_bookings lb ON lp.booking_id = lb.id JOIN leads l ON lb.lead_id = l.id WHERE lp.payment_type='booking_money' AND lp.payment_status='paid'";
+        $bookingCollectedQuery = "SELECT SUM(lp.amount) AS total_collected FROM lead_payments lp JOIN lead_bookings lb ON lp.booking_id = lb.id JOIN leads l ON lb.lead_id = l.id WHERE lp.payment_type='booking_money' AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified'";
         if (!empty($teamId)) {
             $bookingCollectedQuery .= " AND l.team_id = " . (int)$teamId;
         }
@@ -100,7 +100,7 @@ class SalesDashboardController extends Controller
             FROM lead_payments lp
             JOIN lead_bookings lb ON lp.booking_id = lb.id
             JOIN leads l ON lb.lead_id = l.id
-            WHERE lp.payment_status='paid' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            WHERE lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
         ";
         if (!empty($teamId)) {
             $weeklySalesQuery .= " AND l.team_id = " . (int)$teamId;
@@ -121,7 +121,7 @@ class SalesDashboardController extends Controller
             FROM lead_payments lp
             JOIN lead_bookings lb ON lp.booking_id = lb.id
             JOIN leads l ON lb.lead_id = l.id
-            WHERE lp.payment_status='paid' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            WHERE lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
         ";
         if (!empty($teamId)) {
             $monthlySalesQuery .= " AND l.team_id = " . (int)$teamId;
@@ -142,7 +142,7 @@ class SalesDashboardController extends Controller
             FROM lead_payments lp
             JOIN lead_bookings lb ON lp.booking_id = lb.id
             JOIN leads l ON lb.lead_id = l.id
-            WHERE lp.payment_status='paid' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+            WHERE lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
         ";
         if (!empty($teamId)) {
             $yearlySalesQuery .= " AND l.team_id = " . (int)$teamId;

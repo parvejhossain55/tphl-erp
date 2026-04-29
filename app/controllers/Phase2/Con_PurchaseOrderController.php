@@ -57,10 +57,13 @@ class Con_PurchaseOrderController extends Controller
         $fullyApproved = $seApproved && $pmApproved;
 
         $canApproveSE = ($currentRoleId === 12) && !$seApproved; // && ($currentUserId !== $createdBy);
-        $canApprovePM = ($currentRoleId === 15) && !$pmApproved;
+        $canApprovePM = in_array($currentRoleId, [1, 3, 15, 20]) && !$pmApproved;
 
         $items        = $this->poModel->getItems($id);
         $pendingItems = $this->poModel->getPendingItems($id);
+
+        // Fetch the BOQ linked to this PO (via PR.bom_id) — shown to PM before approval
+        $linkedBoq = $this->poModel->getLinkedBoq($id);
 
         $this->view('phase2/purchase-orders/show-purchase-order', [
             'current_route'  => 'con-purchase-orders',
@@ -74,6 +77,7 @@ class Con_PurchaseOrderController extends Controller
             'canApproveSE'   => $canApproveSE,
             'canApprovePM'   => $canApprovePM,
             'currentRoleId'  => $currentRoleId,
+            'linkedBoq'      => $linkedBoq,
         ]);
     }
 
@@ -89,6 +93,18 @@ class Con_PurchaseOrderController extends Controller
         $result = $this->poModel->generate($requestId, $userId);
 
         if ($result['success']) {
+            // ── Send Email Notification to Approvers ─────────────────────────
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $mailService = new \ProjectWorkflowMailService($this->db);
+            // Fetch project name
+            $projectQuery = $this->db->prepare("SELECT p.name FROM purchase_requests pr JOIN projects p ON p.id = pr.project_id WHERE pr.id = ?");
+            $projectQuery->bind_param('i', $requestId);
+            $projectQuery->execute();
+            $pNameRow = $projectQuery->get_result()->fetch_assoc();
+            $projectName = $pNameRow['name'] ?? 'Unknown Project';
+
+            $mailService->notifyApproversForNewPO($requestId, $projectName, $result['id']);
+
             setSuccess('Purchase Order #' . $result['id'] . ' generated. Awaiting SE & PM approval.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$result['id']}");
         } else {
@@ -130,10 +146,10 @@ class Con_PurchaseOrderController extends Controller
             $stmt->bind_param('ii', $userId, $id);
             $stmt->execute();
 
-        } elseif ($roleId === 15) {
-            // PM approval
+        } elseif (in_array($roleId, [1, 3, 15, 20])) {
+            // PM / Top Management approval
             if (!empty($po['approved_by_pm'])) {
-                setError('PM has already approved this PO.');
+                setError('Authorized PM/Director has already approved this PO.');
                 header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
                 exit;
             }
@@ -156,6 +172,12 @@ class Con_PurchaseOrderController extends Controller
             $upd = $this->db->prepare("UPDATE purchase_orders SET status = 'Approved' WHERE id = ?");
             $upd->bind_param('i', $id);
             $upd->execute();
+
+            // ── Notify Site Operator ─────────────────────────
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $mailService = new \ProjectWorkflowMailService($this->db);
+            $mailService->notifySiteOperatorForApprovedPO($id, $po['project_name']);
+
             setSuccess('PO fully approved by SE & PM. Status updated to Approved!');
         } else {
             setSuccess('Your approval has been recorded. Waiting for the other approval.');

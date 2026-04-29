@@ -91,7 +91,23 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
 .empty-state i{font-size:32px;opacity:.25;display:block;margin-bottom:8px;}
 
 @media print {
-  .boq-hero .boq-btn-w, .boq-action-card { display:none!important; }
+  .boq-hero .boq-btn-w, 
+  .boq-action-card,
+  .app-sidebar, 
+  .sidebar, 
+  .app__header__area, 
+  .main-header-container, 
+  .main-footer { 
+      display: none !important; 
+  }
+  
+  .page__full-wrapper,
+  .page__body-wrapper {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+  }
 }
 </style>
 
@@ -124,6 +140,14 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
           <?php if ($status !== 'Approved'): ?>
           <a href="<?= $base ?>/con-boq-edit/<?= $boq['id'] ?>" class="boq-btn-w">
             <i class="fal fa-pencil"></i>Edit BOQ
+          </a>
+          <?php endif; ?>
+          <?php if ($status === 'Approved'): ?>
+          <a href="<?= $base ?>/con-purchase-request-create?boq_id=<?= $boq['id'] ?>&project_id=<?= $boq['project_id'] ?>"
+             style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;border-radius:10px;
+                    padding:7px 18px;font-size:12px;font-weight:700;text-decoration:none;
+                    display:inline-flex;align-items:center;gap:6px;border:none">
+            <i class="fal fa-cart-plus"></i>Create Purchase Request
           </a>
           <?php endif; ?>
           <a href="<?= $base ?>/con-boq" class="boq-btn-w">

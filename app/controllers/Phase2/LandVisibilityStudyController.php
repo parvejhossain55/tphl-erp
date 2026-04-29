@@ -5,6 +5,8 @@ use Controller;
 use Con_LandVisibilityStudy;
 use Project;
 
+require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+
 class LandVisibilityStudyController extends Controller {
     protected $db;
     protected $model;
@@ -22,8 +24,26 @@ class LandVisibilityStudyController extends Controller {
     }
 
     public function index() {
-        $studies = $this->model->getAll();
-        
+        $userId  = $_SESSION['user']['id']  ?? 0;
+        $roleId  = $_SESSION['user']['role_id'] ?? 0;
+        $isPmOrAdmin = in_array($roleId, [1, 2, 15, 13]); // PM, Admin, QC
+
+        if ($isPmOrAdmin) {
+            $studies = $this->model->getAll();
+        } else {
+            // Only show studies for projects where landman_id = this user
+            $stmt = $this->db->prepare("
+                SELECT lvs.*, p.name AS project_name
+                FROM land_visibility_study lvs
+                LEFT JOIN projects p ON lvs.project_id = p.id
+                WHERE p.landman_id = ?
+                ORDER BY lvs.id DESC
+            ");
+            $stmt->bind_param('i', $userId);
+            $stmt->execute();
+            $studies = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         $this->view('phase2/land_visibility_study/land-visibility-study', [
             'current_route' => 'con-land-visibility-studies',
             'studies' => $studies,
@@ -32,8 +52,9 @@ class LandVisibilityStudyController extends Controller {
     }
 
     public function create() {
-        // Fetch dependencies like projects if needed
-      $projects= $this->projectModel->getAll();
+        $userId  = $_SESSION['user']['id']  ?? 0;
+        $roleId  = $_SESSION['user']['role_id'] ?? 0;
+        $projects = $this->getMyAssignedProjects($userId, $roleId, 'landman_id');
 
         $this->view('phase2/land_visibility_study/create-land-visibility-study', [
             'current_route' => 'con-land-visibility-studies',
@@ -53,6 +74,15 @@ class LandVisibilityStudyController extends Controller {
         ];
         
         if ($this->model->create($data)) {
+            // ── Batch 2: Notify Architect to proceed with A&E ──
+            $projectId   = (int)($data['project_id']);
+            $projectName = $this->getProjectName($projectId);
+            try {
+                $wfMail = new \ProjectWorkflowMailService($this->db);
+                $wfMail->notifyArchitectAfterLandStudy($projectId, $projectName);
+            } catch (\Throwable $e) {
+                error_log('[LandVisibility] Architect email error: ' . $e->getMessage());
+            }
             setSuccess("Created Successfully");
             header("Location: " . $GLOBALS['base_url'] . "/con-land-visibility-studies");
             exit;
@@ -103,14 +133,32 @@ class LandVisibilityStudyController extends Controller {
         exit;
     }
 
-    public function delete() {
-        $id = $_POST['id'] ?? 0;
-        if ($this->model->delete($id)) {
-            setSuccess("Deleted Successfully");
-        } else {
-            setError("Failed to delete record");
+    // ─── Helper: get projects assigned to the current user ───────────
+    private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
+    {
+        // PM (15), Admin (1,2), QC (13) see ALL projects
+        if (in_array($roleId, [1, 2, 13, 15])) {
+            return $this->db->query(
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC"
+            )->fetch_all(MYSQLI_ASSOC);
         }
-        header("Location: " . $GLOBALS['base_url'] . "/con-land-visibility-studies");
-        exit;
+
+        $stmt = $this->db->prepare(
+            "SELECT id, name FROM projects
+             WHERE {$roleCol} = ? AND deleted_at IS NULL
+             ORDER BY name ASC"
+        );
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    private function getProjectName(int $projectId): string
+    {
+        $stmt = $this->db->prepare("SELECT name FROM projects WHERE id = ?");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return $row ? $row['name'] : 'Unknown Project';
     }
 }

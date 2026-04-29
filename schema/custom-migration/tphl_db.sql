@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 26, 2026 at 08:05 AM
+-- Generation Time: Apr 27, 2026 at 02:50 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -73,9 +73,17 @@ CREATE TABLE `architect_engineering` (
   `user_id` int(11) NOT NULL COMMENT 'Internal architect FK users.id',
   `full_architecture_design_link` varchar(500) DEFAULT NULL,
   `notes` text DEFAULT NULL,
+  `status` enum('draft','partially','fully') DEFAULT 'draft',
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `architect_engineering`
+--
+
+INSERT INTO `architect_engineering` (`id`, `project_id`, `user_id`, `full_architecture_design_link`, `notes`, `status`, `created_by`, `created_at`) VALUES
+(2, 9, 122, 'https://kgarch.com/how-does-the-architectural-design-process-work', 'partially complete', 'partially', 122, '2026-04-27 12:28:01');
 
 -- --------------------------------------------------------
 
@@ -752,7 +760,18 @@ INSERT INTO `designations` (`id`, `name`, `department_id`, `created_by`, `create
 (29, 'CEO', 19, NULL, '2026-04-04 11:33:25', '2026-04-04 11:33:25'),
 (30, 'COO', 19, NULL, '2026-04-04 12:26:44', '2026-04-04 12:26:44'),
 (31, 'DCEO', 19, NULL, '2026-04-04 12:27:04', '2026-04-04 12:27:04'),
-(32, 'PD', 19, NULL, '2026-04-04 12:27:16', '2026-04-04 12:27:16');
+(32, 'PD', 19, NULL, '2026-04-04 12:27:16', '2026-04-04 12:27:16'),
+(33, 'Land Manager', 18, NULL, '2026-04-21 22:53:29', '2026-04-21 22:53:29'),
+(34, 'Project Architecture ', 21, NULL, '2026-04-21 22:54:22', '2026-04-21 22:54:22'),
+(35, 'Draftsman ', 24, NULL, '2026-04-21 22:55:32', '2026-04-21 22:55:32'),
+(36, 'Project Engineer', 21, NULL, '2026-04-21 22:56:01', '2026-04-21 22:56:01'),
+(37, 'Estimator', 25, NULL, '2026-04-21 22:56:55', '2026-04-21 22:56:55'),
+(38, 'Site Engineer ', 21, NULL, '2026-04-21 22:57:37', '2026-04-21 22:57:37'),
+(39, 'Construction Manager', 21, NULL, '2026-04-21 22:58:02', '2026-04-21 22:58:02'),
+(40, 'Purchase Head', 20, NULL, '2026-04-21 22:59:29', '2026-04-21 22:59:29'),
+(41, 'Purchase Executive', 20, NULL, '2026-04-21 23:00:47', '2026-04-21 23:00:47'),
+(42, 'Purchase team leader', 20, NULL, '2026-04-21 23:01:16', '2026-04-21 23:01:16'),
+(43, 'Quality Controller(QC)', 23, NULL, '2026-04-21 23:02:11', '2026-04-21 23:02:11');
 
 -- --------------------------------------------------------
 
@@ -767,6 +786,13 @@ CREATE TABLE `design_types` (
   `created_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `design_types`
+--
+
+INSERT INTO `design_types` (`id`, `name`, `status`, `created_by`, `created_at`) VALUES
+(1, 'Architectural', 'active', 6, '2026-04-27 07:35:42');
 
 -- --------------------------------------------------------
 
@@ -1254,7 +1280,7 @@ INSERT INTO `flats` (`id`, `project_id`, `sqft`, `bhk`, `land_share_value`, `dev
 (2, 3, 1200, 3, 100000, NULL, 3, 3, 1, 1, 1, 1, 'Unit-A2', 'north', 5000000.00, 'Gym, Mosque etc', 2, 'booked', '2026-04-06 12:58:19', '2026-04-08 06:18:11', '2026-04-06 12:58:19', 1),
 (3, 9, 1200, 3, 2000000, NULL, 3, 3, 4, 1, 1, 1, 'Unit-A1', 'north', 6000000.00, 'Gym', 6, 'booked', '2026-04-08 09:56:17', '2026-04-17 05:47:40', '2026-04-08 09:56:17', 1),
 (4, 7, 1200, 3, 1200000, NULL, 3, 3, 3, 1, 1, 1, 'Unit-A2', 'north south', 7000000.00, 'Gym, Mosque etc', 6, 'booked', '2026-04-08 10:02:16', '2026-04-17 05:47:48', '2026-04-08 10:02:16', 1),
-(5, 12, 1310, 3, 1637500, NULL, 3, 3, 3, 1, 0, 6, '6 A', 'South-East', 5109000.00, '', 23, 'available', '2026-04-19 04:14:16', NULL, '2026-04-19 04:14:16', 0),
+(5, 12, 1310, 3, 1637500, NULL, 3, 3, 3, 1, 0, 6, '6 A', 'South-East', 5109000.00, '', 23, 'booked', '2026-04-19 04:14:16', NULL, '2026-04-19 04:14:16', 1),
 (6, 12, 800, 2, 100000, NULL, 2, 1, 1, 1, 1, 6, '6 B', 'East', 3120000.00, '', 23, 'available', '2026-04-19 04:45:18', NULL, '2026-04-19 04:45:18', 0);
 
 -- --------------------------------------------------------
@@ -1334,10 +1360,12 @@ CREATE TABLE `initial_estimate_budgets` (
   `id` int(11) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
   `architecture_id` int(11) UNSIGNED NOT NULL,
+  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
   `total_area_sqft` decimal(12,2) DEFAULT NULL,
   `material_cost_total` decimal(15,2) DEFAULT 0.00,
   `labor_cost_total` decimal(15,2) DEFAULT 0.00,
   `other_costs` decimal(15,2) DEFAULT 0.00,
+  `other_cost_detail` text DEFAULT NULL,
   `total_estimated_cost` decimal(15,2) DEFAULT 0.00,
   `status` enum('pending','approved','cancelled') DEFAULT 'pending',
   `approved_by` int(11) DEFAULT NULL,
@@ -1358,6 +1386,7 @@ CREATE TABLE `initial_estimate_budgets` (
 CREATE TABLE `initial_estimate_items` (
   `id` int(11) UNSIGNED NOT NULL,
   `budget_id` int(11) UNSIGNED NOT NULL,
+  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
   `design_type_id` int(11) UNSIGNED NOT NULL,
   `material_id` int(11) UNSIGNED NOT NULL,
   `material_unit` varchar(50) NOT NULL,
@@ -1375,6 +1404,7 @@ CREATE TABLE `initial_estimate_items` (
 CREATE TABLE `initial_estimate_labors` (
   `id` int(11) UNSIGNED NOT NULL,
   `budget_id` int(11) UNSIGNED NOT NULL,
+  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
   `design_type_id` int(11) UNSIGNED NOT NULL,
   `labor_type_name` varchar(100) NOT NULL,
   `rate_per_sqft` decimal(10,2) NOT NULL DEFAULT 0.00,
@@ -1425,7 +1455,7 @@ CREATE TABLE `leads` (
   `call_note` text DEFAULT NULL,
   `city` varchar(100) DEFAULT NULL,
   `lead_name` varchar(255) DEFAULT NULL,
-  `lead_type` enum('Hot','Warm','Cold') DEFAULT NULL,
+  `lead_type` enum('No Response','Pending','Prospect','High Prospect','Will Visit','Visited','Sold','Lead Transferred','Project Transferred','Not Interested','Don''t Call Again','Refund','Future','Cold','Hot','Warm') DEFAULT NULL,
   `company` varchar(255) DEFAULT NULL,
   `value_amount` decimal(15,2) DEFAULT NULL,
   `currency` enum('USD','EURO','RUBLE','POUND','BDT') DEFAULT 'BDT',
@@ -5501,7 +5531,7 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (4271, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'SM Nazrul Islam', 'DQ', 'Govt job', '8801717584043', 'called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:41:38', 'local', 9, NULL, NULL, 0),
 (4272, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'A K M Akramul Bari', 'Doctor', 'MOHFW', '8801819633993', 'called', 'busy ..wp text sent', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:41:23', 'local', 9, NULL, NULL, 0),
 (4273, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Kazi Khorshd', 'à¦¸à§à¦¬à¦ªà§à¦¨ à¦šà¦¾à¦•à¦°à¦¿ à¦•à¦°à¦¿', 'Kazi Khorshd', '8801606095151', 'called', 'wp msg sent..call didn\'t rcv', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:30:23', 'local', 9, NULL, NULL, 0),
-(4274, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Atikur Rahman', 'mid lavel job', 'ABC', '8801875293008', 'called', 'busy now..contact with me eveninig,wp knock', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:27:04', 'local', 9, NULL, NULL, 0);
+(4274, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Atikur Rahman', 'mid lavel job', 'ABC', '8801875293008', 'called', 'busy now..contact with me eveninig,wp knock', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'public', 'active', 'booked', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-26 06:38:00', 'local', 9, NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -5531,6 +5561,13 @@ CREATE TABLE `lead_bookings` (
   `attachment_image` varchar(200) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `lead_bookings`
+--
+
+INSERT INTO `lead_bookings` (`id`, `lead_id`, `project_id`, `flat_id`, `agreement_value`, `discount_amount`, `booking_date`, `booking_status`, `created_by`, `sales_by_id`, `deleted_at`, `created_at`, `updated_at`, `approval_status`, `approved_amount`, `service_fee_balance`, `landshare_status`, `payment_status`, `attachment_image`) VALUES
+(2, 4274, 12, 5, 1000000.00, NULL, '2026-04-26', 'completed', 6, 34, NULL, '2026-04-26 06:15:10', '2026-04-26 07:06:08', 'not_required', NULL, NULL, 'active', 'paid', NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -5544,7 +5581,7 @@ CREATE TABLE `lead_follow_ups` (
   `flat_id` int(11) DEFAULT NULL,
   `follow_up_date` date NOT NULL,
   `follow_up_time` time DEFAULT NULL,
-  `follow_up_type` enum('call','visit','meeting','whatsapp','email') NOT NULL,
+  `follow_up_type` enum('Inbound Call','Phone Call','WA Call','Imo Call','Messenger Call','Messenger Conversesion','WA Conversesion','Imo Message','Phone Massaging','Email','Number Off','Wrong Number','Invalid Number','Face To Face','call','visit','meeting','whatsapp','email') NOT NULL,
   `status` enum('pending','completed','missed','canceled') DEFAULT 'pending',
   `discussion_note` text DEFAULT NULL,
   `next_follow_up_date` date DEFAULT NULL,
@@ -6107,6 +6144,15 @@ CREATE TABLE `lead_payments` (
   `rejection_reason` text DEFAULT NULL COMMENT 'Mandatory reason text entered by Accounts when rejecting'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `lead_payments`
+--
+
+INSERT INTO `lead_payments` (`id`, `booking_id`, `payment_type`, `amount`, `bulk_emi_discount`, `due_emi_amount`, `parent_payment_id`, `settlement_type`, `land_share_amount`, `payment_method`, `payment_status`, `payment_date`, `emi_no`, `total_emi_no`, `transaction_ref`, `bank_name`, `bank_id`, `bank_account_no`, `cheque_no`, `service_fee`, `online_type`, `created_by`, `created_at`, `verification_status`, `attachment_image`, `verified_by`, `verified_at`, `attachment_paths`, `rejection_reason`) VALUES
+(9, 2, 'booking_money', 800000.00, 0.00, 0.00, NULL, NULL, 0.00, 'bank', 'partially_paid', '2026-04-26', NULL, 40, '123456', 'City Bank', NULL, '34287545', '', NULL, '', 6, '2026-04-26 06:16:23', 'verified', 'payments_69edadb7045a4.png', 5, '2026-04-26 06:19:08', NULL, NULL),
+(10, 2, 'booking_money', 200000.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, 40, '12313', '', NULL, '', '', NULL, '', 6, '2026-04-26 06:37:47', 'verified', '', 5, '2026-04-26 06:38:00', NULL, NULL),
+(11, 2, 'registration', 637500.00, 0.00, 0.00, NULL, NULL, 0.00, 'bank', 'paid', '2026-04-26', NULL, NULL, '122334', 'City Bank', NULL, '34287545', '', NULL, '', 6, '2026-04-26 07:05:24', 'verified', '', 5, '2026-04-26 07:06:08', NULL, NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -6254,14 +6300,6 @@ CREATE TABLE `management_cashin` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `management_cashin`
---
-
-INSERT INTO `management_cashin` (`id`, `role_name`, `role_id`, `person_name`, `transaction_date`, `source`, `description`, `amount`, `payment_method`, `payment_status`, `transaction_ref`, `bank_name`, `bank_account_no`, `cheque_no`, `online_type`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'CEO', 1, 'Mainul Hassan Dulon', '2026-04-10', 'Investement', 'test', 50000000.00, 'cash', 'paid', 'trx345', '', '', '', '', 5, '2026-04-10 10:54:35', '2026-04-10 10:54:35'),
-(2, 'CEO', 1, 'Mainul Hassan Dulon', '2026-04-17', '1110', '', 11111.00, 'cash', 'paid', '', '', '', '', '', 5, '2026-04-17 08:55:39', '2026-04-17 08:55:39');
 
 -- --------------------------------------------------------
 
@@ -6505,14 +6543,6 @@ CREATE TABLE `payslips` (
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `payslips`
---
-
-INSERT INTO `payslips` (`id`, `employee_id`, `designation_id`, `payslip_month`, `total_earning`, `total_deduction`, `net_salary`, `company_bank_id`, `status`, `payment_method`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, 0, '2026-03-01', 22100.00, 1000.00, 21100.00, 1, 'paid', 'bank', 4, '2026-03-31 11:47:19', '2026-03-31 11:48:20'),
-(2, 1, 0, '2026-04-01', 30000.00, 1000.00, 29000.00, NULL, 'pending', 'bank', 4, '2026-04-10 10:20:42', '2026-04-10 10:20:42');
-
 -- --------------------------------------------------------
 
 --
@@ -6631,7 +6661,8 @@ INSERT INTO `permissions` (`id`, `name`, `status`, `created_by`, `created_at`, `
 (44, 'Material Manage', 1, 6, '2026-04-22 00:11:03', '2026-04-22 00:11:03'),
 (45, 'Contractor Bill', 1, 6, '2026-04-22 00:12:47', '2026-04-22 00:12:47'),
 (46, 'Project Report', 1, 6, '2026-04-22 00:13:06', '2026-04-22 00:13:06'),
-(47, 'Bill & Payments', 1, 122, '2026-04-23 01:38:32', '2026-04-23 01:38:32');
+(47, 'Bill & Payments', 1, 122, '2026-04-23 01:38:32', '2026-04-23 01:38:32'),
+(48, 'Project structure design', 1, 6, '2026-04-26 12:32:57', '2026-04-26 12:32:57');
 
 -- --------------------------------------------------------
 
@@ -6679,16 +6710,17 @@ CREATE TABLE `platform_budgets` (
   `spent` decimal(12,2) DEFAULT NULL,
   `created_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `platform_name` varchar(250) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `platform_budgets`
 --
 
-INSERT INTO `platform_budgets` (`id`, `source_id`, `month`, `budget`, `spent`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, '2026-04-01', 300000.00, 200000.00, 94, '2026-04-04 11:49:29', '2026-04-04 11:49:29'),
-(2, 2, '2026-04-01', 50000.00, 40000.00, 94, '2026-04-10 10:33:09', '2026-04-10 10:33:09');
+INSERT INTO `platform_budgets` (`id`, `source_id`, `month`, `budget`, `spent`, `created_by`, `created_at`, `updated_at`, `platform_name`) VALUES
+(1, 1, '2026-04-01', 300000.00, 200000.00, 94, '2026-04-04 11:49:29', '2026-04-04 11:49:29', NULL),
+(2, 2, '2026-04-01', 50000.00, 40000.00, 94, '2026-04-10 10:33:09', '2026-04-10 10:33:09', NULL);
 
 -- --------------------------------------------------------
 
@@ -6747,6 +6779,7 @@ CREATE TABLE `projects` (
   `architect_id` int(11) DEFAULT NULL,
   `estimator_id` int(11) DEFAULT NULL,
   `qc_id` int(11) DEFAULT NULL,
+  `operator_id` int(11) DEFAULT NULL,
   `deleted_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -6754,19 +6787,19 @@ CREATE TABLE `projects` (
 -- Dumping data for table `projects`
 --
 
-INSERT INTO `projects` (`id`, `name`, `slug`, `location_id`, `community_id`, `building_type`, `total_share`, `unit_per_floor`, `floor_wise_unit_meta`, `types`, `image`, `image2`, `image3`, `front_road`, `price_range`, `hover_text`, `tag`, `plot_size`, `plot_no`, `block_no`, `brochure_link`, `description`, `apartment_count`, `amenities_details`, `amenities_image`, `map_image`, `map_link`, `project_map_location`, `passenger_lift`, `cargo_lift`, `created_by`, `created_at`, `updated_at`, `rooftop_gardening`, `swimming_pool`, `convention`, `electricity_backup`, `car_parking`, `project_sale_status`, `service_charge_per_emi`, `project_status`, `pm_id`, `site_engineer_id`, `landman_id`, `struct_engineer_id`, `operation_head_id`, `draftsman_id`, `architect_id`, `estimator_id`, `qc_id`, `deleted_at`) VALUES
-(1, 'The Premium Nobel Court', 'the-premium-nobel-court', 1, 1, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', 20, 4, '{\"typical_floor\":[{\"unit_name\":\"Unit - A\",\"sqft\":1200},{\"unit_name\":\"Unit - B\",\"sqft\":1100},{\"unit_name\":\"Unit - C\",\"sqft\":1400},{\"unit_name\":\"Unit - D\",\"sqft\":1300}]}', 'Test', '', '', '', '40', 'Under 50 Lac BDT', 'The Premium Nobel Court', NULL, 70, '5', NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 2, '', '', '', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', 1, 1, 3, '2026-02-19 17:05:16', '2026-04-07 10:44:56', 1, NULL, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:44:56'),
-(2, 'The Premium Legacy Residence', 'the-premium-legacy-residence', 2, 2, 'B2+B1+G+15', 5, 2, '{\"typical_floor\":[{\"unit_name\":\"Unit - A\",\"sqft\":1300},{\"unit_name\":\"Unit - B\",\"sqft\":1400}]}', 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', 'projects_69cdf159e1742.jpg', '', '', '40', 'Under 50 Lac BDT', '', NULL, 3.5, '', NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 1, '', '', '', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '4 Block: D Plot: 43 Land Size: 2.5 Katha Land Area: 36/50 Ashulia Model Town,', 1, 1, 2, '2026-04-02 04:32:26', '2026-04-07 10:45:05', 1, NULL, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:45:05'),
-(3, 'The Premium Glory Garden', 'the-premium-glory-garden', 2, 2, 'B+G+9', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1200},{\"unit_name\":\"B\",\"sqft\":1300},{\"unit_name\":\"C\",\"sqft\":1100}]}', '3  Bedrooms', '', '', '', '40 Feet', '50 Lac - 1 Crore BDT', 'Ashulia Model town ', NULL, 5, '', NULL, '', '', 1, '', '', '', '', '', 1, 1, 2, '2026-04-06 12:56:04', '2026-04-08 06:18:11', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 06:18:11'),
-(4, 'The Premium Twelfth Heights', 'the-premium-twelfth-heights', 1, 3, '', 32, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1550},{\"unit_name\":\"B\",\"sqft\":1550},{\"unit_name\":\"C\",\"sqft\":1600},{\"unit_name\":\"D\",\"sqft\":1600}]}', '', '', '', '', '25', '50 Lac - 1 Crore BDT', '', NULL, 12, '6460,6061,6092,6493', NULL, '', '', 0, '', '', '', '', '', 2, 1, 21, '2026-04-07 04:52:51', '2026-04-07 10:44:49', 1, NULL, 1, 0, 0, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:44:49'),
-(5, 'The Legacy Residence', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1790},{\"unit_name\":\"B\",\"sqft\":1790},{\"unit_name\":\"C\",\"sqft\":1790},{\"unit_name\":\"D\",\"sqft\":1790}]}', '3 Bedroom', 'projects_69d5fee900d47.jpeg', '', '', '50 ', '50 Lac - 1 Crore BDT', NULL, NULL, 13.91, '2', 'B', 'https://drive.google.com/file/d/1PF3KEcpfxBw0Ecz9pHzBsCkFk2SaMgoT/view?usp=drive_link', '<p>The Legacy Residence represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:17:20', '2026-04-08 07:08:25', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(6, 'The Maple Heights', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":2150},{\"unit_name\":\"C\",\"sqft\":2190},{\"unit_name\":\"D\",\"sqft\":2190}]}', '4 Bedroom', 'projects_69d5ff07e1c77.jpeg', '', '', '30', '1 Crore - 2 Crore BDT', NULL, NULL, 14.58, '2', 'B', 'https://drive.google.com/file/d/1MeywaLCcU3IET53mkHMnL4dXiukEvQ-5/view?usp=drive_link', '<p>The Maple Heights represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:22:49', '2026-04-08 07:08:55', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(7, 'The Premium Signature Heights', NULL, 1, 3, 'B+G+12', 36, 3, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1950}]}', '3 Bedroom', 'projects_69d5ff409b76f.jpeg', '', '', '25', '1 Crore - 2 Crore BDT', NULL, NULL, 16.88, '6168 U, 6168 M, 6168 T', 'N', 'https://drive.google.com/file/d/1MDZY987dskuwdA2n-zH68W6XsjCSNgUc/view?usp=drive_link', '<p class=\"text-base sm:text-lg leading-relaxed text-neutral-700 max-w-xl animate-fade-up delay-200\">The Signature Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/nVMLyaaQGiqZn6fi6', '23°48\'38.2', 2, 0, 2, '2026-04-08 06:57:40', '2026-04-08 07:09:52', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(8, 'Test project ', 'test-project', 1, 1, 'test', NULL, NULL, NULL, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', NULL, NULL, NULL, '40 Feet', 'Under 50 Lac BDT', 'The Premium Nobel Court', NULL, 3, '0', '3', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 1, '0', NULL, NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '4 Block: D Plot: 43 Land Size: 2.5 Katha Land Area: 36/50 Ashulia Model Town,', 1, NULL, 2, '2026-04-08 07:03:35', '2026-04-08 07:03:44', 1, 0, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 07:03:44'),
-(9, 'The Crown Pavilion', 'the-crown-pavilion', 2, 2, 'B1+G+14', 126, 9, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":635},{\"unit_name\":\"B\",\"sqft\":900},{\"unit_name\":\"C\",\"sqft\":680},{\"unit_name\":\"D\",\"sqft\":785},{\"unit_name\":\"E\",\"sqft\":715},{\"unit_name\":\"F\",\"sqft\":755},{\"unit_name\":\"G\",\"sqft\":610},{\"unit_name\":\"H\",\"sqft\":1100},{\"unit_name\":\"I\",\"sqft\":1140}]}', '1, 2, 3 Bedroom', 'projects_69d5fe85e4a00.jpeg', '', '', '30', 'Under 50 Lac BDT', '', NULL, 12.77, '2', 'B', 'https://drive.google.com/file/d/1WWOYZU0AGGHb6uJDe1SOhOEHsIbJFGpN/view?usp=drive_link', '<p>The Premium Crown Pavilion is designed as an studio oasis, where lush greenery meets contemporary modern architecture. With coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 07:06:45', '2026-04-08 07:06:45', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(10, 'Test Project', 'test-project-1', 1, 2, '', NULL, NULL, NULL, '', NULL, NULL, NULL, '', 'Under 50 Lac BDT', '', NULL, 0, '', '', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 2, '2026-04-08 07:14:10', '2026-04-08 07:14:27', 0, 0, 0, 0, 0, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 07:14:27'),
-(11, 'The Premium Royel City Commercial', 'the-premium-royel-city-commercial', 2, 1, 'B2+B1+G+14', NULL, NULL, NULL, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', NULL, NULL, NULL, '40', 'Under 50 Lac BDT', '', NULL, 0, '', '', '', '', 1, '', NULL, NULL, '', '', 1, 1, 23, '2026-04-18 15:36:19', '2026-04-19 04:10:16', 1, 0, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-19 04:10:16'),
-(12, 'TPRC Crown Tower', 'tprc-crown-tower', 3, 1, 'B3+B2+B1+G+20', 135, 9, '0', 'Residential', NULL, NULL, NULL, '40,30,25 Feet', NULL, '', NULL, 71, '14', 'I', '', '', NULL, '', NULL, NULL, '', '', 2, 1, 23, '2026-04-19 04:09:44', '2026-04-19 04:09:44', 1, 0, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `projects` (`id`, `name`, `slug`, `location_id`, `community_id`, `building_type`, `total_share`, `unit_per_floor`, `floor_wise_unit_meta`, `types`, `image`, `image2`, `image3`, `front_road`, `price_range`, `hover_text`, `tag`, `plot_size`, `plot_no`, `block_no`, `brochure_link`, `description`, `apartment_count`, `amenities_details`, `amenities_image`, `map_image`, `map_link`, `project_map_location`, `passenger_lift`, `cargo_lift`, `created_by`, `created_at`, `updated_at`, `rooftop_gardening`, `swimming_pool`, `convention`, `electricity_backup`, `car_parking`, `project_sale_status`, `service_charge_per_emi`, `project_status`, `pm_id`, `site_engineer_id`, `landman_id`, `struct_engineer_id`, `operation_head_id`, `draftsman_id`, `architect_id`, `estimator_id`, `qc_id`, `operator_id`, `deleted_at`) VALUES
+(1, 'The Premium Nobel Court', 'the-premium-nobel-court', 1, 1, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', 20, 4, '{\"typical_floor\":[{\"unit_name\":\"Unit - A\",\"sqft\":1200},{\"unit_name\":\"Unit - B\",\"sqft\":1100},{\"unit_name\":\"Unit - C\",\"sqft\":1400},{\"unit_name\":\"Unit - D\",\"sqft\":1300}]}', 'Test', '', '', '', '40', 'Under 50 Lac BDT', 'The Premium Nobel Court', NULL, 70, '5', NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 2, '', '', '', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', 1, 1, 3, '2026-02-19 17:05:16', '2026-04-07 10:44:56', 1, NULL, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:44:56'),
+(2, 'The Premium Legacy Residence', 'the-premium-legacy-residence', 2, 2, 'B2+B1+G+15', 5, 2, '{\"typical_floor\":[{\"unit_name\":\"Unit - A\",\"sqft\":1300},{\"unit_name\":\"Unit - B\",\"sqft\":1400}]}', 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', 'projects_69cdf159e1742.jpg', '', '', '40', 'Under 50 Lac BDT', '', NULL, 3.5, '', NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 1, '', '', '', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '4 Block: D Plot: 43 Land Size: 2.5 Katha Land Area: 36/50 Ashulia Model Town,', 1, 1, 2, '2026-04-02 04:32:26', '2026-04-07 10:45:05', 1, NULL, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:45:05'),
+(3, 'The Premium Glory Garden', 'the-premium-glory-garden', 2, 2, 'B+G+9', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1200},{\"unit_name\":\"B\",\"sqft\":1300},{\"unit_name\":\"C\",\"sqft\":1100}]}', '3  Bedrooms', '', '', '', '40 Feet', '50 Lac - 1 Crore BDT', 'Ashulia Model town ', NULL, 5, '', NULL, '', '', 1, '', '', '', '', '', 1, 1, 2, '2026-04-06 12:56:04', '2026-04-08 06:18:11', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 06:18:11'),
+(4, 'The Premium Twelfth Heights', 'the-premium-twelfth-heights', 1, 3, '', 32, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1550},{\"unit_name\":\"B\",\"sqft\":1550},{\"unit_name\":\"C\",\"sqft\":1600},{\"unit_name\":\"D\",\"sqft\":1600}]}', '', '', '', '', '25', '50 Lac - 1 Crore BDT', '', NULL, 12, '6460,6061,6092,6493', NULL, '', '', 0, '', '', '', '', '', 2, 1, 21, '2026-04-07 04:52:51', '2026-04-07 10:44:49', 1, NULL, 1, 0, 0, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-07 10:44:49'),
+(5, 'The Legacy Residence', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1790},{\"unit_name\":\"B\",\"sqft\":1790},{\"unit_name\":\"C\",\"sqft\":1790},{\"unit_name\":\"D\",\"sqft\":1790}]}', '3 Bedroom', 'projects_69d5fee900d47.jpeg', '', '', '50 ', '50 Lac - 1 Crore BDT', NULL, NULL, 13.91, '2', 'B', 'https://drive.google.com/file/d/1PF3KEcpfxBw0Ecz9pHzBsCkFk2SaMgoT/view?usp=drive_link', '<p>The Legacy Residence represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:17:20', '2026-04-08 07:08:25', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(6, 'The Maple Heights', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":2150},{\"unit_name\":\"C\",\"sqft\":2190},{\"unit_name\":\"D\",\"sqft\":2190}]}', '4 Bedroom', 'projects_69d5ff07e1c77.jpeg', '', '', '30', '1 Crore - 2 Crore BDT', NULL, NULL, 14.58, '2', 'B', 'https://drive.google.com/file/d/1MeywaLCcU3IET53mkHMnL4dXiukEvQ-5/view?usp=drive_link', '<p>The Maple Heights represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:22:49', '2026-04-08 07:08:55', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(7, 'The Premium Signature Heights', NULL, 1, 3, 'B+G+12', 36, 3, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1950}]}', '3 Bedroom', 'projects_69d5ff409b76f.jpeg', '', '', '25', '1 Crore - 2 Crore BDT', NULL, NULL, 16.88, '6168 U, 6168 M, 6168 T', 'N', 'https://drive.google.com/file/d/1MDZY987dskuwdA2n-zH68W6XsjCSNgUc/view?usp=drive_link', '<p class=\"text-base sm:text-lg leading-relaxed text-neutral-700 max-w-xl animate-fade-up delay-200\">The Signature Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/nVMLyaaQGiqZn6fi6', '23°48\'38.2', 2, 0, 2, '2026-04-08 06:57:40', '2026-04-08 07:09:52', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(8, 'Test project ', 'test-project', 1, 1, 'test', NULL, NULL, NULL, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', NULL, NULL, NULL, '40 Feet', 'Under 50 Lac BDT', 'The Premium Nobel Court', NULL, 3, '0', '3', 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '', 1, '0', NULL, NULL, 'https://drive.google.com/file/d/1Shb6eNMOd6KtKCO4aMYMVhIsVJn_qf7n/view?usp=sharing', '4 Block: D Plot: 43 Land Size: 2.5 Katha Land Area: 36/50 Ashulia Model Town,', 1, NULL, 2, '2026-04-08 07:03:35', '2026-04-08 07:03:44', 1, 0, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 07:03:44'),
+(9, 'The Crown Pavilion', 'the-crown-pavilion', 2, 2, 'B1+G+14', 126, 9, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":635},{\"unit_name\":\"B\",\"sqft\":900},{\"unit_name\":\"C\",\"sqft\":680},{\"unit_name\":\"D\",\"sqft\":785},{\"unit_name\":\"E\",\"sqft\":715},{\"unit_name\":\"F\",\"sqft\":755},{\"unit_name\":\"G\",\"sqft\":610},{\"unit_name\":\"H\",\"sqft\":1100},{\"unit_name\":\"I\",\"sqft\":1140}]}', '1, 2, 3 Bedroom', 'projects_69d5fe85e4a00.jpeg', '', '', '30', 'Under 50 Lac BDT', NULL, NULL, 12.77, '2', 'B', 'https://drive.google.com/file/d/1WWOYZU0AGGHb6uJDe1SOhOEHsIbJFGpN/view?usp=drive_link', '<p>The Premium Crown Pavilion is designed as an studio oasis, where lush greenery meets contemporary modern architecture. With coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 6, '2026-04-08 07:06:45', '2026-04-27 10:55:02', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, 120, 123, 121, 129, NULL, 124, 122, 125, 126, 128, NULL),
+(10, 'Test Project', 'test-project-1', 1, 2, '', NULL, NULL, NULL, '', NULL, NULL, NULL, '', 'Under 50 Lac BDT', '', NULL, 0, '', '', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 2, '2026-04-08 07:14:10', '2026-04-08 07:14:27', 0, 0, 0, 0, 0, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-08 07:14:27'),
+(11, 'The Premium Royel City Commercial', 'the-premium-royel-city-commercial', 2, 1, 'B2+B1+G+14', NULL, NULL, NULL, 'STUDIO, 1, 2 BEDROOMS & PENTHOUSE', NULL, NULL, NULL, '40', 'Under 50 Lac BDT', '', NULL, 0, '', '', '', '', 1, '', NULL, NULL, '', '', 1, 1, 23, '2026-04-18 15:36:19', '2026-04-19 04:10:16', 1, 0, 0, 0, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-19 04:10:16'),
+(12, 'TPRC Crown Tower', 'tprc-crown-tower', 3, 1, 'B3+B2+B1+G+20', 135, 9, '0', 'Residential', NULL, NULL, NULL, '40,30,25 Feet', NULL, '', NULL, 71, '14', 'I', '', '', NULL, '', NULL, NULL, '', '', 2, 1, 23, '2026-04-19 04:09:44', '2026-04-19 04:09:44', 1, 0, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -6790,6 +6823,26 @@ CREATE TABLE `project_drawings` (
   `status` enum('Draft','Submitted','Approved','Rejected') NOT NULL DEFAULT 'Draft',
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `project_structural_designs`
+--
+
+CREATE TABLE `project_structural_designs` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `project_id` bigint(20) UNSIGNED NOT NULL,
+  `designer_type` enum('internal','external') NOT NULL DEFAULT 'internal',
+  `designer_name` varchar(255) NOT NULL,
+  `company_name` varchar(200) DEFAULT NULL,
+  `designer_phone` varchar(20) DEFAULT NULL,
+  `designer_address` text DEFAULT NULL,
+  `design_link` text NOT NULL,
+  `created_by` bigint(20) UNSIGNED NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -6988,7 +7041,9 @@ INSERT INTO `roles` (`id`, `name`, `created_by`, `created_at`, `updated_at`) VAL
 (16, 'Draftsman ', NULL, '2026-04-21 23:15:23', '2026-04-21 23:15:23'),
 (17, 'Purchase team leader', NULL, '2026-04-21 23:17:55', '2026-04-21 23:17:55'),
 (18, 'Project Architecture ', NULL, '2026-04-21 23:25:26', '2026-04-21 23:25:26'),
-(19, 'Estimator', NULL, '2026-04-22 02:35:08', '2026-04-22 02:35:08');
+(19, 'Estimator', NULL, '2026-04-22 02:35:08', '2026-04-22 02:35:08'),
+(20, 'Site Operator', NULL, '2026-04-26 10:03:50', '2026-04-26 10:03:50'),
+(21, 'Structure designer', NULL, '2026-04-26 11:13:09', '2026-04-26 11:13:09');
 
 -- --------------------------------------------------------
 
@@ -7053,43 +7108,48 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (178, 6, 25, '2026-04-10 08:55:37', '2026-04-10 08:55:37'),
 (179, 6, 20, '2026-04-10 08:55:37', '2026-04-10 08:55:37'),
 (180, 6, 13, '2026-04-10 08:55:37', '2026-04-10 08:55:37'),
-(181, 3, 10, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(182, 3, 3, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(183, 3, 1, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(184, 3, 5, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(185, 3, 39, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(186, 3, 47, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(187, 3, 41, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(188, 3, 21, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(189, 3, 12, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(190, 3, 26, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(191, 3, 45, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(192, 3, 40, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(193, 3, 31, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(194, 3, 6, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(195, 3, 28, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(196, 3, 27, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(197, 3, 25, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(198, 3, 33, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(199, 3, 44, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(200, 3, 14, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(201, 3, 8, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(202, 3, 38, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(203, 3, 34, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(204, 3, 29, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(205, 3, 46, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(206, 3, 32, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(207, 3, 35, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(208, 3, 11, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(209, 3, 7, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(210, 3, 24, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(211, 3, 4, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(212, 3, 30, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(213, 3, 13, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(214, 3, 36, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(215, 3, 37, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(216, 3, 2, '2026-04-26 05:33:54', '2026-04-26 05:33:54'),
-(217, 3, 42, '2026-04-26 05:33:54', '2026-04-26 05:33:54');
+(256, 3, 10, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(257, 3, 3, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(258, 3, 1, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(259, 3, 5, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(260, 3, 39, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(261, 3, 47, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(262, 3, 41, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(263, 3, 21, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(264, 3, 12, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(265, 3, 26, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(266, 3, 45, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(267, 3, 40, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(268, 3, 31, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(269, 3, 6, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(270, 3, 28, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(271, 3, 27, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(272, 3, 25, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(273, 3, 33, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(274, 3, 44, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(275, 3, 43, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(276, 3, 14, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(277, 3, 8, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(278, 3, 38, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(279, 3, 34, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(280, 3, 29, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(281, 3, 46, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(282, 3, 48, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(283, 3, 32, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(284, 3, 35, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(285, 3, 11, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(286, 3, 7, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(287, 3, 24, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(288, 3, 4, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(289, 3, 30, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(290, 3, 13, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(291, 3, 36, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(292, 3, 37, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(293, 3, 2, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(294, 3, 42, '2026-04-27 05:06:29', '2026-04-27 05:06:29'),
+(295, 14, 27, '2026-04-27 11:14:27', '2026-04-27 11:14:27'),
+(296, 16, 34, '2026-04-27 11:14:41', '2026-04-27 11:14:41'),
+(298, 18, 39, '2026-04-27 12:24:50', '2026-04-27 12:24:50');
 
 -- --------------------------------------------------------
 
@@ -7387,12 +7447,12 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `email`, `designation_id`, `address`, `nid`, `role_id`, `password`, `photo`, `media_link1`, `media_link2`, `last_logout`, `created_by`, `created_at`, `updated_at`, `team_id`) VALUES
-(1, 0, 'Farzana', 'farzana', '01873244236', 'farzana.tphl13@gmail.com', 28, 'Dhaka', '123', 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, '', '', '2026-04-09 05:34:11', 6, '2026-02-22 06:47:08', '2026-04-09 05:34:11', 0),
+(1, NULL, 'Farzana', 'farzana', '01873244236', 'farzana.tphl@gmail.com', 28, 'Dhaka', '123', 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, '', '', '2026-04-09 05:34:11', 6, '2026-02-22 06:47:08', '2026-04-27 11:13:27', 0),
 (2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-04-19 09:43:10', NULL, '2026-02-22 06:47:08', '2026-04-19 09:43:10', NULL),
 (3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 0, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-04-19 05:54:47', 4, '2026-02-23 03:24:25', '2026-04-19 05:54:47', 0),
 (4, 1008, 'Md. Jasim Uddin', 'Jasim Uddin', '01762013007', 'hr@gmail.com', 14, 'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.', '1903663282', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, '', '', '2026-04-24 12:21:28', 4, '2026-02-23 05:44:19', '2026-04-24 12:21:28', NULL),
 (5, 0, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 3, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, '', '', '2026-04-08 09:48:37', 6, '2026-02-23 06:11:06', '2026-04-08 09:48:37', NULL),
-(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-04-25 05:55:43', 110, '2026-03-29 03:44:44', '2026-04-25 05:55:43', 0),
+(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-04-27 17:57:16', 110, '2026-03-29 03:44:44', '2026-04-27 11:57:16', 0),
 (7, NULL, 'CED', 'CED', '01872364346', 'ced@gmail.com', 1, 'Dhaka', '823445', 7, '$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.', NULL, '', '', '2026-03-31 12:05:54', 6, '2026-03-29 04:01:38', '2026-03-31 12:05:54', NULL),
 (8, NULL, 'Sales Team Head', 'Sales Head', '01327488234', 'sales-head@gmail.com', 1, 'Dhaka', '09231943', 9, '$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.', NULL, '', '', '2026-04-08 09:30:55', 1, '2026-03-29 04:16:47', '2026-04-08 09:30:55', NULL),
 (9, 3, 'Md. rafi', 'admin_39_', '01234567890', 'rafi@easytechx.com', 9, 'ADDL Tower, Dhanmondi 27/A', '', 8, '$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG', NULL, '', '', '2026-03-29 10:24:18', 0, '2026-03-29 10:23:39', '2026-03-30 16:36:23', NULL),
@@ -7467,11 +7527,11 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (90, 79, 'Moonmoon Akter Oishy', 'Moonmoon Akter Oishy', '01958253355', 'oishytphl@gmail.com', 24, 'Road No -1,  B - 45 Bank Town,  Savar', '1047316906', 2, '$2y$10$Sdqb84cXh8GKU9Okw2rRSe7k3N6a0riQJVPBDqnRhqa9px28WsDY.', NULL, '', '', '2026-03-30 11:43:09', 0, '2026-03-30 11:43:09', '2026-03-30 16:36:23', NULL),
 (91, 76, 'Rubina Islam', 'Rubina Islam', '01958253349', 'rubinatphl49@gmail.com', 15, '', '', 2, '$2y$10$r8GdWRKSpeZjr24W1pjGn.uaye6s/.clnO7G8ESZI3NnV844NrnCS', NULL, '', '', '2026-03-30 11:44:43', 0, '2026-03-30 11:44:43', '2026-03-30 16:36:23', NULL),
 (92, 80, 'Afrin Jahan Anika', 'Afrin Jahan Anika', '01958253335', 'anika.tphl@gmail.com', 13, '39/b senpara porbota mirpur 10', '1032936708', 2, '$2y$10$nBTOuqyG5vmEhBfJADloguSRdoA383Hrd.mFIuseKxOXG3bkfZYZG', NULL, '', '', '2026-03-30 11:52:36', 0, '2026-03-30 11:52:36', '2026-03-30 16:36:23', NULL),
-(94, 0, 'Mehedi H. Jony', 'Mehedi H. Jony', '01861685153', 'mehedihjony.tphl@gmail.com', 28, 'Dhaka', '', 10, '$2y$10$YO/Y1hPq8lo0NTFbWbSX5u1hyUYn.i0F1s3KcNN9Xx8Askz3/5q0O', NULL, '', '', '2026-04-10 10:34:37', 6, '2026-03-30 16:43:54', '2026-04-10 10:34:37', 0),
+(94, 0, 'Mehedi H. Jony', 'Mehedi H. Jony', '01861685153', 'mehedihjony.tphl@gmail.com', 28, 'Dhaka', '', 10, '$2y$10$YO/Y1hPq8lo0NTFbWbSX5u1hyUYn.i0F1s3KcNN9Xx8Askz3/5q0O', NULL, '', '', '2026-04-27 12:09:24', 6, '2026-03-30 16:43:54', '2026-04-27 06:09:24', 0),
 (95, 81, 'Riya', 'Riya', '01778234546', 'riya@gmail.com', 28, 'Dhaka', '34', 5, '$2y$10$cUYgCjvi4yiNDYS8mTGWsOkEvOJR32hiN/5Dsku7ULURP.tcviqpK', NULL, '', '', '2026-04-04 11:27:15', 4, '2026-03-31 06:40:46', '2026-04-04 11:27:15', 0),
 (98, 82, 'S.A Arnob', 'S.A Arnob', '01958253347', 'arnob.tphl@gmail.com', 20, 'Dottopara, Asuliya, Dhaka', '', 8, '$2y$10$aaooqfFW63prXcheowgGMeuZAHV88qpV1JQMljfQiHbOv2qCKtFdy', NULL, '', '', '2026-03-31 08:18:16', 0, '2026-03-31 08:18:16', '2026-04-12 11:41:08', 4),
 (100, 83, 'Md. Mamunur Rahman', 'Md. Mamunur Rahman', '01958253342', 'mamunur.tphl@gmail.com', 19, '', '1947418776', 7, '$2y$10$ADpw3aS2xygSq6zySs.GaOoDAhv9XTdf3jXLxpZeyQ8fJinfXiZwG', NULL, '', '', '2026-03-31 08:58:36', 0, '2026-03-31 08:58:36', '2026-03-31 08:58:36', 2),
-(102, 84, 'Mehedi Hasan Rudro', 'Rudro', '01872356456', 'rudro@gmail.com', 21, 'N/A', '', 11, '$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra', NULL, '', '', '2026-04-21 10:52:39', 4, '2026-04-02 08:14:46', '2026-04-21 10:52:39', 0),
+(102, 84, 'Mehedi Hasan Rudro', 'Rudro', '01872356456', 'rudro@gmail.com', 21, 'N/A', '', 11, '$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra', NULL, '', '', '2026-04-27 12:10:30', 4, '2026-04-02 08:14:46', '2026-04-27 06:10:30', 0),
 (103, 85, 'Mehedi Hasan Shuvo', 'hasan shuvo', '01901365048', 'shuvo.tphl@gmail.com', 17, 'Dhaka', '', 5, '$2y$10$IQykvHC0cycV2VPhGMjfz.h6JdRuJzPkX4fw20XGlbQlHrPo4hKbu', NULL, '', '', '2026-04-09 04:00:41', 0, '2026-04-03 13:29:06', '2026-04-09 04:00:41', 5),
 (105, 11, 'Mr. Ibrahim Khalil', 'ibrahim khalil', '01958253319', 'ibrahimkhalil.tphl@gmail.com', 20, '5/9, Dakkhin Rajashon, Savar, Dhaka', '', 8, '$2y$10$qExZ9v2Jozj5g9ct4UC3TeFToO.2UTmVBXrWXXmDmmjelR0co0hTG', NULL, '', '', '2026-04-04 05:57:01', 0, '2026-04-04 05:57:01', '2026-04-12 11:54:39', 9),
 (110, NULL, 'Mainul Hassan Dulon', 'Mainul H. Dulon', '01933657804', 'ceo@dpremiumhomes.com', 29, 'Dhaka', '', 3, '$2y$10$8Z5Mj0/6UMu4MDupWjOnGOv6CvqtAqS5E0SdhEiOBvEp.oUszI5/e', NULL, '', '', '2026-04-08 11:18:00', 6, '2026-04-04 11:35:30', '2026-04-08 11:18:00', 0),
@@ -7482,7 +7542,17 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (116, 12, 'Nahian', 'rafi', '01123456789', 'nahian.easytechx@gmail.com', 14, 'asdfadf', '55555534434', 8, '$2y$10$RHjmhMhmgwE/OuuD2c92suYCaEZlm5RN0UhhFbAz2hRBKdeXj6Fe2', NULL, '', '', '2026-04-08 10:14:38', 6, '2026-04-08 10:14:38', '2026-04-08 10:15:58', 0),
 (117, 86, 'Test Employee', 'Test', '01790128472', 'test3@gmail.com', 32, 'Mohammadpur, Dhaka-1207', '', 0, '$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW', NULL, '', '', '2026-04-10 10:07:16', 0, '2026-04-10 10:07:16', '2026-04-10 10:07:16', 0),
 (118, 87, 'Shazzadur Rahman Shoumic', 'Shazzad', '01765562314', 'shazzadur.tphl@gmail.com', 20, '', '', 8, '$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6', NULL, '', '', '2026-04-12 11:46:52', 0, '2026-04-12 11:46:52', '2026-04-12 11:46:52', 5),
-(119, 90, 'Shohanur Rahaman', 'Shohanur Rahaman', '01958253372', 'shohan.tphl@gmail.com', 13, 'Khagan Ashulia', '', 11, '$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK', NULL, '', '', '2026-04-19 04:42:58', 119, '2026-04-17 13:13:21', '2026-04-19 04:42:58', 0);
+(119, 90, 'Shohanur Rahaman', 'Shohanur Rahaman', '01958253372', 'shohan.tphl@gmail.com', 13, 'Khagan Ashulia', '', 11, '$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK', NULL, '', '', '2026-04-19 04:42:58', 119, '2026-04-17 13:13:21', '2026-04-19 04:42:58', 0),
+(120, NULL, 'Project Manager1', 'Project Manager1', '01876123454', 'farzana.tphl13@gmail.com', 36, 'Dhaka', '', 15, '$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu', NULL, '', '', '2026-04-26 15:55:58', 6, '2026-04-26 09:55:58', '2026-04-27 11:13:54', 0),
+(121, NULL, 'Land Man1', 'Land Man1', '01993878733', 'farzana.tech24@gmail.com', 33, 'Dhaka', '', 14, '$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO', NULL, '', '', '2026-04-27 17:55:26', 6, '2026-04-26 09:56:52', '2026-04-27 11:55:26', 0),
+(122, NULL, 'Mr. Architect1', 'Mr. Architect1', '01875438578', 'architect1@gmail.com', 34, 'Dhaka', '', 18, '$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2', NULL, '', '', '2026-04-27 18:23:24', 6, '2026-04-26 09:58:02', '2026-04-27 12:23:24', 0),
+(123, NULL, 'Mr. Site Engineer1', 'Mr. Site Engineer1', '01987328476', 'se1@gmail.com', 37, 'Dhaka', '', 12, '$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi', NULL, '', '', '2026-04-26 15:58:54', 6, '2026-04-26 09:58:54', '2026-04-26 09:58:54', 0),
+(124, NULL, 'Mr. Draftsman1', 'Mr. Draftsman1', '', 'draft1@gmail.com', 35, 'dhaka', '', 16, '$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De', NULL, '', '', '2026-04-26 15:59:33', 6, '2026-04-26 09:59:33', '2026-04-26 09:59:33', 0),
+(125, NULL, 'Mr Estimator1', 'Mr Estimator1', '', 'estimator1@gmail.com', 37, 'dhaka', '', 19, '$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay', NULL, '', '', '2026-04-26 16:00:08', 6, '2026-04-26 10:00:08', '2026-04-26 10:00:08', 0),
+(126, NULL, 'Mr. QC1', 'Mr. QC1', '01986378256', 'qc1@gmail.com', 43, 'Dhaka', '', 13, '$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi', NULL, '', '', '2026-04-26 16:00:52', 6, '2026-04-26 10:00:52', '2026-04-26 10:00:52', 0),
+(127, NULL, 'Mr Purchase Head1', 'Mr Purchase Head1', '', 'pd1@gmail.com', 42, 'Dhaka', '', 17, '$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe', NULL, '', '', '2026-04-26 16:01:41', 6, '2026-04-26 10:01:41', '2026-04-26 10:01:41', 0),
+(128, NULL, 'Mr Site Operators1', 'Mr Site Operators1', '01723876324', 'sadikaafrin170043@gmail.com', 38, 'Dhaka', '', 20, '$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q', NULL, '', '', '2026-04-26 16:05:25', 6, '2026-04-26 10:05:25', '2026-04-27 10:24:32', 0),
+(129, NULL, 'Mr Structure Designer1', 'Mr Structure Designer1', '01653247632', 'nahian.tphl@gmail.com', 15, 'Dhaka', '', 21, '$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G', NULL, '', '', '2026-04-26 17:41:57', 6, '2026-04-26 11:41:57', '2026-04-27 10:21:38', 0);
 
 -- --------------------------------------------------------
 
@@ -7630,6 +7700,29 @@ CREATE TABLE `whatsapp_messages` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `status` enum('pending','sent','delivered','failed') DEFAULT 'pending'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `work_types`
+--
+
+CREATE TABLE `work_types` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `design_type_id` bigint(20) UNSIGNED NOT NULL,
+  `work_type_name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `created_by` bigint(20) UNSIGNED NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `work_types`
+--
+
+INSERT INTO `work_types` (`id`, `design_type_id`, `work_type_name`, `description`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 1, 'Civil Work', '', 6, '2026-04-27 07:36:43', '2026-04-27 07:36:43');
 
 --
 -- Indexes for dumped tables
@@ -8179,6 +8272,12 @@ ALTER TABLE `project_drawings`
   ADD KEY `idx_pd_created_by` (`created_by`);
 
 --
+-- Indexes for table `project_structural_designs`
+--
+ALTER TABLE `project_structural_designs`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `project_working_plans`
 --
 ALTER TABLE `project_working_plans`
@@ -8391,6 +8490,12 @@ ALTER TABLE `whatsapp_messages`
   ADD KEY `lead_id` (`lead_id`);
 
 --
+-- Indexes for table `work_types`
+--
+ALTER TABLE `work_types`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -8404,7 +8509,7 @@ ALTER TABLE `approval_requests`
 -- AUTO_INCREMENT for table `architect_engineering`
 --
 ALTER TABLE `architect_engineering`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `banks`
@@ -8566,13 +8671,13 @@ ALTER TABLE `departments`
 -- AUTO_INCREMENT for table `designations`
 --
 ALTER TABLE `designations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
 
 --
 -- AUTO_INCREMENT for table `design_types`
 --
 ALTER TABLE `design_types`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `emi_schedules`
@@ -8674,7 +8779,7 @@ ALTER TABLE `leads`
 -- AUTO_INCREMENT for table `lead_bookings`
 --
 ALTER TABLE `lead_bookings`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `lead_follow_ups`
@@ -8686,7 +8791,7 @@ ALTER TABLE `lead_follow_ups`
 -- AUTO_INCREMENT for table `lead_payments`
 --
 ALTER TABLE `lead_payments`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `lead_sources`
@@ -8710,7 +8815,7 @@ ALTER TABLE `locations`
 -- AUTO_INCREMENT for table `management_cashin`
 --
 ALTER TABLE `management_cashin`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `management_cashout`
@@ -8770,7 +8875,7 @@ ALTER TABLE `operational_fund_requests`
 -- AUTO_INCREMENT for table `payslips`
 --
 ALTER TABLE `payslips`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `payslip_details`
@@ -8788,7 +8893,7 @@ ALTER TABLE `payslip_items`
 -- AUTO_INCREMENT for table `permissions`
 --
 ALTER TABLE `permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
 
 --
 -- AUTO_INCREMENT for table `personal_access_tokens`
@@ -8813,6 +8918,12 @@ ALTER TABLE `projects`
 --
 ALTER TABLE `project_drawings`
   MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `project_structural_designs`
+--
+ALTER TABLE `project_structural_designs`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `project_working_plans`
@@ -8872,13 +8983,13 @@ ALTER TABLE `quotation_items`
 -- AUTO_INCREMENT for table `roles`
 --
 ALTER TABLE `roles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `role_permissions`
 --
 ALTER TABLE `role_permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=218;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=299;
 
 --
 -- AUTO_INCREMENT for table `sales_targets`
@@ -8938,7 +9049,7 @@ ALTER TABLE `units`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=120;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=130;
 
 --
 -- AUTO_INCREMENT for table `vendors`
@@ -8981,6 +9092,12 @@ ALTER TABLE `whatsapp_campaigns`
 --
 ALTER TABLE `whatsapp_messages`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `work_types`
+--
+ALTER TABLE `work_types`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

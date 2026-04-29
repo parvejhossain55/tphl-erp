@@ -324,6 +324,9 @@ $coveragePct = $totalProjects > 0 ? round($projectsWithStudy / $totalProjects * 
     padding: 3px 9px;
     border-radius: 20px;
   }
+  html { scroll-behavior: smooth; }
+  .kpi-card { cursor: pointer; }
+  .sec-anchor { scroll-margin-top: 80px; }
 </style>
 
 <!-- ═════ HERO ═════ -->
@@ -345,31 +348,38 @@ $coveragePct = $totalProjects > 0 ? round($projectsWithStudy / $totalProjects * 
 <!-- ═════ KPI GRID ═════ -->
 <div class="kpi-grid-4">
 
-  <a href="<?= $base ?>/con-land-visibility-studies" class="kpi-card">
+  <!-- Land Studies → scroll to recent studies -->
+  <a href="#sec-studies" class="kpi-card">
     <div class="kpi-accent" style="background:#b45309"></div>
     <div class="kpi-icon" style="background:rgba(180,83,9,.12);color:#b45309"><i class="fal fa-map"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Land Studies</div>
     <div class="kpi-value" style="color:#b45309"><?= $totalStudies ?></div>
     <div class="kpi-sub">Completed land studies</div>
+    <span class="kpi-badge" style="background:rgba(180,83,9,.1);color:#b45309"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
-  <a href="<?= $base ?>/con-projects" class="kpi-card">
+  <!-- Total Projects → scroll to pending list -->
+  <a href="#sec-pending" class="kpi-card">
     <div class="kpi-accent" style="background:var(--lm-blue)"></div>
     <div class="kpi-icon" style="background:rgba(59,130,246,.12);color:var(--lm-blue)"><i class="fal fa-building"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Total Projects</div>
     <div class="kpi-value" style="color:var(--lm-blue)"><?= $totalProjects ?></div>
     <div class="kpi-sub">Active construction projects</div>
+    <span class="kpi-badge" style="background:rgba(59,130,246,.1);color:var(--lm-blue)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
-  <a href="<?= $base ?>/con-land-visibility-studies" class="kpi-card">
+  <!-- Studies Completed → scroll to recent studies -->
+  <a href="#sec-studies" class="kpi-card">
     <div class="kpi-accent" style="background:var(--lm-green)"></div>
     <div class="kpi-icon" style="background:rgba(16,185,129,.12);color:var(--lm-green)"><i class="fal fa-check-circle"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Studies Completed</div>
     <div class="kpi-value" style="color:var(--lm-green)"><?= $projectsWithStudy ?></div>
     <div class="kpi-sub">Projects with land study</div>
+    <span class="kpi-badge" style="background:rgba(16,185,129,.1);color:var(--lm-green)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
-  <div class="kpi-card" style="cursor:default">
+  <!-- Pending Studies → scroll to awaiting list -->
+  <a href="#sec-pending" class="kpi-card">
     <div class="kpi-accent" style="background:var(--lm-red)"></div>
     <div class="kpi-icon" style="background:rgba(239,68,68,.12);color:var(--lm-red)"><i class="fal fa-exclamation-circle"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Pending Studies</div>
@@ -378,7 +388,7 @@ $coveragePct = $totalProjects > 0 ? round($projectsWithStudy / $totalProjects * 
     <?php if ($projectsNoStudy > 0): ?>
       <span class="kpi-badge" style="background:rgba(239,68,68,.12);color:var(--lm-red)"><i class="fas fa-exclamation-triangle me-1"></i>PENDING</span>
     <?php endif; ?>
-  </div>
+  </a>
 
 </div>
 
@@ -420,7 +430,7 @@ $coveragePct = $totalProjects > 0 ? round($projectsWithStudy / $totalProjects * 
     </div>
 
     <!-- Projects awaiting study -->
-    <div class="lm-panel">
+    <div id="sec-pending" class="lm-panel sec-anchor">
       <div class="lm-panel-title">
         <div class="lm-dot" style="background:var(--lm-red)"></div>
         Awaiting Land Study
@@ -443,11 +453,11 @@ $coveragePct = $totalProjects > 0 ? round($projectsWithStudy / $totalProjects * 
 
   <!-- Recent Studies -->
   <div class="col-lg-8">
-    <div class="lm-panel">
+    <div id="sec-studies" class="lm-panel sec-anchor">
       <div class="lm-panel-title">
         <div class="lm-dot" style="background:var(--lm-teal)"></div>
         Recent Land Studies
-        <a href="<?= $base ?>/con-land-visibility-studies" style="font-size:10px;color:var(--lm-blue);margin-left:auto;text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+        <a href="<?= $base ?>/con-land-visibility-studies" style="font-size:10px;color:var(--lm-blue);margin-left:auto;text-decoration:none">View All <i class="fal fa-external-link ms-1"></i></a>
       </div>
 
       <?php if (empty($recentStudies)): ?>
