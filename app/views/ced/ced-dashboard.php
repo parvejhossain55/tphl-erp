@@ -165,8 +165,8 @@ $statusBadgeMap = [
 <div class="row">
 
     <!-- ══ STAT CARDS ══ -->
-    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <div class="card__wrapper h-100">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
                     <span><i class="fa-light fa-users"></i></span>
@@ -181,8 +181,8 @@ $statusBadgeMap = [
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <div class="card__wrapper h-100">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
                     <span><i class="fa-light fa-badge-check"></i></span>
@@ -199,8 +199,8 @@ $statusBadgeMap = [
 
 
 
-    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <div class="card__wrapper h-100">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
                     <span><i class="fa-light fa-circle-dollar"></i></span>
@@ -215,8 +215,8 @@ $statusBadgeMap = [
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <div class="card__wrapper h-100">
             <div class="d-flex align-items-center gap-sm">
                 <div class="card__icon">
                     <span><i class="fa-light fa-percent"></i></span>
@@ -231,21 +231,7 @@ $statusBadgeMap = [
         </div>
     </div>
 
-    <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-handshake"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">This Month Collection</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">TK.<?= number_format($monthlyCollection, 0) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- ══ MAIN CHART — 8 cols, same as accounts ══ -->
     <div class="col-xxl-8 col-xl-12 col-lg-12 mb-3">

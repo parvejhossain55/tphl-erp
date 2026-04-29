@@ -174,6 +174,7 @@ class AccountClient extends Model
             lb.booking_status,
             lb.landshare_status,
             lb.service_fee_balance,
+            lb.transfer_status,
             
             p.id as project_id,
             p.name as project_name,
@@ -470,12 +471,17 @@ ORDER BY lb.booking_date DESC
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'), 
                     NULL
-                ) as last_payment_date
+                ) as last_payment_date,
+                lb.transfer_date,
+                lb.transfer_note,
+                lb.transfer_status,
+                transfer_u.full_name as transfer_updated_by_name
             FROM lead_bookings lb
             INNER JOIN leads l ON lb.lead_id = l.id
             INNER JOIN projects p ON lb.project_id = p.id
             INNER JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN users u ON l.assigned_id = u.id
+            LEFT JOIN users transfer_u ON lb.transfer_updated_by = transfer_u.id
             WHERE lb.id = ?
         ");
 
@@ -552,8 +558,8 @@ ORDER BY lb.booking_date DESC
             $isRegistrationPaid = ($registrationPaid > 0);
 
             // Total due and net received
-            // Bulk EMI discount reduces the client's total obligation
-            $totalDue     = max(0, $totalPrice - $totalPaid - $totalBulkEmiDiscount);
+            // Booking discount + Bulk EMI discount both reduce the client's total obligation
+            $totalDue     = max(0, $totalPrice - $discountAmount - $totalPaid - $totalBulkEmiDiscount);
             $netReceived  = $totalPaid - $totalServiceFee;
             $totalEmiDue  = (float) ($clientDetails['total_emi_due'] ?? 0);
 
@@ -1085,7 +1091,7 @@ ORDER BY lb.booking_date DESC
             $bookingId = (int) $bookingId;
 
             // Verify the payment exists and belongs to this booking
-            $chk = $this->db->prepare("SELECT id, payment_type, parent_payment_id, amount FROM lead_payments WHERE id = ? AND booking_id = ?");
+            $chk = $this->db->prepare("SELECT id, payment_type, parent_payment_id, amount, verification_status FROM lead_payments WHERE id = ? AND booking_id = ?");
             $chk->bind_param("ii", $paymentId, $bookingId);
             $chk->execute();
             $row = $chk->get_result()->fetch_assoc();
@@ -1097,7 +1103,8 @@ ORDER BY lb.booking_date DESC
             $paymentType = $row['payment_type'];
 
             // 0. If deleting a settlement, restore the parent EMI's outstanding due
-            if ($paymentType === 'emi_due_settlement' && !empty($row['parent_payment_id'])) {
+            // Only restore if the settlement was NOT rejected (because rejection already restores it)
+            if ($paymentType === 'emi_due_settlement' && !empty($row['parent_payment_id']) && $row['verification_status'] !== 'rejected') {
                 $parentId = (int) $row['parent_payment_id'];
                 $settlementAmount = (float) $row['amount'];
 
@@ -2061,22 +2068,23 @@ ORDER BY lb.booking_date DESC
                         booking_id, payment_type, amount, land_share_amount, service_fee,
                         payment_method, payment_status, payment_date, transaction_ref,
                         bank_name, bank_account_no, cheque_no, online_type,
-                        attachment_paths, due_emi_amount, bulk_emi_discount, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        attachment_paths, due_emi_amount, bulk_emi_discount, bulk_pay_amount, created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$emiStmt) throw new Exception("EMI payment prepare failed: " . $this->db->error);
 
                 $emiPayType = 'emi';
                 $emiLandShare = 0.0;
-                // Attach discount only to the FIRST installment
+                // Attach discount + bulk pay amount only to the FIRST installment
                 $thisDiscount = (!$firstPaymentId && $bulkEmiDiscount > 0) ? $bulkEmiDiscount : 0.0;
+                $thisBulkPayAmount = (!$firstPaymentId && $newInstallments === 0) ? $totalAmount : null;
 
                 $emiStmt->bind_param(
-                    "isdddsssssssssddi",
+                    "isdddsssssssssdddi",
                     $bookingId, $emiPayType, $thisEmi, $emiLandShare, $thisSvcFee,
                     $paymentMethod, $thisStatus, $paymentDate, $transactionRef,
                     $bankName, $bankAccNo, $chequeNo, $onlineType,
-                    $attachmentPathsJson, $thisDue, $thisDiscount, $createdBy
+                    $attachmentPathsJson, $thisDue, $thisDiscount, $thisBulkPayAmount, $createdBy
                 );
 
                 if (!$emiStmt->execute()) throw new Exception("EMI payment insert failed: " . $emiStmt->error);
@@ -2537,5 +2545,28 @@ ORDER BY lb.booking_date DESC
         $stmt3->close();
 
         return $stats;
+    }
+
+    public function saveTransferNote($bookingId, $transferDate, $transferNote, $transferStatus, $updatedBy)
+    {
+        $stmt = $this->db->prepare("
+            UPDATE lead_bookings 
+            SET transfer_date = ?, 
+                transfer_note = ?, 
+                transfer_status = ?, 
+                transfer_updated_by = ?
+            WHERE id = ?
+        ");
+        
+        if (!$stmt) {
+            error_log("Prepare statement failed: " . $this->db->error);
+            return false;
+        }
+
+        $stmt->bind_param("ssiii", $transferDate, $transferNote, $transferStatus, $updatedBy, $bookingId);
+        $result = $stmt->execute();
+        $stmt->close();
+        
+        return $result;
     }
 }

@@ -46,42 +46,54 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             <div class="card__body">
 
                 <?php if (($paymentSummary['booking_money_paid'] ?? 0) <= 0 && ($paymentSummary['booking_money'] ?? 0) > 0): ?>
-                    <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
-                        <strong><i class="fa-light fa-triangle-exclamation me-1"></i>Booking Money Pending!</strong>
-                        Agreed booking amount of <strong>TK.<?= number_format($paymentSummary['booking_money'], 2) ?></strong>
-                        has not been received yet. Accounts can record it using the <em>Booking Money</em> option below.
+                    <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
+                        <i class="fa-light fa-triangle-exclamation fs-4 me-2"></i>
+                        <div>
+                            <strong>Booking Money Pending!</strong>
+                            Agreed booking amount of <strong>TK.<?= number_format($paymentSummary['booking_money'], 2) ?></strong>
+                            has not been received yet. Accounts can record it using the <em>Booking Money</em> option below.
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 <?php endif; ?>
 
                 <?php if (!$isBookingFullyPaid && $bookingMoneyPaid > 0): ?>
-                    <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
-                        <strong><i class="fa-light fa-triangle-exclamation me-1"></i>Booking Money Partially Paid!</strong>
-                        TK.<?= number_format($bookingMoneyPaid, 2) ?> received out of agreed
-                        TK.<?= number_format($agreementValue, 2) ?>.
-                        <strong>Outstanding balance: TK.<?= number_format($bookingBalance, 2) ?></strong>.
-                        Land Share payments are <strong>locked</strong> until the full booking amount is settled.
+                    <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
+                        <i class="fa-light fa-triangle-exclamation fs-4 me-2"></i>
+                        <div>
+                            <strong>Booking Money Partially Paid!</strong>
+                            TK.<?= number_format($bookingMoneyPaid, 2) ?> received out of agreed
+                            TK.<?= number_format($agreementValue, 2) ?>.
+                            <strong>Outstanding balance: TK.<?= number_format($bookingBalance, 2) ?></strong>.
+                            Land Share payments are <strong>locked</strong> until the full booking amount is settled.
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 <?php endif; ?>
 
                 <?php if ($isLandShareCompleted): ?>
-                    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
-                        <strong><i class="fa-light fa-circle-check me-1"></i>Land Share &amp; Registration Completed!</strong>
-                        All land share and registration payments are done.
-                        <?php if (!$isDevChargeCompleted && $flatDevCharges > 0): ?>
-                            Development Charge is next (<?= number_format($devChargePaid, 2) ?> / <?= number_format($flatDevCharges, 2) ?> paid).
-                        <?php elseif ($isDevChargeCompleted): ?>
-                            EMI payments are now available.
-                        <?php endif; ?>
+                    <div class="alert alert-success alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
+                    
+                        <div>
+                            <strong>Land Share &amp; Registration Completed!</strong>
+                            All land share and registration payments are done.
+                            <?php if (!$isDevChargeCompleted && $flatDevCharges > 0): ?>
+                                Development Charge is next (<?= number_format($devChargePaid, 2) ?> / <?= number_format($flatDevCharges, 2) ?> paid).
+                            <?php elseif ($isDevChargeCompleted): ?>
+                                EMI payments are now available.
+                            <?php endif; ?>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 <?php endif; ?>
 
                 <?php if ($hasOutstandingDues): ?>
-                    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
-                        <strong><i class="fa-light fa-exclamation-circle me-1"></i>Outstanding EMI Due: TK.<?= number_format($totalEmiDue, 2) ?></strong>
-                        — Select <em>"Settle EMI Due"</em> below to clear the balance.
+                    <div class="alert alert-danger alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
+                      
+                        <div>
+                            <strong>Outstanding EMI Due: TK.<?= number_format($totalEmiDue, 2) ?></strong>
+                            — Select <em>"Settle EMI Due"</em> below to clear the balance.
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 <?php endif; ?>
@@ -146,7 +158,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </option>
                                 <?php elseif ($isLandShareCompleted && $isDevChargeCompleted && $remainingCF <= 0): ?>
                                     <option value="emi" disabled>
-                                        EMI — All Paid ✓ (Construction Fee Completed)
+                                        EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
                                     </option>
                                 <?php elseif ($isLandShareCompleted): ?>
                                     <option value="emi" disabled>
@@ -449,7 +461,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         helpText = 'Construction fee fully paid — no more EMI needed.';
                         amountField.setAttribute('disabled', 'disabled');
                     } else if (perEmiAmount > 0) {
-                        const svcPct = serviceChargeRate > 0 ? ' + ' + serviceChargeRate  '% service charge included' : '';
+                        const svcPct = serviceChargeRate > 0 ? ' + ' + serviceChargeRate + '% service charge included' : '';
                         const totalDue = <?= json_encode((float)$totalEmiDue) ?>;
                         let dueNote = totalDue > 0 ? ' Outstanding due: TK.' + totalDue.toLocaleString('en-IN', {minimumFractionDigits:2}) + ' (auto-cleared first).' : '';
                         const effectiveMax = Math.min(perEmiAmount, remainingCF);
