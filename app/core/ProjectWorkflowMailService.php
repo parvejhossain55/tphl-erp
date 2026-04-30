@@ -274,14 +274,14 @@ class ProjectWorkflowMailService
         if (!$project) return;
 
         $base    = $this->getBaseUrl();
-        $subject = "🎉 Pre-Construction Complete: {$projectName} Ready for BOQ";
+        $subject = " Pre-Construction Complete: {$projectName} Ready for BOQ";
 
         // All unique team members
         $recipients = $this->getAllTeamMembers($projectId);
 
         foreach ($recipients as $user) {
             $body = $this->buildHtml(
-                title:       '🎉 Pre-Construction Phase Complete!',
+                title:       'Pre-Construction Phase Complete!',
                 greeting:    "Dear {$user['full_name']},",
                 message:     "All pre-construction steps for project <strong>{$projectName}</strong> have been successfully completed. The project is now ready for <strong>BOQ / Initial Estimation</strong>.",
                 stepHtml:    $this->buildPreConstructionSteps('complete'),
@@ -313,7 +313,7 @@ class ProjectWorkflowMailService
             $stepHtml = "<div style='margin:20px 0;'>
                 <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
                     <div style='width:28px;height:28px;border-radius:50%;background:#0f5132;color:#fff;
-                                display:flex;align-items:center;justify-content:center;
+                                text-align:center;line-height:28px;
                                 font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
                     <div style='font-size:13px;color:#0f5132;'><strong>Budget Approval</strong> <em style='font-size:11px;color:#0f5132'>(Action Required)</em></div>
                 </div>
@@ -353,7 +353,7 @@ class ProjectWorkflowMailService
             $stepHtml = "<div style='margin:20px 0;'>
                 <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
                     <div style='width:28px;height:28px;border-radius:50%;background:#2563eb;color:#fff;
-                                display:flex;align-items:center;justify-content:center;
+                                text-align:center;line-height:28px;
                                 font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
                     <div style='font-size:13px;color:#2563eb;'><strong>BOQ Approval</strong> <em style='font-size:11px;color:#2563eb'>(Action Required)</em></div>
                 </div>
@@ -393,7 +393,7 @@ class ProjectWorkflowMailService
             $stepHtml = "<div style='margin:20px 0;'>
                 <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
                     <div style='width:28px;height:28px;border-radius:50%;background:#059669;color:#fff;
-                                display:flex;align-items:center;justify-content:center;
+                                text-align:center;line-height:28px;
                                 font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
                     <div style='font-size:13px;color:#059669;'><strong>PO Approval</strong> <em style='font-size:11px;color:#059669'>(Action Required)</em></div>
                 </div>
@@ -433,7 +433,7 @@ class ProjectWorkflowMailService
             $stepHtml = "<div style='margin:20px 0;'>
                 <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
                     <div style='width:28px;height:28px;border-radius:50%;background:#10b981;color:#fff;
-                                display:flex;align-items:center;justify-content:center;
+                                text-align:center;line-height:28px;
                                 font-size:13px;font-weight:700;flex-shrink:0;'>&#10003;</div>
                     <div style='font-size:13px;color:#10b981;'><strong>PO Fully Approved</strong> <em style='font-size:11px;color:#10b981'>(Action Required: GRN)</em></div>
                 </div>
@@ -483,7 +483,7 @@ class ProjectWorkflowMailService
 
         // Step HTML variants
         $stepHtmlActive  = $this->buildPreConstructionSteps($activeStep);
-        $stepHtmlWatcher = $this->buildPreConstructionSteps($completedStep); // shows completed ✅
+        $stepHtmlWatcher = $this->buildPreConstructionSteps($completedStep); // shows completed 
 
         foreach ($allMembers as $user) {
             if (empty($user['email'])) continue;
@@ -659,7 +659,7 @@ class ProjectWorkflowMailService
             $html .= "
             <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
                 <div style='width:28px;height:28px;border-radius:50%;background:{$bg};color:#fff;
-                            display:flex;align-items:center;justify-content:center;
+                            text-align:center;line-height:28px;
                             font-size:13px;font-weight:700;flex-shrink:0;'>{$icon}</div>
                 <div style='font-size:13px;color:{$color};'>{$label}</div>
             </div>";

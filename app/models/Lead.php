@@ -898,7 +898,51 @@ class Lead extends Model
         if (!$old) {
             return false;
         }
-        $nomi_dob = !empty($data['nomi_dob']) ? $data['nomi_dob'] : null;
+
+        // ======================
+        // Nullable field helpers — empty string → null
+        // ======================
+        $nn = function($val) {
+            return (isset($val) && trim((string)$val) !== '') ? $val : null;
+        };
+
+        // Date fields (MySQL DATE cannot accept empty string '')
+        $dob      = $nn($data['dob']);
+        $nomi_dob = $nn($data['nomi_dob']);
+
+        // Other nullable fields
+        $full_name            = $nn($data['full_name']);
+        $father_name          = $nn($data['father_name']);
+        $mother_name          = $nn($data['mother_name']);
+        $permanent_address    = $nn($data['permanent_address']);
+        $nid_or_passport      = $nn($data['nid_or_passport']);
+        $phone                = $nn($data['phone']);
+        $alt_phone_number     = $nn($data['alt_phone_number']);
+        $email                = $nn($data['email']);
+        $address              = $nn($data['address']);
+        $designation          = $nn($data['designation']);
+        $lead_name_bn         = $nn($data['lead_name_bn']);
+        $father_name_bn       = $nn($data['father_name_bn']);
+        $mother_name_bn       = $nn($data['mother_name_bn']);
+        $identity_type        = $nn($data['identity_type']);
+        $permanent_add_bn     = $nn($data['permanent_add_bn']);
+        $present_add_bn       = $nn($data['present_add_bn']);
+        $profession_bn        = $nn($data['profession_bn']);
+        $nationality          = $nn($data['nationality']) ?? 'Bangladeshi';
+        $religion             = $nn($data['religion']);
+        $nominee_name         = $nn($data['nominee_name']);
+        $relation_with_lead   = $nn($data['relation_with_lead']);
+        $nomi_father_name     = $nn($data['nomi_father_name']);
+        $nomi_mother_name     = $nn($data['nomi_mother_name']);
+        $nomi_profession      = $nn($data['nomi_profession']);
+        $nomi_phone           = $nn($data['nomi_phone']);
+        $nomi_email           = $nn($data['nomi_email']);
+        $nomi_nid_passport    = $nn($data['nomi_nid_passport']);
+        $nomi_present_add     = $nn($data['nomi_present_add']);
+        $nomi_permanent_address = $nn($data['nomi_permanent_address']);
+        $description          = $nn($data['description']);
+        $created_by           = $nn($data['created_by']);
+
         // ======================
         // Image Upload (fallback old)
         // ======================
@@ -920,7 +964,7 @@ class Lead extends Model
         present_add_bn = ?, profession_bn = ?, nationality = ?, religion = ?, lead_image = ?,
         nominee_name = ?, relation_with_lead = ?, nomi_father_name = ?, nomi_mother_name = ?, nomi_profession = ?,
         nomi_dob = ?, nomi_phone = ?, nomi_email = ?, nomi_nid_passport = ?, nomi_present_add = ?, 
-        nomi_permanent_address = ?, nomi_image = ?, description = ?,created_by = ?
+        nomi_permanent_address = ?, nomi_image = ?, description = ?, created_by = ?
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -929,46 +973,46 @@ class Lead extends Model
         }
 
         // ======================
-        // Bind all strings + id as integer
+        // Bind all strings + id as integer (35 strings + 1 integer)
         // ======================
         $stmt->bind_param(
-            str_repeat("s", 34) . "ii", // 34 strings + 1 integer for id
-            $data['full_name'],
-            $data['father_name'],
-            $data['mother_name'],
-            $data['dob'],
-            $data['permanent_address'],
-            $data['nid_or_passport'],
-            $data['phone'],
-            $data['alt_phone_number'],
-            $data['email'],
-            $data['address'],
-            $data['designation'],
-            $data['lead_name_bn'],
-            $data['father_name_bn'],
-            $data['mother_name_bn'],
-            $data['identity_type'],
-            $data['permanent_add_bn'],
-            $data['present_add_bn'],
-            $data['profession_bn'],
-            $data['nationality'],
-            $data['religion'],
+            str_repeat("s", 35) . "i",
+            $full_name,
+            $father_name,
+            $mother_name,
+            $dob,
+            $permanent_address,
+            $nid_or_passport,
+            $phone,
+            $alt_phone_number,
+            $email,
+            $address,
+            $designation,
+            $lead_name_bn,
+            $father_name_bn,
+            $mother_name_bn,
+            $identity_type,
+            $permanent_add_bn,
+            $present_add_bn,
+            $profession_bn,
+            $nationality,
+            $religion,
             $lead_image,
-            $data['nominee_name'],
-            $data['relation_with_lead'],
-            $data['nomi_father_name'],
-            $data['nomi_mother_name'],
-            $data['nomi_profession'],
+            $nominee_name,
+            $relation_with_lead,
+            $nomi_father_name,
+            $nomi_mother_name,
+            $nomi_profession,
             $nomi_dob,
-            $data['nomi_phone'],
-            $data['nomi_email'],
-            $data['nomi_nid_passport'],
-            $data['nomi_present_add'],
-            $data['nomi_permanent_address'],
+            $nomi_phone,
+            $nomi_email,
+            $nomi_nid_passport,
+            $nomi_present_add,
+            $nomi_permanent_address,
             $nomi_image,
-            $data['description'],
-            $data['created_by'],
-            $id // integer
+            $description,
+            $created_by,
+            $id
         );
 
         if (!$stmt->execute()) {
