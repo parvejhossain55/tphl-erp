@@ -163,7 +163,7 @@ $recentVendorPayments = $recentVendorPayments ?? [];
                 </a>
                 <div style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars($pr['location_name'] ?: 'N/A') ?></div>
               </td>
-              <td><span class="badge bg-secondary"><?= htmlspecialchars($pr['project_status']) ?></span></td>
+              <td><span class="badge bg-secondary"><?= $pr['project_status'] ?? 'N/A' ?></span></td>
             </tr>
             <?php endforeach; ?>
           </tbody>
