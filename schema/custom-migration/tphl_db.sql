@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 29, 2026 at 03:00 PM
+-- Generation Time: Apr 30, 2026 at 07:12 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -350,13 +350,6 @@ CREATE TABLE `cashout_requests` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Cashout requests with single-step approval';
-
---
--- Dumping data for table `cashout_requests`
---
-
-INSERT INTO `cashout_requests` (`id`, `project_id`, `office`, `requested_by`, `purpose_paid_to`, `amount`, `approved_amount`, `due_amount`, `description`, `payment_method`, `bank_id`, `transaction_ref`, `attachment_path`, `status`, `approved_by`, `approved_at`, `rejected_by`, `rejected_at`, `rejection_reason`, `approval_note`, `created_at`, `updated_at`) VALUES
-(1, NULL, NULL, 5, 'Vendor Payment', 100000.00, NULL, 100000.00, '', 'cash', NULL, '', NULL, 'approved', 6, '2026-03-31 11:26:04', NULL, NULL, NULL, NULL, '2026-04-17 08:53:36', '2026-04-17 08:53:42');
 
 -- --------------------------------------------------------
 
@@ -753,7 +746,18 @@ INSERT INTO `designations` (`id`, `name`, `department_id`, `created_by`, `create
 (29, 'CEO', 19, NULL, '2026-04-04 11:33:25', '2026-04-04 11:33:25'),
 (30, 'COO', 19, NULL, '2026-04-04 12:26:44', '2026-04-04 12:26:44'),
 (31, 'DCEO', 19, NULL, '2026-04-04 12:27:04', '2026-04-04 12:27:04'),
-(32, 'PD', 19, NULL, '2026-04-04 12:27:16', '2026-04-04 12:27:16');
+(32, 'PD', 19, NULL, '2026-04-04 12:27:16', '2026-04-04 12:27:16'),
+(33, 'Land Manager', 18, NULL, '2026-04-21 16:53:29', '2026-04-21 16:53:29'),
+(34, 'Project Architecture ', 21, NULL, '2026-04-21 16:54:22', '2026-04-21 16:54:22'),
+(35, 'Draftsman ', 24, NULL, '2026-04-21 16:55:32', '2026-04-21 16:55:32'),
+(36, 'Project Engineer', 21, NULL, '2026-04-21 16:56:01', '2026-04-21 16:56:01'),
+(37, 'Estimator', 25, NULL, '2026-04-21 16:56:55', '2026-04-21 16:56:55'),
+(38, 'Site Engineer ', 21, NULL, '2026-04-21 16:57:37', '2026-04-21 16:57:37'),
+(39, 'Construction Manager', 21, NULL, '2026-04-21 16:58:02', '2026-04-21 16:58:02'),
+(40, 'Purchase Head', 20, NULL, '2026-04-21 16:59:29', '2026-04-21 16:59:29'),
+(41, 'Purchase Executive', 20, NULL, '2026-04-21 17:00:47', '2026-04-21 17:00:47'),
+(42, 'Purchase team leader', 20, NULL, '2026-04-21 17:01:16', '2026-04-21 17:01:16'),
+(43, 'Quality Controller(QC)', 23, NULL, '2026-04-21 17:02:11', '2026-04-21 17:02:11');
 
 -- --------------------------------------------------------
 
@@ -787,22 +791,6 @@ CREATE TABLE `emi_schedules` (
   `due_emi_amount` decimal(12,2) DEFAULT NULL,
   `service_fee` float DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `emi_schedules`
---
-
-INSERT INTO `emi_schedules` (`id`, `lead_booking_id`, `emi_no`, `emi_amount`, `due_date`, `status`, `lead_payment_id`, `created_at`, `due_emi_amount`, `service_fee`) VALUES
-(1, 2, 1, 50000.00, '2026-04-10', 'paid', 5, '2026-04-10 11:15:14', 0.00, 5000),
-(2, 1, 1, 300000.00, '2026-04-17', 'paid', 6, '2026-04-17 11:19:27', 10000.00, 30000),
-(3, 1, 2, 17000000.00, '2026-04-17', 'paid', 7, '2026-04-17 11:22:15', 0.00, 1700000),
-(4, 1, 3, 17000000.00, '2026-04-17', 'paid', 8, '2026-04-17 11:24:57', 0.00, 1700000),
-(5, 2, 1, 118750.00, '2026-04-26', 'paid', 12, '2026-04-26 07:27:48', 0.00, 11875),
-(6, 2, 2, 118750.00, '2026-04-26', 'paid', 13, '2026-04-26 07:46:57', 0.00, 11875),
-(7, 2, 3, 118750.00, '2026-04-26', 'paid', 14, '2026-04-26 07:46:57', 0.00, 11875),
-(8, 2, 4, 118750.00, '2026-04-26', 'paid', 15, '2026-04-26 07:46:57', 0.00, 11875),
-(9, 2, 5, 118750.00, '2026-04-26', 'paid', 16, '2026-04-26 07:46:57', 0.00, 11875),
-(10, 2, 6, 118750.00, '2026-04-26', 'paid', 17, '2026-04-26 07:46:57', 0.00, 11875);
 
 -- --------------------------------------------------------
 
@@ -5606,13 +5594,6 @@ CREATE TABLE `lead_bookings` (
   `attachment_image` varchar(200) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `lead_bookings`
---
-
-INSERT INTO `lead_bookings` (`id`, `lead_id`, `project_id`, `flat_id`, `agreement_value`, `discount_amount`, `booking_date`, `booking_status`, `created_by`, `sales_by_id`, `deleted_at`, `created_at`, `updated_at`, `approval_status`, `approved_amount`, `service_fee_balance`, `landshare_status`, `payment_status`, `attachment_image`) VALUES
-(2, 4275, 13, 7, 1000000.00, NULL, '2026-04-26', 'completed', 6, 0, NULL, '2026-04-26 06:31:43', '2026-04-26 07:48:15', 'not_required', NULL, NULL, 'active', 'paid', NULL);
-
 -- --------------------------------------------------------
 
 --
@@ -6194,21 +6175,6 @@ CREATE TABLE `lead_payments` (
   `rejection_reason` text DEFAULT NULL COMMENT 'Mandatory reason text entered by Accounts when rejecting'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `lead_payments`
---
-
-INSERT INTO `lead_payments` (`id`, `booking_id`, `payment_type`, `amount`, `bulk_emi_discount`, `due_emi_amount`, `parent_payment_id`, `settlement_type`, `land_share_amount`, `payment_method`, `payment_status`, `payment_date`, `emi_no`, `total_emi_no`, `transaction_ref`, `bank_name`, `bank_id`, `bank_account_no`, `cheque_no`, `service_fee`, `online_type`, `created_by`, `created_at`, `verification_status`, `attachment_image`, `verified_by`, `verified_at`, `attachment_paths`, `rejection_reason`) VALUES
-(9, 2, 'booking_money', 1000000.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, 48, '122334', '', NULL, '', '', NULL, '', 6, '2026-04-26 06:32:23', 'verified', '', 6, '2026-04-26 06:32:56', NULL, NULL),
-(10, 2, 'land_share', 200000.00, 0.00, 0.00, NULL, NULL, 200000.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-04-26 06:35:57', 'verified', NULL, 6, '2026-04-26 06:36:04', NULL, NULL),
-(11, 2, 'development_charge', 100000.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-04-26 06:47:57', 'verified', NULL, 6, '2026-04-26 06:48:06', NULL, NULL),
-(12, 2, 'emi', 118750.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:27:48', 'verified', NULL, 6, '2026-04-26 07:37:30', NULL, NULL),
-(13, 2, 'emi', 118750.00, 9999.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:46:57', 'verified', NULL, 6, '2026-04-26 07:47:46', NULL, NULL),
-(14, 2, 'emi', 118750.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:46:57', 'verified', NULL, 6, '2026-04-26 07:47:53', NULL, NULL),
-(15, 2, 'emi', 118750.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:46:57', 'verified', NULL, 6, '2026-04-26 07:48:00', NULL, NULL),
-(16, 2, 'emi', 118750.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:46:57', 'verified', NULL, 6, '2026-04-26 07:48:07', NULL, NULL),
-(17, 2, 'emi', 118750.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-04-26', NULL, NULL, '', '', NULL, '', '', 11875, 'bKash', 6, '2026-04-26 07:46:57', 'verified', NULL, 6, '2026-04-26 07:48:15', NULL, NULL);
-
 -- --------------------------------------------------------
 
 --
@@ -6356,14 +6322,6 @@ CREATE TABLE `management_cashin` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `management_cashin`
---
-
-INSERT INTO `management_cashin` (`id`, `role_name`, `role_id`, `person_name`, `transaction_date`, `source`, `description`, `amount`, `payment_method`, `payment_status`, `transaction_ref`, `bank_name`, `bank_account_no`, `cheque_no`, `online_type`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'CEO', 1, 'Mainul Hassan Dulon', '2026-04-10', 'Investement', 'test', 50000000.00, 'cash', 'paid', 'trx345', '', '', '', '', 5, '2026-04-10 10:54:35', '2026-04-10 10:54:35'),
-(2, 'CEO', 1, 'Mainul Hassan Dulon', '2026-04-17', '1110', '', 11111.00, 'cash', 'paid', '', '', '', '', '', 5, '2026-04-17 08:55:39', '2026-04-17 08:55:39');
 
 -- --------------------------------------------------------
 
@@ -6610,14 +6568,6 @@ CREATE TABLE `payslips` (
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `payslips`
---
-
-INSERT INTO `payslips` (`id`, `employee_id`, `designation_id`, `payslip_month`, `total_earning`, `total_deduction`, `net_salary`, `company_bank_id`, `status`, `payment_method`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, 0, '2026-03-01', 22100.00, 1000.00, 21100.00, 1, 'paid', 'bank', 4, '2026-03-31 11:47:19', '2026-03-31 11:48:20'),
-(2, 1, 0, '2026-04-01', 30000.00, 1000.00, 29000.00, NULL, 'pending', 'bank', 4, '2026-04-10 10:20:42', '2026-04-10 10:20:42');
-
 -- --------------------------------------------------------
 
 --
@@ -6633,20 +6583,6 @@ CREATE TABLE `payslip_details` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Dumping data for table `payslip_details`
---
-
-INSERT INTO `payslip_details` (`id`, `payslip_id`, `payslip_item_id`, `amount`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, 1, 2000.00, NULL, '2026-02-23 08:11:48', '2026-02-23 08:11:48'),
-(2, 1, 2, 1000.00, NULL, '2026-02-23 08:11:48', '2026-02-23 08:11:48'),
-(3, 1, 3, 1000.00, NULL, '2026-02-23 08:11:48', '2026-02-23 08:11:48'),
-(4, 1, 1, 2000.00, NULL, '2026-03-31 11:47:19', '2026-03-31 11:47:19'),
-(5, 1, 2, 100.00, NULL, '2026-03-31 11:47:19', '2026-03-31 11:47:19'),
-(6, 1, 3, 1000.00, NULL, '2026-03-31 11:47:19', '2026-03-31 11:47:19'),
-(7, 2, 1, 10000.00, NULL, '2026-04-10 10:20:42', '2026-04-10 10:20:42'),
-(8, 2, 3, 1000.00, NULL, '2026-04-10 10:20:42', '2026-04-10 10:20:42');
 
 -- --------------------------------------------------------
 
@@ -7117,7 +7053,9 @@ INSERT INTO `roles` (`id`, `name`, `created_by`, `created_at`, `updated_at`) VAL
 (16, 'Draftsman ', NULL, '2026-04-21 23:15:23', '2026-04-21 23:15:23'),
 (17, 'Purchase team leader', NULL, '2026-04-21 23:17:55', '2026-04-21 23:17:55'),
 (18, 'Project Architecture ', NULL, '2026-04-21 23:25:26', '2026-04-21 23:25:26'),
-(19, 'Estimator', NULL, '2026-04-22 02:35:08', '2026-04-22 02:35:08');
+(19, 'Estimator', NULL, '2026-04-22 02:35:08', '2026-04-22 02:35:08'),
+(20, 'Site Operator', NULL, '2026-04-26 04:03:50', '2026-04-26 04:03:50'),
+(21, 'Structure designer', NULL, '2026-04-26 05:13:09', '2026-04-26 05:13:09');
 
 -- --------------------------------------------------------
 
@@ -7218,7 +7156,50 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (391, 3, 13, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
 (392, 3, 36, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
 (393, 3, 37, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
-(394, 3, 42, '2026-04-29 06:04:18', '2026-04-29 06:04:18');
+(394, 3, 42, '2026-04-29 06:04:18', '2026-04-29 06:04:18'),
+(395, 12, 26, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(396, 12, 45, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(397, 12, 23, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(398, 12, 40, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(399, 12, 31, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(400, 12, 28, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(401, 12, 27, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(402, 12, 33, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(403, 12, 44, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(404, 12, 43, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(405, 12, 38, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(406, 12, 34, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(407, 12, 46, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(408, 12, 32, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(409, 12, 35, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(410, 12, 30, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(411, 12, 37, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(412, 12, 42, '2026-04-30 04:54:57', '2026-04-30 04:54:57'),
+(413, 13, 43, '2026-04-30 04:56:05', '2026-04-30 04:56:05'),
+(414, 13, 35, '2026-04-30 04:56:05', '2026-04-30 04:56:05'),
+(415, 13, 37, '2026-04-30 04:56:05', '2026-04-30 04:56:05'),
+(416, 13, 42, '2026-04-30 04:56:05', '2026-04-30 04:56:05'),
+(417, 14, 27, '2026-04-30 04:56:20', '2026-04-30 04:56:20'),
+(418, 15, 26, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(419, 15, 45, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(420, 15, 40, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(421, 15, 31, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(422, 15, 28, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(423, 15, 27, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(424, 15, 33, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(425, 15, 44, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(426, 15, 43, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(427, 15, 38, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(428, 15, 34, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(429, 15, 29, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(430, 15, 46, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(431, 15, 48, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(432, 15, 32, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(433, 15, 30, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(434, 15, 36, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(435, 15, 37, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(436, 15, 42, '2026-04-30 04:58:31', '2026-04-30 04:58:31'),
+(437, 16, 34, '2026-04-30 04:58:52', '2026-04-30 04:58:52');
 
 -- --------------------------------------------------------
 
@@ -7516,19 +7497,19 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `email`, `designation_id`, `address`, `nid`, `role_id`, `password`, `photo`, `media_link1`, `media_link2`, `last_logout`, `created_by`, `created_at`, `updated_at`, `team_id`) VALUES
-(1, 0, 'Farzana', 'farzana', '01873244236', 'farzana.tphl13@gmail.com', 28, 'Dhaka', '123', 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, '', '', '2026-04-09 05:34:11', 6, '2026-02-22 06:47:08', '2026-04-09 05:34:11', 0),
+(1, 0, 'Farzana', 'farzana', '01873244236', 'farzana.tphl@gmail.com', 28, 'Dhaka', '123', 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, '', '', '2026-04-09 05:34:11', 6, '2026-02-22 06:47:08', '2026-04-30 04:25:17', 0),
 (2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-04-19 09:43:10', NULL, '2026-02-22 06:47:08', '2026-04-19 09:43:10', NULL),
 (3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 0, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-04-19 05:54:47', 4, '2026-02-23 03:24:25', '2026-04-19 05:54:47', 0),
 (4, 1008, 'Md. Jasim Uddin', 'Jasim Uddin', '01762013007', 'hr@gmail.com', 14, 'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.', '1903663282', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, '', '', '2026-04-24 12:21:28', 4, '2026-02-23 05:44:19', '2026-04-24 12:21:28', NULL),
 (5, 0, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 3, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, '', '', '2026-04-08 09:48:37', 6, '2026-02-23 06:11:06', '2026-04-08 09:48:37', NULL),
-(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-04-29 06:06:44', 110, '2026-03-29 03:44:44', '2026-04-29 06:06:44', 0),
+(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-04-30 11:05:48', 110, '2026-03-29 03:44:44', '2026-04-30 05:05:48', 0),
 (7, NULL, 'CED', 'CED', '01872364346', 'ced@gmail.com', 1, 'Dhaka', '823445', 7, '$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.', NULL, '', '', '2026-03-31 12:05:54', 6, '2026-03-29 04:01:38', '2026-03-31 12:05:54', NULL),
 (8, NULL, 'Sales Team Head', 'Sales Head', '01327488234', 'sales-head@gmail.com', 1, 'Dhaka', '09231943', 9, '$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.', NULL, '', '', '2026-04-08 09:30:55', 1, '2026-03-29 04:16:47', '2026-04-08 09:30:55', NULL),
 (9, 3, 'Md. rafi', 'admin_39_', '01234567890', 'rafi@easytechx.com', 9, 'ADDL Tower, Dhanmondi 27/A', '', 8, '$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG', NULL, '', '', '2026-03-29 10:24:18', 0, '2026-03-29 10:23:39', '2026-03-30 16:36:23', NULL),
 (11, 5, 'Bornali Haque', 'Bornali Haque', '01335258340', 'bornalihaque.tphl@gmail.com', 13, 'RUAP, Uttara 18, Dhaka', '', 2, '$2y$10$R9YSZd3L1v262q20VEtdG.dyT9xPRWmHFtjeTvwao5i8i24T5Hpm.', NULL, '', '', '2026-03-31 08:48:42', 0, '2026-03-29 10:31:45', '2026-04-11 08:52:14', 0),
 (12, 8, 'Sanjana Hossain Moure', 'sanjana moure', '01901310848', 'moure.tphl@gmail.com', 15, 'Mirpur-2 water tank, Block - F, road -3, Dhaka -1216', '', 8, '$2y$10$2J2ciVq5whQHb80.zq0zYuQcH.eb0B3pagwhnmx9TEsy.elK3J1ry', NULL, '', '', '2026-03-30 05:15:10', 0, '2026-03-30 05:15:10', '2026-03-30 16:36:23', NULL),
 (13, 9, 'Md. Rabbi Hossain', 'rabbi hossain', '0 1901-3108', 'rabbihossain.tphl@gmail.com', 20, 'Baro Bazar, Ashulia Model Town, Savar, Dhaka.', '', 8, '$2y$10$uWAvlmxoW/gvdDhxn.IT9.HU7.NBPwqpbWipciGD0eZWdJQ6z9vvG', NULL, '', '', '2026-03-30 05:15:44', 0, '2026-03-30 05:15:44', '2026-04-12 11:40:43', 4),
-(14, 7, 'Saleh Ahamed', 'saleh ahmed', '0 1901-3650', 'saleh.tphl@gmail.com', 21, '', '', 5, '$2y$10$fsUbevYAvi9OQguKgaiyEOzj/63NgEbIFqoqshjTVDdjkBrNhQ.Sq', NULL, '', '', '2026-04-16 08:16:26', 0, '2026-03-30 05:18:44', '2026-04-16 08:16:26', 4),
+(14, 7, 'Saleh Ahamed', 'saleh ahmed', '0 1901-3650', 'saleh.tphl@gmail.com', 21, '', '', 5, '$2y$10$fsUbevYAvi9OQguKgaiyEOzj/63NgEbIFqoqshjTVDdjkBrNhQ.Sq', NULL, '', '', '2026-04-30 11:06:47', 0, '2026-03-30 05:18:44', '2026-04-30 05:06:47', 4),
 (15, 6, 'Md. Kawsar Ahammed', 'kowsar ahammed', '01901310845', 'kawsar.tphl@gmail.com', 21, 'Vill: Bhubangati, Post: Biswarigacha, Thana: Dhunat, Zilla: Bogura', '', 5, '$2y$10$o4oawe3QpdDiLJTIH4chT.gwAdLBA52i.HFtGH.M1KDmjzkTfFDZy', NULL, '', '', '2026-04-25 03:54:29', 0, '2026-03-30 05:19:07', '2026-04-25 03:54:29', 0),
 (16, 0, 'Ashfaque Bhuiyan Omi', 'Ashfaque Omi', '01958253303', 'ashfaqueomi.tphl25@gmail.com', 20, 'Darul Aman Housing, Mirpur-2, Dhaka - 1206', '', 2, '$2y$10$29JSW4M8FbD3VNZnoUD8AOXB5LRrqo7vS22WMNfWezI11UlsObVCa', NULL, '', '', '2026-03-30 05:19:52', 0, '2026-03-30 05:19:52', '2026-03-30 16:36:23', NULL),
 (18, 10, 'Mehnaz Ahmed', 'mehnaz ahmed', '0 1901-3650', 'mehnaz.tphl@gmail.com', 20, 'South chayabithi, Joydebpur, Gazipur', '9160336244', 8, '$2y$10$edszxcW7aAhMpXKVGUIZZePVtP.RhKwPuC8vA2baFfd8jmrYS8mEG', NULL, '', '', '2026-03-30 05:26:05', 0, '2026-03-30 05:26:05', '2026-03-30 16:36:23', NULL),
@@ -7611,7 +7592,17 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (116, 12, 'Nahian', 'rafi', '01123456789', 'nahian.easytechx@gmail.com', 14, 'asdfadf', '55555534434', 8, '$2y$10$RHjmhMhmgwE/OuuD2c92suYCaEZlm5RN0UhhFbAz2hRBKdeXj6Fe2', NULL, '', '', '2026-04-08 10:14:38', 6, '2026-04-08 10:14:38', '2026-04-08 10:15:58', 0),
 (117, 86, 'Test Employee', 'Test', '01790128472', 'test3@gmail.com', 32, 'Mohammadpur, Dhaka-1207', '', 0, '$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW', NULL, '', '', '2026-04-10 10:07:16', 0, '2026-04-10 10:07:16', '2026-04-10 10:07:16', 0),
 (118, 87, 'Shazzadur Rahman Shoumic', 'Shazzad', '01765562314', 'shazzadur.tphl@gmail.com', 20, '', '', 8, '$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6', NULL, '', '', '2026-04-12 11:46:52', 0, '2026-04-12 11:46:52', '2026-04-12 11:46:52', 5),
-(119, 90, 'Shohanur Rahaman', 'Shohanur Rahaman', '01958253372', 'shohan.tphl@gmail.com', 13, 'Khagan Ashulia', '', 11, '$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK', NULL, '', '', '2026-04-19 04:42:58', 119, '2026-04-17 13:13:21', '2026-04-19 04:42:58', 0);
+(119, 90, 'Shohanur Rahaman', 'Shohanur Rahaman', '01958253372', 'shohan.tphl@gmail.com', 13, 'Khagan Ashulia', '', 11, '$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK', NULL, '', '', '2026-04-19 04:42:58', 119, '2026-04-17 13:13:21', '2026-04-19 04:42:58', 0),
+(120, NULL, 'Project Manager1', 'Project Manager1', '01876123454', 'farzana.tphl13@gmail.com', 36, 'Dhaka', '', 15, '$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu', NULL, '', '', '2026-04-26 15:55:58', 6, '2026-04-26 03:55:58', '2026-04-27 05:13:54', 0),
+(121, NULL, 'Land Man1', 'Land Man1', '01993878733', 'farzana.tech24@gmail.com', 33, 'Dhaka', '', 14, '$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO', NULL, '', '', '2026-04-29 16:15:53', 6, '2026-04-26 03:56:52', '2026-04-29 04:15:53', 0),
+(122, NULL, 'Mr. Architect1', 'Mr. Architect1', '01875438578', 'architect1@gmail.com', 34, 'Dhaka', '', 18, '$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2', NULL, '', '', '2026-04-29 16:20:57', 6, '2026-04-26 03:58:02', '2026-04-29 04:20:57', 0),
+(123, NULL, 'Mr. Site Engineer1', 'Mr. Site Engineer1', '01987328476', 'se1@gmail.com', 37, 'Dhaka', '', 12, '$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi', NULL, '', '', '2026-04-29 17:17:58', 6, '2026-04-26 03:58:54', '2026-04-29 05:17:58', 0),
+(124, NULL, 'Mr. Draftsman1', 'Mr. Draftsman1', '', 'draft1@gmail.com', 35, 'dhaka', '', 16, '$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De', NULL, '', '', '2026-04-29 16:39:32', 6, '2026-04-26 03:59:33', '2026-04-29 04:39:32', 0),
+(125, NULL, 'Mr Estimator1', 'Mr Estimator1', '', 'estimator1@gmail.com', 37, 'dhaka', '', 19, '$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay', NULL, '', '', '2026-04-29 16:21:34', 6, '2026-04-26 04:00:08', '2026-04-29 04:21:34', 0),
+(126, NULL, 'Mr. QC1', 'Mr. QC1', '01986378256', 'qc1@gmail.com', 43, 'Dhaka', '', 13, '$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi', NULL, '', '', '2026-04-26 16:00:52', 6, '2026-04-26 04:00:52', '2026-04-26 04:00:52', 0),
+(127, NULL, 'Mr Purchase Head1', 'Mr Purchase Head1', '', 'pd1@gmail.com', 42, 'Dhaka', '', 17, '$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe', NULL, '', '', '2026-04-26 16:01:41', 6, '2026-04-26 04:01:41', '2026-04-26 04:01:41', 0),
+(128, NULL, 'Mr Site Operators1', 'Mr Site Operators1', '01723876324', 'sadikaafrin170043@gmail.com', 38, 'Dhaka', '', 20, '$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q', NULL, '', '', '2026-04-29 17:06:39', 6, '2026-04-26 04:05:25', '2026-04-29 05:06:39', 0),
+(129, NULL, 'Mr Structure Designer1', 'Mr Structure Designer1', '01653247632', 'nahian.tphl@gmail.com', 15, 'Dhaka', '', 21, '$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G', NULL, '', '', '2026-04-29 17:03:50', 6, '2026-04-26 05:41:57', '2026-04-29 05:03:50', 0);
 
 -- --------------------------------------------------------
 
@@ -8615,7 +8606,7 @@ ALTER TABLE `cashout_payments`
 -- AUTO_INCREMENT for table `cashout_requests`
 --
 ALTER TABLE `cashout_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `chat_messages`
@@ -8723,7 +8714,7 @@ ALTER TABLE `departments`
 -- AUTO_INCREMENT for table `designations`
 --
 ALTER TABLE `designations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
 
 --
 -- AUTO_INCREMENT for table `design_types`
@@ -8735,7 +8726,7 @@ ALTER TABLE `design_types`
 -- AUTO_INCREMENT for table `emi_schedules`
 --
 ALTER TABLE `emi_schedules`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `employees`
@@ -8831,7 +8822,7 @@ ALTER TABLE `leads`
 -- AUTO_INCREMENT for table `lead_bookings`
 --
 ALTER TABLE `lead_bookings`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `lead_follow_ups`
@@ -8843,7 +8834,7 @@ ALTER TABLE `lead_follow_ups`
 -- AUTO_INCREMENT for table `lead_payments`
 --
 ALTER TABLE `lead_payments`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `lead_sources`
@@ -8867,7 +8858,7 @@ ALTER TABLE `locations`
 -- AUTO_INCREMENT for table `management_cashin`
 --
 ALTER TABLE `management_cashin`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `management_cashout`
@@ -8927,13 +8918,13 @@ ALTER TABLE `operational_fund_requests`
 -- AUTO_INCREMENT for table `payslips`
 --
 ALTER TABLE `payslips`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `payslip_details`
 --
 ALTER TABLE `payslip_details`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `payslip_items`
@@ -9035,13 +9026,13 @@ ALTER TABLE `quotation_items`
 -- AUTO_INCREMENT for table `roles`
 --
 ALTER TABLE `roles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `role_permissions`
 --
 ALTER TABLE `role_permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=395;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=438;
 
 --
 -- AUTO_INCREMENT for table `sales_targets`
@@ -9101,7 +9092,7 @@ ALTER TABLE `units`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=120;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=130;
 
 --
 -- AUTO_INCREMENT for table `vendors`
