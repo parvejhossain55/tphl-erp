@@ -21,6 +21,7 @@ $statusMeta = [
     'Completed'   => ['color'=>'#10b981','bg'=>'rgba(16,185,129,.12)','icon'=>'<i class="fal fa-check-circle"></i>','dot'=>'#10b981'],
 ];
 ?>
+<div class="row"><div class="col-12">
 <style>
 /* ── Google Font ─────────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -79,7 +80,7 @@ $statusMeta = [
   border: 1px solid rgba(0,0,0,.08);
   cursor: pointer;
   transition: transform .15s, box-shadow .15s;
-  /* background: var(--card-bg, #fff); */
+  /* background: var(--clr-bg-card, #fff); */
 }
 .cp-stat-pill:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.09); }
 .cp-stat-pill-dot {
@@ -106,7 +107,7 @@ $statusMeta = [
   border-radius: 10px;
   border: 1px solid rgba(0,0,0,.12);
   font-size: 13px;
-  /* background: var(--card-bg, #fff); */
+  /* background: var(--clr-bg-card, #fff); */
   color: inherit;
   outline: none;
   transition: border-color .2s, box-shadow .2s;
@@ -129,7 +130,7 @@ $statusMeta = [
   border: 1px solid rgba(0,0,0,.12);
   font-size: 12.5px;
   font-weight: 600;
-  /* background: var(--card-bg, #fff); */
+  /* background: var(--clr-bg-card, #fff); */
   color: inherit;
   cursor: pointer;
   outline: none;
@@ -151,7 +152,7 @@ $statusMeta = [
   border-radius: 16px;
   border: 1px solid rgba(0,0,0,.08);
   overflow: hidden;
-  /* background: var(--card-bg, #fff); */
+  /* background: var(--clr-bg-card, #fff); */
   cursor: pointer;
   transition: transform .2s ease, box-shadow .2s ease;
   display: flex;
@@ -474,3 +475,5 @@ window.addEventListener('load', () => {
   });
 });
 </script>
+
+</div></div>

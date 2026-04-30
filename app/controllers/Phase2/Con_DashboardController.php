@@ -277,12 +277,21 @@ class Con_DashboardController extends Controller
 
     // ── KPI aggregates ──────────────────────────────────────────────────────
 
+    
+    private function getProjectRoleFilter($alias = 'p')
+    {
+        $userId = $_SESSION['user']['id'] ?? 0;
+        $roleId = $_SESSION['user']['role_id'] ?? 0;
+        if (in_array($roleId, [1, 3, 22])) return '1=1';
+        return "({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
+    }
+
     private function getDashboardStats(): array
     {
         $s = [];
 
         // 1. Total Projects
-        $r = $this->db->query("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NULL");
+        $r = $this->db->query("SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " AND " . $this->getProjectRoleFilter('p') . "");
         $s['total_projects'] = $r ? (int)$r->fetch_assoc()['c'] : 0;
 
         // 2-4. Budget totals (approved estimates only)
@@ -358,7 +367,7 @@ class Con_DashboardController extends Controller
                 SELECT project_id, SUM(amount_paid) AS total_spent
                 FROM con_financial_transactions GROUP BY project_id
             ) spent ON spent.project_id = p.id
-            WHERE p.deleted_at IS NULL
+            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . "
             ORDER BY p.id DESC";
 
         $result = $this->db->query($sql);
@@ -469,7 +478,7 @@ class Con_DashboardController extends Controller
                 SELECT project_id, SUM(amount_paid) AS total_spent
                 FROM con_financial_transactions GROUP BY project_id
             ) spent ON spent.project_id = p.id
-            WHERE p.deleted_at IS NULL
+            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . "
             ORDER BY p.id DESC";
 
         $result   = $this->db->query($sql);
@@ -752,6 +761,54 @@ class Con_DashboardController extends Controller
     // Permissions: Estimate Budget, Project Target Set, Material Issue,
     //              Purchase order, Working Plan, Project Report
     // =========================================================================
+    
+    public function operationsDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 3, 22]);
+
+        $filter = $this->getProjectRoleFilter('p');
+
+        $r1 = $this->db->query("SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND $filter");
+        $myProjectsCount = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
+
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM project_working_plans wp JOIN projects p ON p.id = wp.project_id WHERE p.deleted_at IS NULL AND $filter AND (wp.approved_status = 'Pending' OR wp.approved_status IS NULL)");
+        $pendingWorkingPlans = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM con_material_issues mi JOIN projects p ON p.id = mi.project_id WHERE p.deleted_at IS NULL AND $filter");
+        $totalMaterialIssues = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
+
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM vendor_payment_requests vpr JOIN projects p ON p.id = vpr.project_id WHERE p.deleted_at IS NULL AND $filter AND vpr.status IN ('Submitted', 'Pending')");
+        $pendingVendorPayments = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
+
+        $rProjs = $this->db->query("SELECT p.id, p.name, p.project_status, COALESCE(l.name,'') AS location_name FROM projects p LEFT JOIN locations l ON l.id = p.location_id WHERE p.deleted_at IS NULL AND $filter ORDER BY p.id DESC");
+        $myProjects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
+
+        $rWP = $this->db->query("SELECT wp.*, p.name AS project_name FROM project_working_plans wp JOIN projects p ON p.id = wp.project_id WHERE p.deleted_at IS NULL AND $filter ORDER BY wp.id DESC LIMIT 5");
+        $recentWorkingPlans = $rWP ? $rWP->fetch_all(MYSQLI_ASSOC) : [];
+
+        $rMI = $this->db->query("SELECT mi.*, p.name AS project_name, m.name AS material_name FROM con_material_issues mi JOIN projects p ON p.id = mi.project_id LEFT JOIN con_materials m ON m.id = mi.material_id WHERE p.deleted_at IS NULL AND $filter ORDER BY mi.id DESC LIMIT 5");
+        $recentMaterialIssues = $rMI ? $rMI->fetch_all(MYSQLI_ASSOC) : [];
+
+        $rVP = $this->db->query("SELECT vpr.*, p.name AS project_name, v.name AS vendor_name FROM vendor_payment_requests vpr JOIN projects p ON p.id = vpr.project_id LEFT JOIN vendors v ON v.id = vpr.vendor_id WHERE p.deleted_at IS NULL AND $filter ORDER BY vpr.id DESC LIMIT 5");
+        $recentVendorPayments = $rVP ? $rVP->fetch_all(MYSQLI_ASSOC) : [];
+
+        return $this->view('phase2/dashboard/operations-dashboard', [
+            'current_route'         => 'operations-dashboard',
+            'isAdmin'               => $isAdmin,
+            'myProjectsCount'       => $myProjectsCount,
+            'pendingWorkingPlans'   => $pendingWorkingPlans,
+            'totalMaterialIssues'   => $totalMaterialIssues,
+            'pendingVendorPayments' => $pendingVendorPayments,
+            'myProjects'            => $myProjects,
+            'recentWorkingPlans'    => $recentWorkingPlans,
+            'recentMaterialIssues'  => $recentMaterialIssues,
+            'recentVendorPayments'  => $recentVendorPayments,
+        ]);
+    }
+
     public function qcDashboard()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -790,7 +847,7 @@ class Con_DashboardController extends Controller
             LEFT JOIN locations l ON l.id=p.location_id
             LEFT JOIN (SELECT project_id, AVG(gain_percentage) AS progress_pct FROM target_fixed GROUP BY project_id) prog ON prog.project_id=p.id
             LEFT JOIN (SELECT project_id, SUM(total_estimated_cost) AS total_budget FROM initial_estimate_budgets WHERE status='approved' GROUP BY project_id) bud ON bud.project_id=p.id
-            WHERE p.deleted_at IS NULL ORDER BY p.id DESC LIMIT 6");
+            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " ORDER BY p.id DESC LIMIT 6");
         $projects = $rProj ? $rProj->fetch_all(MYSQLI_ASSOC) : [];
 
         // Recent Material Issues
@@ -1045,7 +1102,7 @@ class Con_DashboardController extends Controller
             LEFT JOIN locations l ON l.id=p.location_id
             LEFT JOIN project_drawings pd ON pd.project_id=p.id
             INNER JOIN architect_engineering ae ON ae.project_id=p.id AND ae.status='fully'
-            WHERE p.deleted_at IS NULL AND pd.id IS NULL
+            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " AND pd.id IS NULL
             ORDER BY p.id DESC LIMIT 5");
         $projectsNeedingDrawings = $rNeedDraw ? $rNeedDraw->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -1108,7 +1165,7 @@ class Con_DashboardController extends Controller
         $totalStudies = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
 
         // KPI: Total Projects
-        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NULL");
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " AND " . $this->getProjectRoleFilter('p') . "");
         $totalProjects = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
 
         // KPI: Projects with Land Study
@@ -1134,7 +1191,7 @@ class Con_DashboardController extends Controller
             FROM projects p
             LEFT JOIN locations l ON l.id=p.location_id
             LEFT JOIN land_visibility_study lvs ON lvs.project_id=p.id
-            WHERE p.deleted_at IS NULL AND lvs.id IS NULL
+            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " AND lvs.id IS NULL
             ORDER BY p.id DESC LIMIT 6");
         $pendingStudyProjects = $rPNoStudy ? $rPNoStudy->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -1265,7 +1322,7 @@ class Con_DashboardController extends Controller
             SELECT p.id, p.name, p.project_status
             FROM projects p
             LEFT JOIN initial_estimate_budgets b ON b.project_id = p.id
-            WHERE p.deleted_at IS NULL AND b.id IS NULL
+            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " AND b.id IS NULL
             ORDER BY p.id DESC LIMIT 6");
         $projectsWithoutEstimate = $rNoEst ? $rNoEst->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -1328,9 +1385,9 @@ class Con_DashboardController extends Controller
 
         // ── KPI 1: Projects assigned to this structural engineer ──────────────
         if ($isAdmin) {
-            $r1 = $this->db->query("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NULL");
+            $r1 = $this->db->query("SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " AND " . $this->getProjectRoleFilter('p') . "");
         } else {
-            $s1 = $this->db->prepare("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NULL AND struct_engineer_id = ?");
+            $s1 = $this->db->prepare("SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " AND " . $this->getProjectRoleFilter('p') . " AND struct_engineer_id = ?");
             $s1->bind_param('i', $userId);
             $s1->execute();
             $r1 = $s1->get_result();
@@ -1339,7 +1396,7 @@ class Con_DashboardController extends Controller
 
         // ── KPI 2: My projects that have structural design records ───────────
         if ($isAdmin) {
-            $r2 = $this->db->query("SELECT COUNT(DISTINCT sd.project_id) AS c FROM project_structural_designs sd JOIN projects p ON p.id = sd.project_id WHERE p.deleted_at IS NULL");
+            $r2 = $this->db->query("SELECT COUNT(DISTINCT sd.project_id) AS c FROM project_structural_designs sd JOIN projects p ON p.id = sd.project_id WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . "");
         } else {
             $s2 = $this->db->prepare("SELECT COUNT(DISTINCT sd.project_id) AS c FROM project_structural_designs sd JOIN projects p ON p.id = sd.project_id WHERE p.struct_engineer_id = ? AND p.deleted_at IS NULL");
             $s2->bind_param('i', $userId);
@@ -1410,7 +1467,7 @@ class Con_DashboardController extends Controller
                 FROM projects p
                 LEFT JOIN locations l ON l.id = p.location_id
                 LEFT JOIN project_structural_designs sd ON sd.project_id = p.id
-                WHERE p.deleted_at IS NULL
+                WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . "
                 ORDER BY p.id DESC");
         } else {
             $sPrj = $this->db->prepare("
@@ -1420,7 +1477,7 @@ class Con_DashboardController extends Controller
                 FROM projects p
                 LEFT JOIN locations l ON l.id = p.location_id
                 LEFT JOIN project_structural_designs sd ON sd.project_id = p.id
-                WHERE p.deleted_at IS NULL AND p.struct_engineer_id = ?
+                WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " AND p.struct_engineer_id = ?
                 ORDER BY p.id DESC");
             $sPrj->bind_param('i', $userId);
             $sPrj->execute();

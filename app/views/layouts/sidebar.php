@@ -1058,6 +1058,17 @@
                     </li>
                 <?php endif; ?>
 
+                <!-- ══ Operations Dashboard ════════════════════════════════════════
+                     Site Operator -->
+                <?php if ($_SESSION['user']['role_id'] == 20): ?>
+                    <li class="slide <?= isActive('operations-dashboard', $current_route) ?>">
+                        <a href="<?= $base_url ?>/operations-dashboard" class="sidebar__menu-item <?= isActive('operations-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
+                            <span class="sidebar__menu-label">Operations Dashboard</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
                 <!-- ══ Purchase Team Leader Dashboard ════════════════════════════
                      PTL has: Purchase order + Vendor Manage + Material Manage
                      Unique: Material Manage (Site Eng lacks it, QC lacks it)

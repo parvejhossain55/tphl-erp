@@ -38,8 +38,16 @@ class Con_WeeklyReportController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        $filter = "1=1";
+        if (!in_array($roleId, [1, 3, 22])) {
+            $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
+        }
+
         $projects = $this->db->query(
-            "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name"
+            "SELECT id, name FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC"
         )->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/weekly-reports/create-report', [

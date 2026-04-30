@@ -46,9 +46,14 @@ $months     = ['January','February','March','April','May','June','July','August'
                         </div>
 
                         <!-- Budget Info (auto-filled) -->
-                        <div id="budgetInfoCard" class="alert alert-info d-none mb-3">
-                            <strong>Total Initial Budget:</strong>
-                            <span id="budgetInfoText">—</span>
+                        <div id="budgetInfoCard" class="alert alert-info d-none mb-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Total Initial Budget:</strong>
+                                <span id="budgetInfoText">—</span>
+                            </div>
+                            <a href="#" id="viewBudgetBtn" class="btn btn-sm btn-info text-white" target="_blank">
+                                <i class="bi bi-eye"></i> View Details
+                            </a>
                         </div>
 
                         <!-- Design Type (auto-filled) -->
@@ -208,9 +213,16 @@ document.getElementById('work_plan_id').addEventListener('change', function () {
 
     if (opt.dataset.budget) {
         budgetCard.classList.remove('d-none');
+        budgetCard.classList.add('d-flex');
         budgetTxt.textContent = 'Budget #' + (opt.dataset.budgetId || '') + ' — ' + opt.dataset.budget;
+        
+        const viewBtn = document.getElementById('viewBudgetBtn');
+        if (viewBtn && opt.dataset.budgetId) {
+            viewBtn.href = BASE_URL + '/con-estimate-show/' + opt.dataset.budgetId;
+        }
     } else {
         budgetCard.classList.add('d-none');
+        budgetCard.classList.remove('d-flex');
     }
 });
 

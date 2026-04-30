@@ -322,8 +322,14 @@ function redirectByRole()
         case 19: // Purchase team lead
             $url = "{$GLOBALS['base_url']}/estimator-dashboard";
             break;
+        case 20: // Purchase team lead
+            $url = "{$GLOBALS['base_url']}/operations-dashboard";
+            break;
         case 21: // Purchase team lead
             $url = "{$GLOBALS['base_url']}/project-structural-design-dashboard";
+            break;
+        case 22: // Project Manager Head
+            $url = "{$GLOBALS['base_url']}/con-dashboard";
             break;
 
         default:

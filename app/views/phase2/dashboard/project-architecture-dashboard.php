@@ -11,6 +11,7 @@ $drawingsByType       = $drawingsByType       ?? [];
 $recentDrawings       = $recentDrawings       ?? [];
 $recentAE             = $recentAE             ?? [];
 ?>
+<div class="row"><div class="col-12">
 <style>
   :root {
     --pa-primary: #198754;
@@ -142,7 +143,7 @@ $recentAE             = $recentAE             ?? [];
     text-decoration: none !important;
     display: block;
     transition: transform .18s, box-shadow .18s;
-    background: var(--card-bg, #fff);
+    background: var(--clr-bg-card, #fff);
   }
 
   .kpi-card:hover {
@@ -195,7 +196,7 @@ $recentAE             = $recentAE             ?? [];
     border-radius: 14px;
     padding: 22px;
     border: 1px solid rgba(0, 0, 0, .08);
-    background: var(--card-bg, #fff);
+    background: var(--clr-bg-card, #fff);
     margin-bottom: 22px;
   }
 
@@ -519,3 +520,4 @@ $recentAE             = $recentAE             ?? [];
 
 
 <div style="height:30px"></div>
+</div></div>

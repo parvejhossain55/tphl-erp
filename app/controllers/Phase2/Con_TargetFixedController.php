@@ -42,7 +42,16 @@ class Con_TargetFixedController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        $projects  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name")->fetch_all(MYSQLI_ASSOC);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        $filter = "1=1";
+        if (!in_array($roleId, [1, 3, 22])) {
+            $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
+        }
+
+        $rProjs = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
+        $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
         $workPlans = $this->workPlanModel->getAll();
 
         $this->view('phase2/target-fixed/create-target', [
@@ -139,6 +148,18 @@ class Con_TargetFixedController extends Controller
             $creatorInfo = $stmt->get_result()->fetch_assoc() ?? [];
         }
 
+        // Fetch related weekly progress reports for this target
+        $reportsStmt = $this->db->prepare("
+            SELECT w.*, u.full_name as reported_by_name 
+            FROM weekly_progress_report w 
+            LEFT JOIN users u ON u.id = w.created_by 
+            WHERE w.target_id = ? 
+            ORDER BY w.report_date DESC
+        ");
+        $reportsStmt->bind_param('i', $id);
+        $reportsStmt->execute();
+        $weeklyReports = $reportsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/target-fixed/show-target', [
             'current_route'   => 'con-targets',
             'page_title'      => 'Target Detail',
@@ -148,6 +169,7 @@ class Con_TargetFixedController extends Controller
             'approverRole'    => $approverRole,
             'creatorInfo'     => $creatorInfo,
             'currentRoleId'   => $currentRoleId,
+            'weeklyReports'   => $weeklyReports,
         ]);
     }
 
@@ -165,7 +187,16 @@ class Con_TargetFixedController extends Controller
             exit;
         }
 
-        $projects  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name")->fetch_all(MYSQLI_ASSOC);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        $filter = "1=1";
+        if (!in_array($roleId, [1, 3, 22])) {
+            $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
+        }
+
+        $rProjs = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
+        $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
         $workPlans = $this->workPlanModel->getAll();
 
         $this->view('phase2/target-fixed/edit-target', [

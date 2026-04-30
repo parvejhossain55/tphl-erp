@@ -19,6 +19,7 @@ $aeStatusLabel = [
     'fully'       => ['label' => 'Complete',    'color' => '#10b981', 'icon' => 'fa-circle-check'],
 ];
 ?>
+<div class="row"><div class="col-12">
 <style>
 :root {
   --dr-primary: #198754;
@@ -358,3 +359,5 @@ if (!empty($architectEngineeringList)):
 <?php endif; ?>
 
 <div style="height:30px"></div>
+
+</div></div>

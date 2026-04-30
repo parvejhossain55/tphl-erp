@@ -736,43 +736,28 @@ class ProjectWorkflowMailService
 
     /**
      * Core send method using PHPMailer + Google XOAUTH2.
+     * Modified to use async database queue to prevent UI blocking.
      */
     private function send(string $toEmail, string $subject, string $htmlBody): bool
     {
         try {
-            $mail = new PHPMailer(true);
-            $mail->isSMTP();
-            $mail->Host       = $this->smtpHost;
-            $mail->Port       = $this->smtpPort;
-            $mail->SMTPAuth   = true;
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-
-            $provider = new Google([
-                'clientId'     => $this->clientId,
-                'clientSecret' => $this->clientSecret,
-            ]);
-
-            $mail->AuthType = 'XOAUTH2';
-            $mail->setOAuth(new OAuth([
-                'provider'     => $provider,
-                'clientId'     => $this->clientId,
-                'clientSecret' => $this->clientSecret,
-                'refreshToken' => $this->refreshToken,
-                'userName'     => $this->senderEmail,
-            ]));
-
-            $mail->setFrom($this->senderEmail, $this->senderName);
-            $mail->addAddress($toEmail);
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $htmlBody;
-            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>'], "\n", $htmlBody));
-
-            $mail->send();
+            $stmt = $this->db->prepare("INSERT INTO email_queue (to_email, subject, body, status) VALUES (?, ?, ?, 'pending')");
+            $stmt->bind_param("sss", $toEmail, $subject, $htmlBody);
+            $stmt->execute();
+            $stmt->close();
+            
+            // Trigger the async processor immediately via cURL so we don't have to wait for the next page load
+            $url = $this->getBaseUrl() . '/process_email_queue.php';
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 200); // 200ms timeout
+            curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_exec($ch);
+            curl_close($ch);
+            
             return true;
-
         } catch (Exception $e) {
-            error_log("[ProjectWorkflowMailService] Failed to send to {$toEmail}: " . $e->getMessage());
+            error_log("[ProjectWorkflowMailService] Failed to queue email to {$toEmail}: " . $e->getMessage());
             return false;
         }
     }
