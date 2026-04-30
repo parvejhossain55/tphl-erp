@@ -23,6 +23,7 @@ $stockOverview    = $stockOverview    ?? [];
 $pendingBOQsForPR = $pendingBOQsForPR ?? [];
 $pendingPRsForPO  = $pendingPRsForPO  ?? [];
 ?>
+<div class="row"><div class="col-12">
 <style>
 :root {
   --ptl-primary: #198754;
@@ -75,7 +76,7 @@ $pendingPRsForPO  = $pendingPRsForPO  ?? [];
 .kpi-card {
   border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden;
   border: 1px solid rgba(0,0,0,.08); text-decoration: none !important; display: block;
-  transition: transform .18s, box-shadow .18s; background: var(--card-bg, #fff);
+  transition: transform .18s, box-shadow .18s; background: var(--clr-bg-card, #fff);
 }
 .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.12); }
 .kpi-accent { position: absolute; left: 0; top: 0; width: 4px; height: 100%; border-radius: 14px 0 0 14px; }
@@ -86,7 +87,7 @@ $pendingPRsForPO  = $pendingPRsForPO  ?? [];
 .kpi-badge { position: absolute; top: 14px; right: 14px; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 20px; letter-spacing: .5px; }
 
 /* Panel */
-.ptl-panel { border-radius: 14px; padding: 22px; border: 1px solid rgba(0,0,0,.08); background: var(--card-bg, #fff); margin-bottom: 22px; }
+.ptl-panel { border-radius: 14px; padding: 22px; border: 1px solid rgba(0,0,0,.08); background: var(--clr-bg-card, #fff); margin-bottom: 22px; }
 .ptl-panel-title { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 .ptl-dot { width: 8px; height: 8px; border-radius: 50%; }
 
@@ -110,7 +111,7 @@ $pendingPRsForPO  = $pendingPRsForPO  ?? [];
   display: flex; align-items: center; gap: 10px; padding: 13px 14px;
   border-radius: 12px; text-decoration: none; border: 1px solid rgba(0,0,0,.08);
   font-size: 12px; font-weight: 700; transition: transform .15s, box-shadow .15s;
-  background: var(--card-bg, #fff);
+  background: var(--clr-bg-card, #fff);
 }
 .ql2-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.1); text-decoration: none; }
 .ql2-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
@@ -435,3 +436,5 @@ $pendingPRsForPO  = $pendingPRsForPO  ?? [];
 <?php endif; ?>
 
 <div style="height:30px"></div>
+
+</div></div>

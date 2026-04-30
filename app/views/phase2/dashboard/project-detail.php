@@ -27,6 +27,7 @@ $statusMap = [
 ];
 $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','text'=>'#6b7280'];
 ?>
+<div class="row"><div class="col-12">
 <style>
 /* ── Layout ────────────────────────────────────────────────── */
 .pd-header {
@@ -850,3 +851,5 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
   function monthName(m){ return months[parseInt(m)]||'Month'; }
 })();
 </script>
+
+</div></div>

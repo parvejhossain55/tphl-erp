@@ -33,7 +33,7 @@ $months     = ['','January','February','March','April','May','June',
         <div class="col-lg-12">
             <div class="card__wrapper shadow-sm">
                 <div class="card__header" style="background-color: #f8f9fa;">
-                    <h6 class="card__title mb-0">
+                    <h6 class="card__title p-1 text-muted">
                         <i class="bi bi-clipboard-data me-2 text-primary"></i>Create Bill of Quantities (BOM)
                     </h6>
                 </div>

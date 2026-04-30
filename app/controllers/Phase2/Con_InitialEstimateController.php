@@ -53,14 +53,15 @@ class Con_InitialEstimateController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Only show projects assigned to this estimator
-        $stmt = $this->db->prepare(
-            "SELECT id, name FROM projects WHERE estimator_id = ? ORDER BY name ASC"
-        );
-        $stmt->bind_param('i', $userId);
-        $stmt->execute();
-        $projects = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $filter = "1=1";
+        if (!in_array($roleId, [1, 3, 22])) {
+            $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
+        }
+
+        $rProjs = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
+        $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
         $archs       = $this->archModel->getAll();
         $designTypes = $this->designTypeModel->getAll();
@@ -98,6 +99,7 @@ class Con_InitialEstimateController extends Controller
             'work_type_id'     => $workTypeId,
             'start_date'       =>         ($_POST['start_date']       ?? null),
             'end_date'         =>         ($_POST['end_date']         ?? null),
+            'total_area_sqft'  => (float) ($_POST['total_area_sqft']  ?? 0),
             'other_costs'      => (float) ($_POST['other_costs']      ?? 0),
             'other_cost_detail'=>         ($_POST['other_cost_detail']?? null),
             'budget_link'      =>         ($_POST['budget_link']      ?? null),

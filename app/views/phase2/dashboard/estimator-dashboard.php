@@ -27,6 +27,7 @@ $typeColors = [
     '#ef4444','#f97316','#ec4899','#6366f1','#10b981',
 ];
 ?>
+<div class="row"><div class="col-12">
 <style>
 :root {
   --est-primary:#198754; --est-dark:#0f5132; --est-light:#20a86a;
@@ -501,3 +502,5 @@ html { scroll-behavior: smooth; }
   </div>
 </div>
 <div style="height:30px"></div>
+
+</div></div>

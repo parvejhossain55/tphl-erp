@@ -22,6 +22,7 @@ $recentIssues   = $recentIssues   ?? [];
 $recentDPRs     = $recentDPRs     ?? [];
 $pendingTargets = $pendingTargets ?? [];
 ?>
+<div class="row"><div class="col-12">
 <style>
 :root {
   --qc-primary: #198754;
@@ -87,7 +88,7 @@ $pendingTargets = $pendingTargets ?? [];
   border: 1px solid rgba(0,0,0,.08);
   text-decoration: none !important; display: block;
   transition: transform .18s, box-shadow .18s;
-  background: var(--card-bg, #fff);
+  background: var(--clr-bg-card, #fff);
 }
 .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.12); }
 .kpi-accent { position: absolute; left: 0; top: 0; width: 4px; height: 100%; border-radius: 14px 0 0 14px; }
@@ -98,7 +99,7 @@ $pendingTargets = $pendingTargets ?? [];
 .kpi-badge { position: absolute; top: 14px; right: 14px; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 20px; letter-spacing: .5px; }
 
 /* Panel */
-.rd-panel { border-radius: 14px; padding: 22px; border: 1px solid rgba(0,0,0,.08); background: var(--card-bg, #fff); margin-bottom: 22px; }
+.rd-panel { border-radius: 14px; padding: 22px; border: 1px solid rgba(0,0,0,.08); background: var(--clr-bg-card, #fff); margin-bottom: 22px; }
 .rd-panel-title { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 .rd-dot { width: 8px; height: 8px; border-radius: 50%; }
 
@@ -124,7 +125,7 @@ $pendingTargets = $pendingTargets ?? [];
   gap: 8px; padding: 16px 10px; border-radius: 12px; text-decoration: none;
   border: 1px solid rgba(0,0,0,.08); font-size: 11px; font-weight: 700;
   transition: transform .15s, box-shadow .15s;
-  background: var(--card-bg, #fff);
+  background: var(--clr-bg-card, #fff);
 }
 .ql-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.1); text-decoration: none; }
 .ql-icon { font-size: 22px; }
@@ -517,3 +518,5 @@ if (!empty($pendingWeeklyReportsQC)):
 <?php endif; ?>
 
 <div style="height:30px"></div>
+
+</div></div>

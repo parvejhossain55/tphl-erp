@@ -28,9 +28,10 @@ class SoilTestController extends Controller {
             $records = $this->model->getAll();
         } else {
             $stmt = $this->db->prepare("
-                SELECT st.*, p.name AS project_name
+                SELECT st.*, p.name AS project_name,u.full_name as engineer_name
                 FROM soil_tests st
                 LEFT JOIN projects p ON st.project_id = p.id
+                LEFT JOIN users u ON st.site_engineer_id = u.id
                 WHERE p.site_engineer_id = ?
                 ORDER BY st.id DESC
             ");

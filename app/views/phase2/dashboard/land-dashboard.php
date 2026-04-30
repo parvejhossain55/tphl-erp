@@ -12,6 +12,7 @@ $pendingStudyProjects = $pendingStudyProjects ?? [];
 
 $coveragePct = $totalProjects > 0 ? round($projectsWithStudy / $totalProjects * 100, 1) : 0;
 ?>
+<div class="row"><div class="col-12">
 <style>
   :root {
     --lm-primary: #198754;
@@ -135,7 +136,7 @@ $coveragePct = $totalProjects > 0 ? round($projectsWithStudy / $totalProjects * 
     text-decoration: none !important;
     display: block;
     transition: transform .18s, box-shadow .18s;
-    background: var(--card-bg, #fff);
+    background: var(--clr-bg-card, #fff);
   }
 
   .kpi-card:hover {
@@ -198,7 +199,7 @@ $coveragePct = $totalProjects > 0 ? round($projectsWithStudy / $totalProjects * 
     border-radius: 14px;
     padding: 22px;
     border: 1px solid rgba(0, 0, 0, .08);
-    background: var(--card-bg, #fff);
+    background: var(--clr-bg-card, #fff);
     margin-bottom: 22px;
   }
 
@@ -508,3 +509,4 @@ $coveragePct = $totalProjects > 0 ? round($projectsWithStudy / $totalProjects * 
 
 </div>
 <div style="height:30px"></div>
+</div></div>

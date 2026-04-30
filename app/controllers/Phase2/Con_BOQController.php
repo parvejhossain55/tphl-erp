@@ -48,7 +48,7 @@ class Con_BOQController extends Controller
         $target_id = isset($_GET['target_id']) ? (int)$_GET['target_id'] : 0;
         $targetData = null;
         if ($target_id) {
-            $targetModel = new \Phase2\Con_TargetFixed($this->db);
+            $targetModel = new \Con_TargetFixed($this->db);
             $targetData = $targetModel->find($target_id);
         }
 

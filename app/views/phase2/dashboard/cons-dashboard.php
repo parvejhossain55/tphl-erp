@@ -27,6 +27,7 @@ $statusColor = [
     'Completed'   => ['bg'=>'rgba(16,185,129,.12)', 'text'=>'#10b981'],
 ];
 ?>
+<div class="row"><div class="col-12">
 <style>
 :root {
   --cd-primary: #198754;
@@ -1159,3 +1160,4 @@ if (!empty($weekTargetNotifications) || !empty($labDueNotifications)):
 </div>
 
 <div style="height:30px"></div>
+</div></div>

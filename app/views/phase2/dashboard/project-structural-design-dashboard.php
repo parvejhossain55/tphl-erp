@@ -17,6 +17,7 @@ $projectsNeedingDesign = $projectsNeedingDesign ?? [];
 $coveragePct = $myProjectsCount > 0 ? round($projectsWithDesign / $myProjectsCount * 100, 1) : 0;
 $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
 ?>
+<div class="row"><div class="col-12">
 <style>
   :root {
     --sd-primary: #7c3aed;
@@ -92,7 +93,7 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
     border: 1px solid rgba(0,0,0,.08);
     text-decoration: none !important; display: block;
     transition: transform .18s, box-shadow .18s;
-    background: var(--card-bg, #fff);
+    background: var(--clr-bg-card, #fff);
   }
   .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.12); }
   .kpi-accent {
@@ -121,7 +122,7 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
   .sd-panel {
     border-radius: 14px; padding: 22px;
     border: 1px solid rgba(0,0,0,.08);
-    background: var(--card-bg, #fff);
+    background: var(--clr-bg-card, #fff);
     margin-bottom: 22px;
   }
   .sd-panel-title {
@@ -552,3 +553,4 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
   </div>
 </div>
 <div style="height:30px"></div>
+</div></div>
