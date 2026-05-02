@@ -173,8 +173,16 @@ $show_breadcrumb = true;
                         </a>
 
                         <!-- Import CSV button outside form submit -->
-                        <button type="button" class="d-none btn btn-outline-secondary btn-sm" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
-                            Import CSV
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
+                            Import Leads CSV
+                        </button>
+                        
+                        <button type="button" class="btn btn-outline-info btn-sm" id="importBookingsCsvBtn" data-bs-toggle="modal" data-bs-target="#importBookingsCsvModal">
+                            Import Bookings CSV
+                        </button>
+
+                        <button type="button" class="btn btn-outline-success btn-sm" id="importPaymentsCsvBtn" data-bs-toggle="modal" data-bs-target="#importPaymentsCsvModal">
+                            Import Payments CSV
                         </button>
 
                         <a href="<?= $GLOBALS['base_url'] ?>/create-lead" class="btn btn-primary btn-sm">
@@ -612,7 +620,7 @@ $show_breadcrumb = true;
             </div>
 
             <div class="modal-body">
-                <form action="<?= $GLOBALS['base_url'] ?>/leads-import-csv"
+                <form action="<?= $GLOBALS['base_url'] ?>/bulk-leads-import-csv"
                     method="post"
                     enctype="multipart/form-data">
 
@@ -629,14 +637,17 @@ $show_breadcrumb = true;
                         </div>
                     </div>
 
-                    <div class="submit__btn text-center">
+                <div class="submit__btn text-center">
                         <button class="btn btn-primary">Import</button>
                     </div>
                 </form>
 
-                <p class="mt-15 text-muted small">
-                    CSV header must match lead table columns.
-                </p>
+                <div class="mt-15 p-2  rounded text-muted" style="font-size: 12px; max-height: 200px; overflow-y: auto;">
+                    <strong>Required CSV Headers:</strong><br>
+                    full_name, job_title, company_name, phone, alt_phone_number, email, lead_image, lead_name_bn, father_name_bn, mother_name_bn, profession_bn, nationality, religion, nominee_name, nomi_father_name, nomi_mother_name, nomi_profession, relation_with_lead, nomi_dob, nomi_nid_passport, nomi_phone, nomi_email, nomi_present_add, nomi_permanent_address, nomi_image, team_id, assigned_id
+                    <br><br>
+                    <em>Note: For image columns, provide the exact file name (e.g., `user.jpg`). Ensure these images exist in the upload directory.</em>
+                </div>
             </div>
         </div>
     </div>
@@ -1014,3 +1025,94 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 <!-- my old lead-lists page where assigned user show and checkbox dile first page er ata a time select by row ata one page row paginate all 10 row selcted  -->
+
+<!-- Bookings CSV Import Modal -->
+<div class="modal fade" id="importBookingsCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Bookings from CSV</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/bulk-bookings-import-csv"
+                    method="post"
+                    enctype="multipart/form-data">
+
+                    <div class="from__input-box mb-20">
+                        <div class="form__input-title">
+                            <label>Upload CSV File <span>*</span></label>
+                        </div>
+                        <div class="form__input">
+                            <input type="file"
+                                name="csv_file"
+                                class="form-control"
+                                accept=".csv"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="submit__btn text-center">
+                        <button class="btn btn-primary">Import</button>
+                    </div>
+                </form>
+
+                <div class="mt-15 p-2 rounded text-muted" style="font-size: 12px; max-height: 200px; overflow-y: auto;">
+                    <strong>Required CSV Headers:</strong><br>
+                    lead_phone, project_name, flat_name, agreement_value, discount_amount, booking_date, booking_status, sales_agent, approved_amount, service_fee_balance, landshare_status, payment_status, attachment_image
+                    <br><br>
+                    <em>Note: lead_phone, project_name, and flat_name are used to lookup IDs in the database. If the `sales_agent` is provided by name or ID and not found, it is saved as an old agent. If approved_amount > 0, approval_status becomes 'approved'.</em>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payments CSV Import Modal -->
+<div class="modal fade" id="importPaymentsCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Payments from CSV</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/bulk-payments-import-csv"
+                    method="post"
+                    enctype="multipart/form-data">
+
+                    <div class="from__input-box mb-20">
+                        <div class="form__input-title">
+                            <label>Upload CSV File <span>*</span></label>
+                        </div>
+                        <div class="form__input">
+                            <input type="file"
+                                name="csv_file"
+                                class="form-control"
+                                accept=".csv"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="submit__btn text-center">
+                        <button class="btn btn-primary">Import Payments</button>
+                    </div>
+                </form>
+
+                <div class="mt-15 p-2 rounded text-muted" style="font-size: 12px; max-height: 200px; overflow-y: auto;">
+                    <strong>Required CSV Headers:</strong><br>
+                    lead_number, project_name, flat_name, payment_type, amount, payment_method, payment_date, total_emi_no, transaction_ref, bank_name, cheque_no, online_type, attachment_image
+                    <br><br>
+                    <em>Note: <code>lead_number</code>, <code>project_name</code>, and <code>flat_name</code> are used to find the `booking_id`. Each imported payment will be automatically verified, and if the total paid `booking_money` covers the expected amount, the booking status and flat `is_booked` will be updated to completed. `payment_type` refers to the type of payment (e.g., booking_money, registration).</em>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

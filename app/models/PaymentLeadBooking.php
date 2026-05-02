@@ -30,6 +30,54 @@ class PaymentLeadBooking extends Model
 
     // Create a new follow-up
 
+    public function createFromCsvBulk($data)
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO lead_payments
+            (booking_id, bank_name, bank_account_no, cheque_no, online_type, 
+             payment_type, amount, payment_method, payment_status, verification_status, verified_by,
+             payment_date, transaction_ref, total_emi_no, created_by, attachment_image)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $v = function($key) use ($data) {
+            return (isset($data[$key]) && trim($data[$key]) !== '') ? trim($data[$key]) : null;
+        };
+
+        $v_booking_id = $v('booking_id'); $v_bank_name = $v('bank_name'); $v_bank_account_no = $v('bank_account_no');
+        $v_cheque_no = $v('cheque_no'); $v_online_type = $v('online_type'); $v_payment_type = $v('payment_type');
+        $v_amount = $v('amount'); $v_payment_method = $v('payment_method'); $v_payment_status = $v('payment_status');
+        $v_verification_status = $v('verification_status') ?? 'pending'; $v_verified_by = $v('verified_by');
+        $v_payment_date = $v('payment_date'); $v_transaction_ref = $v('transaction_ref'); $v_total_emi_no = $v('total_emi_no');
+        $v_created_by = $v('created_by'); $v_attachment_image = $v('attachment_image');
+
+        $stmt->bind_param(
+            "isssssdsssisssss",
+            $v_booking_id,
+            $v_bank_name,
+            $v_bank_account_no,
+            $v_cheque_no,
+            $v_online_type,
+            $v_payment_type,
+            $v_amount,
+            $v_payment_method,
+            $v_payment_status,
+            $v_verification_status,
+            $v_verified_by,
+            $v_payment_date,
+            $v_transaction_ref,
+            $v_total_emi_no,
+            $v_created_by,
+            $v_attachment_image
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception("Payment insert failed: " . $stmt->error);
+        }
+
+        return $this->db->insert_id;
+    }
+
     public function create($data)
     {
         $this->db->begin_transaction();

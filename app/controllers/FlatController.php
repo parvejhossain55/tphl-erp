@@ -234,4 +234,86 @@ class FlatController extends Controller
         header("Location:{$GLOBALS['base_url']}/flat-lists");
         exit;
     }
+
+    public function importCsvBulkFlats()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
+            setError("CSV upload failed");
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        }
+
+        $fileTmp = $_FILES['csv_file']['tmp_name'];
+        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+
+        if ($ext !== 'csv') {
+            setError("Only CSV files allowed");
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        }
+
+        if (($handle = fopen($fileTmp, "r")) !== false) {
+            $header = fgetcsv($handle);
+            
+            // Clean BOM from first header if present
+            $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
+            $header = array_map(function ($value) {
+                return trim($value);
+            }, $header);
+
+            $successCount = 0;
+            
+            // Cache project names to IDs
+            $projectsCache = [];
+
+            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+                if (count(array_filter($row)) === 0) continue; // skip empty rows
+                if (count($header) !== count($row)) continue;
+
+                $data = array_combine($header, $row);
+                
+                // Get project_id from project_name
+                $projectName = trim($data['project_name'] ?? '');
+                if (empty($projectName)) continue; // skip if no project name
+
+                $projectId = null;
+                if (isset($projectsCache[$projectName])) {
+                    $projectId = $projectsCache[$projectName];
+                } else {
+                    $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                    $stmt->bind_param("s", $projectName);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    if ($res) {
+                        $projectId = $res['id'];
+                        $projectsCache[$projectName] = $projectId;
+                    }
+                }
+
+                if (!$projectId) continue; // Skip if project not found
+
+                $data['project_id'] = $projectId;
+                $data['created_by'] = $_SESSION['user']['id'] ?? null;
+                
+                try {
+                    $this->flatModel->createFromCsvBulk($data);
+                    $successCount++;
+                } catch (Exception $e) {
+                    error_log("CSV Import Error: " . $e->getMessage());
+                    continue;
+                }
+            }
+            fclose($handle);
+
+            setSuccess("$successCount Flats imported successfully from CSV");
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        } else {
+            setError("Unable to read CSV file");
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        }
+    }
 }

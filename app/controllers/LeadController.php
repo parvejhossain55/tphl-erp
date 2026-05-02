@@ -692,7 +692,7 @@ class LeadController extends Controller
         }
     }
 
-
+// form DMT executive dashboard CSV import
     public function importCsv()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -771,6 +771,66 @@ class LeadController extends Controller
         } else {
             setError("Unable to read CSV file");
             return;
+        }
+    }
+// form lead list
+    public function importCsvBulkLeads()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
+            setError("CSV upload failed");
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
+        }
+
+        $fileTmp = $_FILES['csv_file']['tmp_name'];
+        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+
+        if ($ext !== 'csv') {
+            setError("Only CSV files allowed");
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
+        }
+
+        if (($handle = fopen($fileTmp, "r")) !== false) {
+            $header = fgetcsv($handle);
+            
+            // Clean BOM from first header if present
+            $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
+            $header = array_map(function ($value) {
+                return trim($value);
+            }, $header);
+
+            $successCount = 0;
+            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+                if (count(array_filter($row)) === 0) continue; // skip empty rows
+                if (count($header) !== count($row)) continue;
+
+                $data = array_combine($header, $row);
+                
+                // Set default status and visibility
+                $data['status'] = 'active';
+                $data['visibility'] = 'public';
+                $data['created_by'] = $_SESSION['user']['id'] ?? null;
+                
+                try {
+                    $this->leadModel->createFromCsvBulk($data);
+                    $successCount++;
+                } catch (Exception $e) {
+                    error_log("CSV Import Error: " . $e->getMessage());
+                    continue;
+                }
+            }
+            fclose($handle);
+
+            setSuccess("$successCount Leads imported successfully from CSV");
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
+        } else {
+            setError("Unable to read CSV file");
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
         }
     }
 

@@ -1,5 +1,5 @@
 <!-- app-sidebar-start -->
-<!-- <pre>
+<!--<pre>
 <php print_r($_SESSION['user']['permissions']); ?>
 </pre> -->
 
@@ -1574,4 +1574,4 @@
     </div>
 </div>
 <div class="app__offcanvas-overlay"></div>
-<!-- app-sidebar-end -->
+<!--app-sidebar-end -->
