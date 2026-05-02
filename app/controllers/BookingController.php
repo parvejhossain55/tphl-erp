@@ -159,4 +159,198 @@ class BookingController extends Controller
 
     // Delete Employee
     public function delete($id) {}
+
+    public function importCsvBulkBookings()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
+            setError("CSV upload failed");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        $fileTmp = $_FILES['csv_file']['tmp_name'];
+        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+
+        if ($ext !== 'csv') {
+            setError("Only CSV files allowed");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        if (($handle = fopen($fileTmp, "r")) !== false) {
+            $header = fgetcsv($handle);
+            $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
+            $header = array_map(function ($value) { return trim($value); }, $header);
+
+            $successCount = 0;
+            
+            $leadsCache = [];
+            $projectsCache = [];
+            $flatsCache = [];
+            $usersCache = [];
+
+            $errors = [];
+            $rowNum = 1;
+            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+                $rowNum++;
+                if (count(array_filter($row)) === 0) continue;
+                if (count($header) !== count($row)) {
+                    $errors[] = "Row $rowNum: Column mismatch";
+                    continue;
+                }
+
+                $data = array_combine($header, $row);
+                
+                // 1. Resolve lead_id from lead_phone
+                $leadPhone = trim($data['lead_phone'] ?? '');
+                if (empty($leadPhone)) {
+                    $errors[] = "Row $rowNum: Lead phone empty";
+                    continue;
+                }
+
+                $leadId = null;
+                if (isset($leadsCache[$leadPhone])) {
+                    $leadId = $leadsCache[$leadPhone];
+                } else {
+                    $stmt = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE phone = ? LIMIT 1");
+                    $stmt->bind_param("s", $leadPhone);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    if ($res) {
+                        $leadsCache[$leadPhone] = ['id' => $res['id'], 'assigned_id' => $res['assigned_id']];
+                        $leadId = $res['id'];
+                    }
+                }
+                if (!$leadId) {
+                    $errors[] = "Row $rowNum: Lead not found for phone '$leadPhone'";
+                    continue;
+                }
+                $data['lead_id'] = $leadId;
+                
+                // Handle Sales Agent
+                $salesAgentInput = trim($data['sales_agent'] ?? '');
+                $salesById = null;
+                $salesAgentOld = null;
+
+                if (!empty($salesAgentInput)) {
+                    if (isset($usersCache[$salesAgentInput])) {
+                        $salesById = $usersCache[$salesAgentInput];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id FROM users WHERE id = ? OR full_name = ? LIMIT 1");
+                        $stmt->bind_param("ss", $salesAgentInput, $salesAgentInput);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        
+                        if ($res) {
+                            $salesById = $res['id'];
+                            $usersCache[$salesAgentInput] = $salesById;
+                        } else {
+                            $salesAgentOld = $salesAgentInput;
+                        }
+                    }
+                } else {
+                    // Fall back to lead's assigned user
+                    $salesById = $leadsCache[$leadPhone]['assigned_id'] ?? null;
+                }
+
+                $data['sales_by_id'] = $salesById;
+                $data['sales_agent_old'] = $salesAgentOld;
+
+                // 2. Resolve project_id from project_name
+                $projectName = trim($data['project_name'] ?? '');
+                if (empty($projectName)) {
+                    $errors[] = "Row $rowNum: Project name empty";
+                    continue;
+                }
+
+                $projectId = null;
+                if (isset($projectsCache[$projectName])) {
+                    $projectId = $projectsCache[$projectName];
+                } else {
+                    $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                    $stmt->bind_param("s", $projectName);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    if ($res) {
+                        $projectId = $res['id'];
+                        $projectsCache[$projectName] = $projectId;
+                    }
+                }
+                if (!$projectId) {
+                    $errors[] = "Row $rowNum: Project not found '$projectName'";
+                    continue;
+                }
+                $data['project_id'] = $projectId;
+
+                // 3. Resolve flat_id from flat_name and project_id
+                $flatName = trim($data['flat_name'] ?? '');
+                if (empty($flatName)) {
+                    $errors[] = "Row $rowNum: Flat name empty";
+                    continue;
+                }
+
+                $flatCacheKey = $projectId . '_' . $flatName;
+                $flatId = null;
+                if (isset($flatsCache[$flatCacheKey])) {
+                    $flatId = $flatsCache[$flatCacheKey];
+                } else {
+                    $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? LIMIT 1");
+                    $stmt->bind_param("is", $projectId, $flatName);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    if ($res) {
+                        $flatId = $res['id'];
+                        $flatsCache[$flatCacheKey] = $flatId;
+                    }
+                }
+                if (!$flatId) {
+                    $errors[] = "Row $rowNum: Flat not found '$flatName' in project '$projectName'";
+                    continue;
+                }
+                $data['flat_id'] = $flatId;
+
+                $data['created_by'] = $_SESSION['user']['id'] ?? null;
+                
+                // Approval status logic
+                if (!empty($data['approved_amount']) && (float)$data['approved_amount'] > 0) {
+                    $data['approval_status'] = 'approved';
+                }
+
+                try {
+                    $this->bookingModel->createFromCsvBulk($data);
+                    $successCount++;
+                } catch (Exception $e) {
+                    $errors[] = "Row $rowNum: DB Error - " . $e->getMessage();
+                    error_log("CSV Import Error: " . $e->getMessage());
+                    continue;
+                }
+            }
+            fclose($handle);
+
+            if ($successCount > 0) {
+                $msg = "$successCount Bookings imported successfully.";
+                if (count($errors) > 0) {
+                    $msg .= " Failed rows: " . implode("; ", array_slice($errors, 0, 3));
+                    if (count($errors) > 3) $msg .= " and " . (count($errors) - 3) . " more errors.";
+                }
+                setSuccess($msg);
+            } else {
+                $msg = "0 Bookings imported.";
+                if (count($errors) > 0) {
+                    $msg .= " Errors: " . implode("; ", array_slice($errors, 0, 3));
+                    if (count($errors) > 3) $msg .= " and " . (count($errors) - 3) . " more errors.";
+                }
+                setError($msg);
+            }
+
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        } else {
+            setError("Unable to read CSV file");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+    }
 }

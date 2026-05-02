@@ -264,6 +264,211 @@ class PaymentBookingController extends Controller
     }
 
 
+    public function importCsvBulkPayments()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
+            $file = $_FILES['csv_file'];
+
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                setError("Upload failed or no file selected");
+                header("Location: " . $_SERVER['HTTP_REFERER']);
+                exit;
+            }
+
+            $handle = fopen($file['tmp_name'], "r");
+            if ($handle !== false) {
+                $header = fgetcsv($handle, 1000, ",");
+                $header = array_map('trim', $header);
+
+                $successCount = 0;
+                $errorCount = 0;
+                
+                $leadsCache = [];
+                $projectsCache = [];
+                $flatsCache = [];
+
+                $errors = [];
+                $rowNum = 1;
+
+                while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+                    $rowNum++;
+                    if (count(array_filter($row)) === 0) continue;
+                    if (count($header) !== count($row)) {
+                        $errors[] = "Row $rowNum: Column mismatch";
+                        continue;
+                    }
+
+                    $data = array_combine($header, $row);
+                    
+                    // 1. Resolve lead_id
+                    $leadPhone = trim($data['lead_number'] ?? '');
+                    if (empty($leadPhone)) {
+                        $errors[] = "Row $rowNum: Lead phone empty";
+                        continue;
+                    }
+
+                    $leadId = null;
+                    if (isset($leadsCache[$leadPhone])) {
+                        $leadId = $leadsCache[$leadPhone];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id FROM leads WHERE phone = ? LIMIT 1");
+                        $stmt->bind_param("s", $leadPhone);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $leadId = $res['id'];
+                            $leadsCache[$leadPhone] = $leadId;
+                        }
+                    }
+                    if (!$leadId) {
+                        $errors[] = "Row $rowNum: Lead not found for phone '$leadPhone'";
+                        continue;
+                    }
+
+                    // 2. Resolve project_id
+                    $projectName = trim($data['project_name'] ?? '');
+                    if (empty($projectName)) {
+                        $errors[] = "Row $rowNum: Project name empty";
+                        continue;
+                    }
+
+                    $projectId = null;
+                    if (isset($projectsCache[$projectName])) {
+                        $projectId = $projectsCache[$projectName];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                        $stmt->bind_param("s", $projectName);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $projectId = $res['id'];
+                            $projectsCache[$projectName] = $projectId;
+                        }
+                    }
+                    if (!$projectId) {
+                        $errors[] = "Row $rowNum: Project not found '$projectName'";
+                        continue;
+                    }
+
+                    // 3. Resolve flat_id
+                    $flatName = trim($data['flat_name'] ?? '');
+                    if (empty($flatName)) {
+                        $errors[] = "Row $rowNum: Flat name empty";
+                        continue;
+                    }
+
+                    $flatCacheKey = $projectId . '_' . $flatName;
+                    $flatId = null;
+                    if (isset($flatsCache[$flatCacheKey])) {
+                        $flatId = $flatsCache[$flatCacheKey];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? LIMIT 1");
+                        $stmt->bind_param("is", $projectId, $flatName);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $flatId = $res['id'];
+                            $flatsCache[$flatCacheKey] = $flatId;
+                        }
+                    }
+                    if (!$flatId) {
+                        $errors[] = "Row $rowNum: Flat not found '$flatName' in project '$projectName'";
+                        continue;
+                    }
+
+                    // 4. Resolve booking_id
+                    $stmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? AND project_id = ? AND flat_id = ? LIMIT 1");
+                    $stmt->bind_param("iii", $leadId, $projectId, $flatId);
+                    $stmt->execute();
+                    $bRes = $stmt->get_result()->fetch_assoc();
+                    
+                    if (!$bRes) {
+                        $errors[] = "Row $rowNum: Booking not found for this Lead, Project, and Flat.";
+                        continue;
+                    }
+                    $bookingId = $bRes['id'];
+
+                    // Prepare payment data
+                    $paymentData = [
+                        'booking_id' => $bookingId,
+                        'payment_type' => $data['payment_type'] ?? '',
+                        'amount' => $data['amount'] ?? 0,
+                        'payment_method' => $data['payment_method'] ?? 'cash',
+                        'payment_status' => 'pending', // Will be updated
+                        'payment_date' => $data['payment_date'] ?? date('Y-m-d'),
+                        'total_emi_no' => $data['total_emi_no'] ?? null,
+                        'transaction_ref' => $data['transaction_ref'] ?? null,
+                        'bank_name' => $data['bank_name'] ?? null,
+                        'bank_account_no' => null, // or from CSV if added
+                        'cheque_no' => $data['cheque_no'] ?? null,
+                        'online_type' => $data['online_type'] ?? null,
+                        'created_by' => $_SESSION['user']['id'] ?? null,
+                        'verification_status' => 'verified',
+                        'verified_by' => $_SESSION['user']['id'] ?? null,
+                        'attachment_image' => $data['attachment_image'] ?? null
+                    ];
+
+                    try {
+                        $paymentId = $this->paymentModel->createFromCsvBulk($paymentData);
+                        
+                        // Recalculate Booking Status
+                        $newBookingStatus = $this->updateBookingPaymentStatus($bookingId);
+
+                        // Set Payment Status Map
+                        $paymentStatusMap = [
+                            'paid'    => 'paid',
+                            'partial' => 'partially_paid',
+                            'unpaid'  => 'pending',
+                        ];
+                        $newPaymentStatus = $paymentStatusMap[$newBookingStatus] ?? 'paid';
+
+                        // Update Payment Status
+                        $stmt2 = $this->db->prepare("UPDATE lead_payments SET payment_status = ? WHERE id = ?");
+                        $stmt2->bind_param('si', $newPaymentStatus, $paymentId);
+                        $stmt2->execute();
+
+                        // Handle Flat Booking if fully paid
+                        if ($newBookingStatus === 'paid') {
+                            $this->handleFlatBooking($bookingId);
+                        }
+
+                        $successCount++;
+                    } catch (Exception $e) {
+                        $errors[] = "Row $rowNum: DB Error - " . $e->getMessage();
+                        error_log("CSV Import Error: " . $e->getMessage());
+                        continue;
+                    }
+                }
+                fclose($handle);
+
+                if ($successCount > 0) {
+                    $msg = "$successCount Payments imported successfully.";
+                    if (count($errors) > 0) {
+                        $msg .= " Failed rows: " . implode("; ", array_slice($errors, 0, 3));
+                        if (count($errors) > 3) $msg .= " and " . (count($errors) - 3) . " more errors.";
+                    }
+                    setSuccess($msg);
+                } else {
+                    $msg = "0 Payments imported.";
+                    if (count($errors) > 0) {
+                        $msg .= " Errors: " . implode("; ", array_slice($errors, 0, 3));
+                        if (count($errors) > 3) $msg .= " and " . (count($errors) - 3) . " more errors.";
+                    }
+                    setError($msg);
+                }
+
+                header("Location: " . $_SERVER['HTTP_REFERER']);
+                exit;
+            } else {
+                setError("Unable to read CSV file");
+                header("Location: " . $_SERVER['HTTP_REFERER']);
+                exit;
+            }
+        }
+    }
+
     public function invoice($payment_id)
     {
         if (!$payment_id) {

@@ -292,6 +292,7 @@ $routes = [
     "edit-lead/(\d+)" => ["controller" => "LeadController", "method" => "edit"],
     "view-lead/(\d+)" => ["controller" => "LeadController", "method" => "show"],
     "leads-import-csv" => ["controller" => "LeadController", "method" => "importCsv"],
+    "bulk-leads-import-csv" => ["controller" => "LeadController", "method" => "importCsvBulkLeads"],
     "onboarding-clients" => ["controller" => "LeadController", "method" => "showOnboardClient"],
     "update-lead/(\d+)" => ["controller" => "LeadController", "method" => "update"],
     "update-last_leadAction/(\d+)" => ["controller" => "LeadController", "method" => "updateLastleadAction"],
@@ -319,6 +320,8 @@ $routes = [
     "update-onboard-client/(\d+)" => ["controller" => "OnboardClientController", "method" => "update"],
 
     "get-lead-booking-details/(\d+)" => ["controller" => "OnboardClientController", "method" => "getLeadBookingDetails"],
+    "bulk-bookings-import-csv" => ["controller" => "BookingController", "method" => "importCsvBulkBookings"],
+    "bulk-payments-import-csv" => ["controller" => "PaymentBookingController", "method" => "importCsvBulkPayments"],
     "assign-onboard-client" => ["controller" => "OnboardClientController", "method" => "assignMultipleLeads"],
 
 
@@ -406,6 +409,7 @@ $routes = [
     "project-details/(\d+)" => ["controller" => "ProjectController", "method" => "show"],
     "update-project/(\d+)" => ["controller" => "ProjectController", "method" => "update"],
     "delete-project" => ["controller" => "ProjectController", "method" => "delete"],
+    "bulk-projects-import-csv" => ["controller" => "ProjectController", "method" => "importCsvBulkProjects"],
 
     //flat
     "flat-lists" => ["controller" => "FlatController", "method" => "index"],
@@ -415,6 +419,7 @@ $routes = [
     "flat-details/(\d+)" => ["controller" => "FlatController", "method" => "show"],
     "update-flat/(\d+)" => ["controller" => "FlatController", "method" => "update"],
     "delete-flat" => ["controller" => "FlatController", "method" => "delete"],
+    "bulk-flats-import-csv" => ["controller" => "FlatController", "method" => "importCsvBulkFlats"],
 
     //follow-up-leads
     "follow-up-leads/(\d+)" => ["controller" => "FollowUpController", "method" => "index"],

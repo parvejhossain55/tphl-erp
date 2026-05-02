@@ -134,6 +134,74 @@ class FlatModel extends Model
     }
 
     /* =========================
+       Create Flat From CSV
+    ========================== */
+    public function createFromCsvBulk($data)
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO flats (
+                project_id,
+                flat_name,
+                sqft,
+                bhk,
+                bedroom,
+                bathroom,
+                balcony,
+                drawing_dining_kitchen,
+                common_dining,
+                floor_no,
+                facing_site,
+                price_value,
+                facilities,
+                land_share_value,
+                development_charges,
+                created_by,
+                status,
+                is_booked
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ");
+
+        if (!$stmt) {
+            throw new Exception($this->db->error);
+        }
+
+        $v = function($key) use ($data) {
+            return (isset($data[$key]) && trim($data[$key]) !== '') ? trim($data[$key]) : null;
+        };
+
+        // If status is booked or sold, is_booked = 1
+        $status = strtolower($v('status') ?? 'available');
+        $is_booked = in_array($status, ['booked', 'sold']) ? 1 : 0;
+
+        $stmt->bind_param(
+            "sssssssssssssssssi",
+            $v('project_id'),
+            $v('flat_name'),
+            $v('sqft'),
+            $v('bhk'),
+            $v('bedroom'),
+            $v('bathroom'),
+            $v('balcony'),
+            $v('drawing_dining_kitchen'),
+            $v('common_dining'),
+            $v('floor_no'),
+            $v('facing_site'),
+            $v('price_value'),
+            $v('facilities'),
+            $v('land_share_value'),
+            $v('development_charges'),
+            $v('created_by'),
+            $status,
+            $is_booked
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception($stmt->error);
+        }
+        return true;
+    }
+
+    /* =========================
        Find Project (Edit)
     ========================== */
     public function find($id)

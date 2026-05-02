@@ -18,12 +18,14 @@ class BookingLead extends Model
        p.name AS project_name, 
        f.flat_name AS flat_name, 
        u1.full_name AS created_by_name,
-       lb.booking_date as booking_pay_date
+       lb.booking_date as booking_pay_date,
+       COALESCE(u_sales.full_name, lb.sales_agent_old) AS sales_agent_display
 FROM lead_bookings lb
 LEFT JOIN leads l ON lb.lead_id = l.id
 LEFT JOIN flats f ON lb.flat_id = f.id
 LEFT JOIN projects p ON f.project_id = p.id
 LEFT JOIN users u1 ON lb.created_by = u1.id
+LEFT JOIN users u_sales ON lb.sales_by_id = u_sales.id
 WHERE lb.deleted_at IS NULL
 ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 ";
@@ -279,6 +281,47 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return (int)($row['onboarded'] ?? 0);
     }
 
+    public function createFromCsvBulk($data)
+    {
+        $sql = "INSERT INTO lead_bookings (
+            lead_id, project_id, flat_id, agreement_value, discount_amount, 
+            booking_date, booking_status, created_by, sales_by_id, sales_agent_old, 
+            approval_status, approved_amount, service_fee_balance, landshare_status, 
+            payment_status, attachment_image
+        ) VALUES (
+            ?, ?, ?, ?, ?, 
+            ?, ?, ?, ?, ?, 
+            ?, ?, ?, ?, 
+            ?, ?
+        )";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) throw new Exception($this->db->error);
+
+        $v = function($key) use ($data) {
+            return (isset($data[$key]) && trim($data[$key]) !== '') ? trim($data[$key]) : null;
+        };
+
+        $v_lead_id = $v('lead_id'); $v_project_id = $v('project_id'); $v_flat_id = $v('flat_id'); $v_agreement_value = $v('agreement_value'); $v_discount_amount = $v('discount_amount');
+        $v_booking_date = $v('booking_date'); $v_booking_status = $v('booking_status'); $v_created_by = $v('created_by'); $v_sales_by_id = $v('sales_by_id'); $v_sales_agent_old = $v('sales_agent_old');
+        $v_approval_status = $v('approval_status'); $v_approved_amount = $v('approved_amount'); $v_service_fee_balance = $v('service_fee_balance'); $v_landshare_status = $v('landshare_status');
+        $v_payment_status = $v('payment_status'); $v_attachment_image = $v('attachment_image');
+
+        $bindStr = str_repeat('s', 16);
+        $stmt->bind_param(
+            $bindStr,
+            $v_lead_id, $v_project_id, $v_flat_id, $v_agreement_value, $v_discount_amount,
+            $v_booking_date, $v_booking_status, $v_created_by, $v_sales_by_id, $v_sales_agent_old,
+            $v_approval_status, $v_approved_amount, $v_service_fee_balance, $v_landshare_status,
+            $v_payment_status, $v_attachment_image
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception($stmt->error);
+        }
+        return $this->db->insert_id;
+    }
+
     public function create($data)
     {
         $discountAmount = isset($data['discount_amount']) && $data['discount_amount'] !== ''
@@ -297,6 +340,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         }
 
         // 3 SQL
+        $salesAgentOld = $data['sales_agent_old'] ?? null;
+
         $sql = "
         INSERT INTO lead_bookings
         (
@@ -309,9 +354,10 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             booking_status,
             discount_amount,
             approval_status,
-            sales_by_id
+            sales_by_id,
+            sales_agent_old
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ";
 
         $stmt = $this->db->prepare($sql);
@@ -319,9 +365,9 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             throw new Exception($this->db->error);
         }
 
-        // 4 Bind params (note: approval_status is string 's')
+        // 4 Bind params (note: approval_status is string 's', sales_agent_old is 's')
         $stmt->bind_param(
-            "iiiidssssi",
+            "iiiidsssssi",
             $data['lead_id'],         // i
             $data['project_id'],      // i
             $data['flat_id'],         // i
@@ -329,9 +375,10 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $data['agreement_value'], // d
             $data['booking_date'],    // s
             $data['booking_status'],  // s
-            $discountAmount,          // d
-            $approvalStatus,          // s  
-            $data['sales_by_id']      // i
+            $discountAmount,          // s (nullable)
+            $approvalStatus,          // s
+            $data['sales_by_id'],     // i
+            $salesAgentOld            // s (nullable varchar)
         );
 
         // 5 Execute
@@ -438,12 +485,13 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                f.sqft,
                f.price_value, 
                us.full_name as created_user,
-               users.full_name as sales_user
+               u_sales.full_name as sales_user,
+               COALESCE(u_sales.full_name, o.sales_agent_old) AS sales_agent_display
         FROM lead_bookings o
         LEFT JOIN projects p ON o.project_id = p.id
         LEFT JOIN flats f ON o.flat_id = f.id
         LEFT JOIN users us ON o.created_by = us.id
-        LEFT JOIN users  ON o.sales_by_id = users.id
+        LEFT JOIN users u_sales ON o.sales_by_id = u_sales.id
         WHERE o.deleted_at IS NULL
           AND o.lead_id = ?
     ");
@@ -570,7 +618,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 u.full_name AS user_name, 
                 u.id AS sales_user_id,
                 us.full_name AS assigned_user_name, 
-                us.id AS user_id
+                us.id AS user_id,
+                COALESCE(u.full_name, lb.sales_agent_old) AS sales_agent_display
           FROM lead_bookings lb
           LEFT JOIN leads l ON lb.lead_id = l.id
           LEFT JOIN projects p ON lb.project_id = p.id

@@ -892,6 +892,51 @@ class Lead extends Model
     /**
      * Update lead
      */
+    public function createFromCsvBulk($data)
+    {
+        $sql = "INSERT INTO leads (
+            full_name, job_title, company_name, phone, alt_phone_number, email, 
+            lead_image, lead_name_bn, father_name_bn, mother_name_bn, profession_bn, 
+            nationality, religion, nominee_name, nomi_father_name, nomi_mother_name, 
+            nomi_profession, relation_with_lead, nomi_dob, nomi_nid_passport, 
+            nomi_phone, nomi_email, nomi_present_add, nomi_permanent_address, nomi_image,
+            status, visibility, created_by, team_id, assigned_id
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?
+        )";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) throw new Exception($this->db->error);
+
+        // Helper to handle empty strings as null
+        $v = function($key) use ($data) {
+            return (isset($data[$key]) && trim($data[$key]) !== '') ? trim($data[$key]) : null;
+        };
+
+        $createdBy = $data['created_by'] ?? null;
+        $status = $data['status'] ?? 'active';
+        $visibility = $data['visibility'] ?? 'public';
+        
+        $team_id = $v('team_id');
+        $assigned_id = $v('assigned_id');
+
+        $stmt->bind_param(
+            "sssssssssssssssssssssssssssiis",
+            $v('full_name'), $v('job_title'), $v('company_name'), $v('phone'), $v('alt_phone_number'), $v('email'),
+            $v('lead_image'), $v('lead_name_bn'), $v('father_name_bn'), $v('mother_name_bn'), $v('profession_bn'),
+            $v('nationality'), $v('religion'), $v('nominee_name'), $v('nomi_father_name'), $v('nomi_mother_name'),
+            $v('nomi_profession'), $v('relation_with_lead'), $v('nomi_dob'), $v('nomi_nid_passport'),
+            $v('nomi_phone'), $v('nomi_email'), $v('nomi_present_add'), $v('nomi_permanent_address'), $v('nomi_image'),
+            $status, $visibility, $createdBy, $team_id, $assigned_id
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception($stmt->error);
+        }
+        return true;
+    }
+
     public function update($id, $data)
     {
         $old = $this->find($id);

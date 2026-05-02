@@ -52,6 +52,9 @@ $show_breadcrumb = false;
                             Add Flat
                         </a>
                     <?php else: ?>
+                        <button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#importCsvModal">
+                            Import CSV
+                        </button>
                         <a class="btn btn-primary w-100" href="<?= $GLOBALS['base_url'] ?>/create-flat">
                             Add Flat
                         </a>
@@ -179,3 +182,48 @@ $show_breadcrumb = false;
         }
     }
 </style>
+
+<!-- CSV Import Modal -->
+<div class="modal fade" id="importCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Flats from CSV</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/bulk-flats-import-csv"
+                    method="post"
+                    enctype="multipart/form-data">
+
+                    <div class="from__input-box mb-20">
+                        <div class="form__input-title">
+                            <label>Upload CSV File <span>*</span></label>
+                        </div>
+                        <div class="form__input">
+                            <input type="file"
+                                name="csv_file"
+                                class="form-control"
+                                accept=".csv"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="submit__btn text-center">
+                        <button class="btn btn-primary">Import</button>
+                    </div>
+                </form>
+
+                <div class="mt-15 p-2  rounded text-muted" style="font-size: 12px; max-height: 200px; overflow-y: auto;">
+                    <strong>Required CSV Headers:</strong><br>
+                    project_name, sqft, bhk, land_share_value, development_charges, bedroom, bathroom, balcony, drawing_dining_kitchen, common_dining, floor_no, flat_name, facing_site, price_value, facilities, status
+                    <br><br>
+                    <em>Note: project_name must exactly match an existing project's name in the system. status can be available, booked, or sold.</em>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

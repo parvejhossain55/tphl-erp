@@ -49,7 +49,13 @@ class UserController extends Controller
     public function create()
     {
         $designations = $this->designationModel->getAll();
-        $roles = $this->roleModel->getAll();
+
+        $loggedInRoleId = $_SESSION['user']['role_id'] ?? 0;
+        if ($loggedInRoleId == 1) {
+            $roles = $this->roleModel->getAll();
+        } else {
+            $roles = $this->roleModel->getAllFilterRole();
+        }
 
         $this->view("users/create-user", [
             "current_route"   => "create-user",
@@ -129,7 +135,13 @@ class UserController extends Controller
     {
         $user = $this->userModel->find($id);
         $designations = $this->designationModel->getAll();
-        $roles = $this->roleModel->getAll();
+        
+        $loggedInRoleId = $_SESSION['user']['role_id'] ?? 0;
+        if ($loggedInRoleId == 1) {
+            $roles = $this->roleModel->getAll();
+        } else {
+            $roles = $this->roleModel->getAllFilterRole();
+        }
         if (!$user) {
             setError("User not found");
             header("Location: {$GLOBALS['base_url']}/user-lists");

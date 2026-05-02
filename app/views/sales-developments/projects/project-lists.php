@@ -17,6 +17,9 @@ $show_breadcrumb = true;
     </div>
     <?php else: ?>
     <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importCsvModal">
+            Import CSV
+        </button>
         <a href="<?= $GLOBALS['base_url'] ?>/create-project" class="btn btn-primary"> <i class="fa-light fa-plus me-1"></i> Add Project</a>
     </div>
     <?php endif; ?>
@@ -121,3 +124,48 @@ $show_breadcrumb = true;
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>";
 </script>
+
+<!-- CSV Import Modal -->
+<div class="modal fade" id="importCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Projects from CSV</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/bulk-projects-import-csv"
+                    method="post"
+                    enctype="multipart/form-data">
+
+                    <div class="from__input-box mb-20">
+                        <div class="form__input-title">
+                            <label>Upload CSV File <span>*</span></label>
+                        </div>
+                        <div class="form__input">
+                            <input type="file"
+                                name="csv_file"
+                                class="form-control"
+                                accept=".csv"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="submit__btn text-center">
+                        <button class="btn btn-primary">Import</button>
+                    </div>
+                </form>
+
+                <div class="mt-15 p-2  rounded text-muted" style="font-size: 12px; max-height: 200px; overflow-y: auto;">
+                    <strong>Required CSV Headers:</strong><br>
+                    name, slug, location_id, community_id, building_type, total_share, unit_per_floor, floor_wise_unit_meta, types, image, image2, image3, front_road, price_range, hover_text, tag, plot_size, plot_no, block_no, brochure_link, description, apartment_count, amenities_details, amenities_image, map_image, map_link, project_map_location, passenger_lift, cargo_lift, rooftop_gardening, swimming_pool, convention, electricity_backup, car_parking, project_sale_status, service_charge_per_emi, project_status
+                    <br><br>
+                    <em>Note: Ensure headers exactly match.</em>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
