@@ -1037,6 +1037,11 @@
                 <li class="sidebar__menu-category">
                     <span class="category-name">Construction </span>
                 </li>
+                <!-- ========================================================= -->
+                <!--  DEPARTMENT: PROJECT MANAGEMENT & ADMIN                 -->
+                <!-- Role: Project Manager, Admin                              -->
+                <!-- Permissions: Construction Management                      -->
+                <!-- ========================================================= -->
                 <?php if (hasPermission('Construction Management')): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/con-dashboard" class="sidebar__menu-item <?= isActive('con-dashboard', $current_route) ?>">
@@ -1045,6 +1050,11 @@
                         </a>
                     </li>
                 <?php endif; ?>
+                <!-- ========================================================= -->
+                <!--  DEPARTMENT: QUALITY CONTROL (QC)                       -->
+                <!-- Role: QC Officer                                          -->
+                <!-- Permissions: Working Plan, Estimate Budget                -->
+                <!-- ========================================================= -->
                 <!-- ══ QC Dashboard ══════════════════════════════════════════════
                      QC has: Estimate Budget + Working Plan + Project Target Set
                      Unique: Working Plan + Estimate Budget (Site Eng has neither)
@@ -1058,6 +1068,10 @@
                     </li>
                 <?php endif; ?>
 
+                <!-- ========================================================= -->
+                <!-- ⚙️ DEPARTMENT: SITE OPERATIONS                            -->
+                <!-- Role: Site Operator (Role ID: 20)                         -->
+                <!-- ========================================================= -->
                 <!-- ══ Operations Dashboard ════════════════════════════════════════
                      Site Operator -->
                 <?php if ($_SESSION['user']['role_id'] == 20): ?>
@@ -1069,6 +1083,11 @@
                     </li>
                 <?php endif; ?>
 
+                <!-- ========================================================= -->
+                <!-- 🛒 DEPARTMENT: PROCUREMENT & PURCHASE                     -->
+                <!-- Role: Purchase Team Leader (PTL)                          -->
+                <!-- Permissions: Purchase order, Vendor Manage, Material Manage-->
+                <!-- ========================================================= -->
                 <!-- ══ Purchase Team Leader Dashboard ════════════════════════════
                      PTL has: Purchase order + Vendor Manage + Material Manage
                      Unique: Material Manage (Site Eng lacks it, QC lacks it)
@@ -1082,6 +1101,10 @@
                     </li>
                 <?php endif; ?>
 
+                <!-- ========================================================= -->
+                <!--  DEPARTMENT: ARCHITECTURE & ENGINEERING                 -->
+                <!-- Roles: Draftsman, Land Manager, Architect, Estimator      -->
+                <!-- ========================================================= -->
                 <!-- ══ Draftsman Dashboard ════════════════════════════════════════
                      Draftsman has ONLY: Project Draft Design
                      Unique: Project Draft Design + NO Architect Design + NO Material Issue
@@ -1145,6 +1168,10 @@
                 <?php endif; ?>
 
 
+                <!-- ========================================================= -->
+                <!--  PRE-CONSTRUCTION & DESIGN MODULE                      -->
+                <!-- Roles: Architect, Structure Eng, Land Manager, Draftsman  -->
+                <!-- ========================================================= -->
                 <!-- Pre-Construction — only show if user has at least one permission -->
                 <?php if (hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Project structure design') || hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Soil tests') || hasPermission('Construction Management')): ?>
                     <li class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit'], $current_route) ? 'active' : '' ?>">
@@ -1198,6 +1225,10 @@
                 <?php endif; ?>
 
 
+                <!-- ========================================================= -->
+                <!--  ESTIMATION & PLANNING MODULE                           -->
+                <!-- Roles: Estimator, QC, Project Manager                     -->
+                <!-- ========================================================= -->
                 <!-- Module 2.0: Initial Estimate Budgets -->
                 <?php if (hasPermission('Estimate Budget')): ?>
                     <li class="slide has-sub <?= isActive(['con-estimates', 'con-estimate-create'], $current_route) ? 'active' : '' ?>">
@@ -1235,6 +1266,10 @@
                     </li>
                 <?php endif; ?>
 
+                <!-- ========================================================= -->
+                <!--  SITE OPERATIONS & TARGETS MODULE                       -->
+                <!-- Roles: QC, Project Manager                                -->
+                <!-- ========================================================= -->
                 <?php if (hasPermission('Project Target Set')): ?>
                     <!-- ====== Site Operations (Batch 1 NEW) ====== -->
                     <li class="slide has-sub <?= isActive(['con-targets', 'con-target-create', 'con-weekly-reports', 'con-weekly-report-create'], $current_route) ? 'active' : '' ?>">
@@ -1279,6 +1314,10 @@
                 <?php endif; ?>
                 <!-- ====== END Site Operations ====== -->
 
+                <!-- ========================================================= -->
+                <!--  INVENTORY & MATERIAL MANAGEMENT MODULE                 -->
+                <!-- Roles: Site Engineer, Store Keeper, PTL, PM               -->
+                <!-- ========================================================= -->
                 <?php if (hasPermission('Material Manage')): ?>
                     <!-- Module 3: Materials & Inventory -->
                     <li class="slide has-sub <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks'], $current_route) ? 'active' : '' ?>">
@@ -1307,6 +1346,10 @@
                     </li>
                 <?php endif; ?>
 
+                <!-- ========================================================= -->
+                <!--  PROCUREMENT MODULE                                     -->
+                <!-- Roles: Purchase Team Leader, Procurement Manager          -->
+                <!-- ========================================================= -->
                 <?php if (hasPermission('Purchase order')): ?>
                     <!-- Module 5: Procurement -->
                     <li class="slide has-sub <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders'], $current_route) ? 'active' : '' ?>">
@@ -1329,6 +1372,10 @@
                     </li>
                 <?php endif; ?>
 
+                <!-- ========================================================= -->
+                <!--  VENDOR MANAGEMENT MODULE                               -->
+                <!-- Roles: Purchase Team Leader, Procurement Manager          -->
+                <!-- ========================================================= -->
                 <?php if (hasPermission('Vendor Manage')): ?>
                     <!-- Module 6: Vendors -->
                     <li class="slide has-sub <?= isActive(['con-vendors', 'con-vendor-create'], $current_route) ? 'active' : '' ?>">
@@ -1359,6 +1406,10 @@
                     </li>
                 <?php endif; ?>
 
+                <!-- ========================================================= -->
+                <!-- 📥 MATERIAL RECEIVING & ISSUE MODULE                      -->
+                <!-- Roles: Site Engineer, Store Keeper                        -->
+                <!-- ========================================================= -->
                 <!-- Module 7:Operation And  Receiving & QC -->
                 <?php if (hasPermission('Material Issue')): ?>
                     <li class="slide has-sub <?= isActive(['con-material-receivings', 'con-stocks'], $current_route) ? 'active' : '' ?>">
@@ -1396,6 +1447,10 @@
                 <?php endif; ?>
     
 
+                <!-- ========================================================= -->
+                <!-- CONTRACTOR & BILLING MODULE                            -->
+                <!-- Roles: Site Operator, Project Manager                     -->
+                <!-- ========================================================= -->
                 <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
                 <?php if (hasPermission('Operation manage')): ?>
                     <!-- Module 2: Operators / Contractors -->
@@ -1474,6 +1529,10 @@
                 <?php endif; ?>
                 <!-- ====== END Operators & Bills ====== -->
 
+                <!-- ========================================================= -->
+                <!--  FINANCE & ACCOUNTS MODULE                              -->
+                <!-- Roles: Finance, Accounts                                  -->
+                <!-- ========================================================= -->
                 <?php if (hasPermission('Bill & Payments')): ?>
                     <!-- ====== Finance & Accounts (Batch 3 NEW) ====== -->
                     <li class="slide has-sub <?= isActive(['con-transactions', 'con-pending-payments'], $current_route) ? 'active' : '' ?>">

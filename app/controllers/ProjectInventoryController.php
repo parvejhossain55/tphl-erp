@@ -24,7 +24,11 @@ class ProjectInventoryController extends Controller
             session_start();
         }
 
-        $inventoryProjects = $this->projectModel->inventoryGetAll();
+        $projectId = $_GET['project_id'] ?? null;
+        $flatName = $_GET['flat_name'] ?? null;
+        $status = $_GET['status'] ?? null;
+
+        $inventoryProjects = $this->projectModel->inventoryGetAll($projectId, $flatName, $status);
 
         $projects = $this->projectModel->getAll();
         $totalProjects = count($projects);
@@ -33,14 +37,19 @@ class ProjectInventoryController extends Controller
 
         $bookedFlats    = $flatCounts['booked'] ?? 0;
         $availableFlats = $flatCounts['available'] ?? 0;
+        
         $this->view("sales-developments/inventory-manage/inventory-lists", [
             "current_route" => "inventory-lists",
             "page_title"    => "Inventory List",
             "inventoryProjects"      => $inventoryProjects,
+            "projects" => $projects,
             "bookedFlats"      => $bookedFlats,
             "availableFlats"      => $availableFlats,
             "totalProjects"      => $totalProjects,
             "totalFlatCount"      => $totalFlatCount,
+            "filterProjectId" => $projectId,
+            "filterFlatName" => $flatName,
+            "filterStatus" => $status,
         ]);
     }
 

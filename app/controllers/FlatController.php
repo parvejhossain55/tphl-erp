@@ -282,7 +282,7 @@ class FlatController extends Controller
                 if (isset($projectsCache[$projectName])) {
                     $projectId = $projectsCache[$projectName];
                 } else {
-                    $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                    $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
                     $stmt->bind_param("s", $projectName);
                     $stmt->execute();
                     $res = $stmt->get_result()->fetch_assoc();

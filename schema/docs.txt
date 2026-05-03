@@ -613,3 +613,7 @@ Option	Result
 ON DELETE CASCADE	child row delete
 ON DELETE SET NULL	child row থাকবে, id null হবে
 ON DELETE RESTRICT	delete করতে দেবে না
+
+//=========
+
+CSV Import Batch"

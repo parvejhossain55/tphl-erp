@@ -313,7 +313,7 @@ class PaymentBookingController extends Controller
                     if (isset($leadsCache[$leadPhone])) {
                         $leadId = $leadsCache[$leadPhone];
                     } else {
-                        $stmt = $this->db->prepare("SELECT id FROM leads WHERE phone = ? LIMIT 1");
+                        $stmt = $this->db->prepare("SELECT id FROM leads WHERE phone = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
                         $stmt->bind_param("s", $leadPhone);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
@@ -338,7 +338,7 @@ class PaymentBookingController extends Controller
                     if (isset($projectsCache[$projectName])) {
                         $projectId = $projectsCache[$projectName];
                     } else {
-                        $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                        $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
                         $stmt->bind_param("s", $projectName);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
@@ -364,7 +364,7 @@ class PaymentBookingController extends Controller
                     if (isset($flatsCache[$flatCacheKey])) {
                         $flatId = $flatsCache[$flatCacheKey];
                     } else {
-                        $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? LIMIT 1");
+                        $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
                         $stmt->bind_param("is", $projectId, $flatName);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
@@ -379,7 +379,7 @@ class PaymentBookingController extends Controller
                     }
 
                     // 4. Resolve booking_id
-                    $stmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? AND project_id = ? AND flat_id = ? LIMIT 1");
+                    $stmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? AND project_id = ? AND flat_id = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
                     $stmt->bind_param("iii", $leadId, $projectId, $flatId);
                     $stmt->execute();
                     $bRes = $stmt->get_result()->fetch_assoc();
