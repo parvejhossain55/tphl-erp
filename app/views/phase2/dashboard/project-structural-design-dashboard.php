@@ -27,12 +27,12 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
     --sd-green:   #10b981;
     --sd-amber:   #f59e0b;
     --sd-red:     #ef4444;
-    --sd-teal:    #14b8a6;
+    --sd-teal:    #109e5c;
   }
 
   /* ── Hero ── */
   .sd-hero {
-    background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 55%, #a78bfa 100%);
+    background: #109e5c;
     border-radius: 18px;
     padding: 28px 32px;
     margin-bottom: 24px;

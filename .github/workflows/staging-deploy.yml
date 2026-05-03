@@ -55,6 +55,18 @@ jobs:
 
             echo "Deployment completed successfully"
 
+            # echo ">>> Dropping all tables"
+            # mysql -u common_ecom_user -p${{ secrets.DB_PASS }} common_ecom_db -e "SET FOREIGN_KEY_CHECKS=0; \
+            # SET @tables = NULL; \
+            # SELECT GROUP_CONCAT(CONCAT('\', table_name, '\')) INTO @tables \
+            # FROM information_schema.tables \
+            # WHERE table_schema = 'common_ecom_db'; \
+            # SET @tables = CONCAT('DROP TABLE IF EXISTS ', @tables); \
+            # PREPARE stmt FROM @tables; \
+            # EXECUTE stmt; \
+            # DEALLOCATE PREPARE stmt; \
+            # SET FOREIGN_KEY_CHECKS=1;"
+
 
 
 
