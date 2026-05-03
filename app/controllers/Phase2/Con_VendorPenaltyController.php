@@ -41,6 +41,12 @@ class Con_VendorPenaltyController extends Controller
 
     public function create()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $vendors = $this->vendorModel->getAll();
 
         $this->view('phase2/vendor-penalties/create-penalty', [
@@ -56,6 +62,12 @@ class Con_VendorPenaltyController extends Controller
 
     public function store()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $data = [
@@ -91,6 +103,12 @@ class Con_VendorPenaltyController extends Controller
 
     public function delete()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id = (int)($_POST['id'] ?? 0);
         if ($this->penaltyModel->delete($id)) {
             setSuccess('Penalty removed. Vendor rating recalculated.');

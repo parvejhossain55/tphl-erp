@@ -27,6 +27,12 @@ class Con_QuotationController extends Controller
 
     public function create($requestId)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $pr = $this->prModel->find($requestId);
         if (!$pr) {
             setError('Purchase Request not found.');
@@ -54,6 +60,12 @@ class Con_QuotationController extends Controller
 
     public function store()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $data = [

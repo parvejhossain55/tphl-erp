@@ -146,7 +146,7 @@ class Con_PurchaseOrderController extends Controller
             $stmt->bind_param('ii', $userId, $id);
             $stmt->execute();
 
-        } elseif (in_array($roleId, [1, 3, 15, 20])) {
+        } elseif (in_array($roleId, [1, 3, 15, 20, 23])) {
             // PM / Top Management approval
             if (!empty($po['approved_by_pm'])) {
                 setError('Authorized PM/Director has already approved this PO.');

@@ -5,9 +5,13 @@ $addPage = true;
 $show_breadcrumb = true;
 ?>
 
-<div class="breadcrumb__btn my-3">
+<div class="breadcrumb__btn my-3 d-flex gap-2 align-items-center">
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDesignTypeModal">
         <i class="fa-light fa-plus me-1"></i> Add Design Type
+    </button>
+
+    <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#importDesignTypeCsvModal">
+        <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
     </button>
 </div>
 
@@ -160,6 +164,40 @@ $show_breadcrumb = true;
                     </div>
                     <div class="submit__btn text-center">
                         <button class="btn btn-primary" type="submit">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Import CSV Modal: Import Design Types -->
+<div class="modal fade" id="importDesignTypeCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Design Types</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/con-design-type-import" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
+                        <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                    </div>
+                    <div style="font-size:12px;">
+                        <strong>Required CSV Columns:</strong><br>
+                        <code>Name (required), Description</code>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm ms-2">
+                            <i class="bi bi-upload me-1"></i> Import
+                        </button>
                     </div>
                 </form>
             </div>

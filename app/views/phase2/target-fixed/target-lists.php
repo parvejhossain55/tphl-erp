@@ -14,10 +14,13 @@ $page_title = $page_title ?? 'Site Targets';
                 </ol>
             </div>
         </div>
-        <div class="my-auto">
+        <div class="my-auto d-flex gap-2">
             <a href="<?= $base_url ?>/con-target-create" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-circle me-1"></i> New Target
             </a>
+            <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#importTargetCsvModal">
+                <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
+            </button>
         </div>
     </div>
 
@@ -96,6 +99,35 @@ $page_title = $page_title ?? 'Site Targets';
     </div>
 </div>
 
+
+
+<!-- Import CSV Modal -->
+<div class="modal fade" id="importTargetCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Targets</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal"><i class="fa-solid fa-xmark-large"></i></button>
+            </div>
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/con-target-import" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
+                        <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                    </div>
+                    <div class="mb-3" style="font-size:12px;">
+                        <strong>Required CSV Columns:</strong><br>
+                        <code>Project_Name (required), Target_Title, Year (required), Month (1-12 required), Week_Number (1-4), Target_Percentage (0-100 required)</code>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm ms-2"><i class="bi bi-upload me-1"></i> Import</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
 $(document).ready(function () {
     $('#targetTable').DataTable({ responsive: true, pageLength: 25 });

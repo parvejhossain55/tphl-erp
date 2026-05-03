@@ -915,6 +915,20 @@ $routes['con-land-study-store']        = ['controller' => 'Phase2\Con_PreConstru
 $routes['con-drawing-store']           = ['controller' => 'Phase2\Con_PreConstructionController', 'method' => 'storeDrawing'];
 $routes['con-soil-test-store']         = ['controller' => 'Phase2\Con_PreConstructionController', 'method' => 'storeSoilTest'];
 
+// ── CSV Imports (Pre-Construction Modules) ────────────────────────────────
+$routes['con-land-visibility-import']        = ['controller' => 'Phase2\\LandVisibilityStudyController',      'method' => 'importCsv'];
+$routes['con-architect-engineering-import']  = ['controller' => 'Phase2\\ArchitectEngineeringController',     'method' => 'importCsv'];
+$routes['con-design-type-import']            = ['controller' => 'Phase2\\DesignTypeController',               'method' => 'importCsv'];
+$routes['con-project-drawing-import']        = ['controller' => 'Phase2\\ProjectDrawingController',           'method' => 'importCsv'];
+$routes['con-structure-design-import']       = ['controller' => 'Phase2\\ProjectStructuralDesignController',  'method' => 'importCsv'];
+$routes['con-soil-test-import']              = ['controller' => 'Phase2\\SoilTestController',                 'method' => 'importCsv'];
+$routes['con-work-type-import']              = ['controller' => 'Phase2\\Con_WorkTypeController',             'method' => 'importCsv'];
+
+// ── CSV Imports Batch 3 (Estimation & Targets) ────────────────────────────
+$routes['con-estimate-import']               = ['controller' => 'Phase2\\Con_InitialEstimateController',      'method' => 'importCsv'];
+$routes['con-working-plan-import']           = ['controller' => 'Phase2\\Con_WorkingPlanController',          'method' => 'importCsv'];
+$routes['con-target-import']                 = ['controller' => 'Phase2\\Con_TargetFixedController',          'method' => 'importCsv'];
+
 // ── Initial Estimate Budgets ──────────────────────────────────────────────
 $routes['con-estimates']              = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'index'];
 $routes['con-estimate-create']        = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'create'];

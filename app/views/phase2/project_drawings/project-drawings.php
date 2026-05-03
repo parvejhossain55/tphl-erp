@@ -12,6 +12,10 @@ $show_breadcrumb = false;
                 <a href="<?= $GLOBALS['base_url'] ?>/con-project-drawings/create" class="btn btn-primary w-100">
                     <i class="fa-light fa-plus me-1"></i> Add Drawing
                 </a>
+            
+                <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#importProjectDrawingCsvModal">
+                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
+                </button>
             </div>
         </div>
     </div>
@@ -89,6 +93,38 @@ $show_breadcrumb = false;
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import CSV Modal: Import Project Drawings -->
+<div class="modal fade" id="importProjectDrawingCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Project Drawings</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/con-project-drawing-import" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
+                        <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                    </div>
+                    <div style="font-size:12px;">
+                        <strong>Required CSV Columns:</strong><br>
+                        <code>Project_Name (required), Design_Type_Name (required), Version, Submission_Date (YYYY-MM-DD), Remarks</code>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm ms-2">
+                            <i class="bi bi-upload me-1"></i> Import
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

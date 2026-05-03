@@ -282,7 +282,7 @@ class Con_DashboardController extends Controller
     {
         $userId = $_SESSION['user']['id'] ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
-        if (in_array($roleId, [1, 3, 22])) return '1=1';
+        if (in_array($roleId, [1, 3, 22, 23])) return '1=1';
         return "({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 
@@ -767,7 +767,7 @@ class Con_DashboardController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $isAdmin = in_array($roleId, [1, 3, 22]);
+        $isAdmin = in_array($roleId, [1, 3, 22, 23]);
 
         $filter = $this->getProjectRoleFilter('p');
 
@@ -1120,7 +1120,7 @@ class Con_DashboardController extends Controller
         // ── WORKFLOW GATE: Projects assigned to this draftsman but AE NOT yet 'fully' ──
         // Only relevant for actual draftsman role; admins/PM/QC skip this
         $projectsWaitingForAE = [];
-        if (!in_array($roleId, [1, 2, 13, 15])) {
+        if (!in_array($roleId, [1, 2, 3, 13, 15, 23])) {
             $stmtWait = $this->db->prepare("
                 SELECT p.id, p.name,
                        COALESCE(ae.status, 'not_started') AS ae_status,
@@ -1381,7 +1381,7 @@ class Con_DashboardController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Admins / PM / QC see all; otherwise filter by struct_engineer_id
-        $isAdmin = in_array($roleId, [1, 2, 13, 15]);
+        $isAdmin = in_array($roleId, [1, 2, 3, 13, 15, 23]);
 
         // ── KPI 1: Projects assigned to this structural engineer ──────────────
         if ($isAdmin) {

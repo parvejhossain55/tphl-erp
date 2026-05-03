@@ -46,12 +46,18 @@ class Con_WorkingPlanController extends Controller
 
     public function create()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22])) {
+        if (!in_array($roleId, [1, 3, 22, 23])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -76,6 +82,12 @@ class Con_WorkingPlanController extends Controller
 
     public function store()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $data = [
@@ -113,6 +125,12 @@ class Con_WorkingPlanController extends Controller
 
     public function edit($id)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $plan = $this->model->find($id);
         if (!$plan) {
             setError('Plan entry not found.');
@@ -125,7 +143,7 @@ class Con_WorkingPlanController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22])) {
+        if (!in_array($roleId, [1, 3, 22, 23])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -151,6 +169,12 @@ class Con_WorkingPlanController extends Controller
 
     public function update($id)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $data = [
             'project_id'        => (int)   ($_POST['project_id']        ?? 0),
             'initial_budget_id' => (int)   ($_POST['initial_budget_id'] ?? 0),
@@ -178,6 +202,12 @@ class Con_WorkingPlanController extends Controller
 
     public function delete($id)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if ($this->model->deletePlan($id)) {
             setSuccess('Plan entry deleted.');
         } else {
@@ -219,7 +249,7 @@ class Con_WorkingPlanController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22])) {
+        if (!in_array($roleId, [1, 3, 22, 23])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -373,5 +403,63 @@ class Con_WorkingPlanController extends Controller
 
         echo json_encode(['work_plans' => $workPlans, 'budgets' => $budgets]);
         exit;
+    }
+
+    // ─── CSV Import ────────────────────────────────────────────────────────
+    public function importCsv() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . $GLOBALS['base_url'] . '/con-working-plans'); exit;
+        }
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError('Please upload a valid CSV file.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-working-plans'); exit;
+        }
+        $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
+        if (!$handle) { setError('Cannot open file.'); header('Location: ' . $GLOBALS['base_url'] . '/con-working-plans'); exit; }
+        $header = array_map('trim', fgetcsv($handle));
+        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
+        $successCount = 0; $errorCount = 0; $errors = [];
+        $db = $this->db;
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        while (($data = fgetcsv($handle)) !== FALSE) {
+            if (empty(array_filter($data))) continue;
+            if (count($header) !== count($data)) continue;
+            $row = array_combine($header, $data);
+
+            $projectName = trim($row['Project_Name'] ?? '');
+            $year        = (int)($row['Year'] ?? 0);
+            $month       = (int)($row['Month'] ?? 0);
+            $workDesc    = trim($row['Work_Description'] ?? '');
+            $plannedQty  = (float)($row['Planned_Quantity'] ?? 0);
+            $estCost     = (float)($row['Estimated_Cost'] ?? 0);
+
+            if (empty($projectName) || !$year || !$month || empty($workDesc)) {
+                $errorCount++; $errors[] = "Missing required fields in row"; continue;
+            }
+
+            $stmt = $db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1");
+            $stmt->bind_param('s', $projectName); $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res->num_rows === 0) { $errorCount++; $errors[] = "Project '$projectName' not found"; continue; }
+            $projectId = $res->fetch_assoc()['id'];
+
+            // Get first initial_budget for this project
+            $stmtB = $db->prepare("SELECT id FROM initial_estimate_budgets WHERE project_id = ? LIMIT 1");
+            $stmtB->bind_param('i', $projectId); $stmtB->execute();
+            $budgetRow = $stmtB->get_result()->fetch_assoc();
+            $budgetId = $budgetRow ? $budgetRow['id'] : 0;
+
+            $ins = $db->prepare("INSERT INTO project_working_plans
+                (project_id, initial_budget_id, design_type_id, year, month, work_description, planned_quantity, estimated_cost, created_by, approved_status)
+                VALUES (?,?,1,?,?,?,?,?,?,'Draft')");
+            $ins->bind_param('iiissddsi', $projectId, $budgetId, $year, $month, $workDesc, $plannedQty, $estCost, $userId);
+
+            if ($ins->execute()) { $successCount++; } else { $errorCount++; $errors[] = "DB error: " . $db->error; }
+        }
+        fclose($handle);
+        if ($errorCount > 0) { setError("Imported $successCount. Failed $errorCount. " . implode(' | ', array_slice($errors, 0, 5))); }
+        else { setSuccess("Successfully imported $successCount records."); }
+        header('Location: ' . $GLOBALS['base_url'] . '/con-working-plans'); exit;
     }
 }

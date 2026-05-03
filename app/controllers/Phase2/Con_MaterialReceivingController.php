@@ -42,6 +42,12 @@ class Con_MaterialReceivingController extends Controller
 
     public function create($poId)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $po = $this->poModel->find($poId);
         if (!$po) {
             setError('Purchase Order not found.');
@@ -67,6 +73,12 @@ class Con_MaterialReceivingController extends Controller
 
     public function store()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $userId = (int)($_SESSION['user']['id'] ?? 0);
@@ -222,7 +234,7 @@ class Con_MaterialReceivingController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if (!in_array($roleId, [1, 3, 15, 20])) {
+        if (!in_array($roleId, [1, 3, 15, 20, 23])) {
             setError('You do not have permission to approve GRNs.');
             header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
             exit;

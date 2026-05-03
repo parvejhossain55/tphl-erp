@@ -214,7 +214,7 @@ class BookingController extends Controller
                 if (isset($leadsCache[$leadPhone])) {
                     $leadId = $leadsCache[$leadPhone];
                 } else {
-                    $stmt = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE phone = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
+                    $stmt = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE phone = ? LIMIT 1");
                     $stmt->bind_param("s", $leadPhone);
                     $stmt->execute();
                     $res = $stmt->get_result()->fetch_assoc();
@@ -269,7 +269,7 @@ class BookingController extends Controller
                 if (isset($projectsCache[$projectName])) {
                     $projectId = $projectsCache[$projectName];
                 } else {
-                    $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
+                    $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
                     $stmt->bind_param("s", $projectName);
                     $stmt->execute();
                     $res = $stmt->get_result()->fetch_assoc();
@@ -296,7 +296,7 @@ class BookingController extends Controller
                 if (isset($flatsCache[$flatCacheKey])) {
                     $flatId = $flatsCache[$flatCacheKey];
                 } else {
-                    $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
+                    $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? LIMIT 1");
                     $stmt->bind_param("is", $projectId, $flatName);
                     $stmt->execute();
                     $res = $stmt->get_result()->fetch_assoc();

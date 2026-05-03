@@ -2,14 +2,18 @@
 $addPage = true;
 $show_breadcrumb = false;
 ?>
-<div class="mb-3 pagetitle d-flex justify-content-between align-items-center">
+<div class="mb-3 pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div class="">
         <h4 class="">Soil Tests</h4>
-     
     </div>
-      <a href="<?= $GLOBALS['base_url'] ?>/con-soil-tests/create" class="btn btn-primary ">
-                    <i class="fa-light fa-plus me-1"></i> Add Soil Test
-                </a>
+    <div class="d-flex gap-2">
+        <a href="<?= $GLOBALS['base_url'] ?>/con-soil-tests/create" class="btn btn-primary">
+            <i class="fa-light fa-plus me-1"></i> Add Soil Test
+        </a>
+        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#importSoilTestCsvModal">
+            <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
+        </button>
+    </div>
 </div>
 
 <div class="row">
@@ -76,6 +80,38 @@ $show_breadcrumb = false;
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import CSV Modal: Import Soil Tests -->
+<div class="modal fade" id="importSoilTestCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Soil Tests</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/con-soil-test-import" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
+                        <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                    </div>
+                    <div style="font-size:12px;">
+                        <strong>Required CSV Columns:</strong><br>
+                        <code>Project_Name (required), Testing_Agency, Report_Date (YYYY-MM-DD), Bearing_Capacity, Report_Link</code>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm ms-2">
+                            <i class="bi bi-upload me-1"></i> Import
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

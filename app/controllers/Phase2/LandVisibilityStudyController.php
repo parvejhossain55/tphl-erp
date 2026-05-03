@@ -26,12 +26,11 @@ class LandVisibilityStudyController extends Controller {
     public function index() {
         $userId  = $_SESSION['user']['id']  ?? 0;
         $roleId  = $_SESSION['user']['role_id'] ?? 0;
-        $isPmOrAdmin = in_array($roleId, [1, 2, 15, 13]); // PM, Admin, QC
+        $isPmOrAdmin = in_array($roleId, [1, 2, 3, 13, 15, 23]);
 
         if ($isPmOrAdmin) {
             $studies = $this->model->getAll();
         } else {
-            // Only show studies for projects where landman_id = this user
             $stmt = $this->db->prepare("
                 SELECT lvs.*, p.name AS project_name
                 FROM land_visibility_study lvs
@@ -52,6 +51,12 @@ class LandVisibilityStudyController extends Controller {
     }
 
     public function create() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $userId  = $_SESSION['user']['id']  ?? 0;
         $roleId  = $_SESSION['user']['role_id'] ?? 0;
         $projects = $this->getMyAssignedProjects($userId, $roleId, 'landman_id');
@@ -64,6 +69,12 @@ class LandVisibilityStudyController extends Controller {
     }
 
     public function store() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $data = [
             'project_id' => $_POST['project_id'] ?? 0,
             'land_legal_doc_status' => $_POST['land_legal_doc_status'] ?? 'Pending',
@@ -74,7 +85,6 @@ class LandVisibilityStudyController extends Controller {
         ];
         
         if ($this->model->create($data)) {
-            // ── Batch 2: Notify Architect to proceed with A&E ──
             $projectId   = (int)($data['project_id']);
             $projectName = $this->getProjectName($projectId);
             try {
@@ -94,6 +104,12 @@ class LandVisibilityStudyController extends Controller {
     }
 
     public function edit() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to edit records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id = $_GET['id'] ?? 0;
         $study = $this->model->find($id);
 
@@ -115,6 +131,12 @@ class LandVisibilityStudyController extends Controller {
     }
 
     public function update() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to edit records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id = $_POST['id'] ?? 0;
         $data = [
             'project_id' => $_POST['project_id'] ?? 0,
@@ -136,8 +158,7 @@ class LandVisibilityStudyController extends Controller {
     // ─── Helper: get projects assigned to the current user ───────────
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        // PM (15), Admin (1,2), QC (13) see ALL projects
-        if (in_array($roleId, [1, 2, 13, 15])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
             return $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);
@@ -160,5 +181,99 @@ class LandVisibilityStudyController extends Controller {
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         return $row ? $row['name'] : 'Unknown Project';
+    }
+
+    // ─── CSV Import Method ───────────
+    public function importCsv() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError('Please upload a valid CSV file.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-land-visibility-studies");
+            exit;
+        }
+
+        $file   = $_FILES['csv_file']['tmp_name'];
+        $handle = fopen($file, "r");
+
+        if ($handle === FALSE) {
+            setError('Failed to open CSV file.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-land-visibility-studies");
+            exit;
+        }
+
+        $header = fgetcsv($handle);
+        if (!$header) {
+            setError('CSV file is empty.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-land-visibility-studies");
+            exit;
+        }
+
+        $header       = array_map('trim', $header);
+        $header[0]    = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
+        $successCount = 0;
+        $errorCount   = 0;
+        $errors       = [];
+        $db           = $this->db;
+        $userId       = $_SESSION['user']['id'] ?? 0;
+
+        while (($data = fgetcsv($handle)) !== FALSE) {
+            if (empty(array_filter($data))) continue;
+
+            $row         = array_combine($header, $data);
+            $projectName = trim($row['Project_Name'] ?? '');
+            $status      = trim($row['Land_Legal_Doc_Status'] ?? 'Pending');
+            $surveyLink  = trim($row['Digital_Survey_Report_Link'] ?? '');
+            $govtLink    = trim($row['Govt_Approval_Doc_Link'] ?? '');
+            $othersLink  = trim($row['Others_Doc_Link'] ?? '');
+
+            if (empty($projectName)) {
+                $errorCount++;
+                $errors[] = "Row missing Project_Name.";
+                continue;
+            }
+
+            $stmt = $db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1");
+            $stmt->bind_param('s', $projectName);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res->num_rows === 0) {
+                $errorCount++;
+                $errors[] = "Project '$projectName' not found.";
+                continue;
+            }
+            $projectId = $res->fetch_assoc()['id'];
+
+            $insertData = [
+                'project_id'                 => $projectId,
+                'land_legal_doc_status'      => $status,
+                'digital_survey_report_link' => $surveyLink,
+                'govt_approval_doc_link'     => $govtLink,
+                'others_doc_link'            => $othersLink,
+                'created_by'                 => $userId
+            ];
+
+            if ($this->model->create($insertData)) {
+                $successCount++;
+            } else {
+                $errorCount++;
+                $errors[] = "Failed to save data for Project '$projectName'.";
+            }
+        }
+
+        fclose($handle);
+
+        if ($errorCount > 0) {
+            $errStr = implode(" | ", array_slice($errors, 0, 5));
+            setError("Imported $successCount records. Failed $errorCount. Errors: $errStr");
+        } else {
+            setSuccess("Successfully imported $successCount records.");
+        }
+
+        header("Location: " . $GLOBALS['base_url'] . "/con-land-visibility-studies");
+        exit;
     }
 }

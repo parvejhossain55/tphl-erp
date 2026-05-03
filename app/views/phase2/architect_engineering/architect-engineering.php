@@ -6,17 +6,20 @@ $show_breadcrumb = false;
     <div class="">
         <h4><?= htmlspecialchars($page_title) ?></h4>
        
-    </div>
+    
+    
+</div>
     <div class="d-flex gap-2">
-          <a href="<?= $GLOBALS['base_url'] ?>/con-architect-engineering/create" class="btn btn-primary w-100">
+          <a href="<?= $GLOBALS['base_url'] ?>/con-architect-engineering/create" class="btn btn-primary">
                     <i class="fa-light fa-plus me-1"></i> Add New Architecture
                 </a>
+        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#importArchitectCsvModal">
+            <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
+        </button>
     </div>
 </div>
 
 <!-- <h4 class="mb-2">Architect & Engineering</h4> -->
-
-
 
 <div class="row">
     <div class="col-xxl-12">
@@ -79,6 +82,38 @@ $show_breadcrumb = false;
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import CSV Modal: Import Architect & Engineering -->
+<div class="modal fade" id="importArchitectCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Architect & Engineering</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/con-architect-engineering-import" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
+                        <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                    </div>
+                    <div style="font-size:12px;">
+                        <strong>Required CSV Columns:</strong><br>
+                        <code>Project_Name (required), Architect_Email (optional - user email), Design_Link, Notes, Status (draft/partially/fully)</code>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm ms-2">
+                            <i class="bi bi-upload me-1"></i> Import
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

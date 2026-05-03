@@ -35,14 +35,14 @@ $show_breadcrumb = false;
 
 .project-accordion .accordion-item {
     border: none;
-    /* background: #fff; */
+    background: #fff;
     border-radius: 15px !important;
     box-shadow: 0 2px 10px rgba(0,0,0,0.04);
     margin-bottom: 20px;
     overflow: hidden;
 }
 .project-accordion .accordion-button {
-    /* background: #ffffff; */
+    background: #ffffff;
     padding: 20px 25px;
     border: none;
     box-shadow: none;
@@ -65,7 +65,7 @@ $show_breadcrumb = false;
 }
 
 .flat-card {
-    /* background: #fff; */
+    background: #fff;
     border-radius: 12px;
     border: 1px solid rgba(0,0,0,0.08);
     overflow: hidden;
@@ -88,21 +88,16 @@ $show_breadcrumb = false;
 .flat-booked .flat-header { border-top: 4px solid #dc3545; background: rgba(220, 53, 69, 0.02); }
 .flat-sold .flat-header { border-top: 4px solid #343a40; background: rgba(52, 58, 64, 0.02); }
 
-.flat-title { font-size: 17px; font-weight: 700;
- /* color: #2b3445;  */
- .flat-title margin: 0; }
+.flat-title { font-size: 17px; font-weight: 700; color: #2b3445; margin: 0; }
 .flat-body { padding: 20px; }
 .flat-detail-item {
     display: flex;
     justify-content: space-between;
     margin-bottom: 12px;
     font-size: 14px;
-    /* color: #495057; */
+    color: #495057;
 }
-.flat-detail-val { 
-    font-weight: 600;
-     /* color: #212529;  */
-    }
+.flat-detail-val { font-weight: 600; color: #212529; }
 .flat-footer {
     padding: 15px 20px;
     background: #f8f9fa;
@@ -141,41 +136,6 @@ $show_breadcrumb = false;
 <div class="container-fluid p-0">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="fw-bold m-0">Project Inventory Dashboard</h4>
-    </div>
-
-    <!-- Filter Form -->
-    <div class="card mb-4 border-0 shadow-sm rounded-4">
-        <div class="card-body p-4">
-            <form method="GET" action="<?= $GLOBALS['base_url'] ?>/inventory-lists" class="row  align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Project</label>
-                    <select name="project_id" class="form-select select2">
-                        <option value="">All Projects</option>
-                        <?php foreach ($projects as $proj): ?>
-                            <option value="<?= $proj['id'] ?>" <?= (isset($filterProjectId) && $filterProjectId == $proj['id']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($proj['name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Flat Name</label>
-                    <input type="text" name="flat_name" class="form-control" placeholder="Search flat name..." value="<?= htmlspecialchars($filterFlatName ?? '') ?>">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Status</label>
-                    <select name="status" class="form-select">
-                        <option value="">All Status</option>
-                        <option value="available" <?= (isset($filterStatus) && $filterStatus === 'available') ? 'selected' : '' ?>>Available</option>
-                        <option value="booked" <?= (isset($filterStatus) && $filterStatus === 'booked') ? 'selected' : '' ?>>Booked</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary flex-grow-1"><i class="fa-solid fa-filter me-2"></i>Filter</button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/inventory-lists" class="btn btn-light border"><i class="fa-solid fa-rotate-left"></i></a>
-                </div>
-            </form>
-        </div>
     </div>
 
     <!-- KPI Cards -->
@@ -261,19 +221,19 @@ $show_breadcrumb = false;
                                     }
                                 ?>
                                     <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
-                                        <div class="flat-card card__wrapper <?= $statusClass ?>">
+                                        <div class="flat-card <?= $statusClass ?>">
                                             <div class="flat-header">
-                                                <h4 class="flat-title card__title">Flat: <?= htmlspecialchars($flat['flat_name']) ?></h4>
+                                                <h4 class="flat-title">Flat: <?= htmlspecialchars($flat['flat_name']) ?></h4>
                                                 <?= $statusBadge ?>
                                             </div>
                                             <div class="flat-body">
                                                 <div class="flat-detail-item">
-                                                    <span  class="text-muted"><i class="fa-solid fa-vector-square text-muted me-2"></i>Size</span>
-                                                    <span class="flat-detail-val text-muted"><?= $flat['sqft'] ?> sqft</span>
+                                                    <span><i class="fa-solid fa-vector-square text-muted me-2"></i>Size</span>
+                                                    <span class="flat-detail-val"><?= $flat['sqft'] ?> sqft</span>
                                                 </div>
                                                 <div class="flat-detail-item">
-                                                    <span class="text-muted"><i class="fa-solid fa-bed text-muted me-2"></i>BHK</span>
-                                                    <span class="flat-detail-val text-muted"><?= $flat['bhk'] ?></span>
+                                                    <span><i class="fa-solid fa-bed text-muted me-2"></i>BHK</span>
+                                                    <span class="flat-detail-val"><?= $flat['bhk'] ?></span>
                                                 </div>
                                                 
                                                 <div class="mt-4 pt-3 border-top border-light">
@@ -291,7 +251,7 @@ $show_breadcrumb = false;
                                                     </div>
                                                 <?php endif; ?>
                                             </div>
-                                            <div class="flat-footer card__footer">
+                                            <div class="flat-footer">
                                                 <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>" class="btn btn-outline-secondary btn-sm w-50 rounded-pill fw-semibold"><i class="fa-solid fa-pen-to-square me-1"></i> Edit</a>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/flat-details/<?= $flat['id'] ?>" class="btn btn-primary btn-sm w-50 rounded-pill fw-semibold"><i class="fa-solid fa-eye me-1"></i> Details</a>
                                             </div>
