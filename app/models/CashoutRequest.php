@@ -208,32 +208,122 @@ public function createRequest($data)
     public function getAllRequests($filters = [])
     {
         $sql = "
-            SELECT 
-                cr.*,
-                u.full_name AS requester_name,
-                (SELECT GROUP_CONCAT(name SEPARATOR ', ') FROM projects WHERE FIND_IN_SET(id, cr.project_id)) AS project_name,
+            SELECT * FROM (
+                SELECT 
+                    cr.id,
+                    'general' AS cashout_type,
+                    cr.amount,
+                    cr.due_amount,
+                    cr.status,
+                    cr.created_at,
+                    cr.requested_by,
+                    cr.project_id,
+                    cr.office,
+                    cr.purpose_paid_to,
+                    cr.payment_method,
+                    cr.transaction_ref,
+                    cr.description,
+                    cr.attachment_path,
+                    cr.bank_id,
+                    cr.approved_amount,
+                    cr.approval_note,
+                    cr.approved_by,
+                    cr.approved_at,
+                    cr.rejected_by,
+                    cr.rejected_at,
+                    cr.rejection_reason,
+                    u.full_name AS requester_name,
+                    (SELECT GROUP_CONCAT(name SEPARATOR ', ') FROM projects WHERE FIND_IN_SET(projects.id, cr.project_id)) AS project_name,
+                    ar.status AS approval_status,
+                    ar.approved_amount AS approval_approved_amount,
+                    ar.approved_at AS approval_approved_at,
+                    ar.approved_by AS approval_user_id,
+                    ar.id AS approval_id,
+                    approver.full_name AS approved_by_name,
+                    rejector.full_name AS rejected_by_name
+                FROM {$this->table} cr
+                LEFT JOIN users u ON cr.requested_by = u.id
+                LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
+                LEFT JOIN users approver ON ar.approved_by = approver.id
+                LEFT JOIN users rejector ON cr.rejected_by = rejector.id
 
-                ar.status AS approval_status,
-                ar.approved_amount AS approval_approved_amount,
-                ar.approved_at AS approval_approved_at,
-                ar.approved_by AS approval_user_id,
-                ar.id AS approval_id,
+                UNION ALL
 
-                cr.approval_note,   
+                SELECT 
+                    vpr.id,
+                    'vendor' AS cashout_type,
+                    vpr.invoice_amount AS amount,
+                    vpr.due_amount,
+                    vpr.status,
+                    vpr.created_at,
+                    vpr.created_by AS requested_by,
+                    CAST(vpr.project_id AS CHAR) AS project_id,
+                    NULL AS office,
+                    v.name AS purpose_paid_to,
+                    'Bank/Cash' AS payment_method,
+                    vpr.invoice_number AS transaction_ref,
+                    vpr.payment_type AS description,
+                    vpr.payment_attachment AS attachment_path,
+                    NULL AS bank_id,
+                    vpr.approved_amount,
+                    NULL AS approval_note,
+                    vpr.approved_by,
+                    NULL AS approved_at,
+                    NULL AS rejected_by,
+                    NULL AS rejected_at,
+                    NULL AS rejection_reason,
+                    u.full_name AS requester_name,
+                    (SELECT GROUP_CONCAT(name SEPARATOR ', ') FROM projects WHERE FIND_IN_SET(projects.id, vpr.project_id)) AS project_name,
+                    NULL AS approval_status,
+                    NULL AS approval_approved_amount,
+                    NULL AS approval_approved_at,
+                    NULL AS approval_user_id,
+                    NULL AS approval_id,
+                    approver.full_name AS approved_by_name,
+                    NULL AS rejected_by_name
+                FROM vendor_payment_requests vpr
+                LEFT JOIN vendors v ON vpr.vendor_id = v.id
+                LEFT JOIN users u ON vpr.created_by = u.id
+                LEFT JOIN users approver ON vpr.approved_by = approver.id
 
-                approver.full_name AS approved_by_name,
-                rejector.full_name AS rejected_by_name
+                UNION ALL
 
-            FROM {$this->table} cr
-            LEFT JOIN users u 
-                ON cr.requested_by = u.id
-            LEFT JOIN approval_requests ar 
-                ON ar.source_table = 'cashout_requests' 
-               AND ar.source_id = cr.id
-            LEFT JOIN users approver 
-                ON ar.approved_by = approver.id
-            LEFT JOIN users rejector 
-                ON cr.rejected_by = rejector.id
+                SELECT 
+                    cbr.id,
+                    'contractor bill' AS cashout_type,
+                    cbr.bill_amount AS amount,
+                    cbr.due_amount,
+                    cbr.status,
+                    cbr.created_at,
+                    cbr.created_by AS requested_by,
+                    CAST(cbr.project_id AS CHAR) AS project_id,
+                    NULL AS office,
+                    cbr.work_description AS purpose_paid_to,
+                    'Bank/Cash' AS payment_method,
+                    NULL AS transaction_ref,
+                    cbr.work_description AS description,
+                    cbr.attachment_path,
+                    NULL AS bank_id,
+                    cbr.approved_amount,
+                    cbr.verification_note AS approval_note,
+                    cbr.approved_by,
+                    NULL AS approved_at,
+                    NULL AS rejected_by,
+                    NULL AS rejected_at,
+                    NULL AS rejection_reason,
+                    u.full_name AS requester_name,
+                    (SELECT GROUP_CONCAT(name SEPARATOR ', ') FROM projects WHERE FIND_IN_SET(projects.id, cbr.project_id)) AS project_name,
+                    NULL AS approval_status,
+                    NULL AS approval_approved_amount,
+                    NULL AS approval_approved_at,
+                    NULL AS approval_user_id,
+                    NULL AS approval_id,
+                    approver.full_name AS approved_by_name,
+                    NULL AS rejected_by_name
+                FROM contractor_bill_requests cbr
+                LEFT JOIN users u ON cbr.created_by = u.id
+                LEFT JOIN users approver ON cbr.approved_by = approver.id
+            ) AS cr
             WHERE 1 = 1
         ";
 
@@ -250,7 +340,7 @@ public function createRequest($data)
                 $types   .= "s";
             } else {
                 // approval_requests status
-                $sql .= " AND ar.status = ?";
+                $sql .= " AND cr.approval_status = ?";
                 $params[] = $status;
                 $types   .= "s";
             }
@@ -447,22 +537,20 @@ public function createRequest($data)
     // Get statistics
     public function getStatistics($userId = null)
     {
-        $whereClause = $userId ? "WHERE cr.requested_by = ?" : "";
-
-        $sql = "SELECT 
-        COUNT(cr.id) as total_requests,
-        COALESCE(SUM(cr.amount), 0) as total_amount,
-        COALESCE(SUM(cr.approved_amount), 0) as total_approved,
-        COALESCE(SUM(cr.due_amount), 0) as total_due,
-        COUNT(CASE WHEN cr.status = 'pending' THEN 1 END) as pending_count,
-        COUNT(CASE WHEN cr.status = 'approved' THEN 1 END) as approved_count,
-        COUNT(CASE WHEN cr.status = 'rejected' THEN 1 END) as rejected_count,
-        COUNT(CASE WHEN cr.status = 'partially_paid' THEN 1 END) as partial_count,
-        COUNT(CASE WHEN cr.status = 'fully_paid' THEN 1 END) as paid_count
-        FROM {$this->table} cr
-        {$whereClause}";
-
         if ($userId) {
+            $sql = "SELECT 
+            COUNT(cr.id) as total_requests,
+            COALESCE(SUM(cr.amount), 0) as total_amount,
+            COALESCE(SUM(cr.approved_amount), 0) as total_approved,
+            COALESCE(SUM(cr.due_amount), 0) as total_due,
+            COUNT(CASE WHEN cr.status = 'pending' THEN 1 END) as pending_count,
+            COUNT(CASE WHEN cr.status = 'approved' THEN 1 END) as approved_count,
+            COUNT(CASE WHEN cr.status = 'rejected' THEN 1 END) as rejected_count,
+            COUNT(CASE WHEN cr.status = 'partially_paid' THEN 1 END) as partial_count,
+            COUNT(CASE WHEN cr.status = 'fully_paid' THEN 1 END) as paid_count
+            FROM {$this->table} cr
+            WHERE cr.requested_by = ?";
+
             $stmt = $this->db->prepare($sql);
             $stmt->bind_param("i", $userId);
             $stmt->execute();
@@ -470,6 +558,24 @@ public function createRequest($data)
             $stats = $result->fetch_assoc();
             $stmt->close();
         } else {
+            $sql = "SELECT 
+                COUNT(*) as total_requests,
+                COALESCE(SUM(amount), 0) as total_amount,
+                COALESCE(SUM(approved_amount), 0) as total_approved,
+                COALESCE(SUM(due_amount), 0) as total_due,
+                COUNT(CASE WHEN status = 'pending' OR status = 'Pending' THEN 1 END) as pending_count,
+                COUNT(CASE WHEN status = 'approved' OR status = 'Approved' THEN 1 END) as approved_count,
+                COUNT(CASE WHEN status = 'rejected' OR status = 'Rejected' THEN 1 END) as rejected_count,
+                COUNT(CASE WHEN status = 'partially_paid' OR status = 'Partially_Paid' THEN 1 END) as partial_count,
+                COUNT(CASE WHEN status = 'fully_paid' OR status = 'Fully_Paid' THEN 1 END) as paid_count
+            FROM (
+                SELECT amount, approved_amount, due_amount, status FROM {$this->table}
+                UNION ALL
+                SELECT invoice_amount as amount, approved_amount, due_amount, status FROM vendor_payment_requests
+                UNION ALL
+                SELECT bill_amount as amount, approved_amount, due_amount, status FROM contractor_bill_requests
+            ) cr";
+
             $result = $this->db->query($sql);
             $stats = $result->fetch_assoc();
         }

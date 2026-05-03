@@ -213,6 +213,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                     <table class="table table-hover">
                         <tr>
                             <th>ID</th>
+                            <th>Type</th>
                             <th>Requester</th>
                             <th>Purpose/Paid To</th>
                             <th>Amount</th>
@@ -244,6 +245,9 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
 
                                     <tr>
                                         <td>#<?= $request['id'] ?></td>
+                                        <td>
+                                            <span class="badge bg-secondary"><?= ucwords($request['cashout_type'] ?? 'general') ?></span>
+                                        </td>
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <div>
@@ -330,7 +334,15 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                         </td>
                                         <td>
                                             <div class="d-flex gap-2">
-                                                <a href="<?= $GLOBALS['base_url'] ?>/view-cashout-request?id=<?= $request['id'] ?>"
+                                                <?php
+                                                $viewUrl = $GLOBALS['base_url'] . '/view-cashout-request?id=' . $request['id'];
+                                                if (($request['cashout_type'] ?? 'general') === 'vendor') {
+                                                    $viewUrl = $GLOBALS['base_url'] . '/con-vendor-payment-show/' . $request['id'];
+                                                } elseif (($request['cashout_type'] ?? 'general') === 'contractor bill') {
+                                                    $viewUrl = $GLOBALS['base_url'] . '/con-contractor-bill/' . $request['id'];
+                                                }
+                                                ?>
+                                                <a href="<?= $viewUrl ?>"
                                                     class="btn btn-sm btn-info" title="View Details">
                                                     <i class="fa-light fa-eye"></i>
                                                 </a>
@@ -348,17 +360,20 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                                 // Determine if delete button should be shown
                                                 $canDelete = false;
 
-                                                // Super Admin can delete any request
-                                                if ($userRole == 3) {
-                                                    $canDelete = true;
-                                                }
-                                                // Regular users can delete their own pending requests
-                                                elseif ($currentUserId && $request['requested_by'] == $currentUserId && $displayStatus == 'pending') {
-                                                    $canDelete = true;
-                                                }
-                                                // Admin users can delete pending requests (optional)
-                                                elseif (in_array($userRole, [1, 3, 4, 6]) && $displayStatus == 'pending') {
-                                                    $canDelete = true;
+                                                // Only allow delete from this view for general cashout requests
+                                                if (($request['cashout_type'] ?? 'general') === 'general') {
+                                                    // Super Admin can delete any request
+                                                    if ($userRole == 3) {
+                                                        $canDelete = true;
+                                                    }
+                                                    // Regular users can delete their own pending requests
+                                                    elseif ($currentUserId && $request['requested_by'] == $currentUserId && $displayStatus == 'pending') {
+                                                        $canDelete = true;
+                                                    }
+                                                    // Admin users can delete pending requests (optional)
+                                                    elseif (in_array($userRole, [1, 3, 4, 6]) && $displayStatus == 'pending') {
+                                                        $canDelete = true;
+                                                    }
                                                 }
                                                 ?>
 
