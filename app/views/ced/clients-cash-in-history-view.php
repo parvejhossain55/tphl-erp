@@ -75,12 +75,12 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
     ?>
     <div class="row">
 
+        <!-- ROW 1: Agreement Overview -->
+        <!-- 1. Total Value -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-money-bill"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-money-bill"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Total Value</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -90,28 +90,11 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                 </div>
             </div>
         </div>
-        <!-- Total Land Share Card -->
-<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon" >
-                <span><i class="fa-light fa-landmark"></i></span>
-            </div>
-            <div class="card__title-wrap">
-                <h6 class="card__sub-title mb-10">Total Land Share</h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share'] ?? 0, 2) ?></h4>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+        <!-- 2. Booking Money -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-hand-holding-usd"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-hand-holding-usd"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Booking Money</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -121,47 +104,11 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                 </div>
             </div>
         </div>
-<!-- Paid Land Share Card -->
-<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon" >
-                <span><i class="fa-light fa-hand-holding-usd"></i></span>
-            </div>
-            <div class="card__title-wrap">
-                <h6 class="card__sub-title mb-10"> Land Share Paid</h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- Remaining Land Share Card -->
-<div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon" >
-                <span><i class="fa-light fa-scale-balanced"></i></span>
-            </div>
-            <div class="card__title-wrap">
-                <h6 class="card__sub-title mb-10">Remaining Land Share</h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title">TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?></h4>
-                </div>
-
-
-            </div>
-        </div>
-    </div>
-</div>
-        <!-- NEW: DISCOUNT CARD -->
+        <!-- 3. Discount Amount -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-tag"></i></span> <!-- Changed icon -->
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-tag"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Discount Amount</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -171,13 +118,11 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                 </div>
             </div>
         </div>
-
+        <!-- 4. Registration Money -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-file-certificate"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-file-certificate"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Registration Money</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -188,14 +133,54 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
             </div>
         </div>
 
-
-        <!-- Development Charges Target -->
+        <!-- ROW 2: Land Share & Dev Charges -->
+        <!-- 5. Total Land Share -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-wrench"></i></span>
+                    <div class="card__icon"><span><i class="fa-light fa-landmark"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Land Share</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share'] ?? 0, 2) ?></h4>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        <!-- 6. Land Share Paid -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-hand-holding-usd"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Land Share Paid</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 7. Remaining Land Share -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-scale-balanced"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Remaining Land Share</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 8. Development Charges -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-wrench"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Development Charges</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -205,13 +190,13 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                 </div>
             </div>
         </div>
-        <!-- Development Charges Paid Card -->
+
+        <!-- ROW 3: Dev Status & Construction -->
+        <!-- 9. Dev Charges Paid -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-hammer"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-hammer"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Dev. Charges Paid</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -221,8 +206,7 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                 </div>
             </div>
         </div>
-
-        <!-- Dev. Charges Remaining -->
+        <!-- 10. Dev Charges Remaining -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -244,13 +228,11 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                 </div>
             </div>
         </div>
-
+        <!-- 11. Total Construction Fee -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-building"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-building"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Total Construction Fee</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -260,13 +242,11 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                 </div>
             </div>
         </div>
-
+        <!-- 12. Construction Fee Paid -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-money-check-dollar"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-money-check-dollar"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Construction Fee Paid</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -277,22 +257,8 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
             </div>
         </div>
 
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-hand-holding-dollar"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Service Fee<?php $svcRate = (float)($paymentSummary['service_charge_per_emi'] ?? 0); if ($svcRate > 0): ?> (<?= rtrim(rtrim(number_format($svcRate, 2), '0'), '.') ?>%)<?php endif; ?></h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_service_fee'] ?? 0, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+        <!-- ROW 4: CF Remaining & EMI Status -->
+        <!-- 13. Remaining Construction Fee -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -314,13 +280,74 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                 </div>
             </div>
         </div>
-        
+        <!-- 14. Per EMI Amount -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-calculator"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Per EMI Amount</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['per_emi_amount'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 15. Completed EMI -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-check-circle"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Completed EMI</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title"><?= $paymentSummary['completed_emi'] ?? 0 ?> / <?= $paymentSummary['total_emi'] ?? 0 ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 16. Service Charge Rate -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon">
-                        <span><i class="fa-light fa-sack-dollar"></i></span>
+                        <span style="color:#e67e22;"><i class="fa-light fa-percent"></i></span>
                     </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Service Charge Rate</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <?php $svcRate = (float)($paymentSummary['service_charge_per_emi'] ?? 0); ?>
+                            <h4 class="card__title" style="color:#e67e22;"><?= number_format($svcRate, 0) ?>% <small style="font-size:13px;color:#999;">per EMI</small></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 5: Revenue & Meta -->
+        <!-- 17. Total Service Fee Collected -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span style="color:#8e44ad;"><i class="fa-light fa-hand-holding-dollar"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Service Fee Collected</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title" style="color:#8e44ad;">TK.<?= number_format($paymentSummary['total_service_fee'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 18. Net Received -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-sack-dollar"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Net Received</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -330,7 +357,7 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                 </div>
             </div>
         </div>
-
+        <!-- 19. Total Due -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -352,97 +379,11 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                 </div>
             </div>
         </div>
-
-        <!-- REMOVED: Average EMI Amount Card -->
-        <!--
-    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-1">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-calculator"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Average EMI Amount</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title">TK.<?= number_format($paymentSummary['avg_emi_amount'] ?? 0, 2) ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    -->
-
+        <!-- 20. Last Payment -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-list-ol"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total EMI</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $paymentSummary['total_emi'] ?? 0 ?> </h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-check-circle"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Completed EMI</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $paymentSummary['completed_emi'] ?? 0 ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-clock"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Pending EMI</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title"><?= $paymentSummary['pending_emi'] ?? 0 ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Per EMI Amount -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-calculator"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Per EMI Amount</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['per_emi_amount'] ?? 0, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-calendar-check"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-calendar-check"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Last Payment</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -460,7 +401,7 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
         </div>
 
         <?php if (($paymentSummary['total_bulk_emi_discount'] ?? 0) > 0): ?>
-        <!-- Bulk EMI Discount -->
+        <!-- 21. Bulk EMI Discount (conditional) -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -479,7 +420,9 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
             </div>
         </div>
         <?php endif; ?>
+
     </div>
+
 
     <!-- Outstanding EMI Due Alert -->
     <?php
@@ -541,6 +484,9 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                             <i class="fa-light fa-lock me-2"></i> Add Transaction (Requires Land Share)
                         </button>
                     <?php endif; ?>
+                    <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-info mb-3 text-white">
+                        <i class="fa-light fa-file-csv me-2"></i> CSV Import
+                    </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>

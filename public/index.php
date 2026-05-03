@@ -525,6 +525,12 @@ $routes = [
     "update-transaction" => ["controller" => "AccountClientController", "method" => "updateTransaction"],
     "delete-transaction" => ["controller" => "AccountClientController", "method" => "deleteTransaction"],
 
+    // ==================== CSV BULK IMPORT ROUTES ====================
+    'csv-import-form'     => ['controller' => 'AccountClientController', 'method' => 'showCSVImportForm'],
+    'csv-import-preview'  => ['controller' => 'AccountClientController', 'method' => 'previewCSVImport'],
+    'csv-import-execute'  => ['controller' => 'AccountClientController', 'method' => 'executeCSVImport'],
+    'csv-import-template' => ['controller' => 'AccountClientController', 'method' => 'downloadCSVTemplate'],
+
     // ========================CED Routes====================================
     // Add this to your routes array (around line 510-520 would be good)
     'ced-dashboard' => ["controller" => "AccountClientController", "method" => "CedView"],

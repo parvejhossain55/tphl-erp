@@ -55,13 +55,12 @@ $show_breadcrumb = true;
     ?>
     <div class="row">
 
-        <!-- 1. Total Price -->
+        <!-- ROW 1: Agreement Overview -->
+        <!-- 1. Total Value -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-money-bill"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-money-bill"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Total Value</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -71,25 +70,7 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-
-        <!-- 2. Total Land Share (fixed flat value) -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-map-marker-alt"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Land Share Value</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share'] ?? 0, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Booking Money Paid -->
+        <!-- 2. Booking Money Paid -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -103,8 +84,7 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-
-        <!-- Discount Amount -->
+        <!-- 3. Discount Amount -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -118,8 +98,7 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-
-        <!-- Registration Paid -->
+        <!-- 4. Registration Paid -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -134,13 +113,26 @@ $show_breadcrumb = true;
             </div>
         </div>
 
-
+        <!-- ROW 2: Land Share & Dev Charges -->
+        <!-- 5. Total Land Share -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-landmark"></i></span>
+                    <div class="card__icon"><span><i class="fa-light fa-map-marker-alt"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Land Share Value</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share'] ?? 0, 2) ?></h4>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        <!-- 6. Landshare Paid -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-landmark"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Landshare Paid</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -150,8 +142,7 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-
-        <!-- 4. Remaining Land Share -->
+        <!-- 7. Remaining Land Share -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -167,30 +158,11 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-
-        <!-- Total Construction Fee -->
+        <!-- 8. Development Charges -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-building"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Construction Fee</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['construction_fee'] ?? 0, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-                <!-- Dev. Charges Target -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-wrench"></i></span>
-                    </div>
-                    
+                    <div class="card__icon"><span><i class="fa-light fa-wrench"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Development Charges</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -200,13 +172,13 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-        <!-- 6. Dev. Charges (target vs paid) -->
+
+        <!-- ROW 3: Dev Charges Status & Construction -->
+        <!-- 9. Dev Charges Paid -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-tools"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-tools"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Dev. Charges Paid</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -216,10 +188,7 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-
-
-
-        <!-- Dev. Charges Remaining -->
+        <!-- 10. Dev Charges Remaining -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -241,13 +210,25 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-
+        <!-- 11. Total Construction Fee -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-money-check-dollar"></i></span>
+                    <div class="card__icon"><span><i class="fa-light fa-building"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Construction Fee</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($paymentSummary['construction_fee'] ?? 0, 2) ?></h4>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        <!-- 12. Construction Fee Paid -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-money-check-dollar"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Construction Fee Paid</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -258,7 +239,8 @@ $show_breadcrumb = true;
             </div>
         </div>
 
-        <!-- Remaining Construction Fee -->
+        <!-- ROW 4: Construction Remaining & EMI -->
+        <!-- 13. Remaining Construction Fee -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -280,32 +262,25 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-
-        <!-- 9. Per EMI Amount -->
+        <!-- 14. Per EMI Amount -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-calculator"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-calculator"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Per EMI Amount</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title">TK.<?= number_format($paymentSummary['per_emi_amount'] ?? 0, 2) ?></h4>
                         </div>
-                       
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- 10. Completed EMI -->
+        <!-- 15. Completed EMI -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-check-circle"></i></span>
-                    </div>
+                    <div class="card__icon"><span><i class="fa-light fa-check-circle"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Completed EMI</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -315,14 +290,45 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>
-
-        <!-- 11. Last Payment -->
+        <!-- 16. Service Charge Rate -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon">
-                        <span><i class="fa-light fa-calendar-check"></i></span>
+                        <span style="color:#e67e22;"><i class="fa-light fa-percent"></i></span>
                     </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Service Charge Rate</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title" style="color:#e67e22;"><?= number_format($paymentSummary['service_charge_per_emi'] ?? 0, 0) ?>% <small style="font-size:13px;color:#999;">per EMI</small></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 5: Service Fee & Meta -->
+        <!-- 17. Total Service Fee Collected -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span style="color:#8e44ad;"><i class="fa-light fa-hand-holding-dollar"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Total Service Fee Collected</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title" style="color:#8e44ad;">TK.<?= number_format($paymentSummary['total_service_fee'] ?? 0, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 18. Last Payment -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-calendar-check"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Last Payment</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
@@ -340,7 +346,7 @@ $show_breadcrumb = true;
         </div>
 
         <?php if (($paymentSummary['total_bulk_emi_discount'] ?? 0) > 0): ?>
-        <!-- Bulk EMI Discount -->
+        <!-- 19. Bulk EMI Discount (conditional) -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -359,7 +365,9 @@ $show_breadcrumb = true;
             </div>
         </div>
         <?php endif; ?>
+
     </div>
+
 
     <!-- Outstanding EMI Due Alert -->
     <?php
@@ -396,6 +404,9 @@ $show_breadcrumb = true;
                         <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                             <i class="fa-light fa-plus me-2"></i> Add Transaction
                         </a>
+                    <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-info mb-3 text-white">
+                        <i class="fa-light fa-file-csv me-2"></i> CSV Import
+                    </a>
                     <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>

@@ -1785,4 +1785,267 @@ public function viewClientStatement($bookingId = null)
         header("Location: {$redirectUrl}");
         exit;
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ─── CSV BULK IMPORT ENDPOINTS ────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Show the CSV import form page
+     */
+    public function showCSVImportForm()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $this->view("accounts/cashIn/csv-import-form", [
+            "current_route" => "csv-import-form",
+            "page_title"    => "CSV Bulk Payment Import",
+            "preview_data"  => null,
+            "errors"        => null,
+            "summary"       => null
+        ]);
+    }
+
+    /**
+     * Handle CSV upload and show preview
+     */
+    public function previewCSVImport()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/csv-import-form");
+            exit;
+        }
+
+        // Validate file upload
+        if (empty($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError("Please select a valid CSV file to upload.");
+            header("Location: {$GLOBALS['base_url']}/csv-import-form");
+            exit;
+        }
+
+        $file = $_FILES['csv_file'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if ($ext !== 'csv') {
+            setError("Only CSV files are allowed.");
+            header("Location: {$GLOBALS['base_url']}/csv-import-form");
+            exit;
+        }
+
+        // Move to temp location
+        $uploadDir = __DIR__ . '/../../public/uploads/csv_imports/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $tempName = 'import_' . date('YmdHis') . '_' . uniqid() . '.csv';
+        $tempPath = $uploadDir . $tempName;
+
+        if (!move_uploaded_file($file['tmp_name'], $tempPath)) {
+            setError("Failed to upload file. Please try again.");
+            header("Location: {$GLOBALS['base_url']}/csv-import-form");
+            exit;
+        }
+
+        // Parse and validate CSV
+        $result = $this->clientModel->parseAndValidateCSV($tempPath);
+
+        // Store ONLY the file path & filename in session (NOT the parsed data —
+        // large arrays can exceed session storage and silently corrupt the session)
+        $_SESSION['csv_import_file'] = $tempPath;
+        $_SESSION['csv_import_filename'] = $file['name'];
+
+        $this->view("accounts/cashIn/csv-import-form", [
+            "current_route" => "csv-import-preview",
+            "page_title"    => "CSV Import Preview - " . $file['name'],
+            "preview_data"  => $result['valid_rows'],
+            "errors"        => $result['errors'],
+            "summary"       => $result['summary'],
+            "filename"      => $file['name']
+        ]);
+    }
+
+    /**
+     * Execute the confirmed CSV import
+     */
+    public function executeCSVImport()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/csv-import-form");
+            exit;
+        }
+
+        // Retrieve file path from session (lightweight — no large data stored)
+        $tempFile = $_SESSION['csv_import_file'] ?? null;
+        $filename = $_SESSION['csv_import_filename'] ?? 'unknown.csv';
+
+        if (!$tempFile || !file_exists($tempFile)) {
+            setError("Import session expired or file not found. Please re-upload the CSV file.");
+            header("Location: {$GLOBALS['base_url']}/csv-import-form");
+            exit;
+        }
+
+        // Re-parse the CSV from the saved file (avoids session bloat)
+        $parseResult = $this->clientModel->parseAndValidateCSV($tempFile);
+        $validRows = $parseResult['valid_rows'] ?? [];
+        $parseErrors = $parseResult['errors'] ?? [];
+
+        if (empty($validRows)) {
+            setError("No valid rows to import. Please upload a corrected CSV file.");
+            header("Location: {$GLOBALS['base_url']}/csv-import-form");
+            exit;
+        }
+
+        $createdBy = $_SESSION['user']['id'] ?? 1;
+        $successCount = 0;
+        $errorCount = 0;
+        $importResults = [];
+        $importErrors = [];
+
+        foreach ($validRows as $row) {
+            $result = $this->clientModel->processCSVImportRow($row, $createdBy);
+
+            if ($result['success']) {
+                $successCount++;
+                $importResults[] = [
+                    'row_num'    => $row['row_num'],
+                    'client'     => $row['resolved_client'],
+                    'project'    => $row['project_name'],
+                    'flat'       => $row['flat_name'],
+                    'amount'     => $row['amount'],
+                    'type'       => $row['payment_type'],
+                    'payment_id' => $result['payment_id'],
+                    'booking_id' => $row['booking_id'],
+                    'message'    => $result['message']
+                ];
+            } else {
+                $errorCount++;
+                $importErrors[] = [
+                    'row_num'  => $row['row_num'],
+                    'client'   => $row['client_name'],
+                    'project'  => $row['project_name'],
+                    'flat'     => $row['flat_name'],
+                    'amount'   => $row['amount'],
+                    'type'     => $row['payment_type'],
+                    'message'  => $result['message']
+                ];
+            }
+        }
+
+        // Merge parse errors with import errors for the log
+        $allErrors = array_merge(
+            array_map(fn($e) => [
+                'row' => $e['row'],
+                'type' => 'parse_error',
+                'messages' => $e['messages'] ?? [$e['message'] ?? 'Unknown error']
+            ], $parseErrors),
+            array_map(fn($e) => [
+                'row' => $e['row_num'],
+                'type' => 'import_error',
+                'messages' => [$e['message']]
+            ], $importErrors)
+        );
+
+        // Log the import
+        $totalRows = count($validRows) + count($parseErrors);
+        $this->clientModel->logCSVImport(
+            $filename, $totalRows, $successCount,
+            $errorCount + count($parseErrors),
+            $allErrors, $createdBy
+        );
+
+        // Clean up: delete the temp CSV file
+        if (file_exists($tempFile)) {
+            unlink($tempFile);
+        }
+        unset(
+            $_SESSION['csv_import_file'],
+            $_SESSION['csv_import_filename']
+        );
+
+        $this->view("accounts/cashIn/csv-import-results", [
+            "current_route"  => "csv-import-results",
+            "page_title"     => "CSV Import Results",
+            "filename"       => $filename,
+            "success_count"  => $successCount,
+            "error_count"    => $errorCount + count($parseErrors),
+            "total_rows"     => $totalRows,
+            "import_results" => $importResults,
+            "import_errors"  => $importErrors,
+            "parse_errors"   => $parseErrors
+        ]);
+    }
+
+    /**
+     * Download CSV template with headers and sample data
+     */
+    public function downloadCSVTemplate()
+    {
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="payment_import_template.csv"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+
+        // Header row (19 columns — payment_status auto-calculated by backend)
+        fputcsv($output, [
+            'client_name', 'client_phone', 'project_name', 'flat_name',
+            'amount', 'payment_date', 'payment_type', 'payment_method',
+            'verification_status', 'transaction_ref',
+            'bank_name', 'bank_account_no', 'cheque_no', 'online_type',
+            'payment_details', 'bulk_emi_discount', 'emi_due_date', 'emi_no',
+            'service_fee'
+        ]);
+
+        // Sample rows
+        fputcsv($output, [
+            'Rony Hasan', '01736936727', 'Armonia', 'Unit-A2',
+            '100000', '2026-05-01', 'development_charge', 'bank',
+            'verified', 'TRX-001',
+            'EBL', '1041260066908', '', '',
+            'Development charge payment', '0', '', '',
+            '0'
+        ]);
+
+        fputcsv($output, [
+            'Rony Hasan', '01736936727', 'Armonia', 'Unit-A2',
+            '50000', '2026-05-15', 'emi', 'bank',
+            '', 'TRX-002',
+            'EBL', '1041260066908', '', '',
+            'EMI Payment May 2026', '0', '2026-06-15', '1',
+            '1500'
+        ]);
+
+        fputcsv($output, [
+            'Kamal Ahmed', '01812345678', 'Orchid', 'Unit-B3',
+            '150000', '2026-05-20', 'emi', 'cash',
+            'verified', '',
+            '', '', '', '',
+            'Bulk EMI Payment', '10000', '2026-07-15', '3',
+            '4500'
+        ]);
+
+        // Sample: EMI Due Settlement
+        fputcsv($output, [
+            'Rony Hasan', '01736936727', 'Armonia', 'Unit-A2',
+            '12917', '2026-06-01', 'emi_due_settlement', 'cash',
+            'verified', 'TRX-003',
+            '', '', '', '',
+            'EMI Due Settlement', '0', '', '',
+            '500'
+        ]);
+
+        fclose($output);
+        exit;
+    }
 }

@@ -436,10 +436,28 @@ ORDER BY lb.booking_date DESC
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
+                     AND lp.verification_status != 'rejected'
+                     AND lp.payment_type IN ('emi', 'emi_due_settlement')), 
+                    0
+                ) as emi_paid_total,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'
                      AND lp.payment_type = 'development_charge'), 
                     0
                 ) as development_charge_paid,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status IN ('paid','partially_paid')
+                     AND lp.verification_status != 'rejected'
+                     AND lp.payment_type = 'development_charge'), 
+                    0
+                ) as development_charge_paid_total,
                 COALESCE(
                     (SELECT SUM(lp.due_emi_amount)
                      FROM lead_payments lp
@@ -549,8 +567,9 @@ ORDER BY lb.booking_date DESC
                 $isDevChargeCompleted = true;
             }
 
-            // Construction fee paid = EMI paid minus Service Fee
-            $constructionFeePaid         = max(0, $emiPaid - $totalServiceFee);
+            // Construction fee paid = total EMI amounts paid (amount IS the construction portion;
+            // service fee is charged ON TOP as company revenue, not deducted from construction)
+            $constructionFeePaid         = $emiPaid;
             $totalBulkEmiDiscount        = (float) ($clientDetails['total_bulk_emi_discount'] ?? 0);
             $remainingConstructionFee    = max(0, round($constructionFee - $constructionFeePaid - $totalBulkEmiDiscount));
 
@@ -784,9 +803,11 @@ ORDER BY lb.booking_date DESC
             'is_land_share_completed'              => $clientDetails['is_land_share_completed'],
             'is_dev_charge_completed'              => $clientDetails['is_dev_charge_completed'] ?? false,
             'development_charge_paid'              => $clientDetails['development_charge_paid'] ?? 0,
+            'development_charge_paid_total'        => $clientDetails['development_charge_paid_total'] ?? 0,
             'construction_fee'                     => $clientDetails['construction_fee'],
             'per_emi_amount'                       => $clientDetails['per_emi_amount'] ?? 0,
             'construction_fee_paid'                => $clientDetails['construction_fee_paid'],
+            'emi_paid_total'                       => $clientDetails['emi_paid_total'] ?? 0,
             'construction_fee_paid_after_service'  => $clientDetails['construction_fee_paid_after_service'],
             'remaining_construction_fee'           => $clientDetails['remaining_construction_fee'],
             'total_paid'                           => $clientDetails['total_paid'],
@@ -872,13 +893,22 @@ ORDER BY lb.booking_date DESC
                         $remaining = number_format($summary['remaining_land_share'] ?? 0, 2);
                         throw new Exception("Land share (and registration) must be fully completed before development charge can be recorded. Remaining land share: ৳{$remaining}");
                     }
+                    $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
+                    $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
+                    $devRemaining = max(0, $devTarget - $devPaid);
+                    if ($devRemaining <= 0) {
+                        throw new Exception("Development charge is already fully paid!");
+                    }
+                    if ($amount > $devRemaining) {
+                        throw new Exception("Amount exceeds remaining development charge: ৳" . number_format($devRemaining, 2));
+                    }
                     break;
 
                 case 'emi':
                     // EMI requires development charge to be fully paid (or no dev charge defined on flat)
                     if (empty($summary['is_dev_charge_completed'])) {
                         $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
-                        $devPaid   = (float) ($summary['development_charge_paid'] ?? 0);
+                        $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
                         throw new Exception("Development charge must be fully paid before EMI can be recorded. Paid: ৳" . number_format($devPaid, 2) . " / Required: ৳" . number_format($devTarget, 2));
                     }
                     // Service fee = amount_paid × (service_charge_per_emi% / 100)
@@ -888,10 +918,18 @@ ORDER BY lb.booking_date DESC
                     // Compute due: shortfall from the suggested per-EMI amount
                     // BUT if this payment covers the entire remaining CF, there is NO real due
                     $perEmiSuggested   = (float) ($summary['per_emi_amount'] ?? 0);
-                    $emiPaidSoFar      = (float) ($summary['construction_fee_paid'] ?? 0);
+                    $emiPaidSoFar      = (float) ($summary['emi_paid_total'] ?? 0);
                     $cfTotal           = (float) ($summary['construction_fee'] ?? 0);
                     $bulkDisc          = (float) ($summary['total_bulk_emi_discount'] ?? 0);
                     $effectiveCFRemaining = max(0, $cfTotal - $emiPaidSoFar - $bulkDisc);
+
+                    if ($effectiveCFRemaining <= 0) {
+                        throw new Exception("Construction fee is already fully paid! No more EMIs required.");
+                    }
+                    if ($amount > $effectiveCFRemaining) {
+                        throw new Exception("Amount exceeds remaining construction fee: ৳" . number_format($effectiveCFRemaining, 2));
+                    }
+
                     $remainingAfterThis   = max(0, $effectiveCFRemaining - $amount);
 
                     if ($remainingAfterThis <= 0) {
@@ -909,7 +947,7 @@ ORDER BY lb.booking_date DESC
                     if ($dueEmiAmount > 0) {
                         $transactionData['payment_status'] = 'partially_paid';
                     }
-                    if (($emiPaidSoFar + $amount) > ($cfTotal * 1.01)) {
+                    if (($emiPaidSoFar + $amount) > $effectiveCFRemaining + $emiPaidSoFar) {
                         throw new Exception("EMI payment cannot exceed total construction fee: ৳" . number_format($cfTotal, 2));
                     }
                     break;
@@ -1019,6 +1057,12 @@ ORDER BY lb.booking_date DESC
                 ");
                 $updStmt->bind_param('dsi', $newDue, $newStatus, $parentPaymentId);
                 $updStmt->execute();
+
+                // Also sync emi_schedules
+                $schedSyncStmt = $this->db->prepare("UPDATE emi_schedules SET due_emi_amount = ?, status = ? WHERE lead_payment_id = ?");
+                $schedSyncStmt->bind_param('dsi', $newDue, $newStatus, $parentPaymentId);
+                $schedSyncStmt->execute();
+                $schedSyncStmt->close();
             }
 
             if ($paymentType === 'emi' && $emiScheduleData) {
@@ -1318,7 +1362,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             LEFT JOIN banks b ON b.id = lp.bank_id
             WHERE lp.booking_id = ?
-            ORDER BY lp.payment_date DESC, lp.id DESC
+            ORDER BY lp.created_at DESC, lp.id DESC
         ");
 
         $stmt->bind_param("i", $bookingId);
@@ -1856,6 +1900,17 @@ ORDER BY lb.booking_date DESC
                     if ($landShareAmount > $remainingLandShare) {
                         throw new Exception("Land share amount cannot exceed remaining land share: ৳" . number_format($remainingLandShare, 2));
                     }
+                } elseif ($paymentType === 'development_charge') {
+                    $summary = $this->getPaymentSummaryByBookingId($bookingId);
+                    $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
+                    $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
+                    $devRemaining = max(0, $devTarget - $devPaid);
+                    if ($devRemaining <= 0) {
+                        throw new Exception("Development charge is already fully paid!");
+                    }
+                    if ($totalAmount > $devRemaining) {
+                        throw new Exception("Amount exceeds remaining development charge: ৳" . number_format($devRemaining, 2));
+                    }
                 }
 
                 // Encode attachment paths
@@ -1930,7 +1985,7 @@ ORDER BY lb.booking_date DESC
 
             // Construction fee cap check (accounts for existing bulk discounts)
             $constructionFee      = (float) ($summary['construction_fee'] ?? 0);
-            $emiPaidSoFar         = (float) ($summary['construction_fee_paid'] ?? 0);
+            $emiPaidSoFar         = (float) ($summary['emi_paid_total'] ?? 0);
             $perEmiAmount         = (float) ($summary['per_emi_amount'] ?? 0);
             $existingBulkDiscount = (float) ($summary['total_bulk_emi_discount'] ?? 0);
             $effectiveCF          = max(0, $constructionFee - $existingBulkDiscount);
@@ -1950,7 +2005,7 @@ ORDER BY lb.booking_date DESC
                 }
             }
 
-            if (($emiPaidSoFar + $totalAmount) > ($effectiveCF * 1.01)) {
+            if (($emiPaidSoFar + $totalAmount) > $effectiveCF) {
                 $maxPayable = max(0, $effectiveCF - $emiPaidSoFar);
                 throw new Exception("EMI payment exceeds remaining construction fee. Maximum payable: ৳" . number_format($maxPayable, 2));
             }
@@ -2000,7 +2055,7 @@ ORDER BY lb.booking_date DESC
                 if (!$settleStmt) throw new Exception("Settlement prepare failed: " . $this->db->error);
 
                 $stType = 'emi_due_settlement';
-                $stPayType = 'emi_due_settlement';
+                $stPayType = 'emi'; // Use 'emi' for DB ENUM consistency; settlement tracked via settlement_type
                 $stStatus = 'paid';
                 $stLandShare = 0.0;
                 $stDue = 0.0;
@@ -2016,12 +2071,18 @@ ORDER BY lb.booking_date DESC
 
                 if (!$settleStmt->execute()) throw new Exception("Settlement insert failed: " . $settleStmt->error);
 
-                // Update parent's due_emi_amount
+                // Update parent's due_emi_amount in lead_payments
                 $newDue = max(0, $dueAmount - $settle);
                 $newParentStatus = ($newDue <= 0) ? 'paid' : 'partially_paid';
                 $updStmt = $this->db->prepare("UPDATE lead_payments SET due_emi_amount = ?, payment_status = ? WHERE id = ?");
                 $updStmt->bind_param('dsi', $newDue, $newParentStatus, $parentId);
                 $updStmt->execute();
+
+                // Also sync emi_schedules
+                $schedSyncStmt = $this->db->prepare("UPDATE emi_schedules SET due_emi_amount = ?, status = ? WHERE lead_payment_id = ?");
+                $schedSyncStmt->bind_param('dsi', $newDue, $newParentStatus, $parentId);
+                $schedSyncStmt->execute();
+                $schedSyncStmt->close();
 
                 $pool -= $settle;
                 $settledDues++;
@@ -2568,5 +2629,742 @@ ORDER BY lb.booking_date DESC
         $stmt->close();
         
         return $result;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ─── CSV BULK IMPORT METHODS ──────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Resolve a booking by client phone, project name, and flat name.
+     * Returns booking details or null if not found.
+     * Handles: phone in both `phone` and `phone_number` columns,
+     * flat names with/without floor suffix (e.g. "6 B - FLOOR 6" → "6 B").
+     */
+    public function resolveBookingByProjectAndFlat($clientPhone, $projectName, $flatName)
+    {
+        // Normalize phone: strip all non-digits
+        $phone = preg_replace('/[^0-9]/', '', $clientPhone);
+        
+        // Build multiple phone variants for flexible matching
+        // Raw: 8801875293008, without 880: 1875293008, with leading 0: 01875293008
+        $phoneVariants = [$phone];
+        $shortPhone = $phone;
+        if (str_starts_with($shortPhone, '880')) {
+            $shortPhone = substr($shortPhone, 3);
+            $phoneVariants[] = $shortPhone;           // 1875293008
+            $phoneVariants[] = '0' . $shortPhone;     // 01875293008
+        }
+        if (str_starts_with($shortPhone, '0')) {
+            $shortPhone = substr($shortPhone, 1);
+            $phoneVariants[] = $shortPhone;
+        }
+        // Use the shortest meaningful digits for LIKE
+        $phoneLike = '%' . $shortPhone;
+
+        // Normalize flat name: strip floor suffix like " - FLOOR 6", " - Floor 6"
+        $cleanFlatName = trim($flatName);
+        $flatNameBase = $cleanFlatName;
+        if (preg_match('/^(.+?)\s*[-–]\s*(FLOOR|Floor|floor)\s*\d+/i', $cleanFlatName, $fMatch)) {
+            $flatNameBase = trim($fMatch[1]);
+        }
+
+        // Try exact flat name first, then base name
+        $flatNamesToTry = [$cleanFlatName];
+        if ($flatNameBase !== $cleanFlatName) {
+            $flatNamesToTry[] = $flatNameBase;
+        }
+
+        foreach ($flatNamesToTry as $tryFlatName) {
+            $stmt = $this->db->prepare("
+                SELECT 
+                    lb.id AS booking_id,
+                    lb.project_id,
+                    lb.flat_id,
+                    lb.lead_id,
+                    l.full_name AS client_name,
+                    COALESCE(l.phone, l.phone_number) AS client_phone,
+                    p.name AS project_name,
+                    f.flat_name,
+                    f.floor_no,
+                    lb.booking_status
+                FROM lead_bookings lb
+                INNER JOIN leads l ON l.id = lb.lead_id
+                INNER JOIN projects p ON p.id = lb.project_id
+                INNER JOIN flats f ON f.id = lb.flat_id
+                WHERE lb.deleted_at IS NULL
+                  AND l.deleted_at IS NULL
+                  AND LOWER(TRIM(p.name)) = LOWER(TRIM(?))
+                  AND LOWER(TRIM(f.flat_name)) = LOWER(TRIM(?))
+                  AND (
+                      REPLACE(REPLACE(REPLACE(COALESCE(l.phone,''), ' ', ''), '-', ''), '+', '') LIKE ?
+                      OR REPLACE(REPLACE(REPLACE(COALESCE(l.phone_number,''), ' ', ''), '-', ''), '+', '') LIKE ?
+                  )
+                ORDER BY lb.created_at DESC
+                LIMIT 1
+            ");
+
+            if (!$stmt) {
+                error_log("resolveBookingByProjectAndFlat prepare failed: " . $this->db->error);
+                return null;
+            }
+
+            $stmt->bind_param("ssss", $projectName, $tryFlatName, $phoneLike, $phoneLike);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result ? $result->fetch_assoc() : null;
+            $stmt->close();
+
+            if ($row) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Parse and validate a CSV file for bulk payment import.
+     * Returns ['valid_rows' => [...], 'errors' => [...], 'summary' => [...]]
+     */
+    public function parseAndValidateCSV($filePath)
+    {
+        $validRows = [];
+        $errors = [];
+        $summary = [
+            'total_rows' => 0,
+            'valid_count' => 0,
+            'error_count' => 0,
+            'total_amount' => 0,
+            'dev_charge_count' => 0,
+            'emi_count' => 0
+        ];
+
+        $expectedHeaders = [
+            'client_name', 'client_phone', 'project_name', 'flat_name',
+            'amount', 'payment_date', 'payment_type', 'payment_method',
+            'verification_status', 'transaction_ref',
+            'bank_name', 'bank_account_no', 'cheque_no', 'online_type',
+            'payment_details', 'bulk_emi_discount', 'emi_due_date', 'emi_no',
+            'service_fee'
+        ];
+
+        if (!file_exists($filePath) || !is_readable($filePath)) {
+            $errors[] = ['row' => 0, 'message' => 'CSV file not found or not readable.'];
+            return ['valid_rows' => $validRows, 'errors' => $errors, 'summary' => $summary];
+        }
+
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            $errors[] = ['row' => 0, 'message' => 'Failed to open CSV file.'];
+            return ['valid_rows' => $validRows, 'errors' => $errors, 'summary' => $summary];
+        }
+
+        // Read and validate headers (handle BOM)
+        $headerRow = fgetcsv($handle);
+        if ($headerRow === false) {
+            fclose($handle);
+            $errors[] = ['row' => 0, 'message' => 'CSV file is empty.'];
+            return ['valid_rows' => $validRows, 'errors' => $errors, 'summary' => $summary];
+        }
+
+        // Remove BOM if present
+        $headerRow[0] = preg_replace('/^\xEF\xBB\xBF/', '', $headerRow[0]);
+        $headers = array_map(function ($h) {
+            return strtolower(trim($h));
+        }, $headerRow);
+
+        // Check required headers
+        $requiredHeaders = ['client_name', 'client_phone', 'project_name', 'flat_name',
+                            'amount', 'payment_date', 'payment_type', 'payment_method'];
+        $missingHeaders = array_diff($requiredHeaders, $headers);
+        if (!empty($missingHeaders)) {
+            fclose($handle);
+            $errors[] = ['row' => 0, 'message' => 'Missing required columns: ' . implode(', ', $missingHeaders)];
+            return ['valid_rows' => $validRows, 'errors' => $errors, 'summary' => $summary];
+        }
+
+        $rowNum = 1; // 1-based (header is row 0)
+        while (($data = fgetcsv($handle)) !== false) {
+            $rowNum++;
+            $summary['total_rows']++;
+
+            // Skip completely empty rows
+            if (count(array_filter($data, fn($v) => trim($v) !== '')) === 0) {
+                continue;
+            }
+
+            // Map CSV columns to associative array
+            $row = [];
+            foreach ($headers as $idx => $header) {
+                $row[$header] = isset($data[$idx]) ? trim($data[$idx]) : '';
+            }
+
+            $rowErrors = [];
+
+            // === REQUIRED FIELD VALIDATION ===
+            if (empty($row['client_name'])) $rowErrors[] = 'client_name is required';
+            if (empty($row['client_phone'])) $rowErrors[] = 'client_phone is required';
+            if (empty($row['project_name'])) $rowErrors[] = 'project_name is required';
+            if (empty($row['flat_name'])) $rowErrors[] = 'flat_name is required';
+
+            // Strip thousand separators (commas) from amount before validation
+            if (!empty($row['amount'])) {
+                $row['amount'] = str_replace(',', '', $row['amount']);
+            }
+            if (empty($row['amount']) || !is_numeric($row['amount']) || (float)$row['amount'] <= 0) {
+                $rowErrors[] = 'amount must be a positive number';
+            }
+
+            // Date validation (supports Y-m-d, d/m/Y, d-m-Y)
+            $parsedDate = null;
+            if (!empty($row['payment_date'])) {
+                $parsedDate = $this->parseCSVDate($row['payment_date']);
+                if (!$parsedDate) {
+                    $rowErrors[] = 'payment_date is invalid (use YYYY-MM-DD or DD/MM/YYYY)';
+                }
+            } else {
+                $rowErrors[] = 'payment_date is required';
+            }
+
+            // Payment type validation
+            $validPaymentTypes = ['development_charge', 'emi', 'emi_due_settlement'];
+            if (empty($row['payment_type']) || !in_array(strtolower($row['payment_type']), $validPaymentTypes)) {
+                $rowErrors[] = 'payment_type must be: development_charge, emi, or emi_due_settlement';
+            }
+
+            // Payment method validation
+            $validMethods = ['cash', 'bank', 'online', 'cheque'];
+            if (empty($row['payment_method']) || !in_array(strtolower($row['payment_method']), $validMethods)) {
+                $rowErrors[] = 'payment_method must be: cash, bank, online, or cheque';
+            }
+
+            // Verification status: optional, defaults to 'pending' if blank
+            $verificationStatus = 'pending';
+            if (!empty($row['verification_status'])) {
+                $vs = strtolower($row['verification_status']);
+                if (in_array($vs, ['pending', 'verified', 'rejected'])) {
+                    $verificationStatus = $vs;
+                }
+            }
+
+            // === BOOKING RESOLUTION ===
+            $bookingData = null;
+            if (empty($rowErrors)) {
+                $bookingData = $this->resolveBookingByProjectAndFlat(
+                    $row['client_phone'],
+                    $row['project_name'],
+                    $row['flat_name']
+                );
+                if (!$bookingData) {
+                    $rowErrors[] = "No booking found for phone '{$row['client_phone']}' + project '{$row['project_name']}' + flat '{$row['flat_name']}'";
+                }
+            }
+
+            // === OPTIONAL FIELD VALIDATION ===
+            $bulkDiscount = 0;
+            if (!empty($row['bulk_emi_discount'])) {
+                if (!is_numeric($row['bulk_emi_discount']) || (float)$row['bulk_emi_discount'] < 0) {
+                    $rowErrors[] = 'bulk_emi_discount must be a non-negative number';
+                } else {
+                    $bulkDiscount = (float)$row['bulk_emi_discount'];
+                }
+            }
+
+            $emiNo = null;
+            if (!empty($row['emi_no'])) {
+                if (!is_numeric($row['emi_no']) || (int)$row['emi_no'] <= 0) {
+                    $rowErrors[] = 'emi_no must be a positive integer';
+                } else {
+                    $emiNo = (int)$row['emi_no'];
+                }
+            }
+
+            $emiDueDate = null;
+            if (!empty($row['emi_due_date'])) {
+                $emiDueDate = $this->parseCSVDate($row['emi_due_date']);
+                if (!$emiDueDate) {
+                    $rowErrors[] = 'emi_due_date is invalid (use YYYY-MM-DD or DD/MM/YYYY)';
+                }
+            }
+
+            // Service fee validation (optional — auto-calc if empty)
+            $serviceFee = null;
+            if (isset($row['service_fee']) && $row['service_fee'] !== '') {
+                if (!is_numeric($row['service_fee']) || (float)$row['service_fee'] < 0) {
+                    $rowErrors[] = 'service_fee must be a non-negative number';
+                } else {
+                    $serviceFee = (float)$row['service_fee'];
+                }
+            }
+
+            // Bank resolution
+            $bankId = null;
+            if (!empty($row['bank_name'])) {
+                $bankResult = $this->db->query("SELECT id FROM banks WHERE LOWER(bank_name) LIKE '%" . $this->db->real_escape_string(strtolower($row['bank_name'])) . "%' AND is_active = 1 LIMIT 1");
+                if ($bankResult && $bankRow = $bankResult->fetch_assoc()) {
+                    $bankId = (int)$bankRow['id'];
+                }
+            }
+
+            if (!empty($rowErrors)) {
+                $errors[] = [
+                    'row' => $rowNum,
+                    'data' => $row,
+                    'messages' => $rowErrors
+                ];
+                $summary['error_count']++;
+            } else {
+                $paymentType = strtolower($row['payment_type']);
+                $validRows[] = [
+                    'row_num'             => $rowNum,
+                    'booking_id'          => $bookingData['booking_id'],
+                    'lead_id'             => $bookingData['lead_id'],
+                    'project_id'          => $bookingData['project_id'],
+                    'flat_id'             => $bookingData['flat_id'],
+                    'client_name'         => $row['client_name'],
+                    'client_phone'        => $row['client_phone'],
+                    'resolved_client'     => $bookingData['client_name'],
+                    'project_name'        => $row['project_name'],
+                    'flat_name'           => $row['flat_name'],
+                    'amount'              => (float)$row['amount'],
+                    'payment_date'        => $parsedDate,
+                    'payment_type'        => $paymentType,
+                    'payment_method'      => strtolower($row['payment_method']),
+                    'verification_status' => $verificationStatus,
+                    'transaction_ref'     => $row['transaction_ref'] ?? '',
+                    'bank_name'           => $row['bank_name'] ?? '',
+                    'bank_id'             => $bankId,
+                    'bank_account_no'     => $row['bank_account_no'] ?? '',
+                    'cheque_no'           => $row['cheque_no'] ?? '',
+                    'online_type'         => $row['online_type'] ?? '',
+                    'payment_details'     => $row['payment_details'] ?? '',
+                    'bulk_emi_discount'   => $bulkDiscount,
+                    'emi_due_date'        => $emiDueDate,
+                    'emi_no'              => $emiNo,
+                    'service_fee'         => $serviceFee
+                ];
+                $summary['valid_count']++;
+                $summary['total_amount'] += (float)$row['amount'];
+                if ($paymentType === 'development_charge') $summary['dev_charge_count']++;
+                if ($paymentType === 'emi') $summary['emi_count']++;
+                if ($paymentType === 'emi_due_settlement') $summary['emi_count']++;
+            }
+        }
+
+        fclose($handle);
+        return ['valid_rows' => $validRows, 'errors' => $errors, 'summary' => $summary];
+    }
+
+    /**
+     * Parse various date formats from CSV.
+     * Supports: Y-m-d, d/m/Y, d-m-Y, m/d/Y
+     */
+    private function parseCSVDate($dateStr)
+    {
+        $dateStr = trim($dateStr);
+        $formats = ['Y-m-d', 'd/m/Y', 'd-m-Y', 'm/d/Y', 'Y/m/d'];
+        foreach ($formats as $fmt) {
+            $dt = DateTime::createFromFormat($fmt, $dateStr);
+            if ($dt && $dt->format($fmt) === $dateStr) {
+                return $dt->format('Y-m-d');
+            }
+        }
+        // Try strtotime as fallback
+        $ts = strtotime($dateStr);
+        if ($ts !== false) {
+            return date('Y-m-d', $ts);
+        }
+        return null;
+    }
+
+    /**
+     * Process a single validated CSV import row.
+     * Inserts directly into lead_payments (and emi_schedules for EMI type).
+     * Supports custom verification_status, emi_no, and bypasses sequential validation
+     * since this is for historical data import.
+     */
+    public function processCSVImportRow($rowData, $createdBy)
+    {
+        $this->db->begin_transaction();
+
+        try {
+            $bookingId        = (int)$rowData['booking_id'];
+            $paymentType      = $rowData['payment_type'];
+            $amount           = (float)str_replace(',', '', $rowData['amount']);
+            $paymentMethod    = $rowData['payment_method'];
+            $paymentStatus    = 'paid'; // Auto-calculated by backend
+            $verificationStatus = $rowData['verification_status'];
+            $paymentDate      = $rowData['payment_date'];
+            $transactionRef   = $rowData['transaction_ref'];
+            $bankId           = $rowData['bank_id'];
+            $bankName         = $rowData['bank_name'];
+            $bankAccountNo    = $rowData['bank_account_no'];
+            $chequeNo         = $rowData['cheque_no'];
+            $onlineType       = $rowData['online_type'];
+            $bulkDiscount     = (float)$rowData['bulk_emi_discount'];
+
+            // Document/attachment from CSV (just filename, stored under uploads/transactions/)
+            $attachmentPaths = null;
+            $docFilename = trim($rowData['document'] ?? '');
+            if (!empty($docFilename)) {
+                $attachmentPaths = json_encode(['uploads/transactions/' . $docFilename]);
+            }
+
+            $landShareAmount  = 0;
+            $dueEmiAmount     = 0;
+            $parentPaymentId  = null;
+            $settlementType   = null;
+            $isSettlement     = ($paymentType === 'emi_due_settlement');
+
+            // Service fee: use CSV value if provided, otherwise auto-calculate
+            $serviceFee = 0;
+            $csvServiceFee = $rowData['service_fee'] ?? null;
+
+            // === OVERPAYMENT BOUNDARY CHECKS ===
+            if ($paymentType === 'development_charge') {
+                $summary = $this->getPaymentSummaryByBookingId($bookingId);
+                $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
+                $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
+                $devRemaining = max(0, $devTarget - $devPaid);
+                if ($devRemaining <= 0) {
+                    throw new Exception("Development charge is already fully paid! Cannot accept more payments.");
+                }
+                if ($amount > $devRemaining) {
+                    throw new Exception("Amount exceeds remaining development charge: TK." . number_format($devRemaining, 2));
+                }
+            } elseif ($paymentType === 'emi') {
+                $summary = $this->getPaymentSummaryByBookingId($bookingId);
+                $cfTotal           = (float) ($summary['construction_fee'] ?? 0);
+                $emiPaidSoFar      = (float) ($summary['emi_paid_total'] ?? 0);
+                $bulkDisc          = (float) ($summary['total_bulk_emi_discount'] ?? 0);
+                $effectiveCFRemaining = max(0, $cfTotal - $emiPaidSoFar - $bulkDisc);
+
+                if ($effectiveCFRemaining <= 0) {
+                    throw new Exception("Construction fee is already fully paid! No more EMIs required.");
+                }
+                if ($amount > $effectiveCFRemaining) {
+                    throw new Exception("Amount exceeds remaining construction fee: TK." . number_format($effectiveCFRemaining, 2));
+                }
+            }
+
+            // === EMI DUE SETTLEMENT HANDLING ===
+            if ($isSettlement) {
+                // Find the parent EMI with outstanding due (by emi_no first, then FIFO fallback)
+                $emiNoTarget = $rowData['emi_no'] ?? null;
+                $parentData = null;
+
+                // Try by emi_no first if specified
+                if ($emiNoTarget) {
+                    $findStmt = $this->db->prepare("
+                        SELECT lp.id, lp.due_emi_amount, es.emi_no
+                        FROM lead_payments lp
+                        INNER JOIN emi_schedules es ON es.lead_payment_id = lp.id
+                        WHERE lp.booking_id = ? AND lp.payment_type = 'emi'
+                          AND lp.due_emi_amount > 0 AND es.emi_no = ?
+                          AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')
+                        LIMIT 1
+                    ");
+                    $findStmt->bind_param("ii", $bookingId, $emiNoTarget);
+                    $findStmt->execute();
+                    $findResult = $findStmt->get_result();
+                    $parentData = $findResult ? $findResult->fetch_assoc() : null;
+                    $findStmt->close();
+                }
+
+                // Fallback to FIFO if emi_no not found or not specified
+                if (!$parentData) {
+                    $findStmt = $this->db->prepare("
+                        SELECT lp.id, lp.due_emi_amount, COALESCE(es.emi_no, 0) AS emi_no
+                        FROM lead_payments lp
+                        LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+                        WHERE lp.booking_id = ? AND lp.payment_type = 'emi'
+                          AND lp.due_emi_amount > 0
+                          AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')
+                        ORDER BY lp.payment_date ASC
+                        LIMIT 1
+                    ");
+                    $findStmt->bind_param("i", $bookingId);
+                    $findStmt->execute();
+                    $findResult = $findStmt->get_result();
+                    $parentData = $findResult ? $findResult->fetch_assoc() : null;
+                    $findStmt->close();
+                }
+
+                if (!$parentData) {
+                    throw new Exception("No outstanding EMI due found for this booking to settle.");
+                }
+
+                $parentPaymentId = (int)$parentData['id'];
+                $remainingDue = (float)$parentData['due_emi_amount'];
+
+                if ($amount > $remainingDue) {
+                    throw new Exception("Settlement amount (TK." . number_format($amount, 2) . ") exceeds outstanding due (TK." . number_format($remainingDue, 2) . ") on EMI #{$parentData['emi_no']}");
+                }
+
+                // Service fee for settlement
+                if ($csvServiceFee !== null) {
+                    $serviceFee = (float)$csvServiceFee;
+                } else {
+                    $summary = $this->getPaymentSummaryByBookingId($bookingId);
+                    $serviceChargeRate = (float)($summary['service_charge_per_emi'] ?? 0);
+                    $serviceFee = ($serviceChargeRate > 0) ? round($amount * ($serviceChargeRate / 100)) : 0;
+                }
+
+                // Use 'emi' for payment_type to satisfy DB ENUM constraint,
+                // track the difference via settlement_type column
+                $paymentType = 'emi';
+                $settlementType = 'emi_due_settlement';
+                $dueEmiAmount = 0; // Settlement itself has no new due
+
+            } elseif ($paymentType === 'emi') {
+                $summary = $this->getPaymentSummaryByBookingId($bookingId);
+                $serviceChargeRate = (float)($summary['service_charge_per_emi'] ?? 0);
+                $perEmiSuggested = (float)($summary['per_emi_amount'] ?? 0);
+
+                // === PHASE 1: Auto-settle outstanding dues from the payment pool ===
+                $pool = $amount;
+                $outstandingDues = $this->getOutstandingEmiDues($bookingId);
+                $csvSettlements = []; // Track settlements to create after main insert
+
+                foreach ($outstandingDues as $due) {
+                    if ($pool <= 0) break;
+
+                    $dueAmount = (float)$due['due_emi_amount'];
+                    $settle = min($pool, $dueAmount);
+
+                    $csvSettlements[] = [
+                        'parent_id' => (int)$due['id'],
+                        'settle_amount' => $settle,
+                        'old_due' => $dueAmount,
+                    ];
+                    $pool -= $settle;
+                }
+
+                // === PHASE 2: Remaining pool goes to new installment(s) ===
+                // Store pool for multi-installment loop (handled after bank lookup)
+                $emiPool = $pool;
+                $skipMainInsert = true; // We handle inserts in the multi-installment loop below
+
+            } elseif ($csvServiceFee !== null) {
+                $serviceFee = (float)$csvServiceFee;
+            }
+
+            // Bank name lookup if bank_id provided
+            $bankNameLookup = $bankName;
+            if ($bankId) {
+                $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', branch_name) as label FROM banks WHERE id = {$bankId}");
+                if ($bRow) {
+                    $bData = $bRow->fetch_assoc();
+                    $bankNameLookup = $bData['label'] ?? $bankName;
+                }
+            }
+
+            // Verified by (set if verification_status is verified)
+            $verifiedBy = ($verificationStatus === 'verified') ? $createdBy : null;
+            $verifiedAt = ($verificationStatus === 'verified') ? date('Y-m-d H:i:s') : null;
+
+            // === CREATE SETTLEMENT RECORDS (for EMI auto-settle) ===
+            $firstPaymentId = null;
+            if (!empty($csvSettlements)) {
+                foreach ($csvSettlements as $cs) {
+                    $csAmount = $cs['settle_amount'];
+                    $csParentId = $cs['parent_id'];
+                    $csSvcFee = ($serviceChargeRate > 0) ? round($csAmount * ($serviceChargeRate / 100)) : 0;
+                    $csPayType = 'emi';
+                    $csStType = 'emi_due_settlement';
+                    $csDue = 0.0;
+                    $csLandShare = 0.0;
+                    $csBulkDisc = 0.0;
+
+                    $csStmt = $this->db->prepare("
+                        INSERT INTO lead_payments (
+                            booking_id, payment_type, amount, land_share_amount, service_fee,
+                            payment_method, payment_status, payment_date, transaction_ref,
+                            bank_id, bank_name, bank_account_no, cheque_no, online_type,
+                            due_emi_amount, bulk_emi_discount, verification_status,
+                            verified_by, verified_at, parent_payment_id, settlement_type, created_by
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    if (!$csStmt) throw new Exception("Settlement prepare failed: " . $this->db->error);
+
+                    $csStmt->bind_param(
+                        "isdddssssissssddssissi",
+                        $bookingId, $csPayType, $csAmount, $csLandShare, $csSvcFee,
+                        $paymentMethod, $paymentStatus, $paymentDate, $transactionRef,
+                        $bankId, $bankNameLookup, $bankAccountNo, $chequeNo, $onlineType,
+                        $csDue, $csBulkDisc, $verificationStatus,
+                        $verifiedBy, $verifiedAt, $csParentId, $csStType, $createdBy
+                    );
+
+                    if (!$csStmt->execute()) throw new Exception("Settlement insert failed: " . $csStmt->error);
+                    if (!$firstPaymentId) $firstPaymentId = $this->db->insert_id;
+                    $csStmt->close();
+
+                    // Update parent's due_emi_amount
+                    $newDue = max(0, $cs['old_due'] - $csAmount);
+                    $newParentStatus = ($newDue <= 0) ? 'paid' : 'partially_paid';
+                    $updStmt = $this->db->prepare("UPDATE lead_payments SET due_emi_amount = ?, payment_status = ? WHERE id = ?");
+                    $updStmt->bind_param('dsi', $newDue, $newParentStatus, $csParentId);
+                    $updStmt->execute();
+                    $updStmt->close();
+
+                    // Sync emi_schedules
+                    $schedSyncStmt = $this->db->prepare("UPDATE emi_schedules SET due_emi_amount = ?, status = ? WHERE lead_payment_id = ?");
+                    $schedSyncStmt->bind_param('dsi', $newDue, $newParentStatus, $csParentId);
+                    $schedSyncStmt->execute();
+                    $schedSyncStmt->close();
+                }
+            }
+
+            // === MAIN INSERT: New installment(s) or single payment ===
+            $paymentId = $firstPaymentId; // Default to settlement ID if no new installment
+            $skipMainInsert = isset($skipMainInsert) && $skipMainInsert;
+
+            if ($skipMainInsert && isset($emiPool) && $emiPool > 0) {
+                // ── Multi-installment loop: split remaining pool into per_emi-sized chunks ──
+                $pool = $emiPool;
+                $isFirstInstallment = true;
+
+                while ($pool > 0) {
+                    $thisEmi = ($perEmiSuggested > 0) ? min($pool, $perEmiSuggested) : $pool;
+
+                    // Calculate due for this installment
+                    $thisDue = 0;
+                    if ($perEmiSuggested > 0 && $thisEmi < $perEmiSuggested) {
+                        $thisDue = round($perEmiSuggested - $thisEmi);
+                    }
+                    $thisStatus = ($thisDue > 0) ? 'partially_paid' : 'paid';
+
+                    // Service fee for this installment
+                    if ($csvServiceFee !== null && $isFirstInstallment) {
+                        $thisSvcFee = (float)$csvServiceFee;
+                    } else {
+                        $thisSvcFee = ($serviceChargeRate > 0) ? round($thisEmi * ($serviceChargeRate / 100)) : 0;
+                    }
+
+                    // Discount only on first installment
+                    $thisDiscount = $isFirstInstallment ? $bulkDiscount : 0.0;
+
+                    $emiStmt = $this->db->prepare("
+                        INSERT INTO lead_payments (
+                            booking_id, payment_type, amount, land_share_amount, service_fee,
+                            payment_method, payment_status, payment_date, transaction_ref,
+                            bank_id, bank_name, bank_account_no, cheque_no, online_type,
+                            due_emi_amount, bulk_emi_discount, verification_status,
+                            verified_by, verified_at, parent_payment_id, settlement_type, attachment_paths, created_by
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    if (!$emiStmt) throw new Exception("EMI prepare failed: " . $this->db->error);
+
+                    $emiPayType = 'emi';
+                    $emiLandShare = 0.0;
+                    // Only attach document to first installment
+                    $emiAttach = $isFirstInstallment ? $attachmentPaths : null;
+
+                    $emiStmt->bind_param(
+                        "isdddssssissssddssisssi",
+                        $bookingId, $emiPayType, $thisEmi, $emiLandShare, $thisSvcFee,
+                        $paymentMethod, $thisStatus, $paymentDate, $transactionRef,
+                        $bankId, $bankNameLookup, $bankAccountNo, $chequeNo, $onlineType,
+                        $thisDue, $thisDiscount, $verificationStatus,
+                        $verifiedBy, $verifiedAt, $parentPaymentId, $settlementType, $emiAttach, $createdBy
+                    );
+
+                    if (!$emiStmt->execute()) throw new Exception("EMI insert failed: " . $emiStmt->error);
+                    $thisPaymentId = $this->db->insert_id;
+                    if (!$paymentId) $paymentId = $thisPaymentId;
+                    $emiStmt->close();
+
+                    // Create emi_schedule for this installment
+                    $nextEmiNo = $this->getNextAvailableEmiNo($bookingId);
+                    $emiDueDate = $rowData['emi_due_date'] ?? $paymentDate;
+
+                    $schedStmt = $this->db->prepare("
+                        INSERT INTO emi_schedules (
+                            lead_booking_id, emi_no, emi_amount, service_fee,
+                            due_emi_amount, due_date, status, lead_payment_id
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    if (!$schedStmt) throw new Exception("EMI schedule prepare failed: " . $this->db->error);
+
+                    $schedStmt->bind_param(
+                        "iidddssi",
+                        $bookingId, $nextEmiNo, $thisEmi, $thisSvcFee,
+                        $thisDue, $emiDueDate, $thisStatus, $thisPaymentId
+                    );
+                    if (!$schedStmt->execute()) throw new Exception("EMI schedule insert failed: " . $schedStmt->error);
+                    $schedStmt->close();
+
+                    $pool -= $thisEmi;
+                    $isFirstInstallment = false;
+                }
+            } elseif (!$skipMainInsert) {
+                // ── Non-EMI types (dev charge, settlement, etc.) — single insert ──
+                $stmt = $this->db->prepare("
+                    INSERT INTO lead_payments (
+                        booking_id, payment_type, amount, land_share_amount, service_fee,
+                        payment_method, payment_status, payment_date, transaction_ref,
+                        bank_id, bank_name, bank_account_no, cheque_no, online_type,
+                        due_emi_amount, bulk_emi_discount, verification_status,
+                        verified_by, verified_at, parent_payment_id, settlement_type, attachment_paths, created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                if (!$stmt) throw new Exception("Prepare failed: " . $this->db->error);
+
+                $stmt->bind_param(
+                    "isdddssssissssddssisssi",
+                    $bookingId, $paymentType, $amount, $landShareAmount, $serviceFee,
+                    $paymentMethod, $paymentStatus, $paymentDate, $transactionRef,
+                    $bankId, $bankNameLookup, $bankAccountNo, $chequeNo, $onlineType,
+                    $dueEmiAmount, $bulkDiscount, $verificationStatus,
+                    $verifiedBy, $verifiedAt, $parentPaymentId, $settlementType, $attachmentPaths, $createdBy
+                );
+                if (!$stmt->execute()) throw new Exception("Payment insert failed: " . $stmt->error);
+                $paymentId = $this->db->insert_id;
+                $stmt->close();
+            }
+
+            $this->db->commit();
+
+            return [
+                'success'    => true,
+                'payment_id' => $paymentId,
+                'message'    => "Row imported successfully (Payment #{$paymentId})"
+            ];
+
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Log a CSV import batch for audit purposes.
+     */
+    public function logCSVImport($filename, $totalRows, $successCount, $errorCount, $errorDetails, $createdBy)
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO csv_import_logs (filename, total_rows, success_count, error_count, error_details, status, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        if (!$stmt) {
+            error_log("logCSVImport prepare failed: " . $this->db->error);
+            return false;
+        }
+
+        $errorJson = json_encode($errorDetails);
+        $status = ($errorCount === 0) ? 'completed' : (($successCount > 0) ? 'completed' : 'failed');
+
+        $stmt->bind_param("siissis", $filename, $totalRows, $successCount, $errorCount, $errorJson, $status, $createdBy);
+        $result = $stmt->execute();
+        $insertId = $this->db->insert_id;
+        $stmt->close();
+
+        return $result ? $insertId : false;
     }
 }
