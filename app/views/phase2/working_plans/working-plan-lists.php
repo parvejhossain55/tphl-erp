@@ -8,16 +8,22 @@
             </ol>
         </nav>
     </div>
-    <div class="d-flex gap-2">
-        <a href="<?= $base_url ?>/con-budget-extends" class="btn btn-outline-warning btn-sm">
-            <i class="bi bi-coin me-1"></i> Budget Extensions
-        </a>
-        <a href="<?= $base_url ?>/con-working-plan-create" class="btn btn-primary btn-sm">
-            <i class="bi bi-plus-circle me-1"></i> New Plan Entry
-        </a>
-        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#importWorkingPlanCsvModal">
-            <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
-        </button>
+    <div class="row justify-content-end mb-3 mt-3">
+        <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-12">
+            <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
+                <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                    <a href="<?= $base_url ?>/con-budget-extends" class="btn btn-outline-warning text-nowrap">
+                        <i class="bi bi-coin me-1"></i> Budget Extensions
+                    </a>
+                    <a href="<?= $base_url ?>/con-working-plan-create" class="btn btn-primary text-nowrap">
+                        <i class="bi bi-plus-circle me-1"></i> New Plan Entry
+                    </a>
+                    <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importWorkingPlanCsvModal">
+                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

@@ -169,22 +169,23 @@ class Con_MaterialReceiving extends Model
             $acceptedCount = 0;
             $rejectedCount = 0;
             $totalCount    = 0;
+            $returnItemsToCreate = [];
+
+            $qcNote = $itemStatuses['qc_note'] ?? '';
+            $qcPhoto = $itemStatuses['qc_photo'] ?? null;
 
             foreach ($itemStatuses as $itemId => $review) {
+                if ($itemId === 'qc_note' || $itemId === 'qc_photo') continue;
+
                 $totalCount++;
                 $status      = $review['status'];
                 $issueReason = $review['issue_reason'] ?? null;
 
                 // 1. Update item status + qc fields
-                $stmt = $this->db->prepare(
-                    "UPDATE {$this->itemTable}
-                     SET status = ?, issue_reason = ?, qc_checked = 1
-                     WHERE id = ? AND receiving_id = ?"
-                );
-                $stmt->bind_param('ssii', $status, $issueReason, $itemId, $receivingId);
-                $stmt->execute();
+                $accQty = 0;
+                $rejQty = 0;
 
-                // Get item details via PO item join
+                // Get item details via PO item join to know received qty
                 $itemStmt = $this->db->prepare(
                     "SELECT mri.*, poi.material_id, poi.selected_vendor_id
                      FROM {$this->itemTable} mri
@@ -196,36 +197,103 @@ class Con_MaterialReceiving extends Model
                 $item = $itemStmt->get_result()->fetch_assoc();
 
                 if ($status === 'Accepted') {
+                    $accQty = $item['received_quantity'];
+                    $rejQty = 0;
+                } elseif ($status === 'Rejected') {
+                    $accQty = 0;
+                    $rejQty = $item['received_quantity'];
+                } elseif ($status === 'Partially Accepted') {
+                    $accQty = $review['accepted_qty'] ?? 0;
+                    $rejQty = $review['rejected_qty'] ?? 0;
+                }
+
+                $stmt = $this->db->prepare(
+                    "UPDATE {$this->itemTable}
+                     SET status = ?, issue_reason = ?, qc_checked = 1, accepted_qty = ?, rejected_qty = ?
+                     WHERE id = ? AND receiving_id = ?"
+                );
+                $stmt->bind_param('ssddii', $status, $issueReason, $accQty, $rejQty, $itemId, $receivingId);
+                $stmt->execute();
+
+                if ($status === 'Accepted') {
                     $acceptedCount++;
                     // Stock In moved to PM Approval
-                } elseif ($status === 'Rejected') {
-                    $rejectedCount++;
+                } elseif ($status === 'Rejected' || $status === 'Partially Accepted') {
+                    if ($status === 'Rejected') {
+                        $rejectedCount++;
+                    } else {
+                        $acceptedCount++; // counts as partially accepted
+                    }
 
-                    // Mark penalty applied
-                    $penStmt = $this->db->prepare(
-                        "UPDATE {$this->itemTable} SET penalty_applied = 1 WHERE id = ?"
-                    );
-                    $penStmt->bind_param('i', $itemId);
-                    $penStmt->execute();
+                    if ($rejQty > 0) {
+                        // Mark penalty applied
+                        $penStmt = $this->db->prepare(
+                            "UPDATE {$this->itemTable} SET penalty_applied = 1 WHERE id = ?"
+                        );
+                        $penStmt->bind_param('i', $itemId);
+                        $penStmt->execute();
 
-                    // Create vendor penalty
-                    if ($item['selected_vendor_id']) {
-                        $penaltyStmt = $this->db->prepare(
-                            "INSERT INTO vendor_penalties
-                                (vendor_id, purchase_order_id, receiving_id, penalty_category, penalty_amount, reason, penalty_status, created_by)
-                             VALUES (?, ?, ?, 'Quality Issue', 0, ?, 'Pending', ?)"
-                        );
-                        $reason = "Material rejected during QC. GRN #{$receivingId}. Reason: " . ($issueReason ?: 'Not specified');
-                        $penaltyStmt->bind_param('iiisi',
-                            $item['selected_vendor_id'],
-                            $receiving['purchase_order_id'],
-                            $receivingId,
-                            $reason,
-                            $userId
-                        );
-                        $penaltyStmt->execute();
+                        // Create vendor penalty
+                        if ($item['selected_vendor_id']) {
+                            $penaltyStmt = $this->db->prepare(
+                                "INSERT INTO vendor_penalties
+                                    (vendor_id, purchase_order_id, receiving_id, penalty_category, penalty_amount, reason, penalty_status, created_by)
+                                 VALUES (?, ?, ?, 'Quality Issue', 0, ?, 'Pending', ?)"
+                            );
+                            $reason = "Material rejected during QC. GRN #{$receivingId}. Rejected Qty: {$rejQty}. Reason: " . ($issueReason ?: 'Not specified');
+                            $penaltyStmt->bind_param('iiisi',
+                                $item['selected_vendor_id'],
+                                $receiving['purchase_order_id'],
+                                $receivingId,
+                                $reason,
+                                $userId
+                            );
+                            $penaltyStmt->execute();
+                        }
+
+                        // Collect for Return Request
+                        $returnItemsToCreate[] = [
+                            'material_item_id' => $item['material_id'],
+                            'return_qty' => $rejQty,
+                            'unit_price' => $item['unit_price'] ?? 0,
+                            'vendor_id' => $item['selected_vendor_id']
+                        ];
                     }
                 }
+            }
+
+            // Create Return Request if any rejected qty
+            if (!empty($returnItemsToCreate)) {
+                $poQuery = $this->db->query("SELECT pr.project_id FROM purchase_orders po JOIN purchase_requests pr ON pr.id = po.request_id WHERE po.id = " . (int)$receiving['purchase_order_id']);
+                $poData = $poQuery->fetch_assoc();
+                $projectId = $poData['project_id'] ?? 0;
+                $vendorId = $returnItemsToCreate[0]['vendor_id'] ?? 0;
+
+                require_once __DIR__ . '/Con_MaterialReturn.php';
+                $returnModel = new \Con_MaterialReturn($this->db);
+                $returnData = [
+                    'receiving_id' => $receivingId,
+                    'vendor_id' => $vendorId,
+                    'project_id' => $projectId,
+                    'return_date' => date('Y-m-d'),
+                    'return_reason' => "QC Review Rejections. See QC Notes.",
+                    'attachment' => null,
+                    'status' => 'pending',
+                    'created_by' => $userId
+                ];
+                
+                $returnModel->create($returnData, $returnItemsToCreate);
+                
+                require_once __DIR__ . '/HeadNotification.php';
+                $notifModel = new \HeadNotification($this->db);
+                $notifModel->create([
+                    'user_id' => $receiving['received_by'],
+                    'project_id' => $projectId,
+                    'type' => 'Material Return',
+                    'title' => 'QC Review Rejected Items',
+                    'message' => "QC Review completed for GRN-{$receivingId} with rejected items. Please process return.",
+                    'link' => '/con-material-returns'
+                ]);
             }
 
             // 3. Update QC fields on header
@@ -238,6 +306,21 @@ class Con_MaterialReceiving extends Model
             );
             $oStmt->bind_param('sissi', $overallStatus, $userId, $qcNote, $qcPhoto, $receivingId);
             $oStmt->execute();
+
+            // Notify PMs
+            require_once __DIR__ . '/HeadNotification.php';
+            $notifModel = new \HeadNotification($this->db);
+            $pmQuery = $this->db->query("SELECT id FROM users WHERE role_id IN (1, 3, 15, 20, 22, 23)");
+            while ($pm = $pmQuery->fetch_assoc()) {
+                $notifModel->create([
+                    'user_id' => $pm['id'],
+                    'project_id' => 0,
+                    'type' => 'GRN PM Approval',
+                    'title' => 'Pending PM Approval',
+                    'message' => "QC Review completed for GRN-{$receivingId}. Waiting for PM acknowledgement.",
+                    'url' => "/con-material-receiving-qc/{$receivingId}"
+                ]);
+            }
 
             $this->db->commit();
             return true;

@@ -21,6 +21,7 @@ class Con_ContractorBillController extends Controller
     protected $txnModel;
     protected $targetModel;
     protected $mailService;
+    protected $qcInspectionModel;
     protected $userRole;
     protected $userId;
 
@@ -33,6 +34,9 @@ class Con_ContractorBillController extends Controller
         $this->txnModel      = new Con_FinancialTransaction($this->db);
         $this->targetModel   = new Con_TargetFixed($this->db);
         $this->mailService   = new AccountMailService($this->db);
+        
+        require_once __DIR__ . '/../../models/Con_QCInspection.php';
+        $this->qcInspectionModel = new \Con_QCInspection($this->db);
 
         if (session_status() === PHP_SESSION_NONE) session_start();
         $this->userId   = $_SESSION['user']['id'] ?? null;
@@ -85,6 +89,7 @@ class Con_ContractorBillController extends Controller
         $operators = $this->operatorModel->getActiveContractors();
         $projects  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name")->fetch_all(MYSQLI_ASSOC);
         $targets   = $this->targetModel->getAll();
+        $workTypes = $this->db->query("SELECT id, work_type_name FROM work_types ORDER BY work_type_name ASC")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/contractor-bills/create-bill', [
             'current_route' => 'con-contractor-bills',
@@ -92,6 +97,7 @@ class Con_ContractorBillController extends Controller
             'operators'     => $operators,
             'projects'      => $projects,
             'targets'       => $targets,
+            'workTypes'     => $workTypes,
         ]);
     }
 
@@ -127,6 +133,16 @@ class Con_ContractorBillController extends Controller
             setError('Project, Contractor and Work Description are required.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
             exit;
+        }
+
+        $workTypeId = $_POST['work_type_id'] ?? null;
+        if ($workTypeId) {
+            $isBlocked = $this->qcInspectionModel->checkBlocker($data['project_id'], $workTypeId);
+            if ($isBlocked) {
+                setError('Cannot submit bill: QC Inspection failed or rework needed for this work type.');
+                header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
+                exit;
+            }
         }
 
         $billId = $this->billModel->create($data);

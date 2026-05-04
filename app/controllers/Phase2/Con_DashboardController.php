@@ -248,6 +248,19 @@ class Con_DashboardController extends Controller
         ");
         $recentMaterialIssues = $rRecentIssues ? $rRecentIssues->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── Pending Material Returns ────────────────────────────
+        $rPendingReturns = $this->db->query("
+            SELECT mr.*, p.name AS project_name, v.name AS vendor_name, u.full_name AS created_by_name
+            FROM material_returns mr
+            LEFT JOIN projects p ON p.id = mr.project_id
+            LEFT JOIN vendors v ON v.id = mr.vendor_id
+            LEFT JOIN users u ON u.id = mr.created_by
+            WHERE mr.status = 'pending'
+            ORDER BY mr.id DESC
+            LIMIT 10
+        ");
+        $pendingReturns = $rPendingReturns ? $rPendingReturns->fetch_all(MYSQLI_ASSOC) : [];
+
         $this->view('phase2/dashboard/cons-dashboard', [
             'current_route'           => 'con-dashboard',
             'stats'                   => $stats,
@@ -264,6 +277,7 @@ class Con_DashboardController extends Controller
             'pendingGRNs'             => $pendingGRNs,
             'pendingGRNsPM'           => $pendingGRNsPM,
             'pendingWeeklyReportsPM'  => $pendingWeeklyReportsPM,
+            'pendingReturns'          => $pendingReturns,
             'weekTargetNotifications' => $weekTargetNotifications,
             'labDueNotifications'     => $labDueNotifications,
             'currentWeek'             => $curWeek,

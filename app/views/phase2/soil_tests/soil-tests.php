@@ -6,13 +6,19 @@ $show_breadcrumb = false;
     <div class="">
         <h4 class="">Soil Tests</h4>
     </div>
-    <div class="d-flex gap-2">
-        <a href="<?= $GLOBALS['base_url'] ?>/con-soil-tests/create" class="btn btn-primary">
-            <i class="fa-light fa-plus me-1"></i> Add Soil Test
-        </a>
-        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#importSoilTestCsvModal">
-            <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
-        </button>
+    <div class="row justify-content-end mb-3 mt-3">
+        <div class="col-12">
+            <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
+                <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                    <a href="<?= $GLOBALS['base_url'] ?>/con-soil-tests/create" class="btn btn-primary text-nowrap">
+                        <i class="fa-light fa-plus me-1"></i> Add Soil Test
+                    </a>
+                    <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importSoilTestCsvModal">
+                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

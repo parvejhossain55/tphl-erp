@@ -5,17 +5,20 @@ $show_breadcrumb = false;
 <div class="mb-4 pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div class="">
         <h4><?= htmlspecialchars($page_title) ?></h4>
-       
-    
-    
-</div>
-    <div class="d-flex gap-2">
-          <a href="<?= $GLOBALS['base_url'] ?>/con-architect-engineering/create" class="btn btn-primary">
-                    <i class="fa-light fa-plus me-1"></i> Add New Architecture
-                </a>
-        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#importArchitectCsvModal">
-            <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
-        </button>
+    </div>
+    <div class="row justify-content-end mb-3 mt-3">
+        <div class="col-12">
+            <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
+                <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                    <a href="<?= $GLOBALS['base_url'] ?>/con-architect-engineering/create" class="btn btn-primary text-nowrap">
+                        <i class="fa-light fa-plus me-1"></i> Add New Architecture
+                    </a>
+                    <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importArchitectCsvModal">
+                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

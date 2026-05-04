@@ -29,7 +29,7 @@
                         <input type="hidden" name="purchase_order_id" value="<?= $po['id'] ?>">
 
                         <!-- Header -->
-                        <div class="row g-3 mb-4">
+                        <div class="row  mb-4">
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Warehouse <span class="text-danger">*</span></label>
                                 <select name="warehouse_id" class="form-select" required>
@@ -61,7 +61,7 @@
                         </div>
 
                         <!-- Site Engineer Attachments -->
-                        <div class="row g-3 mb-4">
+                        <div class="row  mb-4">
                             <div class="col-md-8">
                                 <label class="form-label fw-bold">Site Engineer Note</label>
                                 <textarea name="site_eng_note" class="form-control" rows="2" placeholder="Any remarks regarding the received materials..."></textarea>

@@ -5,14 +5,20 @@ $addPage = true;
 $show_breadcrumb = true;
 ?>
 
-<div class="breadcrumb__btn my-3 d-flex gap-2 align-items-center">
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDesignTypeModal">
-        <i class="fa-light fa-plus me-1"></i> Add Design Type
-    </button>
-
-    <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#importDesignTypeCsvModal">
-        <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
-    </button>
+<div class="row justify-content-end mb-3 mt-3">
+    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
+        <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
+            <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                <button type="button" class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#addDesignTypeModal">
+                    <i class="fa-light fa-plus me-1"></i> Add Design Type
+                </button>
+            
+                <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importDesignTypeCsvModal">
+                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row mt-4">

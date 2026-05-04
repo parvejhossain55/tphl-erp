@@ -5,15 +5,15 @@ $show_breadcrumb = false;
 
 <h4 class="mb-2">Project Structure Design</h4>
 
-<div class="row">
+<div class="row justify-content-end mb-3 mt-3">
     <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex flex-column flex-sm-row gap-2">
-                <a href="<?= $GLOBALS['base_url'] ?>/structure-design/create" class="btn btn-primary w-100">
+        <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
+            <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                <a href="<?= $GLOBALS['base_url'] ?>/structure-design/create" class="btn btn-primary text-nowrap">
                     <i class="fa-light fa-plus me-1"></i> Add Design
                 </a>
             
-                <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#importStructureDesignCsvModal">
+                <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importStructureDesignCsvModal">
                     <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
                 </button>
             </div>

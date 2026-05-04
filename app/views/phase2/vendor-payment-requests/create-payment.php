@@ -14,7 +14,7 @@
 </div>
 
 <section class="section">
-<div class="row">
+<div class="row justify-content-center">
     <!-- ── LEFT: Form ── -->
     <div class="col-lg-7">
         <div class="card__wrapper shadow-sm mb-4">
@@ -119,22 +119,22 @@
                         <h6 class="text-secondary fw-bold border-bottom pb-2 mb-3">
                             <i class="bi bi-calculator me-2"></i>Financial Details
                         </h6>
-                        <div class="row g-3">
-                            <div class="col-md-6">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold" id="invoiceLabel">Invoice Amount (৳) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.01" name="invoice_amount" id="invoiceAmt"
                                        class="form-control form-control-lg text-end fw-bold"
                                        placeholder="0.00" required min="0.01">
                             </div>
-                            <div class="col-md-6" id="advancePaidRow">
+                            <div class="col-md-6 mb-3" id="advancePaidRow">
                                 <label class="form-label fw-bold text-primary">Advance Paid (৳)</label>
                                 <input type="text" id="advancePaidAmt" class="form-control form-control-lg text-end text-primary fw-bold bg-white" readonly value="0.00">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold text-danger">Pending Penalty (৳)</label>
                                 <input type="text" id="penaltyAmt" class="form-control form-control-lg text-end text-danger fw-bold bg-white" readonly value="0.00">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold text-success">Net Payable (৳)</label>
                                 <input type="text" id="netPayableAmt" class="form-control form-control-lg text-end text-success fw-bold bg-white" readonly value="0.00">
                             </div>
@@ -179,7 +179,7 @@
     </div>
 
     <!-- ── RIGHT: Payment History Panel ── -->
-    <div class="col-lg-5">
+    <div class="col-lg-5 d-none" id="rightSidePanel">
         <div id="poPaymentHistoryPanel" class="d-none">
             <div class="card__wrapper shadow-sm mb-4">
                 <div class="card__header">
@@ -263,12 +263,14 @@ document.getElementById('projectSelect').addEventListener('change', function () 
     const loader = document.getElementById('poLoader');
     const listPanel = document.getElementById('projectPoListPanel');
     const histPanel = document.getElementById('poPaymentHistoryPanel');
+    const rightSide = document.getElementById('rightSidePanel');
 
     poSel.innerHTML = '<option value="0">-- Select PO --</option>';
     poSel.disabled  = true;
     document.getElementById('poSummaryCard').classList.add('d-none');
     listPanel.classList.add('d-none');
     histPanel.classList.add('d-none');
+    rightSide.classList.add('d-none');
     allProjectPOs = [];
 
     if (!pid) { poSel.innerHTML = '<option value="0">-- Select Project First --</option>'; return; }
@@ -299,6 +301,7 @@ document.getElementById('projectSelect').addEventListener('change', function () 
             // Show all POs summary list on right panel
             renderProjectPoList(data);
             listPanel.classList.remove('d-none');
+            rightSide.classList.remove('d-none');
         })
         .catch(() => {
             loader.style.display = 'none';
@@ -338,6 +341,7 @@ function selectPO(poId) {
 document.getElementById('poSelect').addEventListener('change', function () {
     const opt = this.options[this.selectedIndex];
     const histPanel = document.getElementById('poPaymentHistoryPanel');
+    const rightSide = document.getElementById('rightSidePanel');
 
     document.getElementById('poSummaryCard').classList.add('d-none');
     histPanel.classList.add('d-none');
@@ -366,6 +370,7 @@ document.getElementById('poSelect').addEventListener('change', function () {
     // Payment history on right panel
     renderPaymentHistory(po);
     histPanel.classList.remove('d-none');
+    rightSide.classList.remove('d-none');
 
     // Also fetch advance/penalty
     fetchAdvanceSummary();
@@ -453,9 +458,52 @@ function fetchAdvanceSummary() {
         .catch(() => calculateNet());
 }
 
+function fetchVendorReceivable() {
+    const vid = document.getElementById('vendorSelect').value;
+    const pid = document.getElementById('projectSelect').value;
+    if (!vid || getPaymentType() === 'Advance') return;
+
+    const params = new URLSearchParams({ vendor_id: vid });
+    if (pid) params.append('project_id', pid);
+
+    fetch(BASE + `/con-vendor-payment-ajax-receivable?${params}`)
+        .then(r => r.json())
+        .then(d => {
+            if (!d.success) return;
+            // Auto-fill invoice amount with net due amount
+            const invoiceEl = document.getElementById('invoiceAmt');
+            if (!invoiceEl.value || parseFloat(invoiceEl.value) === 0) {
+                invoiceEl.value = parseFloat(d.due_amount).toFixed(2);
+            }
+            document.getElementById('penaltyAmt').value     = parseFloat(d.penalty).toFixed(2);
+            document.getElementById('advancePaidAmt').value = parseFloat(d.total_paid).toFixed(2);
+
+            // Show summary info box
+            let infoEl = document.getElementById('vendorReceivableInfo');
+            if (!infoEl) {
+                infoEl = document.createElement('div');
+                infoEl.id = 'vendorReceivableInfo';
+                infoEl.style.cssText = 'margin-top:10px;padding:10px 14px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.25);border-radius:8px;font-size:12px;';
+                document.getElementById('vendorSelect').closest('.col-md-6').appendChild(infoEl);
+            }
+            infoEl.innerHTML = `
+                <div class="d-flex gap-3 flex-wrap">
+                    <span><strong style="color:#065f46">Net Received:</strong> ৳ ${parseFloat(d.net_receivable).toLocaleString('en-BD', {minimumFractionDigits:2})}</span>
+                    <span class="ps-2"><strong style="color:#1d4ed8">Already Paid:</strong> ৳ ${parseFloat(d.total_paid).toLocaleString('en-BD', {minimumFractionDigits:2})}</span>
+                    <span><strong style="color:#dc2626">Due:</strong> ৳ ${parseFloat(d.due_amount).toLocaleString('en-BD', {minimumFractionDigits:2})}</span>
+                </div>`;
+
+            calculateNet();
+        })
+        .catch(() => calculateNet());
+}
+
 // ── Event listeners ────────────────────────────────────────────────────────
 document.querySelectorAll('input[name="payment_type"]').forEach(r => r.addEventListener('change', togglePaymentTypeUI));
-document.getElementById('vendorSelect').addEventListener('change', () => { fetchPenalty(); fetchAdvanceSummary(); });
+document.getElementById('vendorSelect').addEventListener('change', () => {
+    fetchVendorReceivable();
+    fetchAdvanceSummary();
+});
 document.getElementById('invoiceAmt').addEventListener('input', calculateNet);
 
 // Init
