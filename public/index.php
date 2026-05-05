@@ -642,6 +642,12 @@ $routes = [
     "export-cashout-requests" => ["controller" => "CashoutRequestController", "method" => "export"],
     "sync-cashout-approvals" => ["controller" => "CashoutRequestController", "method" => "syncAllApprovals"],
 
+    // Cashout CSV Import Routes
+    "cashout-csv-import-form"     => ["controller" => "CashoutRequestController", "method" => "showCSVImportForm"],
+    "cashout-csv-import-preview"  => ["controller" => "CashoutRequestController", "method" => "previewCSVImport"],
+    "cashout-csv-import-execute"  => ["controller" => "CashoutRequestController", "method" => "executeCSVImport"],
+    "cashout-csv-import-template" => ["controller" => "CashoutRequestController", "method" => "downloadCSVTemplate"],
+
     // Client Refund Routes
     "client-refunds"              => ["controller" => "ClientRefundController", "method" => "index"],
     "client-refund-create/(\d+)"  => ["controller" => "ClientRefundController", "method" => "create"],

@@ -268,23 +268,24 @@ public function createRequest($data)
                     vpr.approved_amount,
                     NULL AS approval_note,
                     vpr.approved_by,
-                    NULL AS approved_at,
+                    ar.approved_at AS approved_at,
                     NULL AS rejected_by,
                     NULL AS rejected_at,
                     NULL AS rejection_reason,
                     u.full_name AS requester_name,
                     (SELECT GROUP_CONCAT(name SEPARATOR ', ') FROM projects WHERE FIND_IN_SET(projects.id, vpr.project_id)) AS project_name,
-                    NULL AS approval_status,
-                    NULL AS approval_approved_amount,
-                    NULL AS approval_approved_at,
-                    NULL AS approval_user_id,
-                    NULL AS approval_id,
+                    ar.status AS approval_status,
+                    ar.approved_amount AS approval_approved_amount,
+                    ar.approved_at AS approval_approved_at,
+                    ar.approved_by AS approval_user_id,
+                    ar.id AS approval_id,
                     approver.full_name AS approved_by_name,
                     NULL AS rejected_by_name
                 FROM vendor_payment_requests vpr
                 LEFT JOIN vendors v ON vpr.vendor_id = v.id
                 LEFT JOIN users u ON vpr.created_by = u.id
-                LEFT JOIN users approver ON vpr.approved_by = approver.id
+                LEFT JOIN approval_requests ar ON ar.source_table = 'vendor_payment_requests' AND ar.source_id = vpr.id
+                LEFT JOIN users approver ON ar.approved_by = approver.id
 
                 UNION ALL
 
@@ -307,22 +308,23 @@ public function createRequest($data)
                     cbr.approved_amount,
                     cbr.verification_note AS approval_note,
                     cbr.approved_by,
-                    NULL AS approved_at,
+                    ar.approved_at AS approved_at,
                     NULL AS rejected_by,
                     NULL AS rejected_at,
                     NULL AS rejection_reason,
                     u.full_name AS requester_name,
                     (SELECT GROUP_CONCAT(name SEPARATOR ', ') FROM projects WHERE FIND_IN_SET(projects.id, cbr.project_id)) AS project_name,
-                    NULL AS approval_status,
-                    NULL AS approval_approved_amount,
-                    NULL AS approval_approved_at,
-                    NULL AS approval_user_id,
-                    NULL AS approval_id,
+                    ar.status AS approval_status,
+                    ar.approved_amount AS approval_approved_amount,
+                    ar.approved_at AS approval_approved_at,
+                    ar.approved_by AS approval_user_id,
+                    ar.id AS approval_id,
                     approver.full_name AS approved_by_name,
                     NULL AS rejected_by_name
                 FROM contractor_bill_requests cbr
                 LEFT JOIN users u ON cbr.created_by = u.id
-                LEFT JOIN users approver ON cbr.approved_by = approver.id
+                LEFT JOIN approval_requests ar ON ar.source_table = 'contractor_bill_requests' AND ar.source_id = cbr.id
+                LEFT JOIN users approver ON ar.approved_by = approver.id
             ) AS cr
             WHERE 1 = 1
         ";
@@ -717,6 +719,411 @@ public function createRequest($data)
         }
         
         return $projects;
+    }
+    // --- CSV IMPORT LOGIC ---
+
+    public function parseAndValidateCSV($filePath)
+    {
+        $validRows = [];
+        $errors = [];
+        $summary = [
+            'total_rows' => 0,
+            'valid_rows' => 0,
+            'error_rows' => 0,
+            'total_amount' => 0
+        ];
+
+        if (!file_exists($filePath)) {
+            $errors[] = ['row' => 0, 'message' => "File not found"];
+            return ['valid_rows' => $validRows, 'errors' => $errors, 'summary' => $summary];
+        }
+
+        $handle = fopen($filePath, 'r');
+        $header = fgetcsv($handle);
+        if (!$header) {
+            $errors[] = ['row' => 0, 'message' => "CSV is empty or invalid format"];
+            return ['valid_rows' => $validRows, 'errors' => $errors, 'summary' => $summary];
+        }
+
+        // Map headers
+        $headerMap = [];
+        foreach ($header as $idx => $col) {
+            $headerMap[trim($col)] = $idx;
+        }
+
+        $requiredHeaders = ['Payment Type', 'Project Name', 'Amount', 'Date', 'Status'];
+        foreach ($requiredHeaders as $req) {
+            if (!isset($headerMap[$req])) {
+                $errors[] = ['row' => 0, 'message' => "Missing required column: '$req'"];
+                return ['valid_rows' => $validRows, 'errors' => $errors, 'summary' => $summary];
+            }
+        }
+
+        $rowNum = 1;
+        while (($row = fgetcsv($handle)) !== false) {
+            $rowNum++;
+            if (empty(array_filter($row))) continue;
+            
+            $summary['total_rows']++;
+            $rowErrors = [];
+
+            $paymentTypeRaw = trim($row[$headerMap['Payment Type']] ?? '');
+            $paymentType = strtolower($paymentTypeRaw);
+            $projectName = trim($row[$headerMap['Project Name']] ?? '');
+            $amountRaw = trim($row[$headerMap['Amount']] ?? '0');
+            $amount = (float)str_replace(',', '', $amountRaw);
+            $date = trim($row[$headerMap['Date']] ?? date('Y-m-d H:i:s'));
+            if(strpos($date, ' ') === false) $date .= ' 00:00:00';
+            
+            $statusRaw = trim($row[$headerMap['Status']] ?? 'Pending');
+            $status = strtolower($statusRaw);
+            if ($status == 'paid') $status = 'fully_paid';
+            if ($status == 'partially paid') $status = 'partially_paid';
+            if ($status == 'approved') $status = 'approved';
+
+            $purpose = trim($row[$headerMap['Purpose / Description']] ?? '');
+            $vendorName = trim($row[$headerMap['Vendor Name']] ?? '');
+            $vendorPhone = trim($row[$headerMap['Vendor Phone']] ?? '');
+            $poNumber = trim($row[$headerMap['PO Number']] ?? '');
+            $invoiceNumber = trim($row[$headerMap['Invoice Number']] ?? '');
+            $operatorName = trim($row[$headerMap['Operator Name']] ?? '');
+            $fileName = trim($row[$headerMap['File Attachment']] ?? '');
+            $paymentMethod = trim($row[$headerMap['Payment Method']] ?? 'BankTransfer');
+            $paidAmountRaw = trim($row[$headerMap['Paid Amount']] ?? '0');
+            $paidAmount = (float)str_replace(',', '', $paidAmountRaw);
+
+            // Validations
+            if (!in_array($paymentType, ['general', 'vendor', 'contractor'])) {
+                $rowErrors[] = "Invalid Payment Type '$paymentTypeRaw'";
+            }
+
+            if ($amount <= 0) {
+                $rowErrors[] = "Amount must be greater than 0";
+            }
+
+            // User is always the session user (the person importing)
+            $userId = null; // will be set from session in processCSVImportRow
+            $resolvedUser = "Session User";
+
+            // Resolve Project
+            $projectId = null;
+            if (!empty($projectName)) {
+                $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                $stmt->bind_param("s", $projectName);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($p = $res->fetch_assoc()) {
+                    $projectId = $p['id'];
+                } else {
+                    $rowErrors[] = "Project '$projectName' not found";
+                }
+                $stmt->close();
+            }
+
+            $vendorId = null;
+            $poId = null;
+            $operatorId = null;
+
+            if ($paymentType === 'vendor') {
+                if (empty($vendorName)) {
+                    $rowErrors[] = "Vendor Name is required for Vendor payments";
+                } else {
+                    // Try to find vendor by Name and optionally Phone
+                    $vQuery = "SELECT id FROM vendors WHERE name = ?";
+                    $vParams = [$vendorName];
+                    $vTypes = "s";
+                    
+                    if (!empty($vendorPhone)) {
+                        $vQuery .= " AND phone = ?";
+                        $vParams[] = $vendorPhone;
+                        $vTypes .= "s";
+                    }
+                    $vQuery .= " LIMIT 1";
+
+                    $stmt = $this->db->prepare($vQuery);
+                    $stmt->bind_param($vTypes, ...$vParams);
+                    $stmt->execute();
+                    $res = $stmt->get_result();
+                    if ($v = $res->fetch_assoc()) {
+                        $vendorId = $v['id'];
+                    } else {
+                        $rowErrors[] = "Vendor '$vendorName' not found" . (!empty($vendorPhone) ? " with phone '$vendorPhone'" : "");
+                    }
+                    $stmt->close();
+
+                    // 1. If PO Number is explicitly provided in CSV (e.g., '123' or 'PO-123')
+                    if (!empty($poNumber)) {
+                        $poNumberClean = (int)str_replace('PO-', '', strtoupper($poNumber));
+                        if ($poNumberClean > 0) {
+                            $poId = $poNumberClean;
+                        }
+                    }
+
+                    // 2. Intelligent Auto-Detection if PO ID is not provided
+                    if (!$poId && $vendorId && $projectId) {
+                        $poQuery = "
+                            SELECT po.id, po.created_at, 
+                                   (SELECT SUM(total_price) FROM purchase_order_items WHERE purchase_order_id = po.id) as total_amount
+                            FROM purchase_orders po
+                            JOIN purchase_requests pr ON po.request_id = pr.id
+                            JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
+                            WHERE pr.project_id = ? AND poi.selected_vendor_id = ?
+                            GROUP BY po.id
+                        ";
+                        $stmt = $this->db->prepare($poQuery);
+                        $stmt->bind_param("ii", $projectId, $vendorId);
+                        $stmt->execute();
+                        $res = $stmt->get_result();
+                        
+                        $bestPoId = null;
+                        $bestScore = -1;
+                        $paymentTimestamp = strtotime($date);
+
+                        while ($po = $res->fetch_assoc()) {
+                            $score = 0;
+                            $poTimestamp = strtotime($po['created_at']);
+                            
+                            // A payment usually happens AFTER the PO is created.
+                            // If PO was created after the payment date, it's highly unlikely to be the right one.
+                            if ($poTimestamp > $paymentTimestamp) {
+                                continue; 
+                            }
+                            
+                            // Scoring logic
+                            // +50 points if the total PO amount exactly matches the payment amount
+                            if (abs((float)$po['total_amount'] - $amount) < 0.01) {
+                                $score += 50;
+                            }
+                            
+                            // +Points for time proximity (closer = better)
+                            // Max 30 points, decays over time
+                            $daysDiff = floor(($paymentTimestamp - $poTimestamp) / (60 * 60 * 24));
+                            $timeScore = max(0, 30 - $daysDiff);
+                            $score += $timeScore;
+                            
+                            if ($score > $bestScore) {
+                                $bestScore = $score;
+                                $bestPoId = $po['id'];
+                            }
+                        }
+                        $stmt->close();
+                        
+                        if ($bestPoId) {
+                            $poId = $bestPoId;
+                        } else {
+                            $rowErrors[] = "No matching Purchase Order found for this Vendor and Project before the payment date. Please specify 'PO Number' in CSV.";
+                        }
+                    } elseif (!$poId) {
+                        $poId = 1; // Fallback if vendor/project are completely missing
+                    }
+                }
+            } elseif ($paymentType === 'contractor') {
+                if (empty($operatorName)) {
+                    $rowErrors[] = "Operator Name is required for Contractor bills";
+                } else {
+                    $stmt = $this->db->prepare("SELECT id FROM contractors WHERE name = ? LIMIT 1");
+                    $stmt->bind_param("s", $operatorName);
+                    $stmt->execute();
+                    $res = $stmt->get_result();
+                    if ($o = $res->fetch_assoc()) {
+                        $operatorId = $o['id'];
+                    } else {
+                        $rowErrors[] = "Operator '$operatorName' not found";
+                    }
+                    $stmt->close();
+                }
+            }
+
+            if (!empty($rowErrors)) {
+                $errors[] = [
+                    'row' => $rowNum,
+                    'messages' => $rowErrors
+                ];
+                $summary['error_rows']++;
+            } else {
+                $validRows[] = [
+                    'row_num' => $rowNum,
+                    'payment_type' => $paymentType,
+                    'project_id' => $projectId,
+                    'project_name' => $projectName,
+                    'user_id' => $userId,
+                    'resolved_user' => $resolvedUser,
+                    'amount' => $amount,
+                    'date' => $date,
+                    'status_raw' => $statusRaw,
+                    'status' => $status,
+                    'purpose' => $purpose,
+                    'vendor_id' => $vendorId,
+                    'vendor_name' => $vendorName,
+                    'po_id' => $poId,
+                    'invoice_number' => $invoiceNumber,
+                    'operator_id' => $operatorId,
+                    'operator_name' => $operatorName,
+                    'file_name' => $fileName,
+                    'payment_method' => $paymentMethod,
+                    'paid_amount' => $paidAmount
+                ];
+                $summary['valid_rows']++;
+                $summary['total_amount'] += $amount;
+            }
+        }
+        fclose($handle);
+
+        return ['valid_rows' => $validRows, 'errors' => $errors, 'summary' => $summary];
+    }
+
+    public function processCSVImportRow($row, $sessionUserId)
+    {
+        $this->db->begin_transaction();
+        try {
+            $paymentType = $row['payment_type'];
+            $projectId = $row['project_id'];
+            $userId = $sessionUserId; // Always use logged-in user
+            $amount = $row['amount'];
+            $date = $row['date'];
+            $status = $row['status'];
+            $purpose = $row['purpose'];
+            $fileName = $row['file_name'];
+            $paymentMethod = $row['payment_method'];
+            $paidAmount = $row['paid_amount'];
+
+            $insertId = 0;
+
+            if ($paymentType === 'general') {
+                $dueAmount = $amount - $paidAmount;
+                $attachmentPath = $fileName ? 'uploads/cashout/' . $fileName : null;
+
+                $statusNormalized = strtolower(str_replace(' ', '_', $status));
+                if ($statusNormalized === 'paid') $statusNormalized = 'fully_paid';
+                $finalStatus = in_array($statusNormalized, ['pending','approved','rejected','partially_paid','fully_paid']) ? $statusNormalized : 'pending';
+
+                $sql = "INSERT INTO cashout_requests (project_id, requested_by, purpose_paid_to, amount, approved_amount, due_amount, description, payment_method, status, attachment_path, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $stmt = $this->db->prepare($sql);
+                $approvedAmount = in_array($finalStatus, ['approved', 'partially_paid', 'fully_paid']) ? $amount : null;
+                $stmt->bind_param("sisdddsssss", $projectId, $userId, $purpose, $amount, $approvedAmount, $dueAmount, $purpose, $paymentMethod, $finalStatus, $attachmentPath, $date);
+                if (!$stmt->execute()) throw new Exception("General insert failed: " . $stmt->error);
+                $insertId = $stmt->insert_id;
+                $stmt->close();
+
+                // Approval Request
+                $appStatus = in_array($finalStatus, ['approved', 'partially_paid', 'fully_paid']) ? 'approved' : 'pending';
+                $appSql = "INSERT INTO approval_requests (department, request_type, title, source_table, source_id, request_amount, approved_amount, status, requested_by, approve_role, created_at, approved_by, approved_at)
+                           VALUES ('Accounts', 'cashout', ?, 'cashout_requests', ?, ?, ?, ?, ?, 'management', ?, ?, ?)";
+                $appStmt = $this->db->prepare($appSql);
+                $title = "Imported Cashout: " . substr($purpose, 0, 100);
+                $approvedBy = ($appStatus === 'approved') ? $sessionUserId : null;
+                $approvedAt = ($appStatus === 'approved') ? $date : null;
+                $appStmt->bind_param("siddsisis", $title, $insertId, $amount, $approvedAmount, $appStatus, $userId, $date, $approvedBy, $approvedAt);
+                $appStmt->execute();
+                $appStmt->close();
+
+                // Cashout Payment
+                if ($paidAmount > 0) {
+                    $paySql = "INSERT INTO cashout_payments (cashout_request_id, project_id, purpose_paid_to, amount, payment_method, payment_date, created_by, created_at)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                    $payStmt = $this->db->prepare($paySql);
+                    $payStmt->bind_param("issdssis", $insertId, $projectId, $purpose, $paidAmount, $paymentMethod, $date, $sessionUserId, $date);
+                    $payStmt->execute();
+                    $payStmt->close();
+                }
+
+            } elseif ($paymentType === 'vendor') {
+                $vendorId = $row['vendor_id'];
+                $poId = $row['po_id'] ?: 1;
+                $invoiceNumber = $row['invoice_number'];
+                
+                $statusNormalized = strtolower(str_replace(' ', '_', $row['status_raw']));
+                if ($statusNormalized === 'paid') $finalStatus = 'Paid';
+                elseif ($statusNormalized === 'fully_paid') $finalStatus = 'Fully_Paid';
+                elseif ($statusNormalized === 'partially_paid') $finalStatus = 'Partially_Paid';
+                elseif ($statusNormalized === 'approved') $finalStatus = 'Approved';
+                elseif ($statusNormalized === 'rejected') $finalStatus = 'Rejected';
+                elseif ($statusNormalized === 'submitted' || $statusNormalized === 'pending') $finalStatus = 'Submitted';
+                else $finalStatus = 'Draft';
+                
+                $dueAmount = $amount - $paidAmount;
+                $attachmentPath = $fileName ? 'uploads/construction-payments/' . $fileName : null;
+
+                $sql = "INSERT INTO vendor_payment_requests (vendor_id, project_id, purchase_order_id, payment_type, created_by, invoice_number, invoice_amount, net_payable_amount, status, approved_amount, due_amount, payment_attachment, created_at)
+                        VALUES (?, ?, ?, 'Final', ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $stmt = $this->db->prepare($sql);
+                $approvedAmount = in_array($finalStatus, ['Approved', 'Paid', 'Partially_Paid', 'Fully_Paid']) ? $amount : null;
+                $stmt->bind_param("iiiisddsddss", $vendorId, $projectId, $poId, $userId, $invoiceNumber, $amount, $amount, $finalStatus, $approvedAmount, $dueAmount, $attachmentPath, $date);
+                if (!$stmt->execute()) throw new Exception("Vendor insert failed: " . $stmt->error);
+                $insertId = $stmt->insert_id;
+                $stmt->close();
+
+                // Approval Request
+                $appStatus = in_array($finalStatus, ['Approved', 'Paid', 'Partially_Paid', 'Fully_Paid']) ? 'approved' : 'pending';
+                $appSql = "INSERT INTO approval_requests (department, request_type, title, source_table, source_id, request_amount, approved_amount, status, requested_by, approve_role, created_at, approved_by, approved_at)
+                           VALUES ('Construction', 'vendor_payment', ?, 'vendor_payment_requests', ?, ?, ?, ?, ?, 'management', ?, ?, ?)";
+                $appStmt = $this->db->prepare($appSql);
+                $title = "Imported Vendor Payment: " . substr($vendorName ?? 'Vendor', 0, 100);
+                $approvedBy = ($appStatus === 'approved') ? $sessionUserId : null;
+                $approvedAt = ($appStatus === 'approved') ? $date : null;
+                $appStmt->bind_param("siddsisis", $title, $insertId, $amount, $approvedAmount, $appStatus, $userId, $date, $approvedBy, $approvedAt);
+                $appStmt->execute();
+                $appStmt->close();
+
+                if ($paidAmount > 0) {
+                    $paySql = "INSERT INTO con_financial_transactions (ref_type, project_id, ref_id, payment_type, payment_method, amount_paid, processed_by, created_by, transaction_date)
+                               VALUES ('vendor_payment', ?, ?, 'Full', ?, ?, ?, ?, ?)";
+                    $payStmt = $this->db->prepare($paySql);
+                    $payStmt->bind_param("iisdiis", $projectId, $insertId, $paymentMethod, $paidAmount, $sessionUserId, $sessionUserId, $date);
+                    $payStmt->execute();
+                    $payStmt->close();
+                }
+
+            } elseif ($paymentType === 'contractor') {
+                $operatorId = $row['operator_id'];
+                
+                $statusNormalized = strtolower(str_replace(' ', '_', $row['status_raw']));
+                if ($statusNormalized === 'pending') $statusNormalized = 'submitted';
+                $finalStatus = in_array($statusNormalized, ['draft','submitted','verified','approved','rejected','paid','partially_paid','fully_paid']) ? $statusNormalized : 'draft';
+                
+                $dueAmount = $amount - $paidAmount;
+                $attachmentPath = $fileName ? 'uploads/contractor-bills/' . $fileName : null;
+                $billDate = substr($date, 0, 10);
+
+                $sql = "INSERT INTO contractor_bill_requests (project_id, operator_id, created_by, bill_date, work_description, bill_amount, status, approved_amount, due_amount, attachment_path, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $stmt = $this->db->prepare($sql);
+                $approvedAmount = in_array($finalStatus, ['approved', 'paid', 'partially_paid', 'fully_paid']) ? $amount : null;
+                $stmt->bind_param("iiissdsddss", $projectId, $operatorId, $userId, $billDate, $purpose, $amount, $finalStatus, $approvedAmount, $dueAmount, $attachmentPath, $date);
+                if (!$stmt->execute()) throw new Exception("Contractor insert failed: " . $stmt->error);
+                $insertId = $stmt->insert_id;
+                $stmt->close();
+
+                // Approval Request
+                $appStatus = in_array($finalStatus, ['approved', 'paid', 'partially_paid', 'fully_paid']) ? 'approved' : 'pending';
+                $appSql = "INSERT INTO approval_requests (department, request_type, title, source_table, source_id, request_amount, approved_amount, status, requested_by, approve_role, created_at, approved_by, approved_at)
+                           VALUES ('Construction', 'contractor_bill', ?, 'contractor_bill_requests', ?, ?, ?, ?, ?, 'management', ?, ?, ?)";
+                $appStmt = $this->db->prepare($appSql);
+                $title = "Imported Contractor Bill: " . substr($operatorName ?? 'Contractor', 0, 100);
+                $approvedBy = ($appStatus === 'approved') ? $sessionUserId : null;
+                $approvedAt = ($appStatus === 'approved') ? $date : null;
+                $appStmt->bind_param("siddsisis", $title, $insertId, $amount, $approvedAmount, $appStatus, $userId, $date, $approvedBy, $approvedAt);
+                $appStmt->execute();
+                $appStmt->close();
+
+                if ($paidAmount > 0) {
+                    $paySql = "INSERT INTO con_financial_transactions (ref_type, project_id, ref_id, payment_type, payment_method, amount_paid, processed_by, created_by, transaction_date)
+                               VALUES ('contractor_bill', ?, ?, 'Full', ?, ?, ?, ?, ?)";
+                    $payStmt = $this->db->prepare($paySql);
+                    $payStmt->bind_param("iisdiis", $projectId, $insertId, $paymentMethod, $paidAmount, $sessionUserId, $sessionUserId, $date);
+                    $payStmt->execute();
+                    $payStmt->close();
+                }
+            }
+
+            $this->db->commit();
+            return ['success' => true, 'message' => 'Imported successfully', 'insert_id' => $insertId];
+
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
     }
 }
 ?>

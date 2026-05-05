@@ -66,6 +66,9 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                     </strong> | Viewing All Requests</p>
                 </div>
                 <div class="text-end">
+                    <a href="<?= $GLOBALS['base_url'] ?>/cashout-csv-import-form" class="btn btn-success me-2">
+                        <i class="fa-light fa-file-import me-2"></i> Import CSV
+                    </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/export-cashout-requests" class="btn btn-primary me-2">
                         <i class="fa-light fa-download me-2"></i> Export CSV
                     </a>
@@ -212,7 +215,6 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <tr>
-                            <th>ID</th>
                             <th>Type</th>
                             <th>Requester</th>
                             <th>Purpose/Paid To</th>
@@ -244,7 +246,6 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                     ?>
 
                                     <tr>
-                                        <td>#<?= $request['id'] ?></td>
                                         <td>
                                             <span class="badge bg-secondary"><?= ucwords($request['cashout_type'] ?? 'general') ?></span>
                                         </td>
