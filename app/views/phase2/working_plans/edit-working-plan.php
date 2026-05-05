@@ -64,16 +64,11 @@
 
                         <div class="row  mb-3">
                             <div class="col-md-4">
-                                <label class="form-label fw-bold">Design Type <span class="text-danger">*</span></label>
-                                <select name="design_type_id" id="designTypeSelect" class="form-select" required>
-                                    <option value="">-- Select --</option>
-                                    <?php foreach ($designTypes as $dt): ?>
-                                        <option value="<?= $dt['id'] ?>" <?= $dt['id'] == $plan['design_type_id'] ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($dt['name']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
+                                <label class="form-label fw-bold">Work Type <span class="text-danger">*</span></label>
+                                <select name="work_type_id" id="workTypeSelect" class="form-select" required>
+                                    <option value="">-- Loading... --</option>
                                 </select>
-                                <div class="form-text text-info" id="designTypeHint"></div>
+                                <div class="form-text text-info" id="workTypeHint"></div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Year <span class="text-danger">*</span></label>
@@ -134,32 +129,77 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var budgetSelect     = document.getElementById('budgetSelect');
-    var designTypeSelect = document.getElementById('designTypeSelect');
-    var designTypeHint   = document.getElementById('designTypeHint');
+    var workTypeSelect   = document.getElementById('workTypeSelect');
+    var workTypeHint     = document.getElementById('workTypeHint');
+    var projectSelect    = document.getElementById('projectSelect');
+    
+    var currentWorkTypeId = <?= (int)$plan['work_type_id'] ?>;
 
-    function applyDesignTypeFromBudget(opt) {
-        if (!opt || !designTypeSelect) return;
-        var dtId = opt.getAttribute('data-design-type-id') || '';
-        if (dtId) {
-            designTypeSelect.value = dtId;
-            var selOpt = designTypeSelect.options[designTypeSelect.selectedIndex];
-            var dtLabel = selOpt ? selOpt.textContent.trim() : '';
-            if (designTypeSelect.value == dtId && dtLabel) {
-                if (designTypeHint) designTypeHint.innerHTML =
-                    '<i class="bi bi-check-circle me-1"></i>Auto-selected: <strong>' + dtLabel + '</strong>';
+    function applyWorkTypeFromBudget(opt) {
+        if (!opt || !workTypeSelect) return;
+        var wtId = opt.getAttribute('data-work-type-id') || '';
+        if (wtId) {
+            workTypeSelect.value = wtId;
+            var selOpt = workTypeSelect.options[workTypeSelect.selectedIndex];
+            var wtLabel = selOpt ? selOpt.textContent.trim() : '';
+            if (workTypeSelect.value == wtId && wtLabel) {
+                if (workTypeHint) workTypeHint.innerHTML =
+                    '<i class="bi bi-check-circle me-1"></i>Auto-selected: <strong>' + wtLabel + '</strong>';
             } else {
-                if (designTypeHint) designTypeHint.textContent = '';
+                if (workTypeHint) workTypeHint.textContent = '';
             }
         } else {
-            if (designTypeHint) designTypeHint.textContent = '';
+            if (workTypeHint) workTypeHint.textContent = '';
         }
     }
 
-    // On budget change → auto-select design type
+    function loadWorkTypes(projectId, callback) {
+        workTypeSelect.innerHTML = '<option value="">Loading...</option>';
+        fetch('<?= $base_url ?>/con-ajax-project-data?project_id=' + projectId)
+            .then(r => r.json())
+            .then(data => {
+                workTypeSelect.innerHTML = '<option value="">-- Select Work Type --</option>';
+                if (data.work_types && data.work_types.length > 0) {
+                    data.work_types.forEach(wt => {
+                        var opt = document.createElement('option');
+                        opt.value = wt.id;
+                        opt.textContent = wt.label;
+                        workTypeSelect.appendChild(opt);
+                    });
+                    if (callback) callback();
+                } else {
+                    workTypeSelect.innerHTML = '<option value="">No Work Types Found</option>';
+                }
+            })
+            .catch(() => {
+                workTypeSelect.innerHTML = '<option value="">Error loading</option>';
+            });
+    }
+
+    // On budget change → auto-select work type
     if (budgetSelect) {
         budgetSelect.addEventListener('change', function () {
             var opt = this.options[this.selectedIndex];
-            applyDesignTypeFromBudget(opt);
+            applyWorkTypeFromBudget(opt);
+        });
+    }
+    
+    // Initial load
+    if (projectSelect && projectSelect.value) {
+        loadWorkTypes(projectSelect.value, function() {
+            workTypeSelect.value = currentWorkTypeId;
+        });
+    }
+
+    // On project change -> reload work types
+    if (projectSelect) {
+        projectSelect.addEventListener('change', function() {
+            var pid = this.value;
+            if (pid) {
+                loadWorkTypes(pid);
+            } else {
+                workTypeSelect.innerHTML = '<option value="">-- Select Project First --</option>';
+            }
         });
     }
 });

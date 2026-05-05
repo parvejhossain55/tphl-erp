@@ -100,10 +100,10 @@
 
 <!-- Import CSV Modal -->
 <div class="modal fade" id="importEstimateCsvModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Import Initial Estimate Budgets</h5>
+                <h5 class="modal-title"><i class="bi bi-file-earmark-arrow-up me-2"></i>Import Initial Estimates (CSV)</h5>
                 <button type="button" class="bd-btn-close" data-bs-dismiss="modal"><i class="fa-solid fa-xmark-large"></i></button>
             </div>
             <div class="modal-body">
@@ -112,13 +112,44 @@
                         <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
                         <input type="file" name="csv_file" class="form-control" accept=".csv" required>
                     </div>
-                    <div class="mb-3" style="font-size:12px;">
-                        <strong>Required CSV Columns:</strong><br>
-                        <code>Project_Name (required), Work_Type_Name, Total_Area_Sqft, Material_Cost_Total, Labor_Cost_Total, Other_Costs, Total_Estimated_Cost, Start_Date (YYYY-MM-DD), End_Date (YYYY-MM-DD)</code>
+
+                    <!-- Format instructions -->
+                    <div class="border rounded p-2 mb-2" style="font-size:12px;">
+                        <div class="fw-semibold mb-2"><i class="bi bi-info-circle text-primary me-1"></i>CSV Format — একটি ফাইলে Budget + Items + Labors:</div>
+                        <div class="mb-1">
+                            <span class="badge bg-primary me-1">BUDGET</span>
+                            <span class="text-danger fw-semibold">Project_Name</span>
+                            <span class="text-muted ms-1">+ Total_Area_Sqft, Other_Costs, Other_Cost_Detail, Budget_Link, Start_Date, End_Date, Status, Approved_By_Email, Approval_Date</span>
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-success me-1">ITEM</span>
+                            <span class="text-danger fw-semibold">Material_Name, Estimated_Qty, Unit_Cost</span>
+                            <span class="text-muted ms-1">+ Material_Unit, Item_Remarks, Work_Type_Name</span>
+                        </div>
+                        <div class="mb-2">
+                            <span class="badge bg-warning text-dark me-1">LABOR</span>
+                            <span class="text-danger fw-semibold">Labor_Type_Name, Rate_Per_Sqft, Area_Sqft</span>
+                            <span class="text-muted ms-1">+ Work_Type_Name, Labor_Description</span>
+                        </div>
+                        <div class="text-muted" style="font-size:11px; border-top:1px solid #dee2e6; padding-top:6px;">
+                            ⚠️ ITEM ও LABOR rows সবসময় তার উপরের BUDGET row-এর সাথে link হবে।<br>
+                            ⚠️ Project_Name ও Material_Name অবশ্যই database-এর exact name হতে হবে।<br>
+                            ⚠️ Status: <code>pending</code> / <code>approved</code> / <code>cancelled</code>
+                        </div>
                     </div>
-                    <div class="text-end">
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success btn-sm ms-2"><i class="bi bi-upload me-1"></i> Import</button>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <a href="<?= $GLOBALS['base_url'] ?>/con-estimate-import?sample=1"
+                           class="btn btn-outline-secondary btn-sm"
+                           onclick="this.href='<?= $GLOBALS['base_url'] ?>/con-estimate-import?sample=1'">
+                            <i class="bi bi-download me-1"></i> Download Sample CSV
+                        </a>
+                        <div>
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success btn-sm ms-2">
+                                <i class="bi bi-upload me-1"></i> Import
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

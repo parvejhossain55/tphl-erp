@@ -183,6 +183,25 @@ class LandVisibilityStudyController extends Controller {
         return $row ? $row['name'] : 'Unknown Project';
     }
 
+    public function delete() {
+        $id = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
+
+        if (!$id) {
+            setError('Invalid record ID.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-land-visibility-studies");
+            exit;
+        }
+
+        if ($this->model->delete($id)) {
+            setSuccess('Record deleted successfully.');
+        } else {
+            setError('Failed to delete record.');
+        }
+
+        header("Location: " . $GLOBALS['base_url'] . "/con-land-visibility-studies");
+        exit;
+    }
+
     // ─── CSV Import Method ───────────
     public function importCsv() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

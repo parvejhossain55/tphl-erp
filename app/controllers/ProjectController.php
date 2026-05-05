@@ -169,7 +169,7 @@ class ProjectController extends Controller
             exit;
         }
 
-        setError("Project creation failed");
+        // Model already called setError() with the real DB message if failed
         header("Location: {$GLOBALS['base_url']}/create-project");
         exit;
     }

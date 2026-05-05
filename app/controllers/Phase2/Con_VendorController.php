@@ -176,4 +176,89 @@ class Con_VendorController extends Controller
         header("Location: {$GLOBALS['base_url']}/con-vendors");
         exit;
     }
+
+    // ─── CSV Import Method ────────────────────────────────────────────────
+    public function importCsv() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . $GLOBALS['base_url'] . '/con-vendors');
+            exit;
+        }
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError('Please upload a valid CSV file.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-vendors');
+            exit;
+        }
+        
+        // Read entire file as string to properly handle UTF-8 Bengali text
+        $content = file_get_contents($_FILES['csv_file']['tmp_name']);
+        $content = ltrim($content, "\xEF\xBB\xBF");
+        $content = str_replace("\r\n", "\n", str_replace("\r", "\n", $content));
+        $lines = array_values(array_filter(explode("\n", $content), fn($l) => trim($l) !== ''));
+        if (empty($lines)) { setError('CSV file is empty.'); header('Location: ' . $GLOBALS['base_url'] . '/con-vendors'); exit; }
+        $header = array_map('trim', str_getcsv(array_shift($lines)));
+        
+        $resolveKey = function($row, $targetKey) {
+            $targetLower = strtolower($targetKey);
+            foreach ($row as $key => $val) {
+                $keyLower = strtolower(trim($key));
+                if ($keyLower === $targetLower || strpos($keyLower, $targetLower) === 0) {
+                    return $val;
+                }
+            }
+            return '';
+        };
+
+        $successCount = 0; $errorCount = 0; $errors = [];
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        foreach ($lines as $line) {
+            if (trim($line) === '') continue;
+            $data = array_pad(str_getcsv($line), count($header), '');
+            $row  = array_combine($header, $data);
+            
+            $vendorName = trim($resolveKey($row, 'Vendor_Name'));
+            $phone      = trim($resolveKey($row, 'Phone'));
+            $email      = trim($resolveKey($row, 'Email'));
+            $address    = trim($resolveKey($row, 'Address'));
+            
+            if (empty($vendorName)) { 
+                $errorCount++; $errors[] = "Missing Vendor Name"; 
+                continue; 
+            }
+            
+            $stmt = $this->db->prepare("SELECT id FROM vendors WHERE name = ? LIMIT 1");
+            $stmt->bind_param("s", $vendorName); 
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows > 0) { 
+                $errors[] = "Vendor '$vendorName' already exists"; 
+                $errorCount++; 
+                continue; 
+            }
+            
+            $insertData = [
+                'name'       => $vendorName,
+                'phone'      => !empty($phone) ? $phone : null,
+                'email'      => !empty($email) ? $email : null,
+                'address'    => !empty($address) ? $address : null,
+                'rating'     => 5.00,
+                'status'     => 'active',
+                'created_by' => $userId
+            ];
+
+            if ($this->vendorModel->create($insertData)) { 
+                $successCount++; 
+            } else { 
+                $errorCount++; $errors[] = "Failed to save vendor '$vendorName'"; 
+            }
+        }
+        
+        if ($errorCount > 0) {
+            setError("Imported $successCount. Failed $errorCount. Errors: " . implode(' | ', array_slice($errors, 0, 5)));
+        } else {
+            setSuccess("Successfully imported $successCount records.");
+        }
+        
+        header('Location: ' . $GLOBALS['base_url'] . '/con-vendors');
+        exit;
+    }
 }

@@ -247,39 +247,98 @@ class ProjectStructuralDesignController extends Controller {
         $file = $_FILES['csv_file']['tmp_name'];
         $handle = fopen($file, 'r');
         if (!$handle) { setError('Cannot open file.'); header('Location: ' . $GLOBALS['base_url'] . '/structure-design'); exit; }
+        
         $header = array_map('trim', fgetcsv($handle));
-        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
+        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM
+        
+        $resolveKey = function($row, $targetKey) {
+            $targetLower = strtolower($targetKey);
+            foreach ($row as $key => $val) {
+                $keyLower = strtolower(trim($key));
+                if ($keyLower === $targetLower || strpos($keyLower, $targetLower) === 0) {
+                    return $val;
+                }
+            }
+            return '';
+        };
+
         $successCount = 0; $errorCount = 0; $errors = [];
         $db = $this->db;
-        $userId = $_SESSION['user']['id'] ?? 0;
+        $sessionUserId = $_SESSION['user']['id'] ?? 0;
 
         while (($data = fgetcsv($handle)) !== FALSE) {
             if (empty(array_filter($data))) continue;
-            if (count($header) !== count($data)) continue;
+            
+            // Pad data array to match header length to prevent array_combine warnings
+            $data = array_pad($data, count($header), '');
             $row = array_combine($header, $data);
             
-            $projectName   = trim($row['Project_Name'] ?? '');
-            $designStage   = trim($row['Design_Stage'] ?? '');
-            $consultant    = trim($row['Consultant_Name'] ?? '');
-            $subDate       = trim($row['Submission_Date'] ?? date('Y-m-d'));
-            $remarks       = trim($row['Remarks'] ?? '');
+            $projectName   = trim($resolveKey($row, 'Project_Name'));
+            $designerTypeRaw  = trim($resolveKey($row, 'Designer_Type'));
+            $internalEmail = trim($resolveKey($row, 'Internal_Designer_Email'));
+            $designerName  = trim($resolveKey($row, 'Designer_Name'));
+            $designerPhone = trim($resolveKey($row, 'Designer_Phone'));
+            $designerAddress = trim($resolveKey($row, 'Designer_Address'));
+            $companyName   = trim($resolveKey($row, 'Company_Name'));
+            $designLink    = trim($resolveKey($row, 'Design_Link'));
+
             if (empty($projectName)) { $errorCount++; $errors[] = "Missing Project_Name"; continue; }
+            if (empty($designerTypeRaw)) { $errorCount++; $errors[] = "Missing Designer_Type for '$projectName'"; continue; }
+            
             $stmt = $db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1");
             $stmt->bind_param("s", $projectName); $stmt->execute();
             $res = $stmt->get_result();
             if ($res->num_rows === 0) { $errorCount++; $errors[] = "Project '$projectName' not found"; continue; }
             $projectId = $res->fetch_assoc()['id'];
-            $ins = $db->prepare("INSERT INTO project_structural_designs (project_id, design_stage, consultant_name, submission_date, remarks, created_by) VALUES (?,?,?,?,?,?)");
-            $ins->bind_param("issssi", $projectId, $designStage, $consultant, $subDate, $remarks, $userId);
-            if ($ins->execute()) { $successCount++; } else { $errorCount++; $errors[] = "Failed for Project '$projectName'"; }
-        
+            
+            // Handle Designer Type Logic
+            $designerType = (strtolower($designerTypeRaw) === 'external') ? 'external' : 'internal';
+            
+            $finalDesignerName = '';
+            $finalDesignerPhone = null;
+            $finalDesignerAddress = null;
+            $finalCompanyName = null;
+
+            if ($designerType === 'internal') {
+                if (!empty($internalEmail)) {
+                    $stmtU = $db->prepare('SELECT full_name FROM users WHERE email = ? LIMIT 1');
+                    $stmtU->bind_param('s', $internalEmail);
+                    $stmtU->execute();
+                    $resU = $stmtU->get_result();
+                    if ($resU->num_rows > 0) {
+                        $finalDesignerName = $resU->fetch_assoc()['full_name'];
+                    } else {
+                        $errorCount++; $errors[] = "Internal Designer email '$internalEmail' not found"; continue;
+                    }
+                } else {
+                    // Fallback to session user
+                    $uRow   = $db->query("SELECT full_name FROM users WHERE id = {$sessionUserId} LIMIT 1")->fetch_assoc();
+                    $finalDesignerName = $uRow['full_name'] ?? '';
+                }
+            } else {
+                $finalDesignerName = $designerName;
+                $finalDesignerPhone = $designerPhone;
+                $finalDesignerAddress = $designerAddress;
+                $finalCompanyName = $companyName;
+            }
+
+            $ins = $db->prepare("INSERT INTO project_structural_designs (project_id, designer_type, designer_name, company_name, designer_phone, designer_address, design_link, created_by) VALUES (?,?,?,?,?,?,?,?)");
+            $ins->bind_param("issssssi", $projectId, $designerType, $finalDesignerName, $finalCompanyName, $finalDesignerPhone, $finalDesignerAddress, $designLink, $sessionUserId);
+            
+            if ($ins->execute()) { 
+                $successCount++; 
+            } else { 
+                $errorCount++; $errors[] = "Failed for Project '$projectName'"; 
+            }
         }
         fclose($handle);
+        
         if ($errorCount > 0) {
             setError("Imported $successCount. Failed $errorCount. " . implode(' | ', array_slice($errors, 0, 5)));
         } else {
             setSuccess("Successfully imported $successCount records.");
         }
+        
         header('Location: ' . $GLOBALS['base_url'] . '/structure-design');
         exit;
     }

@@ -209,24 +209,48 @@ class SoilTestController extends Controller {
         }
 
         $file = $_FILES['csv_file']['tmp_name'];
-        $handle = fopen($file, 'r');
-        if ($handle === FALSE) { setError('Failed to open CSV file.'); header('Location: ' . $GLOBALS['base_url'] . '/con-soil-tests'); exit; }
 
+        // Ensure UTF-8 Encoding (Fix for Bengali text)
+        $fileContent = file_get_contents($file);
+        $encoding = mb_detect_encoding($fileContent, 'UTF-8, UTF-16LE, Windows-1252, ISO-8859-1', true);
+        if ($encoding && $encoding !== 'UTF-8') {
+            $fileContent = mb_convert_encoding($fileContent, 'UTF-8', $encoding);
+            file_put_contents($file, $fileContent);
+        }
+
+        $handle = fopen($file, 'r');
+        if (!$handle) { setError('Cannot open file.'); header('Location: ' . $GLOBALS['base_url'] . '/con-soil-tests'); exit; }
+        
         $header = array_map('trim', fgetcsv($handle));
-        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
+        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM
+        
+        $resolveKey = function($row, $targetKey) {
+            $targetLower = strtolower($targetKey);
+            foreach ($row as $key => $val) {
+                $keyLower = strtolower(trim($key));
+                if ($keyLower === $targetLower || strpos($keyLower, $targetLower) === 0) {
+                    return $val;
+                }
+            }
+            return '';
+        };
+
         $successCount = 0; $errorCount = 0; $errors = [];
         $db = $this->db;
-        $userId = $_SESSION['user']['id'] ?? 0;
+        $sessionUserId = $_SESSION['user']['id'] ?? 0;
 
         while (($data = fgetcsv($handle)) !== FALSE) {
             if (empty(array_filter($data))) continue;
+            
+            // Pad data array to match header length to prevent array_combine warnings
+            $data = array_pad($data, count($header), '');
             $row = array_combine($header, $data);
             
-            $projectName = trim($row['Project_Name'] ?? '');
-            $testingAgency = trim($row['Testing_Agency'] ?? '');
-            $reportDate = trim($row['Report_Date'] ?? date('Y-m-d'));
-            $bearingCapacity = trim($row['Bearing_Capacity'] ?? '');
-            $reportLink = trim($row['Report_Link'] ?? '');
+            $projectName   = trim($resolveKey($row, 'Project_Name'));
+            $testDate      = trim($resolveKey($row, 'Test_Date'));
+            $fieldData     = trim($resolveKey($row, 'Field_Data'));
+            $labTestDoc    = trim($resolveKey($row, 'Lab_Test_Document_Link'));
+            $fieldTestDoc  = trim($resolveKey($row, 'Field_Test_Doc_Link'));
 
             if (empty($projectName)) { $errorCount++; $errors[] = 'Missing Project_Name'; continue; }
 
@@ -237,20 +261,23 @@ class SoilTestController extends Controller {
             $projectId = $res->fetch_assoc()['id'];
 
             $insertData = [
-                'project_id' => $projectId,
-                'testing_agency' => $testingAgency,
-                'report_date' => $reportDate,
-                'bearing_capacity' => $bearingCapacity,
-                'report_link' => $reportLink,
-                'created_by' => $userId
+                'project_id'             => $projectId,
+                'site_engineer_id'       => $sessionUserId,
+                'field_data'             => !empty($fieldData) ? $fieldData : null,
+                'lab_test_document_link' => !empty($labTestDoc) ? $labTestDoc : null,
+                'field_test_doc_link'    => !empty($fieldTestDoc) ? $fieldTestDoc : null,
+                'test_date'              => !empty($testDate) ? $testDate : null,
+                'created_by'             => $sessionUserId
             ];
 
             if ($this->model->create($insertData)) { $successCount++; } 
             else { $errorCount++; $errors[] = "Failed to save data for Project '$projectName'."; }
         }
         fclose($handle);
+        
         if ($errorCount > 0) { setError("Imported $successCount. Failed $errorCount. Errors: " . implode(' | ', array_slice($errors, 0, 5))); } 
         else { setSuccess("Successfully imported $successCount records."); }
+        
         header('Location: ' . $GLOBALS['base_url'] . '/con-soil-tests');
         exit;
     }

@@ -37,7 +37,7 @@
                             <th>#</th>
                             <th>Project</th>
                             <th>Budget Ref.</th>
-                            <th>Design Type</th>
+                            <th>Work Type</th>
                             <th>Period</th>
                             <th>Work Description</th>
                             <th class="text-end">Planned Cost (৳)</th>
@@ -52,7 +52,7 @@
                                 <td><?= $i + 1 ?></td>
                                 <td class="fw-bold"><?= htmlspecialchars($plan['project_name']) ?></td>
                                 <td>
-                                    <span class="badge bg-light text-dark border">
+                                    <span class="badge  text-dark border">
                                         Budget #<?= $plan['initial_budget_id'] ?>
                                     </span>
                                     <?php if ($plan['budget_total']): ?>
@@ -61,7 +61,7 @@
                                 </td>
                                 <td>
                                     <span class="badge bg-info text-dark">
-                                        <?= htmlspecialchars($plan['design_type_name'] ?? '—') ?>
+                                        <?= htmlspecialchars($plan['work_type_name'] ?? '—') ?>
                                     </span>
                                 </td>
                                 <td>
@@ -124,13 +124,27 @@
                         <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
                         <input type="file" name="csv_file" class="form-control" accept=".csv" required>
                     </div>
-                    <div class="mb-3" style="font-size:12px;">
-                        <strong>Required CSV Columns:</strong><br>
-                        <code>Project_Name (required), Year (required), Month (1-12 required), Work_Description (required), Planned_Quantity, Estimated_Cost</code>
+                    
+                    <div class="border rounded p-2 mb-3 " style="font-size:12px;">
+                        <div class="fw-semibold mb-2"><i class="bi bi-info-circle text-primary me-1"></i>CSV Format — Required Columns:</div>
+                        <code>Project_Name, Year, Month, Work_Description</code><br>
+                        <strong>Optional Columns:</strong><br>
+                        <code class="text-muted">Work_Type_Name, Planned_Quantity, Estimated_Cost, Created_By_Email, Approved_Status, Approved_By_Email</code>
+                        
+                        <div class="text-muted mt-2" style="font-size:11px; border-top:1px solid #dee2e6; padding-top:6px;">
+                            ⚠️ <strong>Project_Name</strong> অবশ্যই ডাটাবেসে থাকা নামের সাথে হুবহু মিলতে হবে।<br>
+                            ⚠️ Project_Name থেকে স্বয়ংক্রিয়ভাবে initial_budget_id লিঙ্ক করা হবে।
+                        </div>
                     </div>
-                    <div class="text-end">
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success btn-sm ms-2"><i class="bi bi-upload me-1"></i> Import</button>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="<?= $GLOBALS['base_url'] ?>/con-working-plan-import?sample=1" class="btn btn-outline-secondary btn-sm" onclick="this.href='<?= $GLOBALS['base_url'] ?>/con-working-plan-import?sample=1'">
+                            <i class="bi bi-download me-1"></i> Download Sample CSV
+                        </a>
+                        <div>
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success btn-sm ms-2"><i class="bi bi-upload me-1"></i> Import</button>
+                        </div>
                     </div>
                 </form>
             </div>

@@ -157,37 +157,86 @@ class Con_WorkTypeController extends Controller {
             header('Location: ' . $GLOBALS['base_url'] . '/con-work-types');
             exit;
         }
+        
         $file = $_FILES['csv_file']['tmp_name'];
         $handle = fopen($file, 'r');
         if (!$handle) { setError('Cannot open file.'); header('Location: ' . $GLOBALS['base_url'] . '/con-work-types'); exit; }
+        
         $header = array_map('trim', fgetcsv($handle));
-        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
+        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM
+        
+        $resolveKey = function($row, $targetKey) {
+            $targetLower = strtolower($targetKey);
+            foreach ($row as $key => $val) {
+                $keyLower = strtolower(trim($key));
+                if ($keyLower === $targetLower || strpos($keyLower, $targetLower) === 0) {
+                    return $val;
+                }
+            }
+            return '';
+        };
+
         $successCount = 0; $errorCount = 0; $errors = [];
         $db = $this->db;
         $userId = $_SESSION['user']['id'] ?? 0;
 
         while (($data = fgetcsv($handle)) !== FALSE) {
             if (empty(array_filter($data))) continue;
-            if (count($header) !== count($data)) continue;
+            
+            $data = array_pad($data, count($header), '');
             $row = array_combine($header, $data);
             
-            $name = trim($row['Name'] ?? '');
-            $desc = trim($row['Description'] ?? '');
-            if (empty($name)) { $errorCount++; $errors[] = "Missing Name"; continue; }
-            $stmt = $db->prepare("SELECT id FROM work_types WHERE name = ? LIMIT 1");
-            $stmt->bind_param("s", $name); $stmt->execute();
-            if ($stmt->get_result()->num_rows > 0) { $errors[] = "Work Type '$name' already exists"; $errorCount++; continue; }
-            $ins = $db->prepare("INSERT INTO work_types (name, description, created_by) VALUES (?,?,?)");
-            $ins->bind_param("ssi", $name, $desc, $userId);
-            if ($ins->execute()) { $successCount++; } else { $errorCount++; $errors[] = "Failed to save '$name'"; }
-        
+            $designTypeName = trim($resolveKey($row, 'Design_Type_Name'));
+            $workTypeName   = trim($resolveKey($row, 'Work_Type_Name'));
+            $desc           = trim($resolveKey($row, 'Description'));
+            
+            if (empty($designTypeName) || empty($workTypeName)) { 
+                $errorCount++; $errors[] = "Missing Design Type or Work Type Name"; 
+                continue; 
+            }
+            
+            // Validate Design Type ID
+            $stmtD = $db->prepare('SELECT id FROM design_types WHERE name = ? LIMIT 1');
+            $stmtD->bind_param('s', $designTypeName); 
+            $stmtD->execute();
+            $resD = $stmtD->get_result();
+            if ($resD->num_rows === 0) { 
+                $errorCount++; $errors[] = "Design Type '$designTypeName' not found"; 
+                continue; 
+            }
+            $designTypeId = $resD->fetch_assoc()['id'];
+            
+            // Check if work type name already exists for this design type
+            $stmt = $db->prepare("SELECT id FROM work_types WHERE work_type_name = ? AND design_type_id = ? LIMIT 1");
+            $stmt->bind_param("si", $workTypeName, $designTypeId); 
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows > 0) { 
+                $errors[] = "Work Type '$workTypeName' already exists under '$designTypeName'"; 
+                $errorCount++; 
+                continue; 
+            }
+            
+            $insertData = [
+                'design_type_id' => $designTypeId,
+                'work_type_name' => $workTypeName,
+                'description'    => $desc,
+                'created_by'     => $userId
+            ];
+
+            if ($this->model->create($insertData)) { 
+                $successCount++; 
+            } else { 
+                $errorCount++; $errors[] = "Failed to save '$workTypeName'"; 
+            }
         }
         fclose($handle);
+        
         if ($errorCount > 0) {
-            setError("Imported $successCount. Failed $errorCount. " . implode(' | ', array_slice($errors, 0, 5)));
+            setError("Imported $successCount. Failed $errorCount. Errors: " . implode(' | ', array_slice($errors, 0, 5)));
         } else {
             setSuccess("Successfully imported $successCount records.");
         }
+        
         header('Location: ' . $GLOBALS['base_url'] . '/con-work-types');
         exit;
     }

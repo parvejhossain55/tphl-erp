@@ -100,35 +100,156 @@ $show_breadcrumb = false;
 
 <!-- Import CSV Modal: Import Project Drawings -->
 <div class="modal fade" id="importProjectDrawingCsvModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Import Project Drawings</h5>
+                <h5 class="modal-title"><i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Import Project Drawings</h5>
                 <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
                     <i class="fa-solid fa-xmark-large"></i>
                 </button>
             </div>
             <div class="modal-body">
+
+                <!-- Column Guide -->
+                <div class="mb-3">
+                    <p class="fw-semibold mb-2" style="font-size:13px;">📋 CSV Column Reference</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Column Header</th>
+                                    <th>Required?</th>
+                                    <th>Allowed Values</th>
+                                    <th>Example</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>Project_Name</code></td>
+                                    <td><span class="badge bg-danger">Required</span></td>
+                                    <td>Exact Project Name</td>
+                                    <td><em>The Prime Heights</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Design_Type_Name</code></td>
+                                    <td><span class="badge bg-danger">Required</span></td>
+                                    <td>Exact Design Type</td>
+                                    <td><em>Architectural</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Is_In_House</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>1 (Yes) or 0 (No)</td>
+                                    <td><em>1</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Internal_Designer_Email</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Valid User Email (if Is_In_House=1)</td>
+                                    <td><em>designer@example.com</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Designer_Name</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Name (if Is_In_House=0)</td>
+                                    <td><em>John Doe</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Designer_Designation</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Designation (if Is_In_House=0)</td>
+                                    <td><em>Lead Architect</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Designer_Company</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Company (if Is_In_House=0)</td>
+                                    <td><em>ABC Designs</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Design_Link</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Valid URL</td>
+                                    <td><em>https://example.com/design</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Version</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Any text</td>
+                                    <td><em>1.0</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Status</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Draft, Submitted, Approved, Rejected</td>
+                                    <td><em>Draft</em></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2 d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadProjectDrawingSampleCsv()">
+                            <i class="bi bi-download me-1"></i> Download Sample CSV
+                        </button>
+                        <span style="font-size:11px;color:#888">ডাউনলোড করে সঠিক format অনুযায়ী ফিলআপ করুন</span>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Upload Form -->
                 <form action="<?= $GLOBALS['base_url'] ?>/con-project-drawing-import" method="post" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
                         <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                        <div class="form-text">শুধুমাত্র <strong>.csv</strong> ফাইল। Excel থেকে "Save As → CSV UTF-8" করে export করুন।</div>
                     </div>
-                    <div style="font-size:12px;">
-                        <strong>Required CSV Columns:</strong><br>
-                        <code>Project_Name (required), Design_Type_Name (required), Version, Submission_Date (YYYY-MM-DD), Remarks</code>
-                    </div>
-                    <div class="text-end">
+                    <div class="d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success btn-sm ms-2">
-                            <i class="bi bi-upload me-1"></i> Import
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-upload me-1"></i> Import Now
                         </button>
                     </div>
                 </form>
+
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function downloadProjectDrawingSampleCsv() {
+    const headers = [
+        'Project_Name', 'Design_Type_Name', 'Is_In_House', 'Internal_Designer_Email', 
+        'Designer_Name', 'Designer_Designation', 'Designer_Company', 'Design_Link', 
+        'Version', 'Status'
+    ];
+    const sampleInternal = [
+        'The Prime Heights', 'Architectural', '1', 'designer@example.com', 
+        '', '', '', 'https://example.com/design1', 
+        '1.0', 'Draft'
+    ];
+    const sampleExternal = [
+        'The Prime Heights', 'Structural', '0', '', 
+        'John Doe', 'Lead Engineer', 'ABC Engineering', 'https://example.com/design2', 
+        '1.1', 'Submitted'
+    ];
+    
+    const csvContent = [
+        headers.join(','),
+        sampleInternal.map(v => '"' + v + '"').join(','),
+        sampleExternal.map(v => '"' + v + '"').join(',')
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'project_drawings_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+</script>
 
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>"

@@ -51,7 +51,7 @@ $show_breadcrumb = false;
                                         <?php endif; ?>
                                     </td>
                                     <td><?= htmlspecialchars($row['designer_name'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($row['designer_phone'] ?: 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($row['designer_phone'] ?: 'Only External') ?></td>
                                     <td>
                                         <?php if (!empty($row['design_link'])): ?>
                                             <a href="<?= htmlspecialchars($row['design_link']) ?>" target="_blank" class="btn btn-sm btn-outline-primary">
@@ -90,35 +90,141 @@ $show_breadcrumb = false;
 
 <!-- Import CSV Modal: Import Structure Design -->
 <div class="modal fade" id="importStructureDesignCsvModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Import Structure Design</h5>
+                <h5 class="modal-title"><i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Import Structure Design</h5>
                 <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
                     <i class="fa-solid fa-xmark-large"></i>
                 </button>
             </div>
             <div class="modal-body">
+
+                <!-- Column Guide -->
+                <div class="mb-3">
+                    <p class="fw-semibold mb-2" style="font-size:13px;">📋 CSV Column Reference</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Column Header</th>
+                                    <th>Required?</th>
+                                    <th>Allowed Values</th>
+                                    <th>Example</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>Project_Name</code></td>
+                                    <td><span class="badge bg-danger">Required</span></td>
+                                    <td>Exact Project Name</td>
+                                    <td><em>The Prime Heights</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Designer_Type</code></td>
+                                    <td><span class="badge bg-danger">Required</span></td>
+                                    <td>Internal or External</td>
+                                    <td><em>Internal</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Internal_Designer_Email</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Valid User Email (if Internal)</td>
+                                    <td><em>designer@example.com</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Designer_Name</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Name (if External)</td>
+                                    <td><em>John Doe</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Designer_Phone</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Phone Number</td>
+                                    <td><em>01700000000</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Designer_Address</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Address text</td>
+                                    <td><em>Dhaka, BD</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Company_Name</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Company (if External)</td>
+                                    <td><em>ABC Designs</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Design_Link</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Valid URL</td>
+                                    <td><em>https://example.com/design</em></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2 d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadStructureDesignSampleCsv()">
+                            <i class="bi bi-download me-1"></i> Download Sample CSV
+                        </button>
+                        <span style="font-size:11px;color:#888">ডাউনলোড করে সঠিক format অনুযায়ী ফিলআপ করুন</span>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Upload Form -->
                 <form action="<?= $GLOBALS['base_url'] ?>/con-structure-design-import" method="post" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
                         <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                        <div class="form-text">শুধুমাত্র <strong>.csv</strong> ফাইল। Excel থেকে "Save As → CSV UTF-8" করে export করুন।</div>
                     </div>
-                    <div style="font-size:12px;">
-                        <strong>Required CSV Columns:</strong><br>
-                        <code>Project_Name (required), Design_Stage, Consultant_Name, Submission_Date (YYYY-MM-DD), Remarks</code>
-                    </div>
-                    <div class="text-end">
+                    <div class="d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success btn-sm ms-2">
-                            <i class="bi bi-upload me-1"></i> Import
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-upload me-1"></i> Import Now
                         </button>
                     </div>
                 </form>
+
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function downloadStructureDesignSampleCsv() {
+    const headers = [
+        'Project_Name', 'Designer_Type', 'Internal_Designer_Email', 'Designer_Name', 
+        'Designer_Phone', 'Designer_Address', 'Company_Name', 'Design_Link'
+    ];
+    const sampleInternal = [
+        'The Prime Heights', 'Internal', 'designer@example.com', '', 
+        '', '', '', 'https://example.com/design1'
+    ];
+    const sampleExternal = [
+        'The Prime Heights', 'External', '', 'John Doe', 
+        '01700000000', 'Dhaka', 'ABC Engineering', 'https://example.com/design2'
+    ];
+    
+    const csvContent = [
+        headers.join(','),
+        sampleInternal.map(v => '"' + v + '"').join(','),
+        sampleExternal.map(v => '"' + v + '"').join(',')
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'structure_design_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+</script>
 
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>"

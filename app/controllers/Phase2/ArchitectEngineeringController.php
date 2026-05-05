@@ -266,8 +266,17 @@ class ArchitectEngineeringController extends Controller {
             file_put_contents(__DIR__ . '/import_debug.log',
                 date('H:i:s') . " ROW: " . json_encode($row) . "\n", FILE_APPEND);
 
+            // ── Flexible key resolver (handles "Project_Name (required)" etc.) ──
+            $resolveKey = function(array $row, string $prefix): string {
+                if (array_key_exists($prefix, $row)) return $row[$prefix];
+                foreach ($row as $k => $v) {
+                    if (stripos(trim($k), $prefix) === 0) return $v;
+                }
+                return '';
+            };
+
             // ── Required: Project_Name ────────────────────────────────────
-            $projectName = trim($row['Project_Name'] ?? '');
+            $projectName = trim($resolveKey($row, 'Project_Name'));
             if (empty($projectName)) {
                 $errorCount++;
                 $errors[] = 'Missing Project_Name';
@@ -287,7 +296,7 @@ class ArchitectEngineeringController extends Controller {
             $projectId = (int) $res->fetch_assoc()['id'];
 
             // ── Optional: Architect_Email → user_id ───────────────────────
-            $architectEmail = trim($row['Architect_Email'] ?? '');
+            $architectEmail  = trim($resolveKey($row, 'Architect_Email'));
             $architectUserId = 0;
             if (!empty($architectEmail)) {
                 $stmtU = $db->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
@@ -305,9 +314,9 @@ class ArchitectEngineeringController extends Controller {
             }
 
             // ── Other columns ─────────────────────────────────────────────
-            $designLink = trim($row['Design_Link'] ?? '');
-            $notes      = trim($row['Notes'] ?? '');
-            $status     = trim($row['Status'] ?? 'draft');
+            $designLink = trim($resolveKey($row, 'Design_Link'));
+            $notes      = trim($resolveKey($row, 'Notes'));
+            $status     = trim($resolveKey($row, 'Status'));
             $allowedStatuses = ['draft', 'partially', 'fully'];
             if (!in_array($status, $allowedStatuses)) {
                 $status = 'draft';

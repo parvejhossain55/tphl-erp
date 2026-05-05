@@ -4,7 +4,7 @@
  * Tables: project_working_plans, budget_extend_requests
  *
  * Schema (from Readme.md):
- * project_working_plans: id, project_id, initial_budget_id, design_type_id, year, month,
+ * project_working_plans: id, project_id, initial_budget_id, work_type_id, year, month,
  *                        work_description, planned_quantity, estimated_cost, created_by,
  *                        approved_status (Pending|Approved|Rejected), approved_by
  * budget_extend_requests: id, project_id, initial_budget_id, requested_by, title, amount,
@@ -26,19 +26,19 @@ class Con_WorkingPlan extends Model
     // WORKING PLANS — READ
     // =========================================================================
 
-    /** All working plans with project + budget + design type + user info */
+    /** All working plans with project + budget + work type + user info */
     public function getAll()
     {
         $sql = "SELECT w.*,
                        p.name        AS project_name,
                        b.total_estimated_cost AS budget_total,
-                       dt.name       AS design_type_name,
+                       wt.work_type_name       AS work_type_name,
                        u.full_name   AS created_by_name,
                        ap.full_name  AS approved_by_name
                 FROM {$this->planTable} w
                 LEFT JOIN projects                 p  ON p.id  = w.project_id
                 LEFT JOIN initial_estimate_budgets b  ON b.id  = w.initial_budget_id
-                LEFT JOIN design_types             dt ON dt.id = w.design_type_id
+                LEFT JOIN work_types               wt ON wt.id = w.work_type_id
                 LEFT JOIN users                    u  ON u.id  = w.created_by
                 LEFT JOIN users                    ap ON ap.id = w.approved_by
                 ORDER BY w.year DESC, w.month DESC, p.name ASC";
@@ -53,13 +53,13 @@ class Con_WorkingPlan extends Model
             "SELECT w.*,
                     p.name AS project_name,
                     b.total_estimated_cost AS budget_total,
-                    dt.name AS design_type_name,
+                    wt.work_type_name AS work_type_name,
                     u.full_name  AS created_by_name,
                     ap.full_name AS approved_by_name
              FROM {$this->planTable} w
              LEFT JOIN projects                 p  ON p.id  = w.project_id
              LEFT JOIN initial_estimate_budgets b  ON b.id  = w.initial_budget_id
-             LEFT JOIN design_types             dt ON dt.id = w.design_type_id
+             LEFT JOIN work_types               wt ON wt.id = w.work_type_id
              LEFT JOIN users                    u  ON u.id  = w.created_by
              LEFT JOIN users                    ap ON ap.id = w.approved_by
              WHERE w.id = ?"
@@ -73,10 +73,10 @@ class Con_WorkingPlan extends Model
     public function getByBudget($budgetId)
     {
         $stmt = $this->db->prepare(
-            "SELECT w.*, p.name AS project_name, dt.name AS design_type_name
+            "SELECT w.*, p.name AS project_name, wt.work_type_name AS work_type_name
              FROM {$this->planTable} w
              LEFT JOIN projects    p  ON p.id  = w.project_id
-             LEFT JOIN design_types dt ON dt.id = w.design_type_id
+             LEFT JOIN work_types  wt ON wt.id = w.work_type_id
              WHERE w.initial_budget_id = ?
              ORDER BY w.year ASC, w.month ASC"
         );
@@ -92,13 +92,13 @@ class Con_WorkingPlan extends Model
             "SELECT w.*,
                     p.name  AS project_name,
                     b.total_estimated_cost AS budget_total,
-                    dt.name AS design_type_name,
+                    wt.work_type_name AS work_type_name,
                     u.full_name  AS created_by_name,
                     ap.full_name AS approved_by_name
              FROM {$this->planTable} w
              LEFT JOIN projects                 p  ON p.id  = w.project_id
              LEFT JOIN initial_estimate_budgets b  ON b.id  = w.initial_budget_id
-             LEFT JOIN design_types             dt ON dt.id = w.design_type_id
+             LEFT JOIN work_types               wt ON wt.id = w.work_type_id
              LEFT JOIN users                    u  ON u.id  = w.created_by
              LEFT JOIN users                    ap ON ap.id = w.approved_by
              WHERE w.project_id = ?
@@ -215,7 +215,7 @@ class Con_WorkingPlan extends Model
         try {
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->planTable}
-                     (project_id, initial_budget_id, design_type_id, year, month,
+                     (project_id, initial_budget_id, work_type_id, year, month,
                       work_description, planned_quantity, estimated_cost, created_by,
                       approved_status)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')"
@@ -224,7 +224,7 @@ class Con_WorkingPlan extends Model
                 'iiiiisddi',
                 $data['project_id'],
                 $data['initial_budget_id'],
-                $data['design_type_id'],
+                $data['work_type_id'],
                 $data['year'],
                 $data['month'],
                 $data['work_description'],
@@ -241,13 +241,9 @@ class Con_WorkingPlan extends Model
         }
     }
 
-    /** Update working plan (only if budget NOT locked) */
+    /** Update working plan */
     public function updatePlan($id, $data)
     {
-        if ($this->isBudgetLocked($id)) {
-            return ['ok' => false, 'error' => 'Cannot edit — parent budget is approved.'];
-        }
-
         $budgetId = (int)$data['initial_budget_id'];
 
         // Re-validate remaining (exclude current row's cost)
@@ -267,7 +263,7 @@ class Con_WorkingPlan extends Model
 
         $stmt = $this->db->prepare(
             "UPDATE {$this->planTable}
-             SET project_id = ?, initial_budget_id = ?, design_type_id = ?,
+             SET project_id = ?, initial_budget_id = ?, work_type_id = ?,
                  year = ?, month = ?, work_description = ?,
                  planned_quantity = ?, estimated_cost = ?
              WHERE id = ?"
@@ -276,7 +272,7 @@ class Con_WorkingPlan extends Model
             'iiiiisddi',
             $data['project_id'],
             $data['initial_budget_id'],
-            $data['design_type_id'],
+            $data['work_type_id'],
             $data['year'],
             $data['month'],
             $data['work_description'],
@@ -292,12 +288,10 @@ class Con_WorkingPlan extends Model
     /** Delete a plan entry */
     public function deletePlan($id)
     {
-        if ($this->isBudgetLocked($id)) {
-            return false;
-        }
         $stmt = $this->db->prepare("DELETE FROM {$this->planTable} WHERE id = ?");
         $stmt->bind_param('i', $id);
-        return $stmt->execute();
+        $stmt->execute();
+        return $stmt->affected_rows > 0;
     }
 
     /** Check if parent initial_estimate_budget is locked */

@@ -65,14 +65,39 @@ class Con_WorkingPlanController extends Controller
         $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
         $budgets     = $this->budgetModel->getAll();
-        $designTypes = $this->designTypeModel->getAll();
+
+        // Pre-load work_types grouped by project_id for instant dropdown fill (no extra AJAX)
+        $wtQuery = $this->db->query(
+            "SELECT DISTINCT b.project_id, wt.id, wt.work_type_name, dt.name AS design_type_name
+             FROM work_types wt
+             LEFT JOIN design_types dt ON dt.id = wt.design_type_id
+             JOIN initial_estimate_items i ON i.work_type_id = wt.id
+             JOIN initial_estimate_budgets b ON b.id = i.budget_id
+             UNION
+             SELECT DISTINCT b.project_id, wt.id, wt.work_type_name, dt.name AS design_type_name
+             FROM work_types wt
+             LEFT JOIN design_types dt ON dt.id = wt.design_type_id
+             JOIN initial_estimate_labors l ON l.work_type_id = wt.id
+             JOIN initial_estimate_budgets b ON b.id = l.budget_id
+             ORDER BY work_type_name ASC"
+        );
+        $workTypesByProject = [];
+        if ($wtQuery) {
+            while ($row = $wtQuery->fetch_assoc()) {
+                $pid = $row['project_id'];
+                $workTypesByProject[$pid][] = [
+                    'id'    => $row['id'],
+                    'label' => $row['work_type_name'] . ' (' . ($row['design_type_name'] ?: 'N/A') . ')'
+                ];
+            }
+        }
 
         $this->view('phase2/working_plans/create-working-plan', [
-            'current_route' => 'con-working-plan-create',
-            'page_title'    => 'New Working Plan Entry',
-            'projects'      => $projects,
-            'budgets'       => $budgets,
-            'designTypes'   => $designTypes,
+            'current_route'       => 'con-working-plan-create',
+            'page_title'          => 'New Working Plan Entry',
+            'projects'            => $projects,
+            'budgets'             => $budgets,
+            'workTypesByProject'  => $workTypesByProject,
         ]);
     }
 
@@ -93,7 +118,7 @@ class Con_WorkingPlanController extends Controller
         $data = [
             'project_id'        => (int)   ($_POST['project_id']        ?? 0),
             'initial_budget_id' => (int)   ($_POST['initial_budget_id'] ?? 0),
-            'design_type_id'    => (int)   ($_POST['design_type_id']    ?? 0),
+            'work_type_id'      => (int)   ($_POST['work_type_id']      ?? 0),
             'year'              => (int)   ($_POST['year']              ?? date('Y')),
             'month'             => (int)   ($_POST['month']             ?? date('n')),
             'work_description'  =>          trim($_POST['work_description'] ?? ''),
@@ -178,7 +203,7 @@ class Con_WorkingPlanController extends Controller
         $data = [
             'project_id'        => (int)   ($_POST['project_id']        ?? 0),
             'initial_budget_id' => (int)   ($_POST['initial_budget_id'] ?? 0),
-            'design_type_id'    => (int)   ($_POST['design_type_id']    ?? 0),
+            'work_type_id'      => (int)   ($_POST['work_type_id']      ?? 0),
             'year'              => (int)   ($_POST['year']              ?? date('Y')),
             'month'             => (int)   ($_POST['month']             ?? date('n')),
             'work_description'  =>          trim($_POST['work_description'] ?? ''),
@@ -401,7 +426,34 @@ class Con_WorkingPlanController extends Controller
             ];
         }, $rawBudgets);
 
-        echo json_encode(['work_plans' => $workPlans, 'budgets' => $budgets]);
+        // Work Types from estimate items & labors for this project
+        $stmtWt = $this->db->prepare(
+            "SELECT DISTINCT wt.id, wt.work_type_name AS work_type_name, dt.name AS design_type_name
+             FROM work_types wt
+             LEFT JOIN design_types dt ON dt.id = wt.design_type_id
+             WHERE wt.id IN (
+                 SELECT i.work_type_id FROM initial_estimate_items i JOIN initial_estimate_budgets b ON i.budget_id = b.id WHERE b.project_id = ?
+                 UNION
+                 SELECT l.work_type_id FROM initial_estimate_labors l JOIN initial_estimate_budgets b ON l.budget_id = b.id WHERE b.project_id = ?
+             )
+             ORDER BY wt.work_type_name ASC"
+        );
+        $stmtWt->bind_param('ii', $projectId, $projectId);
+        $stmtWt->execute();
+        $workTypesRaw = $stmtWt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $workTypes = array_map(function($w) {
+            return [
+                'id' => $w['id'],
+                'label' => $w['work_type_name'] . ' (' . ($w['design_type_name'] ?: 'No Design') . ')'
+            ];
+        }, $workTypesRaw);
+
+        echo json_encode([
+            'work_plans' => $workPlans, 
+            'budgets'    => $budgets,
+            'work_types' => $workTypes
+        ]);
         exit;
     }
 
@@ -410,56 +462,137 @@ class Con_WorkingPlanController extends Controller
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: ' . $GLOBALS['base_url'] . '/con-working-plans'); exit;
         }
+
+        // Support Sample Download
+        if (isset($_GET['sample'])) {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="sample_working_plans.csv"');
+            echo "\xEF\xBB\xBF"; // UTF-8 BOM
+            echo "Project_Name,Work_Type_Name,Year,Month,Work_Description,Planned_Quantity,Estimated_Cost,Created_By_Email,Approved_Status,Approved_By_Email\n";
+            echo "The Prime Heights,Soil Analysis & Footing Design,2025,6,Foundation layout completion,1,55000,manager@example.com,approved,admin@example.com\n";
+            exit;
+        }
+
         if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
             setError('Please upload a valid CSV file.');
             header('Location: ' . $GLOBALS['base_url'] . '/con-working-plans'); exit;
         }
-        $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
-        if (!$handle) { setError('Cannot open file.'); header('Location: ' . $GLOBALS['base_url'] . '/con-working-plans'); exit; }
-        $header = array_map('trim', fgetcsv($handle));
-        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
-        $successCount = 0; $errorCount = 0; $errors = [];
+
+        // ── Read file with UTF-8 support (Bengali fix) ────────────────────────
+        $raw = file_get_contents($_FILES['csv_file']['tmp_name']);
+        $raw = ltrim($raw, "\xEF\xBB\xBF"); // strip BOM
+        $raw = str_replace("\r\n", "\n", $raw);
+        $raw = str_replace("\r", "\n", $raw);
+        $lines = array_filter(explode("\n", $raw), fn($l) => trim($l) !== '');
+        $lines = array_values($lines);
+
+        if (empty($lines)) {
+            setError('CSV file is empty.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-working-plans'); exit;
+        }
+
+        $headerRow = array_map('trim', str_getcsv(array_shift($lines)));
+        
         $db = $this->db;
-        $userId = $_SESSION['user']['id'] ?? 0;
+        $db->set_charset('utf8mb4');
+        $sessionUserId = $_SESSION['user']['id'] ?? 0;
 
-        while (($data = fgetcsv($handle)) !== FALSE) {
-            if (empty(array_filter($data))) continue;
-            if (count($header) !== count($data)) continue;
-            $row = array_combine($header, $data);
+        $successCount = 0; $errorCount = 0; $errors = [];
 
-            $projectName = trim($row['Project_Name'] ?? '');
-            $year        = (int)($row['Year'] ?? 0);
-            $month       = (int)($row['Month'] ?? 0);
-            $workDesc    = trim($row['Work_Description'] ?? '');
-            $plannedQty  = (float)($row['Planned_Quantity'] ?? 0);
-            $estCost     = (float)($row['Estimated_Cost'] ?? 0);
+        // Helpers
+        $resolveProject = function ($name) use ($db) {
+            if (!$name) return null;
+            $s = $db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1");
+            $s->bind_param('s', $name); $s->execute();
+            $r = $s->get_result()->fetch_assoc();
+            return $r ? (int)$r['id'] : null;
+        };
 
-            if (empty($projectName) || !$year || !$month || empty($workDesc)) {
-                $errorCount++; $errors[] = "Missing required fields in row"; continue;
+        $resolveBudget = function ($projectId) use ($db) {
+            if (!$projectId) return null;
+            $s = $db->prepare("SELECT id FROM initial_estimate_budgets WHERE project_id = ? LIMIT 1");
+            $s->bind_param('i', $projectId); $s->execute();
+            $r = $s->get_result()->fetch_assoc();
+            return $r ? (int)$r['id'] : null;
+        };
+
+        $resolveWorkType = function ($name) use ($db) {
+            if (!$name) return null;
+            $s = $db->prepare("SELECT id FROM work_types WHERE name = ? LIMIT 1");
+            $s->bind_param('s', $name); $s->execute();
+            $r = $s->get_result()->fetch_assoc();
+            return $r ? (int)$r['id'] : null;
+        };
+
+        $resolveUserEmail = function ($email) use ($db) {
+            if (!$email) return null;
+            $s = $db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+            $s->bind_param('s', $email); $s->execute();
+            $r = $s->get_result()->fetch_assoc();
+            return $r ? (int)$r['id'] : null;
+        };
+
+        foreach ($lines as $lineNo => $line) {
+            $cols = array_map('trim', str_getcsv($line));
+            $hCount = count($headerRow);
+            if (count($cols) < $hCount) $cols = array_pad($cols, $hCount, '');
+            elseif (count($cols) > $hCount) $cols = array_slice($cols, 0, $hCount);
+            
+            $row = array_combine($headerRow, $cols);
+            if ($row === false) continue;
+
+            $projectName    = trim($row['Project_Name'] ?? '');
+            $workTypeName   = trim($row['Work_Type_Name'] ?? '');
+            $year           = (int)($row['Year'] ?? 0);
+            $month          = (int)($row['Month'] ?? 0);
+            $workDesc       = trim($row['Work_Description'] ?? '');
+            $plannedQty     = (float)($row['Planned_Quantity'] ?? 0);
+            $estCost        = (float)($row['Estimated_Cost'] ?? 0);
+            $createdEmail   = trim($row['Created_By_Email'] ?? '');
+            $approvedStatus = trim($row['Approved_Status'] ?? 'Draft');
+            $approvedEmail  = trim($row['Approved_By_Email'] ?? '');
+
+            if (!$projectName || !$workDesc) {
+                $errorCount++; $errors[] = "Line " . ($lineNo + 2) . ": Missing Project_Name or Work_Description"; continue;
             }
 
-            $stmt = $db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1");
-            $stmt->bind_param('s', $projectName); $stmt->execute();
-            $res = $stmt->get_result();
-            if ($res->num_rows === 0) { $errorCount++; $errors[] = "Project '$projectName' not found"; continue; }
-            $projectId = $res->fetch_assoc()['id'];
+            $projectId = $resolveProject($projectName);
+            if (!$projectId) {
+                $errorCount++; $errors[] = "Line " . ($lineNo + 2) . ": Project '$projectName' not found"; continue;
+            }
 
-            // Get first initial_budget for this project
-            $stmtB = $db->prepare("SELECT id FROM initial_estimate_budgets WHERE project_id = ? LIMIT 1");
-            $stmtB->bind_param('i', $projectId); $stmtB->execute();
-            $budgetRow = $stmtB->get_result()->fetch_assoc();
-            $budgetId = $budgetRow ? $budgetRow['id'] : 0;
+            $budgetId = $resolveBudget($projectId);
+            if (!$budgetId) {
+                $errorCount++; $errors[] = "Line " . ($lineNo + 2) . ": No initial budget found for project '$projectName'"; continue;
+            }
+
+            $workTypeId = $resolveWorkType($workTypeName) ?: 1; // fallback if not found
+
+            $createdById  = $resolveUserEmail($createdEmail) ?: $sessionUserId;
+            $approvedById = $resolveUserEmail($approvedEmail) ?: null;
 
             $ins = $db->prepare("INSERT INTO project_working_plans
-                (project_id, initial_budget_id, design_type_id, year, month, work_description, planned_quantity, estimated_cost, created_by, approved_status)
-                VALUES (?,?,1,?,?,?,?,?,?,'Draft')");
-            $ins->bind_param('iiissddsi', $projectId, $budgetId, $year, $month, $workDesc, $plannedQty, $estCost, $userId);
+                (project_id, initial_budget_id, work_type_id, year, month, work_description, planned_quantity, estimated_cost, created_by, approved_status, approved_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                
+            $ins->bind_param('iiiissddisi', 
+                $projectId, $budgetId, $workTypeId, $year, $month, 
+                $workDesc, $plannedQty, $estCost, $createdById, $approvedStatus, $approvedById
+            );
 
-            if ($ins->execute()) { $successCount++; } else { $errorCount++; $errors[] = "DB error: " . $db->error; }
+            if ($ins->execute()) {
+                $successCount++;
+            } else {
+                $errorCount++; $errors[] = "Line " . ($lineNo + 2) . ": DB error: " . $ins->error;
+            }
         }
-        fclose($handle);
-        if ($errorCount > 0) { setError("Imported $successCount. Failed $errorCount. " . implode(' | ', array_slice($errors, 0, 5))); }
-        else { setSuccess("Successfully imported $successCount records."); }
-        header('Location: ' . $GLOBALS['base_url'] . '/con-working-plans'); exit;
+
+        if ($errorCount > 0) { 
+            setError("Imported $successCount. Failed $errorCount. " . implode(' | ', array_slice($errors, 0, 5))); 
+        } else { 
+            setSuccess("Successfully imported $successCount records."); 
+        }
+        header('Location: ' . $GLOBALS['base_url'] . '/con-working-plans'); 
+        exit;
     }
 }
