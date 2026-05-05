@@ -86,12 +86,32 @@ class Con_VendorPaymentRequestController extends Controller
 
     public function create()
     {
-        $projects     = $this->projectModel->getAll();
+        // Filter projects to only those assigned to the current user
+        // (as site engineer, operation head, PM, or admin/super-admin)
+        $userId = (int)$this->userId;
+        $roleId = (int)$this->userRole;
+
+        if (in_array($roleId, [1, 3])) {
+            // Admin/Super-admin sees all
+            $projectStmt = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
+        } else {
+            // Only projects where this user is assigned
+            $projectStmt = $this->db->prepare(
+                "SELECT id, name FROM projects
+                 WHERE deleted_at IS NULL
+                   AND (site_engineer_id = ? OR operation_head_id = ? OR pm_id = ? OR operator_id = ? OR estimator_id = ?)
+                 ORDER BY name"
+            );
+            $projectStmt->bind_param('iiiii', $userId, $userId, $userId, $userId, $userId);
+            $projectStmt->execute();
+            $projectStmt = $projectStmt->get_result();
+        }
+        $projects = ($projectStmt instanceof \mysqli_result)
+            ? $projectStmt->fetch_all(MYSQLI_ASSOC)
+            : [];
+
         $vendors      = $this->vendorModel->getAll();
         $paymentTypes = ['Advance', 'Partial', 'Final'];
-
-        // Fetch all purchase orders for initial load (AJAX will filter by project)
-        $allPOs = $this->poModel->getAll();
 
         $this->view('phase2/vendor-payment-requests/create-payment', [
             'current_route' => 'con-vendor-payment-requests',
@@ -99,7 +119,7 @@ class Con_VendorPaymentRequestController extends Controller
             'projects'      => $projects,
             'vendors'       => $vendors,
             'payment_types' => $paymentTypes,
-            'all_pos'       => $allPOs,
+            'all_pos'       => [],
         ]);
     }
 
@@ -494,6 +514,94 @@ class Con_VendorPaymentRequestController extends Controller
     }
 
     // =========================================================================
+    // API: AJAX — Net Receivable for a Vendor (project optional)
+    // GET: ?vendor_id=N&project_id=N
+    // Returns accepted_qty × unit_price MINUS returned qty — already paid
+    // =========================================================================
+
+    public function ajaxGetVendorReceivable()
+    {
+        header('Content-Type: application/json');
+
+        $vendorId  = (int)($_GET['vendor_id']  ?? 0);
+        $projectId = (int)($_GET['project_id'] ?? 0);
+
+        if (!$vendorId) {
+            echo json_encode(['success' => false, 'receivable' => 0, 'penalty' => 0]);
+            exit;
+        }
+
+        // Net received amount (accepted_qty - returned_qty) × unit_price
+        $sql = "
+            SELECT
+                COALESCE(SUM(
+                    (mri.accepted_qty - COALESCE(ret.return_qty, 0)) * poi.unit_price
+                ), 0) AS net_receivable
+            FROM material_receiving_items mri
+            JOIN material_receiving mr    ON mr.id = mri.receiving_id
+            JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+            JOIN purchase_orders po       ON po.id  = mr.purchase_order_id
+            JOIN purchase_requests pr     ON pr.id  = po.request_id
+            LEFT JOIN (
+                SELECT material_item_id, SUM(return_qty) AS return_qty
+                FROM material_return_items mret
+                JOIN material_returns mrets ON mrets.id = mret.return_id
+                WHERE mrets.status IN ('returned','sent')
+                GROUP BY material_item_id
+            ) ret ON ret.material_item_id = mri.id
+            WHERE poi.selected_vendor_id = ?
+              AND mri.status IN ('Accepted','Partially Accepted')
+        ";
+
+        $params = [$vendorId];
+        $types  = 'i';
+
+        if ($projectId) {
+            $sql    .= " AND pr.project_id = ?";
+            $params[] = $projectId;
+            $types   .= 'i';
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $netReceivable = (float)$stmt->get_result()->fetch_assoc()['net_receivable'];
+
+        // Total already paid to this vendor (approved payments only)
+        $paidSql = "
+            SELECT COALESCE(SUM(vpr.net_payable_amount), 0) AS total_paid
+            FROM vendor_payment_requests vpr
+            JOIN purchase_orders po   ON po.id = vpr.purchase_order_id
+            JOIN purchase_requests pr ON pr.id = po.request_id
+            WHERE vpr.vendor_id = ?
+              AND vpr.status IN ('Approved','Paid','Partially_Paid','Fully_Paid')
+        ";
+        $paidParams = [$vendorId];
+        $paidTypes  = 'i';
+        if ($projectId) {
+            $paidSql    .= " AND pr.project_id = ?";
+            $paidParams[] = $projectId;
+            $paidTypes   .= 'i';
+        }
+        $paidStmt = $this->db->prepare($paidSql);
+        $paidStmt->bind_param($paidTypes, ...$paidParams);
+        $paidStmt->execute();
+        $totalPaid = (float)$paidStmt->get_result()->fetch_assoc()['total_paid'];
+
+        $dueAmount = max(0, $netReceivable - $totalPaid);
+        $penalty   = $this->model->getPendingPenaltySum($vendorId);
+
+        echo json_encode([
+            'success'        => true,
+            'net_receivable' => round($netReceivable, 2),
+            'total_paid'     => round($totalPaid,     2),
+            'due_amount'     => round($dueAmount,     2),
+            'penalty'        => round($penalty,       2),
+        ]);
+        exit;
+    }
+
+    // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================
 
@@ -730,13 +838,26 @@ class Con_VendorPaymentRequestController extends Controller
             $vStmt->execute();
             $totalValue = (float)$vStmt->get_result()->fetch_assoc()['total'];
 
-            // Received amount
+            // Received amount (accepted qty × unit_price) MINUS returned qty
             $rStmt = $this->db->prepare("
-                SELECT COALESCE(SUM(poi.quantity * poi.unit_price), 0) AS received_amount
-                FROM purchase_order_items poi
-                JOIN material_receiving mr ON mr.purchase_order_id = poi.purchase_order_id
-                WHERE poi.purchase_order_id = ?
-                  AND mr.overall_status IN ('QC Approved','Accepted','Fully Received','Partially Received','Partially Accepted')");
+                SELECT
+                    COALESCE(SUM(
+                        (mri.accepted_qty - COALESCE(ret.return_qty, 0)) * poi.unit_price
+                    ), 0) AS received_amount
+                FROM material_receiving_items mri
+                JOIN material_receiving mr   ON mr.id = mri.receiving_id
+                JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+                LEFT JOIN (
+                    SELECT material_item_id, SUM(return_qty) AS return_qty
+                    FROM material_return_items mret
+                    JOIN material_returns mrets ON mrets.id = mret.return_id
+                    WHERE mrets.status IN ('returned','sent')
+                    GROUP BY material_item_id
+                ) ret ON ret.material_item_id = mri.id
+                WHERE mr.purchase_order_id = ?
+                  AND mr.overall_status IN ('QC Approved','Accepted','Fully Received','Partially Received','Partially Accepted','Completed')
+                  AND mri.status IN ('Accepted','Partially Accepted')
+            ");
             $rStmt->bind_param('i', $poId);
             $rStmt->execute();
             $receivedAmount = (float)$rStmt->get_result()->fetch_assoc()['received_amount'];

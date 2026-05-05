@@ -51,12 +51,18 @@ class Con_InitialEstimateController extends Controller
 
     public function create()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22])) {
+        if (!in_array($roleId, [1, 3, 22, 23])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -85,6 +91,12 @@ class Con_InitialEstimateController extends Controller
 
     public function store()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         // ── Header ──────────────────────────────────────────────────────────
@@ -272,6 +284,12 @@ class Con_InitialEstimateController extends Controller
 
     public function edit($id)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $budget = $this->model->find($id);
         if (!$budget) {
             setError('Budget not found.');
@@ -313,6 +331,12 @@ class Con_InitialEstimateController extends Controller
 
     public function update($id)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         if ($this->model->isLocked($id)) {
@@ -430,7 +454,7 @@ class Con_InitialEstimateController extends Controller
         $roleId   = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Role guard: only 1, 3, 15
-        if (!in_array($roleId, [1, 3, 15])) {
+        if (!in_array($roleId, [1, 3, 15, 23])) {
             setError('You do not have permission to approve budgets.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;
@@ -472,7 +496,7 @@ class Con_InitialEstimateController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Role guard: only 1, 3, 15 can reject
-        if (!in_array($roleId, [1, 3, 15])) {
+        if (!in_array($roleId, [1, 3, 15, 23])) {
             setError('You do not have permission to reject budgets.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;
@@ -627,5 +651,74 @@ class Con_InitialEstimateController extends Controller
 
         echo json_encode(['archs' => $archs, 'drawings' => $drawings]);
         exit;
+    }
+
+    // ─── CSV Import ────────────────────────────────────────────────────────
+    public function importCsv() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . $GLOBALS['base_url'] . '/con-estimates'); exit;
+        }
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError('Please upload a valid CSV file.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-estimates'); exit;
+        }
+        $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
+        if (!$handle) { setError('Cannot open file.'); header('Location: ' . $GLOBALS['base_url'] . '/con-estimates'); exit; }
+        $header = array_map('trim', fgetcsv($handle));
+        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
+        $successCount = 0; $errorCount = 0; $errors = [];
+        $db = $this->db;
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        while (($data = fgetcsv($handle)) !== FALSE) {
+            if (empty(array_filter($data))) continue;
+            if (count($header) !== count($data)) continue;
+            $row = array_combine($header, $data);
+
+            $projectName  = trim($row['Project_Name'] ?? '');
+            $workTypeName = trim($row['Work_Type_Name'] ?? '');
+            $areaSqft     = (float)($row['Total_Area_Sqft'] ?? 0);
+            $matCost      = (float)($row['Material_Cost_Total'] ?? 0);
+            $labCost      = (float)($row['Labor_Cost_Total'] ?? 0);
+            $otherCost    = (float)($row['Other_Costs'] ?? 0);
+            $totalCost    = (float)($row['Total_Estimated_Cost'] ?? ($matCost + $labCost + $otherCost));
+            $startDate    = trim($row['Start_Date'] ?? date('Y-m-d'));
+            $endDate      = trim($row['End_Date'] ?? date('Y-m-d'));
+
+            if (empty($projectName)) { $errorCount++; $errors[] = "Missing Project_Name"; continue; }
+
+            // Resolve project_id
+            $stmt = $db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1");
+            $stmt->bind_param('s', $projectName); $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res->num_rows === 0) { $errorCount++; $errors[] = "Project '$projectName' not found"; continue; }
+            $projectId = $res->fetch_assoc()['id'];
+
+            // Resolve work_type_id (optional)
+            $workTypeId = null;
+            if (!empty($workTypeName)) {
+                $stmtW = $db->prepare("SELECT id FROM work_types WHERE name = ? LIMIT 1");
+                $stmtW->bind_param('s', $workTypeName); $stmtW->execute();
+                $resW = $stmtW->get_result();
+                if ($resW->num_rows > 0) $workTypeId = $resW->fetch_assoc()['id'];
+            }
+
+            // Get first architect_engineering record for this project
+            $stmtA = $db->prepare("SELECT id FROM architect_engineering WHERE project_id = ? LIMIT 1");
+            $stmtA->bind_param('i', $projectId); $stmtA->execute();
+            $resA = $stmtA->get_result()->fetch_assoc();
+            $archId = $resA ? $resA['id'] : 0;
+
+            $ins = $db->prepare("INSERT INTO initial_estimate_budgets
+                (project_id, architecture_id, work_type_id, total_area_sqft, material_cost_total, labor_cost_total, other_costs, total_estimated_cost, start_date, end_date, created_by)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+            $ins->bind_param('iiidddddss i', $projectId, $archId, $workTypeId, $areaSqft, $matCost, $labCost, $otherCost, $totalCost, $startDate, $endDate, $userId);
+
+            if ($ins->execute()) { $successCount++; } else { $errorCount++; $errors[] = "DB error for '$projectName': " . $db->error; }
+        }
+        fclose($handle);
+        if ($errorCount > 0) { setError("Imported $successCount. Failed $errorCount. " . implode(' | ', array_slice($errors, 0, 5))); }
+        else { setSuccess("Successfully imported $successCount records."); }
+        header('Location: ' . $GLOBALS['base_url'] . '/con-estimates'); exit;
     }
 }

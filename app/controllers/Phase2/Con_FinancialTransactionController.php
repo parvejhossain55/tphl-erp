@@ -181,6 +181,12 @@ class Con_FinancialTransactionController extends Controller
     ====================== */
     public function store()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         // Role check
         if (!$this->canProcessPayment()) {
             setError('You are not authorized to process payments.');

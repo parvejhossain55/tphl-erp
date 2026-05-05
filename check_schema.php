@@ -1,14 +1,7 @@
 <?php
-$db = new mysqli("localhost", "root", "", "tphl_db");
-$res = $db->query("DESCRIBE lead_follow_ups");
-while($row = $res->fetch_assoc()) {
-    echo $row['Field'] . ' - ' . $row['Type'] . "\n";
-}
-
-echo "LEADS:\n";
-$res = $db->query("DESCRIBE leads");
-while($row = $res->fetch_assoc()) {
-    if ($row['Field'] == 'lead_type') {
-        echo $row['Field'] . ' - ' . $row['Type'] . "\n";
-    }
+$c = require 'C:/xampp/htdocs/TPHL-ERP/app/config/config.php';
+$db = new mysqli($c['db_host'], $c['db_user'], $c['db_pass'], $c['db_name']);
+$res = $db->query("SHOW COLUMNS FROM material_receiving");
+while ($row = $res->fetch_assoc()) {
+    print_r($row['Field'] . "\n");
 }

@@ -49,7 +49,7 @@ $sc = $statusMap[$overallStatus];
   }
 
   .tgt-hero {
-    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 55%, #3b82f6 100%);
+    background: #059669;
     border-radius: 18px;
     padding: 26px 30px;
     margin-bottom: 22px;
@@ -274,14 +274,14 @@ $sc = $statusMap[$overallStatus];
           <a href="<?= $base_url ?>/con-targets" class="tgt-btn-w">
             <i class="fal fa-arrow-left"></i>Back
           </a>
-          <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>" class="tgt-btn-w" style="background:linear-gradient(135deg,#2563eb,#3b82f6);border:none">
+          <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>" class="tgt-btn-w" style="border:none">
             <i class="fal fa-plus-circle"></i>Create BOM
           </a>
         </div>
       </div>
       <div style="text-align:right">
         <div style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;
-          padding:8px 18px;border-radius:20px;background:<?= $sc['bg'] ?>;color:<?= $sc['text'] ?>">
+          padding:8px 18px;border-radius:20px;background:<?= $sc['bg'] ?>;color:#fff">
           <i class="fal <?= $sc['icon'] ?>"></i><?= $overallStatus ?>
         </div>
         <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:8px">

@@ -91,11 +91,6 @@ class Project extends Model
         $convention         = isset($data['convention']) ? (int)$data['convention'] : 0;
         $electricity_backup = isset($data['electricity_backup']) ? (int)$data['electricity_backup'] : 0;
         $price_range = !empty($data['price_range']) ? $data['price_range'] : null;
-        
-        $plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
-            ? null
-            : (float)$data['plot_size'];
-
         // ======================
         // Insert Query (Total 35 Columns)
         // ======================
@@ -148,7 +143,7 @@ class Project extends Model
             $data['front_road'],            // 13
             $price_range,                   // 14
             $data['hover_text'],            // 15
-            $plot_size,                     // 16 (s)
+            $data['plot_size'],             // 16 (s)
             $data['plot_no'],               // 17
             $data['block_no'],              // 18
             $data['brochure_link'],         // 19
@@ -180,11 +175,7 @@ class Project extends Model
             $operator_id                    // 46 (i)
         );
 
-        if (!$stmt->execute()) {
-            setError($stmt->error);
-            return false;
-        }
-        return true;
+        return $stmt->execute();
     }
 
     /* =========================
@@ -432,11 +423,7 @@ class Project extends Model
         );
 
 
-        if (!$stmt->execute()) {
-            setError($stmt->error);
-            return false;
-        }
-        return true;
+        return $stmt->execute();
     }
 
     public function softDelete($projectId)
@@ -471,110 +458,65 @@ class Project extends Model
     }
 
 
-    public function inventoryGetAll($projectId = null, $flatName = null, $status = null)
+    public function inventoryGetAll()
     {
         // 1. Fetch all projects summary
         $projects = [];
-        $sql = "
+        $stmt = $this->db->prepare("
         SELECT 
             p.id AS project_id,
             p.name AS project_name,
             COUNT(f.id) AS total_flats,
-            COALESCE(SUM(f.is_booked = 0), 0) AS available_flats,
-            COALESCE(SUM(f.is_booked = 1 AND f.status = 'booked'), 0) AS booked_flats,
-            COALESCE(SUM(f.status = 'sold'), 0) AS sold_flats,
-            COALESCE(SUM(f.status = 'cancelled'), 0) AS cancelled_flats,
-            COALESCE(SUM(f.price_value), 0) AS total_flat_value
+            SUM(f.is_booked = 0) AS available_flats,
+            SUM(f.is_booked = 1 AND f.status = 'booked') AS booked_flats,
+            SUM(f.status = 'sold') AS sold_flats,
+            SUM(f.status = 'cancelled') AS cancelled_flats,
+            SUM(f.price_value) AS total_flat_value
         FROM projects p
-        LEFT JOIN flats f ON f.project_id = p.id AND f.deleted_at IS NULL
+        LEFT JOIN flats f ON f.project_id = p.id
         WHERE p.deleted_at IS NULL
-        ";
-        
-        if (!empty($projectId)) {
-            $sql .= " AND p.id = " . (int)$projectId;
-        }
+        AND f.deleted_at IS NULL 
+        GROUP BY p.id
+    ");
 
-        $sql .= " GROUP BY p.id";
-
-        $stmt = $this->db->prepare($sql);
         $stmt->execute();
         $result = $stmt->get_result();
 
         while ($row = $result->fetch_assoc()) {
-            $row['flats'] = [];
             $projects[$row['project_id']] = $row;
         }
 
-        // 2. Fetch flats grouped by project
-        $sql2 = "
-        SELECT 
-            f.id,
-            f.project_id,
-            f.flat_name,
-            f.sqft,
-            f.bhk,
-            f.price_value,
-            f.is_booked,
-            f.status,
-            CASE 
-                WHEN f.is_booked = 1 OR f.status = 'booked' 
-                THEN lb.agreement_value
-                ELSE NULL
-            END AS agreement_value
-        FROM flats f
-        JOIN projects p ON f.project_id = p.id
-        LEFT JOIN lead_bookings lb 
-            ON lb.flat_id = f.id
-        WHERE f.deleted_at IS NULL AND p.deleted_at IS NULL
-        ";
+        // 2. Fetch all flats grouped by project
+        $stmt2 = $this->db->prepare("
+    SELECT 
+        f.id,
+        f.project_id,
+        f.flat_name,
+        f.sqft,
+        f.bhk,
+        f.price_value,
+        f.is_booked,
+        f.status,
+        CASE 
+            WHEN f.is_booked = 1 OR f.status = 'booked' 
+            THEN lb.agreement_value
+            ELSE NULL
+        END AS agreement_value
+    FROM flats f
+    LEFT JOIN lead_bookings lb 
+        ON lb.flat_id = f.id
+        WHERE f.deleted_at IS NULL
+    ORDER BY f.project_id, f.flat_name
+");
 
-        $params = [];
-        $types = "";
 
-        if (!empty($projectId)) {
-            $sql2 .= " AND f.project_id = ?";
-            $params[] = $projectId;
-            $types .= "i";
-        }
-        if (!empty($flatName)) {
-            $sql2 .= " AND f.flat_name LIKE ?";
-            $params[] = "%$flatName%";
-            $types .= "s";
-        }
-        if (!empty($status)) {
-            if ($status === 'available') {
-                $sql2 .= " AND f.is_booked = 0";
-            } elseif ($status === 'booked') {
-                $sql2 .= " AND f.is_booked = 1";
-            }
-        }
-
-        $sql2 .= " ORDER BY f.project_id, f.flat_name";
-
-        $stmt2 = $this->db->prepare($sql2);
-        if (!empty($params)) {
-            $stmt2->bind_param($types, ...$params);
-        }
         $stmt2->execute();
         $flatsResult = $stmt2->get_result();
 
         while ($flat = $flatsResult->fetch_assoc()) {
-            if (isset($projects[$flat['project_id']])) {
-                $projects[$flat['project_id']]['flats'][] = $flat;
-            }
-        }
-        
-        $filteredProjects = [];
-        foreach ($projects as $proj) {
-            if (!empty($flatName) || !empty($status)) {
-                if (count($proj['flats']) > 0) {
-                    $filteredProjects[] = $proj;
-                }
-            } else {
-                $filteredProjects[] = $proj;
-            }
+            $projects[$flat['project_id']]['flats'][] = $flat;
         }
 
-        return $filteredProjects;
+        return array_values($projects); // return numeric array
     }
 }

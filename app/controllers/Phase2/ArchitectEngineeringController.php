@@ -24,7 +24,7 @@ class ArchitectEngineeringController extends Controller {
         $userId  = $_SESSION['user']['id']  ?? 0;
         $roleId  = $_SESSION['user']['role_id'] ?? 0;
 
-        if (in_array($roleId, [1, 2, 13, 15])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
             $records = $this->model->getAll();
         } else {
             $stmt = $this->db->prepare("
@@ -47,6 +47,12 @@ class ArchitectEngineeringController extends Controller {
     }
 
     public function create() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $userId   = $_SESSION['user']['id']  ?? 0;
         $roleId   = $_SESSION['user']['role_id'] ?? 0;
         $projects = $this->getMyAssignedProjects($userId, $roleId, 'architect_id');
@@ -61,6 +67,12 @@ class ArchitectEngineeringController extends Controller {
     }
 
     public function store() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $data = [
             'project_id'                    => $_POST['project_id'] ?? 0,
             'user_id'                       => $_SESSION['user']['id'], // auto from session
@@ -96,6 +108,12 @@ class ArchitectEngineeringController extends Controller {
     }
 
     public function edit() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id     = $_GET['id'] ?? 0;
         $record = $this->model->find($id);
 
@@ -118,6 +136,12 @@ class ArchitectEngineeringController extends Controller {
     }
 
     public function update() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id = $_POST['id'] ?? 0;
 
         // Capture OLD status before update
@@ -162,6 +186,12 @@ class ArchitectEngineeringController extends Controller {
     }
 
     public function delete() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id = $_POST['id'] ?? 0;
         if ($this->model->delete($id)) {
             setSuccess("Deleted successfully.");
@@ -181,7 +211,7 @@ class ArchitectEngineeringController extends Controller {
 
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        if (in_array($roleId, [1, 2, 13, 15])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
             return $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);
@@ -193,4 +223,122 @@ class ArchitectEngineeringController extends Controller {
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
+
+    // ─── CSV Import Method ───────────
+    public function importCsv() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . $GLOBALS['base_url'] . '/con-architect-engineering');
+            exit;
+        }
+
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError('Please upload a valid CSV file.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-architect-engineering');
+            exit;
+        }
+
+        $file   = $_FILES['csv_file']['tmp_name'];
+        $handle = fopen($file, 'r');
+        if ($handle === FALSE) {
+            setError('Failed to open CSV file.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-architect-engineering');
+            exit;
+        }
+
+        $header       = array_map('trim', fgetcsv($handle));
+        $header[0]    = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
+        $successCount = 0;
+        $errorCount   = 0;
+        $errors       = [];
+        $db           = $this->db;
+        $createdBy    = $_SESSION['user']['id'] ?? 0;
+
+        while (($data = fgetcsv($handle)) !== FALSE) {
+            if (empty(array_filter($data))) continue;
+            if (count($header) !== count($data)) {
+                file_put_contents(__DIR__ . '/import_debug.log',
+                    "SKIP: header_count=" . count($header) . " data_count=" . count($data) . "\n", FILE_APPEND);
+                continue;
+            }
+            $row = array_combine($header, $data);
+
+            // Debug log
+            file_put_contents(__DIR__ . '/import_debug.log',
+                date('H:i:s') . " ROW: " . json_encode($row) . "\n", FILE_APPEND);
+
+            // ── Required: Project_Name ────────────────────────────────────
+            $projectName = trim($row['Project_Name'] ?? '');
+            if (empty($projectName)) {
+                $errorCount++;
+                $errors[] = 'Missing Project_Name';
+                continue;
+            }
+
+            // Resolve project_id
+            $stmt = $db->prepare('SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1');
+            $stmt->bind_param('s', $projectName);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res->num_rows === 0) {
+                $errorCount++;
+                $errors[] = "Project '$projectName' not found";
+                continue;
+            }
+            $projectId = (int) $res->fetch_assoc()['id'];
+
+            // ── Optional: Architect_Email → user_id ───────────────────────
+            $architectEmail = trim($row['Architect_Email'] ?? '');
+            $architectUserId = 0;
+            if (!empty($architectEmail)) {
+                $stmtU = $db->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
+                $stmtU->bind_param('s', $architectEmail);
+                $stmtU->execute();
+                $resU = $stmtU->get_result();
+                if ($resU->num_rows > 0) {
+                    $architectUserId = (int) $resU->fetch_assoc()['id'];
+                } else {
+                    $errors[] = "Warning: Architect email '$architectEmail' not found — using uploader as architect";
+                    $architectUserId = $createdBy;
+                }
+            } else {
+                $architectUserId = $createdBy;
+            }
+
+            // ── Other columns ─────────────────────────────────────────────
+            $designLink = trim($row['Design_Link'] ?? '');
+            $notes      = trim($row['Notes'] ?? '');
+            $status     = trim($row['Status'] ?? 'draft');
+            $allowedStatuses = ['draft', 'partially', 'fully'];
+            if (!in_array($status, $allowedStatuses)) {
+                $status = 'draft';
+            }
+
+            // ── INSERT ────────────────────────────────────────────────────
+            $ins = $db->prepare(
+                'INSERT INTO architect_engineering
+                 (project_id, user_id, full_architecture_design_link, notes, status, created_by)
+                 VALUES (?, ?, ?, ?, ?, ?)'
+            );
+            $ins->bind_param('iisssi', $projectId, $architectUserId, $designLink, $notes, $status, $createdBy);
+
+            if ($ins->execute()) {
+                $successCount++;
+            } else {
+                $errorCount++;
+                $errors[] = "DB error for '$projectName': " . $db->error;
+            }
+        }
+
+        fclose($handle);
+
+        if ($errorCount > 0) {
+            setError("Imported $successCount. Failed $errorCount. " . implode(' | ', array_slice($errors, 0, 5)));
+        } else {
+            setSuccess("Successfully imported $successCount architect/engineering records.");
+        }
+
+        header('Location: ' . $GLOBALS['base_url'] . '/con-architect-engineering');
+        exit;
+    }
+
 }

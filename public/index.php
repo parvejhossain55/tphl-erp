@@ -762,6 +762,15 @@ $routes['project-architecture-dashboard']        = ['controller' => 'Phase2\Con_
 $routes['project-structural-design-dashboard']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectStructuralDesignDashboard'];
 $routes['estimator-dashboard']                   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'estimatorDashboard'];
 
+// ── QC Module ──────────────────────────────────────────────────────────────
+$routes['qc-dashboard']                = ['controller' => 'Phase2\QCController', 'method' => 'index'];
+$routes['qc-inspection-create']        = ['controller' => 'Phase2\QCController', 'method' => 'createInspection'];
+$routes['qc-inspection-store']         = ['controller' => 'Phase2\QCController', 'method' => 'storeInspection'];
+$routes['qc-material-test-create']     = ['controller' => 'Phase2\QCController', 'method' => 'createMaterialTest'];
+$routes['qc-material-test-store']      = ['controller' => 'Phase2\QCController', 'method' => 'storeMaterialTest'];
+$routes['qc-ajax-checklists']          = ['controller' => 'Phase2\QCController', 'method' => 'ajaxGetChecklists'];
+$routes['qc-ajax-receiving-items']     = ['controller' => 'Phase2\QCController', 'method' => 'ajaxGetReceivingItems'];
+
 // ── Operators / Contractors ────────────────────────────────────────────────
 $routes['con-contractors']              = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'index'];
 $routes['con-contractor-create']        = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'create'];
@@ -834,12 +843,15 @@ $routes['con-purchase-order/(\d+)']    = ['controller' => 'Phase2\Con_PurchaseOr
 $routes['con-purchase-order-generate/(\d+)'] = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'generate'];
 $routes['con-purchase-order-approve/(\d+)']  = ['controller' => 'Phase2\\Con_PurchaseOrderController', 'method' => 'approvePO'];
 
-// ── Material Receiving / GRN ───────────────────────────────────────────────
 $routes['con-material-receivings']             = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'index'];
 $routes['con-material-receiving-create/(\d+)'] = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'create'];
 $routes['con-material-receiving-store']        = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'store'];
 $routes['con-material-receiving-qc/(\d+)']     = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'qcReview'];
 $routes['con-material-receiving-pm/(\d+)']     = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'pmStore'];
+
+// ── Material Returns ───────────────────────────────────────────────────────
+$routes['con-material-returns']             = ['controller' => 'Phase2\Con_MaterialReturnController', 'method' => 'index'];
+$routes['con-material-returns/update/(\d+)'] = ['controller' => 'Phase2\Con_MaterialReturnController', 'method' => 'updateStatus'];
 
 // ── Vendor Payment Requests ────────────────────────────────────────────────
 $routes['con-vendor-payment-requests']          = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'index'];
@@ -882,10 +894,11 @@ $routes['con-weekly-report/(\d+)']      = ['controller' => 'Phase2\Con_WeeklyRep
 $routes['con-weekly-report-approve/(\d+)'] = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'approve'];
 $routes['con-ajax-work-plans']          = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'ajaxWorkPlans'];
 $routes['con-ajax-report-targets']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'ajaxTargets'];
-$routes['con-vendor-payment-ajax-penalty']  = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'];
-$routes['con-vendor-payment-ajax-advance']  = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetAdvanceSummary'];
-$routes['con-ajax-po-by-vendor']            = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPOsByVendor'];
-$routes['con-ajax-po-by-project']          = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPOsByProject'];
+$routes['con-vendor-payment-ajax-penalty']      = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'];
+$routes['con-vendor-payment-ajax-advance']      = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetAdvanceSummary'];
+$routes['con-vendor-payment-ajax-receivable']   = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetVendorReceivable'];
+$routes['con-ajax-po-by-vendor']                = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPOsByVendor'];
+$routes['con-ajax-po-by-project']               = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPOsByProject'];
 // Legacy aliases
 $routes['con-daily-reports']            = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'index'];
 $routes['con-daily-report-create']      = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'create'];
@@ -915,6 +928,20 @@ $routes['con-land-study-store']        = ['controller' => 'Phase2\Con_PreConstru
 $routes['con-drawing-store']           = ['controller' => 'Phase2\Con_PreConstructionController', 'method' => 'storeDrawing'];
 $routes['con-soil-test-store']         = ['controller' => 'Phase2\Con_PreConstructionController', 'method' => 'storeSoilTest'];
 
+// ── CSV Imports (Pre-Construction Modules) ────────────────────────────────
+$routes['con-land-visibility-import']        = ['controller' => 'Phase2\\LandVisibilityStudyController',      'method' => 'importCsv'];
+$routes['con-architect-engineering-import']  = ['controller' => 'Phase2\\ArchitectEngineeringController',     'method' => 'importCsv'];
+$routes['con-design-type-import']            = ['controller' => 'Phase2\\DesignTypeController',               'method' => 'importCsv'];
+$routes['con-project-drawing-import']        = ['controller' => 'Phase2\\ProjectDrawingController',           'method' => 'importCsv'];
+$routes['con-structure-design-import']       = ['controller' => 'Phase2\\ProjectStructuralDesignController',  'method' => 'importCsv'];
+$routes['con-soil-test-import']              = ['controller' => 'Phase2\\SoilTestController',                 'method' => 'importCsv'];
+$routes['con-work-type-import']              = ['controller' => 'Phase2\\Con_WorkTypeController',             'method' => 'importCsv'];
+
+// ── CSV Imports Batch 3 (Estimation & Targets) ────────────────────────────
+$routes['con-estimate-import']               = ['controller' => 'Phase2\\Con_InitialEstimateController',      'method' => 'importCsv'];
+$routes['con-working-plan-import']           = ['controller' => 'Phase2\\Con_WorkingPlanController',          'method' => 'importCsv'];
+$routes['con-target-import']                 = ['controller' => 'Phase2\\Con_TargetFixedController',          'method' => 'importCsv'];
+
 // ── Initial Estimate Budgets ──────────────────────────────────────────────
 $routes['con-estimates']              = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'index'];
 $routes['con-estimate-create']        = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'create'];
@@ -938,6 +965,7 @@ $routes['con-material-issue/(\d+)']          = ['controller' => 'Phase2\Con_Mate
 $routes['con-vendor-penalties']              = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'index'];
 $routes['con-vendor-penalty-create']         = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'create'];
 $routes['con-vendor-penalty-store']          = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'store'];
+$routes['con-vendor-penalty-update-status']  = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'updateStatus'];
 $routes['con-vendor-penalty-delete']         = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'delete'];
 
 // ── Target Fixed — missing routes ─────────────────────────────────────────

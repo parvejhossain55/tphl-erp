@@ -15,6 +15,10 @@
 </div>
 
 <?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+$roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+// Roles: 1=Super Admin, 3=Admin, 13=QC Engineer, 22/23=Other Admins
+$canQC = in_array($roleId, [1, 3, 13, 22, 23]);
 $isPending = ($receiving['overall_status'] === 'Pending QC');
 ?>
 
@@ -60,7 +64,7 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                     </div>
                     <?php if (!empty($receiving['site_eng_note']) || !empty($receiving['site_eng_photo'])): ?>
                     <hr class="my-3">
-                    <div class="row bg-light p-3 rounded mx-0">
+                    <div class="row  p-3 rounded mx-0">
                         <div class="col-md-8">
                             <label class="small text-uppercase text-muted d-block fw-bold">Site Engineer Note</label>
                             <p class="mb-0 small"><?= nl2br(htmlspecialchars($receiving['site_eng_note'] ?? '—')) ?></p>
@@ -80,21 +84,80 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                 </div>
             </div>
 
+            <!-- Lab Test Results -->
+            <?php if (!empty($labTests)): ?>
+            <div class="card__wrapper shadow-sm mb-4">
+                <div class="card__header bg-light">
+                    <h6 class="card__title m-2 text-primary">
+                        <i class="bi bi-flask me-2"></i>Lab Test Results
+                    </h6>
+                </div>
+                <div class="card__body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th>Test Name</th>
+                                    <th>Result Value</th>
+                                    <th>Status</th>
+                                    <th>Lab Report</th>
+                                    <th>Tested By</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($labTests as $test): ?>
+                                <tr>
+                                    <td class="fw-bold"><?= htmlspecialchars($test['test_name']) ?></td>
+                                    <td><?= htmlspecialchars($test['result_value']) ?></td>
+                                    <td>
+                                        <?php if ($test['test_status'] === 'pass'): ?>
+                                            <span class="badge bg-success px-2 py-1"><i class="bi bi-check-circle me-1"></i>Pass</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-danger px-2 py-1"><i class="bi bi-x-circle me-1"></i>Fail</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($test['lab_report_link'])): ?>
+                                            <a href="<?= htmlspecialchars($test['lab_report_link']) ?>" target="_blank" class="btn btn-sm btn-outline-info p-1" style="font-size:11px;">
+                                                <i class="bi bi-link-45deg"></i> Link
+                                            </a>
+                                        <?php endif; ?>
+                                        <?php if (!empty($test['attachment'])): ?>
+                                            <a href="<?= $base_url . $test['attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary p-1 ms-1" style="font-size:11px;">
+                                                <i class="bi bi-file-earmark-pdf"></i> Doc
+                                            </a>
+                                        <?php endif; ?>
+                                        <?php if (empty($test['lab_report_link']) && empty($test['attachment'])): ?>
+                                            <span class="text-muted small">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="small text-muted"><?= htmlspecialchars($test['created_by_name'] ?? '—') ?></td>
+                                    <td class="small text-muted"><?= date('d M Y h:i A', strtotime($test['created_at'])) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- QC Review Table -->
             <div class="card__wrapper shadow-sm">
                 <div class="card__header">
-                    <h6 class="card__title mb-0">
+                    <h6 class="card__title m-2">
                         <i class="bi bi-clipboard-check me-2"></i>
                         <?= $isPending ? 'Perform QC Inspection' : 'QC Results' ?>
                     </h6>
                 </div>
                 <div class="card__body p-4">
 
-                    <?php if ($isPending): ?>
+                    <?php if ($isPending && $canQC): ?>
                     <!-- QC FORM — Accept/Reject each item -->
                     <form action="<?= $base_url ?>/con-material-receiving-qc/<?= $receiving['id'] ?>" method="POST" id="qcForm" enctype="multipart/form-data">
-
-                        <div class="row g-3 mb-4">
+                        <!-- ... (form content) ... -->
+                        <div class="row  mb-4">
                             <div class="col-md-8">
                                 <label class="form-label fw-bold">QC General Note</label>
                                 <textarea name="qc_note" class="form-control" rows="2" placeholder="Overall quality remarks..."></textarea>
@@ -137,11 +200,23 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                                         <td>
                                             <select name="item_status[<?= $item['id'] ?>]"
                                                     class="form-select form-select-sm qc-decision" required
-                                                    data-row="<?= $i ?>">
+                                                    data-row="<?= $i ?>"
+                                                    onchange="togglePartial(<?= $i ?>, <?= $item['received_quantity'] ?>)">
                                                 <option value="">-- Select --</option>
-                                                <option value="Accepted">✓ Accept</option>
-                                                <option value="Rejected">✗ Reject</option>
+                                                <option value="Accepted">✓ Accept All</option>
+                                                <option value="Rejected">✗ Reject All</option>
+                                                <option value="Partially Accepted">◐ Partial Accept</option>
                                             </select>
+                                            <div id="partial-qty-<?= $i ?>" style="display:none;" class="mt-2">
+                                                <div class="input-group input-group-sm mb-1">
+                                                    <span class="input-group-text bg-success text-white">Accept</span>
+                                                    <input type="number" step="0.001" name="accepted_qty[<?= $item['id'] ?>]" id="acc-<?= $i ?>" class="form-control" onkeyup="calcRej(<?= $i ?>, <?= $item['received_quantity'] ?>)">
+                                                </div>
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text bg-danger text-white">Reject</span>
+                                                    <input type="number" step="0.001" name="rejected_qty[<?= $item['id'] ?>]" id="rej-<?= $i ?>" class="form-control" readonly>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td>
                                             <input type="text" name="issue_reason[<?= $item['id'] ?>]"
@@ -166,9 +241,15 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                     </form>
 
                     <?php else: ?>
+                    
+                    <?php if ($isPending && !$canQC): ?>
+                        <div class="alert alert-warning small mb-3">
+                            <i class="bi bi-hourglass-split me-1"></i> This GRN is currently awaiting Quality Control (QC) review. You are viewing this in read-only mode.
+                        </div>
+                    <?php endif; ?>
                     <!-- QC COMPLETED — Show Results -->
                     <?php if (!empty($receiving['qc_note']) || !empty($receiving['qc_photo'])): ?>
-                    <div class="row bg-light p-3 rounded mx-0 mb-4 border border-info">
+                    <div class="row  p-3 rounded mx-0 mb-4 border border-info">
                         <div class="col-md-8">
                             <label class="small text-uppercase text-muted d-block fw-bold text-info">QC Note</label>
                             <p class="mb-0 small"><?= nl2br(htmlspecialchars($receiving['qc_note'] ?? '—')) ?></p>
@@ -221,7 +302,7 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                         </table>
                     </div>
 
-                    <div class="mt-3 p-3 bg-light rounded">
+                    <div class="mt-3 p-3  rounded">
                         <div class="row text-center">
                             <div class="col-md-4">
                                 <span class="fw-bold text-success fs-5">
@@ -249,26 +330,38 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                     <?php 
                         if (session_status() === PHP_SESSION_NONE) session_start();
                         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-                        if (in_array($roleId, [1, 3, 15, 20])): 
+                        if (in_array($roleId, [1, 3, 15, 20, 22, 23])): 
                     ?>
-                    <hr class="my-4">
-                    <div class="alert alert-info border-info mb-0">
-                        <h6 class="alert-heading fw-bold"><i class="bi bi-person-check-fill me-2"></i>PM / Management Approval Required</h6>
-                        <p class="small mb-3">QC has completed their review. Please verify the QC results and approve. <strong>Stock will be updated upon your approval.</strong></p>
-                        
-                        <form action="<?= $base_url ?>/con-material-receiving-pm/<?= $receiving['id'] ?>" method="POST">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold small">Approval Note (Optional)</label>
-                                <textarea name="pm_note" class="form-control" rows="2" placeholder="Any final remarks..."></textarea>
+                    <hr class="my-4" style="border-color:#e2e8f0;">
+                    <div class="con-panel" style="border-color:rgba(139,92,246,.4); background:rgba(139,92,246,.04); border-radius:12px; padding:20px;">
+                        <div class="d-flex align-items-center mb-3">
+                            <div style="width:40px;height:40px;border-radius:50%;background:rgba(139,92,246,.15);display:flex;align-items:center;justify-content:center;margin-right:15px;">
+                                <i class="fal fa-user-check" style="color:#7c3aed;font-size:18px;"></i>
                             </div>
-                            <button type="submit" class="btn btn-primary" onclick="return confirm('Approve this GRN? Stock will be officially updated.')">
-                                <i class="bi bi-check2-all me-1"></i> Approve GRN & Update Stock
-                            </button>
+                            <div>
+                                <h6 class="fw-bold mb-1" style="color:#6d28d9;font-size:15px;">PM / Management Approval Required</h6>
+                                <p class="text-muted small mb-0">QC has completed their review. Please verify the results and approve to update stock.</p>
+                            </div>
+                        </div>
+                        
+                        <form action="<?= $GLOBALS['base_url'] ?>/con-material-receiving-pm/<?= $receiving['id'] ?>" method="POST">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold" style="font-size:12px;color:#4b5563;">Approval Note (Optional)</label>
+                                <textarea name="pm_note" class="form-control" rows="2" placeholder="Any final remarks..." style="border-radius:8px;border:1px solid #cbd5e1;font-size:13px;"></textarea>
+                            </div>
+                            <div class="text-end">
+                                <button type="submit" class="btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border-radius:8px;font-weight:600;font-size:13px;padding:8px 20px;border:none;box-shadow:0 4px 6px -1px rgba(139,92,246,.3);" onclick="return confirm('Approve this GRN? Stock will be officially updated.')">
+                                    <i class="fal fa-check-double me-1"></i> Acknowledge &amp; Update Stock
+                                </button>
+                            </div>
                         </form>
                     </div>
                     <?php else: ?>
-                        <div class="alert alert-warning mt-3 mb-0 small">
-                            <i class="bi bi-hourglass-split me-1"></i> Waiting for Management/PM Approval to update stock.
+                        <div class="con-panel mt-4" style="border-color:rgba(245,158,11,.3); background:rgba(245,158,11,.05); border-radius:10px; padding:15px;">
+                            <div class="d-flex align-items-center">
+                                <i class="fal fa-hourglass-half me-2" style="color:#d97706;font-size:16px;"></i>
+                                <span style="color:#b45309;font-size:13px;font-weight:600;">Waiting for Management / PM Approval to update stock.</span>
+                            </div>
                         </div>
                     <?php endif; ?>
                     <?php elseif (in_array($receiving['overall_status'], ['Accepted', 'Partially Accepted', 'Rejected']) && !empty($receiving['pm_approved_at'])): ?>
@@ -288,22 +381,45 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
 </section>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // Enable/disable reject reason based on QC decision
-    document.querySelectorAll('.qc-decision').forEach(function (sel) {
-        sel.addEventListener('change', function () {
-            var row    = this.getAttribute('data-row');
-            var reason = document.querySelector('.qc-reason[data-row="' + row + '"]');
-            if (this.value === 'Rejected') {
-                reason.disabled = false;
-                reason.required = true;
-                reason.focus();
+    function togglePartial(rowId, totalQty) {
+        const select = document.querySelector(`.qc-decision[data-row="${rowId}"]`);
+        const val = select.value;
+        const partialDiv = document.getElementById(`partial-qty-${rowId}`);
+        const reasonInput = document.querySelector(`.qc-reason[data-row="${rowId}"]`);
+        
+        if (val === 'Partially Accepted') {
+            partialDiv.style.display = 'block';
+            reasonInput.disabled = false;
+            reasonInput.placeholder = 'Reason for rejected portion...';
+            reasonInput.required = true;
+            document.getElementById(`acc-${rowId}`).required = true;
+        } else {
+            partialDiv.style.display = 'none';
+            document.getElementById(`acc-${rowId}`).required = false;
+            if (val === 'Rejected') {
+                reasonInput.disabled = false;
+                reasonInput.placeholder = 'Required if rejected...';
+                reasonInput.required = true;
+                reasonInput.focus();
             } else {
-                reason.disabled = true;
-                reason.required = false;
-                reason.value    = '';
+                reasonInput.disabled = true;
+                reasonInput.value = '';
+                reasonInput.required = false;
             }
-        });
-    });
-});
+        }
+    }
+    
+    function calcRej(rowId, totalQty) {
+        const accInput = document.getElementById(`acc-${rowId}`);
+        const rejInput = document.getElementById(`rej-${rowId}`);
+        let acc = parseFloat(accInput.value) || 0;
+        if (acc > totalQty) {
+            acc = totalQty;
+            accInput.value = acc;
+        } else if (acc < 0) {
+            acc = 0;
+            accInput.value = acc;
+        }
+        rejInput.value = (totalQty - acc).toFixed(3);
+    }
 </script>

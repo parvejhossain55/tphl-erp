@@ -65,6 +65,12 @@ class Con_PurchaseOrderController extends Controller
         // Fetch the BOQ linked to this PO (via PR.bom_id) — shown to PM before approval
         $linkedBoq = $this->poModel->getLinkedBoq($id);
 
+        // Check if any material receiving already exists for this PO
+        $existingReceivingQuery = $this->db->prepare("SELECT COUNT(*) as count FROM material_receiving WHERE purchase_order_id = ?");
+        $existingReceivingQuery->bind_param('i', $id);
+        $existingReceivingQuery->execute();
+        $hasReceiving = $existingReceivingQuery->get_result()->fetch_assoc()['count'] > 0;
+
         $this->view('phase2/purchase-orders/show-purchase-order', [
             'current_route'  => 'con-purchase-orders',
             'page_title'     => 'Purchase Order #' . $id,
@@ -78,6 +84,7 @@ class Con_PurchaseOrderController extends Controller
             'canApprovePM'   => $canApprovePM,
             'currentRoleId'  => $currentRoleId,
             'linkedBoq'      => $linkedBoq,
+            'hasReceiving'   => $hasReceiving,
         ]);
     }
 
@@ -146,7 +153,7 @@ class Con_PurchaseOrderController extends Controller
             $stmt->bind_param('ii', $userId, $id);
             $stmt->execute();
 
-        } elseif (in_array($roleId, [1, 3, 15, 20])) {
+        } elseif (in_array($roleId, [1, 3, 15, 20, 23])) {
             // PM / Top Management approval
             if (!empty($po['approved_by_pm'])) {
                 setError('Authorized PM/Director has already approved this PO.');

@@ -24,7 +24,7 @@ class ProjectDrawingController extends Controller {
         $userId = $_SESSION['user']['id']  ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
 
-        if (in_array($roleId, [1, 2, 13, 15])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
             $records = $this->model->getAll();
         } else {
             $stmt = $this->db->prepare("
@@ -47,6 +47,12 @@ class ProjectDrawingController extends Controller {
     }
 
     public function create() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $userId       = $_SESSION['user']['id']  ?? 0;
         $roleId       = $_SESSION['user']['role_id'] ?? 0;
 
@@ -70,6 +76,12 @@ class ProjectDrawingController extends Controller {
     }
 
     public function store() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $isInHouse = (int)($_POST['is_in_house'] ?? 1);
         $data = [
             'project_id'           => $_POST['project_id'] ?? 0,
@@ -104,6 +116,12 @@ class ProjectDrawingController extends Controller {
     }
 
     public function edit() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id     = $_GET['id'] ?? 0;
         $record = $this->model->find($id);
 
@@ -128,6 +146,12 @@ class ProjectDrawingController extends Controller {
     }
 
     public function update() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id   = $_POST['id'] ?? 0;
         $data = [
             'project_id'           => $_POST['project_id'] ?? 0,
@@ -163,6 +187,12 @@ class ProjectDrawingController extends Controller {
     }
 
     public function delete() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id = $_POST['id'] ?? 0;
         if ($this->model->delete($id)) {
             setSuccess("Deleted successfully.");
@@ -182,7 +212,7 @@ class ProjectDrawingController extends Controller {
 
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        if (in_array($roleId, [1, 2, 13, 15])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
             return $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);
@@ -201,7 +231,7 @@ class ProjectDrawingController extends Controller {
      */
     private function getProjectsForDraftsman(int $userId, int $roleId): array
     {
-        if (in_array($roleId, [1, 2, 13, 15])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
             // Admins/PM/QC see all projects with AE fully done
             return $this->db->query("
                 SELECT DISTINCT p.id, p.name
@@ -231,7 +261,7 @@ class ProjectDrawingController extends Controller {
     private function getBlockedProjectsForDraftsman(int $userId, int $roleId): array
     {
         // Admins can create for any project regardless; no blocked state for them
-        if (in_array($roleId, [1, 2, 13, 15])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
             return [];
         }
         $stmt = $this->db->prepare("
@@ -248,5 +278,73 @@ class ProjectDrawingController extends Controller {
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
-}
 
+    // ─── CSV Import Method ───────────
+    public function importCsv() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . $GLOBALS['base_url'] . '/con-dashboard');
+            exit;
+        }
+
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError('Please upload a valid CSV file.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-project-drawings');
+            exit;
+        }
+
+        $file = $_FILES['csv_file']['tmp_name'];
+        $handle = fopen($file, 'r');
+        if ($handle === FALSE) { setError('Failed to open CSV file.'); header('Location: ' . $GLOBALS['base_url'] . '/con-project-drawings'); exit; }
+
+        $header = array_map('trim', fgetcsv($handle));
+        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
+        $successCount = 0; $errorCount = 0; $errors = [];
+        $db = $this->db;
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        while (($data = fgetcsv($handle)) !== FALSE) {
+            if (empty(array_filter($data))) continue;
+            $row = array_combine($header, $data);
+            
+            $projectName = trim($row['Project_Name'] ?? '');
+            $designTypeName = trim($row['Design_Type_Name'] ?? '');
+            $version = trim($row['Version'] ?? '');
+            $subDate = trim($row['Submission_Date'] ?? date('Y-m-d'));
+            $remarks = trim($row['Remarks'] ?? '');
+
+            if (empty($projectName) || empty($designTypeName)) { $errorCount++; $errors[] = 'Missing Project/Design Type'; continue; }
+
+            // Project ID
+            $stmt = $db->prepare('SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1');
+            $stmt->bind_param('s', $projectName); $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res->num_rows === 0) { $errorCount++; $errors[] = "Project '$projectName' not found"; continue; }
+            $projectId = $res->fetch_assoc()['id'];
+
+            // Design Type ID
+            $stmtD = $db->prepare('SELECT id FROM design_types WHERE name = ? LIMIT 1');
+            $stmtD->bind_param('s', $designTypeName); $stmtD->execute();
+            $resD = $stmtD->get_result();
+            if ($resD->num_rows === 0) { $errorCount++; $errors[] = "Design Type '$designTypeName' not found"; continue; }
+            $designTypeId = $resD->fetch_assoc()['id'];
+
+            $insertData = [
+                'project_id' => $projectId,
+                'design_type_id' => $designTypeId,
+                'version_number' => $version,
+                'submission_date' => $subDate,
+                'remarks' => $remarks,
+                'created_by' => $userId
+            ];
+
+            if ($this->model->create($insertData)) { $successCount++; } 
+            else { $errorCount++; $errors[] = "Failed to save data for Project '$projectName'."; }
+        }
+        fclose($handle);
+        if ($errorCount > 0) { setError("Imported $successCount. Failed $errorCount. Errors: " . implode(' | ', array_slice($errors, 0, 5))); } 
+        else { setSuccess("Successfully imported $successCount records."); }
+        header('Location: ' . $GLOBALS['base_url'] . '/con-project-drawings');
+        exit;
+    }
+
+}

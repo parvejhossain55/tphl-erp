@@ -6,13 +6,24 @@ $show_breadcrumb = false;
 
 
 
-<div class="mb-3 pagetitle d-flex justify-content-between align-items-center">
+<div class="mb-3 pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div class="">
         <h4 class="mb-2">Land Visibility Study</h4>
     </div>
-    <a href="<?= $GLOBALS['base_url'] ?>/con-land-visibility-studies/create" class="btn btn-primary ">
-        <i class="fa-light fa-plus me-1"></i> Add New Study
-    </a>
+    <div class="row justify-content-end mb-3 mt-3">
+        <div class="col-12">
+            <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
+                <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                    <a href="<?= $GLOBALS['base_url'] ?>/con-land-visibility-studies/create" class="btn btn-primary text-nowrap">
+                        <i class="fa-light fa-plus me-1"></i> Add New Study
+                    </a>
+                    <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importLandVisibilityCsvModal">
+                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 <div class="row">
     <div class="col-xxl-12">
@@ -93,6 +104,40 @@ $show_breadcrumb = false;
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Import CSV Modal: Import Land Visibility Study -->
+<div class="modal fade" id="importLandVisibilityCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Land Visibility Study</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/con-land-visibility-import" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
+                        <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                    </div>
+                    <div style="font-size:12px;">
+                        <strong>Required CSV Columns:</strong><br>
+                        <code>Project_Name (required), Land_Legal_Doc_Status (Pending/Verified/Rejected), Digital_Survey_Report_Link, Govt_Approval_Doc_Link, Others_Doc_Link</code>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm ms-2">
+                            <i class="bi bi-upload me-1"></i> Import
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

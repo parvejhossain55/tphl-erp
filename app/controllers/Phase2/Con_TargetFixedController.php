@@ -40,13 +40,19 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function create()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22])) {
+        if (!in_array($roleId, [1, 3, 22, 23])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -67,6 +73,12 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function store()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $isLabTest   = (int)($_POST['is_lab_test']   ?? 0);
@@ -178,6 +190,12 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function edit($id)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $target    = $this->targetModel->find($id);
@@ -191,7 +209,7 @@ class Con_TargetFixedController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22])) {
+        if (!in_array($roleId, [1, 3, 22, 23])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -213,6 +231,12 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function update($id)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $isLabTest   = (int)($_POST['is_lab_test']   ?? 0);
@@ -346,5 +370,64 @@ class Con_TargetFixedController extends Controller
 
         echo json_encode(['targets' => $rows]);
         exit;
+    }
+
+    // ─── CSV Import ────────────────────────────────────────────────────────
+    public function importCsv() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . $GLOBALS['base_url'] . '/con-targets'); exit;
+        }
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError('Please upload a valid CSV file.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-targets'); exit;
+        }
+        $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
+        if (!$handle) { setError('Cannot open file.'); header('Location: ' . $GLOBALS['base_url'] . '/con-targets'); exit; }
+        $header = array_map('trim', fgetcsv($handle));
+        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
+        $successCount = 0; $errorCount = 0; $errors = [];
+        $db = $this->db;
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        while (($data = fgetcsv($handle)) !== FALSE) {
+            if (empty(array_filter($data))) continue;
+            if (count($header) !== count($data)) continue;
+            $row = array_combine($header, $data);
+
+            $projectName   = trim($row['Project_Name'] ?? '');
+            $targetTitle   = trim($row['Target_Title'] ?? '');
+            $year          = (int)($row['Year'] ?? 0);
+            $month         = (int)($row['Month'] ?? 0);
+            $weekNumber    = !empty($row['Week_Number']) ? (int)$row['Week_Number'] : null;
+            $targetPct     = (float)($row['Target_Percentage'] ?? 0);
+
+            if (empty($projectName) || !$year || !$month || $targetPct <= 0) {
+                $errorCount++; $errors[] = "Missing required fields"; continue;
+            }
+
+            $stmt = $db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1");
+            $stmt->bind_param('s', $projectName); $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res->num_rows === 0) { $errorCount++; $errors[] = "Project '$projectName' not found"; continue; }
+            $projectId = $res->fetch_assoc()['id'];
+
+            if ($weekNumber !== null) {
+                $ins = $db->prepare("INSERT INTO target_fixed
+                    (project_id, user_id, target_title, year, month, week_number, target_percentage, is_lab_test, approved_by_site_eng, approved_by_qc, approved_by_pc, approved_by_pd, approved_by_manager)
+                    VALUES (?,?,?,?,?,?,?,0,0,0,0,0,0)");
+                $ins->bind_param('iissiii d', $projectId, $userId, $targetTitle, $year, $month, $weekNumber, $targetPct);
+            } else {
+                $ins = $db->prepare("INSERT INTO target_fixed
+                    (project_id, user_id, target_title, year, month, target_percentage, is_lab_test, approved_by_site_eng, approved_by_qc, approved_by_pc, approved_by_pd, approved_by_manager)
+                    VALUES (?,?,?,?,?,?,0,0,0,0,0,0)");
+                $ins->bind_param('iissii d', $projectId, $userId, $targetTitle, $year, $month, $targetPct);
+            }
+
+            if ($ins->execute()) { $successCount++; } else { $errorCount++; $errors[] = "DB error: " . $db->error; }
+        }
+        fclose($handle);
+        if ($errorCount > 0) { setError("Imported $successCount. Failed $errorCount. " . implode(' | ', array_slice($errors, 0, 5))); }
+        else { setSuccess("Successfully imported $successCount records."); }
+        header('Location: ' . $GLOBALS['base_url'] . '/con-targets'); exit;
     }
 }

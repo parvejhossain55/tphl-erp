@@ -65,6 +65,18 @@ $page_title = $page_title ?? 'New Contractor Bill';
                                 </div>
                             </div>
 
+                            <!-- Work Type -->
+                            <div class="col-md-12 mt-3">
+                                <label class="form-label fw-semibold">Work Type <span class="text-danger">*</span></label>
+                                <select name="work_type_id" id="work_type_id" class="form-select" required>
+                                    <option value="">-- Select Work Type --</option>
+                                    <?php foreach ($workTypes as $wt): ?>
+                                        <option value="<?= $wt['id'] ?>"><?= htmlspecialchars($wt['work_type_name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small class="text-muted">A Passed QC Inspection is required for this work type.</small>
+                            </div>
+
                             <!-- Bill Date -->
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Bill Date <span class="text-danger">*</span></label>

@@ -24,7 +24,7 @@ class ProjectStructuralDesignController extends Controller {
         $userId = $_SESSION['user']['id']  ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
 
-        if (in_array($roleId, [1, 2, 13, 15])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
             $records = $this->model->getAll();
         } else {
             $stmt = $this->db->prepare("
@@ -47,6 +47,12 @@ class ProjectStructuralDesignController extends Controller {
     }
 
     public function create() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $userId   = $_SESSION['user']['id']  ?? 0;
         $roleId   = $_SESSION['user']['role_id'] ?? 0;
         $projects = $this->getMyAssignedProjects($userId, $roleId, 'struct_engineer_id');
@@ -61,6 +67,12 @@ class ProjectStructuralDesignController extends Controller {
     }
 
     public function store() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $designer_type = $_POST['designer_type'] ?? 'internal';
 
         if ($designer_type === 'internal') {
@@ -109,6 +121,12 @@ class ProjectStructuralDesignController extends Controller {
     }
 
     public function edit() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id     = $_GET['id'] ?? 0;
         $record = $this->model->find($id);
 
@@ -131,6 +149,12 @@ class ProjectStructuralDesignController extends Controller {
     }
 
     public function update() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id   = $_POST['id'] ?? 0;
         
         $designer_type = $_POST['designer_type'] ?? 'internal';
@@ -171,6 +195,12 @@ class ProjectStructuralDesignController extends Controller {
     }
 
     public function delete() {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id = $_POST['id'] ?? 0;
         if ($this->model->delete($id)) {
             setSuccess("Deleted successfully.");
@@ -190,7 +220,7 @@ class ProjectStructuralDesignController extends Controller {
 
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        if (in_array($roleId, [1, 2, 13, 15])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
             return $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);
@@ -201,5 +231,56 @@ class ProjectStructuralDesignController extends Controller {
         $stmt->bind_param('i', $userId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // ─── CSV Import Method ────────────────────────────────────────────────
+    public function importCsv() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . $GLOBALS['base_url'] . '/structure-design');
+            exit;
+        }
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError('Please upload a valid CSV file.');
+            header('Location: ' . $GLOBALS['base_url'] . '/structure-design');
+            exit;
+        }
+        $file = $_FILES['csv_file']['tmp_name'];
+        $handle = fopen($file, 'r');
+        if (!$handle) { setError('Cannot open file.'); header('Location: ' . $GLOBALS['base_url'] . '/structure-design'); exit; }
+        $header = array_map('trim', fgetcsv($handle));
+        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
+        $successCount = 0; $errorCount = 0; $errors = [];
+        $db = $this->db;
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        while (($data = fgetcsv($handle)) !== FALSE) {
+            if (empty(array_filter($data))) continue;
+            if (count($header) !== count($data)) continue;
+            $row = array_combine($header, $data);
+            
+            $projectName   = trim($row['Project_Name'] ?? '');
+            $designStage   = trim($row['Design_Stage'] ?? '');
+            $consultant    = trim($row['Consultant_Name'] ?? '');
+            $subDate       = trim($row['Submission_Date'] ?? date('Y-m-d'));
+            $remarks       = trim($row['Remarks'] ?? '');
+            if (empty($projectName)) { $errorCount++; $errors[] = "Missing Project_Name"; continue; }
+            $stmt = $db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1");
+            $stmt->bind_param("s", $projectName); $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res->num_rows === 0) { $errorCount++; $errors[] = "Project '$projectName' not found"; continue; }
+            $projectId = $res->fetch_assoc()['id'];
+            $ins = $db->prepare("INSERT INTO project_structural_designs (project_id, design_stage, consultant_name, submission_date, remarks, created_by) VALUES (?,?,?,?,?,?)");
+            $ins->bind_param("issssi", $projectId, $designStage, $consultant, $subDate, $remarks, $userId);
+            if ($ins->execute()) { $successCount++; } else { $errorCount++; $errors[] = "Failed for Project '$projectName'"; }
+        
+        }
+        fclose($handle);
+        if ($errorCount > 0) {
+            setError("Imported $successCount. Failed $errorCount. " . implode(' | ', array_slice($errors, 0, 5)));
+        } else {
+            setSuccess("Successfully imported $successCount records.");
+        }
+        header('Location: ' . $GLOBALS['base_url'] . '/structure-design');
+        exit;
     }
 }

@@ -42,6 +42,12 @@ class Con_BOQController extends Controller
 
     public function create()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $projects  = $this->projectModel->getAll();
         $materials = $this->materialModel->getAll();
 
@@ -68,6 +74,12 @@ class Con_BOQController extends Controller
 
     public function store()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $data = [
@@ -210,6 +222,12 @@ class Con_BOQController extends Controller
 
     public function edit($id)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $boq = $this->boqModel->find($id);
         if (!$boq) {
             setError('BOQ not found.');
@@ -243,6 +261,12 @@ class Con_BOQController extends Controller
 
     public function update($id)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $data = [
             'project_id' => (int)($_POST['project_id'] ?? 0),
             'version'    => trim($_POST['version'] ?? '1.0'),
@@ -297,7 +321,7 @@ class Con_BOQController extends Controller
 
         if ($status === 'Submitted') {
             // Only creator or PM/SE can submit
-            if (!$boq || ((int)($boq['created_by'] ?? 0) !== $userId && !in_array($roleId, [12, 1, 3, 15]))) {
+            if (!$boq || ((int)($boq['created_by'] ?? 0) !== $userId && !in_array($roleId, [1, 3, 12, 15, 23]))) {
                 setError('You do not have permission to submit this BOQ.');
                 header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
                 exit;
@@ -305,7 +329,7 @@ class Con_BOQController extends Controller
         } else {
             // 'Approved' or 'Rejected'
             // Role guard: only 1, 3, 15 can approve/reject
-            if (!in_array($roleId, [1, 3, 15])) {
+            if (!in_array($roleId, [1, 3, 15, 23])) {
                 setError('Only authorized approvers can approve/reject a BOQ.');
                 header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
                 exit;
@@ -344,6 +368,12 @@ class Con_BOQController extends Controller
 
     public function delete()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $id = (int)($_POST['id'] ?? 0);
         if ($this->boqModel->delete($id)) {
             setSuccess('BOQ deleted.');

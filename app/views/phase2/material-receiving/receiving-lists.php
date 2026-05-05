@@ -59,14 +59,19 @@
                                 <td><?= htmlspecialchars($r['received_by_name'] ?? '—') ?></td>
                                 <td class="text-muted small"><?= date('d M Y', strtotime($r['receiving_date'])) ?></td>
                                 <td class="text-center">
-                                    <a href="<?= $base_url ?>/con-material-receiving-qc/<?= $r['id'] ?>"
-                                       class="btn btn-sm <?= ($r['overall_status'] === 'Pending QC') ? 'btn-warning' : 'btn-outline-info' ?>"
-                                       title="<?= ($r['overall_status'] === 'Pending QC') ? 'Perform QC Review' : 'View QC Results' ?>">
-                                        <i class="bi bi-<?= ($r['overall_status'] === 'Pending QC') ? 'clipboard-check' : 'eye' ?>"></i>
-                                        <?php if ($r['overall_status'] === 'Pending QC'): ?>
-                                            QC Review
+                                    <?php if ($r['overall_status'] === 'Pending QC'): ?>
+                                        <?php if (isset($currentRoleId) && $currentRoleId === 13): ?>
+                                            <a href="<?= $base_url ?>/con-material-receiving-qc/<?= $r['id'] ?>" class="btn btn-sm btn-warning" title="Perform QC Review">
+                                                <i class="bi bi-clipboard-check"></i> QC Review
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary">Pending QC</span>
                                         <?php endif; ?>
-                                    </a>
+                                    <?php else: ?>
+                                        <a href="<?= $base_url ?>/con-material-receiving-qc/<?= $r['id'] ?>" class="btn btn-sm btn-outline-info" title="View QC Results">
+                                            <i class="bi bi-eye"></i> View QC Results
+                                        </a>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

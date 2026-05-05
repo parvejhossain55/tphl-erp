@@ -29,10 +29,14 @@ class Con_MaterialReceivingController extends Controller
     {
         $receivings = $this->receivingModel->getAll();
 
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
         $this->view('phase2/material-receiving/receiving-lists', [
             'current_route' => 'con-material-receivings',
             'page_title'    => 'Material Receiving (GRN)',
             'receivings'    => $receivings,
+            'currentRoleId' => $currentRoleId,
         ]);
     }
 
@@ -42,6 +46,12 @@ class Con_MaterialReceivingController extends Controller
 
     public function create($poId)
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         $po = $this->poModel->find($poId);
         if (!$po) {
             setError('Purchase Order not found.');
@@ -67,6 +77,12 @@ class Con_MaterialReceivingController extends Controller
 
     public function store()
     {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $userId = (int)($_SESSION['user']['id'] ?? 0);
@@ -150,11 +166,23 @@ class Con_MaterialReceivingController extends Controller
 
         $items = $this->receivingModel->getItems($id);
 
+        $testQuery = $this->db->prepare("
+            SELECT t.*, u.full_name AS created_by_name 
+            FROM qc_material_tests t 
+            LEFT JOIN users u ON u.id = t.created_by 
+            WHERE t.material_receiving_id = ?
+            ORDER BY t.created_at DESC
+        ");
+        $testQuery->bind_param('i', $id);
+        $testQuery->execute();
+        $labTests = $testQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/material-receiving/qc-review-receiving', [
             'current_route' => 'con-material-receivings',
             'page_title'    => 'QC Review — GRN-' . $id,
             'receiving'     => $receiving,
             'items'         => $items,
+            'labTests'      => $labTests,
         ]);
     }
 
@@ -169,12 +197,16 @@ class Con_MaterialReceivingController extends Controller
         $userId   = (int)($_SESSION['user']['id'] ?? 0);
         $statuses = $_POST['item_status']   ?? [];
         $reasons  = $_POST['issue_reason']  ?? [];
+        $accQtys  = $_POST['accepted_qty']  ?? [];
+        $rejQtys  = $_POST['rejected_qty']  ?? [];
 
         $itemStatuses = [];
         foreach ($statuses as $itemId => $status) {
             $itemStatuses[(int)$itemId] = [
                 'status'       => $status,
                 'issue_reason' => $reasons[$itemId] ?? null,
+                'accepted_qty' => (float)($accQtys[$itemId] ?? 0),
+                'rejected_qty' => (float)($rejQtys[$itemId] ?? 0),
             ];
         }
 
@@ -222,7 +254,7 @@ class Con_MaterialReceivingController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if (!in_array($roleId, [1, 3, 15, 20])) {
+        if (!in_array($roleId, [1, 3, 15, 20, 22, 23])) {
             setError('You do not have permission to approve GRNs.');
             header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
             exit;

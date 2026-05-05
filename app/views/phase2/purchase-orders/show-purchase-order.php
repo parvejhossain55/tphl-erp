@@ -23,7 +23,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
 
 <style>
   .po-hero {
-    background: linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 55%, #3b82f6 100%);
+    background: #198754;
     border-radius: 18px;
     padding: 24px 28px;
     margin-bottom: 20px;
@@ -154,7 +154,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
       </div>
       <div style="text-align:right">
         <div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
-          padding:7px 16px;border-radius:20px;background:<?= $sb['bg'] ?>;color:<?= $sb['color'] ?>">
+          padding:7px 16px;border-radius:20px;background:<?= $sb['bg'] ?>;color:#fff">
           <i class="fal fa-circle"></i><?= $sb['label'] ?>
         </div>
         <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.55)">
@@ -259,7 +259,14 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
     </div>
 
     <!-- GRN Button — only if fully approved -->
-    <?php if ($fullyApproved && $po['status'] !== 'Fully Received' && $po['status'] !== 'Cancelled'): ?>
+    <?php 
+      $hasReceiving = $hasReceiving ?? false;
+      $canLogGrn = in_array($currentRoleId, [1, 3, 22, 23, 12]);
+      if ($currentRoleId == 12 && $hasReceiving) {
+          $canLogGrn = false; // Site Engineer can only create GRN once per PO
+      }
+    ?>
+    <?php if ($fullyApproved && $po['status'] !== 'Fully Received' && $po['status'] !== 'Cancelled' && $canLogGrn): ?>
       <div class="po-panel" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.04)">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
           <div>
