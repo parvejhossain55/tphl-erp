@@ -778,6 +778,7 @@ $routes['con-contractor-store']         = ['controller' => 'Phase2\Con_Contracto
 $routes['con-contractor-edit/(\d+)']    = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'edit'];
 $routes['con-contractor-update/(\d+)']  = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'update'];
 $routes['con-contractor-delete']        = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'delete'];
+$routes['con-contractors-import']       = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'importCsv'];
 
 // ── Contractor Bill Requests ───────────────────────────────────────────────
 $routes['con-contractor-bills']              = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'index'];
@@ -804,12 +805,14 @@ $routes['con-material-create']         = ['controller' => 'Phase2\Con_MaterialCo
 $routes['con-material-store']          = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'store'];
 $routes['con-material-edit/(\d+)']     = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'edit'];
 $routes['con-material-update/(\d+)']   = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'update'];
+$routes['con-materials-import']        = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'importCsv'];
 
 $routes['con-warehouses']              = ['controller' => 'Phase2\WarehouseController', 'method' => 'index'];
 $routes['con-warehouse-create']        = ['controller' => 'Phase2\WarehouseController', 'method' => 'create'];
 $routes['con-warehouse-store']         = ['controller' => 'Phase2\WarehouseController', 'method' => 'store'];
 $routes['con-warehouse-edit/(\d+)']    = ['controller' => 'Phase2\WarehouseController', 'method' => 'edit'];
 $routes['con-warehouse-update/(\d+)']  = ['controller' => 'Phase2\WarehouseController', 'method' => 'update'];
+$routes['con-warehouses-import']       = ['controller' => 'Phase2\WarehouseController', 'method' => 'importCsv'];
 
 $routes['con-stocks']                  = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'stocks']; // Added to existing Con_MaterialController for simplicity
 
@@ -821,6 +824,7 @@ $routes['con-vendor-edit/(\d+)']       = ['controller' => 'Phase2\Con_VendorCont
 $routes['con-vendor-update/(\d+)']     = ['controller' => 'Phase2\Con_VendorController', 'method' => 'update'];
 $routes['con-vendor/(\d+)']            = ['controller' => 'Phase2\Con_VendorController', 'method' => 'show'];
 $routes['con-vendor-delete']           = ['controller' => 'Phase2\Con_VendorController', 'method' => 'delete'];
+$routes['con-vendor-import']           = ['controller' => 'Phase2\Con_VendorController', 'method' => 'importCsv'];
 
 // ── Purchase Requests ──────────────────────────────────────────────────────
 $routes['con-purchase-requests']       = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'index'];

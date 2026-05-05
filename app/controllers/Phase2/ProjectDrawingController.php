@@ -28,9 +28,11 @@ class ProjectDrawingController extends Controller {
             $records = $this->model->getAll();
         } else {
             $stmt = $this->db->prepare("
-                SELECT d.*, p.name AS project_name
+                SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
                 FROM project_drawings d
                 LEFT JOIN projects p ON d.project_id = p.id
+                LEFT JOIN design_types dt ON d.design_type_id = dt.id
+                LEFT JOIN users u ON d.user_id = u.id
                 WHERE p.draftsman_id = ?
                 ORDER BY d.id DESC
             ");
@@ -297,52 +299,115 @@ class ProjectDrawingController extends Controller {
         if ($handle === FALSE) { setError('Failed to open CSV file.'); header('Location: ' . $GLOBALS['base_url'] . '/con-project-drawings'); exit; }
 
         $header = array_map('trim', fgetcsv($handle));
-        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM (Excel CSV)
+        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM
+        
+        $resolveKey = function($row, $targetKey) {
+            $targetLower = strtolower($targetKey);
+            foreach ($row as $key => $val) {
+                $keyLower = strtolower(trim($key));
+                if ($keyLower === $targetLower || strpos($keyLower, $targetLower) === 0) {
+                    return $val;
+                }
+            }
+            return '';
+        };
+
         $successCount = 0; $errorCount = 0; $errors = [];
         $db = $this->db;
-        $userId = $_SESSION['user']['id'] ?? 0;
+        $sessionUserId = $_SESSION['user']['id'] ?? 0;
 
         while (($data = fgetcsv($handle)) !== FALSE) {
             if (empty(array_filter($data))) continue;
+            
+            // Pad data array to match header length to prevent array_combine warnings
+            $data = array_pad($data, count($header), '');
             $row = array_combine($header, $data);
             
-            $projectName = trim($row['Project_Name'] ?? '');
-            $designTypeName = trim($row['Design_Type_Name'] ?? '');
-            $version = trim($row['Version'] ?? '');
-            $subDate = trim($row['Submission_Date'] ?? date('Y-m-d'));
-            $remarks = trim($row['Remarks'] ?? '');
+            $projectName   = trim($resolveKey($row, 'Project_Name'));
+            $designType    = trim($resolveKey($row, 'Design_Type_Name'));
+            $isInHouseRaw  = trim($resolveKey($row, 'Is_In_House'));
+            $internalEmail = trim($resolveKey($row, 'Internal_Designer_Email'));
+            $designerName  = trim($resolveKey($row, 'Designer_Name'));
+            $designerDesig = trim($resolveKey($row, 'Designer_Designation'));
+            $designerComp  = trim($resolveKey($row, 'Designer_Company'));
+            $designLink    = trim($resolveKey($row, 'Design_Link'));
+            $version       = trim($resolveKey($row, 'Version'));
+            $status        = trim($resolveKey($row, 'Status'));
 
-            if (empty($projectName) || empty($designTypeName)) { $errorCount++; $errors[] = 'Missing Project/Design Type'; continue; }
+            if (empty($projectName) || empty($designType)) { $errorCount++; $errors[] = "Missing Project Name or Design Type"; continue; }
 
-            // Project ID
+            // Validate Project ID
             $stmt = $db->prepare('SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1');
             $stmt->bind_param('s', $projectName); $stmt->execute();
             $res = $stmt->get_result();
             if ($res->num_rows === 0) { $errorCount++; $errors[] = "Project '$projectName' not found"; continue; }
             $projectId = $res->fetch_assoc()['id'];
 
-            // Design Type ID
+            // Validate Design Type ID
             $stmtD = $db->prepare('SELECT id FROM design_types WHERE name = ? LIMIT 1');
-            $stmtD->bind_param('s', $designTypeName); $stmtD->execute();
+            $stmtD->bind_param('s', $designType); $stmtD->execute();
             $resD = $stmtD->get_result();
-            if ($resD->num_rows === 0) { $errorCount++; $errors[] = "Design Type '$designTypeName' not found"; continue; }
+            if ($resD->num_rows === 0) { $errorCount++; $errors[] = "Design Type '$designType' not found"; continue; }
             $designTypeId = $resD->fetch_assoc()['id'];
 
+            // Handle Is In House Logic
+            $isInHouse = ($isInHouseRaw === '0' || strtolower($isInHouseRaw) === 'false' || strtolower($isInHouseRaw) === 'no') ? 0 : 1;
+            
+            $assignedUserId = null;
+            $finalDesignerName = null;
+            $finalDesignerDesig = null;
+            $finalDesignerComp = null;
+
+            if ($isInHouse == 1) {
+                // Internal Designer: Find user by email
+                if (!empty($internalEmail)) {
+                    $stmtU = $db->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
+                    $stmtU->bind_param('s', $internalEmail);
+                    $stmtU->execute();
+                    $resU = $stmtU->get_result();
+                    if ($resU->num_rows > 0) {
+                        $assignedUserId = $resU->fetch_assoc()['id'];
+                    } else {
+                        $errorCount++; $errors[] = "Internal Designer email '$internalEmail' not found"; continue;
+                    }
+                } else {
+                    $assignedUserId = $sessionUserId; // Fallback to uploader if not provided
+                }
+            } else {
+                // External Designer
+                $finalDesignerName = $designerName;
+                $finalDesignerDesig = $designerDesig;
+                $finalDesignerComp = $designerComp;
+            }
+
             $insertData = [
-                'project_id' => $projectId,
-                'design_type_id' => $designTypeId,
-                'version_number' => $version,
-                'submission_date' => $subDate,
-                'remarks' => $remarks,
-                'created_by' => $userId
+                'project_id'           => $projectId,
+                'design_type_id'       => $designTypeId,
+                'is_in_house'          => $isInHouse,
+                'user_id'              => $assignedUserId,
+                'designer_name'        => $finalDesignerName,
+                'designer_designation' => $finalDesignerDesig,
+                'designer_company'     => $finalDesignerComp,
+                'design_link'          => !empty($designLink) ? $designLink : null,
+                'version'              => !empty($version) ? $version : '1.0',
+                'status'               => !empty($status) ? $status : 'Draft',
+                'created_by'           => $sessionUserId
             ];
 
-            if ($this->model->create($insertData)) { $successCount++; } 
-            else { $errorCount++; $errors[] = "Failed to save data for Project '$projectName'."; }
+            if ($this->model->create($insertData)) { 
+                $successCount++; 
+            } else { 
+                $errorCount++; $errors[] = "Failed to save data for Project '$projectName'"; 
+            }
         }
         fclose($handle);
-        if ($errorCount > 0) { setError("Imported $successCount. Failed $errorCount. Errors: " . implode(' | ', array_slice($errors, 0, 5))); } 
-        else { setSuccess("Successfully imported $successCount records."); }
+        
+        if ($errorCount > 0) { 
+            setError("Imported $successCount. Failed $errorCount. Errors: " . implode(' | ', array_slice($errors, 0, 5))); 
+        } else { 
+            setSuccess("Successfully imported $successCount records."); 
+        }
+        
         header('Location: ' . $GLOBALS['base_url'] . '/con-project-drawings');
         exit;
     }

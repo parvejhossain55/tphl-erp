@@ -93,35 +93,116 @@ $show_breadcrumb = false;
 
 <!-- Import CSV Modal: Import Soil Tests -->
 <div class="modal fade" id="importSoilTestCsvModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Import Soil Tests</h5>
+                <h5 class="modal-title"><i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Import Soil Tests</h5>
                 <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
                     <i class="fa-solid fa-xmark-large"></i>
                 </button>
             </div>
             <div class="modal-body">
+
+                <!-- Column Guide -->
+                <div class="mb-3">
+                    <p class="fw-semibold mb-2" style="font-size:13px;">📋 CSV Column Reference</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Column Header</th>
+                                    <th>Required?</th>
+                                    <th>Allowed Values</th>
+                                    <th>Example</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>Project_Name</code></td>
+                                    <td><span class="badge bg-danger">Required</span></td>
+                                    <td>Exact Project Name</td>
+                                    <td><em>The Prime Heights</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Test_Date</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>YYYY-MM-DD</td>
+                                    <td><em>2026-05-15</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Field_Data</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Text details</td>
+                                    <td><em>Soil layers checked...</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Lab_Test_Document_Link</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Valid URL</td>
+                                    <td><em>https://example.com/lab</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Field_Test_Doc_Link</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Valid URL</td>
+                                    <td><em>https://example.com/field</em></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2 d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadSoilTestSampleCsv()">
+                            <i class="bi bi-download me-1"></i> Download Sample CSV
+                        </button>
+                        <span style="font-size:11px;color:#888">ডাউনলোড করে সঠিক format অনুযায়ী ফিলআপ করুন</span>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Upload Form -->
                 <form action="<?= $GLOBALS['base_url'] ?>/con-soil-test-import" method="post" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
                         <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                        <div class="form-text">শুধুমাত্র <strong>.csv</strong> ফাইল। Excel থেকে "Save As → CSV UTF-8" করে export করুন।</div>
                     </div>
-                    <div style="font-size:12px;">
-                        <strong>Required CSV Columns:</strong><br>
-                        <code>Project_Name (required), Testing_Agency, Report_Date (YYYY-MM-DD), Bearing_Capacity, Report_Link</code>
-                    </div>
-                    <div class="text-end">
+                    <div class="d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success btn-sm ms-2">
-                            <i class="bi bi-upload me-1"></i> Import
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-upload me-1"></i> Import Now
                         </button>
                     </div>
                 </form>
+
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function downloadSoilTestSampleCsv() {
+    const headers = [
+        'Project_Name', 'Test_Date', 'Field_Data', 'Lab_Test_Document_Link', 'Field_Test_Doc_Link'
+    ];
+    const sampleRow = [
+        'The Prime Heights', '2026-05-15', 'N-value found 15', 'https://example.com/lab', 'https://example.com/field'
+    ];
+    
+    const csvContent = [
+        headers.join(','),
+        sampleRow.map(v => '"' + v + '"').join(',')
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'soil_test_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+</script>
 
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>"

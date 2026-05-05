@@ -120,4 +120,104 @@ class WarehouseController extends Controller
         header("Location: {$GLOBALS['base_url']}/con-warehouses");
         exit;
     }
+
+    // ─── CSV Import ────────────────────────────────────────────────────────
+    public function importCsv() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . $GLOBALS['base_url'] . '/con-warehouses');
+            exit;
+        }
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError('Please upload a valid CSV file.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-warehouses');
+            exit;
+        }
+
+        // Read as raw string — properly handles UTF-8 Bengali text
+        $content = file_get_contents($_FILES['csv_file']['tmp_name']);
+        $content = ltrim($content, "\xEF\xBB\xBF");
+        $content = str_replace("\r\n", "\n", str_replace("\r", "\n", $content));
+        $lines   = array_values(array_filter(explode("\n", $content), fn($l) => trim($l) !== ''));
+
+        if (empty($lines)) {
+            setError('CSV file is empty.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-warehouses');
+            exit;
+        }
+
+        $header = array_map('trim', str_getcsv(array_shift($lines)));
+
+        $resolveKey = function($row, $targetKey) {
+            $tl = strtolower($targetKey);
+            foreach ($row as $k => $v) {
+                $kl = strtolower(trim($k));
+                if ($kl === $tl || strpos($kl, $tl) === 0) return $v;
+            }
+            return '';
+        };
+
+        $successCount = 0; $errorCount = 0; $errors = [];
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        foreach ($lines as $line) {
+            if (trim($line) === '') continue;
+            $data = array_pad(str_getcsv($line), count($header), '');
+            $row  = array_combine($header, $data);
+
+            $whName     = trim($resolveKey($row, 'Warehouse_Name'));
+            $projectName = trim($resolveKey($row, 'Project_Name'));
+            $location   = trim($resolveKey($row, 'Location'));
+
+            if (empty($whName)) {
+                $errorCount++; $errors[] = "Missing Warehouse Name";
+                continue;
+            }
+
+            // Resolve Project_Name → project_id
+            $projectId = null;
+            if (!empty($projectName)) {
+                $stmtP = $this->db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1");
+                $stmtP->bind_param('s', $projectName);
+                $stmtP->execute();
+                $resP = $stmtP->get_result()->fetch_assoc();
+                if (!$resP) {
+                    $errors[] = "Project '$projectName' not found (row: $whName)";
+                    $errorCount++;
+                    continue;
+                }
+                $projectId = $resP['id'];
+            }
+
+            // Duplicate check
+            $stmtD = $this->db->prepare("SELECT id FROM con_warehouses WHERE name = ? LIMIT 1");
+            $stmtD->bind_param('s', $whName);
+            $stmtD->execute();
+            if ($stmtD->get_result()->num_rows > 0) {
+                $errors[] = "'$whName' already exists";
+                $errorCount++;
+                continue;
+            }
+
+            $insertData = [
+                'name'       => $whName,
+                'project_id' => $projectId,
+                'location'   => !empty($location) ? $location : null,
+                'created_by' => $userId,
+            ];
+
+            if ($this->warehouseModel->create($insertData)) {
+                $successCount++;
+            } else {
+                $errorCount++; $errors[] = "Failed to save '$whName'";
+            }
+        }
+
+        if ($errorCount > 0) {
+            setError("Imported $successCount. Failed $errorCount. Errors: " . implode(' | ', array_slice($errors, 0, 5)));
+        } else {
+            setSuccess("Successfully imported $successCount warehouses.");
+        }
+        header('Location: ' . $GLOBALS['base_url'] . '/con-warehouses');
+        exit;
+    }
 }

@@ -153,15 +153,24 @@ class DesignTypeController extends Controller {
             if (empty(array_filter($data))) continue;
             if (count($header) !== count($data)) continue;
             $row = array_combine($header, $data);
+
+            // Flexible key resolver — case-insensitive prefix match
+            $resolveKey = function(array $row, string $prefix): string {
+                if (array_key_exists($prefix, $row)) return $row[$prefix];
+                foreach ($row as $k => $v) {
+                    if (stripos(trim($k), $prefix) === 0) return $v;
+                }
+                return '';
+            };
+
+            $name = trim($resolveKey($row, 'Name'));
             
-            $name = trim($row['Name'] ?? '');
-            $desc = trim($row['Description'] ?? '');
             if (empty($name)) { $errorCount++; $errors[] = "Missing Name"; continue; }
             $stmt = $db->prepare("SELECT id FROM design_types WHERE name = ? LIMIT 1");
             $stmt->bind_param("s", $name); $stmt->execute();
             if ($stmt->get_result()->num_rows > 0) { $errors[] = "Design Type '$name' already exists"; $errorCount++; continue; }
-            $ins = $db->prepare("INSERT INTO design_types (name, description, created_by) VALUES (?,?,?)");
-            $ins->bind_param("ssi", $name, $desc, $userId);
+            $ins = $db->prepare("INSERT INTO design_types (name, created_by) VALUES (?,?)");
+            $ins->bind_param("si", $name, $userId);
             if ($ins->execute()) { $successCount++; } else { $errorCount++; $errors[] = "Failed to save '$name'"; }
         
         }

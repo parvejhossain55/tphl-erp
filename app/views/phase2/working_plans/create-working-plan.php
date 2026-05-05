@@ -67,17 +67,14 @@
                             </div>
                         </div>
 
-                        <!-- Design Type + Period -->
+                        <!-- Work Type + Period -->
                         <div class="row  mb-3">
                             <div class="col-md-4">
-                                <label class="form-label fw-bold">Design Type <span class="text-danger">*</span></label>
-                                <select name="design_type_id" id="designTypeSelect" class="form-select" required>
-                                    <option value="">-- Select --</option>
-                                    <?php foreach ($designTypes as $dt): ?>
-                                        <option value="<?= $dt['id'] ?>"><?= htmlspecialchars($dt['name']) ?></option>
-                                    <?php endforeach; ?>
+                                <label class="form-label fw-bold">Work Type <span class="text-danger">*</span></label>
+                                <select name="work_type_id" id="workTypeSelect" class="form-select" required>
+                                    <option value="">-- Select Project First --</option>
                                 </select>
-                                <div class="form-text text-info" id="designTypeHint"></div>
+                                <div class="form-text text-info" id="workTypeHint"></div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Year <span class="text-danger">*</span></label>
@@ -143,28 +140,31 @@ document.addEventListener('DOMContentLoaded', function () {
     var budgetSelect     = document.getElementById('budgetSelect');
     var yearSelect       = document.getElementById('yearSelect');
     var budgetInfo       = document.getElementById('budgetInfo');
-    var designTypeSelect = document.getElementById('designTypeSelect');
-    var designTypeHint   = document.getElementById('designTypeHint');
+    var workTypeSelect   = document.getElementById('workTypeSelect');
+    var workTypeHint     = document.getElementById('workTypeHint');
     var allBudgetOpts    = budgetSelect.querySelectorAll('option[data-project]');
     var currentYear      = <?= date('Y') ?>;
+    
+    // Pre-loaded work types map: { project_id: [{id, label}, ...] }
+    var workTypeMap = <?= json_encode($workTypesByProject, JSON_UNESCAPED_UNICODE) ?>;
 
-    // ── Auto-select Design Type based on selected budget ──────────────
-    function applyDesignTypeFromBudget(opt) {
+    // ── Auto-select Work Type based on selected budget ──────────────
+    function applyWorkTypeFromBudget(opt) {
         if (!opt) { return; }
-        var dtId = opt.getAttribute('data-design-type-id') || '';
-        if (dtId && designTypeSelect) {
-            designTypeSelect.value = dtId;
-            var dtLabel = '';
-            var selOpt = designTypeSelect.options[designTypeSelect.selectedIndex];
-            if (selOpt) dtLabel = selOpt.textContent.trim();
-            if (designTypeSelect.value == dtId && dtLabel) {
-                if (designTypeHint) designTypeHint.innerHTML =
-                    '<i class="bi bi-check-circle me-1"></i>Auto-selected: <strong>' + dtLabel + '</strong>';
+        var wtId = opt.getAttribute('data-work-type-id') || '';
+        if (wtId && workTypeSelect) {
+            workTypeSelect.value = wtId;
+            var wtLabel = '';
+            var selOpt = workTypeSelect.options[workTypeSelect.selectedIndex];
+            if (selOpt) wtLabel = selOpt.textContent.trim();
+            if (workTypeSelect.value == wtId && wtLabel) {
+                if (workTypeHint) workTypeHint.innerHTML =
+                    '<i class="bi bi-check-circle me-1"></i>Auto-selected: <strong>' + wtLabel + '</strong>';
             } else {
-                if (designTypeHint) designTypeHint.textContent = '';
+                if (workTypeHint) workTypeHint.textContent = '';
             }
         } else {
-            if (designTypeHint) designTypeHint.textContent = '';
+            if (workTypeHint) workTypeHint.textContent = '';
         }
     }
 
@@ -176,17 +176,23 @@ document.addEventListener('DOMContentLoaded', function () {
         var endDate   = opt ? opt.getAttribute('data-end')   : '';
 
         var startYear, endYear;
+        var hasValidDates = false;
 
-        if (startDate && endDate) {
-            startYear = parseInt(startDate.substring(0, 4));
-            endYear   = parseInt(endDate.substring(0, 4));
+        // Validate dates — reject null, empty, or "0000-00-00"
+        var sYear = startDate ? parseInt(startDate.substring(0, 4)) : 0;
+        var eYear = endDate   ? parseInt(endDate.substring(0, 4))   : 0;
+
+        if (sYear > 2000 && eYear > 2000) {
+            startYear    = sYear;
+            endYear      = eYear;
+            hasValidDates = true;
         } else {
-            // Fallback: ±2 years around current year
+            // Fallback: current year ± range
             startYear = currentYear - 1;
-            endYear   = currentYear + 3;
+            endYear   = currentYear + 4;
         }
 
-        if (endYear < startYear) endYear = startYear;
+        if (endYear < startYear) endYear = startYear + 2;
 
         for (var y = startYear; y <= endYear; y++) {
             var o = document.createElement('option');
@@ -199,10 +205,10 @@ document.addEventListener('DOMContentLoaded', function () {
         // Update hint
         var hint = document.getElementById('yearHint');
         if (hint) {
-            if (startDate && endDate) {
-                hint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Budget period: ' + startDate + ' &rarr; ' + endDate;
+            if (hasValidDates) {
+                hint.innerHTML = '<i class="bi bi-calendar-range me-1"></i>Budget period: <strong>' + startDate + '</strong> &rarr; <strong>' + endDate + '</strong>';
             } else {
-                hint.textContent = 'No date range set for this budget.';
+                hint.innerHTML = '<i class="bi bi-info-circle me-1 text-muted"></i><span class="text-muted">No date range set — showing ' + startYear + ' to ' + endYear + '</span>';
             }
         }
     }
@@ -216,11 +222,11 @@ document.addEventListener('DOMContentLoaded', function () {
         yearSelect.innerHTML = '<option value="">-- Select Budget First --</option>';
         var hint = document.getElementById('yearHint');
         if (hint) hint.textContent = '';
-        if (designTypeHint) designTypeHint.textContent = '';
+        if (workTypeHint) workTypeHint.textContent = '';
 
         var firstMatch = null;
         allBudgetOpts.forEach(function (opt) {
-            if (opt.getAttribute('data-project') === pid) {
+            if (opt.getAttribute('data-project') === String(pid)) {
                 opt.style.display = '';
                 opt.disabled = false;
                 if (!firstMatch) firstMatch = opt;
@@ -241,10 +247,24 @@ document.addEventListener('DOMContentLoaded', function () {
             budgetInfo.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Budget Total: ৳ ' +
                 parseFloat(firstMatch.getAttribute('data-total')).toLocaleString('en-BD') + '</span>' + extHtml;
             rebuildYears(firstMatch);
-            applyDesignTypeFromBudget(firstMatch);
         } else {
             budgetInfo.innerHTML = '<span class="text-warning">No budget found for this project.</span>';
             rebuildYears(null);
+        }
+
+        // Fill Work Types from pre-loaded map
+        workTypeSelect.innerHTML = '<option value="">-- Select Work Type --</option>';
+        var types = workTypeMap[pid] || [];
+        if (types.length > 0) {
+            types.forEach(function(wt) {
+                var opt = document.createElement('option');
+                opt.value = wt.id;
+                opt.textContent = wt.label;
+                workTypeSelect.appendChild(opt);
+            });
+            if (workTypeHint) workTypeHint.innerHTML = '<i class="bi bi-info-circle me-1"></i>' + types.length + ' Work Type(s) available';
+        } else {
+            workTypeSelect.innerHTML = '<option value="">No Work Types in Budget</option>';
         }
     });
 
@@ -261,12 +281,12 @@ document.addEventListener('DOMContentLoaded', function () {
             budgetInfo.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Budget Total: ৳ ' +
                 parseFloat(opt.getAttribute('data-total')).toLocaleString('en-BD') + '</span>' + extHtml;
             rebuildYears(opt);
-            applyDesignTypeFromBudget(opt);
+            applyWorkTypeFromBudget(opt);
         } else {
             budgetInfo.textContent = '';
             yearSelect.innerHTML = '<option value="">-- Select Budget First --</option>';
-            if (designTypeSelect) designTypeSelect.value = '';
-            if (designTypeHint) designTypeHint.textContent = '';
+            if (workTypeSelect) workTypeSelect.value = '';
+            if (workTypeHint) workTypeHint.textContent = '';
         }
     });
 });

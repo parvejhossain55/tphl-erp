@@ -170,4 +170,98 @@ class Con_ContractorController extends Controller
         header("Location: {$GLOBALS['base_url']}/con-contractors");
         exit;
     }
+    /* =====================
+       CSV Import
+    ====================== */
+    public function importCsv() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . $GLOBALS['base_url'] . '/con-contractors');
+            exit;
+        }
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError('Please upload a valid CSV file.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-contractors');
+            exit;
+        }
+        
+        // Read entire file as string to properly handle UTF-8 Bengali text
+        $content = file_get_contents($_FILES['csv_file']['tmp_name']);
+        $content = ltrim($content, "\xEF\xBB\xBF");
+        $content = str_replace("\r\n", "\n", str_replace("\r", "\n", $content));
+        $lines = array_values(array_filter(explode("\n", $content), fn($l) => trim($l) !== ''));
+        if (empty($lines)) { setError('CSV file is empty.'); header('Location: ' . $GLOBALS['base_url'] . '/con-contractors'); exit; }
+        $header = array_map('trim', str_getcsv(array_shift($lines)));
+        
+        $resolveKey = function($row, $targetKey) {
+            $targetLower = strtolower($targetKey);
+            foreach ($row as $key => $val) {
+                $keyLower = strtolower(trim($key));
+                if ($keyLower === $targetLower || strpos($keyLower, $targetLower) === 0) {
+                    return $val;
+                }
+            }
+            return '';
+        };
+
+        $successCount = 0; $errorCount = 0; $errors = [];
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        foreach ($lines as $line) {
+            if (trim($line) === '') continue;
+            $data = array_pad(str_getcsv($line), count($header), '');
+            $row  = array_combine($header, $data);
+            
+            $name       = trim($resolveKey($row, 'Name'));
+            $role       = trim($resolveKey($row, 'Role'));
+            $trade      = trim($resolveKey($row, 'Trade'));
+            $phone      = trim($resolveKey($row, 'Phone'));
+            $nid_number = trim($resolveKey($row, 'NID_Number'));
+            $address    = trim($resolveKey($row, 'Address'));
+            $daily_rate = trim($resolveKey($row, 'Daily_Rate'));
+            
+            if (empty($name)) { 
+                $errorCount++; $errors[] = "Missing Name"; 
+                continue; 
+            }
+            if (empty($role)) {
+                $role = 'Contractor';
+            }
+            
+            $stmt = $this->db->prepare("SELECT id FROM contractors WHERE name = ? LIMIT 1");
+            $stmt->bind_param("s", $name); 
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows > 0) { 
+                $errors[] = "'$name' already exists"; 
+                $errorCount++; 
+                continue; 
+            }
+            
+            $insertData = [
+                'name'       => $name,
+                'role'       => $role,
+                'trade'      => !empty($trade) ? $trade : null,
+                'phone'      => !empty($phone) ? $phone : null,
+                'nid_number' => !empty($nid_number) ? $nid_number : null,
+                'address'    => !empty($address) ? $address : null,
+                'daily_rate' => is_numeric($daily_rate) ? $daily_rate : null,
+                'status'     => 'active',
+                'created_by' => $userId
+            ];
+
+            if ($this->contractorModel->create($insertData)) { 
+                $successCount++; 
+            } else { 
+                $errorCount++; $errors[] = "Failed to save '$name'"; 
+            }
+        }
+        
+        if ($errorCount > 0) {
+            setError("Imported $successCount. Failed $errorCount. Errors: " . implode(' | ', array_slice($errors, 0, 5)));
+        } else {
+            setSuccess("Successfully imported $successCount records.");
+        }
+        
+        header('Location: ' . $GLOBALS['base_url'] . '/con-contractors');
+        exit;
+    }
 }

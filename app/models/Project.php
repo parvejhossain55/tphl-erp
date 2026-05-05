@@ -91,6 +91,10 @@ class Project extends Model
         $convention         = isset($data['convention']) ? (int)$data['convention'] : 0;
         $electricity_backup = isset($data['electricity_backup']) ? (int)$data['electricity_backup'] : 0;
         $price_range = !empty($data['price_range']) ? $data['price_range'] : null;
+        // plot_size: float column — empty string causes "Data truncated" error
+        $plot_size = (isset($data['plot_size']) && $data['plot_size'] !== '' && $data['plot_size'] !== null)
+            ? (float)$data['plot_size']
+            : null;
         // ======================
         // Insert Query (Total 35 Columns)
         // ======================
@@ -110,11 +114,14 @@ class Project extends Model
         $stmt = $this->db->prepare($sql);
 
         if (!$stmt) {
-            setError($this->db->error);
+            error_log('[Project::create] Prepare FAILED: ' . $this->db->error);
+            setError('Project creation failed. DB: ' . $this->db->error);
             return false;
         }
 
-        $bindTypes = "ssiisiisssssssssssssisssssiiiiiiiisd" . "iiiiiiiii";
+        // bindTypes: 45 total (36 main + 9 team fields)
+        // Position 16 = plot_size → 'd' (float), all others same as before
+        $bindTypes = "ssiisiissssssssd" . "ssssisssssiiiiiiiisd" . "iiiiiiiii";
 
         $pm_id             = !empty($data['pm_id']) ? (int)$data['pm_id'] : null;
         $site_engineer_id  = !empty($data['site_engineer_id']) ? (int)$data['site_engineer_id'] : null;
@@ -143,7 +150,7 @@ class Project extends Model
             $data['front_road'],            // 13
             $price_range,                   // 14
             $data['hover_text'],            // 15
-            $data['plot_size'],             // 16 (s)
+            $plot_size,                     // 16 (d - float/null)
             $data['plot_no'],               // 17
             $data['block_no'],              // 18
             $data['brochure_link'],         // 19
@@ -175,7 +182,12 @@ class Project extends Model
             $operator_id                    // 46 (i)
         );
 
-        return $stmt->execute();
+        $result = $stmt->execute();
+        if (!$result) {
+            error_log('[Project::create] Execute FAILED: ' . $stmt->error);
+            setError('Project creation failed. SQL Error: ' . $stmt->error);
+        }
+        return $result;
     }
 
     /* =========================

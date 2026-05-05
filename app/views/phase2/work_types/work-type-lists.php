@@ -78,32 +78,101 @@ $show_breadcrumb = true;
 
 <!-- Import CSV Modal: Import Work Types -->
 <div class="modal fade" id="importWorkTypeCsvModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Import Work Types</h5>
+                <h5 class="modal-title"><i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Import Work Types</h5>
                 <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
                     <i class="fa-solid fa-xmark-large"></i>
                 </button>
             </div>
             <div class="modal-body">
+
+                <!-- Column Guide -->
+                <div class="mb-3">
+                    <p class="fw-semibold mb-2" style="font-size:13px;">📋 CSV Column Reference</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Column Header</th>
+                                    <th>Required?</th>
+                                    <th>Allowed Values</th>
+                                    <th>Example</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>Design_Type_Name</code></td>
+                                    <td><span class="badge bg-danger">Required</span></td>
+                                    <td>Existing Design Type Name</td>
+                                    <td><em>Architectural Design</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Work_Type_Name</code></td>
+                                    <td><span class="badge bg-danger">Required</span></td>
+                                    <td>Unique Work Type Name</td>
+                                    <td><em>Foundation Work</em></td>
+                                </tr>
+                                <tr>
+                                    <td><code>Description</code></td>
+                                    <td><span class="badge bg-secondary">Optional</span></td>
+                                    <td>Text details</td>
+                                    <td><em>Details about foundation...</em></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2 d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadWorkTypeSampleCsv()">
+                            <i class="bi bi-download me-1"></i> Download Sample CSV
+                        </button>
+                        <span style="font-size:11px;color:#888">ডাউনলোড করে সঠিক format অনুযায়ী ফিলআপ করুন</span>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Upload Form -->
                 <form action="<?= $GLOBALS['base_url'] ?>/con-work-type-import" method="post" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
                         <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                        <div class="form-text">শুধুমাত্র <strong>.csv</strong> ফাইল। Excel থেকে "Save As → CSV UTF-8" করে export করুন।</div>
                     </div>
-                    <div style="font-size:12px;">
-                        <strong>Required CSV Columns:</strong><br>
-                        <code>Name (required), Description</code>
-                    </div>
-                    <div class="text-end">
+                    <div class="d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success btn-sm ms-2">
-                            <i class="bi bi-upload me-1"></i> Import
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-upload me-1"></i> Import Now
                         </button>
                     </div>
                 </form>
+
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function downloadWorkTypeSampleCsv() {
+    const headers = [
+        'Design_Type_Name', 'Work_Type_Name', 'Description'
+    ];
+    const sampleRow = [
+        'Architectural Design', 'Foundation Work', 'Excavation and foundation laying'
+    ];
+    
+    const csvContent = [
+        headers.join(','),
+        sampleRow.map(v => '"' + v + '"').join(',')
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'work_types_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+</script>
