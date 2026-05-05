@@ -47,49 +47,65 @@ class QCController extends Controller
     public function index()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // 1. New QC Module Logic
-        $inspections = $this->qcInspectionModel->getAll();
+        // ── Inspections & Material Tests ──────────────────────────────────
+        $inspections   = $this->qcInspectionModel->getAll();
         $materialTests = $this->qcMaterialTestModel->getAll();
 
-        // 2. Old QC Dashboard Logic (KPIs)
-        $r1 = $this->db->query("SELECT COUNT(*) AS c FROM con_material_issues");
-        $totalIssues = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
+        // ── KPI 1: Assigned Projects (only QC-assigned) ──────────────────
+        if (in_array($roleId, [1, 3, 22, 23])) {
+            $rAssigned = $this->db->query("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NULL");
+        } else {
+            $stmt = $this->db->prepare("SELECT COUNT(*) AS c FROM projects WHERE qc_id = ? AND deleted_at IS NULL");
+            $stmt->bind_param('i', $userId);
+            $stmt->execute();
+            $rAssigned = $stmt->get_result();
+        }
+        $assignedProjects = $rAssigned ? (int)$rAssigned->fetch_assoc()['c'] : 0;
 
-        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM purchase_orders");
-        $totalPOs = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+        // ── KPI 2: Pending Targets (awaiting QC approval) ─────────────────
+        $rTargetCount = $this->db->query("SELECT COUNT(*) AS c FROM target_fixed WHERE approved_by_qc = 0");
+        $pendingTargetsCount = $rTargetCount ? (int)$rTargetCount->fetch_assoc()['c'] : 0;
 
-        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM project_working_plans WHERE approved_status IN ('Pending','Draft') OR approved_status IS NULL");
-        $pendingPlans = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
+        // ── KPI 3: Pending GRNs awaiting QC ───────────────────────────────
+        $rGRNCount = $this->db->query("SELECT COUNT(*) AS c FROM material_receiving WHERE overall_status = 'Pending QC'");
+        $pendingGRNsCount = $rGRNCount ? (int)$rGRNCount->fetch_assoc()['c'] : 0;
 
-        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM weekly_progress_report");
-        $totalDPRs = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
+        // ── KPI 4: Recent Inspections count ───────────────────────────────
+        $rInsCount = $this->db->query("SELECT COUNT(*) AS c FROM qc_inspections");
+        $totalInspections = $rInsCount ? (int)$rInsCount->fetch_assoc()['c'] : 0;
 
-        $r5 = $this->db->query("SELECT COUNT(*) AS c FROM con_stocks s JOIN con_materials m ON m.id=s.material_id WHERE s.current_quantity < m.min_stock_level");
-        $lowStock = $r5 ? (int)$r5->fetch_assoc()['c'] : 0;
+        // ── KPI 5: Total Material Tests ───────────────────────────────────
+        $rTestCount = $this->db->query("SELECT COUNT(*) AS c FROM qc_material_tests");
+        $totalMaterialTests = $rTestCount ? (int)$rTestCount->fetch_assoc()['c'] : 0;
 
-        $r6 = $this->db->query("SELECT COUNT(*) AS c FROM initial_estimate_budgets");
-        $totalEstimates = $r6 ? (int)$r6->fetch_assoc()['c'] : 0;
+        // ── KPI 6: Pending Weekly Reports awaiting QC ────────────────────
+        $rWkCount = $this->db->query("SELECT COUNT(*) AS c FROM weekly_progress_report WHERE approved_by_qc = 0");
+        $pendingWeeklyCount = $rWkCount ? (int)$rWkCount->fetch_assoc()['c'] : 0;
 
-        // Recent Project Progress
+        // ── Project Progress (only assigned projects) ─────────────────────
         $rProj = $this->db->query("
             SELECT p.id, p.name, p.project_status,
                    COALESCE(l.name,'') AS location_name,
-                   COALESCE(prog.progress_pct,0) AS progress_pct,
-                   COALESCE(bud.total_budget,0) AS total_budget
+                   COALESCE(prog.progress_pct,0) AS progress_pct
             FROM projects p
-            LEFT JOIN locations l ON l.id=p.location_id
-            LEFT JOIN (SELECT project_id, AVG(gain_percentage) AS progress_pct FROM target_fixed GROUP BY project_id) prog ON prog.project_id=p.id
-            LEFT JOIN (SELECT project_id, SUM(total_estimated_cost) AS total_budget FROM initial_estimate_budgets WHERE status='approved' GROUP BY project_id) bud ON bud.project_id=p.id
-            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " ORDER BY p.id DESC LIMIT 6");
+            LEFT JOIN locations l ON l.id = p.location_id
+            LEFT JOIN (
+                SELECT project_id, AVG(gain_percentage) AS progress_pct
+                FROM target_fixed GROUP BY project_id
+            ) prog ON prog.project_id = p.id
+            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . "
+            ORDER BY p.id DESC LIMIT 6");
         $projects = $rProj ? $rProj->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Pending Targets awaiting QC approval
+        // ── Pending Targets (full rows for table) ─────────────────────────
         $rPendingTargets = $this->db->query("
             SELECT tf.id, tf.target_title, tf.target_percentage, tf.gain_percentage,
                    tf.year, tf.month, tf.week_number, tf.created_at,
-                   p.name  AS project_name,
-                   u.full_name AS creator_name,
+                   p.name        AS project_name,
+                   u.full_name   AS creator_name,
                    COALESCE(des.name,'') AS creator_designation
             FROM target_fixed tf
             LEFT JOIN projects     p   ON p.id  = tf.project_id
@@ -97,11 +113,10 @@ class QCController extends Controller
             LEFT JOIN employees    emp ON emp.user_id = u.id
             LEFT JOIN designations des ON des.id = emp.designation_id
             WHERE tf.approved_by_qc = 0
-            ORDER BY tf.created_at DESC
-            LIMIT 10");
+            ORDER BY tf.created_at DESC LIMIT 10");
         $pendingTargets = $rPendingTargets ? $rPendingTargets->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Pending GRNs awaiting QC
+        // ── Pending GRNs (full rows for table) ───────────────────────────
         $rPendingGRNsQC = $this->db->query("
             SELECT mr.id, mr.receiving_date,
                    p.name AS project_name,
@@ -115,7 +130,7 @@ class QCController extends Controller
             ORDER BY mr.id DESC LIMIT 10");
         $pendingGRNsQC = $rPendingGRNsQC ? $rPendingGRNsQC->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Pending Weekly Reports awaiting QC
+        // ── Pending Weekly Reports (full rows for table) ──────────────────
         $rPendingWeeklyQC = $this->db->query("
             SELECT r.id, r.report_date, r.week_no,
                    p.name AS project_name,
@@ -127,40 +142,22 @@ class QCController extends Controller
             ORDER BY r.id DESC LIMIT 10");
         $pendingWeeklyReportsQC = $rPendingWeeklyQC ? $rPendingWeeklyQC->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Recent Issues & DPRs
-        $rIssues = $this->db->query("
-            SELECT mi.*, m.name AS material_name, p.name AS project_name
-            FROM con_material_issues mi
-            LEFT JOIN con_materials m ON m.id=mi.material_id
-            LEFT JOIN projects p ON p.id=mi.project_id
-            ORDER BY mi.id DESC LIMIT 5");
-        $recentIssues = $rIssues ? $rIssues->fetch_all(MYSQLI_ASSOC) : [];
-
-        $rDPR = $this->db->query("
-            SELECT dpr.*, p.name AS project_name
-            FROM weekly_progress_report dpr
-            LEFT JOIN projects p ON p.id=dpr.project_id
-            ORDER BY dpr.id DESC LIMIT 5");
-        $recentDPRs = $rDPR ? $rDPR->fetch_all(MYSQLI_ASSOC) : [];
-
-
         $this->view('phase2/qc/dashboard', [
             'current_route'          => 'qc-dashboard',
             'page_title'             => 'QC Dashboard',
             'inspections'            => $inspections,
             'materialTests'          => $materialTests,
-            'totalIssues'            => $totalIssues,
-            'totalPOs'               => $totalPOs,
-            'pendingPlans'           => $pendingPlans,
-            'totalDPRs'              => $totalDPRs,
-            'lowStock'               => $lowStock,
-            'totalEstimates'         => $totalEstimates,
             'projects'               => $projects,
             'pendingTargets'         => $pendingTargets,
             'pendingGRNsQC'          => $pendingGRNsQC,
             'pendingWeeklyReportsQC' => $pendingWeeklyReportsQC,
-            'recentIssues'           => $recentIssues,
-            'recentDPRs'             => $recentDPRs,
+            // KPI counts
+            'assignedProjects'       => $assignedProjects,
+            'pendingTargetsCount'    => $pendingTargetsCount,
+            'pendingGRNsCount'       => $pendingGRNsCount,
+            'totalInspections'       => $totalInspections,
+            'totalMaterialTests'     => $totalMaterialTests,
+            'pendingWeeklyCount'     => $pendingWeeklyCount,
         ]);
     }
 

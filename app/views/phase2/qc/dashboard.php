@@ -11,16 +11,14 @@ function qcFmt($n) {
     return '৳' . number_format($n, 0);
 }
 
-$totalIssues    = $totalIssues    ?? 0;
-$totalPOs       = $totalPOs       ?? 0;
-$pendingPlans   = $pendingPlans   ?? 0;
-$totalDPRs      = $totalDPRs      ?? 0;
-$lowStock       = $lowStock       ?? 0;
-$totalEstimates = $totalEstimates ?? 0;
-$projects       = $projects       ?? [];
-$recentIssues   = $recentIssues   ?? [];
-$recentDPRs     = $recentDPRs     ?? [];
-$pendingTargets = $pendingTargets ?? [];
+$projects             = $projects             ?? [];
+$pendingTargets       = $pendingTargets       ?? [];
+$assignedProjects     = $assignedProjects     ?? 0;
+$pendingTargetsCount  = $pendingTargetsCount  ?? 0;
+$pendingGRNsCount     = $pendingGRNsCount     ?? 0;
+$totalInspections     = $totalInspections     ?? 0;
+$totalMaterialTests   = $totalMaterialTests   ?? 0;
+$pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
 ?>
 <div class="row"><div class="col-12">
 <style>
@@ -143,9 +141,9 @@ $pendingTargets = $pendingTargets ?? [];
       <p class="qc-hero-sub">Real-time overview · <?= date('d M Y, h:i A') ?></p>
     </div>
     <div class="qc-hero-actions">
-      <a href="<?= $base ?>/con-estimates" class="qc-btn-white"><i class="fal fa-file-alt"></i> Estimates</a>
-      <a href="<?= $base ?>/con-material-issues" class="qc-btn-white"><i class="fal fa-box-open"></i> Material Issues</a>
-      <a href="<?= $base ?>/con-daily-reports" class="qc-btn-white"><i class="fal fa-chart-bar"></i> Reports</a>
+      <a href="<?= $base ?>/qc-inspection-create" class="qc-btn-white"><i class="fal fa-clipboard-check"></i> New Inspection</a>
+      <a href="<?= $base ?>/qc-material-test-create" class="qc-btn-white"><i class="fal fa-flask"></i> Log Lab Test</a>
+      <a href="<?= $base ?>/con-targets" class="qc-btn-white"><i class="fal fa-bullseye"></i> Targets</a>
     </div>
   </div>
 </div>
@@ -153,68 +151,72 @@ $pendingTargets = $pendingTargets ?? [];
 <!-- ═══════════════ KPI CARDS ═══════════════ -->
 <div class="kpi-grid-6">
 
-  <a href="<?= $base ?>/con-material-issues" class="kpi-card">
+  <a href="<?= $base ?>/con-projects" class="kpi-card">
     <div class="kpi-accent" style="background:var(--qc-blue)"></div>
-    <div class="kpi-icon" style="background:rgba(59,130,246,.12);color:var(--qc-blue)"><i class="fal fa-box-open"></i></div>
-    <div class="kpi-label" style="color:var(--text-muted)">Material Issues</div>
-    <div class="kpi-value" style="color:var(--qc-blue)"><?= $totalIssues ?></div>
-    <div class="kpi-sub">Total stock-out records</div>
+    <div class="kpi-icon" style="background:rgba(59,130,246,.12);color:var(--qc-blue)"><i class="fal fa-building"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Assigned Projects</div>
+    <div class="kpi-value" style="color:var(--qc-blue)"><?= $assignedProjects ?></div>
+    <div class="kpi-sub">Projects under QC review</div>
   </a>
 
-  <a href="<?= $base ?>/con-purchase-orders" class="kpi-card">
-    <div class="kpi-accent" style="background:var(--qc-green)"></div>
-    <div class="kpi-icon" style="background:rgba(16,185,129,.12);color:var(--qc-green)"><i class="fal fa-cart-shopping"></i></div>
-    <div class="kpi-label" style="color:var(--text-muted)">Purchase Orders</div>
-    <div class="kpi-value" style="color:var(--qc-green)"><?= $totalPOs ?></div>
-    <div class="kpi-sub">Total POs raised</div>
-  </a>
-
-  <a href="<?= $base ?>/con-working-plans" class="kpi-card">
+  <a href="<?= $base ?>/con-targets" class="kpi-card">
     <div class="kpi-accent" style="background:var(--qc-amber)"></div>
-    <div class="kpi-icon" style="background:rgba(245,158,11,.12);color:var(--qc-amber)"><i class="fal fa-calendar-alt"></i></div>
-    <div class="kpi-label" style="color:var(--text-muted)">Working Plans</div>
-    <div class="kpi-value" style="color:var(--qc-amber)"><?= $pendingPlans ?></div>
-    <div class="kpi-sub">Draft / Pending plans</div>
-    <?php if ($pendingPlans > 0): ?>
+    <div class="kpi-icon" style="background:rgba(245,158,11,.12);color:var(--qc-amber)"><i class="fal fa-bullseye"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Pending Targets</div>
+    <div class="kpi-value" style="color:var(--qc-amber)"><?= $pendingTargetsCount ?></div>
+    <div class="kpi-sub">Awaiting QC approval</div>
+    <?php if ($pendingTargetsCount > 0): ?>
     <span class="kpi-badge" style="background:rgba(245,158,11,.12);color:var(--qc-amber)">REVIEW</span>
     <?php endif; ?>
   </a>
 
-  <a href="<?= $base ?>/con-daily-reports" class="kpi-card">
+  <a href="<?= $base ?>/con-material-receivings" class="kpi-card">
     <div class="kpi-accent" style="background:var(--qc-purple)"></div>
-    <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:var(--qc-purple)"><i class="fal fa-chart-bar"></i></div>
-    <div class="kpi-label" style="color:var(--text-muted)">Project Reports (DPR)</div>
-    <div class="kpi-value" style="color:var(--qc-purple)"><?= $totalDPRs ?></div>
-    <div class="kpi-sub">Daily progress reports</div>
-  </a>
-
-  <a href="<?= $base ?>/con-stocks" class="kpi-card">
-    <div class="kpi-accent" style="background:var(--qc-red)"></div>
-    <div class="kpi-icon" style="background:rgba(239,68,68,.12);color:var(--qc-red)"><i class="fal fa-warehouse"></i></div>
-    <div class="kpi-label" style="color:var(--text-muted)">Low Stock Alerts</div>
-    <div class="kpi-value" style="color:var(--qc-red)"><?= $lowStock ?></div>
-    <div class="kpi-sub">Items below minimum level</div>
-    <?php if ($lowStock > 0): ?>
-    <span class="kpi-badge" style="background:rgba(239,68,68,.12);color:var(--qc-red)"><i class="fas fa-exclamation-triangle me-1"></i>ALERT</span>
+    <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:var(--qc-purple)"><i class="fal fa-clipboard-check"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Pending GRNs</div>
+    <div class="kpi-value" style="color:var(--qc-purple)"><?= $pendingGRNsCount ?></div>
+    <div class="kpi-sub">Material receiving awaiting QC</div>
+    <?php if ($pendingGRNsCount > 0): ?>
+    <span class="kpi-badge" style="background:rgba(139,92,246,.12);color:var(--qc-purple)">ACTION</span>
     <?php endif; ?>
   </a>
 
-  <a href="<?= $base ?>/con-estimates" class="kpi-card">
+  <a href="<?= $base ?>/qc-inspection-create" class="kpi-card">
+    <div class="kpi-accent" style="background:var(--qc-green)"></div>
+    <div class="kpi-icon" style="background:rgba(16,185,129,.12);color:var(--qc-green)"><i class="fal fa-search"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Total Inspections</div>
+    <div class="kpi-value" style="color:var(--qc-green)"><?= $totalInspections ?></div>
+    <div class="kpi-sub">All QC inspections logged</div>
+  </a>
+
+  <a href="<?= $base ?>/qc-material-test-create" class="kpi-card">
     <div class="kpi-accent" style="background:var(--qc-teal)"></div>
-    <div class="kpi-icon" style="background:rgba(20,184,166,.12);color:var(--qc-teal)"><i class="fal fa-file-invoice-dollar"></i></div>
-    <div class="kpi-label" style="color:var(--text-muted)">Estimates</div>
-    <div class="kpi-value" style="color:var(--qc-teal)"><?= $totalEstimates ?></div>
-    <div class="kpi-sub">Initial budget estimates</div>
+    <div class="kpi-icon" style="background:rgba(20,184,166,.12);color:var(--qc-teal)"><i class="fal fa-flask"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Material Tests</div>
+    <div class="kpi-value" style="color:var(--qc-teal)"><?= $totalMaterialTests ?></div>
+    <div class="kpi-sub">Lab test records</div>
+  </a>
+
+  <a href="<?= $base ?>/con-weekly-reports" class="kpi-card">
+    <div class="kpi-accent" style="background:var(--qc-red)"></div>
+    <div class="kpi-icon" style="background:rgba(239,68,68,.12);color:var(--qc-red)"><i class="fal fa-calendar-week"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Pending Weekly Reports</div>
+    <div class="kpi-value" style="color:var(--qc-red)"><?= $pendingWeeklyCount ?></div>
+    <div class="kpi-sub">Weekly reports awaiting QC</div>
+    <?php if ($pendingWeeklyCount > 0): ?>
+    <span class="kpi-badge" style="background:rgba(239,68,68,.12);color:var(--qc-red)"><i class="fas fa-exclamation-triangle me-1"></i>REVIEW</span>
+    <?php endif; ?>
   </a>
 
 </div>
 
 <!-- ═══════════════ ROW 2 ═══════════════ -->
-<div class="row">
+<div class="row align-items-stretch">
 
-  <!-- Project Progress -->
-  <div class="col-lg-7">
-    <div class="rd-panel">
+  <!-- Left Column -->
+  <div class="col-lg-7 d-flex flex-column">
+    <!-- Project Progress -->
+    <div class="rd-panel flex-fill">
       <div class="rd-panel-title">
         <div class="rd-dot" style="background:var(--qc-blue)"></div>
         Project Progress Overview
@@ -241,100 +243,108 @@ $pendingTargets = $pendingTargets ?? [];
         <?php endforeach; ?>
       <?php endif; ?>
     </div>
-
-    <!-- Recent Material Issues -->
-    <div class="rd-panel">
-      <div class="rd-panel-title">
-        <div class="rd-dot" style="background:var(--qc-purple)"></div>
-        Recent Material Issues
-        <a href="<?= $base ?>/con-material-issues" style="font-size:10px;color:var(--qc-blue);margin-left:auto;text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
-      </div>
-      <?php if (empty($recentIssues)): ?>
-        <div class="empty-msg">No material issues found</div>
-      <?php else: ?>
-      <table class="rd-table">
-        <thead>
-          <tr>
-            <th>Material</th>
-            <th>Project</th>
-            <th>Qty</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($recentIssues as $iss): ?>
-          <tr>
-            <td><strong><?= htmlspecialchars($iss['material_name'] ?? 'N/A') ?></strong></td>
-            <td style="font-size:11.5px;color:var(--text-muted)"><?= htmlspecialchars($iss['project_name'] ?? 'N/A') ?></td>
-            <td><strong><?= $iss['quantity_issued'] ?? 0 ?></strong></td>
-            <td style="font-size:11px;color:var(--text-muted)"><?= isset($iss['issue_date']) ? date('d M Y', strtotime($iss['issue_date'])) : 'N/A' ?></td>
-          </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-      <?php endif; ?>
-    </div>
   </div>
 
   <!-- Right Column -->
-  <div class="col-lg-5">
-    <!-- Quick Links -->
-    <div class="rd-panel">
+  <div class="col-lg-5 d-flex flex-column">
+
+    <!-- Quick Actions -->
+    <div class="rd-panel flex-grow-0">
       <div class="rd-panel-title">
         <div class="rd-dot" style="background:var(--qc-indigo)"></div>
         Quick Actions
       </div>
       <div class="quick-links">
-        <a href="<?= $base ?>/con-estimates" class="ql-btn" style="color:var(--qc-teal)">
-          <span class="ql-icon"><i class="fal fa-file-invoice-dollar"></i></span>
-          <span>Estimates</span>
+        <a href="<?= $base ?>/qc-inspection-create" class="ql-btn" style="color:var(--qc-green)">
+          <span class="ql-icon"><i class="fal fa-clipboard-check"></i></span>
+          <span>New Inspection</span>
         </a>
-        <a href="<?= $base ?>/con-working-plans" class="ql-btn" style="color:var(--qc-amber)">
-          <span class="ql-icon"><i class="fal fa-calendar-alt"></i></span>
-          <span>Work Plans</span>
+        <a href="<?= $base ?>/qc-material-test-create" class="ql-btn" style="color:var(--qc-teal)">
+          <span class="ql-icon"><i class="fal fa-flask"></i></span>
+          <span>Log Lab Test</span>
         </a>
-        <a href="<?= $base ?>/con-material-issues" class="ql-btn" style="color:var(--qc-blue)">
-          <span class="ql-icon"><i class="fal fa-box-open"></i></span>
-          <span>Material Issues</span>
-        </a>
-        <a href="<?= $base ?>/con-purchase-orders" class="ql-btn" style="color:var(--qc-green)">
-          <span class="ql-icon"><i class="fal fa-cart-shopping"></i></span>
-          <span>Purchase Orders</span>
-        </a>
-        <a href="<?= $base ?>/con-daily-reports" class="ql-btn" style="color:var(--qc-purple)">
-          <span class="ql-icon"><i class="fal fa-chart-bar"></i></span>
-          <span>DPR Reports</span>
-        </a>
-        <a href="<?= $base ?>/con-targets" class="ql-btn" style="color:var(--qc-red)">
+        <a href="<?= $base ?>/con-targets" class="ql-btn" style="color:var(--qc-amber)">
           <span class="ql-icon"><i class="fal fa-bullseye"></i></span>
           <span>Targets</span>
+        </a>
+        <a href="<?= $base ?>/con-material-receivings" class="ql-btn" style="color:var(--qc-purple)">
+          <span class="ql-icon"><i class="fal fa-truck"></i></span>
+          <span>GRN Review</span>
+        </a>
+        <a href="<?= $base ?>/con-weekly-reports" class="ql-btn" style="color:var(--qc-red)">
+          <span class="ql-icon"><i class="fal fa-calendar-week"></i></span>
+          <span>Weekly Reports</span>
+        </a>
+        <a href="<?= $base ?>/con-projects" class="ql-btn" style="color:var(--qc-blue)">
+          <span class="ql-icon"><i class="fal fa-building"></i></span>
+          <span>Projects</span>
         </a>
       </div>
     </div>
 
-    <!-- Recent DPRs -->
-    <div class="rd-panel">
+    <!-- QC Activity Summary (filler to equalize height) -->
+    <div class="rd-panel flex-grow-1" style="display:flex;flex-direction:column;">
       <div class="rd-panel-title">
-        <div class="rd-dot" style="background:var(--qc-amber)"></div>
-        Recent Project Reports
-        <a href="<?= $base ?>/con-daily-reports" style="font-size:10px;color:var(--qc-blue);margin-left:auto;text-decoration:none">All Reports <i class="fal fa-arrow-right ms-1"></i></a>
+        <div class="rd-dot" style="background:var(--qc-green)"></div>
+        QC Activity Summary
       </div>
-      <?php if (empty($recentDPRs)): ?>
-        <div class="empty-msg">No reports yet</div>
-      <?php else: ?>
-        <?php foreach ($recentDPRs as $dpr): ?>
-        <div style="padding:11px 0;border-bottom:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-between;align-items:center" class="<?= $loop_last ?? false ? '' : '' ?>">
-          <div>
-            <div style="font-size:12.5px;font-weight:600"><?= htmlspecialchars($dpr['project_name'] ?? 'N/A') ?></div>
-            <div style="font-size:10.5px;color:var(--text-muted)">
-              <?= isset($dpr['report_date']) ? date('d M Y', strtotime($dpr['report_date'])) : 'N/A' ?>
+      <div style="display:flex;flex-direction:column;gap:12px;flex:1;justify-content:center;">
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-radius:10px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:34px;height:34px;border-radius:10px;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center">
+              <i class="fal fa-search" style="color:var(--qc-green);font-size:14px"></i>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:700">Total Inspections</div>
+              <div style="font-size:10px;color:var(--text-muted)">All QC site inspections</div>
             </div>
           </div>
-          <a href="<?= $base ?>/con-daily-report/<?= $dpr['id'] ?>" style="font-size:11px;color:var(--qc-blue);text-decoration:none">View <i class="fal fa-arrow-right ms-1"></i></a>
+          <span style="font-size:26px;font-weight:900;color:var(--qc-green)"><?= $totalInspections ?></span>
         </div>
-        <?php endforeach; ?>
-      <?php endif; ?>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-radius:10px;background:rgba(20,184,166,.06);border:1px solid rgba(20,184,166,.15)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:34px;height:34px;border-radius:10px;background:rgba(20,184,166,.12);display:flex;align-items:center;justify-content:center">
+              <i class="fal fa-flask" style="color:var(--qc-teal);font-size:14px"></i>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:700">Material Lab Tests</div>
+              <div style="font-size:10px;color:var(--text-muted)">All lab test records</div>
+            </div>
+          </div>
+          <span style="font-size:26px;font-weight:900;color:var(--qc-teal)"><?= $totalMaterialTests ?></span>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-radius:10px;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.15)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:34px;height:34px;border-radius:10px;background:rgba(139,92,246,.12);display:flex;align-items:center;justify-content:center">
+              <i class="fal fa-clipboard-check" style="color:var(--qc-purple);font-size:14px"></i>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:700">Pending GRN Reviews</div>
+              <div style="font-size:10px;color:var(--text-muted)">Material receiving awaiting QC</div>
+            </div>
+          </div>
+          <span style="font-size:26px;font-weight:900;color:var(--qc-purple)"><?= $pendingGRNsCount ?></span>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-radius:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:34px;height:34px;border-radius:10px;background:rgba(245,158,11,.12);display:flex;align-items:center;justify-content:center">
+              <i class="fal fa-bullseye" style="color:var(--qc-amber);font-size:14px"></i>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:700">Pending Target Approvals</div>
+              <div style="font-size:10px;color:var(--text-muted)">Targets awaiting QC sign-off</div>
+            </div>
+          </div>
+          <span style="font-size:26px;font-weight:900;color:var(--qc-amber)"><?= $pendingTargetsCount ?></span>
+        </div>
+
+      </div>
     </div>
+
   </div>
 
 </div>
