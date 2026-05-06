@@ -104,3 +104,8 @@ DROP TABLE IF EXISTS weekly_progress_report;
 DROP TABLE IF EXISTS vendors;
 DROP TABLE IF EXISTS project_structural_designs;
 DROP TABLE IF EXISTS work_types;
+DROP TABLE IF EXISTS material_returns;
+DROP TABLE IF EXISTS material_return_items;
+DROP TABLE IF EXISTS qc_checklists;
+DROP TABLE IF EXISTS qc_inspections;
+DROP TABLE IF EXISTS qc_inspection_items;
