@@ -742,6 +742,11 @@ class ProjectWorkflowMailService
     {
         try {
             $stmt = $this->db->prepare("INSERT INTO email_queue (to_email, subject, body, status) VALUES (?, ?, ?, 'pending')");
+            if (!$stmt) {
+                // email_queue table may not exist on this server — log and skip silently
+                error_log("[ProjectWorkflowMailService] email_queue table missing or prepare failed: " . $this->db->error);
+                return false;
+            }
             $stmt->bind_param("sss", $toEmail, $subject, $htmlBody);
             $stmt->execute();
             $stmt->close();

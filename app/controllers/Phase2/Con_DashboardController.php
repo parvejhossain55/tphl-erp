@@ -617,13 +617,15 @@ class Con_DashboardController extends Controller
         $id = (int)$id;
 
         $stmt = $this->db->prepare("
-            SELECT w.*, dt.name AS design_type_name,
+            SELECT w.*, wt.work_type_name AS work_type_name,
+                   dt.name AS design_type_name,
                    ieb.total_estimated_cost AS budget_total
             FROM   project_working_plans w
-            LEFT JOIN design_types             dt  ON dt.id  = w.design_type_id
+            LEFT JOIN work_types               wt  ON wt.id  = w.work_type_id
+            LEFT JOIN design_types             dt  ON dt.id  = wt.design_type_id
             LEFT JOIN initial_estimate_budgets ieb ON ieb.id = w.initial_budget_id
             WHERE  w.project_id = ?
-            ORDER  BY w.year ASC, w.month ASC, dt.name ASC");
+            ORDER  BY w.year ASC, w.month ASC, wt.work_type_name ASC");
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $plans = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -659,10 +661,12 @@ class Con_DashboardController extends Controller
 
         $stmt = $this->db->prepare("
             SELECT tf.*, wp.work_description AS plan_description,
+                   wt.work_type_name AS work_type_name,
                    dt.name AS design_type_name, u.full_name AS created_by_name
             FROM   target_fixed tf
             LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-            LEFT JOIN design_types          dt ON dt.id = wp.design_type_id
+            LEFT JOIN work_types            wt ON wt.id = wp.work_type_id
+            LEFT JOIN design_types          dt ON dt.id = wt.design_type_id
             LEFT JOIN users                 u  ON u.id  = tf.user_id
             WHERE  tf.project_id = ?
             ORDER  BY tf.year DESC, tf.month DESC, tf.week_number ASC");
@@ -689,10 +693,12 @@ class Con_DashboardController extends Controller
         // Get all target entries for this project
         $stmt = $this->db->prepare("
             SELECT tf.*, wp.work_description AS plan_description,
+                   wt.work_type_name AS work_type_name,
                    dt.name AS design_type_name, u.full_name AS created_by_name
             FROM   target_fixed tf
             LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-            LEFT JOIN design_types          dt ON dt.id = wp.design_type_id
+            LEFT JOIN work_types            wt ON wt.id = wp.work_type_id
+            LEFT JOIN design_types          dt ON dt.id = wt.design_type_id
             LEFT JOIN users                 u  ON u.id  = tf.user_id
             WHERE  tf.project_id = ?
             ORDER  BY tf.year ASC, tf.month ASC, tf.week_number ASC");

@@ -7,6 +7,7 @@ class Con_Quotation extends Model
 {
     protected $table     = 'quotations';
     protected $itemTable = 'quotation_items';
+    public    $lastError = null;  // stores the last error message for caller
 
     // =========================================================================
     // QUOTATION — READ
@@ -17,12 +18,16 @@ class Con_Quotation extends Model
     {
         $stmt = $this->db->prepare(
             "SELECT q.*, v.name AS vendor_name, v.phone AS vendor_phone,
-                    (SELECT SUM(total_price) FROM {$this->itemTable} WHERE quotation_id = q.id) AS total_amount
+                    (SELECT SUM(qi.quantity * qi.unit_price) FROM {$this->itemTable} qi WHERE qi.quotation_id = q.id) AS total_amount
              FROM {$this->table} q
              JOIN vendors v ON v.id = q.vendor_id
              WHERE q.request_id = ?
              ORDER BY q.id ASC"
         );
+        if (!$stmt) {
+            error_log('[Con_Quotation::getByRequest] prepare failed: ' . $this->db->error);
+            return [];
+        }
         $stmt->bind_param('i', $requestId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -61,26 +66,35 @@ class Con_Quotation extends Model
 
     public function create($data, $items)
     {
+        $this->lastError = null;
         $this->db->begin_transaction();
         try {
+            // ── Insert quotation header ──────────────────────────────────────
             $stmt = $this->db->prepare(
-                "INSERT INTO {$this->table} (request_id, vendor_id, validity_date, status, created_by)
-                 VALUES (?, ?, ?, ?, ?)"
+                "INSERT INTO {$this->table} (request_id, vendor_id, validity_date, created_by)
+                 VALUES (?, ?, ?, ?)"
             );
-            $stmt->bind_param('iissi',
+            if (!$stmt) throw new \RuntimeException('Quotation header prepare failed: ' . $this->db->error);
+
+            $stmt->bind_param('iisi',
                 $data['request_id'],
                 $data['vendor_id'],
                 $data['validity_date'],
-                $data['status'],
                 $data['created_by']
             );
-            $stmt->execute();
+            if (!$stmt->execute()) throw new \RuntimeException('Quotation header execute failed: ' . $stmt->error);
             $quotationId = $this->db->insert_id;
 
+            // ── Insert quotation items ───────────────────────────────────────
+            // We do NOT insert total_price explicitly
+            // (handles both GENERATED columns and regular nullable columns)
             $itemStmt = $this->db->prepare(
-                "INSERT INTO {$this->itemTable} (quotation_id, material_id, quantity, unit_price, created_by)
+                "INSERT INTO {$this->itemTable}
+                     (quotation_id, material_id, quantity, unit_price, created_by)
                  VALUES (?, ?, ?, ?, ?)"
             );
+            if (!$itemStmt) throw new \RuntimeException('Quotation items prepare failed: ' . $this->db->error);
+
             foreach ($items as $item) {
                 $itemStmt->bind_param('iiddi',
                     $quotationId,
@@ -89,13 +103,18 @@ class Con_Quotation extends Model
                     $item['unit_price'],
                     $data['created_by']
                 );
-                $itemStmt->execute();
+                if (!$itemStmt->execute()) {
+                    throw new \RuntimeException('Item execute failed: ' . $itemStmt->error);
+                }
             }
 
             $this->db->commit();
             return $quotationId;
+
         } catch (\Throwable $e) {
             $this->db->rollback();
+            $this->lastError = $e->getMessage();
+            error_log('[Con_Quotation::create] ' . $e->getMessage());
             return false;
         }
     }

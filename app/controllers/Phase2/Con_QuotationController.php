@@ -102,7 +102,8 @@ class Con_QuotationController extends Controller
             setSuccess('Vendor quotation added successfully.');
             header("Location: {$GLOBALS['base_url']}/con-quotation-create/{$data['request_id']}");
         } else {
-            setError('Failed to save quotation.');
+            $errDetail = $this->quotModel->lastError ?? 'Unknown error';
+            setError('Failed to save quotation. DB Error: ' . $errDetail);
             header("Location: {$GLOBALS['base_url']}/con-quotation-create/{$data['request_id']}");
         }
         exit;

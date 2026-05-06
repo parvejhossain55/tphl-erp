@@ -35,13 +35,15 @@ class Con_TargetFixed extends Model
                        wp.work_description AS plan_description,
                        wp.year          AS plan_year,
                        wp.month         AS plan_month,
+                       wt.work_type_name AS work_type_name,
                        dt.name          AS design_type_name,
                        u.full_name      AS created_by_name,
                        qc.full_name     AS qc_reviewed_by_name
                 FROM {$this->table} tf
                 LEFT JOIN projects              p  ON p.id  = tf.project_id
                 LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-                LEFT JOIN design_types          dt ON dt.id = wp.design_type_id
+                LEFT JOIN work_types            wt ON wt.id = wp.work_type_id
+                LEFT JOIN design_types          dt ON dt.id = wt.design_type_id
                 LEFT JOIN users                 u  ON u.id  = tf.user_id
                 LEFT JOIN users                 qc ON qc.id = tf.qc_reviewed_by_id
                 ORDER BY tf.year DESC, tf.month DESC, tf.week_number ASC";
@@ -59,17 +61,23 @@ class Con_TargetFixed extends Model
                     wp.year          AS plan_year,
                     wp.month         AS plan_month,
                     wp.estimated_cost AS plan_estimated_cost,
+                    wt.work_type_name AS work_type_name,
                     dt.name          AS design_type_name,
                     u.full_name      AS created_by_name,
                     qc.full_name     AS qc_reviewed_by_name
              FROM {$this->table} tf
              LEFT JOIN projects              p  ON p.id  = tf.project_id
              LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-             LEFT JOIN design_types          dt ON dt.id = wp.design_type_id
+             LEFT JOIN work_types            wt ON wt.id = wp.work_type_id
+             LEFT JOIN design_types          dt ON dt.id = wt.design_type_id
              LEFT JOIN users                 u  ON u.id  = tf.user_id
              LEFT JOIN users                 qc ON qc.id = tf.qc_reviewed_by_id
              WHERE tf.id = ?"
         );
+        if (!$stmt) {
+            error_log('Con_TargetFixed::find prepare failed: ' . $this->db->error);
+            return null;
+        }
         $stmt->bind_param('i', $id);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
@@ -81,13 +89,19 @@ class Con_TargetFixed extends Model
         $stmt = $this->db->prepare(
             "SELECT tf.*,
                     wp.work_description AS plan_description,
-                    dt.name AS design_type_name
+                    wt.work_type_name   AS work_type_name,
+                    dt.name             AS design_type_name
              FROM {$this->table} tf
              LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-             LEFT JOIN design_types          dt ON dt.id = wp.design_type_id
+             LEFT JOIN work_types            wt ON wt.id = wp.work_type_id
+             LEFT JOIN design_types          dt ON dt.id = wt.design_type_id
              WHERE tf.project_id = ?
              ORDER BY tf.year DESC, tf.month DESC"
         );
+        if (!$stmt) {
+            error_log('Con_TargetFixed::getByProject prepare failed: ' . $this->db->error);
+            return [];
+        }
         $stmt->bind_param('i', $projectId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

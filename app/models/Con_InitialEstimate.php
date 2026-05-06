@@ -254,6 +254,10 @@ class Con_InitialEstimate extends Model
                       estimated_qty, unit_cost_approx, remarks)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log('addItems prepare failed: ' . $this->db->error);
+            return false;
+        }
 
         foreach ($items as $item) {
             $stmt->bind_param(
@@ -281,6 +285,32 @@ class Con_InitialEstimate extends Model
                      (budget_id, work_type_id, design_type_id, labor_type_name, rate_per_sqft, area_sqft, description)
                  VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log('addLabors prepare failed: ' . $this->db->error);
+            // Fallback: insert without work_type_id if column doesn't exist yet
+            $sql2  = "INSERT INTO {$this->laborsTable}
+                         (budget_id, design_type_id, labor_type_name, rate_per_sqft, area_sqft, description)
+                     VALUES (?, ?, ?, ?, ?, ?)";
+            $stmt = $this->db->prepare($sql2);
+            if (!$stmt) {
+                error_log('addLabors fallback prepare failed: ' . $this->db->error);
+                return false;
+            }
+            foreach ($labors as $l) {
+                $dtId = $l['design_type_id'] ?? ($l['work_type_id'] ?? 1);
+                $stmt->bind_param(
+                    'iisdds',
+                    $budgetId,
+                    $dtId,
+                    $l['labor_type_name'],
+                    $l['rate_per_sqft'],
+                    $l['area_sqft'],
+                    $l['description']
+                );
+                $stmt->execute();
+            }
+            return true;
+        }
 
         foreach ($labors as $l) {
             $stmt->bind_param(
