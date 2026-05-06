@@ -856,5 +856,161 @@ class CashoutRequestController extends Controller
 
         return $projects;
     }
+    // --- CSV BULK IMPORT ENDPOINTS ---
+    
+    public function showCSVImportForm()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $this->view("accounts/cashout/csv-import-form", [
+            "current_route" => "cashout-csv-import-form",
+            "page_title"    => "Cashout CSV Import",
+            "preview_data"  => null,
+            "errors"        => null,
+            "summary"       => null,
+            "isAdmin"       => $this->isAdminUser(),
+            "userRole"      => $this->userRole
+        ]);
+    }
+
+    public function previewCSVImport()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/cashout-csv-import-form");
+            exit;
+        }
+
+        if (empty($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            setError("Please select a valid CSV file to upload.");
+            header("Location: {$GLOBALS['base_url']}/cashout-csv-import-form");
+            exit;
+        }
+
+        $file = $_FILES['csv_file'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if ($ext !== 'csv') {
+            setError("Only CSV files are allowed.");
+            header("Location: {$GLOBALS['base_url']}/cashout-csv-import-form");
+            exit;
+        }
+
+        $uploadDir = __DIR__ . '/../../public/uploads/csv_imports/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $tempName = 'cashout_import_' . date('YmdHis') . '_' . uniqid() . '.csv';
+        $tempPath = $uploadDir . $tempName;
+
+        if (!move_uploaded_file($file['tmp_name'], $tempPath)) {
+            setError("Failed to upload file. Please try again.");
+            header("Location: {$GLOBALS['base_url']}/cashout-csv-import-form");
+            exit;
+        }
+
+        $result = $this->cashoutModel->parseAndValidateCSV($tempPath);
+
+        $_SESSION['cashout_csv_import_file'] = $tempPath;
+        $_SESSION['cashout_csv_import_filename'] = $file['name'];
+
+        $this->view("accounts/cashout/csv-import-form", [
+            "current_route" => "cashout-csv-import-preview",
+            "page_title"    => "CSV Import Preview - " . $file['name'],
+            "preview_data"  => $result['valid_rows'],
+            "errors"        => $result['errors'],
+            "summary"       => $result['summary'],
+            "filename"      => $file['name'],
+            "isAdmin"       => $this->isAdminUser(),
+            "userRole"      => $this->userRole
+        ]);
+    }
+
+    public function executeCSVImport()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/cashout-csv-import-form");
+            exit;
+        }
+
+        $tempFile = $_SESSION['cashout_csv_import_file'] ?? null;
+        $filename = $_SESSION['cashout_csv_import_filename'] ?? 'unknown.csv';
+
+        if (!$tempFile || !file_exists($tempFile)) {
+            setError("Import session expired or file not found. Please re-upload the CSV file.");
+            header("Location: {$GLOBALS['base_url']}/cashout-csv-import-form");
+            exit;
+        }
+
+        $parseResult = $this->cashoutModel->parseAndValidateCSV($tempFile);
+        $validRows = $parseResult['valid_rows'] ?? [];
+
+        if (empty($validRows)) {
+            setError("No valid rows to import. Please upload a corrected CSV file.");
+            header("Location: {$GLOBALS['base_url']}/cashout-csv-import-form");
+            exit;
+        }
+
+        $successCount = 0;
+        $errorCount = 0;
+
+        foreach ($validRows as $row) {
+            $result = $this->cashoutModel->processCSVImportRow($row, $this->userId);
+            if ($result['success']) {
+                $successCount++;
+            } else {
+                $errorCount++;
+                error_log("Cashout Import Error Row {$row['row_num']}: " . $result['message']);
+            }
+        }
+
+        // Cleanup
+        unlink($tempFile);
+        unset($_SESSION['cashout_csv_import_file']);
+        unset($_SESSION['cashout_csv_import_filename']);
+
+        if ($errorCount === 0) {
+            setSuccess("Successfully imported $successCount cashout records.");
+        } else {
+            setError("Import completed with $successCount successes and $errorCount failures. Check logs for details.");
+        }
+
+        header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
+        exit;
+    }
+
+    public function downloadCSVTemplate()
+    {
+        $headers = [
+            'Payment Type', 'Project Name', 'Amount', 'Date', 'Status',
+            'Purpose / Description', 'Vendor Name', 'Vendor Phone', 'PO Number', 'Invoice Number',
+            'Operator Name', 'File Attachment', 'Payment Method', 'Paid Amount'
+        ];
+        
+        $sampleData = [
+            ['General', 'Orchid Project', '5000', date('Y-m-d'), 'Fully Paid', 'Office Supplies', '', '', '', '', '', 'BankTransfer', '5000'],
+            ['Vendor', 'Orchid Project', '15000', date('Y-m-d'), 'Paid', '', 'ABC Supplies', '01711000000', '', 'INV-001', '', '', 'Cheque', '15000'],
+            ['Contractor', 'Orchid Project', '20000', date('Y-m-d'), 'Paid', 'Foundation Work', '', '', '', 'John Doe', '', 'Cash', '20000'],
+        ];
+
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="cashouts_template.csv"');
+
+        $fp = fopen('php://output', 'w');
+        fputcsv($fp, $headers);
+        foreach ($sampleData as $row) {
+            fputcsv($fp, $row);
+        }
+        fclose($fp);
+        exit;
+    }
 }
 ?>
