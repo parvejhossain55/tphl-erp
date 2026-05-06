@@ -3177,23 +3177,25 @@ ORDER BY lb.booking_date DESC
                     $csLandShare = 0.0;
                     $csBulkDisc = 0.0;
 
+                    $csBulkPay = (!$firstPaymentId) ? $amount : null;
+
                     $csStmt = $this->db->prepare("
                         INSERT INTO lead_payments (
                             booking_id, payment_type, amount, land_share_amount, service_fee,
                             payment_method, payment_status, payment_date, transaction_ref,
                             bank_id, bank_name, bank_account_no, cheque_no, online_type,
-                            due_emi_amount, bulk_emi_discount, verification_status,
+                            due_emi_amount, bulk_emi_discount, bulk_pay_amount, verification_status,
                             verified_by, verified_at, parent_payment_id, settlement_type, created_by
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ");
                     if (!$csStmt) throw new Exception("Settlement prepare failed: " . $this->db->error);
 
                     $csStmt->bind_param(
-                        "isdddssssissssddssissi",
+                        "isdddssssissssdddssissi",
                         $bookingId, $csPayType, $csAmount, $csLandShare, $csSvcFee,
                         $paymentMethod, $paymentStatus, $paymentDate, $transactionRef,
                         $bankId, $bankNameLookup, $bankAccountNo, $chequeNo, $onlineType,
-                        $csDue, $csBulkDisc, $verificationStatus,
+                        $csDue, $csBulkDisc, $csBulkPay, $verificationStatus,
                         $verifiedBy, $verifiedAt, $csParentId, $csStType, $createdBy
                     );
 
@@ -3251,9 +3253,9 @@ ORDER BY lb.booking_date DESC
                             booking_id, payment_type, amount, land_share_amount, service_fee,
                             payment_method, payment_status, payment_date, transaction_ref,
                             bank_id, bank_name, bank_account_no, cheque_no, online_type,
-                            due_emi_amount, bulk_emi_discount, verification_status,
+                            due_emi_amount, bulk_emi_discount, bulk_pay_amount, verification_status,
                             verified_by, verified_at, parent_payment_id, settlement_type, attachment_paths, created_by
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ");
                     if (!$emiStmt) throw new Exception("EMI prepare failed: " . $this->db->error);
 
@@ -3261,13 +3263,15 @@ ORDER BY lb.booking_date DESC
                     $emiLandShare = 0.0;
                     // Only attach document to first installment
                     $emiAttach = $isFirstInstallment ? $attachmentPaths : null;
+                    // Only set bulk pay amount on the first actual payment record
+                    $emiBulkPay = ($isFirstInstallment && !$firstPaymentId) ? $amount : null;
 
                     $emiStmt->bind_param(
-                        "isdddssssissssddssisssi",
+                        "isdddssssissssdddssisssi",
                         $bookingId, $emiPayType, $thisEmi, $emiLandShare, $thisSvcFee,
                         $paymentMethod, $thisStatus, $paymentDate, $transactionRef,
                         $bankId, $bankNameLookup, $bankAccountNo, $chequeNo, $onlineType,
-                        $thisDue, $thisDiscount, $verificationStatus,
+                        $thisDue, $thisDiscount, $emiBulkPay, $verificationStatus,
                         $verifiedBy, $verifiedAt, $parentPaymentId, $settlementType, $emiAttach, $createdBy
                     );
 
@@ -3306,18 +3310,20 @@ ORDER BY lb.booking_date DESC
                         booking_id, payment_type, amount, land_share_amount, service_fee,
                         payment_method, payment_status, payment_date, transaction_ref,
                         bank_id, bank_name, bank_account_no, cheque_no, online_type,
-                        due_emi_amount, bulk_emi_discount, verification_status,
+                        due_emi_amount, bulk_emi_discount, bulk_pay_amount, verification_status,
                         verified_by, verified_at, parent_payment_id, settlement_type, attachment_paths, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$stmt) throw new Exception("Prepare failed: " . $this->db->error);
 
+                $stmtBulkPay = (!$firstPaymentId && $amount > 0) ? $amount : null;
+
                 $stmt->bind_param(
-                    "isdddssssissssddssisssi",
+                    "isdddssssissssdddssisssi",
                     $bookingId, $paymentType, $amount, $landShareAmount, $serviceFee,
                     $paymentMethod, $paymentStatus, $paymentDate, $transactionRef,
                     $bankId, $bankNameLookup, $bankAccountNo, $chequeNo, $onlineType,
-                    $dueEmiAmount, $bulkDiscount, $verificationStatus,
+                    $dueEmiAmount, $bulkDiscount, $stmtBulkPay, $verificationStatus,
                     $verifiedBy, $verifiedAt, $parentPaymentId, $settlementType, $attachmentPaths, $createdBy
                 );
                 if (!$stmt->execute()) throw new Exception("Payment insert failed: " . $stmt->error);
