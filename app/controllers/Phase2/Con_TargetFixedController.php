@@ -40,7 +40,7 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function create()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -52,7 +52,7 @@ class Con_TargetFixedController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22, 23])) {
+        if (!in_array($roleId, [1, 3, 15, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -73,7 +73,7 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -135,15 +135,13 @@ class Con_TargetFixedController extends Controller
         $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $createdBy     = (int)($target['user_id'] ?? 0);
 
-        // ── Who can approve? ───────────────────────────────────────────
-        // QC (13) approves step 'qc', PM (15) approves step 'manager'
-        // SE (12) creates but CANNOT approve their own target
-        $approverRoleMap = [13 => 'qc', 15 => 'manager']; // roleId => step key
-        $approverRole    = $approverRoleMap[$currentRoleId] ?? null;
-        $canApprove      = ($approverRole !== null) && ($currentUserId !== $createdBy);
+        // Roles 3 (Director), 15 (PM), 22 (PM Head) can approve target
+        $approverRoles   = [3, 15, 22];
+        $approverRole    = in_array($currentRoleId, $approverRoles) ? 'manager' : null;
+        $canApprove      = ($approverRole !== null);
 
         // Already approved this step?
-        $stepCol   = ($approverRole === 'qc') ? 'approved_by_qc' : 'approved_by_manager';
+        $stepCol   = 'approved_by_manager';
         $alreadyApproved = $canApprove && !empty($target[$stepCol]);
 
         // Fetch creator info
@@ -190,7 +188,7 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function edit($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -209,7 +207,7 @@ class Con_TargetFixedController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22, 23])) {
+        if (!in_array($roleId, [1, 3, 15, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -231,7 +229,7 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function update($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -305,8 +303,7 @@ class Con_TargetFixedController extends Controller
 
     // =========================================================================
     // APPROVE A STEP
-    // QC (role 13) approves step 'qc'
-    // PM (role 15) approves step 'manager'
+    // PM (role 22) approves step 'manager'
     // SE (role 12) creates and CANNOT approve
     // =========================================================================
     public function approve($id)
@@ -316,23 +313,24 @@ class Con_TargetFixedController extends Controller
         $userId = (int)($_SESSION['user']['id']   ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Role guard
-        $roleStepMap = [13 => 'qc', 15 => 'manager'];
-        if (!isset($roleStepMap[$roleId])) {
+        // Role guard — PM (15), Director (3), PM Head (22) can approve
+        $allowedRoles = [3, 15, 22];
+        if (!in_array($roleId, $allowedRoles)) {
             setError('You do not have permission to approve targets.');
             header("Location: {$GLOBALS['base_url']}/con-target/{$id}");
             exit;
         }
+        $step = 'manager'; // all approvers use the same step
 
-        // Creator cannot self-approve
-        $target = $this->targetModel->find($id);
-        if ($target && (int)($target['user_id'] ?? 0) === $userId) {
-            setError('You cannot approve a target that you created.');
-            header("Location: {$GLOBALS['base_url']}/con-target/{$id}");
-            exit;
-        }
+        // Creator cannot self-approve - Removed restriction as PM might create and approve
+        // $target = $this->targetModel->find($id);
+        // if ($target && (int)($target['user_id'] ?? 0) === $userId) {
+        //     setError('You cannot approve a target that you created.');
+        //     header("Location: {$GLOBALS['base_url']}/con-target/{$id}");
+        //     exit;
+        // }
 
-        $step = $roleStepMap[$roleId]; // 'qc' or 'manager'
+
 
         if ($this->targetModel->approveStep($id, $step, $userId)) {
             setSuccess('Approval recorded successfully!');
@@ -415,12 +413,12 @@ class Con_TargetFixedController extends Controller
                 $ins = $db->prepare("INSERT INTO target_fixed
                     (project_id, user_id, target_title, year, month, week_number, target_percentage, is_lab_test, approved_by_site_eng, approved_by_qc, approved_by_pc, approved_by_pd, approved_by_manager)
                     VALUES (?,?,?,?,?,?,?,0,0,0,0,0,0)");
-                $ins->bind_param('iissiii d', $projectId, $userId, $targetTitle, $year, $month, $weekNumber, $targetPct);
+                $ins->bind_param('iisiiid', $projectId, $userId, $targetTitle, $year, $month, $weekNumber, $targetPct);
             } else {
                 $ins = $db->prepare("INSERT INTO target_fixed
                     (project_id, user_id, target_title, year, month, target_percentage, is_lab_test, approved_by_site_eng, approved_by_qc, approved_by_pc, approved_by_pd, approved_by_manager)
                     VALUES (?,?,?,?,?,?,0,0,0,0,0,0)");
-                $ins->bind_param('iissii d', $projectId, $userId, $targetTitle, $year, $month, $targetPct);
+                $ins->bind_param('iisiid', $projectId, $userId, $targetTitle, $year, $month, $targetPct);
             }
 
             if ($ins->execute()) { $successCount++; } else { $errorCount++; $errors[] = "DB error: " . $db->error; }

@@ -43,12 +43,12 @@ jobs:
             sudo find $PROJECT_DIR -type f -exec chmod 644 {} \;
 
             # Drop all tables
-            echo "Dropping all tables..."
-            mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/drop_table.sql
+            # echo "Dropping all tables..."
+            # mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/drop_table.sql
 
             # Import fresh database
-            echo "Importing fresh database..."
-            mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
+            # echo "Importing fresh database..."
+            # mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
 
             # Project upload in Main From Staging
             echo "Copying files to production..."

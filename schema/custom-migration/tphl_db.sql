@@ -1508,6 +1508,7 @@ CREATE TABLE `initial_estimate_labors` (
   `labor_type_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `rate_per_sqft` decimal(10,2) NOT NULL DEFAULT '0.00',
   `area_sqft` decimal(12,2) NOT NULL,
+  `description` text COLLATE utf8mb4_general_ci DEFAULT NULL,
   `work_type_id` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_iel_budget` (`budget_id`)

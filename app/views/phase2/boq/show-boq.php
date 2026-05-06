@@ -3,6 +3,7 @@ $base              = $base_url;
 $boq               = $boq               ?? [];
 $items             = $items             ?? [];
 $canApprove        = $canApprove        ?? false;
+$canEdit           = $canEdit           ?? false;
 $creatorInfo       = $creatorInfo       ?? [];
 $totalBoqQty       = $totalBoqQty       ?? 0;
 $totalOrdered      = $totalOrdered      ?? 0;
@@ -137,7 +138,7 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
         </p>
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
-          <?php if ($status !== 'Approved'): ?>
+          <?php if ($canEdit): ?>
           <a href="<?= $base ?>/con-boq-edit/<?= $boq['id'] ?>" class="boq-btn-w">
             <i class="fal fa-pencil"></i>Edit BOQ
           </a>

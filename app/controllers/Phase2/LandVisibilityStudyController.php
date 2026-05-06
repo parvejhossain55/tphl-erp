@@ -26,7 +26,7 @@ class LandVisibilityStudyController extends Controller {
     public function index() {
         $userId  = $_SESSION['user']['id']  ?? 0;
         $roleId  = $_SESSION['user']['role_id'] ?? 0;
-        $isPmOrAdmin = in_array($roleId, [1, 2, 3, 13, 15, 23]);
+        $isPmOrAdmin = in_array($roleId, [1, 2, 3, 13, 15, 22]);
 
         if ($isPmOrAdmin) {
             $studies = $this->model->getAll();
@@ -51,7 +51,7 @@ class LandVisibilityStudyController extends Controller {
     }
 
     public function create() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -69,7 +69,7 @@ class LandVisibilityStudyController extends Controller {
     }
 
     public function store() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -104,7 +104,7 @@ class LandVisibilityStudyController extends Controller {
     }
 
     public function edit() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to edit records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -131,7 +131,7 @@ class LandVisibilityStudyController extends Controller {
     }
 
     public function update() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to edit records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -158,7 +158,7 @@ class LandVisibilityStudyController extends Controller {
     // ─── Helper: get projects assigned to the current user ───────────
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
             return $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);

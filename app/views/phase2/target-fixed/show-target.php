@@ -3,7 +3,7 @@ $base_url   = $GLOBALS['base_url'];
 $t          = $target ?? [];
 $canApprove      = $canApprove      ?? false;
 $alreadyApproved = $alreadyApproved ?? false;
-$approverRole    = $approverRole    ?? null;  // 'qc' or 'manager'
+$approverRole    = $approverRole    ?? null;  // 'manager' for PM (role 15)
 $creatorInfo     = $creatorInfo     ?? [];
 $currentRoleId   = $currentRoleId   ?? 0;
 
@@ -24,12 +24,10 @@ $months = [
 ];
 
 // Approval state
-$qcApproved  = !empty($t['approved_by_qc']);
 $pmApproved  = !empty($t['approved_by_manager']);
-$fullyApproved = $qcApproved && $pmApproved;
+$fullyApproved = $pmApproved;
 
-$overallStatus = $fullyApproved ? 'Approved'
-  : ($qcApproved || $pmApproved ? 'In Review' : 'Pending');
+$overallStatus = $fullyApproved ? 'Approved' : 'Pending';
 $statusMap = [
   'Approved'  => ['bg' => 'rgba(16,185,129,.2)', 'text' => '#059669', 'icon' => 'fa-check-circle'],
   'In Review' => ['bg' => 'rgba(59,130,246,.2)', 'text' => '#2563eb', 'icon' => 'fa-hourglass-half'],
@@ -285,7 +283,7 @@ $sc = $statusMap[$overallStatus];
           <i class="fal <?= $sc['icon'] ?>"></i><?= $overallStatus ?>
         </div>
         <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:8px">
-          <?= $fullyApproved ? 'Both QC &amp; PM approved' : ($qcApproved || $pmApproved ? 'Partial approval' : 'Awaiting QC &amp; PM') ?>
+          <?= $fullyApproved ? 'Approved by Project Manager' : 'Awaiting PM Approval' ?>
         </div>
       </div>
     </div>
@@ -310,7 +308,7 @@ $sc = $statusMap[$overallStatus];
     <div class="tgt-kpi-accent" style="background:var(--tgt-purple)"></div>
     <div class="tgt-kpi-icon" style="background:rgba(139,92,246,.12);color:var(--tgt-purple)"><i class="fal fa-shield-check"></i></div>
     <div class="tgt-kpi-lbl">Approvals</div>
-    <div class="tgt-kpi-val" style="color:var(--tgt-purple)"><?= ($qcApproved ? 1 : 0) + ($pmApproved ? 1 : 0) ?>/2</div>
+    <div class="tgt-kpi-val" style="color:var(--tgt-purple)"><?= $pmApproved ? '1/1' : '0/1' ?></div>
   </div>
   <div class="tgt-kpi">
     <div class="tgt-kpi-accent" style="background:<?= $sc['text'] ?>"></div>
@@ -498,7 +496,7 @@ $sc = $statusMap[$overallStatus];
         <span style="margin-left:auto;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;
           background:<?= $fullyApproved ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.12)' ?>;
           color:<?= $fullyApproved ? '#059669' : '#d97706' ?>">
-          <?= ($qcApproved ? 1 : 0) + ($pmApproved ? 1 : 0) ?>/2 Done
+          <?= $pmApproved ? '1/1' : '0/1' ?> Done
         </span>
       </div>
 
@@ -523,30 +521,7 @@ $sc = $statusMap[$overallStatus];
         </div>
       <?php endif; ?>
 
-      <!-- QC Step -->
-      <div class="apv-step" style="background:<?= $qcApproved ? 'rgba(16,185,129,.05)' : 'rgba(245,158,11,.04)' ?>;
-        border-color:<?= $qcApproved ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.2)' ?>">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="apv-icon" style="background:<?= $qcApproved ? 'rgba(16,185,129,.15)' : 'rgba(245,158,11,.12)' ?>;
-            color:<?= $qcApproved ? '#059669' : '#d97706' ?>">
-            <i class="fal <?= $qcApproved ? 'fa-check-circle' : 'fa-shield-alt' ?>"></i>
-          </div>
-          <div>
-            <div style="font-size:12.5px;font-weight:700">QC Officer</div>
-            <?php if ($qcApproved && !empty($t['qc_reviewed_by_name'])): ?>
-              <div style="font-size:11px;color:var(--text-muted)">
-                <?= htmlspecialchars($t['qc_reviewed_by_name']) ?>
-                <?= !empty($t['qc_reviewed_at']) ? ' · ' . date('d M Y', strtotime($t['qc_reviewed_at'])) : '' ?>
-              </div>
-            <?php endif; ?>
-          </div>
-        </div>
-        <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
-          background:<?= $qcApproved ? 'rgba(16,185,129,.15)' : 'rgba(245,158,11,.12)' ?>;
-          color:<?= $qcApproved ? '#059669' : '#d97706' ?>">
-          <?= $qcApproved ? '✓ Approved' : 'Pending' ?>
-        </span>
-      </div>
+
 
       <!-- PM Step -->
       <div class="apv-step" style="background:<?= $pmApproved ? 'rgba(16,185,129,.05)' : 'rgba(245,158,11,.04)' ?>;
@@ -588,7 +563,12 @@ $sc = $statusMap[$overallStatus];
         </div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
           <i class="fal fa-info-circle me-1"></i>
-          <?= $approverRole === 'qc' ? 'You are approving as <strong>QC Officer</strong>' : 'You are approving as <strong>Project Manager</strong>' ?>
+          You are approving as <strong>
+            <?php
+              $roleLabels = [3 => 'Director', 15 => 'Project Manager', 22 => 'PM Head'];
+              echo $roleLabels[$currentRoleId] ?? 'Authorized Approver';
+            ?>
+          </strong>
         </div>
         <form action="<?= $base_url ?>/con-target-approve/<?= $t['id'] ?>" method="POST">
           <button type="submit"

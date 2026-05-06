@@ -142,7 +142,7 @@ class Con_TargetFixed extends Model
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.00, NULL, NULL, NULL, NOW())";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiisiiidiss',
+            'iisiiiidiss',
             $data['project_id'],
             $data['work_plan_id'],
             $data['target_title'],
@@ -181,7 +181,7 @@ class Con_TargetFixed extends Model
                 WHERE id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiisiidissi',
+            'iisiiiidissi',
             $data['project_id'],
             $data['work_plan_id'],
             $data['target_title'],
@@ -250,17 +250,17 @@ class Con_TargetFixed extends Model
         return $stmt->execute();
     }
 
-    /** Check if target is fully approved by all 5 levels */
+    /** Check if target is fully approved by PM (role 22) */
     public function isFullyApproved($id)
     {
         $stmt = $this->db->prepare(
-            "SELECT (approved_by_site_eng + approved_by_qc + approved_by_pc + approved_by_pd + approved_by_manager) AS total_approvals
+            "SELECT approved_by_manager AS is_approved
              FROM {$this->table} WHERE id = ?"
         );
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
-        return $row && $row['total_approvals'] >= 5;
+        return $row && $row['is_approved'] == 1;
     }
 
     /** DELETE — only if no approvals */
@@ -269,8 +269,7 @@ class Con_TargetFixed extends Model
         $stmt = $this->db->prepare(
             "DELETE FROM {$this->table}
              WHERE id = ?
-               AND approved_by_site_eng = 0
-               AND approved_by_qc = 0"
+               AND approved_by_manager = 0"
         );
         $stmt->bind_param('i', $id);
         return $stmt->execute();
