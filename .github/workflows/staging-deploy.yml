@@ -41,11 +41,11 @@ jobs:
 
 
             # Drop all tables
-            # mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/drop_table.sql
+            mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/drop_table.sql
 
-            # Import fresh database
-            #
-            #  mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
+            Import fresh database
+            
+             mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
 
              
             # Project upload in Main From Staging
