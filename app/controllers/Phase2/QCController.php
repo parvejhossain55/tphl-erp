@@ -40,7 +40,7 @@ class QCController extends Controller
     {
         $userId = $_SESSION['user']['id'] ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
-        if (in_array($roleId, [1, 3, 22, 23])) return '1=1';
+        if (in_array($roleId, [1, 3, 15, 22])) return '1=1';
         return "({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 
@@ -55,7 +55,7 @@ class QCController extends Controller
         $materialTests = $this->qcMaterialTestModel->getAll();
 
         // ── KPI 1: Assigned Projects (only QC-assigned) ──────────────────
-        if (in_array($roleId, [1, 3, 22, 23])) {
+        if (in_array($roleId, [1, 3, 15, 22])) {
             $rAssigned = $this->db->query("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NULL");
         } else {
             $stmt = $this->db->prepare("SELECT COUNT(*) AS c FROM projects WHERE qc_id = ? AND deleted_at IS NULL");

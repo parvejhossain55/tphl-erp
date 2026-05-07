@@ -46,7 +46,7 @@ class Con_PurchaseRequestController extends Controller
 
     public function create()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -97,7 +97,7 @@ class Con_PurchaseRequestController extends Controller
 
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -181,6 +181,8 @@ class Con_PurchaseRequestController extends Controller
 
     public function approve($id)
     {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
         $status = $_POST['status'] ?? 'Approved';
         if (!in_array($status, ['Submitted', 'Approved', 'Rejected'])) {
             setError('Invalid status.');
@@ -188,7 +190,14 @@ class Con_PurchaseRequestController extends Controller
             exit;
         }
 
-        if ($this->prModel->updateStatus($id, $status)) {
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+
+        // Update status + track approver
+        $stmt = $this->db->prepare(
+            "UPDATE purchase_requests SET status = ?, approved_by_id = ?, approved_at = NOW() WHERE id = ?"
+        );
+        $stmt->bind_param('sii', $status, $userId, $id);
+        if ($stmt->execute()) {
             setSuccess("Purchase Request status updated to {$status}.");
         } else {
             setError('Failed to update status.');

@@ -158,7 +158,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           <i class="fal fa-circle"></i><?= $sb['label'] ?>
         </div>
         <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.55)">
-          <?= $fullyApproved ? '✅ SE &amp; PM Approved' : (($seApproved || $pmApproved) ? '⏳ Partial Approval' : '⏳ Awaiting SE &amp; PM') ?>
+          <?= $fullyApproved ? '✅ Management Approved' : '⏳ Awaiting Management Approval' ?>
         </div>
       </div>
     </div>
@@ -271,7 +271,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
           <div>
             <div style="font-size:13px;font-weight:700;color:#059669"><i class="fal fa-check-circle me-2"></i>PO is Fully Approved</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Both SE & PM have approved. You can now log material receiving.</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Management approved. You can now log material receiving.</div>
           </div>
           <a href="<?= $base_url ?>/con-material-receiving-create/<?= $po['id'] ?>"
             style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;padding:9px 22px;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:7px">
@@ -285,7 +285,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           <i class="fal fa-lock" style="color:#d97706;font-size:20px"></i>
           <div>
             <div style="font-size:13px;font-weight:700;color:#d97706">Material Receiving Locked</div>
-            <div style="font-size:11px;color:var(--text-muted)">Waiting for <?= !$seApproved && !$pmApproved ? 'SE & Management approval' : (!$seApproved ? 'SE approval' : 'Management approval') ?>.</div>
+            <div style="font-size:11px;color:var(--text-muted)">Waiting for Management/PM approval.</div>
           </div>
         </div>
       </div>
@@ -301,31 +301,12 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         <span style="margin-left:auto;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;
           background:<?= $fullyApproved ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.12)' ?>;
           color:<?= $fullyApproved ? '#059669' : '#d97706' ?>">
-          <?= ($seApproved ? 1 : 0) + ($pmApproved ? 1 : 0) ?>/2 Done
+          <?= ($pmApproved ? 1 : 0) ?>/1 Done
         </span>
       </div>
 
-      <!-- SE Step -->
-      <div class="po-apv-step" style="background:<?= $seApproved ? 'rgba(16,185,129,.06)' : 'rgba(245,158,11,.05)' ?>;
-        border:1px solid <?= $seApproved ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.2)' ?>;margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="po-apv-icon" style="background:<?= $seApproved ? 'rgba(16,185,129,.15)' : 'rgba(245,158,11,.1)' ?>;
-            color:<?= $seApproved ? '#059669' : '#d97706' ?>">
-            <i class="fal <?= $seApproved ? 'fa-check-circle' : 'fa-hard-hat' ?>"></i>
-          </div>
-          <div>
-            <div style="font-size:12px;font-weight:700">Site Engineer (SE)</div>
-            <div style="font-size:10px;color:var(--text-muted)"><?= $seApproved ? 'Approved' : 'Awaiting approval' ?></div>
-          </div>
-        </div>
-        <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
-          background:<?= $seApproved ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.1)' ?>;
-          color:<?= $seApproved ? '#059669' : '#d97706' ?>">
-          <?= $seApproved ? '✓ Approved' : 'Pending' ?>
-        </span>
-      </div>
 
-      <!-- PM Step -->
+      <!-- Management / PM Step -->
       <div class="po-apv-step" style="background:<?= $pmApproved ? 'rgba(16,185,129,.06)' : 'rgba(245,158,11,.05)' ?>;
         border:1px solid <?= $pmApproved ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.2)' ?>;margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:10px">
@@ -334,8 +315,18 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
             <i class="fal <?= $pmApproved ? 'fa-check-circle' : 'fa-user-tie' ?>"></i>
           </div>
           <div>
-            <div style="font-size:12px;font-weight:700">Top Management / PM</div>
-            <div style="font-size:10px;color:var(--text-muted)"><?= $pmApproved ? 'Approved' : 'Awaiting approval' ?></div>
+            <div style="font-size:12px;font-weight:700">Management / Project Manager</div>
+            <?php if ($pmApproved && !empty($po['pm_approver_name'])): ?>
+              <div style="font-size:10px;font-weight:700;color:#059669"><?= htmlspecialchars($po['pm_approver_name']) ?></div>
+              <?php if (!empty($po['pm_approver_role'])): ?>
+                <div style="font-size:9px;color:#6b7280;font-style:italic"><?= htmlspecialchars($po['pm_approver_role']) ?></div>
+              <?php endif; ?>
+              <?php if (!empty($po['pm_approved_at'])): ?>
+                <div style="font-size:9px;color:var(--text-muted)"><?= date('d M Y, h:i A', strtotime($po['pm_approved_at'])) ?></div>
+              <?php endif; ?>
+            <?php else: ?>
+              <div style="font-size:10px;color:var(--text-muted)">Awaiting approval</div>
+            <?php endif; ?>
           </div>
         </div>
         <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
@@ -349,21 +340,9 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
       <?php if ($fullyApproved): ?>
         <div style="padding:12px;border-radius:10px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);text-align:center;margin-bottom:14px">
           <i class="fal fa-check-circle" style="color:#059669;font-size:20px;display:block;margin-bottom:5px"></i>
-          <div style="font-size:12px;font-weight:800;color:#059669">Fully Approved</div>
+          <div style="font-size:12px;font-weight:800;color:#059669">Approved</div>
           <div style="font-size:11px;color:var(--text-muted)">GRN can be created</div>
         </div>
-      <?php endif; ?>
-
-      <!-- Approve Action — SE -->
-      <?php if ($canApproveSE): ?>
-        <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST">
-          <button type="submit"
-            style="width:100%;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;
-            border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer"
-            onclick="return confirm('Approve this Purchase Order as Site Engineer?')">
-            <i class="fal fa-hard-hat me-2"></i>Approve as SE
-          </button>
-        </form>
       <?php endif; ?>
 
       <!-- Approve Action — PM -->

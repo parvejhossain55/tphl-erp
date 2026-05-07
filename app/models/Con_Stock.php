@@ -31,11 +31,29 @@ class Con_Stock extends Model
                        m.name AS material_name, m.unit, m.min_stock_level,
                        w.name AS warehouse_name,
                        COALESCE(NULLIF(s.unit_price, 0), poi_price.unit_price, 0) AS unit_price,
-                       (s.current_quantity * COALESCE(NULLIF(s.unit_price, 0), poi_price.unit_price, 0)) AS stock_value
+                       (s.current_quantity * COALESCE(NULLIF(s.unit_price, 0), poi_price.unit_price, 0)) AS stock_value,
+                       last_out.quantity      AS last_issued_qty,
+                       last_out.created_at    AS last_issued_at,
+                       isu.full_name          AS last_issued_by_name
                 FROM {$this->table} s
-                JOIN con_materials m ON m.id = s.material_id
+                JOIN con_materials  m ON m.id = s.material_id
                 JOIN con_warehouses w ON w.id = s.warehouse_id
                 LEFT JOIN {$this->latestPriceSubquery()} ON poi_price.material_id = s.material_id
+                LEFT JOIN (
+                    SELECT sm.material_id, sm.warehouse_id,
+                           sm.quantity, sm.created_at, sm.moved_by
+                    FROM con_stock_movements sm
+                    INNER JOIN (
+                        SELECT material_id, warehouse_id, MAX(id) AS max_id
+                        FROM con_stock_movements
+                        WHERE type = 'OUT'
+                        GROUP BY material_id, warehouse_id
+                    ) t ON t.material_id = sm.material_id
+                       AND t.warehouse_id = sm.warehouse_id
+                       AND t.max_id = sm.id
+                ) AS last_out ON last_out.material_id  = s.material_id
+                             AND last_out.warehouse_id = s.warehouse_id
+                LEFT JOIN users isu ON isu.id = last_out.moved_by
                 WHERE 1=1";
 
         $params = [];
@@ -148,7 +166,7 @@ class Con_Stock extends Model
     // =========================================================================
     public function getStockByProject()
     {
-        // Project-level summary (value from PO items as source of truth)
+        // ── Project-level summary ───────────────────────────────────────────
         $sql = "SELECT p.id AS project_id, p.name AS project_name,
                        COUNT(DISTINCT po.id) AS po_count,
                        COUNT(DISTINCT poi.material_id) AS material_count,
@@ -163,45 +181,89 @@ class Con_Stock extends Model
 
         $result   = $this->db->query($sql);
         $projects = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-
         $grandTotal = array_sum(array_column($projects, 'total_value'));
 
-        // Material breakdown per project
-        $breakdownSql = "SELECT p.id AS project_id,
+        // ── Material breakdown: received qty per project ────────────────────
+        // mri has no material_id — must join through purchase_order_items
+        $breakdownSql = "SELECT pr.project_id,
+                                poi.material_id,
                                 m.name AS material_name, m.unit,
-                                SUM(poi.quantity) AS total_qty,
-                                AVG(poi.unit_price) AS avg_price,
-                                SUM(poi.quantity * poi.unit_price) AS total_value
-                         FROM projects p
-                         JOIN purchase_requests pr ON pr.project_id = p.id
-                         JOIN purchase_orders po ON po.request_id = pr.id
-                         JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
-                         JOIN con_materials m ON m.id = poi.material_id
-                         WHERE p.deleted_at IS NULL
-                         GROUP BY p.id, poi.material_id
-                         ORDER BY p.id ASC, total_value DESC";
+                                SUM(mri.received_quantity) AS total_received,
+                                AVG(poi.unit_price)        AS avg_price,
+                                SUM(mri.received_quantity * poi.unit_price) AS total_value
+                         FROM material_receiving_items mri
+                         JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+                         JOIN material_receiving mr     ON mr.id = mri.receiving_id
+                         JOIN purchase_orders   po      ON po.id = mr.purchase_order_id
+                         JOIN purchase_requests pr      ON pr.id = po.request_id
+                         JOIN con_materials m            ON m.id  = poi.material_id
+                         WHERE mri.status = 'Accepted'
+                           AND mr.overall_status IN ('Accepted','Partially Accepted')
+                         GROUP BY pr.project_id, poi.material_id
+                         ORDER BY pr.project_id ASC, total_value DESC";
 
         $bResult    = $this->db->query($breakdownSql);
         $breakdowns = $bResult ? $bResult->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── Issued qty per material per project ─────────────────────────────
+        $issuedSql = "SELECT mi.project_id, mi.material_id,
+                             SUM(mi.quantity) AS total_issued
+                      FROM con_material_issues mi
+                      GROUP BY mi.project_id, mi.material_id";
+        $iResult  = $this->db->query($issuedSql);
+        $issuedMap = [];
+        if ($iResult) {
+            foreach ($iResult->fetch_all(MYSQLI_ASSOC) as $ir) {
+                $issuedMap[$ir['project_id']][$ir['material_id']] = (float)$ir['total_issued'];
+            }
+        }
+
+        // ── Issue detail: target + work_plan per project+material ───────────
+        $detailSql = "SELECT mi.project_id, mi.material_id,
+                             mi.quantity, mi.issue_date,
+                             u.full_name AS issued_by_name,
+                             tf.target_title,
+                             wp.work_description AS work_plan_title
+                      FROM con_material_issues mi
+                      LEFT JOIN users u ON u.id = mi.issued_by
+                      LEFT JOIN target_fixed tf ON tf.id = mi.target_id
+                      LEFT JOIN project_working_plans wp ON wp.id = mi.work_plan_id
+                      ORDER BY mi.project_id, mi.material_id, mi.issue_date DESC";
+        $dResult = $this->db->query($detailSql);
+        $issueDetailMap = [];
+        if ($dResult) {
+            foreach ($dResult->fetch_all(MYSQLI_ASSOC) as $dr) {
+                $issueDetailMap[$dr['project_id']][$dr['material_id']][] = $dr;
+            }
+        }
+
+        // ── Assemble breakdown per project ──────────────────────────────────
         $byProjectBreak = [];
         foreach ($breakdowns as $b) {
-            $byProjectBreak[$b['project_id']][] = $b;
+            $pid = $b['project_id'];
+            $mid = $b['material_id'];
+            $b['total_issued']   = $issuedMap[$pid][$mid] ?? 0;
+            $b['remaining_qty']  = max(0, (float)$b['total_received'] - $b['total_issued']);
+            $b['issue_details']  = $issueDetailMap[$pid][$mid] ?? [];
+            $byProjectBreak[$pid][] = $b;
         }
 
         foreach ($projects as &$proj) {
-            $pid             = $proj['project_id'];
+            $pid               = $proj['project_id'];
             $proj['materials'] = $byProjectBreak[$pid] ?? [];
             $proj['pct']       = $grandTotal > 0
                                    ? round(($proj['total_value'] / $grandTotal) * 100, 1)
                                    : 0;
 
+            // Total issued for project
+            $proj['total_issued'] = 0;
             if (!empty($proj['materials'])) {
                 $projTotal = $proj['total_value'];
                 foreach ($proj['materials'] as &$mat) {
                     $mat['pct'] = $projTotal > 0
                         ? round(($mat['total_value'] / $projTotal) * 100, 1)
                         : 0;
+                    $proj['total_issued'] += $mat['total_issued'];
                 }
             }
         }
@@ -339,22 +401,20 @@ class Con_Stock extends Model
             JOIN initial_estimate_items iei ON iei.budget_id = ieb.id
             JOIN con_materials m ON m.id = iei.material_id
             LEFT JOIN (
+                -- Simple: received qty per project + material, no boq_master dependency
                 SELECT
-                    pwp.initial_budget_id,
+                    pr.project_id,
                     poi.material_id,
                     SUM(mri.received_quantity) AS total_received
                 FROM material_receiving_items mri
-                JOIN material_receiving mr ON mr.id = mri.receiving_id
                 JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
-                JOIN purchase_orders po ON po.id = poi.purchase_order_id
-                JOIN purchase_requests pr ON pr.id = po.request_id
-                JOIN boq_master bom ON bom.id = pr.bom_id
-                JOIN target_fixed tf ON tf.id = bom.target_id
-                JOIN project_working_plans pwp ON pwp.id = tf.work_plan_id
-                WHERE mri.status = 'Accepted' 
+                JOIN material_receiving mr    ON mr.id  = mri.receiving_id
+                JOIN purchase_orders po       ON po.id  = mr.purchase_order_id
+                JOIN purchase_requests pr     ON pr.id  = po.request_id
+                WHERE mri.status = 'Accepted'
                   AND mr.overall_status IN ('Accepted', 'Partially Accepted')
-                GROUP BY pwp.initial_budget_id, poi.material_id
-            ) received ON received.initial_budget_id = ieb.id AND received.material_id = iei.material_id
+                GROUP BY pr.project_id, poi.material_id
+            ) received ON received.project_id = p.id AND received.material_id = iei.material_id
             WHERE ieb.status = 'approved' AND p.deleted_at IS NULL
             ORDER BY p.id ASC, wt.id ASC, m.name ASC
         ";
@@ -362,19 +422,50 @@ class Con_Stock extends Model
         $result = $this->db->query($sql);
         $rows = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── Issued qty + value per material per project ───────────────────────
+        $issuedSql = "SELECT mi.project_id, mi.material_id,
+                             SUM(mi.quantity) AS total_issued,
+                             SUM(mi.quantity * COALESCE(poi_p.unit_price, 0)) AS total_issued_value
+                      FROM con_material_issues mi
+                      LEFT JOIN (
+                          SELECT material_id, MAX(unit_price) AS unit_price
+                          FROM purchase_order_items
+                          GROUP BY material_id
+                      ) poi_p ON poi_p.material_id = mi.material_id
+                      GROUP BY mi.project_id, mi.material_id";
+        $iRes = $this->db->query($issuedSql);
+        $issuedMap = [];
+        if ($iRes) {
+            foreach ($iRes->fetch_all(MYSQLI_ASSOC) as $ir) {
+                $issuedMap[$ir['project_id']][$ir['material_id']] = [
+                    'qty'   => (float)$ir['total_issued'],
+                    'value' => (float)$ir['total_issued_value'],
+                ];
+            }
+        }
+
         // Group by Project -> Work Type -> Material
         $grouped = [];
         foreach ($rows as $row) {
-            $pid = $row['project_id'];
+            $pid   = $row['project_id'];
+            $mid   = $row['material_id'];
             $pname = $row['project_name'];
             $wname = trim($row['design_type_name'] . ' - ' . $row['work_type_name'], ' -');
             if (empty($wname)) $wname = 'General / Unspecified';
 
+            // Attach issued data
+            $issuedQty   = $issuedMap[$pid][$mid]['qty']   ?? 0;
+            $issuedValue = $issuedMap[$pid][$mid]['value'] ?? 0;
+            $budgetQty   = (float)$row['initial_budget_qty'];
+            $row['issued_qty']       = $issuedQty;
+            $row['issued_value']     = $issuedValue;
+            $row['budget_remaining'] = max(0, $budgetQty - $issuedQty);
+            $row['issued_pct']       = $budgetQty > 0
+                                         ? min(100, round(($issuedQty / $budgetQty) * 100))
+                                         : 0;
+
             if (!isset($grouped[$pid])) {
-                $grouped[$pid] = [
-                    'project_name' => $pname,
-                    'work_types' => []
-                ];
+                $grouped[$pid] = ['project_name' => $pname, 'work_types' => []];
             }
             if (!isset($grouped[$pid]['work_types'][$wname])) {
                 $grouped[$pid]['work_types'][$wname] = [];

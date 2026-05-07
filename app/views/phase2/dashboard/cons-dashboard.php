@@ -707,7 +707,7 @@ $statusColor = [
                 <th>Project</th>
                 <th>Target Title</th>
                 <th>Created By (SE)</th>
-                <th>QC Status</th>
+
                 <th>Target %</th>
                 <th>Gain %</th>
                 <th>Period</th>
@@ -735,14 +735,7 @@ $statusColor = [
                       </div>
                     </div>
                   </td>
-                  <td>
-                    <?php $qcDone = !empty($pt['approved_by_qc']); ?>
-                    <span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;
-              background:<?= $qcDone ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.1)' ?>;
-              color:<?= $qcDone ? '#059669' : '#dc2626' ?>">
-                      <?= $qcDone ? '✓ QC Approved' : '⏳ QC Pending' ?>
-                    </span>
-                  </td>
+
                   <td><span
                       style="font-size:11px;font-weight:700;color:#2563eb"><?= number_format($pt['target_percentage'] ?? 0, 1) ?>%</span>
                   </td>

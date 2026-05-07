@@ -1,5 +1,7 @@
 <?php
-$base_url = $GLOBALS['base_url'];
+$base_url    = $GLOBALS['base_url'];
+$currentRole = (int)($_SESSION['user']['role_id'] ?? 0);
+$isPM        = ($currentRole === 15); // Only PM (role 15) can create/edit/delete BOQ
 
 function fmtQ($n, $d = 2) {
     return number_format((float)$n, $d);
@@ -15,9 +17,11 @@ function consumeClass($pct) {
         <h4><?= htmlspecialchars($page_title) ?></h4>
     </div>
     <div class="d-flex gap-2">
+        <?php if ($isPM): ?>
         <a href="<?= $base_url ?>/con-boq-create" class="btn btn-primary btn-sm">
             <i class="bi bi-plus-circle me-1"></i> New BOQ
         </a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -114,11 +118,12 @@ function consumeClass($pct) {
                                         class="btn btn-sm btn-outline-info" title="View Details">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <?php if ($boq['status'] !== 'Approved'): ?>
+                                    <?php if ($isPM): ?>
                                         <a href="<?= $base_url ?>/con-boq-edit/<?= $boq['id'] ?>"
                                             class="btn btn-sm btn-outline-warning ms-1" title="Edit">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
+                                        <?php if ($boq['status'] !== 'Approved'): ?>
                                         <button type="button"
                                             class="btn btn-sm btn-outline-danger ms-1 btn-delete-boq"
                                             data-id="<?= $boq['id'] ?>"
@@ -126,6 +131,7 @@ function consumeClass($pct) {
                                             title="Delete">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </td>
                             </tr>

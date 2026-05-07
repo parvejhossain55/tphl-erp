@@ -55,6 +55,46 @@
                         </div>
                     </div>
 
+                    <!-- Approval Status Panel -->
+                    <div class="rounded p-3 mb-3" style="background:<?= in_array($pr['status'], ['Approved','PO Issued']) ? 'rgba(16,185,129,.06)' : 'rgba(245,158,11,.05)' ?>;border:1px solid <?= in_array($pr['status'], ['Approved','PO Issued']) ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.18)' ?>">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div class="d-flex align-items-center gap-3">
+                                <div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+                                    background:<?= in_array($pr['status'], ['Approved','PO Issued']) ? 'rgba(16,185,129,.15)' : 'rgba(245,158,11,.12)' ?>;
+                                    color:<?= in_array($pr['status'], ['Approved','PO Issued']) ? '#059669' : '#d97706' ?>">
+                                    <i class="fal <?= in_array($pr['status'], ['Approved','PO Issued']) ? 'fa-check-circle' : 'fa-clock' ?>"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:12px;font-weight:700">Approval Status</div>
+                                    <?php if (in_array($pr['status'], ['Approved','PO Issued']) && !empty($pr['approved_by_name'])): ?>
+                                        <div style="font-size:11px;font-weight:700;color:#059669">
+                                            <?= htmlspecialchars($pr['approved_by_name']) ?>
+                                        </div>
+                                        <?php if (!empty($pr['approved_by_role'])): ?>
+                                            <div style="font-size:10px;color:#6b7280;font-style:italic"><?= htmlspecialchars($pr['approved_by_role']) ?></div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($pr['approved_at'])): ?>
+                                            <div style="font-size:10px;color:var(--text-muted,#6b7280)">
+                                                <?= date('d M Y, h:i A', strtotime($pr['approved_at'])) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php elseif ($pr['status'] === 'Rejected' && !empty($pr['approved_by_name'])): ?>
+                                        <div style="font-size:11px;font-weight:700;color:#dc2626">
+                                            Rejected by: <?= htmlspecialchars($pr['approved_by_name']) ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <div style="font-size:11px;color:var(--text-muted,#6b7280)">Awaiting approval</div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <span style="font-size:10px;font-weight:700;padding:4px 12px;border-radius:20px;
+                                background:<?= in_array($pr['status'], ['Approved','PO Issued']) ? 'rgba(16,185,129,.12)' : ($pr['status'] === 'Rejected' ? 'rgba(239,68,68,.12)' : 'rgba(245,158,11,.1)') ?>;
+                                color:<?= in_array($pr['status'], ['Approved','PO Issued']) ? '#059669' : ($pr['status'] === 'Rejected' ? '#dc2626' : '#d97706') ?>">
+                                <?= in_array($pr['status'], ['Approved','PO Issued']) ? '✓ Approved' : ($pr['status'] === 'Rejected' ? '✗ Rejected' : 'Pending') ?>
+                            </span>
+                        </div>
+                    </div>
+
                     <?php if (!empty($pr['notes'])): ?>
                     <div class="alert alert-light border-start border-primary border-3 mb-3">
                         <strong>Notes:</strong> <?= htmlspecialchars($pr['notes']) ?>

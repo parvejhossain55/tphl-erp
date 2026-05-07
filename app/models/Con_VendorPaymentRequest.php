@@ -26,6 +26,7 @@ class Con_VendorPaymentRequest extends Model
                        po.id        AS po_number,
                        u.full_name  AS created_by_name,
                        ab.full_name AS approved_by_name,
+                       ab_r.name    AS approved_by_role,
                        pb.full_name AS payment_by_name,
                        COALESCE(txn_sum.total_paid, 0) AS already_paid
                 FROM {$this->table} pr
@@ -34,6 +35,7 @@ class Con_VendorPaymentRequest extends Model
                 LEFT JOIN purchase_orders po ON po.id = pr.purchase_order_id
                 LEFT JOIN users u            ON u.id  = pr.created_by
                 LEFT JOIN users ab           ON ab.id = pr.approved_by
+                LEFT JOIN roles ab_r         ON ab_r.id = ab.role_id
                 LEFT JOIN (
                     SELECT ref_id, processed_by
                     FROM con_financial_transactions
@@ -66,13 +68,15 @@ class Con_VendorPaymentRequest extends Model
                     p.name       AS project_name,
                     po.id        AS po_number,
                     u.full_name  AS created_by_name,
-                    ab.full_name AS approved_by_name
+                    ab.full_name AS approved_by_name,
+                    ab_r.name    AS approved_by_role
              FROM {$this->table} pr
              LEFT JOIN vendors v          ON v.id  = pr.vendor_id
              LEFT JOIN projects p         ON p.id  = pr.project_id
              LEFT JOIN purchase_orders po ON po.id = pr.purchase_order_id
              LEFT JOIN users u            ON u.id  = pr.created_by
              LEFT JOIN users ab           ON ab.id = pr.approved_by
+             LEFT JOIN roles ab_r         ON ab_r.id = ab.role_id
              WHERE pr.id = ?"
         );
         $stmt->bind_param('i', $id);

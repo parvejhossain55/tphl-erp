@@ -34,13 +34,15 @@ class Con_WorkingPlan extends Model
                        b.total_estimated_cost AS budget_total,
                        wt.work_type_name       AS work_type_name,
                        u.full_name   AS created_by_name,
-                       ap.full_name  AS approved_by_name
+                       ap.full_name  AS approved_by_name,
+                       ap_r.name     AS approved_by_role
                 FROM {$this->planTable} w
-                LEFT JOIN projects                 p  ON p.id  = w.project_id
-                LEFT JOIN initial_estimate_budgets b  ON b.id  = w.initial_budget_id
-                LEFT JOIN work_types               wt ON wt.id = w.work_type_id
-                LEFT JOIN users                    u  ON u.id  = w.created_by
-                LEFT JOIN users                    ap ON ap.id = w.approved_by
+                LEFT JOIN projects                 p    ON p.id    = w.project_id
+                LEFT JOIN initial_estimate_budgets b    ON b.id    = w.initial_budget_id
+                LEFT JOIN work_types               wt   ON wt.id   = w.work_type_id
+                LEFT JOIN users                    u    ON u.id    = w.created_by
+                LEFT JOIN users                    ap   ON ap.id   = w.approved_by
+                LEFT JOIN roles                    ap_r ON ap_r.id = ap.role_id
                 ORDER BY w.year DESC, w.month DESC, p.name ASC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -55,13 +57,15 @@ class Con_WorkingPlan extends Model
                     b.total_estimated_cost AS budget_total,
                     wt.work_type_name AS work_type_name,
                     u.full_name  AS created_by_name,
-                    ap.full_name AS approved_by_name
+                    ap.full_name AS approved_by_name,
+                    ap_r.name    AS approved_by_role
              FROM {$this->planTable} w
-             LEFT JOIN projects                 p  ON p.id  = w.project_id
-             LEFT JOIN initial_estimate_budgets b  ON b.id  = w.initial_budget_id
-             LEFT JOIN work_types               wt ON wt.id = w.work_type_id
-             LEFT JOIN users                    u  ON u.id  = w.created_by
-             LEFT JOIN users                    ap ON ap.id = w.approved_by
+             LEFT JOIN projects                 p    ON p.id    = w.project_id
+             LEFT JOIN initial_estimate_budgets b    ON b.id    = w.initial_budget_id
+             LEFT JOIN work_types               wt   ON wt.id   = w.work_type_id
+             LEFT JOIN users                    u    ON u.id    = w.created_by
+             LEFT JOIN users                    ap   ON ap.id   = w.approved_by
+             LEFT JOIN roles                    ap_r ON ap_r.id = ap.role_id
              WHERE w.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -94,13 +98,15 @@ class Con_WorkingPlan extends Model
                     b.total_estimated_cost AS budget_total,
                     wt.work_type_name AS work_type_name,
                     u.full_name  AS created_by_name,
-                    ap.full_name AS approved_by_name
+                    ap.full_name AS approved_by_name,
+                    ap_r.name    AS approved_by_role
              FROM {$this->planTable} w
-             LEFT JOIN projects                 p  ON p.id  = w.project_id
-             LEFT JOIN initial_estimate_budgets b  ON b.id  = w.initial_budget_id
-             LEFT JOIN work_types               wt ON wt.id = w.work_type_id
-             LEFT JOIN users                    u  ON u.id  = w.created_by
-             LEFT JOIN users                    ap ON ap.id = w.approved_by
+             LEFT JOIN projects                 p    ON p.id    = w.project_id
+             LEFT JOIN initial_estimate_budgets b    ON b.id    = w.initial_budget_id
+             LEFT JOIN work_types               wt   ON wt.id   = w.work_type_id
+             LEFT JOIN users                    u    ON u.id    = w.created_by
+             LEFT JOIN users                    ap   ON ap.id   = w.approved_by
+             LEFT JOIN roles                    ap_r ON ap_r.id = ap.role_id
              WHERE w.project_id = ?
              ORDER BY w.year ASC, w.month ASC"
         );
@@ -365,12 +371,14 @@ class Con_WorkingPlan extends Model
                        p.name      AS project_name,
                        b.total_estimated_cost AS initial_budget,
                        u.full_name AS requested_by_name,
-                       a.full_name AS approved_by_name
+                       a.full_name AS approved_by_name,
+                       a_r.name    AS approved_by_role
                 FROM {$this->extendTable} e
-                LEFT JOIN projects                 p ON p.id = e.project_id
-                LEFT JOIN initial_estimate_budgets b ON b.id = e.initial_budget_id
-                LEFT JOIN users                    u ON u.id = e.requested_by
-                LEFT JOIN users                    a ON a.id = e.approved_by
+                LEFT JOIN projects                 p   ON p.id   = e.project_id
+                LEFT JOIN initial_estimate_budgets b   ON b.id   = e.initial_budget_id
+                LEFT JOIN users                    u   ON u.id   = e.requested_by
+                LEFT JOIN users                    a   ON a.id   = e.approved_by
+                LEFT JOIN roles                    a_r ON a_r.id = a.role_id
                 ORDER BY e.id DESC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -383,12 +391,14 @@ class Con_WorkingPlan extends Model
                     p.name      AS project_name,
                     b.total_estimated_cost AS initial_budget,
                     u.full_name AS requested_by_name,
-                    a.full_name AS approved_by_name
+                    a.full_name AS approved_by_name,
+                    a_r.name    AS approved_by_role
              FROM {$this->extendTable} e
-             LEFT JOIN projects                 p ON p.id = e.project_id
-             LEFT JOIN initial_estimate_budgets b ON b.id = e.initial_budget_id
-             LEFT JOIN users                    u ON u.id = e.requested_by
-             LEFT JOIN users                    a ON a.id = e.approved_by
+             LEFT JOIN projects                 p   ON p.id   = e.project_id
+             LEFT JOIN initial_estimate_budgets b   ON b.id   = e.initial_budget_id
+             LEFT JOIN users                    u   ON u.id   = e.requested_by
+             LEFT JOIN users                    a   ON a.id   = e.approved_by
+             LEFT JOIN roles                    a_r ON a_r.id = a.role_id
              WHERE e.id = ?"
         );
         $stmt->bind_param('i', $id);

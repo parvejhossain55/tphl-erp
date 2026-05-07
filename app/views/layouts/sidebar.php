@@ -11,69 +11,12 @@
         </a>
     </div>
 
-    <?php if (isset($_SESSION['user']['role_id']) && in_array((int) $_SESSION['user']['role_id'], [1, 3, 23])): ?>
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                if (window.location.href.indexOf('con-') !== -1) {
-                    // Hide create/new menus in sidebar
-                    const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
-                    sidebarLinks.forEach(link => {
-                        const text = link.textContent.toLowerCase();
-                        if (text.includes('new ') || text.includes('add ') || text.includes('create ')) {
-                            const li = link.closest('li.slide');
-                            if (li) li.style.display = 'none';
-                        }
-                    });
+    <?php
+    // Only hide create/edit/delete UI for truly view-only construction roles
+    // Roles 3 (Director) and 22 (PM Head) are APPROVERS — they need to see Action columns
+    $conReadOnlyRoles = []; // Currently no role is fully restricted — footer.php handles role 20
+    ?>
 
-                    // Hide Add, Edit, Delete buttons in main content
-                    const actionButtons = document.querySelectorAll('.page__full-wrapper a, .page__full-wrapper button, .page__full-wrapper .btn');
-                    actionButtons.forEach(btn => {
-                        const text = btn.textContent.toLowerCase().trim();
-                        const href = btn.getAttribute('href') || '';
-                        if (
-                            text === 'edit' || text === 'delete' || text === 'add' || text === 'new' ||
-                            text.includes('new ') || text.includes('add ') || text.includes('create ') ||
-                            href.includes('create') || href.includes('edit') || href.includes('delete')
-                        ) {
-                            if (!btn.classList.contains('page-link') && !btn.classList.contains('nav-link')) {
-                                btn.style.display = 'none';
-                            }
-                        }
-                    });
-
-                    const actionIcons = document.querySelectorAll('.page__full-wrapper a i.fe-edit, .page__full-wrapper a i.fe-trash-2, .page__full-wrapper a i.bi-pencil, .page__full-wrapper a i.bi-trash, .page__full-wrapper button i.bi-trash');
-                    actionIcons.forEach(icon => {
-                        const el = icon.closest('a') || icon.closest('button');
-                        if (el) el.style.display = 'none';
-                    });
-
-                    // Hide Action column
-                    const tables = document.querySelectorAll('table');
-                    tables.forEach(table => {
-                        const headers = table.querySelectorAll('thead th');
-                        let actionIndex = -1;
-                        headers.forEach((th, index) => {
-                            const thText = th.textContent.trim().toLowerCase();
-                            if (thText === 'action' || thText === 'actions') {
-                                actionIndex = index;
-                                th.style.display = 'none';
-                            }
-                        });
-
-                        if (actionIndex !== -1) {
-                            const rows = table.querySelectorAll('tbody tr');
-                            rows.forEach(row => {
-                                const cells = row.querySelectorAll('td');
-                                if (cells[actionIndex]) {
-                                    cells[actionIndex].style.display = 'none';
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-        </script>
-    <?php endif; ?>
 
     <div class="main-sidebar" id="sidebar-scroll">
         <nav class="main-menu-container nav nav-pills flex-column sub-open">
@@ -1339,7 +1282,7 @@
                      Estimator has: Project Drawing + Estimate Budget
                      Unique: Project Drawing (QC & PTL don't have it)
                      Exclude: Construction Management -->
-                <?php if (hasPermission('Estimate Budget')): ?>
+                <?php if (hasPermission('Estimator dashboard')): ?>
                     <li class="slide <?= isActive('estimator-dashboard', $current_route) ?>">
                         <a href="<?= $base_url ?>/estimator-dashboard"
                             class="sidebar__menu-item <?= isActive('estimator-dashboard', $current_route) ?>">
@@ -1389,7 +1332,7 @@
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-targets"
                                     class="sidebar__menu-item <?= isActive('con-targets', $current_route) ?>">
-                                    <i class="bi bi-bullseye me-1"></i> Target Fixed
+                                    <i class="bi bi-bullseye me-1"></i>Target Fixed
                                 </a>
                             </li>
                         </ul>
@@ -1407,7 +1350,7 @@
                             <div class="side-menu__icon">
                                 <i class="bi bi-building"></i>
                             </div>
-                            <span class="sidebar__menu-label">Pre-Construction</span>
+                            <span class="sidebar__menu-label">Engineering Department</span>
                         </a>
 
                         <ul class="sidebar-menu child1" style="display:block;">

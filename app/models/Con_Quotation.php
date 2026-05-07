@@ -71,15 +71,16 @@ class Con_Quotation extends Model
         try {
             // ── Insert quotation header ──────────────────────────────────────
             $stmt = $this->db->prepare(
-                "INSERT INTO {$this->table} (request_id, vendor_id, validity_date, created_by)
-                 VALUES (?, ?, ?, ?)"
+                "INSERT INTO {$this->table} (request_id, vendor_id, validity_date, attachment, created_by)
+                 VALUES (?, ?, ?, ?, ?)"
             );
             if (!$stmt) throw new \RuntimeException('Quotation header prepare failed: ' . $this->db->error);
 
-            $stmt->bind_param('iisi',
+            $stmt->bind_param('iissi',
                 $data['request_id'],
                 $data['vendor_id'],
                 $data['validity_date'],
+                $data['attachment'],
                 $data['created_by']
             );
             if (!$stmt->execute()) throw new \RuntimeException('Quotation header execute failed: ' . $stmt->error);

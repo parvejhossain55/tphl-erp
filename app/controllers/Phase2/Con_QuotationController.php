@@ -27,7 +27,7 @@ class Con_QuotationController extends Controller
 
     public function create($requestId)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -60,7 +60,7 @@ class Con_QuotationController extends Controller
 
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -68,11 +68,15 @@ class Con_QuotationController extends Controller
 
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        // ── Handle attachment upload ──────────────────────────────────
+        $attachmentFile = uploadFile('attachment', 'vendor_quotation');
+
         $data = [
             'request_id'    => (int)($_POST['request_id'] ?? 0),
             'vendor_id'     => (int)($_POST['vendor_id'] ?? 0),
             'validity_date' => $_POST['validity_date'] ?? null,
             'status'        => 'Active',
+            'attachment'    => $attachmentFile, // null if no file uploaded
             'created_by'    => (int)($_SESSION['user']['id'] ?? 0),
         ];
 

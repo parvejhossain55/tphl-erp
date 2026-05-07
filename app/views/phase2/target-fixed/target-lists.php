@@ -49,7 +49,7 @@ $page_title = $page_title ?? 'Site Targets';
                             <th>Week</th>
                             <th>Target %</th>
                             <th>Gain %</th>
-                            <th>QC Approval</th>
+                            <th>Approval</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -57,12 +57,7 @@ $page_title = $page_title ?? 'Site Targets';
                         <?php if (!empty($targets)): ?>
                             <?php foreach ($targets as $i => $t): ?>
                                 <?php
-                                $qcApproved = !empty($t['approved_by_qc']);
                                 $pmApproved = !empty($t['approved_by_manager']);
-                                $totalApprovals = ($qcApproved ? 1 : 0) + ($pmApproved ? 1 : 0);
-                                if ($totalApprovals >= 2) $badge = 'success';
-                                elseif ($totalApprovals > 0) $badge = 'warning';
-                                else $badge = 'secondary';
                                 ?>
                                 <tr>
                                     <td><?= $i + 1 ?></td>
@@ -81,7 +76,21 @@ $page_title = $page_title ?? 'Site Targets';
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-<?= $badge ?>"><?= $totalApprovals ?>/2 Approved</span>
+                                        <?php if ($pmApproved): ?>
+                                            <span class="badge bg-success mb-1">✓ Approved</span>
+                                            <?php if (!empty($t['manager_approver_name'])): ?>
+                                                <div style="font-size:10px;color:#059669;font-weight:700;line-height:1.4">
+                                                    <?= htmlspecialchars($t['manager_approver_name']) ?>
+                                                </div>
+                                                <?php if (!empty($t['manager_approver_role'])): ?>
+                                                    <div style="font-size:9px;color:#6b7280;font-style:italic">
+                                                        <?= htmlspecialchars($t['manager_approver_role']) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>" class="btn btn-sm btn-outline-info" title="Create BOM">
@@ -97,7 +106,7 @@ $page_title = $page_title ?? 'Site Targets';
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="10" class="text-center text-muted">No targets found. <a href="<?= $base_url ?>/con-target-create">Create one</a></td></tr>
+                            <tr><td colspan="9" class="text-center text-muted">No targets found. <a href="<?= $base_url ?>/con-target-create">Create one</a></td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

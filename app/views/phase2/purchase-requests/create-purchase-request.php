@@ -32,9 +32,9 @@ $preBoqData   = $preBoqData   ?? null;
                 <div class="card__body p-4">
                     <form action="<?= $base_url ?>/con-purchase-request-store" method="POST" id="prForm">
 
-                        <!-- Hidden BOQ/BOM link (if coming from Procurement Dashboard) -->
+                        <!-- Hidden BOQ id — updates when user selects from dropdown OR pre-filled from URL -->
+                        <input type="hidden" name="bom_id" id="prHiddenBomId" value="<?= $preBoqId ? (int)$preBoqId : '' ?>">
                         <?php if ($preBoqId): ?>
-                        <input type="hidden" name="bom_id" value="<?= $preBoqId ?>">
                         <!-- BOQ Prefill Banner -->
                         <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:12px;
                             background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(5,150,105,.05));
@@ -258,6 +258,7 @@ document.getElementById('prProjectSelect').addEventListener('change', function (
     warnCard.classList.add('d-none');
     allBoqsForProject = [];
     currentBoqData    = null;
+    document.getElementById('prHiddenBomId').value = ''; // reset BOQ id
 
     // Clear items
     document.getElementById('prItemsBody').innerHTML = '';
@@ -313,6 +314,9 @@ document.getElementById('prBoqSelect').addEventListener('change', function () {
 
     currentBoqData = allBoqsForProject[parseInt(idx)];
     loadBtn.disabled = false;
+
+    // ── Update hidden bom_id so it gets submitted with the form
+    document.getElementById('prHiddenBomId').value = currentBoqData.id || '';
 
     // Info card
     let info = `<strong>${currentBoqData.boq_label}</strong> — `;

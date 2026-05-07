@@ -29,15 +29,15 @@
                     <table class="table table-bordered mb-0">
                         <tbody>
                             <tr>
-                                <th style="width:30%" class="bg-light">Project</th>
+                                <th style="width:30%" >Project</th>
                                 <td><?= htmlspecialchars($issue['project_name']) ?></td>
                             </tr>
                             <tr>
-                                <th class="bg-light">Warehouse</th>
+                                <th >Warehouse</th>
                                 <td><?= htmlspecialchars($issue['warehouse_name']) ?></td>
                             </tr>
                             <tr>
-                                <th class="bg-light">Target</th>
+                                <th >Target</th>
                                 <td>
                                     <?php if (!empty($issue['target_name'])): ?>
                                         <span class="badge bg-secondary"><?= htmlspecialchars($issue['target_name']) ?></span>
@@ -47,7 +47,7 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th class="bg-light">Working Plan</th>
+                                <th >Working Plan</th>
                                 <td>
                                     <?php if (!empty($issue['work_plan_name'])): ?>
                                         <?= htmlspecialchars($issue['work_plan_name']) ?>
@@ -57,19 +57,19 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th class="bg-light">Issue Date</th>
+                                <th >Issue Date</th>
                                 <td><?= date('d M Y', strtotime($issue['issue_date'])) ?></td>
                             </tr>
                             <tr>
-                                <th class="bg-light">Issued By</th>
+                                <th >Issued By</th>
                                 <td><?= htmlspecialchars($issue['issued_by_name']) ?></td>
                             </tr>
                             <tr>
-                                <th class="bg-light">Issued To</th>
+                                <th >Issued To</th>
                                 <td><?= htmlspecialchars($issue['issued_to'] ?: '—') ?></td>
                             </tr>
                             <tr>
-                                <th class="bg-light">Purpose</th>
+                                <th >Purpose</th>
                                 <td><?= htmlspecialchars($issue['purpose'] ?: '—') ?></td>
                             </tr>
                             <tr>

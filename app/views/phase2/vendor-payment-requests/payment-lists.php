@@ -98,6 +98,9 @@ $page_title = $page_title ?? 'Vendor Payment Requests';
                                     <td>
                                         <?php if (!empty($req['approved_by_name'])): ?>
                                             <span class="text-success fw-semibold"><?= htmlspecialchars($req['approved_by_name']) ?></span>
+                                            <?php if (!empty($req['approved_by_role'])): ?>
+                                                <br><small class="text-muted fst-italic"><?= htmlspecialchars($req['approved_by_role']) ?></small>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <span class="text-muted">—</span>
                                         <?php endif; ?>
