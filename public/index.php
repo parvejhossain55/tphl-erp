@@ -859,6 +859,11 @@ $routes['con-material-receiving-store']        = ['controller' => 'Phase2\Con_Ma
 $routes['con-material-receiving-qc/(\d+)']     = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'qcReview'];
 $routes['con-material-receiving-pm/(\d+)']     = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'pmStore'];
 
+// ── Material Receiving CSV Import ──────────────────────────────────────────
+$routes['con-material-receiving-import']          = ['controller' => 'Phase2\Con_MaterialReceivingImportController', 'method' => 'index'];
+$routes['con-material-receiving-import-process']  = ['controller' => 'Phase2\Con_MaterialReceivingImportController', 'method' => 'import'];
+$routes['con-material-receiving-import-template'] = ['controller' => 'Phase2\Con_MaterialReceivingImportController', 'method' => 'downloadTemplate'];
+
 // ── Material Returns ───────────────────────────────────────────────────────
 $routes['con-material-returns']             = ['controller' => 'Phase2\Con_MaterialReturnController', 'method' => 'index'];
 $routes['con-material-returns/update/(\d+)'] = ['controller' => 'Phase2\Con_MaterialReturnController', 'method' => 'updateStatus'];
@@ -969,7 +974,9 @@ $routes['con-estimate-ajax-add-material'] = ['controller' => 'Phase2\\Con_Initia
 $routes['con-material-issues']               = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'index'];
 $routes['con-material-issue-create']         = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'create'];
 $routes['con-material-issue-store']          = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'store'];
+$routes['con-material-issue-csv-import']     = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'importCsv'];
 $routes['con-material-issue/(\d+)']          = ['controller' => 'Phase2\Con_MaterialIssueController', 'method' => 'show'];
+
 
 // ── Vendor Penalties ──────────────────────────────────────────────────────
 $routes['con-vendor-penalties']              = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'index'];

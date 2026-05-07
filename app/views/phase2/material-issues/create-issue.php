@@ -22,13 +22,13 @@
             <?php if (!empty($projects)): ?>
                 <?php foreach ($projects as $p): ?>
                     <div class="col-md-4 col-sm-6">
-                        <div class="card h-100 border-0 shadow-sm" style="cursor: pointer; transition: transform 0.2s;" onclick="selectProject(<?= $p['id'] ?>, '<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>')" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div class="card card__wrapper h-100 border-0 shadow-sm" style="cursor: pointer; transition: transform 0.2s;" onclick="selectProject(<?= $p['id'] ?>, '<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>')" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                             <div class="card-body p-4 text-center">
                                 <div class="project-icon mb-3">
-                                    <i class="fas fa-city fa-3x" style="color:var(--cd-blue)"></i>
+                                    <i class="fas fa-city fa-3x" style=""></i>
                                 </div>
-                                <h6 class="fw-bold mb-1" style="color:var(--cd-blue)"><?= htmlspecialchars($p['name']) ?></h6>
-                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1 mt-2">
+                                <h6 class="fw-bold mb-1" style=""><?= htmlspecialchars($p['name']) ?></h6>
+                                <span class="badge bg-success bg-opacity-10 text-light rounded-pill p-2 mt-2">
                                     <i class="fas fa-check-circle me-1"></i>Material Received
                                 </span>
                             </div>
@@ -52,7 +52,7 @@
             <button class="btn btn-outline-secondary btn-sm me-3" onclick="backToProjects()">
                 <i class="fas fa-arrow-left me-1"></i> Back to Projects
             </button>
-            <h5 class="mb-0 fw-bold" style="color:var(--cd-blue)">Issuing Material For: <span id="selectedProjectName" class="text-dark"></span></h5>
+            <h5 class="mb-0 fw-bold" style="color:var(--cd-blue)">Issuing Material For: <span id="selectedProjectName" class=""></span></h5>
         </div>
 
         <div class="row">
@@ -183,9 +183,10 @@
                                     <select name="issued_to" class="form-select" required>
                                         <option value="">-- Select Contractor --</option>
                                         <?php foreach ($contractors ?? [] as $c): ?>
-                                            <option value="<?= htmlspecialchars($c['name']) ?>">
+                                            <option value="<?= $c['id'] ?>">
                                                 <?= htmlspecialchars($c['name']) ?>
                                                 <?= !empty($c['trade']) ? ' (' . htmlspecialchars($c['trade']) . ')' : '' ?>
+                                                <?= !empty($c['phone']) ? ' - ' . htmlspecialchars($c['phone']) : '' ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>

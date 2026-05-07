@@ -102,7 +102,7 @@ $show_breadcrumb = true;
                 <!-- Price Range -->
                 <div class="col-xl-6">
                     <label>Price Range</label>
-                    <select name="price_range" class="form-control">
+                    <select name="price_range" class="form-control" required>
                         <option value="">Select Price Range</option>
                         <option value="Under 50 Lac BDT">Under 50 Lac BDT</option>
                         <option value="50 Lac - 1 Crore BDT">50 Lac - 1 Crore BDT</option>
@@ -115,12 +115,12 @@ $show_breadcrumb = true;
                 <!-- Service Charge Per EMI -->
                 <div class="col-xl-6">
                     <label>Service Charge <span class="text-muted">(per EMI %)</span></label>
-                    <input type="number" step="0.01" min="0" name="service_charge_per_emi" class="form-control" placeholder="e.g. 1.5">
+                    <input type="number" step="0.01" min="0" name="service_charge_per_emi" class="form-control" required placeholder="e.g. 1.5">
                 </div>
             <!-- Project wise Status -->
                 <div class="col-xl-6">
                     <label>Project Sale Status</label>
-                    <select name="project_sale_status" class="form-control">
+                    <select name="project_sale_status" class="form-control" required>
                         <option value="">Select Sale Status</option>
                         <option value="Sold Out">Sold Out</option>
                         <option value="On Sale">On Sale</option>

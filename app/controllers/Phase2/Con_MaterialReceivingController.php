@@ -166,16 +166,21 @@ class Con_MaterialReceivingController extends Controller
 
         $items = $this->receivingModel->getItems($id);
 
-        $testQuery = $this->db->prepare("
-            SELECT t.*, u.full_name AS created_by_name 
-            FROM qc_material_tests t 
-            LEFT JOIN users u ON u.id = t.created_by 
-            WHERE t.material_receiving_id = ?
-            ORDER BY t.created_at DESC
-        ");
-        $testQuery->bind_param('i', $id);
-        $testQuery->execute();
-        $labTests = $testQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+        // Lab tests — only if qc_material_tests table exists
+        $labTests = [];
+        $tableCheck = $this->db->query("SHOW TABLES LIKE 'qc_material_tests'");
+        if ($tableCheck && $tableCheck->num_rows > 0) {
+            $testQuery = $this->db->prepare("
+                SELECT t.*, u.full_name AS created_by_name
+                FROM qc_material_tests t
+                LEFT JOIN users u ON u.id = t.created_by
+                WHERE t.material_receiving_id = ?
+                ORDER BY t.created_at DESC
+            ");
+            $testQuery->bind_param('i', $id);
+            $testQuery->execute();
+            $labTests = $testQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
 
         $this->view('phase2/material-receiving/qc-review-receiving', [
             'current_route' => 'con-material-receivings',

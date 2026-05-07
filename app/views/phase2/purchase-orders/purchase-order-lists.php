@@ -8,6 +8,12 @@
             </ol>
         </nav>
     </div>
+    <div class="mb-4 d-flex gap-2 align-items-center">
+        <a href="<?= $base_url ?>/con-material-receiving-import"
+           class="btn btn-success btn-sm fw-bold">
+            <i class="bi bi-cloud-upload me-1"></i> Bulk CSV Import
+        </a>
+    </div>
 </div>
 
     <div class="card__wrapper shadow-sm">

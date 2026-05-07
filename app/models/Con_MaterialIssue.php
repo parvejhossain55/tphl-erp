@@ -71,20 +71,22 @@ class Con_MaterialIssue extends Model
                     (project_id, warehouse_id, material_id, quantity, issued_to, purpose, issued_by, issue_date, target_id, work_plan_id)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
-            $stmt->bind_param('iiidssisii',
-                $data['project_id'],
-                $data['warehouse_id'],
-                $data['material_id'],
-                $data['quantity'],
-                $data['issued_to'],
-                $data['purpose'],
-                $data['issued_by'],
-                $data['issue_date'],
-                $data['target_id'],
-                $data['work_plan_id']
+            $issuedTo = (int)$data['issued_to'];
+            $stmt->bind_param('iiidisisii',
+                $data['project_id'],   // i
+                $data['warehouse_id'], // i
+                $data['material_id'],  // i
+                $data['quantity'],     // d
+                $issuedTo,             // i  contractor_id
+                $data['purpose'],      // s
+                $data['issued_by'],    // i
+                $data['issue_date'],   // s
+                $data['target_id'],    // i
+                $data['work_plan_id']  // i
             );
             $stmt->execute();
             $issueId = $this->db->insert_id;
+
 
             // Deduct stock
             $stockModel = new \Con_Stock($this->db);

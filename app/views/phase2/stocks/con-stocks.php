@@ -2,9 +2,9 @@
 <?php
 // Helper: format taka in Lakh notation
 function fmtLakh($val) {
-    if ($val >= 100000) return '৳' . number_format($val / 100000, 1) . 'L';
-    if ($val >= 1000)   return '৳' . number_format($val / 1000, 1) . 'K';
-    return '৳' . number_format($val, 0);
+    if ($val >= 100000) return '&#2547;' . number_format($val / 100000, 1) . 'L';
+    if ($val >= 1000)   return '&#2547;' . number_format($val / 1000, 1) . 'K';
+    return '&#2547;' . number_format($val, 0);
 }
 $stats     = $stats     ?? ['total_value' => 0, 'total_materials' => 0, 'low_stock_count' => 0];
 $byProject = $byProject ?? ['projects' => [], 'grand_total' => 0];
@@ -27,7 +27,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
     <section class="section">
 
         <!-- ══════════════════════════════════════
-             KPI CARDS — 3 cards on top
+             KPI CARDS &mdash; 3 cards on top
         ════════════════════════════════════════ -->
         <div class="row mb-4">
 
@@ -136,6 +136,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                         <th>Stock Value</th>
                                         <th>Min Level</th>
                                         <th>Status</th>
+                                        <th>Last Issued</th>
                                         <th>Last Updated</th>
                                     </tr>
                                 </thead>
@@ -152,7 +153,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                 <?= number_format($row['current_quantity'], 3) ?>
                                             </td>
                                             <td><?= htmlspecialchars($row['unit']) ?></td>
-                                            <td>৳<?= number_format($row['unit_price'], 2) ?></td>
+                                            <td>&#2547;<?= number_format($row['unit_price'], 2) ?></td>
                                             <td class="fw-semibold text-success"><?= fmtLakh($row['current_quantity'] * $row['unit_price']) ?></td>
                                             <td><?= number_format($row['min_stock_level'], 2) ?></td>
                                             <td>
@@ -162,11 +163,31 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                     <span class="badge bg-success"><i class="fas fa-check me-1"></i>OK</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td><?= $row['updated_at'] ? date('d M Y h:i A', strtotime($row['updated_at'])) : '—' ?></td>
+                                            <td>
+                                                <?php if (!empty($row['last_issued_qty'])): ?>
+                                                    <div class="fw-bold text-danger">
+                                                        <?= number_format($row['last_issued_qty'], 3) ?>
+                                                        <span class="text-muted small"><?= htmlspecialchars($row['unit']) ?></span>
+                                                    </div>
+                                                    <?php if (!empty($row['last_issued_by_name'])): ?>
+                                                        <div class="text-muted" style="font-size:11px;">
+                                                            By: <?= htmlspecialchars($row['last_issued_by_name']) ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($row['last_issued_at'])): ?>
+                                                        <div class="text-muted" style="font-size:11px;">
+                                                            <?= date('d M Y', strtotime($row['last_issued_at'])) ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <span class="text-muted">&mdash;</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?= $row['updated_at'] ? date('d M Y h:i A', strtotime($row['updated_at'])) : '&mdash;' ?></td>
                                         </tr>
                                         <?php endforeach; ?>
                                     <?php else: ?>
-                                        <tr><td colspan="10" class="text-center py-5 text-muted">
+                                        <tr><td colspan="11" class="text-center py-5 text-muted">
                                             <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
                                             No stock data. Stock is added when materials are received and QC-approved.
                                         </td></tr>
@@ -209,7 +230,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                             <td><?= htmlspecialchars($row['warehouse_name']) ?></td>
                                             <td class="fw-bold text-primary"><?= number_format($row['current_quantity'], 3) ?></td>
                                             <td><?= htmlspecialchars($row['unit']) ?></td>
-                                            <td>৳<?= number_format($row['unit_price'], 2) ?></td>
+                                            <td>&#2547;<?= number_format($row['unit_price'], 2) ?></td>
                                             <td class="fw-semibold text-success"><?= fmtLakh($row['current_quantity'] * $row['unit_price']) ?></td>
                                             <td style="min-width:140px;">
                                                 <div class="d-flex align-items-center gap-2">
@@ -220,7 +241,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                 </div>
                                                 <small class="text-muted">Min: <?= number_format($row['min_stock_level'], 2) ?></small>
                                             </td>
-                                            <td><?= $row['updated_at'] ? date('d M Y h:i A', strtotime($row['updated_at'])) : '—' ?></td>
+                                            <td><?= $row['updated_at'] ? date('d M Y h:i A', strtotime($row['updated_at'])) : '&mdash;' ?></td>
                                         </tr>
                                         <?php endforeach; ?>
                                     <?php else: ?>
@@ -281,52 +302,88 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                         <div id="pc-<?= $pidx ?>" class="accordion-collapse collapse <?= $pidx === 0 ? 'show' : '' ?>"
                                              aria-labelledby="ph-<?= $pidx ?>" data-bs-parent="#projectAccordion">
                                             <div class="accordion-body p-0">
-                                                <div class="px-3 py-2  border-bottom">
+                                                <div class="px-3 py-2 border-bottom">
                                                     <small class="fw-semibold text-primary">
                                                         <i class="fas fa-table me-1"></i>
                                                         Material Breakdown: <?= htmlspecialchars($proj['project_name']) ?>
                                                     </small>
                                                 </div>
-                                                <?php if (!empty($proj['materials'])): ?>
                                                 <div class="table-responsive">
                                                     <table class="table table-sm table-hover mb-0">
                                                         <thead class="table-light">
                                                             <tr>
+
                                                                 <th>Material</th>
-                                                                <th>Quantity</th>
+                                                                <th class="text-end">Received</th>
+                                                                <th class="text-end">Issued</th>
+                                                                <th class="text-end">Remaining</th>
                                                                 <th>Unit</th>
-                                                                <th>Avg Price</th>
-                                                                <th>Total Value</th>
-                                                                <th>% of Total</th>
+                                                                <th class="text-end">Avg Price</th>
+                                                                <th class="text-end">Total Value</th>
+                                                                <th>Issue Details</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             <?php foreach ($proj['materials'] as $mat): ?>
                                                             <tr>
                                                                 <td class="fw-semibold"><?= htmlspecialchars($mat['material_name']) ?></td>
-                                                                <td><?= number_format($mat['total_qty'], 2) ?></td>
+                                                                <td class="text-end text-primary fw-bold"><?= number_format($mat['total_received'] ?? 0, 3) ?></td>
+                                                                <td class="text-end fw-bold <?= ($mat['total_issued'] ?? 0) > 0 ? 'text-danger' : 'text-muted' ?>">
+                                                                    <?= ($mat['total_issued'] ?? 0) > 0 ? number_format($mat['total_issued'], 3) : '-' ?>
+                                                                </td>
+                                                                <td class="text-end fw-bold <?= ($mat['remaining_qty'] ?? 0) <= 0 ? 'text-danger' : 'text-success' ?>">
+                                                                    <?= number_format($mat['remaining_qty'] ?? 0, 3) ?>
+                                                                </td>
                                                                 <td><?= htmlspecialchars($mat['unit']) ?></td>
-                                                                <td>৳<?= number_format($mat['avg_price'], 2) ?></td>
-                                                                <td class="text-success fw-semibold"><?= fmtLakh($mat['total_value']) ?></td>
+                                                                <td class="text-end">&#2547;<?= number_format($mat['avg_price'] ?? 0, 2) ?></td>
+                                                                <td class="text-end text-success fw-semibold"><?= fmtLakh($mat['total_value'] ?? 0) ?></td>
                                                                 <td>
-                                                                    <div class="d-flex align-items-center gap-2">
-                                                                        <div class="progress flex-grow-1" style="height:6px;min-width:60px;">
-                                                                            <div class="progress-bar bg-info" style="width: <?= $mat['pct'] ?>%;"></div>
+                                                                    <?php if (!empty($mat['issue_details'])): ?>
+                                                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" type="button"
+                                                                                data-bs-toggle="collapse"
+                                                                                data-bs-target="#iss-<?= $pidx ?>-<?= $mat['material_id'] ?>">
+                                                                            <i class="fas fa-list-ul me-1"></i><?= count($mat['issue_details']) ?> issue(s)
+                                                                        </button>
+                                                                        <div class="collapse mt-1" id="iss-<?= $pidx ?>-<?= $mat['material_id'] ?>">
+                                                                            <table class="table table-bordered mb-0 small">
+                                                                                <thead class="table-secondary">
+                                                                                    <tr><th>Date</th><th>Qty</th><th>Target</th><th>Work Plan</th><th>Issued By</th></tr>
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    <?php foreach ($mat['issue_details'] as $iss): ?>
+                                                                                    <tr>
+                                                                                        <td><?= date('d M Y', strtotime($iss['issue_date'])) ?></td>
+                                                                                        <td class="text-danger fw-bold"><?= number_format($iss['quantity'], 3) ?></td>
+                                                                                        <td><?= htmlspecialchars($iss['target_title'] ?? '-') ?></td>
+                                                                                        <td><?= htmlspecialchars($iss['work_plan_title'] ?? '-') ?></td>
+                                                                                        <td><?= htmlspecialchars($iss['issued_by_name'] ?? '-') ?></td>
+                                                                                    </tr>
+                                                                                    <?php endforeach; ?>
+                                                                                </tbody>
+                                                                            </table>
                                                                         </div>
-                                                                        <span><?= $mat['pct'] ?>%</span>
-                                                                    </div>
+                                                                    <?php else: ?>
+                                                                        <span class="text-muted small">No issues</span>
+                                                                    <?php endif; ?>
                                                                 </td>
                                                             </tr>
                                                             <?php endforeach; ?>
                                                         </tbody>
+                                                        <tfoot class="table-light fw-bold">
+                                                            <tr>
+                                                                <td>Total</td>
+                                                                <td class="text-end text-primary"><?= number_format(array_sum(array_column($proj['materials'], 'total_received')), 3) ?></td>
+                                                                <td class="text-end text-danger"><?= number_format(array_sum(array_column($proj['materials'], 'total_issued')), 3) ?></td>
+                                                                <td class="text-end text-success"><?= number_format(array_sum(array_column($proj['materials'], 'remaining_qty')), 3) ?></td>
+                                                                <td colspan="4"></td>
+                                                            </tr>
+                                                        </tfoot>
                                                     </table>
-                                                </div>
-                                                <?php else: ?>
-                                                <div class="p-3 text-muted text-center">No material breakdown available.</div>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                    </div>
+                                                </div><!-- /table-responsive -->
+                                            </div><!-- /accordion-body -->
+                                        </div><!-- /accordion-collapse -->
+                                    </div><!-- /accordion-item -->
+
                                     <?php endforeach; ?>
                                 </div>
 
@@ -437,8 +494,8 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                     <small><?= $pct ?>%</small>
                                                 </div>
                                             </td>
-                                            <td>৳<?= number_format($row['unit_price'], 2) ?></td>
-                                            <td><?= $row['updated_at'] ? date('d M Y', strtotime($row['updated_at'])) : '—' ?></td>
+                                            <td>&#2547;<?= number_format($row['unit_price'], 2) ?></td>
+                                            <td><?= $row['updated_at'] ? date('d M Y', strtotime($row['updated_at'])) : '&mdash;' ?></td>
                                         </tr>
                                         <?php endforeach; ?>
                                     <?php else: ?>
@@ -487,37 +544,76 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                         <table class="table table-sm table-hover mb-0">
                                                             <thead class="table-light">
                                                                 <tr>
-                                                                    <th style="width: 30%">Material</th>
-                                                                    <th style="width: 15%" class="text-end">Initial Budget</th>
-                                                                    <th style="width: 15%" class="text-end">Received Qty</th>
-                                                                    <th style="width: 15%" class="text-end">Available</th>
-                                                                    <th style="width: 25%">Progress</th>
+                                                                    <th style="min-width:150px">Material</th>
+                                                                    <th class="text-end" style="min-width:85px">Budget Qty</th>
+                                                                    <th class="text-end text-primary" style="min-width:85px">Received</th>
+                                                                    <th class="text-end text-danger" style="min-width:85px">Issued Qty</th>
+                                                                    <th class="text-end text-danger" style="min-width:110px">Issued Value</th>
+                                                                    <th class="text-end text-success" style="min-width:85px">Remaining</th>
+                                                                    <th style="min-width:190px">Budget Usage</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                <?php foreach ($materials as $mat): 
-                                                                    $budgetQty = (float)$mat['initial_budget_qty'];
+                                                                <?php foreach ($materials as $mat):
+                                                                    $budgetQty   = (float)$mat['initial_budget_qty'];
                                                                     $receivedQty = (float)$mat['total_received'];
-                                                                    $availQty = (float)$mat['available_qty'];
-                                                                    $pct = $budgetQty > 0 ? min(100, round(($receivedQty / $budgetQty) * 100)) : 0;
-                                                                    $barColor = $pct >= 100 ? 'bg-danger' : ($pct >= 80 ? 'bg-warning' : 'bg-success');
+                                                                    $issuedQty   = (float)($mat['issued_qty'] ?? 0);
+                                                                    $issuedVal   = (float)($mat['issued_value'] ?? 0);
+                                                                    $budgetLeft  = (float)($mat['budget_remaining'] ?? max(0, $budgetQty - $issuedQty));
+                                                                    $issuedPct    = $budgetQty > 0 ? min(100, round(($issuedQty / $budgetQty) * 1000) / 10) : 0;
+                                                                    $receivedPct  = $budgetQty > 0 ? min(100, round(($receivedQty / $budgetQty) * 1000) / 10) : 0;
+                                                                    $issuedPctFmt = number_format($issuedPct, $issuedPct < 1 ? 2 : 1);
+                                                                    $receivedPctFmt = number_format($receivedPct, $receivedPct < 1 ? 2 : 1);
+                                                                    $barIssuedW   = max(0.5, $issuedPct);   // min bar width so it's visible
+                                                                    $barRecvW     = max(0.5, $receivedPct);
+                                                                    $barIssued    = $issuedPct >= 100 ? 'bg-danger' : ($issuedPct >= 80 ? 'bg-warning' : 'bg-primary');
                                                                 ?>
                                                                 <tr>
-                                                                    <td class="fw-semibold"><?= htmlspecialchars($mat['material_name']) ?> <small class="text-muted">(<?= $mat['unit'] ?>)</small></td>
+                                                                    <td class="fw-semibold">
+                                                                        <?= htmlspecialchars($mat['material_name']) ?>
+                                                                        <small class="text-muted">(<?= $mat['unit'] ?>)</small>
+                                                                    </td>
                                                                     <td class="text-end fw-bold"><?= number_format($budgetQty, 3) ?></td>
                                                                     <td class="text-end text-primary fw-bold"><?= number_format($receivedQty, 3) ?></td>
-                                                                    <td class="text-end text-success fw-bold"><?= number_format($availQty, 3) ?></td>
+                                                                    <td class="text-end fw-bold <?= $issuedQty > 0 ? 'text-danger' : 'text-muted' ?>">
+                                                                        <?= $issuedQty > 0 ? number_format($issuedQty, 3) : '-' ?>
+                                                                    </td>
+                                                                    <td class="text-end fw-bold <?= $issuedVal > 0 ? 'text-danger' : 'text-muted' ?>">
+                                                                        <?= $issuedVal > 0 ? '&#2547;' . number_format($issuedVal, 0) : '-' ?>
+                                                                    </td>
+                                                                    <td class="text-end fw-bold <?= $budgetLeft <= 0 ? 'text-danger' : 'text-success' ?>">
+                                                                        <?= number_format($budgetLeft, 3) ?>
+                                                                    </td>
                                                                     <td>
-                                                                        <div class="d-flex align-items-center gap-2">
-                                                                            <div class="progress flex-grow-1" style="height:6px;min-width:60px;">
-                                                                                <div class="progress-bar <?= $barColor ?>" style="width: <?= $pct ?>%;"></div>
+                                                                        <div class="d-flex align-items-center gap-1 mb-1">
+                                                                            <small class="text-muted" style="min-width:52px">Rcvd:</small>
+                                                                            <div class="progress flex-grow-1" style="height:6px;">
+                                                                                <div class="progress-bar bg-primary" style="width:<?= $barRecvW ?>%"></div>
                                                                             </div>
-                                                                            <span class="small fw-semibold text-muted" style="min-width:35px;"><?= $pct ?>%</span>
+                                                                            <small class="text-primary fw-semibold" style="min-width:40px;text-align:right"><?= $receivedPctFmt ?>%</small>
+                                                                        </div>
+                                                                        <div class="d-flex align-items-center gap-1">
+                                                                            <small class="text-muted" style="min-width:52px">Issued:</small>
+                                                                            <div class="progress flex-grow-1" style="height:6px;">
+                                                                                <div class="progress-bar <?= $barIssued ?>" style="width:<?= $barIssuedW ?>%"></div>
+                                                                            </div>
+                                                                            <small class="fw-semibold <?= $issuedPct >= 80 ? 'text-danger' : 'text-muted' ?>" style="min-width:40px;text-align:right"><?= $issuedPctFmt ?>%</small>
                                                                         </div>
                                                                     </td>
                                                                 </tr>
                                                                 <?php endforeach; ?>
                                                             </tbody>
+                                                            <tfoot class="table-light fw-bold small">
+                                                                <tr>
+                                                                    <td>Total</td>
+                                                                    <td class="text-end"><?= number_format(array_sum(array_column($materials, 'initial_budget_qty')), 3) ?></td>
+                                                                    <td class="text-end text-primary"><?= number_format(array_sum(array_column($materials, 'total_received')), 3) ?></td>
+                                                                    <td class="text-end text-danger"><?= number_format(array_sum(array_column($materials, 'issued_qty')), 3) ?></td>
+                                                                    <td class="text-end text-danger">&#2547;<?= number_format(array_sum(array_column($materials, 'issued_value')), 0) ?></td>
+                                                                    <td class="text-end text-success"><?= number_format(array_sum(array_column($materials, 'budget_remaining')), 3) ?></td>
+                                                                    <td></td>
+                                                                </tr>
+                                                            </tfoot>
                                                         </table>
                                                     </div>
                                                 <?php endforeach; ?>
