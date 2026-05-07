@@ -261,7 +261,9 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
     <!-- GRN Button — only if fully approved -->
     <?php 
       $hasReceiving = $hasReceiving ?? false;
-      $canLogGrn = in_array($currentRoleId, [1, 3, 22, 23, 12]);
+      // Allow GRN logging for any authenticated user EXCEPT site operator (role 20)
+      // Purchase Head, Admin, PM, Site Eng, etc. all should be able to log receiving
+      $canLogGrn = !in_array($currentRoleId, [20]);
       if ($currentRoleId == 12 && $hasReceiving) {
           $canLogGrn = false; // Site Engineer can only create GRN once per PO
       }

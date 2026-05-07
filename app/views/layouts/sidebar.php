@@ -1329,12 +1329,7 @@
                                     class="sidebar__menu-item <?= isActive('qc-material-test-create', $current_route) ?>">Log
                                     Material Test</a>
                             </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-targets"
-                                    class="sidebar__menu-item <?= isActive('con-targets', $current_route) ?>">
-                                    <i class="bi bi-bullseye me-1"></i>Target Fixed
-                                </a>
-                            </li>
+                         
                         </ul>
                     </li>
                 <?php endif; ?>

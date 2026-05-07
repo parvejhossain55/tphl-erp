@@ -48,7 +48,9 @@ class Con_TargetFixed extends Model
                 LEFT JOIN design_types          dt   ON dt.id   = wt.design_type_id
                 LEFT JOIN users                 u    ON u.id    = tf.user_id
                 LEFT JOIN users                 qc   ON qc.id   = tf.qc_reviewed_by_id
-                LEFT JOIN users                 apv  ON apv.id  = tf.manager_approved_by_id
+                LEFT JOIN users                 apv  ON apv.id  = COALESCE(
+                    (SELECT manager_approved_by_id FROM {$this->table} WHERE id = tf.id LIMIT 1), NULL
+                )
                 LEFT JOIN roles                 apv_r ON apv_r.id = apv.role_id
                 ORDER BY tf.year DESC, tf.month DESC, tf.week_number ASC";
         $result = $this->db->query($sql);
@@ -78,7 +80,9 @@ class Con_TargetFixed extends Model
              LEFT JOIN design_types          dt   ON dt.id   = wt.design_type_id
              LEFT JOIN users                 u    ON u.id    = tf.user_id
              LEFT JOIN users                 qc   ON qc.id   = tf.qc_reviewed_by_id
-             LEFT JOIN users                 apv  ON apv.id  = tf.manager_approved_by_id
+             LEFT JOIN users                 apv  ON apv.id  = COALESCE(
+                 (SELECT manager_approved_by_id FROM {$this->table} WHERE id = tf.id LIMIT 1), NULL
+             )
              LEFT JOIN roles                 apv_r ON apv_r.id = apv.role_id
              WHERE tf.id = ?"
         );
@@ -149,6 +153,10 @@ class Con_TargetFixed extends Model
                  lab_test_result, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.00, NULL, NULL, NULL, NOW())";
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log('Con_TargetFixed::create prepare failed: ' . $this->db->error);
+            return 0;
+        }
         $stmt->bind_param(
             'iisiiiidiss',
             $data['project_id'],
@@ -163,7 +171,10 @@ class Con_TargetFixed extends Model
             $labTestDate,
             $details
         );
-        $stmt->execute();
+        if (!$stmt->execute()) {
+            error_log('Con_TargetFixed::create execute failed: ' . $stmt->error);
+            return 0;
+        }
         return $stmt->insert_id;
     }
 
