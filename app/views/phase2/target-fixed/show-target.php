@@ -533,7 +533,17 @@ $sc = $statusMap[$overallStatus];
           </div>
           <div>
             <div style="font-size:12.5px;font-weight:700">Project Manager</div>
-            <div style="font-size:11px;color:var(--text-muted)"><?= $pmApproved ? 'Approved' : 'Awaiting approval' ?></div>
+            <?php if ($pmApproved && !empty($t['manager_approver_name'])): ?>
+              <div style="font-size:11px;font-weight:700;color:#059669"><?= htmlspecialchars($t['manager_approver_name']) ?></div>
+              <?php if (!empty($t['manager_approver_role'])): ?>
+                <div style="font-size:10px;color:#6b7280;font-style:italic"><?= htmlspecialchars($t['manager_approver_role']) ?></div>
+              <?php endif; ?>
+              <?php if (!empty($t['manager_approved_at'])): ?>
+                <div style="font-size:10px;color:var(--text-muted)"><?= date('d M Y, h:i A', strtotime($t['manager_approved_at'])) ?></div>
+              <?php endif; ?>
+            <?php else: ?>
+              <div style="font-size:11px;color:var(--text-muted)">Awaiting approval</div>
+            <?php endif; ?>
           </div>
         </div>
         <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;

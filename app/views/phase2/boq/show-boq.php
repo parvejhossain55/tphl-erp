@@ -169,6 +169,9 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
         <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:8px">
           <i class="fal fa-user-check me-1"></i>
           Approved by <strong style="color:#fff"><?= htmlspecialchars($boq['approved_by_name']) ?></strong><br>
+          <?php if (!empty($boq['approved_by_role'])): ?>
+          <span style="font-size:10px;font-style:italic;color:rgba(255,255,255,.5)"><?= htmlspecialchars($boq['approved_by_role']) ?></span><br>
+          <?php endif; ?>
           <i class="fal fa-calendar me-1"></i><?= !empty($boq['approved_at']) ? date('d M Y', strtotime($boq['approved_at'])) : '' ?>
         </div>
         <?php endif; ?>

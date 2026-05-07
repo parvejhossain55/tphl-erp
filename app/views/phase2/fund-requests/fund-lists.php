@@ -68,6 +68,9 @@ $page_title = $page_title ?? 'Operational Fund Requests';
                                     <td>
                                         <?php if (!empty($r['approved_by_name'])): ?>
                                             <span class="text-success fw-semibold"><?= htmlspecialchars($r['approved_by_name']) ?></span>
+                                            <?php if (!empty($r['approved_by_role'])): ?>
+                                                <br><small class="text-muted fst-italic"><?= htmlspecialchars($r['approved_by_role']) ?></small>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <span class="text-muted">—</span>
                                         <?php endif; ?>

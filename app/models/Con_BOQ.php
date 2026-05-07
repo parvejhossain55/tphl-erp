@@ -30,14 +30,16 @@ class Con_BOQ extends Model
     {
         $sql = "SELECT b.*, p.name AS project_name, u.full_name AS created_by_name,
                        a.full_name AS approved_by_name,
+                       a_r.name    AS approved_by_role,
                        tf.target_title,
                        dt.name AS design_type_name
                 FROM {$this->masterTable} b
-                LEFT JOIN projects      p  ON p.id  = b.project_id
-                LEFT JOIN users         u  ON u.id  = b.created_by
-                LEFT JOIN users         a  ON a.id  = b.approved_by
-                LEFT JOIN target_fixed  tf ON tf.id = b.target_id
-                LEFT JOIN design_types  dt ON dt.id = b.design_type_id
+                LEFT JOIN projects      p   ON p.id   = b.project_id
+                LEFT JOIN users         u   ON u.id   = b.created_by
+                LEFT JOIN users         a   ON a.id   = b.approved_by
+                LEFT JOIN roles         a_r ON a_r.id = a.role_id
+                LEFT JOIN target_fixed  tf  ON tf.id  = b.target_id
+                LEFT JOIN design_types  dt  ON dt.id  = b.design_type_id
                 ORDER BY b.id DESC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -49,16 +51,18 @@ class Con_BOQ extends Model
         $stmt = $this->db->prepare(
             "SELECT b.*, p.name AS project_name, u.full_name AS created_by_name,
                     a.full_name AS approved_by_name,
+                    a_r.name    AS approved_by_role,
                     tf.target_title, tf.target_percentage,
                     tf.year AS target_year, tf.month AS target_month,
                     tf.week_number AS target_week,
                     dt.name AS design_type_name
              FROM {$this->masterTable} b
-             LEFT JOIN projects      p  ON p.id  = b.project_id
-             LEFT JOIN users         u  ON u.id  = b.created_by
-             LEFT JOIN users         a  ON a.id  = b.approved_by
-             LEFT JOIN target_fixed  tf ON tf.id = b.target_id
-             LEFT JOIN design_types  dt ON dt.id = b.design_type_id
+             LEFT JOIN projects      p   ON p.id   = b.project_id
+             LEFT JOIN users         u   ON u.id   = b.created_by
+             LEFT JOIN users         a   ON a.id   = b.approved_by
+             LEFT JOIN roles         a_r ON a_r.id = a.role_id
+             LEFT JOIN target_fixed  tf  ON tf.id  = b.target_id
+             LEFT JOIN design_types  dt  ON dt.id  = b.design_type_id
              WHERE b.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -199,6 +203,7 @@ public function getRemainingBOQ($projectId) {
         $sql = "
             SELECT b.*, p.name AS project_name, u.full_name AS created_by_name,
                    a.full_name AS approved_by_name,
+                   a_r.name    AS approved_by_role,
                    tf.target_title,
                    dt.name AS design_type_name,
                    COUNT(bi.id)          AS item_count,
@@ -227,11 +232,12 @@ public function getRemainingBOQ($projectId) {
                          AND mr.overall_status IN ('QC Approved','Accepted','Fully Received','Partially Received')
                    ), 0) AS total_received
             FROM {$this->masterTable} b
-            LEFT JOIN projects      p  ON p.id  = b.project_id
-            LEFT JOIN users         u  ON u.id  = b.created_by
-            LEFT JOIN users         a  ON a.id  = b.approved_by
-            LEFT JOIN target_fixed  tf ON tf.id = b.target_id
-            LEFT JOIN design_types  dt ON dt.id = b.design_type_id
+            LEFT JOIN projects      p   ON p.id   = b.project_id
+            LEFT JOIN users         u   ON u.id   = b.created_by
+            LEFT JOIN users         a   ON a.id   = b.approved_by
+            LEFT JOIN roles         a_r ON a_r.id = a.role_id
+            LEFT JOIN target_fixed  tf  ON tf.id  = b.target_id
+            LEFT JOIN design_types  dt  ON dt.id  = b.design_type_id
             LEFT JOIN boq_items     bi ON bi.boq_id = b.id
             GROUP BY b.id
             ORDER BY b.id DESC";

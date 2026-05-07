@@ -333,6 +333,12 @@ class Con_TargetFixedController extends Controller
 
 
         if ($this->targetModel->approveStep($id, $step, $userId)) {
+            // Also store WHO approved and WHEN for display
+            $upd = $this->db->prepare(
+                "UPDATE target_fixed SET manager_approved_by_id = ?, manager_approved_at = NOW() WHERE id = ?"
+            );
+            $upd->bind_param('ii', $userId, $id);
+            $upd->execute();
             setSuccess('Approval recorded successfully!');
         } else {
             setError('Approval failed.');

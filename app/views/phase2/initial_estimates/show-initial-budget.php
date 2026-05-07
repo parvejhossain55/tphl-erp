@@ -162,6 +162,9 @@ function sib_fmt($n) {
         <div style="font-size:11px;color:rgba(255,255,255,.65)">
           <i class="fal fa-user-check me-1"></i>
           Approved by <strong style="color:#fff"><?= htmlspecialchars($budget['approved_by_name']) ?></strong><br>
+          <?php if (!empty($budget['approved_by_role'])): ?>
+          <span style="font-size:10px;font-style:italic;color:rgba(255,255,255,.5)"><?= htmlspecialchars($budget['approved_by_role']) ?></span><br>
+          <?php endif; ?>
           <i class="fal fa-calendar me-1"></i><?= !empty($budget['approval_date']) ? date('d M Y', strtotime($budget['approval_date'])) : '' ?>
         </div>
         <?php endif; ?>
@@ -516,7 +519,14 @@ function sib_fmt($n) {
             </span>
           </td>
           <td style="font-size:11.5px;color:var(--text-muted)">
-            <?= htmlspecialchars($wp['approved_by_name'] ?? '—') ?>
+            <?php if (!empty($wp['approved_by_name'])): ?>
+              <span style="color:#059669;font-weight:700"><?= htmlspecialchars($wp['approved_by_name']) ?></span>
+              <?php if (!empty($wp['approved_by_role'])): ?>
+                <br><span style="font-size:10px;font-style:italic;color:var(--text-muted)"><?= htmlspecialchars($wp['approved_by_role']) ?></span>
+              <?php endif; ?>
+            <?php else: ?>
+              —
+            <?php endif; ?>
           </td>
           <td style="font-size:11.5px;color:var(--text-muted)">
             <?= htmlspecialchars($wp['created_by_name'] ?? '—') ?>

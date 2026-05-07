@@ -38,14 +38,18 @@ class Con_TargetFixed extends Model
                        wt.work_type_name AS work_type_name,
                        dt.name          AS design_type_name,
                        u.full_name      AS created_by_name,
-                       qc.full_name     AS qc_reviewed_by_name
+                       qc.full_name     AS qc_reviewed_by_name,
+                       apv.full_name    AS manager_approver_name,
+                       apv_r.name       AS manager_approver_role
                 FROM {$this->table} tf
-                LEFT JOIN projects              p  ON p.id  = tf.project_id
-                LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-                LEFT JOIN work_types            wt ON wt.id = wp.work_type_id
-                LEFT JOIN design_types          dt ON dt.id = wt.design_type_id
-                LEFT JOIN users                 u  ON u.id  = tf.user_id
-                LEFT JOIN users                 qc ON qc.id = tf.qc_reviewed_by_id
+                LEFT JOIN projects              p    ON p.id    = tf.project_id
+                LEFT JOIN project_working_plans wp   ON wp.id   = tf.work_plan_id
+                LEFT JOIN work_types            wt   ON wt.id   = wp.work_type_id
+                LEFT JOIN design_types          dt   ON dt.id   = wt.design_type_id
+                LEFT JOIN users                 u    ON u.id    = tf.user_id
+                LEFT JOIN users                 qc   ON qc.id   = tf.qc_reviewed_by_id
+                LEFT JOIN users                 apv  ON apv.id  = tf.manager_approved_by_id
+                LEFT JOIN roles                 apv_r ON apv_r.id = apv.role_id
                 ORDER BY tf.year DESC, tf.month DESC, tf.week_number ASC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -64,14 +68,18 @@ class Con_TargetFixed extends Model
                     wt.work_type_name AS work_type_name,
                     dt.name          AS design_type_name,
                     u.full_name      AS created_by_name,
-                    qc.full_name     AS qc_reviewed_by_name
+                    qc.full_name     AS qc_reviewed_by_name,
+                    apv.full_name    AS manager_approver_name,
+                    apv_r.name       AS manager_approver_role
              FROM {$this->table} tf
-             LEFT JOIN projects              p  ON p.id  = tf.project_id
-             LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-             LEFT JOIN work_types            wt ON wt.id = wp.work_type_id
-             LEFT JOIN design_types          dt ON dt.id = wt.design_type_id
-             LEFT JOIN users                 u  ON u.id  = tf.user_id
-             LEFT JOIN users                 qc ON qc.id = tf.qc_reviewed_by_id
+             LEFT JOIN projects              p    ON p.id    = tf.project_id
+             LEFT JOIN project_working_plans wp   ON wp.id   = tf.work_plan_id
+             LEFT JOIN work_types            wt   ON wt.id   = wp.work_type_id
+             LEFT JOIN design_types          dt   ON dt.id   = wt.design_type_id
+             LEFT JOIN users                 u    ON u.id    = tf.user_id
+             LEFT JOIN users                 qc   ON qc.id   = tf.qc_reviewed_by_id
+             LEFT JOIN users                 apv  ON apv.id  = tf.manager_approved_by_id
+             LEFT JOIN roles                 apv_r ON apv_r.id = apv.role_id
              WHERE tf.id = ?"
         );
         if (!$stmt) {

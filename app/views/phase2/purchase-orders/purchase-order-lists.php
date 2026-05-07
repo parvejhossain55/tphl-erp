@@ -48,16 +48,13 @@
                                 </td>
                                 <td class="text-center">
                                     <?php
-                                    $seOk = !empty($po['approved_by_se']);
                                     $pmOk = !empty($po['approved_by_pm']);
-                                    $cnt  = ($seOk?1:0)+($pmOk?1:0);
-                                    $apvColor = $cnt>=2?'#059669':($cnt>0?'#d97706':'#6b7280');
+                                    $apvColor = $pmOk ? '#059669' : '#6b7280';
                                     ?>
                                     <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;
                                       background:rgba(0,0,0,.05);color:<?= $apvColor ?>">
-                                      <?= $cnt ?>/2
-                                      <?= $seOk?'<span title="SE">SE✓</span>':'' ?>
-                                      <?= $pmOk?'<span title="PM">PM✓</span>':'' ?>
+                                      <?= $pmOk?'1':'0' ?>/1
+                                      <?= $pmOk?'<span title="Management">Mgmt✓</span>':'' ?>
                                     </span>
                                 </td>
                                 <td class="text-muted small"><?= date('d M Y', strtotime($po['order_date'])) ?></td>

@@ -30,11 +30,15 @@ class Con_PurchaseOrder extends Model
     {
         $stmt = $this->db->prepare(
             "SELECT po.*, pr.project_id, pr.notes AS pr_notes, p.name AS project_name,
-                    u.full_name AS created_by_name
+                    u.full_name AS created_by_name,
+                    apv.full_name AS pm_approver_name,
+                    apv_r.name    AS pm_approver_role
              FROM {$this->table} po
              JOIN purchase_requests pr ON pr.id = po.request_id
              LEFT JOIN projects p ON p.id = pr.project_id
              LEFT JOIN users u ON u.id = po.created_by
+             LEFT JOIN users apv ON apv.id = po.approved_by_pm
+             LEFT JOIN roles apv_r ON apv_r.id = apv.role_id
              WHERE po.id = ?"
         );
         $stmt->bind_param('i', $id);
