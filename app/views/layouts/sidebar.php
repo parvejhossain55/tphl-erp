@@ -1268,7 +1268,7 @@
                      Project Architecture has: Project Draft Design + Architect Design
                      Unique: Architect Design + Project Draft Design + NO Material Issue
                      Exclude: Construction Management, Site Engineer (has Material Issue) -->
-                <?php if (hasPermission('Architect Design') && hasPermission('Project Draft Design') && !hasPermission('Material Issue') && !hasPermission('Construction Management')): ?>
+                <?php if (hasPermission('Architect Design') ): ?>
                     <li class="slide <?= isActive('project-architecture-dashboard', $current_route) ?>">
                         <a href="<?= $base_url ?>/project-architecture-dashboard"
                             class="sidebar__menu-item <?= isActive('project-architecture-dashboard', $current_route) ?>">

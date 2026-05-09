@@ -1227,63 +1227,86 @@ class Con_DashboardController extends Controller
 
     // =========================================================================
     // PROJECT ARCHITECTURE DASHBOARD
-    // Permissions: Architect & Engineering, Design Types, Project Drawings
+    // Permissions: Architect & Engineering ONLY
     // =========================================================================
     public function projectArchitectureDashboard()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        // KPI: Total Architect & Engineering records
+        $userId = (int)($_SESSION['user']['id']  ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 2, 3, 13, 15, 22]);
+
+        // ── KPI 1: Total A&E records ──────────────────────────────────────────
         $r1 = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering");
         $totalAE = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
 
-        // KPI: Total Design Types
-        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM design_types");
-        $totalDesignTypes = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+        // ── KPI 2: Projects with A&E ─────────────────────────────────────────
+        $r2 = $this->db->query("SELECT COUNT(DISTINCT project_id) AS c FROM architect_engineering");
+        $projectsWithAE = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
 
-        // KPI: Total Project Drawings
-        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM project_drawings");
-        $totalDrawings = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
+        // ── KPI 3: A&E status breakdown ──────────────────────────────────────
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE status = 'fully'");
+        $aeFullyDone = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
 
-        // KPI: Projects with Drawings
-        $r4 = $this->db->query("SELECT COUNT(DISTINCT project_id) AS c FROM project_drawings");
-        $projectsWithDrawings = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE status = 'partially'");
+        $aePartial = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
-        // Drawings by Design Type (for breakdown panel)
-        $rByType = $this->db->query("
-            SELECT dt.name AS design_type, COUNT(pd.id) AS cnt
-            FROM design_types dt
-            LEFT JOIN project_drawings pd ON pd.design_type_id = dt.id
-            GROUP BY dt.id, dt.name
-            ORDER BY cnt DESC");
-        $drawingsByType = $rByType ? $rByType->fetch_all(MYSQLI_ASSOC) : [];
+        // ── KPI 4: Projects without any A&E record ────────────────────────────
+        $filter = $this->getProjectRoleFilter('p');
+        $rTotalProjects = $this->db->query("SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND $filter");
+        $totalProjects = $rTotalProjects ? (int)$rTotalProjects->fetch_assoc()['c'] : 0;
+        $projectsNoAE = max(0, $totalProjects - $projectsWithAE);
 
-        // Recent Project Drawings
-        $rDrawings = $this->db->query("
-            SELECT pd.*, p.name AS project_name, dt.name AS design_type_name
-            FROM project_drawings pd
-            LEFT JOIN projects p       ON p.id  = pd.project_id
-            LEFT JOIN design_types dt  ON dt.id = pd.design_type_id
-            ORDER BY pd.id DESC LIMIT 8");
-        $recentDrawings = $rDrawings ? $rDrawings->fetch_all(MYSQLI_ASSOC) : [];
-
-        // Recent Architect & Engineering records
+        // ── Recent A&E records (last 10) ─────────────────────────────────────
         $rAE = $this->db->query("
-            SELECT ae.*, p.name AS project_name
+            SELECT ae.*,
+                   p.name AS project_name,
+                   p.project_status,
+                   COALESCE(l.name,'') AS location_name,
+                   u.full_name AS internal_architect_name
             FROM architect_engineering ae
-            LEFT JOIN projects p ON p.id = ae.project_id
-            ORDER BY ae.id DESC LIMIT 6");
+            LEFT JOIN projects  p ON p.id = ae.project_id
+            LEFT JOIN locations l ON l.id = p.location_id
+            LEFT JOIN users     u ON u.id = ae.user_id
+            WHERE p.deleted_at IS NULL AND $filter
+            ORDER BY ae.id DESC
+            LIMIT 10
+        ");
         $recentAE = $rAE ? $rAE->fetch_all(MYSQLI_ASSOC) : [];
+
+        // ── Projects without A&E record yet ───────────────────────────────────
+        $rNoAE = $this->db->query("
+            SELECT p.id, p.name, p.project_status,
+                   COALESCE(l.name,'') AS location_name
+            FROM projects p
+            LEFT JOIN locations l ON l.id = p.location_id
+            LEFT JOIN architect_engineering ae ON ae.project_id = p.id
+            WHERE p.deleted_at IS NULL AND $filter AND ae.id IS NULL
+            ORDER BY p.id DESC LIMIT 8
+        ");
+        $projectsNeedingAE = $rNoAE ? $rNoAE->fetch_all(MYSQLI_ASSOC) : [];
+
+        // ── Internal vs External architect breakdown ───────────────────────────
+        $rInt = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE architect_type = 'internal'");
+        $internalArchitects = $rInt ? (int)$rInt->fetch_assoc()['c'] : 0;
+
+        $rExt = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE architect_type = 'external'");
+        $externalArchitects = $rExt ? (int)$rExt->fetch_assoc()['c'] : 0;
 
         return $this->view('phase2/dashboard/project-architecture-dashboard', [
             'current_route'       => 'project-architecture-dashboard',
+            'isAdmin'             => $isAdmin,
             'totalAE'             => $totalAE,
-            'totalDesignTypes'    => $totalDesignTypes,
-            'totalDrawings'       => $totalDrawings,
-            'projectsWithDrawings'=> $projectsWithDrawings,
-            'drawingsByType'      => $drawingsByType,
-            'recentDrawings'      => $recentDrawings,
+            'projectsWithAE'      => $projectsWithAE,
+            'aeFullyDone'         => $aeFullyDone,
+            'aePartial'           => $aePartial,
+            'totalProjects'       => $totalProjects,
+            'projectsNoAE'        => $projectsNoAE,
+            'internalArchitects'  => $internalArchitects,
+            'externalArchitects'  => $externalArchitects,
             'recentAE'            => $recentAE,
+            'projectsNeedingAE'   => $projectsNeedingAE,
         ]);
     }
 
