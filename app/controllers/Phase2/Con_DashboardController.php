@@ -19,6 +19,11 @@ class Con_DashboardController extends Controller
     public function index()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if ($userRole === 23) {
+            return $this->purchaseExecutiveDashboard();
+        }
 
         $stats      = $this->getDashboardStats();
         $projects   = $this->getProjectsWithProgress();
@@ -1542,6 +1547,83 @@ class Con_DashboardController extends Controller
             'recentDesigns'         => $recentDesigns,
             'myProjects'            => $myProjects,
             'projectsNeedingDesign' => array_values($projectsNeedingDesign),
+        ]);
+    }
+
+    // =========================================================================
+    // PURCHASE EXECUTIVE DASHBOARD (Role ID 23)
+    // =========================================================================
+
+    public function purchaseExecutiveDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+
+        // Total Assigned Requests
+        $r1 = $this->db->prepare("SELECT COUNT(*) AS c FROM purchase_requests WHERE assigned_executive_id = ?");
+        $r1->bind_param('i', $userId);
+        $r1->execute();
+        $totalAssigned = (int)($r1->get_result()->fetch_assoc()['c'] ?? 0);
+
+        // Completed CST (has an entry in quotation_comparisons)
+        $r2 = $this->db->prepare("
+            SELECT COUNT(*) AS c
+            FROM purchase_requests pr
+            JOIN quotation_comparisons qc ON qc.request_id = pr.id
+            WHERE pr.assigned_executive_id = ?
+        ");
+        $r2->bind_param('i', $userId);
+        $r2->execute();
+        $completedCst = (int)($r2->get_result()->fetch_assoc()['c'] ?? 0);
+
+        $pendingCst = max(0, $totalAssigned - $completedCst);
+
+        // Total quotations submitted by this executive
+        $r3 = $this->db->prepare("SELECT COUNT(*) AS c FROM quotations WHERE created_by = ?");
+        $r3->bind_param('i', $userId);
+        $r3->execute();
+        $totalQuotations = (int)($r3->get_result()->fetch_assoc()['c'] ?? 0);
+
+        // Recent Assigned Requests (for dashboard table)
+        $r4 = $this->db->prepare("
+            SELECT pr.*, p.name AS project_name, u.full_name AS created_by_name,
+                   (SELECT COUNT(*) FROM purchase_request_items WHERE request_id = pr.id) AS item_count,
+                   (SELECT COUNT(*) FROM quotations q WHERE q.request_id = pr.id AND q.created_by = ?) AS quote_count,
+                   (SELECT COUNT(*) FROM quotation_comparisons qc WHERE qc.request_id = pr.id) AS has_cst
+            FROM purchase_requests pr
+            LEFT JOIN projects p ON p.id = pr.project_id
+            LEFT JOIN users u ON u.id = pr.created_by
+            WHERE pr.assigned_executive_id = ?
+            ORDER BY pr.id DESC
+            LIMIT 15
+        ");
+        $r4->bind_param('ii', $userId, $userId);
+        $r4->execute();
+        $recentAssigned = $r4->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Projects I am working on
+        $r5 = $this->db->prepare("
+            SELECT DISTINCT p.id, p.name,
+                   COUNT(pr.id) AS request_count
+            FROM purchase_requests pr
+            JOIN projects p ON p.id = pr.project_id
+            WHERE pr.assigned_executive_id = ?
+            GROUP BY p.id, p.name
+            ORDER BY request_count DESC
+        ");
+        $r5->bind_param('i', $userId);
+        $r5->execute();
+        $myProjects = $r5->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $this->view('phase2/dashboard/purchase-executive-dashboard', [
+            'current_route'  => 'con-dashboard',
+            'page_title'     => 'My Purchase Dashboard',
+            'totalAssigned'  => $totalAssigned,
+            'completedCst'   => $completedCst,
+            'pendingCst'     => $pendingCst,
+            'totalQuotations'=> $totalQuotations,
+            'recentAssigned' => $recentAssigned,
+            'myProjects'     => $myProjects,
         ]);
     }
 }

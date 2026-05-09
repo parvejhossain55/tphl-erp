@@ -87,7 +87,7 @@ class Con_ContractorBillController extends Controller
     public function create()
     {
         $operators = $this->operatorModel->getActiveContractors();
-        $projects  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name")->fetch_all(MYSQLI_ASSOC);
+        $projects  = $this->getProjects();
         $targets   = $this->targetModel->getAll();
         $workTypes = $this->db->query("SELECT id, work_type_name FROM work_types ORDER BY work_type_name ASC")->fetch_all(MYSQLI_ASSOC);
 
@@ -110,6 +110,7 @@ class Con_ContractorBillController extends Controller
         $data = [
             'project_id'       => $_POST['project_id'] ?? null,
             'operator_id'      => $_POST['operator_id'] ?? null,
+            'work_order_id'    => !empty($_POST['work_order_id']) ? $_POST['work_order_id'] : null,
             'target_id'        => !empty($_POST['target_id']) ? $_POST['target_id'] : null,
             'bill_date'        => $_POST['bill_date'] ?? date('Y-m-d'),
             'work_description' => trim($_POST['work_description'] ?? ''),
@@ -493,6 +494,41 @@ class Con_ContractorBillController extends Controller
             return ['success' => true, 'file_path' => $uploadPath];
         }
 
-        return ['success' => false, 'message' => "Failed to upload '{$file['name']}'."];
+        return ['success' => false, 'message' => "Failed to upload file '{$file['name']}'."];
+    }
+
+    // =========================================================================
+    // HELPER — Get projects filtered by role
+    // =========================================================================
+    private function getProjects()
+    {
+        $uid = $this->userId;
+        $rid = $this->userRole;
+
+        // Admin, Director, PM Head → see ALL projects
+        if (in_array($rid, [1, 3, 22])) {
+            $filter = "1=1";
+        } else {
+            // All other roles → only their assigned projects
+            $filter = "(p.pm_id = $uid
+                     OR p.site_engineer_id    = $uid
+                     OR p.landman_id          = $uid
+                     OR p.struct_engineer_id  = $uid
+                     OR p.operation_head_id   = $uid
+                     OR p.draftsman_id        = $uid
+                     OR p.architect_id        = $uid
+                     OR p.estimator_id        = $uid
+                     OR p.qc_id              = $uid
+                     OR p.operator_id        = $uid
+                     OR p.created_by         = $uid)";
+        }
+
+        $r = $this->db->query(
+            "SELECT p.id, p.name 
+             FROM projects p
+             WHERE p.deleted_at IS NULL AND {$filter}
+             ORDER BY p.name ASC"
+        );
+        return $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
     }
 }
