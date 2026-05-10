@@ -91,21 +91,9 @@ class Con_VendorPaymentRequestController extends Controller
         $userId = (int)$this->userId;
         $roleId = (int)$this->userRole;
 
-        if (in_array($roleId, [1, 3])) {
-            // Admin/Super-admin sees all
-            $projectStmt = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
-        } else {
-            // Only projects where this user is assigned
-            $projectStmt = $this->db->prepare(
-                "SELECT id, name FROM projects
-                 WHERE deleted_at IS NULL
-                   AND (site_engineer_id = ? OR operation_head_id = ? OR pm_id = ? OR operator_id = ? OR estimator_id = ?)
-                 ORDER BY name"
-            );
-            $projectStmt->bind_param('iiiii', $userId, $userId, $userId, $userId, $userId);
-            $projectStmt->execute();
-            $projectStmt = $projectStmt->get_result();
-        }
+        // Payment create — show all active projects regardless of role
+        // (the created payment will be reviewed by management before approval)
+        $projectStmt = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
         $projects = ($projectStmt instanceof \mysqli_result)
             ? $projectStmt->fetch_all(MYSQLI_ASSOC)
             : [];
@@ -535,7 +523,7 @@ class Con_VendorPaymentRequestController extends Controller
         $sql = "
             SELECT
                 COALESCE(SUM(
-                    (mri.accepted_qty - COALESCE(ret.return_qty, 0)) * poi.unit_price
+                    (mri.received_quantity - COALESCE(ret.return_qty, 0)) * poi.unit_price
                 ), 0) AS net_receivable
             FROM material_receiving_items mri
             JOIN material_receiving mr    ON mr.id = mri.receiving_id

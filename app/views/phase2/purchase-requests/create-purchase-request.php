@@ -7,6 +7,7 @@ $preBoqData   = $preBoqData   ?? null;
 <div class="pagetitle d-flex justify-content-between align-items-center">
     <div class="mb-4">
         <h4><?= htmlspecialchars($page_title) ?></h4>
+       
         <nav>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
@@ -14,6 +15,8 @@ $preBoqData   = $preBoqData   ?? null;
                 <li class="breadcrumb-item active">New Request</li>
             </ol>
         </nav>
+
+        
     </div>
     <a href="<?= $base_url ?>/con-purchase-requests" class="btn btn-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i> Back to List
@@ -129,12 +132,14 @@ $preBoqData   = $preBoqData   ?? null;
                             <table class="table table-bordered align-middle" id="prItemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:36%;">Material <span class="text-danger">*</span></th>
-                                        <th style="width:16%;">BOQ Qty</th>
-                                        <th style="width:14%;">Used Qty</th>
-                                        <th style="width:14%;">Remaining</th>
-                                        <th style="width:14%;">Request Qty <span class="text-danger">*</span></th>
-                                        <th style="width:6%;" class="text-center">Del</th>
+                                        <th style="width:23%;">Material <span class="text-danger">*</span></th>
+                                        <th style="width:11%; font-size:13px;" class="text-center">BOQ Qty</th>
+                                        <th style="width:11%; font-size:13px;" class="text-center">Requested</th>
+                                        <th style="width:11%; font-size:13px;" class="text-center">PO Qty</th>
+                                        <th style="width:11%; font-size:13px;" class="text-center">Received</th>
+                                        <th style="width:11%; font-size:13px;" class="text-center">Remaining</th>
+                                        <th style="width:15%; font-size:13px;">Request Qty <span class="text-danger">*</span></th>
+                                        <th style="width:7%;" class="text-center">Del</th>
                                     </tr>
                                 </thead>
                                 <tbody id="prItemsBody">
@@ -190,9 +195,11 @@ function makeMaterialSelect(selectedId = '', unit = '-') {
     return html;
 }
 
-function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = '', remainQty = '', reqQty = '', removable = true) {
+function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = '', poQty = '', recvQty = '', remainQty = '', reqQty = '', removable = true) {
     const boqQtyFmt  = boqQty    !== '' ? parseFloat(boqQty).toLocaleString(undefined,  {maximumFractionDigits:3}) : '—';
     const usedFmt    = usedQty   !== '' ? parseFloat(usedQty).toLocaleString(undefined,  {maximumFractionDigits:3}) : '—';
+    const poFmt      = poQty     !== '' ? parseFloat(poQty).toLocaleString(undefined,  {maximumFractionDigits:3}) : '—';
+    const recvFmt    = recvQty   !== '' ? parseFloat(recvQty).toLocaleString(undefined,  {maximumFractionDigits:3}) : '—';
     const remFmt     = remainQty !== '' ? parseFloat(remainQty) : null;
     let remCell      = '—';
     let remClass     = 'text-muted';
@@ -222,6 +229,8 @@ function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = 
         <td>${matCell}</td>
         <td class="text-center fw-bold text-primary pr-boq-qty">${boqQtyFmt}</td>
         <td class="text-center text-warning pr-used-qty">${usedFmt}</td>
+        <td class="text-center text-info pr-po-qty">${poFmt}</td>
+        <td class="text-center text-success pr-recv-qty">${recvFmt}</td>
         <td class="text-center ${remClass} pr-remaining">${remCell}</td>
         <td>
             <div class="input-group input-group-sm">
@@ -341,6 +350,8 @@ document.getElementById('prLoadBoqItems').addEventListener('click', function () 
             item.unit,
             item.boq_qty,
             item.used_qty,
+            item.po_qty,
+            item.received_qty,
             item.remaining_qty,
             '', // user will type requisition qty (pre-filled with remaining)
             true
@@ -353,7 +364,7 @@ document.getElementById('prLoadBoqItems').addEventListener('click', function () 
 
 // ── Manual Add Row ────────────────────────────────────────────────────────
 document.getElementById('prAddRow').addEventListener('click', function () {
-    const html = makePrRow('', '', '-', '', '', '', '', true);
+    const html = makePrRow('', '', '-', '', '', '', '', '', '', true);
     document.getElementById('prItemsBody').insertAdjacentHTML('beforeend', html);
     updateEmptyHint();
 
@@ -373,6 +384,8 @@ document.getElementById('prAddRow').addEventListener('click', function () {
                 if (boqItem) {
                     newRow.querySelector('.pr-boq-qty').textContent  = parseFloat(boqItem.boq_qty).toFixed(3);
                     newRow.querySelector('.pr-used-qty').textContent = parseFloat(boqItem.used_qty).toFixed(3);
+                    if(newRow.querySelector('.pr-po-qty')) newRow.querySelector('.pr-po-qty').textContent = parseFloat(boqItem.po_qty || 0).toFixed(3);
+                    if(newRow.querySelector('.pr-recv-qty')) newRow.querySelector('.pr-recv-qty').textContent = parseFloat(boqItem.received_qty || 0).toFixed(3);
                     const rem = parseFloat(boqItem.remaining_qty);
                     const remCell = newRow.querySelector('.pr-remaining');
                     remCell.textContent = rem.toFixed(3);

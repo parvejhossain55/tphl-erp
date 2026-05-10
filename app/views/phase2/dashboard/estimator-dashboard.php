@@ -121,7 +121,7 @@ html { scroll-behavior: smooth; }
         &nbsp;·&nbsp; Review drawings → create accurate budgets
       </p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
-        <a href="<?= $base ?>/con-project-drawings" class="est-btn-w"><i class="fal fa-drafting-compass"></i> Project Drawings</a>
+        <a href="<?= $base ?>/con-project-drawings" class="est-btn-w"><i class="fal fa-drafting-compass"></i> Project Drawings <span style="font-size:9px;opacity:.7;margin-left:4px">(View Only)</span></a>
         <a href="<?= $base ?>/con-estimates" class="est-btn-w"><i class="fal fa-file-invoice-dollar"></i> Estimate Budgets</a>
         <a href="<?= $base ?>/con-estimate-create" class="est-btn-w"><i class="fal fa-plus"></i> New Estimate</a>
       </div>
@@ -277,9 +277,9 @@ html { scroll-behavior: smooth; }
       <div class="est-panel-title">
         <div class="est-dot" style="background:var(--est-blue)"></div>
         Recent Project Drawings
-        <a href="<?= $base ?>/con-project-drawings" style="font-size:10px;color:var(--est-blue);margin-left:auto;text-decoration:none">
-          View All <i class="fal fa-external-link ms-1"></i>
-        </a>
+        <span style="margin-left:auto;font-size:9px;color:var(--text-muted);font-weight:600;background:rgba(59,130,246,.08);padding:2px 8px;border-radius:10px">
+          <i class="fal fa-eye me-1"></i>View Only
+        </span>
       </div>
       <?php if (empty($recentDrawings)): ?>
         <div class="empty-state"><i class="fal fa-drafting-compass"></i>No drawings uploaded yet</div>
@@ -456,12 +456,19 @@ html { scroll-behavior: smooth; }
             <div style="font-size:12.5px;font-weight:700"><?= htmlspecialchars($pw['name']) ?></div>
             <div style="font-size:10.5px;color:var(--text-muted)"><?= $pw['project_status'] ?? '—' ?></div>
           </div>
-          <a href="<?= $base ?>/con-estimate-create?project=<?= $pw['id'] ?>"
-            style="flex-shrink:0;background:linear-gradient(135deg,#0f5132,#198754);
-              color:#fff;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;
-              text-decoration:none;white-space:nowrap">
-            <i class="fal fa-plus me-1"></i>Budget
-          </a>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <a href="<?= $base ?>/con-project-drawings?project_id=<?= $pw['id'] ?>"
+              style="background:rgba(59,130,246,.1);color:#3b82f6;border-radius:8px;
+                padding:5px 10px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap">
+              <i class="fal fa-drafting-compass me-1"></i>Drawings
+            </a>
+            <a href="<?= $base ?>/con-estimate-create?project=<?= $pw['id'] ?>"
+              style="flex-shrink:0;background:linear-gradient(135deg,#0f5132,#198754);
+                color:#fff;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;
+                text-decoration:none;white-space:nowrap">
+              <i class="fal fa-plus me-1"></i>Budget
+            </a>
+          </div>
         </div>
         <?php endforeach; ?>
       <?php endif; ?>

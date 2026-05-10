@@ -767,6 +767,7 @@ $routes['land-dashboard']                 = ['controller' => 'Phase2\Con_Dashboa
 $routes['project-architecture-dashboard']        = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectArchitectureDashboard'];
 $routes['project-structural-design-dashboard']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectStructuralDesignDashboard'];
 $routes['estimator-dashboard']                   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'estimatorDashboard'];
+$routes['purchase-executive-dashboard']          = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'purchaseExecutiveDashboard'];
 
 // ── QC Module ──────────────────────────────────────────────────────────────
 $routes['qc-dashboard']                = ['controller' => 'Phase2\QCController', 'method' => 'index'];
@@ -777,6 +778,10 @@ $routes['qc-material-test-store']      = ['controller' => 'Phase2\QCController',
 $routes['qc-ajax-checklists']          = ['controller' => 'Phase2\QCController', 'method' => 'ajaxGetChecklists'];
 $routes['qc-ajax-receiving-items']     = ['controller' => 'Phase2\QCController', 'method' => 'ajaxGetReceivingItems'];
 
+$routes['qc-test-types']               = ['controller' => 'Phase2\QCController', 'method' => 'testTypesIndex'];
+$routes['qc-test-types-store']         = ['controller' => 'Phase2\QCController', 'method' => 'testTypesStore'];
+$routes['qc-test-types-update']        = ['controller' => 'Phase2\QCController', 'method' => 'testTypesUpdate'];
+$routes['qc-test-types-delete']        = ['controller' => 'Phase2\QCController', 'method' => 'testTypesDelete'];
 // ── Operators / Contractors ────────────────────────────────────────────────
 $routes['con-contractors']              = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'index'];
 $routes['con-contractor-create']        = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'create'];
@@ -838,6 +843,7 @@ $routes['con-purchase-request-create'] = ['controller' => 'Phase2\Con_PurchaseRe
 $routes['con-purchase-request-store']  = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'store'];
 $routes['con-purchase-request/(\d+)']  = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'show'];
 $routes['con-purchase-request-approve/(\d+)'] = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'approve'];
+$routes['con-purchase-request-assign/(\d+)'] = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'assignExecutive'];
 $routes['con-boq-remaining/(\d+)']    = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'boqRemaining'];
 $routes['con-ajax-pr-boqs']           = ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'ajaxGetProjectBoqs'];
 
@@ -989,6 +995,23 @@ $routes['con-vendor-penalty-delete']         = ['controller' => 'Phase2\Con_Vend
 $routes['con-target-edit/(\d+)']       = ['controller' => 'Phase2\\Con_TargetFixedController', 'method' => 'edit'];
 $routes['con-target-update/(\d+)']     = ['controller' => 'Phase2\\Con_TargetFixedController', 'method' => 'update'];
 $routes['con-target-gain/(\d+)']       = ['controller' => 'Phase2\\Con_TargetFixedController', 'method' => 'updateGain'];
+
+// ── Work Orders ────────────────────────────────────────────────────────────
+$routes['con-work-orders']                 = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'index'];
+$routes['con-work-order-create']           = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'create'];
+$routes['con-work-order-store']            = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'store'];
+$routes['con-work-order/(\d+)']            = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'show'];
+$routes['con-work-order-edit/(\d+)']       = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'edit'];
+$routes['con-work-order-update/(\d+)']     = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'update'];
+$routes['con-work-order-approve/(\d+)']    = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'approve'];
+$routes['con-work-order-reject/(\d+)']     = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'reject'];
+$routes['con-work-order-complete/(\d+)']   = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'markComplete'];
+$routes['con-work-order-qc-approve/(\d+)'] = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'qcApprove'];
+$routes['con-work-order-delete']           = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'delete'];
+$routes['con-ajax-wo-by-project']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetByProject'];
+$routes['con-ajax-wo-work-plans']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetWorkPlans'];
+$routes['con-ajax-wo-targets']             = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetTargets'];
+$routes['con-ajax-wo-drawings']            = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetDrawings'];
 
 // ── Financial Transactions ─────────────────────────────────────────────────
 $routes['con-transactions']               = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'index'];

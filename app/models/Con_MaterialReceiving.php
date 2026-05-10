@@ -209,10 +209,11 @@ class Con_MaterialReceiving extends Model
 
                 $stmt = $this->db->prepare(
                     "UPDATE {$this->itemTable}
-                     SET status = ?, issue_reason = ?, qc_checked = 1, accepted_qty = ?, rejected_qty = ?
+                     SET status = ?, issue_reason = ?, qc_checked = 1,
+                         return_quantity = ?
                      WHERE id = ? AND receiving_id = ?"
                 );
-                $stmt->bind_param('ssddii', $status, $issueReason, $accQty, $rejQty, $itemId, $receivingId);
+                $stmt->bind_param('ssdii', $status, $issueReason, $rejQty, $itemId, $receivingId);
                 $stmt->execute();
 
                 if ($status === 'Accepted') {
@@ -296,7 +297,7 @@ class Con_MaterialReceiving extends Model
                 ]);
             }
 
-            // 3. Update QC fields on header
+            // 3. Update QC fields on header — set 'Pending PM' for PM approval step
             $overallStatus = 'Pending PM';
             $qcNote  = $itemStatuses['qc_note'] ?? null;
             $qcPhoto = $itemStatuses['qc_photo'] ?? null;
@@ -338,7 +339,7 @@ class Con_MaterialReceiving extends Model
     public function pmReview($receivingId, $userId, $pmNote)
     {
         $receiving = $this->find($receivingId);
-        if (!$receiving || $receiving['overall_status'] !== 'Pending PM') return false;
+        if (!$receiving || !in_array($receiving['overall_status'], ['Pending PM', 'Accepted'])) return false;
 
         $stockModel = new \Con_Stock($this->db);
         $this->db->begin_transaction();

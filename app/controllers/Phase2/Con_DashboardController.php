@@ -19,6 +19,11 @@ class Con_DashboardController extends Controller
     public function index()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if ($userRole === 23) {
+            return $this->purchaseExecutiveDashboard();
+        }
 
         $stats      = $this->getDashboardStats();
         $projects   = $this->getProjectsWithProgress();
@@ -334,11 +339,13 @@ class Con_DashboardController extends Controller
         // 6. Pending Approvals (all approval queues combined)
         $r4 = $this->db->query("
             SELECT COUNT(*) AS c FROM (
-                SELECT id FROM contractor_bill_requests    WHERE status = 'approved'
+                SELECT id FROM contractor_bill_requests    WHERE status = 'submitted'
                 UNION ALL
-                SELECT id FROM operational_fund_requests   WHERE status = 'approved'
+                SELECT id FROM con_work_orders             WHERE status = 'draft'
                 UNION ALL
-                SELECT id FROM vendor_payment_requests     WHERE status IN ('Submitted','Approved')
+                SELECT id FROM operational_fund_requests   WHERE status = 'pending'
+                UNION ALL
+                SELECT id FROM vendor_payment_requests     WHERE status = 'Submitted'
             ) t");
         $s['pending_approvals'] = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
@@ -421,20 +428,31 @@ class Con_DashboardController extends Controller
                    CONCAT('Bill #', id) AS description,
                    bill_amount          AS amount,
                    project_id,
-                   created_at
-            FROM contractor_bill_requests WHERE status = 'approved'
+                   created_at,
+                   CONCAT('/con-contractor-bill/', id) AS url
+            FROM contractor_bill_requests WHERE status = 'submitted'
+            UNION ALL
+            SELECT 'Work Order',
+                   CONCAT('Work Order: ', title),
+                   total_amount,
+                   project_id,
+                   created_at,
+                   CONCAT('/con-work-order/', id) AS url
+            FROM con_work_orders WHERE status = 'draft'
             UNION ALL
             SELECT 'Fund Request',
                    CONCAT('Fund: ', purpose),
                    COALESCE(approved_amount, amount),
-                   project_id, created_at
-            FROM operational_fund_requests WHERE status = 'approved'
+                   project_id, created_at,
+                   CONCAT('/con-fund-request/', id) AS url
+            FROM operational_fund_requests WHERE status = 'pending'
             UNION ALL
             SELECT 'Vendor Payment',
                    CONCAT(payment_type, ' Payment'),
                    COALESCE(net_payable, 0),
-                   project_id, created_at
-            FROM vendor_payment_requests WHERE status IN ('Submitted','Approved')
+                   project_id, created_at,
+                   CONCAT('/con-vendor-payment/', id) AS url
+            FROM vendor_payment_requests WHERE status = 'Submitted'
             ORDER BY created_at DESC LIMIT 5";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -1227,63 +1245,86 @@ class Con_DashboardController extends Controller
 
     // =========================================================================
     // PROJECT ARCHITECTURE DASHBOARD
-    // Permissions: Architect & Engineering, Design Types, Project Drawings
+    // Permissions: Architect & Engineering ONLY
     // =========================================================================
     public function projectArchitectureDashboard()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        // KPI: Total Architect & Engineering records
+        $userId = (int)($_SESSION['user']['id']  ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 2, 3, 13, 15, 22]);
+
+        // ── KPI 1: Total A&E records ──────────────────────────────────────────
         $r1 = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering");
         $totalAE = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
 
-        // KPI: Total Design Types
-        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM design_types");
-        $totalDesignTypes = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+        // ── KPI 2: Projects with A&E ─────────────────────────────────────────
+        $r2 = $this->db->query("SELECT COUNT(DISTINCT project_id) AS c FROM architect_engineering");
+        $projectsWithAE = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
 
-        // KPI: Total Project Drawings
-        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM project_drawings");
-        $totalDrawings = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
+        // ── KPI 3: A&E status breakdown ──────────────────────────────────────
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE status = 'fully'");
+        $aeFullyDone = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
 
-        // KPI: Projects with Drawings
-        $r4 = $this->db->query("SELECT COUNT(DISTINCT project_id) AS c FROM project_drawings");
-        $projectsWithDrawings = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE status = 'partially'");
+        $aePartial = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
-        // Drawings by Design Type (for breakdown panel)
-        $rByType = $this->db->query("
-            SELECT dt.name AS design_type, COUNT(pd.id) AS cnt
-            FROM design_types dt
-            LEFT JOIN project_drawings pd ON pd.design_type_id = dt.id
-            GROUP BY dt.id, dt.name
-            ORDER BY cnt DESC");
-        $drawingsByType = $rByType ? $rByType->fetch_all(MYSQLI_ASSOC) : [];
+        // ── KPI 4: Projects without any A&E record ────────────────────────────
+        $filter = $this->getProjectRoleFilter('p');
+        $rTotalProjects = $this->db->query("SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND $filter");
+        $totalProjects = $rTotalProjects ? (int)$rTotalProjects->fetch_assoc()['c'] : 0;
+        $projectsNoAE = max(0, $totalProjects - $projectsWithAE);
 
-        // Recent Project Drawings
-        $rDrawings = $this->db->query("
-            SELECT pd.*, p.name AS project_name, dt.name AS design_type_name
-            FROM project_drawings pd
-            LEFT JOIN projects p       ON p.id  = pd.project_id
-            LEFT JOIN design_types dt  ON dt.id = pd.design_type_id
-            ORDER BY pd.id DESC LIMIT 8");
-        $recentDrawings = $rDrawings ? $rDrawings->fetch_all(MYSQLI_ASSOC) : [];
-
-        // Recent Architect & Engineering records
+        // ── Recent A&E records (last 10) ─────────────────────────────────────
         $rAE = $this->db->query("
-            SELECT ae.*, p.name AS project_name
+            SELECT ae.*,
+                   p.name AS project_name,
+                   p.project_status,
+                   COALESCE(l.name,'') AS location_name,
+                   u.full_name AS internal_architect_name
             FROM architect_engineering ae
-            LEFT JOIN projects p ON p.id = ae.project_id
-            ORDER BY ae.id DESC LIMIT 6");
+            LEFT JOIN projects  p ON p.id = ae.project_id
+            LEFT JOIN locations l ON l.id = p.location_id
+            LEFT JOIN users     u ON u.id = ae.user_id
+            WHERE p.deleted_at IS NULL AND $filter
+            ORDER BY ae.id DESC
+            LIMIT 10
+        ");
         $recentAE = $rAE ? $rAE->fetch_all(MYSQLI_ASSOC) : [];
+
+        // ── Projects without A&E record yet ───────────────────────────────────
+        $rNoAE = $this->db->query("
+            SELECT p.id, p.name, p.project_status,
+                   COALESCE(l.name,'') AS location_name
+            FROM projects p
+            LEFT JOIN locations l ON l.id = p.location_id
+            LEFT JOIN architect_engineering ae ON ae.project_id = p.id
+            WHERE p.deleted_at IS NULL AND $filter AND ae.id IS NULL
+            ORDER BY p.id DESC LIMIT 8
+        ");
+        $projectsNeedingAE = $rNoAE ? $rNoAE->fetch_all(MYSQLI_ASSOC) : [];
+
+        // ── Internal vs External architect breakdown ───────────────────────────
+        $rInt = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE architect_type = 'internal'");
+        $internalArchitects = $rInt ? (int)$rInt->fetch_assoc()['c'] : 0;
+
+        $rExt = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE architect_type = 'external'");
+        $externalArchitects = $rExt ? (int)$rExt->fetch_assoc()['c'] : 0;
 
         return $this->view('phase2/dashboard/project-architecture-dashboard', [
             'current_route'       => 'project-architecture-dashboard',
+            'isAdmin'             => $isAdmin,
             'totalAE'             => $totalAE,
-            'totalDesignTypes'    => $totalDesignTypes,
-            'totalDrawings'       => $totalDrawings,
-            'projectsWithDrawings'=> $projectsWithDrawings,
-            'drawingsByType'      => $drawingsByType,
-            'recentDrawings'      => $recentDrawings,
+            'projectsWithAE'      => $projectsWithAE,
+            'aeFullyDone'         => $aeFullyDone,
+            'aePartial'           => $aePartial,
+            'totalProjects'       => $totalProjects,
+            'projectsNoAE'        => $projectsNoAE,
+            'internalArchitects'  => $internalArchitects,
+            'externalArchitects'  => $externalArchitects,
             'recentAE'            => $recentAE,
+            'projectsNeedingAE'   => $projectsNeedingAE,
         ]);
     }
 
@@ -1519,6 +1560,83 @@ class Con_DashboardController extends Controller
             'recentDesigns'         => $recentDesigns,
             'myProjects'            => $myProjects,
             'projectsNeedingDesign' => array_values($projectsNeedingDesign),
+        ]);
+    }
+
+    // =========================================================================
+    // PURCHASE EXECUTIVE DASHBOARD (Role ID 23)
+    // =========================================================================
+
+    public function purchaseExecutiveDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+
+        // Total Assigned Requests
+        $r1 = $this->db->prepare("SELECT COUNT(*) AS c FROM purchase_requests WHERE assigned_executive_id = ?");
+        $r1->bind_param('i', $userId);
+        $r1->execute();
+        $totalAssigned = (int)($r1->get_result()->fetch_assoc()['c'] ?? 0);
+
+        // Completed CST (has an entry in quotation_comparisons)
+        $r2 = $this->db->prepare("
+            SELECT COUNT(*) AS c
+            FROM purchase_requests pr
+            JOIN quotation_comparisons qc ON qc.request_id = pr.id
+            WHERE pr.assigned_executive_id = ?
+        ");
+        $r2->bind_param('i', $userId);
+        $r2->execute();
+        $completedCst = (int)($r2->get_result()->fetch_assoc()['c'] ?? 0);
+
+        $pendingCst = max(0, $totalAssigned - $completedCst);
+
+        // Total quotations submitted by this executive
+        $r3 = $this->db->prepare("SELECT COUNT(*) AS c FROM quotations WHERE created_by = ?");
+        $r3->bind_param('i', $userId);
+        $r3->execute();
+        $totalQuotations = (int)($r3->get_result()->fetch_assoc()['c'] ?? 0);
+
+        // Recent Assigned Requests (for dashboard table)
+        $r4 = $this->db->prepare("
+            SELECT pr.*, p.name AS project_name, u.full_name AS created_by_name,
+                   (SELECT COUNT(*) FROM purchase_request_items WHERE request_id = pr.id) AS item_count,
+                   (SELECT COUNT(*) FROM quotations q WHERE q.request_id = pr.id AND q.created_by = ?) AS quote_count,
+                   (SELECT COUNT(*) FROM quotation_comparisons qc WHERE qc.request_id = pr.id) AS has_cst
+            FROM purchase_requests pr
+            LEFT JOIN projects p ON p.id = pr.project_id
+            LEFT JOIN users u ON u.id = pr.created_by
+            WHERE pr.assigned_executive_id = ?
+            ORDER BY pr.id DESC
+            LIMIT 15
+        ");
+        $r4->bind_param('ii', $userId, $userId);
+        $r4->execute();
+        $recentAssigned = $r4->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Projects I am working on
+        $r5 = $this->db->prepare("
+            SELECT DISTINCT p.id, p.name,
+                   COUNT(pr.id) AS request_count
+            FROM purchase_requests pr
+            JOIN projects p ON p.id = pr.project_id
+            WHERE pr.assigned_executive_id = ?
+            GROUP BY p.id, p.name
+            ORDER BY request_count DESC
+        ");
+        $r5->bind_param('i', $userId);
+        $r5->execute();
+        $myProjects = $r5->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $this->view('phase2/dashboard/purchase-executive-dashboard', [
+            'current_route'  => 'con-dashboard',
+            'page_title'     => 'My Purchase Dashboard',
+            'totalAssigned'  => $totalAssigned,
+            'completedCst'   => $completedCst,
+            'pendingCst'     => $pendingCst,
+            'totalQuotations'=> $totalQuotations,
+            'recentAssigned' => $recentAssigned,
+            'myProjects'     => $myProjects,
         ]);
     }
 }

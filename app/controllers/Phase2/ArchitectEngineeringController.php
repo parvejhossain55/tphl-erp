@@ -42,7 +42,7 @@ class ArchitectEngineeringController extends Controller {
         $this->view('phase2/architect_engineering/architect-engineering', [
             'current_route' => 'con-architect-engineering',
             'records' => $records,
-            'page_title'   => 'Architect & Engineering'
+            'page_title'   => 'Architecture Design Records',
         ]);
     }
 
@@ -60,7 +60,7 @@ class ArchitectEngineeringController extends Controller {
 
         $this->view('phase2/architect_engineering/create-architect-engineering', [
             'current_route' => 'con-architect-engineering',
-            'page_title'    => 'Add Architect & Engineering',
+            'page_title'    => 'Add Architecture',
             'projects' => $projects,
             'users'    => $users,
         ]);
@@ -99,7 +99,7 @@ class ArchitectEngineeringController extends Controller {
             } catch (\Throwable $e) {
                 error_log('[AE] Email error: ' . $e->getMessage());
             }
-            setSuccess("Architect & Engineering record created successfully.");
+            setSuccess("Architecture record created successfully.");
         } else {
             setError("Failed to create record.");
         }
@@ -128,7 +128,7 @@ class ArchitectEngineeringController extends Controller {
 
         $this->view('phase2/architect_engineering/edit-architect-engineering', [
             'current_route' => 'con-architect-engineering',
-            'page_title'    => 'Edit Architect & Engineering',
+            'page_title'    => 'Edit Architecture',
             'record'   => $record,
             'projects' => $projects,
             'users'    => $users,
@@ -343,7 +343,7 @@ class ArchitectEngineeringController extends Controller {
         if ($errorCount > 0) {
             setError("Imported $successCount. Failed $errorCount. " . implode(' | ', array_slice($errors, 0, 5)));
         } else {
-            setSuccess("Successfully imported $successCount architect/engineering records.");
+            setSuccess("Successfully imported $successCount architect records.");
         }
 
         header('Location: ' . $GLOBALS['base_url'] . '/con-architect-engineering');

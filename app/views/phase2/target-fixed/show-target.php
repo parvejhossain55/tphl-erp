@@ -3,7 +3,8 @@ $base_url   = $GLOBALS['base_url'];
 $t          = $target ?? [];
 $canApprove      = $canApprove      ?? false;
 $alreadyApproved = $alreadyApproved ?? false;
-$approverRole    = $approverRole    ?? null;  // 'manager' for PM (role 15)
+$approverRole    = $approverRole    ?? null;
+$qcApproved      = $qcApproved      ?? !empty($t['approved_by_qc']);
 $creatorInfo     = $creatorInfo     ?? [];
 $currentRoleId   = $currentRoleId   ?? 0;
 
@@ -265,6 +266,7 @@ $sc = $statusMap[$overallStatus];
           <?= $t['year'] ?? '' ?> / <?= $months[(int)($t['month'] ?? 0)] ?? '' ?>
           <?= $t['week_number'] ? ' — Week ' . $t['week_number'] : '' ?>
         </p>
+            <?php if (in_array($_SESSION['user']['role_id'], [1, 3, 12, 15, 22], true)): ?>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
           <a href="<?= $base_url ?>/con-target-edit/<?= $t['id'] ?>" class="tgt-btn-w">
             <i class="fal fa-pencil"></i>Edit
@@ -276,6 +278,7 @@ $sc = $statusMap[$overallStatus];
             <i class="fal fa-plus-circle"></i>Create BOM
           </a>
         </div>
+        <?php endif; ?>
       </div>
       <div style="text-align:right">
         <div style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;
@@ -523,6 +526,34 @@ $sc = $statusMap[$overallStatus];
 
 
 
+      <!-- QC Step -->
+      <?php $qcApproved = !empty($t['approved_by_qc']); ?>
+      <div class="apv-step" style="background:<?= $qcApproved ? 'rgba(16,185,129,.05)' : 'rgba(99,102,241,.04)' ?>;
+        border-color:<?= $qcApproved ? 'rgba(16,185,129,.2)' : 'rgba(99,102,241,.15)' ?>;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="apv-icon" style="background:<?= $qcApproved ? 'rgba(16,185,129,.15)' : 'rgba(99,102,241,.1)' ?>;
+            color:<?= $qcApproved ? '#059669' : '#6366f1' ?>">
+            <i class="fal <?= $qcApproved ? 'fa-check-circle' : 'fa-flask' ?>"></i>
+          </div>
+          <div>
+            <div style="font-size:12.5px;font-weight:700">QC Inspector</div>
+            <?php if ($qcApproved && !empty($t['qc_reviewed_by_name'])): ?>
+              <div style="font-size:11px;font-weight:700;color:#059669"><?= htmlspecialchars($t['qc_reviewed_by_name']) ?></div>
+              <?php if (!empty($t['qc_reviewed_at'])): ?>
+                <div style="font-size:10px;color:var(--text-muted)"><?= date('d M Y, h:i A', strtotime($t['qc_reviewed_at'])) ?></div>
+              <?php endif; ?>
+            <?php else: ?>
+              <div style="font-size:11px;color:var(--text-muted)">Awaiting QC Review</div>
+            <?php endif; ?>
+          </div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
+          background:<?= $qcApproved ? 'rgba(16,185,129,.15)' : 'rgba(99,102,241,.1)' ?>;
+          color:<?= $qcApproved ? '#059669' : '#6366f1' ?>">
+          <?= $qcApproved ? '✓ Reviewed' : 'Pending' ?>
+        </span>
+      </div>
+
       <!-- PM Step -->
       <div class="apv-step" style="background:<?= $pmApproved ? 'rgba(16,185,129,.05)' : 'rgba(245,158,11,.04)' ?>;
         border-color:<?= $pmApproved ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.2)' ?>">
@@ -564,8 +595,52 @@ $sc = $statusMap[$overallStatus];
       <?php endif; ?>
     </div>
 
-    <!-- Approval Action Card — only for QC/PM, not for SE/creator -->
+    <!-- Approval Action Card -->
     <?php if ($canApprove && !$alreadyApproved): ?>
+      <?php if ($approverRole === 'qc'): ?>
+      <!-- QC Approval Form — with attachment -->
+      <div class="tgt-panel" style="border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.03)">
+        <div class="tgt-panel-title" style="margin-bottom:14px;color:#4f46e5">
+          <div class="tgt-dot" style="background:#6366f1"></div>
+          QC Review & Approval
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
+          <i class="fal fa-flask me-1"></i> Submit QC findings and approve this target.
+        </div>
+        <form action="<?= $base_url ?>/con-target-approve/<?= $t['id'] ?>" method="POST" enctype="multipart/form-data">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Gain % (Actual)</label>
+              <input type="number" name="qc_gain_pct" class="form-control form-control-sm"
+                step="0.01" min="0" max="100" value="<?= $t['gain_percentage'] ?? 0 ?>" placeholder="0.00">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">
+                <i class="fal fa-camera me-1"></i>Site Photo
+              </label>
+              <input type="file" name="qc_photo" class="form-control form-control-sm" accept="image/*">
+            </div>
+          </div>
+          <div style="margin-bottom:10px">
+            <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Field Test Details</label>
+            <textarea name="qc_field_details" rows="2" class="form-control form-control-sm"
+              placeholder="Describe field test observations..."><?= htmlspecialchars($t['field_test_details'] ?? '') ?></textarea>
+          </div>
+          <div style="margin-bottom:14px">
+            <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Lab Test Result</label>
+            <textarea name="qc_lab_result" rows="2" class="form-control form-control-sm"
+              placeholder="Lab test result summary..."><?= htmlspecialchars($t['lab_test_result'] ?? '') ?></textarea>
+          </div>
+          <button type="submit"
+            style="width:100%;background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;border:none;
+            border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer"
+            onclick="return confirm('Submit QC review and approve this target?')">
+            <i class="fal fa-flask me-2"></i>Submit QC Review & Approve
+          </button>
+        </form>
+      </div>
+      <?php else: ?>
+      <!-- PM/Director Approval -->
       <div class="tgt-panel" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.04)">
         <div class="tgt-panel-title" style="margin-bottom:14px">
           <div class="tgt-dot" style="background:var(--tgt-green)"></div>
@@ -589,11 +664,14 @@ $sc = $statusMap[$overallStatus];
           </button>
         </form>
       </div>
+      <?php endif; ?>
     <?php elseif ($canApprove && $alreadyApproved): ?>
       <div class="tgt-panel" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.04)">
         <div style="text-align:center;padding:10px">
           <i class="fal fa-check-circle" style="color:#059669;font-size:28px;display:block;margin-bottom:8px"></i>
-          <div style="font-size:13px;font-weight:700;color:#059669">You have already approved this target</div>
+          <div style="font-size:13px;font-weight:700;color:#059669">
+            <?= $approverRole === 'qc' ? 'You have completed QC review' : 'You have already approved this target' ?>
+          </div>
         </div>
       </div>
     <?php endif; ?>

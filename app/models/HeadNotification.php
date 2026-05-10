@@ -26,13 +26,13 @@ class HeadNotification
 
     public function unreadCount($userId)
     {
-
-    return $this->db->query("SELECT COUNT(*) FROM head_notifications WHERE user_id = $userId AND is_read = 0");
-        // return $this->db->query("
-        //     SELECT COUNT(*) 
-        //     FROM head_notifications 
-        //     WHERE user_id = $userId AND is_read = 0
-        // ")->fetchColumn();
+        $userId = (int)$userId;
+        $res = $this->db->query("SELECT COUNT(*) as count FROM head_notifications WHERE user_id = $userId AND is_read = 0");
+        if ($res) {
+            $row = $res->fetch_assoc();
+            return $row['count'] ?? 0;
+        }
+        return 0;
     }
 
     public function latest($userId, $limit = 10)
@@ -44,7 +44,7 @@ class HeadNotification
             LIMIT ?
         ");
         $stmt->execute([$userId, $limit]);
-        return $stmt->fetchAll();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
     public function markAsRead($id, $userId)

@@ -12,9 +12,10 @@ class Con_PurchaseRequest extends Model
     // READ
     // =========================================================================
 
-    public function getAll()
+    public function getAll($executiveId = null)
     {
         $sql = "SELECT pr.*, p.name AS project_name, u.full_name AS created_by_name,
+                       exec.full_name AS assigned_executive_name,
                        (SELECT COUNT(*) FROM {$this->itemTable} WHERE request_id = pr.id) AS item_count,
                        (SELECT SUM(pri.quantity * COALESCE(bi.unit_cost, 0))
                         FROM {$this->itemTable} pri
@@ -24,7 +25,13 @@ class Con_PurchaseRequest extends Model
                 FROM {$this->table} pr
                 LEFT JOIN projects p ON p.id = pr.project_id
                 LEFT JOIN users u ON u.id = pr.created_by
-                ORDER BY pr.id DESC";
+                LEFT JOIN users exec ON exec.id = pr.assigned_executive_id ";
+        
+        if ($executiveId) {
+            $sql .= " WHERE pr.assigned_executive_id = " . (int)$executiveId . " ";
+        }
+                
+        $sql .= " ORDER BY pr.id DESC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
@@ -34,12 +41,14 @@ class Con_PurchaseRequest extends Model
         $stmt = $this->db->prepare(
             "SELECT pr.*, p.name AS project_name, u.full_name AS created_by_name,
                     apv.full_name AS approved_by_name,
-                    apv_r.name    AS approved_by_role
+                    apv_r.name    AS approved_by_role,
+                    exec.full_name AS assigned_executive_name
              FROM {$this->table} pr
              LEFT JOIN projects p   ON p.id    = pr.project_id
              LEFT JOIN users u      ON u.id    = pr.created_by
              LEFT JOIN users apv    ON apv.id  = pr.approved_by_id
              LEFT JOIN roles apv_r  ON apv_r.id = apv.role_id
+             LEFT JOIN users exec   ON exec.id = pr.assigned_executive_id
              WHERE pr.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -87,9 +96,10 @@ class Con_PurchaseRequest extends Model
     {
         $errors = [];
 
-        // BOQ validation — get remaining for this project
+        // BOQ validation — get remaining for this project / specific BOQ
+        $bomId = !empty($data['bom_id']) ? (int)$data['bom_id'] : null;
         $boqModel = new \Con_BOQ($this->db);
-        $remaining = $boqModel->getRemainingBOQ($data['project_id']);
+        $remaining = $boqModel->getRemainingBOQ($data['project_id'], $bomId);
         $remainMap = [];
         foreach ($remaining as $r) {
             $remainMap[$r['material_id']] = $r;

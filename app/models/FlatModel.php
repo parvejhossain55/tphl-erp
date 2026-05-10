@@ -165,32 +165,46 @@ class FlatModel extends Model
             throw new Exception($this->db->error);
         }
 
-        $v = function($key) use ($data) {
-            return (isset($data[$key]) && trim($data[$key]) !== '') ? trim($data[$key]) : null;
-        };
+        // Extract values into named variables (bind_param requires variables by reference)
+        $project_id           = isset($data['project_id'])           && trim($data['project_id'])           !== '' ? trim($data['project_id'])           : null;
+        $flat_name            = isset($data['flat_name'])            && trim($data['flat_name'])            !== '' ? trim($data['flat_name'])            : null;
+        $sqft                 = isset($data['sqft'])                 && trim($data['sqft'])                 !== '' ? trim($data['sqft'])                 : null;
+        $bhk                  = isset($data['bhk'])                  && trim($data['bhk'])                  !== '' ? trim($data['bhk'])                  : null;
+        $bedroom              = isset($data['bedroom'])              && trim($data['bedroom'])              !== '' ? trim($data['bedroom'])              : null;
+        $bathroom             = isset($data['bathroom'])             && trim($data['bathroom'])             !== '' ? trim($data['bathroom'])             : null;
+        $balcony              = isset($data['balcony'])              && trim($data['balcony'])              !== '' ? trim($data['balcony'])              : null;
+        $drawing_dining       = isset($data['drawing_dining_kitchen']) && trim($data['drawing_dining_kitchen']) !== '' ? trim($data['drawing_dining_kitchen']) : null;
+        $common_dining        = isset($data['common_dining'])        && trim($data['common_dining'])        !== '' ? trim($data['common_dining'])        : null;
+        $floor_no             = isset($data['floor_no'])             && trim($data['floor_no'])             !== '' ? trim($data['floor_no'])             : null;
+        $facing_site          = isset($data['facing_site'])          && trim($data['facing_site'])          !== '' ? trim($data['facing_site'])          : null;
+        $price_value          = isset($data['price_value'])          && trim($data['price_value'])          !== '' ? trim($data['price_value'])          : null;
+        $facilities           = isset($data['facilities'])           && trim($data['facilities'])           !== '' ? trim($data['facilities'])           : null;
+        $land_share_value     = isset($data['land_share_value'])     && trim($data['land_share_value'])     !== '' ? trim($data['land_share_value'])     : null;
+        $development_charges  = isset($data['development_charges'])  && trim($data['development_charges'])  !== '' ? trim($data['development_charges'])  : null;
+        $created_by           = isset($data['created_by'])           && trim($data['created_by'])           !== '' ? trim($data['created_by'])           : null;
 
         // If status is booked or sold, is_booked = 1
-        $status = strtolower($v('status') ?? 'available');
+        $status    = strtolower(trim($data['status'] ?? 'available')) ?: 'available';
         $is_booked = in_array($status, ['booked', 'sold']) ? 1 : 0;
 
         $stmt->bind_param(
             "sssssssssssssssssi",
-            $v('project_id'),
-            $v('flat_name'),
-            $v('sqft'),
-            $v('bhk'),
-            $v('bedroom'),
-            $v('bathroom'),
-            $v('balcony'),
-            $v('drawing_dining_kitchen'),
-            $v('common_dining'),
-            $v('floor_no'),
-            $v('facing_site'),
-            $v('price_value'),
-            $v('facilities'),
-            $v('land_share_value'),
-            $v('development_charges'),
-            $v('created_by'),
+            $project_id,
+            $flat_name,
+            $sqft,
+            $bhk,
+            $bedroom,
+            $bathroom,
+            $balcony,
+            $drawing_dining,
+            $common_dining,
+            $floor_no,
+            $facing_site,
+            $price_value,
+            $facilities,
+            $land_share_value,
+            $development_charges,
+            $created_by,
             $status,
             $is_booked
         );

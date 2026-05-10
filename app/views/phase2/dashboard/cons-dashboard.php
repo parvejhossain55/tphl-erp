@@ -1567,7 +1567,11 @@ $statusColor = [
               <?php foreach (array_slice($pendingAlerts, 0, 3) as $pa): ?>
                 <div
                   style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.05)">
-                  <span><?= $pa['description'] ?></span>
+                  <span>
+                      <a href="<?= $base ?><?= $pa['url'] ?? '#' ?>" style="text-decoration:none;color:inherit;">
+                          <?= $pa['description'] ?>
+                      </a>
+                  </span>
                   <span style="font-weight:600;color:var(--cd-amber)"><?= conFmt($pa['amount'] ?? 0) ?></span>
                 </div>
               <?php endforeach; ?>

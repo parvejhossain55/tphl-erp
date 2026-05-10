@@ -89,9 +89,9 @@
                     </table>
                     
                     <div class="alert alert-success mt-4 mb-0">
-                        <i class="bi bi-check-circle me-1"></i>
+
                         Stock deducted from <strong><?= htmlspecialchars($issue['warehouse_name']) ?></strong>.
-                        Movement logged in <code>con_stock_movements</code>.
+                        Movement logged in <span class="ms-1"><code> con_stock_movements</code>.</span>
                     </div>
 
                 </div>

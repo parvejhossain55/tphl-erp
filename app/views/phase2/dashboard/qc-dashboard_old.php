@@ -400,7 +400,7 @@ $pendingTargets = $pendingTargets ?? [];
         <div class="kpi-accent" style="background:var(--qc-purple)"></div>
         <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:var(--qc-purple)"><i
             class="fal fa-chart-bar"></i></div>
-        <div class="kpi-label" style="color:var(--text-muted)">Project Reports (DPR)</div>
+        <div class="kpi-label" style="color:var(--text-muted)">Project Reports (WPR)</div>
         <div class="kpi-value" style="color:var(--qc-purple)"><?= $totalDPRs ?></div>
         <div class="kpi-sub">Daily progress reports</div>
       </a>

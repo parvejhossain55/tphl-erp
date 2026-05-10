@@ -541,7 +541,6 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
         if (typeof $ !== 'undefined') {
             $('a[href*="-edit"], a[href*="-create"]').hide();
             $('.removeBtnCust, .btn-outline-danger').hide();
-            $('th:contains("Action"), th:contains("Actions")').hide();
             $('td:has(a[href*="-edit"]), td:has(button[data-route*="-delete"])').hide();
             $("button:contains('Add New'), a:contains('Add New')").hide();
         }

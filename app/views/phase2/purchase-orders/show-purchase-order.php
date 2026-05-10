@@ -261,11 +261,16 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
     <!-- GRN Button — only if fully approved -->
     <?php 
       $hasReceiving = $hasReceiving ?? false;
-      $canLogGrn = in_array($currentRoleId, [1, 3, 22, 23, 12]);
+      // Allow GRN logging for any authenticated user EXCEPT site operator (role 20)
+      // Purchase Head, Admin, PM, Site Eng, etc. all should be able to log receiving
+      $canLogGrn = !in_array($currentRoleId, [20]);
       if ($currentRoleId == 12 && $hasReceiving) {
           $canLogGrn = false; // Site Engineer can only create GRN once per PO
       }
     ?>
+    <?php if (in_array($_SESSION['user']['role_id'], [1,3,12,15,22], true)) : ?>
+   
+
     <?php if ($fullyApproved && $po['status'] !== 'Fully Received' && $po['status'] !== 'Cancelled' && $canLogGrn): ?>
       <div class="po-panel" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.04)">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -279,6 +284,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           </a>
         </div>
       </div>
+        <?php endif; ?>
     <?php elseif (!$fullyApproved && $po['status'] !== 'Cancelled'): ?>
       <div class="po-panel" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">
         <div style="display:flex;align-items:center;gap:10px">
@@ -291,6 +297,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
       </div>
     <?php endif; ?>
   </div>
+
 
   <!-- Right: Approval Panel -->
   <div class="col-xl-4">

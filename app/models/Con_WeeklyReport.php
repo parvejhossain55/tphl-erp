@@ -173,7 +173,17 @@ class Con_WeeklyReport extends Model
         } else {
             return false;
         }
+
+        if (!$stmt) {
+            error_log("Con_WeeklyReport::approveStep prepare failed [{$step}]: " . $this->db->error);
+            return false;
+        }
+
         $stmt->bind_param('ii', $userId, $id);
-        return $stmt->execute();
+        if (!$stmt->execute()) {
+            error_log("Con_WeeklyReport::approveStep execute failed [{$step}]: " . $stmt->error);
+            return false;
+        }
+        return true;
     }
 }

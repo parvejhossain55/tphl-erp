@@ -230,7 +230,6 @@ class FlatController extends Controller
             setError("Error: " . $e->getMessage());
         }
 
-        // Redirect after setting flash message
         header("Location:{$GLOBALS['base_url']}/flat-lists");
         exit;
     }
@@ -255,59 +254,134 @@ class FlatController extends Controller
         }
 
         if (($handle = fopen($fileTmp, "r")) !== false) {
-            $header = fgetcsv($handle);
-            
-            // Clean BOM from first header if present
-            $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
-            $header = array_map(function ($value) {
-                return trim($value);
+            $rawHeader = fgetcsv($handle);
+
+            // ── Step 1: BOM strip + normalize header (lowercase, spaces→underscores) ──
+            $rawHeader[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $rawHeader[0]);
+            $header = array_map(function ($col) {
+                return strtolower(trim(preg_replace('/\s+/', '_', $col)));
+            }, $rawHeader);
+
+            // ── Step 2: Alias map for common CSV column name variations ──────────────
+            $aliasMap = [
+                'project_name'           => 'project_name',
+                'project_nar'            => 'project_name',  // Excel truncation
+                'project'                => 'project_name',
+                'sft'                    => 'sqft',
+                'sqft'                   => 'sqft',
+                'size'                   => 'sqft',
+                'flat_name'              => 'flat_name',
+                'flat_no'                => 'flat_name',
+                'unit'                   => 'flat_name',
+                'unit_name'              => 'flat_name',
+                'bhk'                    => 'bhk',
+                'bedroom'                => 'bedroom',
+                'bedrooms'               => 'bedroom',
+                'bathroom'               => 'bathroom',
+                'bathrooms'              => 'bathroom',
+                'balcony'                => 'balcony',
+                'drawing'                => 'drawing_dining_kitchen',
+                'drawing_dining_kitchen' => 'drawing_dining_kitchen',
+                'common'                 => 'common_dining',
+                'common_dining'          => 'common_dining',
+                'floor_no'               => 'floor_no',
+                'floor'                  => 'floor_no',
+                'facing'                 => 'facing_site',
+                'facing_site'            => 'facing_site',
+                'price_value'            => 'price_value',
+                'price'                  => 'price_value',
+                'land_share'             => 'land_share_value',
+                'land_share_value'       => 'land_share_value',
+                'developme'              => 'development_charges', // Excel truncation
+                'development'            => 'development_charges',
+                'development_charges'    => 'development_charges',
+                'facilities'             => 'facilities',
+                'facility'               => 'facilities',
+                'status'                 => 'status',
+            ];
+
+            $header = array_map(function ($col) use ($aliasMap) {
+                return $aliasMap[$col] ?? $col;
             }, $header);
 
-            $successCount = 0;
-            
-            // Cache project names to IDs
+            $successCount  = 0;
+            $errors        = [];
+            $rowNum        = 1;
             $projectsCache = [];
 
-            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
-                if (count(array_filter($row)) === 0) continue; // skip empty rows
-                if (count($header) !== count($row)) continue;
+            while (($row = fgetcsv($handle, 2000, ",")) !== false) {
+                $rowNum++;
+                if (count(array_filter($row)) === 0) continue;
+                if (count($header) !== count($row)) {
+                    $errors[] = "Row $rowNum: Column count mismatch — skipped";
+                    continue;
+                }
 
                 $data = array_combine($header, $row);
-                
-                // Get project_id from project_name
+
+                // ── Resolve project_id from project name ──────────────────
                 $projectName = trim($data['project_name'] ?? '');
-                if (empty($projectName)) continue; // skip if no project name
+                if (empty($projectName)) {
+                    $errors[] = "Row $rowNum: project_name is empty — skipped";
+                    continue;
+                }
 
                 $projectId = null;
                 if (isset($projectsCache[$projectName])) {
                     $projectId = $projectsCache[$projectName];
                 } else {
-                    $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                    $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
                     $stmt->bind_param("s", $projectName);
                     $stmt->execute();
                     $res = $stmt->get_result()->fetch_assoc();
+                
                     if ($res) {
                         $projectId = $res['id'];
                         $projectsCache[$projectName] = $projectId;
                     }
                 }
 
-                if (!$projectId) continue; // Skip if project not found
+                if (!$projectId) {
+                    $errors[] = "Row $rowNum: Project not found: '$projectName'";
+                    continue;
+                }
+
+                // ── flat_name required ────────────────────────────────────
+                $flatName = trim($data['flat_name'] ?? '');
+                if (empty($flatName)) {
+                    $errors[] = "Row $rowNum: flat_name is empty — skipped";
+                    continue;
+                }
 
                 $data['project_id'] = $projectId;
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
-                
+
                 try {
                     $this->flatModel->createFromCsvBulk($data);
                     $successCount++;
                 } catch (Exception $e) {
-                    error_log("CSV Import Error: " . $e->getMessage());
-                    continue;
+                    $errors[] = "Row $rowNum: DB Error — " . $e->getMessage();
+                    error_log("Flat CSV Import Error (row $rowNum): " . $e->getMessage());
                 }
             }
             fclose($handle);
 
-            setSuccess("$successCount Flats imported successfully from CSV");
+            if ($successCount > 0) {
+                $msg = "$successCount Flats imported successfully.";
+                if (!empty($errors)) {
+                    $msg .= " Skipped " . count($errors) . " row(s): " . implode("; ", array_slice($errors, 0, 3));
+                    if (count($errors) > 3) $msg .= " and " . (count($errors) - 3) . " more.";
+                }
+                setSuccess($msg);
+            } else {
+                $msg = "0 Flats imported.";
+                if (!empty($errors)) {
+                    $msg .= " Errors: " . implode("; ", array_slice($errors, 0, 5));
+                    if (count($errors) > 5) $msg .= " and " . (count($errors) - 5) . " more.";
+                }
+                setError($msg);
+            }
+
             header("Location: {$GLOBALS['base_url']}/flat-lists");
             exit;
         } else {

@@ -89,7 +89,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">Validity Date</label>
-                                <input type="date" name="validity_date" class="form-control">
+                                <input type="date" name="validity_date" class="form-control" required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Project</label>

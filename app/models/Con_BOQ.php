@@ -110,34 +110,64 @@ class Con_BOQ extends Model
      *
      * Used by Purchase Requests to validate against BOQ limits.
      */
-public function getRemainingBOQ($projectId) {
-    $sql = "SELECT 
-                bi.material_id, 
-                m.name as material_name,
-                bi.quantity as total_boq_qty,
-                COALESCE((
-                    SELECT SUM(pri.quantity) 
-                    FROM purchase_request_items pri
-                    JOIN purchase_requests pr ON pr.id = pri.request_id
-                    WHERE pr.project_id = ? AND pri.material_id = bi.material_id
-                    AND pr.status != 'Rejected'
-                ), 0) as used_qty,
-                (bi.quantity - COALESCE((
-                    SELECT SUM(pri.quantity) 
-                    FROM purchase_request_items pri
-                    JOIN purchase_requests pr ON pr.id = pri.request_id
-                    WHERE pr.project_id = ? AND pri.material_id = bi.material_id
-                    AND pr.status != 'Rejected'
-                ), 0)) as remaining_qty
-            FROM boq_items bi
-            JOIN boq_master bm ON bm.id = bi.boq_id
-            JOIN con_materials m ON m.id = bi.material_id
-            WHERE bm.project_id = ? AND bm.status = 'Approved'"; // Approved BOQ theke ashbe
+public function getRemainingBOQ($projectId, $boqId = null) {
+    if ($boqId) {
+        $sql = "SELECT 
+                    bi.material_id, 
+                    m.name as material_name,
+                    bi.quantity as total_boq_qty,
+                    COALESCE((
+                        SELECT SUM(pri.quantity) 
+                        FROM purchase_request_items pri
+                        JOIN purchase_requests pr ON pr.id = pri.request_id
+                        WHERE pr.bom_id = ? AND pri.material_id = bi.material_id
+                        AND pr.status != 'Rejected'
+                    ), 0) as used_qty,
+                    (bi.quantity - COALESCE((
+                        SELECT SUM(pri.quantity) 
+                        FROM purchase_request_items pri
+                        JOIN purchase_requests pr ON pr.id = pri.request_id
+                        WHERE pr.bom_id = ? AND pri.material_id = bi.material_id
+                        AND pr.status != 'Rejected'
+                    ), 0)) as remaining_qty
+                FROM boq_items bi
+                JOIN boq_master bm ON bm.id = bi.boq_id
+                JOIN con_materials m ON m.id = bi.material_id
+                WHERE bm.id = ? AND bm.status = 'Approved'";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('iii', $boqId, $boqId, $boqId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    } else {
+        $sql = "SELECT 
+                    bi.material_id, 
+                    m.name as material_name,
+                    SUM(bi.quantity) as total_boq_qty,
+                    COALESCE((
+                        SELECT SUM(pri.quantity) 
+                        FROM purchase_request_items pri
+                        JOIN purchase_requests pr ON pr.id = pri.request_id
+                        WHERE pr.project_id = ? AND pri.material_id = bi.material_id
+                        AND pr.status != 'Rejected'
+                    ), 0) as used_qty,
+                    (SUM(bi.quantity) - COALESCE((
+                        SELECT SUM(pri.quantity) 
+                        FROM purchase_request_items pri
+                        JOIN purchase_requests pr ON pr.id = pri.request_id
+                        WHERE pr.project_id = ? AND pri.material_id = bi.material_id
+                        AND pr.status != 'Rejected'
+                    ), 0)) as remaining_qty
+                FROM boq_items bi
+                JOIN boq_master bm ON bm.id = bi.boq_id
+                JOIN con_materials m ON m.id = bi.material_id
+                WHERE bm.project_id = ? AND bm.status = 'Approved'
+                GROUP BY bi.material_id, m.name";
 
-    $stmt = $this->db->prepare($sql);
-    $stmt->bind_param('iii', $projectId, $projectId, $projectId);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('iii', $projectId, $projectId, $projectId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
 }
 
     /**

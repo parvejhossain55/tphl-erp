@@ -135,20 +135,31 @@ class Con_TargetFixedController extends Controller
         $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $createdBy     = (int)($target['user_id'] ?? 0);
 
-        // Roles 3 (Director), 15 (PM), 22 (PM Head) can approve target
-        $approverRoles   = [3, 15, 22];
-        $approverRole    = in_array($currentRoleId, $approverRoles) ? 'manager' : null;
-        $canApprove      = ($approverRole !== null);
+        // Roles 3 (Director), 15 (PM), 22 (PM Head) can approve as manager
+        // Role 13 (QC) approves as QC step
+        $managerRoles = [3, 15, 22];
+        $qcRoles      = [13];
 
-        // Already approved this step?
-        $stepCol   = 'approved_by_manager';
-        $alreadyApproved = $canApprove && !empty($target[$stepCol]);
+        $qcApproved      = !empty($target['approved_by_qc']);
+        $approverRole    = null;
+        $canApprove      = false;
+        $alreadyApproved = false;
+
+        if (in_array($currentRoleId, $managerRoles)) {
+            $approverRole    = 'manager';
+            $canApprove      = true;
+            $alreadyApproved = !empty($target['approved_by_manager']);
+            // $alreadyApproved = !empty($target['approved_by_pd']) || $alreadyApproved); // PD approval also counts for manager step
+        } elseif (in_array($currentRoleId, $qcRoles)) {
+            $approverRole    = 'qc';
+            $canApprove      = true;
+            $alreadyApproved = $qcApproved;
+        }
 
         // Fetch creator info
         $creatorInfo = [];
         if ($createdBy) {
-            $stmt = $this->db->prepare("
-                SELECT u.full_name, COALESCE(d.name,'') AS designation
+            $stmt = $this->db->prepare(" SELECT u.full_name, COALESCE(d.name,'') AS designation
                 FROM   users u
                 LEFT JOIN employees   e ON e.user_id = u.id
                 LEFT JOIN designations d ON d.id = e.designation_id
@@ -159,8 +170,7 @@ class Con_TargetFixedController extends Controller
         }
 
         // Fetch related weekly progress reports for this target
-        $reportsStmt = $this->db->prepare("
-            SELECT w.*, u.full_name as reported_by_name 
+        $reportsStmt = $this->db->prepare(" SELECT w.*, u.full_name as reported_by_name 
             FROM weekly_progress_report w 
             LEFT JOIN users u ON u.id = w.created_by 
             WHERE w.target_id = ? 
@@ -177,6 +187,7 @@ class Con_TargetFixedController extends Controller
             'canApprove'      => $canApprove,
             'alreadyApproved' => $alreadyApproved,
             'approverRole'    => $approverRole,
+            'qcApproved'      => $qcApproved,
             'creatorInfo'     => $creatorInfo,
             'currentRoleId'   => $currentRoleId,
             'weeklyReports'   => $weeklyReports,
@@ -313,14 +324,16 @@ class Con_TargetFixedController extends Controller
         $userId = (int)($_SESSION['user']['id']   ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Role guard — PM (15), Director (3), PM Head (22) can approve
-        $allowedRoles = [3, 15, 22];
+        // Role guard — PM (15), Director (3), PM Head (22) or QC (13) can approve
+        $allowedRoles = [3, 13, 15, 22];
         if (!in_array($roleId, $allowedRoles)) {
             setError('You do not have permission to approve targets.');
             header("Location: {$GLOBALS['base_url']}/con-target/{$id}");
             exit;
         }
-        $step = 'manager'; // all approvers use the same step
+
+        // QC role approves 'qc' step, others approve 'manager' step
+        $step = ($roleId === 13) ? 'qc' : 'manager';
 
         // Creator cannot self-approve - Removed restriction as PM might create and approve
         // $target = $this->targetModel->find($id);
@@ -333,13 +346,39 @@ class Con_TargetFixedController extends Controller
 
 
         if ($this->targetModel->approveStep($id, $step, $userId)) {
-            // Also store WHO approved and WHEN for display
-            $upd = $this->db->prepare(
-                "UPDATE target_fixed SET manager_approved_by_id = ?, manager_approved_at = NOW() WHERE id = ?"
-            );
-            $upd->bind_param('ii', $userId, $id);
-            $upd->execute();
-            setSuccess('Approval recorded successfully!');
+
+            if ($step === 'qc') {
+                // QC: save photo, notes and gain
+                $photoPath    = null;
+                $fieldDetails = trim($_POST['qc_field_details'] ?? '');
+                $labResult    = trim($_POST['qc_lab_result']    ?? '');
+                $gainPct      = (float)($_POST['qc_gain_pct']   ?? 0);
+
+                if (!empty($_FILES['qc_photo']['name']) && $_FILES['qc_photo']['error'] === UPLOAD_ERR_OK) {
+                    $uploadDir = __DIR__ . '/../../../public/uploads/target-photos/';
+                    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                    $filename = time() . '_' . basename($_FILES['qc_photo']['name']);
+                    if (move_uploaded_file($_FILES['qc_photo']['tmp_name'], $uploadDir . $filename)) {
+                        $photoPath = 'uploads/target-photos/' . $filename;
+                    }
+                }
+                $this->targetModel->updateGain($id, $gainPct, $photoPath ?: null, $fieldDetails ?: null, $labResult ?: null);
+
+                // Also save qc_reviewed_by_id / qc_reviewed_at (already done in approveStep 'qc')
+                setSuccess('QC Review & approval recorded successfully!');
+
+            } else {
+                // Manager: store who approved and when
+                $upd = $this->db->prepare(
+                    "UPDATE target_fixed SET manager_approved_by_id = ?, manager_approved_at = NOW() WHERE id = ?"
+                );
+                if ($upd) {
+                    $upd->bind_param('ii', $userId, $id);
+                    $upd->execute();
+                }
+                setSuccess('Approval recorded successfully!');
+            }
+
         } else {
             setError('Approval failed.');
         }

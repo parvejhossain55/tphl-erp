@@ -87,7 +87,7 @@ class Con_ContractorBillController extends Controller
     public function create()
     {
         $operators = $this->operatorModel->getActiveContractors();
-        $projects  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name")->fetch_all(MYSQLI_ASSOC);
+        $projects  = $this->getProjects();
         $targets   = $this->targetModel->getAll();
         $workTypes = $this->db->query("SELECT id, work_type_name FROM work_types ORDER BY work_type_name ASC")->fetch_all(MYSQLI_ASSOC);
 
@@ -110,6 +110,7 @@ class Con_ContractorBillController extends Controller
         $data = [
             'project_id'       => $_POST['project_id'] ?? null,
             'operator_id'      => $_POST['operator_id'] ?? null,
+            'work_order_id'    => !empty($_POST['work_order_id']) ? $_POST['work_order_id'] : null,
             'target_id'        => !empty($_POST['target_id']) ? $_POST['target_id'] : null,
             'bill_date'        => $_POST['bill_date'] ?? date('Y-m-d'),
             'work_description' => trim($_POST['work_description'] ?? ''),
@@ -129,10 +130,40 @@ class Con_ContractorBillController extends Controller
             }
         }
 
-        if (empty($data['project_id']) || empty($data['operator_id']) || empty($data['work_description'])) {
-            setError('Project, Contractor and Work Description are required.');
+        if (empty($data['project_id']) || empty($data['operator_id']) || empty($data['work_order_id']) || empty($data['work_description'])) {
+            setError('Project, Contractor, Work Order, and Work Description are required.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
             exit;
+        }
+
+        // Validate Work Order Budget
+        require_once __DIR__ . '/../../models/Con_WorkOrder.php';
+        $woModel = new \Con_WorkOrder($this->db);
+        $workOrder = $woModel->find($data['work_order_id']);
+        if (!$workOrder) {
+            setError('Invalid Work Order selected.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
+            exit;
+        }
+        
+        $billedSoFarRes = $this->db->query("SELECT COALESCE(SUM(IF(approved_amount IS NOT NULL AND approved_amount > 0, approved_amount, bill_amount)), 0) as total FROM contractor_bill_requests WHERE work_order_id = {$data['work_order_id']} AND status != 'rejected'");
+        $billedSoFar = $billedSoFarRes ? (float)$billedSoFarRes->fetch_assoc()['total'] : 0;
+        
+        $remainingWOAmount = (float)$workOrder['total_amount'] - $billedSoFar;
+        if ($data['bill_amount'] > $remainingWOAmount) {
+            setError('Bill amount (৳' . number_format($data['bill_amount'], 2) . ') exceeds remaining Work Order limit (৳' . number_format($remainingWOAmount, 2) . ').');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
+            exit;
+        }
+
+        // Validate Target if selected
+        if (!empty($data['target_id'])) {
+            $target = $this->targetModel->find($data['target_id']);
+            if ($target && (float)$target['gain_percentage'] <= 0) {
+                setError('Selected target must have a Gain % greater than 0 to submit a bill.');
+                header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
+                exit;
+            }
         }
 
         $workTypeId = $_POST['work_type_id'] ?? null;
@@ -493,6 +524,41 @@ class Con_ContractorBillController extends Controller
             return ['success' => true, 'file_path' => $uploadPath];
         }
 
-        return ['success' => false, 'message' => "Failed to upload '{$file['name']}'."];
+        return ['success' => false, 'message' => "Failed to upload file '{$file['name']}'."];
+    }
+
+    // =========================================================================
+    // HELPER — Get projects filtered by role
+    // =========================================================================
+    private function getProjects()
+    {
+        $uid = $this->userId;
+        $rid = $this->userRole;
+
+        // Admin, Director, PM Head → see ALL projects
+        if (in_array($rid, [1, 3, 22])) {
+            $filter = "1=1";
+        } else {
+            // All other roles → only their assigned projects
+            $filter = "(p.pm_id = $uid
+                     OR p.site_engineer_id    = $uid
+                     OR p.landman_id          = $uid
+                     OR p.struct_engineer_id  = $uid
+                     OR p.operation_head_id   = $uid
+                     OR p.draftsman_id        = $uid
+                     OR p.architect_id        = $uid
+                     OR p.estimator_id        = $uid
+                     OR p.qc_id              = $uid
+                     OR p.operator_id        = $uid
+                     OR p.created_by         = $uid)";
+        }
+
+        $r = $this->db->query(
+            "SELECT p.id, p.name 
+             FROM projects p
+             WHERE p.deleted_at IS NULL AND {$filter}
+             ORDER BY p.name ASC"
+        );
+        return $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
     }
 }
