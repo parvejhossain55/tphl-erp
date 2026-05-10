@@ -91,7 +91,7 @@ $projects = $projects ?? [];
 <div class="wr-hero">
   <div style="position:relative;z-index:2">
     <div class="wr-badge"><i class="fal fa-calendar-week"></i> New Report</div>
-    <h4 style="font-size:22px;font-weight:900;margin:0 0 4px">New Weekly Progress Report</h4>
+    <h4 style="font-size:22px;font-weight:900;margin:0 0 4px;color:#fff">New Weekly Progress Report</h4>
     <p style="font-size:12px;color:rgba(255,255,255,.7);margin:0">
       Project → Working Plan → Target → Week No
     </p>

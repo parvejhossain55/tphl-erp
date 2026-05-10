@@ -1341,10 +1341,14 @@
                                         class="sidebar__menu-item <?= isActive('qc-inspection-create', $current_route) ?>">New
                                         Inspection</a>
                                 </li>
+                                
+                                <li class="slide">
+                                    <a href="<?= $GLOBALS['base_url'] ?>/qc-test-types"
+                                        class="sidebar__menu-item <?= isActive('qc-test-types', $current_route) ?>">QC Test Types</a>
+                                </li>
                                 <li class="slide">
                                     <a href="<?= $GLOBALS['base_url'] ?>/qc-material-test-create"
-                                        class="sidebar__menu-item <?= isActive('qc-material-test-create', $current_route) ?>">Log
-                                        Material Test</a>
+                                        class="sidebar__menu-item <?= isActive('qc-material-test-create', $current_route) ?>">Quality Control Tests</a>
                                 </li>
                          
                             </ul>

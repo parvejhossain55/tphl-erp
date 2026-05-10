@@ -26,7 +26,7 @@ $page_title = $page_title ?? 'New Work Order';
                         <div class="row ">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Project <span class="text-danger">*</span></label>
-                                <select name="project_id" id="wo_project_id" class="form-select" required onchange="loadWorkPlans(this.value)">
+                                <select name="project_id" id="wo_project_id" class="form-select" required onchange="loadWorkPlans(this.value); loadDrawings(this.value);">
                                     <option value="">-- Select Project --</option>
                                     <?php foreach ($projects as $p): ?>
                                         <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
@@ -46,6 +46,13 @@ $page_title = $page_title ?? 'New Work Order';
                                 </select>
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label fw-semibold">Work Design Type <span class="text-danger">*</span></label>
+                                <select name="design_id" id="wo_design_id" class="form-select" required>
+                                    <option value="">-- Select Design Type --</option>
+                                </select>
+                                <small class="text-muted">Select Project first to load designs</small>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label fw-semibold">Work Type</label>
                                 <select name="work_type_id" class="form-select">
                                     <option value="">-- Select Work Type --</option>
@@ -60,21 +67,14 @@ $page_title = $page_title ?? 'New Work Order';
                                        placeholder="e.g. Foundation Work — Block A">
                             </div>
 
-                            <!-- Target Fixed Link (cascading) -->
-                            <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Link to Target Fixed (optional — select Project first)</small></div>
+                            <!-- Working Plan Link -->
+                            <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Link to Working Plan (optional — select Project first)</small></div>
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Working Plan</label>
-                                <select name="work_plan_id" id="wo_work_plan_id" class="form-select" onchange="loadTargets(this.value)">
+                                <select name="work_plan_id" id="wo_work_plan_id" class="form-select">
                                     <option value="">-- Select Working Plan --</option>
                                 </select>
                                 <small class="text-muted">Select Project first to load plans</small>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Target Fixed (Week)</label>
-                                <select name="target_id" id="wo_target_id" class="form-select" onchange="autoFillFromTarget(this)">
-                                    <option value="">-- Select Target --</option>
-                                </select>
-                                <small class="text-muted">Select Working Plan first</small>
                             </div>
                             <div class="col-12">
                                 <label class="form-label fw-semibold">Scope of Work</label>
@@ -120,7 +120,7 @@ $page_title = $page_title ?? 'New Work Order';
                                 <input type="number" name="quantity" id="wo_quantity" class="form-control"
                                        step="0.01" min="0" placeholder="0.00" oninput="calcTotal()">
                             </div>
-                            <div class="col-12">
+                            <div class="col-12 my-2">
                                 <div class="alert alert-primary py-2 mb-0">
                                     <strong>Total Contract Amount: ৳<span id="wo_total_display">0.00</span></strong>
                                 </div>
@@ -216,11 +216,9 @@ const BASE_URL = '<?= $base_url ?>';
 // ── Cascade: Project → Work Plans ─────────────────────────────────────────
 function loadWorkPlans(projectId) {
     const wpSel = document.getElementById('wo_work_plan_id');
-    const tgSel = document.getElementById('wo_target_id');
 
     // Reset downstream
     wpSel.innerHTML = '<option value="">-- Select Working Plan --</option>';
-    tgSel.innerHTML = '<option value="">-- Select Target --</option>';
 
     if (!projectId) return;
 
@@ -234,29 +232,20 @@ function loadWorkPlans(projectId) {
         });
 }
 
-// ── Cascade: Work Plan → Targets ──────────────────────────────────────────
-function loadTargets(planId) {
-    const tgSel = document.getElementById('wo_target_id');
-    tgSel.innerHTML = '<option value="">-- Select Target --</option>';
-    if (!planId) return;
+// ── Cascade: Project → Drawings ───────────────────────────────────────────
+function loadDrawings(projectId) {
+    const drawSel = document.getElementById('wo_design_id');
+    drawSel.innerHTML = '<option value="">-- Select Design Type --</option>';
 
-    fetch(`${BASE_URL}/con-ajax-wo-targets?work_plan_id=${planId}`)
+    if (!projectId) return;
+
+    fetch(`${BASE_URL}/con-ajax-wo-drawings?project_id=${projectId}`)
         .then(r => r.json())
         .then(data => {
-            data.targets.forEach(t => {
-                const label = `${t.target_title} (Week ${t.week_number} | ${t.target_percentage}%)`;
-                tgSel.innerHTML += `<option value="${t.id}">${label}</option>`;
+            data.drawings.forEach(d => {
+                drawSel.innerHTML += `<option value="${d.id}">${d.design_type_name}</option>`;
             });
         });
-}
-
-// ── Auto-fill title hint from selected target ─────────────────────────────
-function autoFillFromTarget(sel) {
-    const label = sel.options[sel.selectedIndex]?.text ?? '';
-    const titleInput = document.querySelector('[name="title"]');
-    if (titleInput && !titleInput.value && label) {
-        titleInput.value = label.split(' (')[0]; // use target title as default
-    }
 }
 
 // ── Rate Calculations ─────────────────────────────────────────────────────

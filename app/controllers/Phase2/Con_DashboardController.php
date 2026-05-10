@@ -339,11 +339,13 @@ class Con_DashboardController extends Controller
         // 6. Pending Approvals (all approval queues combined)
         $r4 = $this->db->query("
             SELECT COUNT(*) AS c FROM (
-                SELECT id FROM contractor_bill_requests    WHERE status = 'approved'
+                SELECT id FROM contractor_bill_requests    WHERE status = 'submitted'
                 UNION ALL
-                SELECT id FROM operational_fund_requests   WHERE status = 'approved'
+                SELECT id FROM con_work_orders             WHERE status = 'draft'
                 UNION ALL
-                SELECT id FROM vendor_payment_requests     WHERE status IN ('Submitted','Approved')
+                SELECT id FROM operational_fund_requests   WHERE status = 'pending'
+                UNION ALL
+                SELECT id FROM vendor_payment_requests     WHERE status = 'Submitted'
             ) t");
         $s['pending_approvals'] = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
@@ -426,20 +428,31 @@ class Con_DashboardController extends Controller
                    CONCAT('Bill #', id) AS description,
                    bill_amount          AS amount,
                    project_id,
-                   created_at
-            FROM contractor_bill_requests WHERE status = 'approved'
+                   created_at,
+                   CONCAT('/con-contractor-bill/', id) AS url
+            FROM contractor_bill_requests WHERE status = 'submitted'
+            UNION ALL
+            SELECT 'Work Order',
+                   CONCAT('Work Order: ', title),
+                   total_amount,
+                   project_id,
+                   created_at,
+                   CONCAT('/con-work-order/', id) AS url
+            FROM con_work_orders WHERE status = 'draft'
             UNION ALL
             SELECT 'Fund Request',
                    CONCAT('Fund: ', purpose),
                    COALESCE(approved_amount, amount),
-                   project_id, created_at
-            FROM operational_fund_requests WHERE status = 'approved'
+                   project_id, created_at,
+                   CONCAT('/con-fund-request/', id) AS url
+            FROM operational_fund_requests WHERE status = 'pending'
             UNION ALL
             SELECT 'Vendor Payment',
                    CONCAT(payment_type, ' Payment'),
                    COALESCE(net_payable, 0),
-                   project_id, created_at
-            FROM vendor_payment_requests WHERE status IN ('Submitted','Approved')
+                   project_id, created_at,
+                   CONCAT('/con-vendor-payment/', id) AS url
+            FROM vendor_payment_requests WHERE status = 'Submitted'
             ORDER BY created_at DESC LIMIT 5";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];

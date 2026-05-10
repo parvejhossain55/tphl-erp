@@ -21,6 +21,7 @@ class Con_WorkOrder extends Model
                        c.name          AS contractor_name,
                        c.trade         AS contractor_trade,
                        wt.work_type_name AS work_type_name,
+                       dt2.name        AS design_type_name,
                        u.full_name     AS created_by_name,
                        ab.full_name    AS approved_by_name,
                        qc.full_name    AS qc_approved_by_name,
@@ -29,6 +30,8 @@ class Con_WorkOrder extends Model
                 LEFT JOIN projects p       ON p.id  = wo.project_id
                 LEFT JOIN contractors c    ON c.id  = wo.contractor_id
                 LEFT JOIN work_types wt    ON wt.id = wo.work_type_id
+                LEFT JOIN project_drawings pd ON pd.id = wo.design_id
+                LEFT JOIN design_types dt2 ON dt2.id = pd.design_type_id
                 LEFT JOIN users u          ON u.id  = wo.created_by
                 LEFT JOIN users ab         ON ab.id = wo.approved_by
                 LEFT JOIN users qc         ON qc.id = wo.qc_approved_by
@@ -52,6 +55,7 @@ class Con_WorkOrder extends Model
                        c.trade         AS contractor_trade,
                        c.address       AS contractor_address,
                        wt.work_type_name AS work_type_name,
+                       dt2.name        AS design_type_name,
                        u.full_name     AS created_by_name,
                        ab.full_name    AS approved_by_name,
                        qc.full_name    AS qc_approved_by_name,
@@ -68,6 +72,8 @@ class Con_WorkOrder extends Model
                 LEFT JOIN projects p                ON p.id  = wo.project_id
                 LEFT JOIN contractors c             ON c.id  = wo.contractor_id
                 LEFT JOIN work_types wt             ON wt.id = wo.work_type_id
+                LEFT JOIN project_drawings pd       ON pd.id = wo.design_id
+                LEFT JOIN design_types dt2          ON dt2.id = pd.design_type_id
                 LEFT JOIN users u                   ON u.id  = wo.created_by
                 LEFT JOIN users ab                  ON ab.id = wo.approved_by
                 LEFT JOIN users qc                  ON qc.id = wo.qc_approved_by
@@ -100,7 +106,10 @@ class Con_WorkOrder extends Model
         $params = array_merge([(int)$projectId], $statusFilter);
 
         $sql = "SELECT wo.id, wo.wo_number, wo.title, wo.status, wo.total_amount,
-                       c.name AS contractor_name
+                       c.name AS contractor_name,
+                       (SELECT COALESCE(SUM(IF(approved_amount IS NOT NULL AND approved_amount > 0, approved_amount, bill_amount)), 0)
+                        FROM contractor_bill_requests
+                        WHERE work_order_id = wo.id AND status != 'rejected') AS billed_amount
                 FROM {$this->table} wo
                 LEFT JOIN contractors c ON c.id = wo.contractor_id
                 WHERE wo.project_id = ? AND wo.status IN ({$placeholders})
@@ -120,20 +129,21 @@ class Con_WorkOrder extends Model
         $woNumber = $this->generateWONumber();
 
         $sql = "INSERT INTO {$this->table}
-                (project_id, contractor_id, work_type_id, boq_id, wo_number, title,
+                (project_id, contractor_id, design_id, work_type_id, boq_id, wo_number, title,
                  scope_of_work, notes, unit, unit_rate, quantity, total_amount,
                  start_date, end_date,
                  advance_percent, running_percent, retention_percent,
                  advance_amount, retention_amount,
-                 work_plan_id, target_id,
+                 work_plan_id,
                  status, created_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiiiissssddddssddddiii',
+            'iiiiiisssssdddssddddiii',
             $data['project_id'],
             $data['contractor_id'],
+            $data['design_id'],
             $data['work_type_id'],
             $data['boq_id'],
             $woNumber,
@@ -152,7 +162,6 @@ class Con_WorkOrder extends Model
             $data['advance_amount'],
             $data['retention_amount'],
             $data['work_plan_id'],
-            $data['target_id'],
             $data['created_by']
         );
         $stmt->execute();
@@ -165,20 +174,22 @@ class Con_WorkOrder extends Model
     public function update($id, $data)
     {
         $sql = "UPDATE {$this->table}
-                SET project_id=?, contractor_id=?, work_type_id=?, title=?,
+                SET project_id=?, contractor_id=?, design_id=?, work_type_id=?, boq_id=?, title=?,
                     scope_of_work=?, notes=?, unit=?, unit_rate=?, quantity=?, total_amount=?,
                     start_date=?, end_date=?,
                     advance_percent=?, running_percent=?, retention_percent=?,
                     advance_amount=?, retention_amount=?,
-                    work_plan_id=?, target_id=?
+                    work_plan_id=?
                 WHERE id=? AND status='draft'";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiissssddddssddddiii',
+            'iiiiiissssdddssddddii',
             $data['project_id'],
             $data['contractor_id'],
+            $data['design_id'],
             $data['work_type_id'],
+            $data['boq_id'],
             $data['title'],
             $data['scope_of_work'],
             $data['notes'],
@@ -194,7 +205,6 @@ class Con_WorkOrder extends Model
             $data['advance_amount'],
             $data['retention_amount'],
             $data['work_plan_id'],
-            $data['target_id'],
             $id
         );
         return $stmt->execute();

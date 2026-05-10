@@ -49,7 +49,7 @@ $statusLabels = [
     }
     $total = count($workOrders);
     ?>
-    <div class="row g-3 mb-4">
+    <div class="row  my-4">
         <div class="col-6 col-md-2">
             <div class="card custom-card text-center border-0 shadow-sm">
                 <div class="card-body py-3">

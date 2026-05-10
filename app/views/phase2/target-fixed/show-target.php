@@ -266,6 +266,7 @@ $sc = $statusMap[$overallStatus];
           <?= $t['year'] ?? '' ?> / <?= $months[(int)($t['month'] ?? 0)] ?? '' ?>
           <?= $t['week_number'] ? ' — Week ' . $t['week_number'] : '' ?>
         </p>
+            <?php if (in_array($_SESSION['user']['role_id'], [1, 3, 12, 15, 22], true)): ?>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
           <a href="<?= $base_url ?>/con-target-edit/<?= $t['id'] ?>" class="tgt-btn-w">
             <i class="fal fa-pencil"></i>Edit
@@ -277,6 +278,7 @@ $sc = $statusMap[$overallStatus];
             <i class="fal fa-plus-circle"></i>Create BOM
           </a>
         </div>
+        <?php endif; ?>
       </div>
       <div style="text-align:right">
         <div style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;

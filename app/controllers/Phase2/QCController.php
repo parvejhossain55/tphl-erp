@@ -50,9 +50,35 @@ class QCController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // ── Inspections & Material Tests ──────────────────────────────────
-        $inspections   = $this->qcInspectionModel->getAll();
-        $materialTests = $this->qcMaterialTestModel->getAll();
+        // ── Inspections ────────────────────────────────────────────────────
+        $inspections = $this->qcInspectionModel->getAll();
+
+        // ── GRN Material Tests (linked to challan) ─────────────────────────
+        $rGrnTests = $this->db->query("
+            SELECT mt.*, p.name AS project_name,
+                   u.full_name AS created_by_name
+            FROM qc_material_tests mt
+            LEFT JOIN projects p ON p.id = mt.project_id
+            LEFT JOIN users u ON u.id = mt.created_by
+            WHERE mt.material_receiving_id IS NOT NULL
+            ORDER BY mt.id DESC LIMIT 15
+        ");
+        $grnMaterialTests = $rGrnTests ? $rGrnTests->fetch_all(MYSQLI_ASSOC) : [];
+
+        // ── Site Work Tests (Other QC Test — no GRN) ───────────────────────
+        $rSiteTests = $this->db->query("SELECT mt.*, p.name AS project_name,
+                   wt.work_type_name AS work_type_name,
+                   tt.name AS test_type_name,
+                   u.full_name AS created_by_name
+            FROM qc_material_tests mt
+            LEFT JOIN projects p ON p.id = mt.project_id
+            LEFT JOIN work_types wt ON wt.id = mt.work_type_id
+            LEFT JOIN qc_test_types tt ON tt.id = mt.test_type_id
+            LEFT JOIN users u ON u.id = mt.created_by
+            WHERE mt.material_receiving_id IS NULL
+            ORDER BY mt.id DESC LIMIT 15
+        ");
+        $siteWorkTests = $rSiteTests ? $rSiteTests->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── KPI 1: Assigned Projects (only QC-assigned) ──────────────────
         if (in_array($roleId, [1, 3, 15, 22])) {
@@ -142,11 +168,37 @@ class QCController extends Controller
             ORDER BY r.id DESC LIMIT 10");
         $pendingWeeklyReportsQC = $rPendingWeeklyQC ? $rPendingWeeklyQC->fetch_all(MYSQLI_ASSOC) : [];
 
-        $this->view('phase2/qc/dashboard', [
+        // ── Architecture Engineering ──────────────────────────────────────────
+        $rAE = $this->db->query("
+            SELECT ae.*, p.name AS project_name, u.full_name AS user_name
+            FROM architect_engineering ae
+            LEFT JOIN projects p ON p.id = ae.project_id
+            LEFT JOIN users u ON u.id = ae.user_id
+            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . "
+            ORDER BY ae.id DESC LIMIT 10
+        ");
+        $architectEngineering = $rAE ? $rAE->fetch_all(MYSQLI_ASSOC) : [];
+
+        // ── Project Drawings ───────────────────────────────────────────────
+        $rDrawings = $this->db->query("
+            SELECT pd.*, p.name AS project_name, dt.name AS design_type_name
+            FROM project_drawings pd
+            LEFT JOIN projects p ON p.id = pd.project_id
+            LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . "
+            ORDER BY pd.id DESC LIMIT 10
+        ");
+        $draftDrawings = $rDrawings ? $rDrawings->fetch_all(MYSQLI_ASSOC) : [];
+
+        $this->view('phase2/qc/qc-dashboard', [
+            'architectEngineering'   => $architectEngineering,
+            'draftDrawings'          => $draftDrawings,
             'current_route'          => 'qc-dashboard',
             'page_title'             => 'QC Dashboard',
             'inspections'            => $inspections,
-            'materialTests'          => $materialTests,
+            'grnMaterialTests'       => $grnMaterialTests,
+            'siteWorkTests'          => $siteWorkTests,
+            'materialTests'          => array_merge($grnMaterialTests, $siteWorkTests), // backward compat
             'projects'               => $projects,
             'pendingTargets'         => $pendingTargets,
             'pendingGRNsQC'          => $pendingGRNsQC,
@@ -274,13 +326,54 @@ class QCController extends Controller
 
     public function createMaterialTest()
     {
-        // For simplicity, fetch all material receivings
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // Fetch all material receivings (all statuses, for challan dropdown)
         $receivings = $this->materialReceivingModel->getAll();
+
+        // Fetch projects for "Other QC Test" — QC users see qc_id assigned projects
+        // Admins/Directors/QC Heads see all projects
+        if (in_array($roleId, [1, 3, 15, 22])) {
+            $projectsQuery = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
+        } else {
+            // For QC role: show projects assigned to this user as qc_id
+            // Also include any project they are otherwise assigned to
+            $projectsQuery = $this->db->query("
+                SELECT id, name FROM projects
+                WHERE deleted_at IS NULL
+                  AND (
+                    qc_id = $userId
+                    OR pm_id = $userId
+                    OR site_engineer_id = $userId
+                    OR struct_engineer_id = $userId
+                    OR operation_head_id = $userId
+                  )
+                ORDER BY name
+            ");
+        }
+        $projects = $projectsQuery ? $projectsQuery->fetch_all(MYSQLI_ASSOC) : [];
+
+        // If no projects found (qc_id not set on any project), show all projects as fallback
+        if (empty($projects)) {
+            $fallback = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
+            $projects = $fallback ? $fallback->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
+        $workTypes = $this->workTypeModel->getAll();
+        
+        require_once __DIR__ . '/../../models/Con_QCTestType.php';
+        $testTypeModel = new \Con_QCTestType($this->db);
+        $testTypes = $testTypeModel->getAll();
 
         $this->view('phase2/qc/material-test-form', [
             'current_route' => 'qc-material-test-create',
             'page_title' => 'Create Material Test',
-            'receivings' => $receivings
+            'receivings' => $receivings,
+            'projects' => $projects,
+            'workTypes' => $workTypes,
+            'testTypes' => $testTypes
         ]);
     }
 
@@ -304,25 +397,66 @@ class QCController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
         $userId = (int)($_SESSION['user']['id'] ?? 0);
 
+        $testSource = $_POST['test_source'] ?? 'grn';
+        $materialReceivingId = (int)($_POST['material_receiving_id'] ?? 0);
+        $testTypeId = !empty($_POST['test_type_id']) ? (int)$_POST['test_type_id'] : null;
+
+        $testName = '';
+        if ($testSource === 'grn') {
+            $testName = $_POST['test_name'] ?? 'GRN General Inspection';
+        } elseif ($testTypeId) {
+            $testNameData = $this->db->query("SELECT name FROM qc_test_types WHERE id = " . $testTypeId)->fetch_assoc();
+            if ($testNameData) $testName = $testNameData['name'];
+        }
+
+        $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        if ($testSource === 'grn' && $materialReceivingId) {
+            $grnData = $this->db->query("
+                SELECT pr.project_id 
+                FROM material_receiving mr 
+                JOIN purchase_orders po ON po.id = mr.purchase_order_id 
+                JOIN purchase_requests pr ON pr.id = po.request_id 
+                WHERE mr.id = $materialReceivingId
+            ")->fetch_assoc();
+            
+            if ($grnData && !empty($grnData['project_id'])) {
+                $projectId = (int)$grnData['project_id'];
+            }
+        }
+
         $data = [
-            'material_receiving_id' => (int)($_POST['material_receiving_id'] ?? 0),
-            'test_name' => $_POST['test_name'] ?? '',
+            'project_id' => $projectId,
+            'work_type_id' => !empty($_POST['work_type_id']) ? (int)$_POST['work_type_id'] : null,
+            'test_type_id' => ($testSource == 'other') ? $testTypeId : null,
+            'material_receiving_id' => ($testSource == 'grn' && $materialReceivingId) ? $materialReceivingId : null,
+            'test_name' => $testName,
+            'test_date' => !empty($_POST['test_date']) ? $_POST['test_date'] : null,
+            'age_of_sample' => !empty($_POST['age_of_sample']) ? (int)$_POST['age_of_sample'] : null,
+            'required_value' => $_POST['required_value'] ?? '',
             'result_value' => $_POST['result_value'] ?? '',
             'test_status' => $_POST['test_status'] ?? 'fail',
             'lab_report_link' => $_POST['lab_report_link'] ?? '',
             'created_by' => $userId,
-            'attachment' => isset($_FILES['test_attachment']) ? $this->uploadFile($_FILES['test_attachment']) : null
+            'attachment' => isset($_FILES['test_attachment']) && $_FILES['test_attachment']['error'] === 0 ? $this->uploadFile($_FILES['test_attachment']) : null
         ];
 
-        if (!$data['material_receiving_id']) {
-            setError('Material Receiving is required.');
+        if ($testSource == 'grn' && !$data['material_receiving_id']) {
+            setError('Material Receiving is required for GRN tests.');
+            header("Location: {$GLOBALS['base_url']}/qc-material-test-create");
+            exit;
+        } elseif ($testSource == 'other' && (!$data['project_id'] || !$data['work_type_id'])) {
+            setError('Project and Work Type are required for Other QC tests.');
+            header("Location: {$GLOBALS['base_url']}/qc-material-test-create");
+            exit;
+        }
+
+        if ($testSource == 'other' && !$testTypeId) {
+            setError('Test Type is required for Other QC tests.');
             header("Location: {$GLOBALS['base_url']}/qc-material-test-create");
             exit;
         }
 
         if ($this->qcMaterialTestModel->create($data)) {
-            // Wait for QC Review to generate Return Requests
-
             setSuccess('Material Test logged successfully.');
             header("Location: {$GLOBALS['base_url']}/qc-dashboard");
             exit;
@@ -346,6 +480,88 @@ class QCController extends Controller
 
         $checklists = $this->qcChecklistModel->getByWorkType($workTypeId);
         echo json_encode(['checklists' => $checklists]);
+        exit;
+    }
+
+    public function testTypesIndex()
+    {
+        require_once __DIR__ . '/../../models/Con_QCTestType.php';
+        $testTypeModel = new \Con_QCTestType($this->db);
+        $testTypes = $testTypeModel->getAll();
+
+        $this->view('phase2/qc/test-types/index', [
+            'current_route' => 'qc-test-types',
+            'page_title' => 'Manage QC Test Types',
+            'testTypes' => $testTypes
+        ]);
+    }
+
+    public function testTypesStore()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $name = $_POST['name'] ?? '';
+        $description = $_POST['description'] ?? '';
+
+        if (empty($name)) {
+            setError('Test Type name is required.');
+            header("Location: {$GLOBALS['base_url']}/qc-test-types");
+            exit;
+        }
+
+        require_once __DIR__ . '/../../models/Con_QCTestType.php';
+        $testTypeModel = new \Con_QCTestType($this->db);
+        if ($testTypeModel->create(['name' => $name, 'description' => $description])) {
+            setSuccess('Test Type created successfully.');
+        } else {
+            setError('Failed to create Test Type.');
+        }
+        header("Location: {$GLOBALS['base_url']}/qc-test-types");
+        exit;
+    }
+
+    public function testTypesUpdate()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id = (int)($_POST['id'] ?? 0);
+        $name = $_POST['name'] ?? '';
+        $description = $_POST['description'] ?? '';
+
+        if (!$id || empty($name)) {
+            setError('Invalid data for updating Test Type.');
+            header("Location: {$GLOBALS['base_url']}/qc-test-types");
+            exit;
+        }
+
+        require_once __DIR__ . '/../../models/Con_QCTestType.php';
+        $testTypeModel = new \Con_QCTestType($this->db);
+        if ($testTypeModel->update($id, ['name' => $name, 'description' => $description])) {
+            setSuccess('Test Type updated successfully.');
+        } else {
+            setError('Failed to update Test Type.');
+        }
+        header("Location: {$GLOBALS['base_url']}/qc-test-types");
+        exit;
+    }
+
+    public function testTypesDelete()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id = (int)($_POST['id'] ?? 0);
+
+        if (!$id) {
+            setError('Invalid Test Type ID.');
+            header("Location: {$GLOBALS['base_url']}/qc-test-types");
+            exit;
+        }
+
+        require_once __DIR__ . '/../../models/Con_QCTestType.php';
+        $testTypeModel = new \Con_QCTestType($this->db);
+        if ($testTypeModel->delete($id)) {
+            setSuccess('Test Type deleted successfully.');
+        } else {
+            setError('Failed to delete Test Type.');
+        }
+        header("Location: {$GLOBALS['base_url']}/qc-test-types");
         exit;
     }
 }

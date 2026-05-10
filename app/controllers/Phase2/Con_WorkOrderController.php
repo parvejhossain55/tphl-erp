@@ -4,12 +4,14 @@ namespace Phase2;
 use Controller;
 use Con_WorkOrder;
 use Con_Contractor;
+use ApprovalRequest;
 
 class Con_WorkOrderController extends Controller
 {
     protected $db;
     protected $model;
     protected $contractorModel;
+    protected $approvalModel;
     protected $userId;
     protected $userRole;
 
@@ -18,6 +20,7 @@ class Con_WorkOrderController extends Controller
         $this->db              = $db;
         $this->model           = new Con_WorkOrder($db);
         $this->contractorModel = new Con_Contractor($db);
+        $this->approvalModel   = new ApprovalRequest($db);
 
         if (session_status() === PHP_SESSION_NONE) session_start();
         $this->userId   = (int)($_SESSION['user']['id']      ?? 0);
@@ -114,6 +117,7 @@ class Con_WorkOrderController extends Controller
         $data = [
             'project_id'        => (int)($_POST['project_id']    ?? 0),
             'contractor_id'     => (int)($_POST['contractor_id'] ?? 0),
+            'design_id'         => !empty($_POST['design_id'])    ? (int)$_POST['design_id']    : null,
             'work_type_id'      => !empty($_POST['work_type_id']) ? (int)$_POST['work_type_id'] : null,
             'boq_id'            => !empty($_POST['boq_id'])       ? (int)$_POST['boq_id']       : null,
             'title'             => trim($_POST['title']           ?? ''),
@@ -131,7 +135,6 @@ class Con_WorkOrderController extends Controller
             'advance_amount'    => round($total * $advPct / 100, 2),
             'retention_amount'  => round($total * $retPct / 100, 2),
             'work_plan_id'      => !empty($_POST['work_plan_id']) ? (int)$_POST['work_plan_id'] : null,
-            'target_id'         => !empty($_POST['target_id'])    ? (int)$_POST['target_id']    : null,
             'created_by'        => $this->userId,
         ];
 
@@ -143,7 +146,23 @@ class Con_WorkOrderController extends Controller
 
         $id = $this->model->create($data);
         if ($id) {
-            setSuccess('Work Order created successfully!');
+            $operator = $this->contractorModel->find($data['contractor_id']);
+            $project  = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$data['project_id'])->fetch_assoc();
+
+            $this->approvalModel->create([
+                'department'    => 'construction',
+                'request_type'  => 'work_order',
+                'title'         => 'Work Order — ' . ($data['title'] ?? '') . ' | ' . ($operator['name'] ?? '') . ' | ' . ($project['name'] ?? ''),
+                'source_table'  => 'con_work_orders',
+                'source_id'     => $id,
+                'requested_days'=> 0,
+                'requested_by'  => $this->userId,
+                'approve_role'  => 'management',
+                'meta_data'     => null,
+                'request_amount'=> $data['total_amount'],
+            ]);
+
+            setSuccess('Work Order created and sent for approval successfully!');
             header("Location: " . $GLOBALS['base_url'] . "/con-work-order/{$id}");
         } else {
             setError('Failed to create Work Order.');
@@ -247,7 +266,9 @@ class Con_WorkOrderController extends Controller
         $data = [
             'project_id'        => (int)($_POST['project_id']    ?? 0),
             'contractor_id'     => (int)($_POST['contractor_id'] ?? 0),
+            'design_id'         => !empty($_POST['design_id'])    ? (int)$_POST['design_id']    : null,
             'work_type_id'      => !empty($_POST['work_type_id']) ? (int)$_POST['work_type_id'] : null,
+            'boq_id'            => !empty($_POST['boq_id'])       ? (int)$_POST['boq_id']       : null,
             'title'             => trim($_POST['title']         ?? ''),
             'scope_of_work'     => trim($_POST['scope_of_work'] ?? ''),
             'notes'             => trim($_POST['notes']         ?? ''),
@@ -263,7 +284,6 @@ class Con_WorkOrderController extends Controller
             'advance_amount'    => round($total * $advPct / 100, 2),
             'retention_amount'  => round($total * $retPct / 100, 2),
             'work_plan_id'      => !empty($_POST['work_plan_id']) ? (int)$_POST['work_plan_id'] : null,
-            'target_id'         => !empty($_POST['target_id'])    ? (int)$_POST['target_id']    : null,
         ];
 
         if ($this->model->update($id, $data)) {
@@ -287,6 +307,7 @@ class Con_WorkOrderController extends Controller
         }
 
         if ($this->model->approve($id, $this->userId)) {
+            $this->syncApprovalRequest($id, 'approved');
             setSuccess('Work Order approved and is now active!');
         } else {
             setError('Approval failed. Work Order must be in draft status.');
@@ -308,12 +329,29 @@ class Con_WorkOrderController extends Controller
 
         $reason = trim($_POST['rejection_reason'] ?? '');
         if ($this->model->reject($id, $this->userId, $reason)) {
+            $this->syncApprovalRequest($id, 'rejected');
             setSuccess('Work Order has been rejected.');
         } else {
             setError('Rejection failed.');
         }
         header("Location: " . $GLOBALS['base_url'] . "/con-work-order/{$id}");
         exit;
+    }
+
+    // =========================================================================
+    // SYNC APPROVAL REQUEST
+    // =========================================================================
+    private function syncApprovalRequest($sourceId, $newStatus)
+    {
+        $arStatus = ($newStatus === 'approved') ? 'approved' : 'rejected';
+
+        $stmt = $this->db->prepare(
+            "UPDATE approval_requests
+             SET status = ?, approved_by = ?, approved_at = NOW()
+             WHERE source_table = 'con_work_orders' AND source_id = ? AND status = 'pending'"
+        );
+        $stmt->bind_param('sii', $arStatus, $this->userId, $sourceId);
+        $stmt->execute();
     }
 
     // =========================================================================
@@ -402,6 +440,27 @@ class Con_WorkOrderController extends Controller
 
         $plans = $this->model->getWorkPlansByProject($projectId);
         echo json_encode(['work_plans' => $plans]);
+        exit;
+    }
+
+    // =========================================================================
+    // AJAX — Get Drawings by Project
+    // =========================================================================
+    public function ajaxGetDrawings()
+    {
+        header('Content-Type: application/json');
+        $projectId = (int)($_GET['project_id'] ?? 0);
+        if (!$projectId) { echo json_encode(['drawings' => []]); exit; }
+
+        $r = $this->db->query("
+            SELECT pd.id, dt.name AS design_type_name
+            FROM project_drawings pd
+            LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+            WHERE pd.project_id = {$projectId}
+            ORDER BY dt.name ASC
+        ");
+        $drawings = $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
+        echo json_encode(['drawings' => $drawings]);
         exit;
     }
 

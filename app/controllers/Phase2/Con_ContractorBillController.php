@@ -130,10 +130,40 @@ class Con_ContractorBillController extends Controller
             }
         }
 
-        if (empty($data['project_id']) || empty($data['operator_id']) || empty($data['work_description'])) {
-            setError('Project, Contractor and Work Description are required.');
+        if (empty($data['project_id']) || empty($data['operator_id']) || empty($data['work_order_id']) || empty($data['work_description'])) {
+            setError('Project, Contractor, Work Order, and Work Description are required.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
             exit;
+        }
+
+        // Validate Work Order Budget
+        require_once __DIR__ . '/../../models/Con_WorkOrder.php';
+        $woModel = new \Con_WorkOrder($this->db);
+        $workOrder = $woModel->find($data['work_order_id']);
+        if (!$workOrder) {
+            setError('Invalid Work Order selected.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
+            exit;
+        }
+        
+        $billedSoFarRes = $this->db->query("SELECT COALESCE(SUM(IF(approved_amount IS NOT NULL AND approved_amount > 0, approved_amount, bill_amount)), 0) as total FROM contractor_bill_requests WHERE work_order_id = {$data['work_order_id']} AND status != 'rejected'");
+        $billedSoFar = $billedSoFarRes ? (float)$billedSoFarRes->fetch_assoc()['total'] : 0;
+        
+        $remainingWOAmount = (float)$workOrder['total_amount'] - $billedSoFar;
+        if ($data['bill_amount'] > $remainingWOAmount) {
+            setError('Bill amount (৳' . number_format($data['bill_amount'], 2) . ') exceeds remaining Work Order limit (৳' . number_format($remainingWOAmount, 2) . ').');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
+            exit;
+        }
+
+        // Validate Target if selected
+        if (!empty($data['target_id'])) {
+            $target = $this->targetModel->find($data['target_id']);
+            if ($target && (float)$target['gain_percentage'] <= 0) {
+                setError('Selected target must have a Gain % greater than 0 to submit a bill.');
+                header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
+                exit;
+            }
         }
 
         $workTypeId = $_POST['work_type_id'] ?? null;

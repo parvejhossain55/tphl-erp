@@ -778,6 +778,10 @@ $routes['qc-material-test-store']      = ['controller' => 'Phase2\QCController',
 $routes['qc-ajax-checklists']          = ['controller' => 'Phase2\QCController', 'method' => 'ajaxGetChecklists'];
 $routes['qc-ajax-receiving-items']     = ['controller' => 'Phase2\QCController', 'method' => 'ajaxGetReceivingItems'];
 
+$routes['qc-test-types']               = ['controller' => 'Phase2\QCController', 'method' => 'testTypesIndex'];
+$routes['qc-test-types-store']         = ['controller' => 'Phase2\QCController', 'method' => 'testTypesStore'];
+$routes['qc-test-types-update']        = ['controller' => 'Phase2\QCController', 'method' => 'testTypesUpdate'];
+$routes['qc-test-types-delete']        = ['controller' => 'Phase2\QCController', 'method' => 'testTypesDelete'];
 // ── Operators / Contractors ────────────────────────────────────────────────
 $routes['con-contractors']              = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'index'];
 $routes['con-contractor-create']        = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'create'];
@@ -1007,7 +1011,7 @@ $routes['con-work-order-delete']           = ['controller' => 'Phase2\\Con_WorkO
 $routes['con-ajax-wo-by-project']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetByProject'];
 $routes['con-ajax-wo-work-plans']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetWorkPlans'];
 $routes['con-ajax-wo-targets']             = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetTargets'];
-
+$routes['con-ajax-wo-drawings']            = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetDrawings'];
 
 // ── Financial Transactions ─────────────────────────────────────────────────
 $routes['con-transactions']               = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'index'];

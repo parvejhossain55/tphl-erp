@@ -149,6 +149,7 @@ class Con_TargetFixedController extends Controller
             $approverRole    = 'manager';
             $canApprove      = true;
             $alreadyApproved = !empty($target['approved_by_manager']);
+            // $alreadyApproved = !empty($target['approved_by_pd']) || $alreadyApproved); // PD approval also counts for manager step
         } elseif (in_array($currentRoleId, $qcRoles)) {
             $approverRole    = 'qc';
             $canApprove      = true;
@@ -158,8 +159,7 @@ class Con_TargetFixedController extends Controller
         // Fetch creator info
         $creatorInfo = [];
         if ($createdBy) {
-            $stmt = $this->db->prepare("
-                SELECT u.full_name, COALESCE(d.name,'') AS designation
+            $stmt = $this->db->prepare(" SELECT u.full_name, COALESCE(d.name,'') AS designation
                 FROM   users u
                 LEFT JOIN employees   e ON e.user_id = u.id
                 LEFT JOIN designations d ON d.id = e.designation_id
@@ -170,8 +170,7 @@ class Con_TargetFixedController extends Controller
         }
 
         // Fetch related weekly progress reports for this target
-        $reportsStmt = $this->db->prepare("
-            SELECT w.*, u.full_name as reported_by_name 
+        $reportsStmt = $this->db->prepare(" SELECT w.*, u.full_name as reported_by_name 
             FROM weekly_progress_report w 
             LEFT JOIN users u ON u.id = w.created_by 
             WHERE w.target_id = ? 

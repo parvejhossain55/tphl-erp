@@ -93,6 +93,10 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                             <div class="fw-semibold"><?= htmlspecialchars($wo['project_name'] ?? '-') ?></div>
                         </div>
                         <div class="col-md-6">
+                            <div class="text-muted fs-12">Work Design Type</div>
+                            <div><?= htmlspecialchars($wo['design_type_name'] ?? '-') ?></div>
+                        </div>
+                        <div class="col-md-6">
                             <div class="text-muted fs-12">Work Type</div>
                             <div><?= htmlspecialchars($wo['work_type_name'] ?? '-') ?></div>
                         </div>
@@ -167,35 +171,19 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                 </div>
             </div>
 
-            <!-- Target Fixed Link -->
-            <?php if (!empty($wo['target_title'])): ?>
+            <!-- Working Plan Link -->
+            <?php if (!empty($wo['work_plan_title'])): ?>
             <div class="card custom-card mb-4 border-warning">
                 <div class="card-header bg-warning-transparent">
-                    <h6 class="card-title mb-0"><i class="bi bi-bullseye me-2 text-warning"></i>Linked Target Fixed</h6>
+                    <h6 class="card-title mb-0"><i class="bi bi-bullseye me-2 text-warning"></i>Linked Working Plan</h6>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="text-muted fs-12">Working Plan</div>
                             <div class="fw-semibold"><?= htmlspecialchars($wo['work_plan_title'] ?? '—') ?>
                                 <small class="text-muted">(<?= $wo['plan_month'] ?? '' ?>/<?= $wo['plan_year'] ?? '' ?>)</small>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="text-muted fs-12">Target</div>
-                            <div class="fw-semibold"><?= htmlspecialchars($wo['target_title']) ?></div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-muted fs-12">Week</div>
-                            <div><span class="badge bg-primary">Week <?= $wo['target_week'] ?? '—' ?></span></div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-muted fs-12">Month / Year</div>
-                            <div><?= $wo['target_month'] ?? '—' ?> / <?= $wo['target_year'] ?? '—' ?></div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-muted fs-12">Target %</div>
-                            <div class="fw-bold text-warning"><?= $wo['target_percentage'] ?? 0 ?>%</div>
                         </div>
                     </div>
                 </div>

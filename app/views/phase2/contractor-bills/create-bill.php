@@ -53,9 +53,9 @@ $page_title = $page_title ?? 'New Contractor Bill';
                             <!-- Work Order (cascades from project) -->
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">
-                                    Link to Work Order <span class="text-muted small">(optional)</span>
+                                    Link to Work Order <span class="text-danger">*</span>
                                 </label>
-                                <select name="work_order_id" id="work_order_id" class="form-select" disabled>
+                                <select name="work_order_id" id="work_order_id" class="form-select" required disabled>
                                     <option value="">-- Select Project First --</option>
                                 </select>
                             </div>
@@ -163,7 +163,10 @@ document.getElementById('project_id').addEventListener('change', function () {
             woSel.innerHTML = '<option value="">(No linked work order)</option>';
             if (data.work_orders && data.work_orders.length) {
                 data.work_orders.forEach(wo => {
-                    woSel.innerHTML += `<option value="${wo.id}">${wo.wo_number} — ${wo.title} (${wo.contractor_name})</option>`;
+                    const total = parseFloat(wo.total_amount) || 0;
+                    const billed = parseFloat(wo.billed_amount) || 0;
+                    const rem = total - billed;
+                    woSel.innerHTML += `<option value="${wo.id}">${wo.wo_number} — ${wo.title} (${wo.contractor_name}) | Limit: ৳${rem.toFixed(2)} remaining</option>`;
                 });
                 woSel.disabled = false;
             }
