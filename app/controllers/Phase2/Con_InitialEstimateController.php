@@ -62,7 +62,7 @@ class Con_InitialEstimateController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -453,7 +453,7 @@ class Con_InitialEstimateController extends Controller
         $roleId   = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Role guard: only 1, 3, 15, 22
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             setError('You do not have permission to approve budgets.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;
@@ -495,7 +495,7 @@ class Con_InitialEstimateController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Role guard: only 1, 3, 15, 22 can reject
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             setError('You do not have permission to reject budgets.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;

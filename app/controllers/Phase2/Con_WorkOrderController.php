@@ -121,6 +121,7 @@ class Con_WorkOrderController extends Controller
             'work_type_id'      => !empty($_POST['work_type_id']) ? (int)$_POST['work_type_id'] : null,
             'boq_id'            => !empty($_POST['boq_id'])       ? (int)$_POST['boq_id']       : null,
             'title'             => trim($_POST['title']           ?? ''),
+            'description'       => trim($_POST['description']     ?? ''),
             'scope_of_work'     => trim($_POST['scope_of_work']   ?? ''),
             'notes'             => trim($_POST['notes']           ?? ''),
             'unit'              => trim($_POST['unit']            ?? ''),
@@ -222,14 +223,10 @@ class Con_WorkOrderController extends Controller
         $contractors = $this->contractorModel->getActiveContractors();
         $workTypes   = $this->db->query("SELECT id, work_type_name FROM work_types ORDER BY work_type_name")->fetch_all(MYSQLI_ASSOC);
 
-        // Pre-load work plans and targets for the selected project
+        // Pre-load work plans for the selected project
         $workPlans = [];
-        $targets   = [];
         if (!empty($wo['work_plan_id'])) {
             $workPlans = $this->model->getWorkPlansByProject($wo['project_id']);
-        }
-        if (!empty($wo['target_id']) && !empty($wo['work_plan_id'])) {
-            $targets = $this->model->getTargetsByWorkPlan($wo['work_plan_id']);
         }
 
         $this->view('phase2/work-orders/edit-work-order', [
@@ -240,7 +237,6 @@ class Con_WorkOrderController extends Controller
             'contractors'   => $contractors,
             'workTypes'     => $workTypes,
             'workPlans'     => $workPlans,
-            'targets'       => $targets,
         ]);
     }
 
@@ -270,6 +266,7 @@ class Con_WorkOrderController extends Controller
             'work_type_id'      => !empty($_POST['work_type_id']) ? (int)$_POST['work_type_id'] : null,
             'boq_id'            => !empty($_POST['boq_id'])       ? (int)$_POST['boq_id']       : null,
             'title'             => trim($_POST['title']         ?? ''),
+            'description'       => trim($_POST['description']   ?? ''),
             'scope_of_work'     => trim($_POST['scope_of_work'] ?? ''),
             'notes'             => trim($_POST['notes']         ?? ''),
             'unit'              => trim($_POST['unit']          ?? ''),

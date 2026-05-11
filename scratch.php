@@ -1,13 +1,19 @@
 <?php
-require_once __DIR__ . '/app/config/config.php';
-$db = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($db->connect_error) die("Connection failed: " . $db->connect_error);
-
-$q = $db->query("SELECT COUNT(*) as c FROM con_financial_transactions");
-echo "con_financial_transactions count: " . $q->fetch_assoc()['c'] . "\n";
-
-$q2 = $db->query("SELECT COUNT(*) as c FROM contractor_bill_requests WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')");
-echo "contractor_bill_requests (approved/paid) count: " . $q2->fetch_assoc()['c'] . "\n";
-
-$q3 = $db->query("SELECT COUNT(*) as c FROM vendor_payment_requests WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')");
-echo "vendor_payment_requests (approved/paid) count: " . $q3->fetch_assoc()['c'] . "\n";
+$files = [
+    'app/controllers/Phase2/Con_TargetFixedController.php',
+    'app/controllers/Phase2/Con_WorkingPlanController.php',
+    'app/controllers/Phase2/Con_WeeklyReportController.php',
+    'app/controllers/Phase2/Con_InitialEstimateController.php',
+    'app/controllers/Phase2/QCController.php',
+    'app/controllers/Phase2/Con_DashboardController.php',
+    'app/controllers/Phase2/Con_BOQController.php',
+    'app/controllers/Phase2/Con_WorkOrderController.php'
+];
+foreach($files as $file) {
+    if(!file_exists($file)) continue;
+    $content = file_get_contents($file);
+    $content = str_replace('if (!in_array($roleId, [1, 3, 15, 22])) {', 'if (!in_array($roleId, [1, 3, 22])) {', $content);
+    $content = str_replace("if (in_array(\$roleId, [1, 3, 15, 22])) return '1=1';", "if (in_array(\$roleId, [1, 3, 22])) return '1=1';", $content);
+    file_put_contents($file, $content);
+}
+echo "Done";

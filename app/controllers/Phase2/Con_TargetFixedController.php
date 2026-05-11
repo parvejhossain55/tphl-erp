@@ -52,7 +52,7 @@ class Con_TargetFixedController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -60,11 +60,21 @@ class Con_TargetFixedController extends Controller
         $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
         $workPlans = $this->workPlanModel->getAll();
 
+        $rWOs = $this->db->query("
+            SELECT wo.id, wo.title, wo.wo_number, wo.project_id, wo.work_plan_id, wo.description, dt.name AS design_name
+            FROM con_work_orders wo
+            LEFT JOIN project_drawings pd ON pd.id = wo.design_id
+            LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+            WHERE wo.status != 'rejected' ORDER BY wo.id DESC
+        ");
+        $workOrders = $rWOs ? $rWOs->fetch_all(MYSQLI_ASSOC) : [];
+
         $this->view('phase2/target-fixed/create-target', [
             'current_route' => 'con-targets',
             'page_title'    => 'New Site Target',
             'projects'      => $projects,
             'workPlans'     => $workPlans,
+            'workOrders'    => $workOrders,
         ]);
     }
 
@@ -88,6 +98,7 @@ class Con_TargetFixedController extends Controller
         $data = [
             'project_id'        => $_POST['project_id']        ?? null,
             'work_plan_id'      => $_POST['work_plan_id']      ?? null,
+            'work_order_id'     => !empty($_POST['work_order_id']) ? $_POST['work_order_id'] : null,
             'target_title'      => trim($_POST['target_title'] ?? ''),
             'user_id'           => $_SESSION['user']['id']     ?? null,
             'year'              => $_POST['year']              ?? date('Y'),
@@ -96,7 +107,7 @@ class Con_TargetFixedController extends Controller
             'target_percentage' => $_POST['target_percentage'] ?? 0,
             'is_lab_test'       => $isLabTest,
             'lab_test_date'     => $labTestDate,
-            'target_details'    => trim($_POST['target_details'] ?? ''),
+            'description'       => trim($_POST['description'] ?? ''),
         ];
 
         if (empty($data['project_id']) || empty($data['work_plan_id']) || empty($data['target_title'])) {
@@ -150,10 +161,6 @@ class Con_TargetFixedController extends Controller
             $canApprove      = true;
             $alreadyApproved = !empty($target['approved_by_manager']);
             // $alreadyApproved = !empty($target['approved_by_pd']) || $alreadyApproved); // PD approval also counts for manager step
-        } elseif (in_array($currentRoleId, $qcRoles)) {
-            $approverRole    = 'qc';
-            $canApprove      = true;
-            $alreadyApproved = $qcApproved;
         }
 
         // Fetch creator info
@@ -218,7 +225,7 @@ class Con_TargetFixedController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -226,12 +233,22 @@ class Con_TargetFixedController extends Controller
         $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
         $workPlans = $this->workPlanModel->getAll();
 
+        $rWOs = $this->db->query("
+            SELECT wo.id, wo.title, wo.wo_number, wo.project_id, wo.work_plan_id, wo.description, dt.name AS design_name
+            FROM con_work_orders wo
+            LEFT JOIN project_drawings pd ON pd.id = wo.design_id
+            LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+            WHERE wo.status != 'rejected' ORDER BY wo.id DESC
+        ");
+        $workOrders = $rWOs ? $rWOs->fetch_all(MYSQLI_ASSOC) : [];
+
         $this->view('phase2/target-fixed/edit-target', [
             'current_route' => 'con-targets',
             'page_title'    => 'Edit Target',
             'target'        => $target,
             'projects'      => $projects,
             'workPlans'     => $workPlans,
+            'workOrders'    => $workOrders,
         ]);
     }
 
@@ -255,6 +272,7 @@ class Con_TargetFixedController extends Controller
         $data = [
             'project_id'        => $_POST['project_id']        ?? null,
             'work_plan_id'      => $_POST['work_plan_id']      ?? null,
+            'work_order_id'     => !empty($_POST['work_order_id']) ? $_POST['work_order_id'] : null,
             'target_title'      => trim($_POST['target_title'] ?? ''),
             'year'              => $_POST['year']              ?? date('Y'),
             'month'             => $_POST['month']             ?? date('n'),
@@ -262,7 +280,7 @@ class Con_TargetFixedController extends Controller
             'target_percentage' => $_POST['target_percentage'] ?? 0,
             'is_lab_test'       => $isLabTest,
             'lab_test_date'     => $labTestDate,
-            'target_details'    => trim($_POST['target_details'] ?? ''),
+            'description'       => trim($_POST['description'] ?? ''),
         ];
 
         if (empty($data['project_id']) || empty($data['work_plan_id']) || empty($data['target_title'])) {
@@ -324,58 +342,26 @@ class Con_TargetFixedController extends Controller
         $userId = (int)($_SESSION['user']['id']   ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Role guard — PM (15), Director (3), PM Head (22) or QC (13) can approve
-        $allowedRoles = [3, 13, 15, 22];
+        // Role guard — PM (15), Director (3), PM Head (22) can approve
+        $allowedRoles = [3, 15, 22];
         if (!in_array($roleId, $allowedRoles)) {
             setError('You do not have permission to approve targets.');
             header("Location: {$GLOBALS['base_url']}/con-target/{$id}");
             exit;
         }
 
-        // QC role approves 'qc' step, others approve 'manager' step
-        $step = ($roleId === 13) ? 'qc' : 'manager';
-
-        // Creator cannot self-approve - Removed restriction as PM might create and approve
-        // $target = $this->targetModel->find($id);
-        // if ($target && (int)($target['user_id'] ?? 0) === $userId) {
-        //     setError('You cannot approve a target that you created.');
-        //     header("Location: {$GLOBALS['base_url']}/con-target/{$id}");
-        //     exit;
-        // }
-
-
+        $step = 'manager';
 
         if ($this->targetModel->approveStep($id, $step, $userId)) {
 
-            if ($step === 'qc') {
-                // QC: save photo, notes and gain
-                $photoPath    = null;
-                $fieldDetails = trim($_POST['qc_field_details'] ?? '');
-                $labResult    = trim($_POST['qc_lab_result']    ?? '');
-                $gainPct      = (float)($_POST['qc_gain_pct']   ?? 0);
-
-                if (!empty($_FILES['qc_photo']['name']) && $_FILES['qc_photo']['error'] === UPLOAD_ERR_OK) {
-                    $uploadDir = __DIR__ . '/../../../public/uploads/target-photos/';
-                    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-                    $filename = time() . '_' . basename($_FILES['qc_photo']['name']);
-                    if (move_uploaded_file($_FILES['qc_photo']['tmp_name'], $uploadDir . $filename)) {
-                        $photoPath = 'uploads/target-photos/' . $filename;
-                    }
-                }
-                $this->targetModel->updateGain($id, $gainPct, $photoPath ?: null, $fieldDetails ?: null, $labResult ?: null);
-
-                // Also save qc_reviewed_by_id / qc_reviewed_at (already done in approveStep 'qc')
-                setSuccess('QC Review & approval recorded successfully!');
-
-            } else {
-                // Manager: store who approved and when
-                $upd = $this->db->prepare(
-                    "UPDATE target_fixed SET manager_approved_by_id = ?, manager_approved_at = NOW() WHERE id = ?"
-                );
-                if ($upd) {
-                    $upd->bind_param('ii', $userId, $id);
-                    $upd->execute();
-                }
+            // Manager: store who approved and when
+            $upd = $this->db->prepare(
+                "UPDATE target_fixed SET manager_approved_by_id = ?, manager_approved_at = NOW() WHERE id = ?"
+            );
+            if ($upd) {
+                $upd->bind_param('ii', $userId, $id);
+                $upd->execute();
+            }
                 setSuccess('Approval recorded successfully!');
             }
 

@@ -33,6 +33,7 @@ class Con_WorkingPlan extends Model
                        p.name        AS project_name,
                        b.total_estimated_cost AS budget_total,
                        wt.work_type_name       AS work_type_name,
+                       dt.name       AS design_type_name,
                        u.full_name   AS created_by_name,
                        ap.full_name  AS approved_by_name,
                        ap_r.name     AS approved_by_role
@@ -40,6 +41,7 @@ class Con_WorkingPlan extends Model
                 LEFT JOIN projects                 p    ON p.id    = w.project_id
                 LEFT JOIN initial_estimate_budgets b    ON b.id    = w.initial_budget_id
                 LEFT JOIN work_types               wt   ON wt.id   = w.work_type_id
+                LEFT JOIN design_types             dt   ON dt.id   = wt.design_type_id
                 LEFT JOIN users                    u    ON u.id    = w.created_by
                 LEFT JOIN users                    ap   ON ap.id   = w.approved_by
                 LEFT JOIN roles                    ap_r ON ap_r.id = ap.role_id
@@ -56,6 +58,7 @@ class Con_WorkingPlan extends Model
                     p.name AS project_name,
                     b.total_estimated_cost AS budget_total,
                     wt.work_type_name AS work_type_name,
+                    dt.name       AS design_type_name,
                     u.full_name  AS created_by_name,
                     ap.full_name AS approved_by_name,
                     ap_r.name    AS approved_by_role
@@ -63,6 +66,7 @@ class Con_WorkingPlan extends Model
              LEFT JOIN projects                 p    ON p.id    = w.project_id
              LEFT JOIN initial_estimate_budgets b    ON b.id    = w.initial_budget_id
              LEFT JOIN work_types               wt   ON wt.id   = w.work_type_id
+             LEFT JOIN design_types             dt   ON dt.id   = wt.design_type_id
              LEFT JOIN users                    u    ON u.id    = w.created_by
              LEFT JOIN users                    ap   ON ap.id   = w.approved_by
              LEFT JOIN roles                    ap_r ON ap_r.id = ap.role_id
@@ -77,10 +81,11 @@ class Con_WorkingPlan extends Model
     public function getByBudget($budgetId)
     {
         $stmt = $this->db->prepare(
-            "SELECT w.*, p.name AS project_name, wt.work_type_name AS work_type_name
+            "SELECT w.*, p.name AS project_name, wt.work_type_name AS work_type_name, dt.name AS design_type_name
              FROM {$this->planTable} w
              LEFT JOIN projects    p  ON p.id  = w.project_id
              LEFT JOIN work_types  wt ON wt.id = w.work_type_id
+             LEFT JOIN design_types dt ON dt.id = wt.design_type_id
              WHERE w.initial_budget_id = ?
              ORDER BY w.year ASC, w.month ASC"
         );
@@ -97,6 +102,7 @@ class Con_WorkingPlan extends Model
                     p.name  AS project_name,
                     b.total_estimated_cost AS budget_total,
                     wt.work_type_name AS work_type_name,
+                    dt.name       AS design_type_name,
                     u.full_name  AS created_by_name,
                     ap.full_name AS approved_by_name,
                     ap_r.name    AS approved_by_role
@@ -104,6 +110,7 @@ class Con_WorkingPlan extends Model
              LEFT JOIN projects                 p    ON p.id    = w.project_id
              LEFT JOIN initial_estimate_budgets b    ON b.id    = w.initial_budget_id
              LEFT JOIN work_types               wt   ON wt.id   = w.work_type_id
+             LEFT JOIN design_types             dt   ON dt.id   = wt.design_type_id
              LEFT JOIN users                    u    ON u.id    = w.created_by
              LEFT JOIN users                    ap   ON ap.id   = w.approved_by
              LEFT JOIN roles                    ap_r ON ap_r.id = ap.role_id

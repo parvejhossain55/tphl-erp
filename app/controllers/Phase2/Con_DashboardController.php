@@ -265,6 +265,25 @@ class Con_DashboardController extends Controller
         ");
         $pendingReturns = $rPendingReturns ? $rPendingReturns->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── Pending Work Orders ──────────────────────────────────
+        $pendingWorkOrders = [];
+        if (in_array($userRole, [1, 3, 22])) {
+            $rWO = $this->db->query("
+                SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
+                       p.name AS project_name,
+                       c.name AS contractor_name,
+                       u.full_name AS creator_name
+                FROM con_work_orders wo
+                LEFT JOIN projects p ON p.id = wo.project_id
+                LEFT JOIN contractors c ON c.id = wo.contractor_id
+                LEFT JOIN users u ON u.id = wo.created_by
+                WHERE wo.status = 'draft'
+                ORDER BY wo.created_at DESC
+                LIMIT 10
+            ");
+            $pendingWorkOrders = $rWO ? $rWO->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
         $this->view('phase2/dashboard/cons-dashboard', [
             'current_route'           => 'con-dashboard',
             'stats'                   => $stats,
@@ -282,6 +301,7 @@ class Con_DashboardController extends Controller
             'pendingGRNsPM'           => $pendingGRNsPM,
             'pendingWeeklyReportsPM'  => $pendingWeeklyReportsPM,
             'pendingReturns'          => $pendingReturns,
+            'pendingWorkOrders'       => $pendingWorkOrders,
             'weekTargetNotifications' => $weekTargetNotifications,
             'labDueNotifications'     => $labDueNotifications,
             'currentWeek'             => $curWeek,
@@ -300,7 +320,7 @@ class Con_DashboardController extends Controller
     {
         $userId = $_SESSION['user']['id'] ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
-        if (in_array($roleId, [1, 3, 15, 22])) return '1=1';
+        if (in_array($roleId, [1, 3, 22])) return '1=1';
         return "({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 

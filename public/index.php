@@ -772,6 +772,7 @@ $routes['purchase-executive-dashboard']          = ['controller' => 'Phase2\Con_
 // ── QC Module ──────────────────────────────────────────────────────────────
 $routes['qc-dashboard']                = ['controller' => 'Phase2\QCController', 'method' => 'index'];
 $routes['qc-inspection-create']        = ['controller' => 'Phase2\QCController', 'method' => 'createInspection'];
+$routes['qc-inspection/(\d+)']         = ['controller' => 'Phase2\QCController', 'method' => 'showInspection'];
 $routes['qc-inspection-store']         = ['controller' => 'Phase2\QCController', 'method' => 'storeInspection'];
 $routes['qc-material-test-create']     = ['controller' => 'Phase2\QCController', 'method' => 'createMaterialTest'];
 $routes['qc-material-test-store']      = ['controller' => 'Phase2\QCController', 'method' => 'storeMaterialTest'];
@@ -781,8 +782,15 @@ $routes['qc-ajax-receiving-items']     = ['controller' => 'Phase2\QCController',
 $routes['qc-test-types']               = ['controller' => 'Phase2\QCController', 'method' => 'testTypesIndex'];
 $routes['qc-test-types-store']         = ['controller' => 'Phase2\QCController', 'method' => 'testTypesStore'];
 $routes['qc-test-types-update']        = ['controller' => 'Phase2\QCController', 'method' => 'testTypesUpdate'];
-$routes['qc-test-types-delete']        = ['controller' => 'Phase2\QCController', 'method' => 'testTypesDelete'];
+$routes['qc-test-types-delete']        = ['controller' => 'Phase2\\QCController', 'method' => 'testTypesDelete'];
+
+// ── QC Checklist Management ────────────────────────────────────────────────
+$routes['qc-checklists']               = ['controller' => 'Phase2\\QCController', 'method' => 'checklistsIndex'];
+$routes['qc-checklist-store']          = ['controller' => 'Phase2\\QCController', 'method' => 'checklistStore'];
+$routes['qc-checklist-update']         = ['controller' => 'Phase2\\QCController', 'method' => 'checklistUpdate'];
+$routes['qc-checklist-delete']         = ['controller' => 'Phase2\\QCController', 'method' => 'checklistDelete'];
 // ── Operators / Contractors ────────────────────────────────────────────────
+
 $routes['con-contractors']              = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'index'];
 $routes['con-contractor-create']        = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'create'];
 $routes['con-contractor-store']         = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'store'];

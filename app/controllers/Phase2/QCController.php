@@ -40,7 +40,7 @@ class QCController extends Controller
     {
         $userId = $_SESSION['user']['id'] ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
-        if (in_array($roleId, [1, 3, 15, 22])) return '1=1';
+        if (in_array($roleId, [1, 3, 22])) return '1=1';
         return "({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 
@@ -91,9 +91,8 @@ class QCController extends Controller
         }
         $assignedProjects = $rAssigned ? (int)$rAssigned->fetch_assoc()['c'] : 0;
 
-        // ── KPI 2: Pending Targets (awaiting QC approval) ─────────────────
-        $rTargetCount = $this->db->query("SELECT COUNT(*) AS c FROM target_fixed WHERE approved_by_qc = 0");
-        $pendingTargetsCount = $rTargetCount ? (int)$rTargetCount->fetch_assoc()['c'] : 0;
+        // ── KPI 2: Pending Targets (Removed - targets no longer require QC approval) ─────────────────
+        $pendingTargetsCount = 0;
 
         // ── KPI 3: Pending GRNs awaiting QC ───────────────────────────────
         $rGRNCount = $this->db->query("SELECT COUNT(*) AS c FROM material_receiving WHERE overall_status = 'Pending QC'");
@@ -108,7 +107,7 @@ class QCController extends Controller
         $totalMaterialTests = $rTestCount ? (int)$rTestCount->fetch_assoc()['c'] : 0;
 
         // ── KPI 6: Pending Weekly Reports awaiting QC ────────────────────
-        $rWkCount = $this->db->query("SELECT COUNT(*) AS c FROM weekly_progress_report WHERE approved_by_qc = 0");
+        $rWkCount = $this->db->query("SELECT COUNT(*) AS c FROM weekly_progress_report WHERE (approved_by_qc = 0 OR approved_by_qc IS NULL)");
         $pendingWeeklyCount = $rWkCount ? (int)$rWkCount->fetch_assoc()['c'] : 0;
 
         // ── Project Progress (only assigned projects) ─────────────────────
@@ -126,21 +125,8 @@ class QCController extends Controller
             ORDER BY p.id DESC LIMIT 6");
         $projects = $rProj ? $rProj->fetch_all(MYSQLI_ASSOC) : [];
 
-        // ── Pending Targets (full rows for table) ─────────────────────────
-        $rPendingTargets = $this->db->query("
-            SELECT tf.id, tf.target_title, tf.target_percentage, tf.gain_percentage,
-                   tf.year, tf.month, tf.week_number, tf.created_at,
-                   p.name        AS project_name,
-                   u.full_name   AS creator_name,
-                   COALESCE(des.name,'') AS creator_designation
-            FROM target_fixed tf
-            LEFT JOIN projects     p   ON p.id  = tf.project_id
-            LEFT JOIN users        u   ON u.id  = tf.user_id
-            LEFT JOIN employees    emp ON emp.user_id = u.id
-            LEFT JOIN designations des ON des.id = emp.designation_id
-            WHERE tf.approved_by_qc = 0
-            ORDER BY tf.created_at DESC LIMIT 10");
-        $pendingTargets = $rPendingTargets ? $rPendingTargets->fetch_all(MYSQLI_ASSOC) : [];
+        // ── Pending Targets (Removed) ─────────────────────────
+        $pendingTargets = [];
 
         // ── Pending GRNs (full rows for table) ───────────────────────────
         $rPendingGRNsQC = $this->db->query("
@@ -164,7 +150,7 @@ class QCController extends Controller
             FROM weekly_progress_report r
             LEFT JOIN projects p ON p.id = r.project_id
             LEFT JOIN users u ON u.id = r.created_by
-            WHERE r.approved_by_qc = 0
+            WHERE (r.approved_by_qc = 0 OR r.approved_by_qc IS NULL)
             ORDER BY r.id DESC LIMIT 10");
         $pendingWeeklyReportsQC = $rPendingWeeklyQC ? $rPendingWeeklyQC->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -213,9 +199,115 @@ class QCController extends Controller
         ]);
     }
 
+    // =========================================================================
+    // CHECKLIST MANAGEMENT
+    // =========================================================================
+    public function checklistsIndex()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $selectedWorkTypeId = (int)($_GET['work_type_id'] ?? 0);
+
+        // Get all work types with checklist count
+        $rWt = $this->db->query("
+            SELECT wt.id, wt.work_type_name,
+                   (SELECT COUNT(*) FROM qc_checklists qc WHERE qc.work_type_id = wt.id) AS checklist_count
+            FROM work_types wt
+            ORDER BY wt.work_type_name ASC
+        ");
+        $workTypes = $rWt ? $rWt->fetch_all(MYSQLI_ASSOC) : [];
+
+        $selectedWorkType = null;
+        $checklists = [];
+
+        if ($selectedWorkTypeId) {
+            // Get selected work type
+            $stWt = $this->db->prepare("SELECT * FROM work_types WHERE id = ?");
+            $stWt->bind_param('i', $selectedWorkTypeId);
+            $stWt->execute();
+            $selectedWorkType = $stWt->get_result()->fetch_assoc();
+
+            // Get checklists for this work type
+            $checklists = $this->qcChecklistModel->getByWorkType($selectedWorkTypeId);
+        }
+
+        $this->view('phase2/qc/checklists/index', [
+            'current_route'        => 'qc-checklists',
+            'page_title'           => 'QC Checklist Management',
+            'workTypes'            => $workTypes,
+            'selectedWorkTypeId'   => $selectedWorkTypeId,
+            'selectedWorkType'     => $selectedWorkType,
+            'checklists'           => $checklists,
+        ]);
+    }
+
+    public function checklistStore()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $workTypeId = (int)($_POST['work_type_id'] ?? 0);
+        $itemName   = trim($_POST['checklist_item_name'] ?? '');
+
+        if (!$workTypeId || empty($itemName)) {
+            setError('Work type and item name are required.');
+            header("Location: {$GLOBALS['base_url']}/qc-checklists?work_type_id={$workTypeId}");
+            exit;
+        }
+
+        $data = ['work_type_id' => $workTypeId, 'checklist_item_name' => $itemName, 'created_by' => $userId];
+        if ($this->qcChecklistModel->create($data)) {
+            setSuccess('Checklist item added successfully!');
+        } else {
+            setError('Failed to add checklist item.');
+        }
+        header("Location: {$GLOBALS['base_url']}/qc-checklists?work_type_id={$workTypeId}");
+        exit;
+    }
+
+    public function checklistUpdate()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id         = (int)($_POST['id'] ?? 0);
+        $workTypeId = (int)($_POST['work_type_id'] ?? 0);
+        $itemName   = trim($_POST['checklist_item_name'] ?? '');
+
+        if (!$id || empty($itemName)) {
+            setError('Item name is required.');
+            header("Location: {$GLOBALS['base_url']}/qc-checklists?work_type_id={$workTypeId}");
+            exit;
+        }
+
+        $stmt = $this->db->prepare("UPDATE qc_checklists SET checklist_item_name = ? WHERE id = ?");
+        $stmt->bind_param('si', $itemName, $id);
+        if ($stmt->execute()) {
+            setSuccess('Checklist item updated!');
+        } else {
+            setError('Update failed.');
+        }
+        header("Location: {$GLOBALS['base_url']}/qc-checklists?work_type_id={$workTypeId}");
+        exit;
+    }
+
+    public function checklistDelete()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id         = (int)($_POST['id'] ?? 0);
+        $workTypeId = (int)($_POST['work_type_id'] ?? 0);
+
+        if ($id) {
+            $stmt = $this->db->prepare("DELETE FROM qc_checklists WHERE id = ?");
+            $stmt->bind_param('i', $id);
+            $stmt->execute() ? setSuccess('Checklist item deleted.') : setError('Delete failed.');
+        }
+        header("Location: {$GLOBALS['base_url']}/qc-checklists?work_type_id={$workTypeId}");
+        exit;
+    }
+
+
     private function uploadFile($fileData, $uploadPath = 'uploads/qc/')
     {
         if (empty($fileData['name'])) return null;
+
         
         $baseDir = __DIR__ . '/../../../../public/' . $uploadPath;
         if (!is_dir($baseDir)) mkdir($baseDir, 0777, true);
@@ -227,6 +319,74 @@ class QCController extends Controller
             return $uploadPath . $newName;
         }
         return null;
+    }
+
+    public function showInspection($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id = (int)$id;
+
+        // Fetch main inspection with joins
+        $stmt = $this->db->prepare("
+            SELECT qi.*,
+                   p.name  AS project_name,
+                   wt.work_type_name,
+                   u.full_name AS inspector_name
+            FROM qc_inspections qi
+            LEFT JOIN projects p   ON p.id  = qi.project_id
+            LEFT JOIN work_types wt ON wt.id = qi.work_type_id
+            LEFT JOIN users u      ON u.id  = qi.inspector_id
+            WHERE qi.id = ?
+        ");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $ins = $stmt->get_result()->fetch_assoc();
+
+        if (!$ins) {
+            setError('Inspection not found.');
+            header("Location: {$GLOBALS['base_url']}/qc-dashboard");
+            exit;
+        }
+
+        // Fetch checklist items with checklist name
+        $stmtItems = $this->db->prepare("
+            SELECT qii.*, qc.checklist_item_name
+            FROM qc_inspection_items qii
+            LEFT JOIN qc_checklists qc ON qc.id = qii.qc_checklist_id
+            WHERE qii.qc_inspection_id = ?
+            ORDER BY qii.id ASC
+        ");
+        $stmtItems->bind_param('i', $id);
+        $stmtItems->execute();
+        $items = $stmtItems->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Fetch related project drawings via work_type → design_type → project_drawings
+        $stmtDrawings = $this->db->prepare("
+            SELECT pd.*,
+                   dt.name AS design_type_name,
+                   u.full_name AS designer_user_name,
+                   ab.full_name AS approved_by_name
+            FROM project_drawings pd
+            LEFT JOIN design_types dt  ON dt.id  = pd.design_type_id
+            LEFT JOIN users u          ON u.id   = pd.user_id
+            LEFT JOIN users ab         ON ab.id  = pd.approved_by_id
+            WHERE pd.project_id = ?
+              AND pd.design_type_id = (
+                  SELECT design_type_id FROM work_types WHERE id = ? LIMIT 1
+              )
+            ORDER BY pd.id DESC
+        ");
+        $stmtDrawings->bind_param('ii', $ins['project_id'], $ins['work_type_id']);
+        $stmtDrawings->execute();
+        $drawings = $stmtDrawings->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $this->view('phase2/qc/show-inspection', [
+            'current_route' => 'qc-dashboard',
+            'page_title'    => 'Inspection #' . $id,
+            'ins'           => $ins,
+            'items'         => $items,
+            'drawings'      => $drawings,
+        ]);
     }
 
     public function createInspection()

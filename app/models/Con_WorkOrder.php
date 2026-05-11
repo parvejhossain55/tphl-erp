@@ -130,17 +130,17 @@ class Con_WorkOrder extends Model
 
         $sql = "INSERT INTO {$this->table}
                 (project_id, contractor_id, design_id, work_type_id, boq_id, wo_number, title,
-                 scope_of_work, notes, unit, unit_rate, quantity, total_amount,
+                 scope_of_work, notes, description, unit, unit_rate, quantity, total_amount,
                  start_date, end_date,
                  advance_percent, running_percent, retention_percent,
                  advance_amount, retention_amount,
                  work_plan_id,
                  status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)";
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiiiiisssssdddssddddiii',
+            'iiiiiisssssssdddssddddiii',
             $data['project_id'],
             $data['contractor_id'],
             $data['design_id'],
@@ -150,6 +150,7 @@ class Con_WorkOrder extends Model
             $data['title'],
             $data['scope_of_work'],
             $data['notes'],
+            $data['description'],
             $data['unit'],
             $data['unit_rate'],
             $data['quantity'],
@@ -175,7 +176,7 @@ class Con_WorkOrder extends Model
     {
         $sql = "UPDATE {$this->table}
                 SET project_id=?, contractor_id=?, design_id=?, work_type_id=?, boq_id=?, title=?,
-                    scope_of_work=?, notes=?, unit=?, unit_rate=?, quantity=?, total_amount=?,
+                    scope_of_work=?, notes=?, description=?, unit=?, unit_rate=?, quantity=?, total_amount=?,
                     start_date=?, end_date=?,
                     advance_percent=?, running_percent=?, retention_percent=?,
                     advance_amount=?, retention_amount=?,
@@ -184,7 +185,7 @@ class Con_WorkOrder extends Model
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiiiiissssdddssddddii',
+            'iiiiiisssssdddssddddii',
             $data['project_id'],
             $data['contractor_id'],
             $data['design_id'],
@@ -193,6 +194,7 @@ class Con_WorkOrder extends Model
             $data['title'],
             $data['scope_of_work'],
             $data['notes'],
+            $data['description'],
             $data['unit'],
             $data['unit_rate'],
             $data['quantity'],

@@ -77,6 +77,11 @@ $page_title = $page_title ?? 'New Work Order';
                                 <small class="text-muted">Select Project first to load plans</small>
                             </div>
                             <div class="col-12">
+                                <label class="form-label fw-semibold">Description</label>
+                                <textarea name="description" class="form-control" rows="3"
+                                          placeholder="Enter description..."></textarea>
+                            </div>
+                            <div class="col-12 mt-3">
                                 <label class="form-label fw-semibold">Scope of Work</label>
                                 <textarea name="scope_of_work" class="form-control" rows="4"
                                           placeholder="Describe the full scope of work assigned to the contractor..."></textarea>

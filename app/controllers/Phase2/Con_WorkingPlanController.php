@@ -57,7 +57,7 @@ class Con_WorkingPlanController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -168,7 +168,7 @@ class Con_WorkingPlanController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -274,7 +274,7 @@ class Con_WorkingPlanController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -449,10 +449,23 @@ class Con_WorkingPlanController extends Controller
             ];
         }, $workTypesRaw);
 
+        // Work Orders for this project
+        $stmtWo = $this->db->prepare(
+            "SELECT wo.id, wo.title, wo.wo_number, wo.description, dt.name AS design_name 
+             FROM con_work_orders wo
+             LEFT JOIN project_drawings pd ON pd.id = wo.design_id
+             LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+             WHERE wo.project_id = ? AND wo.status != 'rejected' ORDER BY wo.id DESC"
+        );
+        $stmtWo->bind_param('i', $projectId);
+        $stmtWo->execute();
+        $workOrders = $stmtWo->get_result()->fetch_all(MYSQLI_ASSOC);
+
         echo json_encode([
-            'work_plans' => $workPlans, 
-            'budgets'    => $budgets,
-            'work_types' => $workTypes
+            'work_plans'  => $workPlans, 
+            'budgets'     => $budgets,
+            'work_types'  => $workTypes,
+            'work_orders' => $workOrders
         ]);
         exit;
     }

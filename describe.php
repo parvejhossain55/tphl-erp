@@ -1,7 +1,7 @@
 <?php
-require 'C:/xampp/htdocs/TPHL-ERP/config/database.php';
-$db = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-$result = $db->query('DESCRIBE material_receiving');
-while ($row = $result->fetch_assoc()) {
-    echo $row['Field'] . "\n";
+$db = new mysqli('127.0.0.1', 'root', '', 'tphl_erp');
+$res = $db->query('DESCRIBE target_fixed;');
+while($row = $res->fetch_assoc()) {
+    echo $row['Field'] . ' | ';
 }
+echo "\n";
