@@ -162,7 +162,7 @@ $approverRole = $approverRole ?? null;
     <div class="wr-info-val"><?= $r['report_date'] ?? '—' ?></div>
   </div>
   <div class="wr-info-item">
-    <div class="wr-info-lbl">Site Engineer</div>
+    <div class="wr-info-lbl">Create Report /Site Engineer</div>
     <div class="wr-info-val"><?= htmlspecialchars($r['engineer_name'] ?? '—') ?></div>
   </div>
 </div>
@@ -215,6 +215,50 @@ $approverRole = $approverRole ?? null;
   <?php endif; ?>
 </div>
 
+<?php if (!empty($r['approved_by_qc'])): ?>
+<div class="row mt-2 mb-4">
+  <div class="col-12">
+    <div class="wr-card" style="border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.03)">
+      <div class="wr-sec" style="color:#4f46e5; border-bottom-color: rgba(99,102,241,.15);">
+        <i class="fal fa-flask"></i> QC Findings & Results
+      </div>
+      
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div style="flex:1;min-width:250px">
+          <div style="margin-bottom:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Gain % (Actual)</div>
+            <div style="font-size:14px;font-weight:800;color:#4f46e5"><?= number_format((float)($r['qc_gain_percentage'] ?? 0), 2) ?>%</div>
+          </div>
+          
+          <?php if (!empty($r['qc_field_test_details'])): ?>
+          <div style="margin-bottom:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Field Test Details</div>
+            <div style="font-size:13px;line-height:1.6;color:var(--text)"><?= nl2br(htmlspecialchars($r['qc_field_test_details'])) ?></div>
+          </div>
+          <?php endif; ?>
+          
+          <?php if (!empty($r['qc_lab_test_result'])): ?>
+          <div style="margin-bottom:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Lab Test Result</div>
+            <div style="font-size:13px;line-height:1.6;color:var(--text)"><?= nl2br(htmlspecialchars($r['qc_lab_test_result'])) ?></div>
+          </div>
+          <?php endif; ?>
+        </div>
+        
+        <?php if (!empty($r['qc_photo'])): ?>
+        <div style="width:200px">
+          <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Site Photo</div>
+          <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($r['qc_photo']) ?>" target="_blank">
+            <img src="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($r['qc_photo']) ?>" alt="QC Photo" style="width:100%;border-radius:8px;border:1px solid rgba(0,0,0,.1)">
+          </a>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- Actions -->
 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:30px;align-items:center">
   <a href="<?= $base ?>/con-weekly-reports"
@@ -231,12 +275,57 @@ $approverRole = $approverRole ?? null;
   <div style="flex-grow:1"></div>
 
   <?php if ($canApprove && !$alreadyApproved): ?>
-    <form action="<?= $base ?>/con-weekly-report-approve/<?= $r['id'] ?>" method="POST" style="margin:0">
-      <button type="submit" class="btn btn-success fw-bold" style="border-radius:10px;padding:9px 22px;font-size:12px"
-        onclick="return confirm('Approve this Weekly Progress Report?');">
-        <i class="fal fa-check-double me-1"></i> Approve Report as <?= strtoupper($approverRole) ?>
-      </button>
-    </form>
+    <?php if ($approverRole === 'qc'): ?>
+      <!-- QC Approval Form -->
+      <div style="flex-basis: 100%; margin-top: 10px;">
+        <div class="wr-card" style="border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.03)">
+          <div class="wr-sec" style="color:#4f46e5; border-bottom-color: rgba(99,102,241,.15);">
+            <i class="fal fa-flask"></i> QC Review & Approval
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
+            <i class="fal fa-flask me-1"></i> Submit QC findings and approve this report.
+          </div>
+          <form action="<?= $base ?>/con-weekly-report-approve/<?= $r['id'] ?>" method="POST" enctype="multipart/form-data" style="margin:0">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div>
+                <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Gain % (Actual)</label>
+                <input type="number" name="qc_gain_pct" class="form-control form-control-sm"
+                  step="0.01" min="0" max="100" value="0" placeholder="0.00">
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">
+                  <i class="fal fa-camera me-1"></i>Site Photo
+                </label>
+                <input type="file" name="qc_photo" class="form-control form-control-sm" accept="image/*">
+              </div>
+            </div>
+            <div style="margin-bottom:10px">
+              <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Field Test Details</label>
+              <textarea name="qc_field_details" rows="2" class="form-control form-control-sm"
+                placeholder="Describe field test observations..."></textarea>
+            </div>
+            <div style="margin-bottom:14px">
+              <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Lab Test Result</label>
+              <textarea name="qc_lab_result" rows="2" class="form-control form-control-sm"
+                placeholder="Lab test result summary..."></textarea>
+            </div>
+            <button type="submit"
+              style="width:100%;background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;border:none;
+              border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer"
+              onclick="return confirm('Submit QC review and approve this report?')">
+              <i class="fal fa-flask me-2"></i>Submit QC Review & Approve
+            </button>
+          </form>
+        </div>
+      </div>
+    <?php else: ?>
+      <form action="<?= $base ?>/con-weekly-report-approve/<?= $r['id'] ?>" method="POST" style="margin:0">
+        <button type="submit" class="btn btn-success fw-bold" style="border-radius:10px;padding:9px 22px;font-size:12px"
+          onclick="return confirm('Approve this Weekly Progress Report?');">
+          <i class="fal fa-check-double me-1"></i> Approve Report as <?= strtoupper($approverRole) ?>
+        </button>
+      </form>
+    <?php endif; ?>
   <?php elseif ($alreadyApproved): ?>
     <div style="font-size:12px;font-weight:700;color:#059669;padding:9px 22px;background:rgba(16,185,129,.1);border-radius:10px">
       <i class="fal fa-check-circle me-1"></i> You Approved This

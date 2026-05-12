@@ -268,7 +268,6 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <input type="hidden" name="settlement_type" value="emi_due_settlement">
                                 <small class="text-muted d-block mt-1">Amount field will be auto-capped to the selected EMI's remaining due. Service charge applies on settled amount.</small>
                             </div>
                         </div>

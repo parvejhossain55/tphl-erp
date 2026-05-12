@@ -56,11 +56,16 @@ $months     = ['January','February','March','April','May','June','July','August'
                             </a>
                         </div>
 
-                        <!-- Design Type (auto-filled) -->
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Design Type</label>
-                            <input type="text" id="design_type_display" class="form-control " readonly
-                                   placeholder="Auto-filled on plan selection">
+                        <!-- Target Linked To -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold">Work Order (Optional)</label>
+                                <select name="work_order_id" id="work_order_id" class="form-select" disabled>
+                                    <option value="">-- Select Project First --</option>
+                                </select>
+                                <div class="form-text">Link this target to a specific work order.</div>
+                                <div id="woDetailsBox" class="mt-2 d-none p-2 bg-light border rounded small text-muted"></div>
+                            </div>
                         </div>
 
                         <!-- Target Title -->
@@ -131,13 +136,13 @@ $months     = ['January','February','March','April','May','June','July','August'
                             </div>
                         </div>
 
-                        <!-- Target Details / Description -->
+                        <!-- Target Description -->
                         <div class="mb-4">
                             <label class="form-label fw-semibold">
-                                <i class="bi bi-card-text me-1"></i> Target Details / Description
+                                <i class="bi bi-card-text me-1"></i> Description
                             </label>
-                            <textarea name="target_details" class="form-control" rows="3"
-                                      placeholder="এই target সম্পর্কে বিস্তারিত লিখুন..."></textarea>
+                            <textarea name="description" class="form-control" rows="3" id="tinymce_simple_textarea"
+                                      placeholder="Description..."></textarea>
                         </div>
 
                         <div class="d-flex gap-2">
@@ -159,19 +164,23 @@ const BASE_URL = '<?= $base_url ?>';
 document.getElementById('project_id').addEventListener('change', function () {
     const pid = this.value;
     const planSel   = document.getElementById('work_plan_id');
+    const woSel     = document.getElementById('work_order_id');
+    const woDetails = document.getElementById('woDetailsBox');
     const planInfo  = document.getElementById('planInfo');
-    const dtDisplay = document.getElementById('design_type_display');
     const budgetCard= document.getElementById('budgetInfoCard');
     const budgetTxt = document.getElementById('budgetInfoText');
 
     planSel.innerHTML = '<option value="">-- Loading... --</option>';
     planSel.disabled  = true;
-    dtDisplay.value   = '';
+    woSel.innerHTML   = '<option value="">-- Loading... --</option>';
+    woSel.disabled    = true;
+    woDetails.classList.add('d-none');
     planInfo.textContent = '';
     budgetCard.classList.add('d-none');
 
     if (!pid) {
         planSel.innerHTML = '<option value="">-- Select Project First --</option>';
+        woSel.innerHTML = '<option value="">-- Select Project First --</option>';
         return;
     }
 
@@ -179,7 +188,7 @@ document.getElementById('project_id').addEventListener('change', function () {
         .then(r => r.json())
         .then(data => {
             planSel.innerHTML = '<option value="">-- Select Working Plan --</option>';
-            if (!data.work_plans.length) {
+            if (!data.work_plans || !data.work_plans.length) {
                 planSel.innerHTML += '<option disabled>No plans found for this project</option>';
             } else {
                 data.work_plans.forEach(p => {
@@ -194,22 +203,40 @@ document.getElementById('project_id').addEventListener('change', function () {
                 });
             }
             planSel.disabled = false;
+
+            woSel.innerHTML = '<option value="">-- Select Work Order --</option>';
+            if (data.work_orders && data.work_orders.length) {
+                data.work_orders.forEach(w => {
+                    const opt = document.createElement('option');
+                    opt.value = w.id;
+                    opt.textContent = w.wo_number + ' - ' + w.title;
+                    opt.dataset.desc = w.description || '';
+                    opt.dataset.design = w.design_name || '';
+                    woSel.appendChild(opt);
+                });
+            } else {
+                woSel.innerHTML += '<option disabled>No active work orders found</option>';
+            }
+            woSel.disabled = false;
         })
         .catch(() => {
             planSel.innerHTML = '<option value="">-- Error loading plans --</option>';
             planSel.disabled  = false;
+            woSel.innerHTML = '<option value="">-- Error loading work orders --</option>';
+            woSel.disabled = false;
         });
 });
 
 document.getElementById('work_plan_id').addEventListener('change', function () {
     const opt       = this.options[this.selectedIndex];
-    const dtDisplay = document.getElementById('design_type_display');
     const planInfo  = document.getElementById('planInfo');
     const budgetCard= document.getElementById('budgetInfoCard');
     const budgetTxt = document.getElementById('budgetInfoText');
 
-    dtDisplay.value      = opt.dataset.design || '';
-    planInfo.textContent = opt.dataset.desc   ? '📋 ' + opt.dataset.desc : '';
+    let planHtml = '';
+    if (opt.dataset.design) planHtml += `<strong>Design:</strong> ${opt.dataset.design}<br>`;
+    if (opt.dataset.desc) planHtml += `<strong>Description:</strong> ${opt.dataset.desc}`;
+    planInfo.innerHTML = planHtml;
 
     if (opt.dataset.budget) {
         budgetCard.classList.remove('d-none');
@@ -223,6 +250,20 @@ document.getElementById('work_plan_id').addEventListener('change', function () {
     } else {
         budgetCard.classList.add('d-none');
         budgetCard.classList.remove('d-flex');
+    }
+});
+
+document.getElementById('work_order_id').addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    const detailsBox = document.getElementById('woDetailsBox');
+    if (this.value && (opt.dataset.desc || opt.dataset.design)) {
+        let html = '';
+        if (opt.dataset.design) html += `<strong>Design:</strong> ${opt.dataset.design}<br>`;
+        if (opt.dataset.desc) html += `<strong>Description:</strong> ${opt.dataset.desc}`;
+        detailsBox.innerHTML = html;
+        detailsBox.classList.remove('d-none');
+    } else {
+        detailsBox.classList.add('d-none');
     }
 });
 

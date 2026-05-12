@@ -120,23 +120,18 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- Land Share & Registration unlock simultaneously after booking paid, lock simultaneously when landshare target reached -->
+                                <!-- Registration unlock after booking paid, lock when landshare target reached -->
                                 <?php if ($isBookingFullyPaid && !$isLandShareCompleted): ?>
-                                    <option value="land_share">
-                                        Land Share (Remaining: TK.<?= number_format($remainingLandShare, 2) ?>)
-                                    </option>
                                     <option value="registration">
-                                        Registration
+                                        Registration (Remaining: TK.<?= number_format($remainingLandShare, 2) ?>)
                                     </option>
                                 <?php elseif ($isLandShareCompleted): ?>
-                                    <option value="land_share" disabled>Land Share (Completed)</option>
-                                    <option value="registration" disabled>Registration (Completed with Land Share)</option>
+                                    <option value="registration" disabled>Registration (Completed)</option>
                                 <?php else: ?>
-                                    <option value="land_share" disabled>Land Share (Locked — complete booking first)</option>
                                     <option value="registration" disabled>Registration (Locked — complete booking first)</option>
                                 <?php endif; ?>
 
-                                <!-- Development Charge — requires landshare completed -->
+                                <!-- Shop Service Charge — requires registration completed -->
                                 <?php if ($isLandShareCompleted && !$isShopServiceChargeCompleted): ?>
                                     <option value="shop_service_charge">
                                         Shop Service Charge (Remaining: TK.<?= number_format(max(0, $shopServiceChargeTarget - $shopServiceChargePaid), 2) ?>)
@@ -147,7 +142,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </option>
                                 <?php else: ?>
                                     <option value="shop_service_charge" disabled>
-                                        Shop Service Charge (Locked — complete land share first)
+                                        Shop Service Charge (Locked — complete registration first)
                                     </option>
                                 <?php endif; ?>
 
@@ -166,7 +161,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </option>
                                 <?php else: ?>
                                     <option value="emi" disabled>
-                                        EMI (Locked — complete land share &amp; shop service charge first)
+                                        EMI (Locked — complete registration &amp; shop service charge first)
                                     </option>
                                 <?php endif; ?>
 
@@ -184,7 +179,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                 <?php if (!$isLandShareCompleted): ?>
                                     <span class="text-warning">
                                         <i class="fa-light fa-exclamation-triangle"></i>
-                                        Remaining Land Share: TK.<?= number_format($remainingLandShare, 2) ?> — Land Share &amp; Registration lock together when done
+                                        Remaining Registration: TK.<?= number_format($remainingLandShare, 2) ?>
                                     </span>
                                 <?php elseif (!$isShopServiceChargeCompleted && $shopServiceChargeTarget > 0): ?>
                                     <span class="text-warning">
@@ -268,7 +263,6 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <input type="hidden" name="settlement_type" value="emi_due_settlement">
                                 <small class="text-muted d-block mt-1">Amount field will be auto-capped to the selected EMI's remaining due. Service charge applies on settled amount.</small>
                             </div>
                         </div>
@@ -445,15 +439,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     amountField.removeAttribute('disabled');
                     break;
 
-                case 'land_share':
-                    if (remainingLandShare > 0) {
-                        helpText = 'Maximum: TK.' + Math.round(remainingLandShare).toLocaleString('en-IN');
-                        amountField.setAttribute('max', Math.round(remainingLandShare));
-                    } else {
-                        helpText = 'Land share already completed';
-                        amountField.setAttribute('disabled', 'disabled');
-                    }
-                    break;
+
 
                 case 'emi':
                     const remainingCF = <?= json_encode((float)$remainingCF) ?>;
@@ -656,14 +642,6 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     }
                 }
 
-                if (paymentTypeValue === 'land_share') {
-                    if (amount > remainingLandShare) {
-                        this.classList.add('is-invalid');
-                    } else {
-                        this.classList.remove('is-invalid');
-                    }
-                }
-
                 // Update bulk discount visibility
                 updateBulkDiscount();
             });
@@ -753,21 +731,6 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     alert('Please enter a valid EMI amount.');
                     amountField.focus();
                     return false;
-                }
-
-                // Validation for land share
-                if (paymentTypeValue === 'land_share') {
-                    if (!isBookingFullyPaid) {
-                        e.preventDefault();
-                        alert('Land Share is locked. Full booking amount must be paid first.');
-                        return false;
-                    }
-                    if (amount > remainingLandShare + 0.01) {
-                        e.preventDefault();
-                        alert('Land share amount cannot exceed remaining: TK.' + remainingLandShare.toFixed(2));
-                        amountField.focus();
-                        return false;
-                    }
                 }
 
                 // General

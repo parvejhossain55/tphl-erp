@@ -112,6 +112,7 @@ class Con_ContractorBillController extends Controller
             'operator_id'      => $_POST['operator_id'] ?? null,
             'work_order_id'    => !empty($_POST['work_order_id']) ? $_POST['work_order_id'] : null,
             'target_id'        => !empty($_POST['target_id']) ? $_POST['target_id'] : null,
+            'bill_type'        => $_POST['bill_type'] ?? 'Progress',
             'bill_date'        => $_POST['bill_date'] ?? date('Y-m-d'),
             'work_description' => trim($_POST['work_description'] ?? ''),
             'bill_amount'      => $_POST['bill_amount'] ?? 0,

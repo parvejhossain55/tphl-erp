@@ -94,7 +94,7 @@ class FlatController extends Controller
         // ======================
         $data = [
             'project_id'             => $_POST['project_id'] ?? null,
-            'flat_name'                => $_POST['flat_name'] ?? null,
+            'flat_name'              => $_POST['flat_name'] ?? null,
             'sqft'                   => $_POST['sqft'] ?? null,
             'bhk'                    => $_POST['bhk'] ?? null,
             'bedroom'                => $_POST['bedroom'] ?? null,
@@ -104,13 +104,16 @@ class FlatController extends Controller
             'common_dining'          => isset($_POST['common_dining']) ? 1 : 0,
             'floor_no'               => $_POST['floor_no'] ?? null,
             'facing_site'            => $_POST['facing_site'] ?? null,
+            'is_shop'                => isset($_POST['is_shop']) ? 1 : 0,
+            'unit_type'              => $_POST['unit_type'] ?? 'residential',
             'price_value'            => $_POST['price_value'] ?? null,
+            'shop_service_charge'    => !empty($_POST['shop_service_charge']) ? (int)$_POST['shop_service_charge'] : null,
             'land_share_value'       => $_POST['land_share_value'] ?? null,
             'development_charges'    => $_POST['development_charges'] ?? null,
             'facilities'             => $_POST['facilities'] ?? null,
-            'is_booked'              => $is_booked, //  add this
+            'is_booked'              => $is_booked,
             'status'                 => $_POST['status'] ?? null,
-            'created_by'              => $_SESSION['user']['id'] ?? null,
+            'created_by'             => $_SESSION['user']['id'] ?? null,
         ];
 
         // ======================
@@ -158,7 +161,7 @@ class FlatController extends Controller
         // Collect form data
         $data = [
             'project_id'             => $_POST['project_id'] ?? null,
-            'flat_name'                => $_POST['flat_name'] ?? null,
+            'flat_name'              => $_POST['flat_name'] ?? null,
             'sqft'                   => $_POST['sqft'] ?? null,
             'bhk'                    => $_POST['bhk'] ?? null,
             'bedroom'                => $_POST['bedroom'] ?? null,
@@ -168,7 +171,10 @@ class FlatController extends Controller
             'common_dining'          => isset($_POST['common_dining']) ? 1 : 0,
             'floor_no'               => $_POST['floor_no'] ?? null,
             'facing_site'            => $_POST['facing_site'] ?? null,
+            'is_shop'                => isset($_POST['is_shop']) ? 1 : 0,
+            'unit_type'              => $_POST['unit_type'] ?? 'residential',
             'price_value'            => $_POST['price_value'] ?? null,
+            'shop_service_charge'    => !empty($_POST['shop_service_charge']) ? (int)$_POST['shop_service_charge'] : null,
             'land_share_value'       => $_POST['land_share_value'] ?? null,
             'development_charges'    => $_POST['development_charges'] ?? null,
             'facilities'             => $_POST['facilities'] ?? null,
@@ -355,6 +361,7 @@ class FlatController extends Controller
 
                 $data['project_id'] = $projectId;
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
+                $data['upload_from'] = 'From company csv'; // CSV bulk import tag
 
                 try {
                     $this->flatModel->createFromCsvBulk($data);
@@ -385,6 +392,7 @@ class FlatController extends Controller
             header("Location: {$GLOBALS['base_url']}/flat-lists");
             exit;
         } else {
+            
             setError("Unable to read CSV file");
             header("Location: {$GLOBALS['base_url']}/flat-lists");
             exit;

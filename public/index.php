@@ -686,9 +686,18 @@ $routes = [
     'ced-add-transaction-form/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'showCedTransactionForm'],
     'ced-add-transaction'            => ['controller' => 'AccountClientController', 'method' => 'addCedTransaction'],
 
+    // ── Legal Sheets ────────────────────────────────────────────────
+    'legal-sheet-lists'           => ['controller' => 'Phase2\Con_ProjectLegalSheetController', 'method' => 'index'],
+    'create-legal-sheet'          => ['controller' => 'Phase2\Con_ProjectLegalSheetController', 'method' => 'create'],
+    'legal-sheet-store'           => ['controller' => 'Phase2\Con_ProjectLegalSheetController', 'method' => 'store'],
+    'edit-legal-sheet/(\d+)'      => ['controller' => 'Phase2\Con_ProjectLegalSheetController', 'method' => 'edit'],
+    'legal-sheet-update/(\d+)'    => ['controller' => 'Phase2\Con_ProjectLegalSheetController', 'method' => 'update'],
+    'delete-legal-sheet/(\d+)'    => ['controller' => 'Phase2\Con_ProjectLegalSheetController', 'method' => 'delete'],
+
 ];
 
-$route = trim(strtok($_SERVER["REQUEST_URI"], '?'), '/');
+$request_uri = $_SERVER['REQUEST_URI'];
+$route = trim(strtok($request_uri, '?'), '/');
 
 $base_folder = 'TPHL-ERP';
 if (strpos($route, $base_folder) === 0) {
@@ -753,13 +762,14 @@ $routes['con-soil-tests/edit'] = ['controller' => 'Phase2\SoilTestController', '
 $routes['con-soil-tests/update'] = ['controller' => 'Phase2\SoilTestController', 'method' => 'update'];
 $routes['delete-soil-test']                     = ['controller' => 'Phase2\SoilTestController', 'method' => 'delete'];
 
-// \u2500\u2500 Dashboard + Project Detail + AJAX Tab Routes \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// ── Dashboard + Project Detail + AJAX Tab Routes ─────────────────────────────
 $routes['con-dashboard']           = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'index'];
 $routes['con-projects']            = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectsList'];
 $routes['con-project/(\d+)']       = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectDetail'];
 $routes['con-ajax-workplan/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWorkPlan'];
 $routes['con-ajax-targets/(\d+)']  = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxTargets'];
 $routes['con-ajax-weekly/(\d+)']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWeeklyData'];
+$routes['con-ajax-workorders/(\d+)']= ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWorkOrders'];
 // ── Role-Specific Dashboards ───────────────────────────────────────────────
 $routes['operations-dashboard']           = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'operationsDashboard'];
 $routes['qc-dashboard']                   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'qcDashboard'];
@@ -774,6 +784,7 @@ $routes['purchase-executive-dashboard']          = ['controller' => 'Phase2\Con_
 // ── QC Module ──────────────────────────────────────────────────────────────
 $routes['qc-dashboard']                = ['controller' => 'Phase2\QCController', 'method' => 'index'];
 $routes['qc-inspection-create']        = ['controller' => 'Phase2\QCController', 'method' => 'createInspection'];
+$routes['qc-inspection/(\d+)']         = ['controller' => 'Phase2\QCController', 'method' => 'showInspection'];
 $routes['qc-inspection-store']         = ['controller' => 'Phase2\QCController', 'method' => 'storeInspection'];
 $routes['qc-material-test-create']     = ['controller' => 'Phase2\QCController', 'method' => 'createMaterialTest'];
 $routes['qc-material-test-store']      = ['controller' => 'Phase2\QCController', 'method' => 'storeMaterialTest'];
@@ -783,8 +794,15 @@ $routes['qc-ajax-receiving-items']     = ['controller' => 'Phase2\QCController',
 $routes['qc-test-types']               = ['controller' => 'Phase2\QCController', 'method' => 'testTypesIndex'];
 $routes['qc-test-types-store']         = ['controller' => 'Phase2\QCController', 'method' => 'testTypesStore'];
 $routes['qc-test-types-update']        = ['controller' => 'Phase2\QCController', 'method' => 'testTypesUpdate'];
-$routes['qc-test-types-delete']        = ['controller' => 'Phase2\QCController', 'method' => 'testTypesDelete'];
+$routes['qc-test-types-delete']        = ['controller' => 'Phase2\\QCController', 'method' => 'testTypesDelete'];
+
+// ── QC Checklist Management ────────────────────────────────────────────────
+$routes['qc-checklists']               = ['controller' => 'Phase2\\QCController', 'method' => 'checklistsIndex'];
+$routes['qc-checklist-store']          = ['controller' => 'Phase2\\QCController', 'method' => 'checklistStore'];
+$routes['qc-checklist-update']         = ['controller' => 'Phase2\\QCController', 'method' => 'checklistUpdate'];
+$routes['qc-checklist-delete']         = ['controller' => 'Phase2\\QCController', 'method' => 'checklistDelete'];
 // ── Operators / Contractors ────────────────────────────────────────────────
+
 $routes['con-contractors']              = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'index'];
 $routes['con-contractor-create']        = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'create'];
 $routes['con-contractor-store']         = ['controller' => 'Phase2\Con_ContractorController', 'method' => 'store'];

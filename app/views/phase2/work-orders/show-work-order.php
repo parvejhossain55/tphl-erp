@@ -34,7 +34,7 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
     <!-- Breadcrumb -->
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <div class="my-auto">
-            <h4 class="page-title fw-semibold fs-18 mb-0"><?= htmlspecialchars($wo['wo_number'] ?? 'Work Order') ?></h4>
+            <h4 class="page-title fw-semibold text-muted fs-18 mb-0"><?= htmlspecialchars($wo['wo_number'] ?? 'Work Order') ?></h4>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-work-orders">Work Orders</a></li>
@@ -79,10 +79,10 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                     <h6 class="card-title mb-0"><i class="bi bi-file-earmark-ruled me-2 text-primary"></i>Work Order Details</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-6">
                             <div class="text-muted fs-12">WO Number</div>
-                            <div class="fw-semibold"><?= htmlspecialchars($wo['wo_number'] ?? '-') ?></div>
+                            <div class="fw-semibold text-muted"><?= htmlspecialchars($wo['wo_number'] ?? '-') ?></div>
                         </div>
                         <div class="col-md-6">
                             <div class="text-muted fs-12">Status</div>
@@ -90,20 +90,26 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                         </div>
                         <div class="col-md-6">
                             <div class="text-muted fs-12">Project</div>
-                            <div class="fw-semibold"><?= htmlspecialchars($wo['project_name'] ?? '-') ?></div>
+                            <div class="fw-semibold text-muted"><?= htmlspecialchars($wo['project_name'] ?? '-') ?></div>
                         </div>
                         <div class="col-md-6">
                             <div class="text-muted fs-12">Work Design Type</div>
-                            <div><?= htmlspecialchars($wo['design_type_name'] ?? '-') ?></div>
+                            <div class="text-muted"><?= htmlspecialchars($wo['design_type_name'] ?? '-') ?></div>
                         </div>
                         <div class="col-md-6">
                             <div class="text-muted fs-12">Work Type</div>
-                            <div><?= htmlspecialchars($wo['work_type_name'] ?? '-') ?></div>
+                            <div class="text-muted"><?= htmlspecialchars($wo['work_type_name'] ?? '-') ?></div>
                         </div>
                         <div class="col-12">
                             <div class="text-muted fs-12">Title</div>
-                            <div class="fw-semibold fs-15"><?= htmlspecialchars($wo['title'] ?? '-') ?></div>
+                            <div class="fw-semibold text-muted fs-15"><?= htmlspecialchars($wo['title'] ?? '-') ?></div>
                         </div>
+                        <?php if (!empty($wo['description'])): ?>
+                        <div class="col-12">
+                            <div class="text-muted fs-12">Description</div>
+                            <div class="p-3 bg-light rounded"><?= nl2br(htmlspecialchars($wo['description'])) ?></div>
+                        </div>
+                        <?php endif; ?>
                         <?php if (!empty($wo['scope_of_work'])): ?>
                         <div class="col-12">
                             <div class="text-muted fs-12">Scope of Work</div>
@@ -126,18 +132,18 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                     <h6 class="card-title mb-0"><i class="bi bi-calculator me-2 text-success"></i>Rate & Budget</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-3">
                             <div class="text-muted fs-12">Unit</div>
-                            <div class="fw-semibold"><?= strtoupper($wo['unit'] ?? '-') ?></div>
+                            <div class="fw-semibold text-muted"><?= strtoupper($wo['unit'] ?? '-') ?></div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-muted fs-12">Unit Rate</div>
-                            <div class="fw-semibold">৳<?= number_format($wo['unit_rate'] ?? 0, 2) ?></div>
+                            <div class="fw-semibold text-muted">৳<?= number_format($wo['unit_rate'] ?? 0, 2) ?></div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-muted fs-12">Quantity</div>
-                            <div class="fw-semibold"><?= number_format($wo['quantity'] ?? 0, 2) ?></div>
+                            <div class="fw-semibold text-muted"><?= number_format($wo['quantity'] ?? 0, 2) ?></div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-muted fs-12">Total Amount</div>
@@ -156,11 +162,11 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                     <div class="row">
                         <div class="col-md-6">
                             <div class="text-muted fs-12">Start Date</div>
-                            <div class="fw-semibold"><?= $wo['start_date'] ? date('d M Y', strtotime($wo['start_date'])) : '—' ?></div>
+                            <div class="fw-semibold text-muted"><?= $wo['start_date'] ? date('d M Y', strtotime($wo['start_date'])) : '—' ?></div>
                         </div>
                         <div class="col-md-6">
                             <div class="text-muted fs-12">End Date (Deadline)</div>
-                            <div class="fw-semibold <?= ($wo['end_date'] && strtotime($wo['end_date']) < time() && !in_array($status, ['closed','qc_approved'])) ? 'text-danger' : '' ?>">
+                            <div class="fw-semibold text-muted <?= ($wo['end_date'] && strtotime($wo['end_date']) < time() && !in_array($status, ['closed','qc_approved'])) ? 'text-danger' : '' ?>">
                                 <?= $wo['end_date'] ? date('d M Y', strtotime($wo['end_date'])) : '—' ?>
                                 <?php if ($wo['end_date'] && strtotime($wo['end_date']) < time() && !in_array($status, ['closed','qc_approved','work_completed'])): ?>
                                     <span class="badge bg-danger ms-1">Overdue</span>
@@ -178,10 +184,10 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                     <h6 class="card-title mb-0"><i class="bi bi-bullseye me-2 text-warning"></i>Linked Working Plan</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-12">
                             <div class="text-muted fs-12">Working Plan</div>
-                            <div class="fw-semibold"><?= htmlspecialchars($wo['work_plan_title'] ?? '—') ?>
+                            <div class="fw-semibold text-muted"><?= htmlspecialchars($wo['work_plan_title'] ?? '—') ?>
                                 <small class="text-muted">(<?= $wo['plan_month'] ?? '' ?>/<?= $wo['plan_year'] ?? '' ?>)</small>
                             </div>
                         </div>
@@ -283,7 +289,7 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                     <h6 class="card-title mb-0"><i class="bi bi-person-badge me-2 text-primary"></i>Contractor</h6>
                 </div>
                 <div class="card-body">
-                    <div class="fw-bold fs-15 mb-1"><?= htmlspecialchars($wo['contractor_name'] ?? '-') ?></div>
+                    <div class="fw-bold fs-15 mb-1 text-muted"><?= htmlspecialchars($wo['contractor_name'] ?? '-') ?></div>
                     <?php if (!empty($wo['contractor_trade'])): ?>
                         <div class="text-muted mb-1"><i class="bi bi-tools me-1"></i><?= htmlspecialchars($wo['contractor_trade']) ?></div>
                     <?php endif; ?>
@@ -319,7 +325,7 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                     </div>
                     <hr>
                     <div class="d-flex justify-content-between">
-                        <span class="fw-semibold">Total</span>
+                        <span class="fw-semibold text-muted">Total</span>
                         <strong class="text-primary fs-15">৳<?= number_format($totalAmt, 2) ?></strong>
                     </div>
                 </div>
@@ -389,12 +395,12 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
             <div class="card custom-card">
                 <div class="card-body">
                     <div class="text-muted fs-12">Created By</div>
-                    <div class="fw-semibold mb-2"><?= htmlspecialchars($wo['created_by_name'] ?? '-') ?></div>
+                    <div class="fw-semibold text-muted mb-2"><?= htmlspecialchars($wo['created_by_name'] ?? '-') ?></div>
                     <div class="text-muted fs-12">Created At</div>
-                    <div class="mb-2"><?= date('d M Y H:i', strtotime($wo['created_at'])) ?></div>
+                    <div class="mb-2 text-muted"><?= date('d M Y H:i', strtotime($wo['created_at'])) ?></div>
                     <?php if ($wo['completed_by_name']): ?>
                         <div class="text-muted fs-12">Completed By</div>
-                        <div class="mb-2"><?= htmlspecialchars($wo['completed_by_name']) ?> on <?= date('d M Y', strtotime($wo['completed_at'])) ?></div>
+                        <div class="mb-2 text-muted"><?= htmlspecialchars($wo['completed_by_name']) ?> on <?= date('d M Y', strtotime($wo['completed_at'])) ?></div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -412,7 +418,7 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <label class="form-label fw-semibold">Rejection Reason</label>
+                    <label class="form-label fw-semibold text-muted">Rejection Reason</label>
                     <textarea name="rejection_reason" class="form-control" rows="3" required
                               placeholder="Explain why this Work Order is rejected..."></textarea>
                 </div>

@@ -59,12 +59,12 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                     <h6 class="card-title mb-0"><i class="bi bi-receipt me-2"></i>Bill Details</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
+                    <div class="row">
+                        <div class="col-md-6 text-muted">
                             <div class="info-label text-uppercase text-muted small fw-bold">Project</div>
                             <div class="info-value"><?= htmlspecialchars($bill['project_name'] ?? '—') ?></div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 text-muted">
                             <div class="info-label text-uppercase text-muted small fw-bold">Contractor</div>
                             <div class="info-value">
                                 <?= htmlspecialchars($bill['operator_name'] ?? '—') ?>
@@ -73,20 +73,20 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 text-muted">
                             <div class="info-label text-uppercase text-muted small fw-bold">Bill Date</div>
                             <div class="info-value"><?= date('d M Y', strtotime($bill['bill_date'])) ?></div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 text-muted">
                             <div class="info-label text-uppercase text-muted small fw-bold">Trade</div>
                             <div class="info-value"><?= htmlspecialchars($bill['operator_trade'] ?? '—') ?></div>
                         </div>
                         <div class="col-md-12">
                             <div class="info-label text-uppercase text-muted small fw-bold">Work Description</div>
-                            <div class="info-value"><?= nl2br(htmlspecialchars($bill['work_description'] ?? '—')) ?></div>
+                            <div class="info-value text-muted"><?= nl2br(htmlspecialchars($bill['work_description'] ?? '—')) ?></div>
                         </div>
                         <?php if (!empty($bill['attachment_path'])): ?>
-                        <div class="col-md-12">
+                        <div class="col-md-12 text-muted">
                             <div class="info-label text-uppercase text-muted small fw-bold">Attachment</div>
                             <a href="<?= $base_url ?>/<?= $bill['attachment_path'] ?>" target="_blank" class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-paperclip me-1"></i> View Attachment
@@ -94,7 +94,7 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                         </div>
                         <?php endif; ?>
                         <?php if (!empty($bill['verification_note'])): ?>
-                        <div class="col-md-12">
+                        <div class="col-md-12 text-muted">
                             <div class="info-label text-uppercase text-muted small fw-bold">Verification Note</div>
                             <div class="info-value text-info"><?= htmlspecialchars($bill['verification_note']) ?></div>
                         </div>
@@ -138,7 +138,7 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                             </div>
                         </div>
 
-                        <div class="col-md-6">
+                        <div class="col-md-6 text-muted">
                             <div class="info-label text-uppercase text-muted small fw-bold">Submitted By</div>
                             <div class="info-value">
                                 <?= htmlspecialchars($bill['created_by_name'] ?? '—') ?>
@@ -148,7 +148,7 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                             </div>
                         </div>
                         <?php if (!empty($bill['verified_by_name'])): ?>
-                        <div class="col-md-6">
+                        <div class="col-md-6 text-muted">
                             <div class="info-label text-uppercase text-muted small fw-bold">Verified By</div>
                             <div class="info-value"><strong><?= htmlspecialchars($bill['verified_by_name']) ?></strong>
                                 <?php if (!empty($bill['verified_at'])): ?>
@@ -158,7 +158,7 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                         </div>
                         <?php endif; ?>
                         <?php if (!empty($bill['approved_by_name'])): ?>
-                        <div class="col-md-6">
+                        <div class="col-md-6 text-muted">
                             <div class="info-label text-uppercase text-muted small fw-bold">Approved By</div>
                             <div class="info-value"><strong><?= htmlspecialchars($bill['approved_by_name']) ?></strong></div>
                         </div>
@@ -194,7 +194,7 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                                     <td><?= $idx + 1 ?></td>
                                     <td><?= date('d M Y', strtotime($pay['transaction_date'])) ?></td>
                                     <td class="text-end fw-semibold">৳ <?= number_format($pay['amount_paid'], 2) ?></td>
-                                    <td><span class="badge bg-<?= $pay['payment_type'] === 'Full' ? 'success' : 'info' ?>"><?= $pay['payment_type'] ?></span></td>
+                                    <td><span class="text-muted badge bg-<?= $pay['payment_type'] === 'Full' ? 'success' : 'info' ?>"><?= $pay['payment_type'] ?></span></td>
                                     <td><?= str_replace('BankTransfer', 'Bank Transfer', $pay['payment_method']) ?></td>
                                     <td><?= htmlspecialchars($pay['reference_number'] ?? '—') ?></td>
                                     <td><?= htmlspecialchars($pay['processed_by_name'] ?? '—') ?></td>
@@ -234,22 +234,22 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                         <span class="badge bg-<?= $statusInfo['color'] ?> fs-6"><?= $statusInfo['label'] ?></span>
                     </div>
                     <div class="mb-3">
-                        <small class="text-muted d-block">Submitted At</small>
-                        <strong><?= date('d M Y h:i A', strtotime($bill['created_at'])) ?></strong>
+                        <small class="text-muted d-block text-muted">Submitted At</small>
+                        <strong class="text-muted"><?= date('d M Y h:i A', strtotime($bill['created_at'])) ?></strong>
                     </div>
                     <?php if (!empty($bill['verified_by_name'])): ?>
-                    <div class="mb-3">
+                    <div class="mb-3 text-muted">
                         <small class="text-muted d-block">Verified By</small>
                         <strong><?= htmlspecialchars($bill['verified_by_name']) ?></strong>
                     </div>
                     <?php endif; ?>
                     <?php if (!empty($bill['approved_by_name'])): ?>
-                    <div class="mb-3">
+                    <div class="mb-3 text-muted">
                         <small class="text-muted d-block">Approved By</small>
                         <strong><?= htmlspecialchars($bill['approved_by_name']) ?></strong>
                     </div>
                     <?php endif; ?>
-                    <div class="mb-3">
+                    <div class="mb-3 text-muted">
                         <small class="text-muted d-block">Last Updated</small>
                         <strong><?= !empty($bill['updated_at']) ? date('d M Y h:i A', strtotime($bill['updated_at'])) : '—' ?></strong>
                     </div>
@@ -355,18 +355,18 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
+                    <div class="row ">
+                        <div class="col-md-6 text-muted">
                             <label class="form-label fw-semibold">Payment Amount (৳) *</label>
                             <input type="number" name="amount" class="form-control" step="0.01" min="0.01"
                                    max="<?= number_format($dueAmount, 2, '.', '') ?>" required
                                    placeholder="Max: <?= number_format($dueAmount, 2) ?>">
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 text-muted">
                             <label class="form-label fw-semibold">Payment Date *</label>
                             <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 text-muted">
                             <label class="form-label fw-semibold">Payment Method *</label>
                             <select name="payment_method" id="billPaymentMethod" class="form-select" required>
                                 <option value="Cash">Cash</option>
@@ -376,11 +376,11 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                                 <option value="Other">Other</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 text-muted">
                             <label class="form-label fw-semibold">Reference Number</label>
                             <input type="text" name="reference_no" class="form-control" placeholder="Cheque/Transaction No.">
                         </div>
-                        <div class="col-md-6 bill-bank-field" style="display: none;">
+                        <div class="col-md-6 text-muted bill-bank-field" style="display: none;">
                             <label class="form-label fw-semibold">Select Bank *</label>
                             <select name="bank_id" class="form-select">
                                 <option value="">-- Select Bank --</option>

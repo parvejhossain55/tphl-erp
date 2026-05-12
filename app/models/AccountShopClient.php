@@ -52,6 +52,8 @@ class AccountShopClient extends AccountClient
                 f.sqft as flat_size,
                 f.price_value as total_price,
                 f.flat_name as unit_name,
+                f.is_shop,
+                f.unit_type,
                 u.full_name as agent_name,
                 -- Payment calculations
                 COALESCE(
@@ -440,29 +442,29 @@ class AccountShopClient extends AccountClient
                     }
                     break;
 
-                case 'development_charge':
-                    // Dev charge requires land share to be fully completed (which also means registration is done)
+                case 'shop_service_charge':
+                    // Shop service charge requires registration to be fully completed
                     if (empty($summary['is_land_share_completed'])) {
                         $remaining = number_format($summary['remaining_land_share'] ?? 0, 2);
-                        throw new Exception("Land share (and registration) must be fully completed before development charge can be recorded. Remaining land share: ৳{$remaining}");
+                        throw new Exception("Registration must be fully completed before shop service charge can be recorded. Remaining registration: ৳{$remaining}");
                     }
-                    $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
-                    $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
-                    $devRemaining = max(0, $devTarget - $devPaid);
-                    if ($devRemaining <= 0) {
-                        throw new Exception("Development charge is already fully paid!");
+                    $svcTarget = (float) ($summary['shop_service_charge_target'] ?? 0);
+                    $svcPaid   = (float) ($summary['shop_service_charge_paid_total'] ?? 0);
+                    $svcRemaining = max(0, $svcTarget - $svcPaid);
+                    if ($svcRemaining <= 0) {
+                        throw new Exception("Shop service charge is already fully paid!");
                     }
-                    if ($amount > $devRemaining) {
-                        throw new Exception("Amount exceeds remaining development charge: ৳" . number_format($devRemaining, 2));
+                    if ($amount > $svcRemaining) {
+                        throw new Exception("Amount exceeds remaining shop service charge: ৳" . number_format($svcRemaining, 2));
                     }
                     break;
 
                 case 'emi':
-                    // EMI requires development charge to be fully paid (or no dev charge defined on flat)
-                    if (empty($summary['is_dev_charge_completed'])) {
-                        $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
-                        $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
-                        throw new Exception("Development charge must be fully paid before EMI can be recorded. Paid: ৳" . number_format($devPaid, 2) . " / Required: ৳" . number_format($devTarget, 2));
+                    // EMI requires shop service charge to be fully paid
+                    if (empty($summary['is_shop_service_charge_completed'])) {
+                        $svcTarget = (float) ($summary['shop_service_charge_target'] ?? 0);
+                        $svcPaid   = (float) ($summary['shop_service_charge_paid_total'] ?? 0);
+                        throw new Exception("Shop service charge must be fully paid before EMI can be recorded. Paid: ৳" . number_format($svcPaid, 2) . " / Required: ৳" . number_format($svcTarget, 2));
                     }
                     // Service fee = amount_paid × (service_charge_per_emi% / 100)
                     $serviceChargeRate = (float) ($summary['service_charge_per_emi'] ?? 0);

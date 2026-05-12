@@ -94,14 +94,17 @@ class FlatModel extends Model
         common_dining,
         floor_no,
         facing_site,
+        is_shop,
+        unit_type,
         price_value,
+        shop_service_charge,
         facilities,
         land_share_value,
         development_charges,
         created_by,
         status,
         is_booked
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 ");
 
         if (!$stmt) {
@@ -109,7 +112,7 @@ class FlatModel extends Model
             return false;
         }
         $stmt->bind_param(
-            "isiiiiiiiisdsddssi",
+            "isiiiiiiiisisdisddisi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -121,7 +124,10 @@ class FlatModel extends Model
             $data['common_dining'],
             $data['floor_no'],
             $data['facing_site'],
+            $data['is_shop'],
+            $data['unit_type'],
             $data['price_value'],
+            $data['shop_service_charge'],
             $data['facilities'],
             $data['land_share_value'],
             $data['development_charges'],
@@ -157,8 +163,9 @@ class FlatModel extends Model
                 development_charges,
                 created_by,
                 status,
-                is_booked
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                is_booked,
+                upload_from
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
         if (!$stmt) {
@@ -184,11 +191,12 @@ class FlatModel extends Model
         $created_by           = isset($data['created_by'])           && trim($data['created_by'])           !== '' ? trim($data['created_by'])           : null;
 
         // If status is booked or sold, is_booked = 1
-        $status    = strtolower(trim($data['status'] ?? 'available')) ?: 'available';
-        $is_booked = in_array($status, ['booked', 'sold']) ? 1 : 0;
+        $status      = strtolower(trim($data['status'] ?? 'available')) ?: 'available';
+        $is_booked   = in_array($status, ['booked', 'sold']) ? 1 : 0;
+        $upload_from = $data['upload_from'] ?? 'From company csv';
 
         $stmt->bind_param(
-            "sssssssssssssssssi",
+            "ssssssssssssssssssi",
             $project_id,
             $flat_name,
             $sqft,
@@ -206,6 +214,7 @@ class FlatModel extends Model
             $development_charges,
             $created_by,
             $status,
+            $upload_from,
             $is_booked
         );
 
@@ -239,8 +248,11 @@ class FlatModel extends Model
     public function update($id, $data)
     {
         $sql = "UPDATE flats SET
-        project_id = ?,flat_name=?,  sqft = ?, bhk = ?, bedroom = ?, bathroom = ?, balcony = ?,
-        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?,created_by=?,land_share_value=?,development_charges=?
+        project_id = ?, flat_name = ?, sqft = ?, bhk = ?, bedroom = ?, bathroom = ?, balcony = ?,
+        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?,
+        is_shop = ?, unit_type = ?,
+        price_value = ?, shop_service_charge = ?,
+        facilities = ?, created_by = ?, land_share_value = ?, development_charges = ?
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -249,7 +261,7 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "isiiiiiiiisdsiddi",
+            "isiiiiiiiisisdisiddi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -261,14 +273,16 @@ class FlatModel extends Model
             $data['common_dining'],
             $data['floor_no'],
             $data['facing_site'],
+            $data['is_shop'],
+            $data['unit_type'],
             $data['price_value'],
+            $data['shop_service_charge'],
             $data['facilities'],
             $data['created_by'],
             $data['land_share_value'],
             $data['development_charges'],
             $id
         );
-
 
         if (!$stmt->execute()) {
             throw new Exception("Update failed: " . $stmt->error);

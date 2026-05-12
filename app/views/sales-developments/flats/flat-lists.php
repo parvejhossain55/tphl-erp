@@ -75,16 +75,16 @@ $show_breadcrumb = false;
                         <tr class="table__title">
                             <th>Project</th>
                             <th>Flat/Unit</th>
+                            <th>Type</th>
                             <th>BHK</th>
-
                             <th>Floor No</th>
                             <th>Facing Site</th>
                             <th>Sqft</th>
                             <th>Land Share Value</th>
                             <th>Dev. Charges</th>
                             <th>Price</th>
-                            <th>Facilities</th>
-                            <th>Available/Booked </th>
+                            <th>Service Charge</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -93,25 +93,36 @@ $show_breadcrumb = false;
                             <tr>
                                 <td class="td_1"><?= htmlspecialchars($flat['project_name'] ?? '') ?></td>
                                 <td class="td_2"><?= htmlspecialchars($flat['flat_name'] ?? 'N/A') ?></td>
+                                <td>
+                                    <?php if (($flat['unit_type'] ?? 'residential') === 'commercial'): ?>
+                                        <span class="bd-badge bg-warning text-dark">
+                                            <i class="bi bi-shop me-1"></i> Shop
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="bd-badge bg-primary">
+                                            <i class="bi bi-building me-1"></i> Flat
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= htmlspecialchars($flat['bhk']) ?></td>
-
                                 <td><?= htmlspecialchars($flat['floor_no']) ?></td>
                                 <td><?= htmlspecialchars($flat['facing_site']) ?></td>
                                 <td><?= htmlspecialchars($flat['sqft']) ?></td>
                                 <td><?= format_bdt($flat['land_share_value']) ?? 'N/A' ?></td>
                                 <td><?= !empty($flat['development_charges']) ? format_bdt($flat['development_charges']) : 'N/A' ?></td>
                                 <td><?= format_bdt($flat['price_value']) ?></td>
-                                <td><?= htmlspecialchars($flat['facilities']) ?></td>
+                                <td>
+                                    <?php if (($flat['unit_type'] ?? 'residential') === 'commercial' && !empty($flat['shop_service_charge'])): ?>
+                                        <span class="bd-badge bg-info text-dark"><?= (int)$flat['shop_service_charge'] ?>%</span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <?php if ($flat['is_booked'] == 1) : ?>
-                                        <span class="bd-badge bg-danger">
-                                            Booked
-                                        </span>
+                                        <span class="bd-badge bg-danger">Booked</span>
                                     <?php else: ?>
-                                        <span class="bd-badge bg-success">
-                                            Available
-                                        </span>
-
+                                        <span class="bd-badge bg-success">Available</span>
                                     <?php endif ?>
                                 </td>
                                 <td class="table__icon-box">

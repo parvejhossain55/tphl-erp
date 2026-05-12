@@ -48,7 +48,7 @@ class Con_WeeklyReportController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -225,7 +225,46 @@ class Con_WeeklyReportController extends Controller
             }
         }
 
+        if ($step === 'qc') {
+            $photoPath    = null;
+            $fieldDetails = trim($_POST['qc_field_details'] ?? '');
+            $labResult    = trim($_POST['qc_lab_result']    ?? '');
+            $gainPct      = (float)($_POST['qc_gain_pct']   ?? 0);
+
+            if (!empty($_FILES['qc_photo']['name']) && $_FILES['qc_photo']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = dirname(__DIR__, 3) . '/public/uploads/qc-reports/';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                $filename = time() . '_' . basename($_FILES['qc_photo']['name']);
+                if (move_uploaded_file($_FILES['qc_photo']['tmp_name'], $uploadDir . $filename)) {
+                    $photoPath = 'uploads/qc-reports/' . $filename;
+                }
+            }
+
+            // Update weekly_progress_report with QC details
+            $upd = $this->db->prepare("UPDATE weekly_progress_report SET qc_gain_percentage = ?, qc_photo = ?, qc_field_test_details = ?, qc_lab_test_result = ? WHERE id = ?");
+            if ($upd) {
+                $upd->bind_param('dsssi', $gainPct, $photoPath, $fieldDetails, $labResult, $id);
+                $upd->execute();
+            }
+        }
+
         if ($this->model->approveStep($id, $step, $userId)) {
+            // Update target_fixed if QC approved
+            if ($step === 'qc') {
+                $report = $this->model->find($id);
+                if ($report && !empty($report['target_id'])) {
+                    $targetId = (int)$report['target_id'];
+                    $sumQ = $this->db->query("SELECT SUM(qc_gain_percentage) AS total_gain FROM weekly_progress_report WHERE target_id = {$targetId} AND approved_by_qc IS NOT NULL");
+                    $totalGain = $sumQ ? (float)$sumQ->fetch_assoc()['total_gain'] : 0;
+                    
+                    $updTarget = $this->db->prepare("UPDATE target_fixed SET gain_percentage = ? WHERE id = ?");
+                    if ($updTarget) {
+                        $updTarget->bind_param('di', $totalGain, $targetId);
+                        $updTarget->execute();
+                    }
+                }
+            }
+            
             setSuccess('Approval recorded successfully!');
         } else {
             setError('Approval failed.');

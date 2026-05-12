@@ -124,7 +124,7 @@ class AccountShopClientController extends AccountClientController
                 'attachment_paths' => $uploadedPaths ?: null,
                 'due_emi_amount'   => isset($_POST['due_emi_amount']) ? (float)$_POST['due_emi_amount'] : 0,
                 'parent_payment_id'=> !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null,
-                'settlement_type'  => !empty($_POST['settlement_type']) ? $_POST['settlement_type'] : null,
+                'settlement_type'  => ($paymentType === 'emi_due_settlement') ? 'emi_due_settlement' : null,
                 'bulk_emi_discount'=> isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
                 'created_by'       => $_SESSION['user']['id'] ?? 1
             ];

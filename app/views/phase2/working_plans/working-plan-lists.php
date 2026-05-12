@@ -41,6 +41,7 @@
                             <th>Period</th>
                             <th>Work Description</th>
                             <th class="text-end">Planned Cost (৳)</th>
+                            <th class="text-end">Project Weight</th>
                             <th>Created By</th>
                             <th class="text-center">Actions</th>
                         </tr>
@@ -78,6 +79,9 @@
                                 </td>
                                 <td class="text-end fw-bold text-primary">
                                     ৳ <?= number_format($plan['estimated_cost'], 2) ?>
+                                </td>
+                                <td class="text-end fw-bold text-success">
+                                    <?= number_format($plan['weight_percentage'] ?? 0, 2) ?>%
                                 </td>
                                 <td><?= htmlspecialchars($plan['created_by_name'] ?? '—') ?></td>
                                 <td class="text-center">

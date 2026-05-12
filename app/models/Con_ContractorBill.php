@@ -80,15 +80,16 @@ class Con_ContractorBill extends Model
     public function create($data)
     {
         $sql = "INSERT INTO {$this->table}
-                (project_id, operator_id, work_order_id, target_id, bill_date, work_description, bill_amount, attachment_path, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                (project_id, operator_id, work_order_id, target_id, bill_type, bill_date, work_description, bill_amount, attachment_path, status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiiissdssi',
+            'iiiisssdssi',
             $data['project_id'],
             $data['operator_id'],
             $data['work_order_id'],
             $data['target_id'],
+            $data['bill_type'],
             $data['bill_date'],
             $data['work_description'],
             $data['bill_amount'],

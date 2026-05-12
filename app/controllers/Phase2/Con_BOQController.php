@@ -350,7 +350,7 @@ class Con_BOQController extends Controller
         } else {
             // 'Approved' or 'Rejected'
             // Role guard: only 1, 3, 15, 22 can approve/reject
-            if (!in_array($roleId, [1, 3, 15, 22])) {
+            if (!in_array($roleId, [1, 3, 22])) {
                 setError('Only authorized approvers can approve/reject a BOQ.');
                 header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
                 exit;

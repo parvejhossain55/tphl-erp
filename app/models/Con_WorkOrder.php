@@ -105,11 +105,16 @@ class Con_WorkOrder extends Model
         $types = str_repeat('s', count($statusFilter));
         $params = array_merge([(int)$projectId], $statusFilter);
 
-        $sql = "SELECT wo.id, wo.wo_number, wo.title, wo.status, wo.total_amount,
+        $sql = "SELECT wo.id, wo.wo_number, wo.title, wo.status, wo.total_amount, 
+                       wo.advance_percent, wo.advance_amount,
                        c.name AS contractor_name,
                        (SELECT COALESCE(SUM(IF(approved_amount IS NOT NULL AND approved_amount > 0, approved_amount, bill_amount)), 0)
                         FROM contractor_bill_requests
-                        WHERE work_order_id = wo.id AND status != 'rejected') AS billed_amount
+                        WHERE work_order_id = wo.id AND status != 'rejected') AS billed_amount,
+                       (SELECT COALESCE(SUM(amount_paid), 0)
+                        FROM con_financial_transactions cft
+                        INNER JOIN contractor_bill_requests cbr ON cft.ref_id = cbr.id
+                        WHERE cft.ref_type = 'contractor_bill' AND cbr.work_order_id = wo.id) AS paid_amount
                 FROM {$this->table} wo
                 LEFT JOIN contractors c ON c.id = wo.contractor_id
                 WHERE wo.project_id = ? AND wo.status IN ({$placeholders})
@@ -130,17 +135,17 @@ class Con_WorkOrder extends Model
 
         $sql = "INSERT INTO {$this->table}
                 (project_id, contractor_id, design_id, work_type_id, boq_id, wo_number, title,
-                 scope_of_work, notes, unit, unit_rate, quantity, total_amount,
+                 scope_of_work, notes, description, unit, unit_rate, quantity, total_amount,
                  start_date, end_date,
                  advance_percent, running_percent, retention_percent,
                  advance_amount, retention_amount,
                  work_plan_id,
                  status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)";
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiiiiisssssdddssddddiii',
+            'iiiiiisssssssdddssddddiii',
             $data['project_id'],
             $data['contractor_id'],
             $data['design_id'],
@@ -150,6 +155,7 @@ class Con_WorkOrder extends Model
             $data['title'],
             $data['scope_of_work'],
             $data['notes'],
+            $data['description'],
             $data['unit'],
             $data['unit_rate'],
             $data['quantity'],
@@ -175,7 +181,7 @@ class Con_WorkOrder extends Model
     {
         $sql = "UPDATE {$this->table}
                 SET project_id=?, contractor_id=?, design_id=?, work_type_id=?, boq_id=?, title=?,
-                    scope_of_work=?, notes=?, unit=?, unit_rate=?, quantity=?, total_amount=?,
+                    scope_of_work=?, notes=?, description=?, unit=?, unit_rate=?, quantity=?, total_amount=?,
                     start_date=?, end_date=?,
                     advance_percent=?, running_percent=?, retention_percent=?,
                     advance_amount=?, retention_amount=?,
@@ -184,7 +190,7 @@ class Con_WorkOrder extends Model
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiiiiissssdddssddddii',
+            'iiiiiisssssdddssddddii',
             $data['project_id'],
             $data['contractor_id'],
             $data['design_id'],
@@ -193,6 +199,7 @@ class Con_WorkOrder extends Model
             $data['title'],
             $data['scope_of_work'],
             $data['notes'],
+            $data['description'],
             $data['unit'],
             $data['unit_rate'],
             $data['quantity'],

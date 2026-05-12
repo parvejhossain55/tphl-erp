@@ -271,8 +271,8 @@ class LeadController extends Controller
             $row[] = '<strong>' . htmlspecialchars($lead['full_name'] ?? '') . '</strong>';
 
             $phone = $lead['phone_number'] ?? $lead['phone'];
-            $clean_phone = preg_replace('/[^0-9]/', '', $phone);
-            $row[] = '<a href="https://wa.me/' . $clean_phone . '" target="_blank">' . htmlspecialchars($phone) . '</a>';
+            $clean_phone = preg_replace('/[^0-9]/', '', $phone ?? '');
+            $row[] = '<a href="https://wa.me/' . $clean_phone . '" target="_blank">' . htmlspecialchars($phone ?? '') . '</a>';
 
             $displayName = !empty($lead['campaign_name']) ? $lead['campaign_name'] : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
             $plainText = strip_tags($displayName);
@@ -332,7 +332,7 @@ class LeadController extends Controller
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
                             <li><a class="dropdown__item" href="' . $base_url . '/edit-lead/' . $lead['id'] . '"><i class="bi bi-pencil-square me-2 text-primary"></i> Edit</a></li>
                             <li><a class="dropdown__item" href="' . $base_url . '/view-lead/' . $lead['id'] . '"><i class="bi bi-eye me-2 text-success"></i> View</a></li>
-                            <li><button class="dropdown__item text-danger removeBtnCust" data-name="' . htmlspecialchars($lead['full_name'], ENT_QUOTES, 'UTF-8') . '" data-action="lead-delete" data-id="' . $lead['id'] . '"><i class="bi bi-trash me-2"></i> Delete</button></li>
+                            <li><button class="dropdown__item text-danger removeBtnCust" data-name="' . htmlspecialchars($lead['full_name'] ?? '', ENT_QUOTES, 'UTF-8') . '" data-action="lead-delete" data-id="' . $lead['id'] . '"><i class="bi bi-trash me-2"></i> Delete</button></li>
                         </ul>
                     </div>
                 </div>';
@@ -813,7 +813,9 @@ class LeadController extends Controller
                 $data['status'] = 'active';
                 $data['visibility'] = 'public';
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
+                $data['uploaded_from'] = 'From Company csv'; // CSV bulk import tag
                 
+
                 try {
                     $this->leadModel->createFromCsvBulk($data);
                     $successCount++;

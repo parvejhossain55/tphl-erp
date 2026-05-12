@@ -52,7 +52,9 @@
                                                 data-work-type-id="<?= $b['work_type_id'] ?? '' ?>"
                                                 data-design-type-id="<?= $b['design_type_id'] ?? '' ?>"
                                                 data-budget-link="<?= htmlspecialchars($b['budget_link'] ?? '') ?>"
-                                                data-work-details="<?= htmlspecialchars($b['work_details'] ?? '') ?>">
+                                                data-work-details="<?= htmlspecialchars($b['work_details'] ?? '') ?>"
+                                                data-weight="<?= $b['weight_percentage'] ?? 0 ?>"
+                                                data-allocated="<?= $b['allocated_weight'] ?? 0 ?>">
                                             #<?= $b['id'] ?> &mdash; <?= htmlspecialchars($b['project_name']) ?>
                                             <?php if (!empty($b['work_type_label'])): ?>
                                                 [<?= htmlspecialchars($b['work_type_label']) ?>]
@@ -104,20 +106,28 @@
                                       placeholder="এই মাসে কী কী কাজ করা হবে তার বিস্তারিত লিখুন..."></textarea>
                         </div>
 
-                        <!-- Qty + Cost -->
+                        <!-- Qty, Cost & Weight -->
                         <div class="row  mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Planned Quantity (optional)</label>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Planned Quantity</label>
                                 <input type="number" step="0.001" name="planned_quantity"
                                        class="form-control" placeholder="0.000" value="0">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold">
                                     Estimated Cost (৳) <span class="text-danger">*</span>
                                 </label>
                                 <input type="number" step="0.01" name="estimated_cost" id="estimatedCost"
                                        class="form-control" placeholder="0.00" min="0.01" required>
                                 <div class="form-text text-danger" id="costWarning"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">
+                                    Project Weight (%) <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" step="0.01" name="weight_percentage" id="weightPercentageInput"
+                                       class="form-control" placeholder="0.00" value="0.00" min="0.00" max="100.00" required>
+                                <div class="form-text text-muted" id="weightHint">এই মাসটি পুরো প্রজেক্টের কত %</div>
                             </div>
                         </div>
 
@@ -142,6 +152,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var budgetInfo       = document.getElementById('budgetInfo');
     var workTypeSelect   = document.getElementById('workTypeSelect');
     var workTypeHint     = document.getElementById('workTypeHint');
+    var weightPercentageInput = document.getElementById('weightPercentageInput');
+    var weightHint       = document.getElementById('weightHint');
     var allBudgetOpts    = budgetSelect.querySelectorAll('option[data-project]');
     var currentYear      = <?= date('Y') ?>;
     
@@ -209,6 +221,39 @@ document.addEventListener('DOMContentLoaded', function () {
                 hint.innerHTML = '<i class="bi bi-calendar-range me-1"></i>Budget period: <strong>' + startDate + '</strong> &rarr; <strong>' + endDate + '</strong>';
             } else {
                 hint.innerHTML = '<i class="bi bi-info-circle me-1 text-muted"></i><span class="text-muted">No date range set — showing ' + startYear + ' to ' + endYear + '</span>';
+            }
+        }
+
+        // Calculate auto suggested weight
+        var autoSuggestedWeight = 0;
+        var remainingWeight = 0;
+        if (opt) {
+            var totalWeight = parseFloat(opt.getAttribute('data-weight')) || 0;
+            var allocatedWeight = parseFloat(opt.getAttribute('data-allocated')) || 0;
+            remainingWeight = Math.max(0, totalWeight - allocatedWeight);
+            
+            var totalMonths = 1;
+            if (hasValidDates) {
+                var sDate = new Date(startDate);
+                var eDate = new Date(endDate);
+                var months = (eDate.getFullYear() - sDate.getFullYear()) * 12;
+                months -= sDate.getMonth();
+                months += eDate.getMonth();
+                totalMonths = months <= 0 ? 1 : months;
+            }
+            autoSuggestedWeight = totalWeight > 0 ? (totalWeight / totalMonths) : 0;
+            
+            // If suggestion is greater than remaining, cap it
+            if (autoSuggestedWeight > remainingWeight) {
+                autoSuggestedWeight = remainingWeight;
+            }
+            
+            if (weightHint && totalWeight > 0) {
+                weightHint.innerHTML = '<span class="text-success fw-bold">Remaining: ' + remainingWeight.toFixed(2) + '%</span> (Total: ' + totalWeight.toFixed(2) + '%)';
+                weightPercentageInput.value = autoSuggestedWeight.toFixed(2);
+                weightPercentageInput.max = remainingWeight.toFixed(2);
+            } else if (weightHint) {
+                weightHint.innerHTML = 'এই মাসটি পুরো প্রজেক্টের কত %';
             }
         }
     }

@@ -380,6 +380,7 @@ ORDER BY lb.booking_date DESC
                 f.flat_name as unit_name,
                 f.is_shop,
                 f.unit_type,
+                COALESCE(f.shop_service_charge, 0) as shop_service_charge,
                 u.full_name as agent_name,
                 -- Payment calculations
                 COALESCE(
@@ -1341,6 +1342,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
                     WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
                     WHEN lp.payment_type = 'development_charge' THEN 'DEV CHARGE'
+                    WHEN lp.payment_type = 'shop_service_charge' THEN 'SHOP SVC CHARGE'
                     ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
                 END as installment_label,
                 CASE 
@@ -1351,6 +1353,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
                     WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
                     WHEN lp.payment_type = 'development_charge' THEN 'Development Charge'
+                    WHEN lp.payment_type = 'shop_service_charge' THEN 'Shop Service Charge'
                     ELSE 'Other Payment'
                 END as payment_details,
                 b.bank_name as bank_display_name
@@ -1458,6 +1461,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
                     WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
                     WHEN lp.payment_type = 'development_charge' THEN 'DEV CHARGE'
+                    WHEN lp.payment_type = 'shop_service_charge' THEN 'SHOP SVC CHARGE'
                     ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
                 END as installment_label,
                 CASE 
@@ -1468,6 +1472,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
                     WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
                     WHEN lp.payment_type = 'development_charge' THEN 'Development Charge'
+                    WHEN lp.payment_type = 'shop_service_charge' THEN 'Shop Service Charge'
                     ELSE 'Other Payment'
                 END as payment_details,
                 b.bank_name as bank_display_name
