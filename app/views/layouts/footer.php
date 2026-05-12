@@ -95,7 +95,7 @@
                     icon: 'success',
                     title: <?= json_encode($_SESSION['flash_success']); ?>,
                     showConfirmButton: false,
-                    timer: 4000,
+                    timer: 20000,
                     timerProgressBar: true,
                     customClass: {
                         popup: 'swal2-toast'
@@ -114,7 +114,7 @@
                     icon: 'error',
                     title: <?= json_encode($_SESSION['flash_error']); ?>,
                     showConfirmButton: false,
-                    timer: 1000000,
+                    timer: 20000,
                     width: '320px'
                 });
             </script>

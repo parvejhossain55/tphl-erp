@@ -159,16 +159,7 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
     <div class="kpi-sub">Projects under QC review</div>
   </a>
 
-  <a href="<?= $base ?>/con-targets" class="kpi-card">
-    <div class="kpi-accent" style="background:var(--qc-amber)"></div>
-    <div class="kpi-icon" style="background:rgba(245,158,11,.12);color:var(--qc-amber)"><i class="fal fa-bullseye"></i></div>
-    <div class="kpi-label" style="color:var(--text-muted)">Pending Targets</div>
-    <div class="kpi-value" style="color:var(--qc-amber)"><?= $pendingTargetsCount ?></div>
-    <div class="kpi-sub">Awaiting QC approval</div>
-    <?php if ($pendingTargetsCount > 0): ?>
-    <span class="kpi-badge" style="background:rgba(245,158,11,.12);color:var(--qc-amber)">REVIEW</span>
-    <?php endif; ?>
-  </a>
+
 
   <a href="<?= $base ?>/con-material-receivings" class="kpi-card">
     <div class="kpi-accent" style="background:var(--qc-purple)"></div>
@@ -263,10 +254,7 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
           <span class="ql-icon"><i class="fal fa-flask"></i></span>
           <span>Log Lab Test</span>
         </a>
-        <a href="<?= $base ?>/con-targets" class="ql-btn" style="color:var(--qc-amber)">
-          <span class="ql-icon"><i class="fal fa-bullseye"></i></span>
-          <span>Targets</span>
-        </a>
+
         <a href="<?= $base ?>/con-material-receivings" class="ql-btn" style="color:var(--qc-purple)">
           <span class="ql-icon"><i class="fal fa-truck"></i></span>
           <span>GRN Review</span>
@@ -279,7 +267,12 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
           <span class="ql-icon"><i class="fal fa-building"></i></span>
           <span>Projects</span>
         </a>
+        <a href="<?= $base ?>/qc-checklists" class="ql-btn" style="color:#6366f1">
+          <span class="ql-icon"><i class="fal fa-clipboard-list"></i></span>
+          <span>Checklists</span>
+        </a>
       </div>
+
     </div>
 
     <!-- QC Activity Summary (filler to equalize height) -->
@@ -329,18 +322,6 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
           <span style="font-size:26px;font-weight:900;color:var(--qc-purple)"><?= $pendingGRNsCount ?></span>
         </div>
 
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-radius:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15)">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:34px;height:34px;border-radius:10px;background:rgba(245,158,11,.12);display:flex;align-items:center;justify-content:center">
-              <i class="fal fa-bullseye" style="color:var(--qc-amber);font-size:14px"></i>
-            </div>
-            <div>
-              <div style="font-size:12px;font-weight:700">Pending Target Approvals</div>
-              <div style="font-size:10px;color:var(--text-muted)">Targets awaiting QC sign-off</div>
-            </div>
-          </div>
-          <span style="font-size:26px;font-weight:900;color:var(--qc-amber)"><?= $pendingTargetsCount ?></span>
-        </div>
 
       </div>
     </div>
@@ -452,86 +433,7 @@ if (!empty($pendingWeeklyReportsQC)):
 </div>
 <?php endif; ?>
 
-<?php if (!empty($pendingTargets)): ?>
-<div class="rd-panel" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03);margin-top:4px">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="rd-panel-title" style="margin-bottom:0">
-      <div class="rd-dot" style="background:var(--qc-amber)"></div>
-      <i class="fal fa-bullseye me-2" style="color:var(--qc-amber)"></i>
-      Pending Targets — QC Approval Required
-      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
-        background:rgba(245,158,11,.12);color:var(--qc-amber)">
-        <?= count($pendingTargets) ?> Awaiting
-      </span>
-    </div>
-    <a href="<?= $base ?>/con-targets" style="font-size:11px;color:var(--qc-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
-  </div>
-  <div style="overflow-x:auto">
-    <table class="rd-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Project</th>
-          <th>Target Title</th>
-          <th>Submitted By</th>
-          <th>Designation</th>
-          <th>Target %</th>
-          <th>Gain %</th>
-          <th>Period</th>
-          <th>Submitted On</th>
-          <th style="text-align:right">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php foreach ($pendingTargets as $pi => $pt): ?>
-        <tr>
-          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
-          <td style="font-weight:700"><?= htmlspecialchars($pt['project_name'] ?? 'N/A') ?></td>
-          <td><?= htmlspecialchars($pt['target_title'] ?? '—') ?></td>
-          <td>
-            <div style="display:flex;align-items:center;gap:7px">
-              <div style="width:26px;height:26px;border-radius:50%;background:rgba(99,102,241,.1);
-                display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                <i class="fal fa-user" style="font-size:10px;color:#6366f1"></i>
-              </div>
-              <span style="font-size:12px;font-weight:600"><?= htmlspecialchars($pt['creator_name'] ?? '—') ?></span>
-            </div>
-          </td>
-          <td>
-            <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;
-              background:rgba(99,102,241,.08);color:#6366f1">
-              <?= htmlspecialchars($pt['creator_designation'] ?: 'SE') ?>
-            </span>
-          </td>
-          <td><span class="status-pill" style="background:rgba(59,130,246,.1);color:#2563eb"><?= number_format($pt['target_percentage'] ?? 0, 1) ?>%</span></td>
-          <td>
-            <?php $g = (float)($pt['gain_percentage'] ?? 0); $tp = (float)($pt['target_percentage'] ?? 0); ?>
-            <span class="status-pill" style="background:<?= $g>=$tp?'rgba(16,185,129,.1)':'rgba(245,158,11,.1)' ?>;
-              color:<?= $g>=$tp?'#059669':'#d97706' ?>"><?= number_format($g,1) ?>%</span>
-          </td>
-          <td style="font-size:11px;color:var(--text-muted)">
-            <?= $pt['year'] ?? '' ?>
-            <?= $pt['week_number'] ? ' / Wk '.$pt['week_number'] : '' ?>
-          </td>
-          <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">
-            <i class="fal fa-calendar me-1"></i>
-            <?= !empty($pt['created_at']) ? date('d M Y', strtotime($pt['created_at'])) : '—' ?>
-          </td>
-          <td style="text-align:right">
-            <a href="<?= $base ?>/con-target/<?= $pt['id'] ?>"
-              style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
-                padding:5px 14px;border-radius:8px;text-decoration:none;
-                background:linear-gradient(135deg,#059669,#10b981);color:#fff">
-              <i class="fal fa-check-circle"></i> Review &amp; Approve
-            </a>
-          </td>
-        </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-  </div>
-</div>
-<?php endif; ?>
+
 
 <div class="row mt-4">
     <!-- Inspections Table -->
@@ -554,6 +456,7 @@ if (!empty($pendingWeeklyReportsQC)):
                                 <th>Inspector</th>
                                 <th>Date</th>
                                 <th>Status</th>
+                                <th style="text-align:right">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -574,11 +477,17 @@ if (!empty($pendingWeeklyReportsQC)):
                                             <span class="status-pill" style="background:rgba(245,158,11,.1);color:#d97706">Rework Needed</span>
                                         <?php endif; ?>
                                     </td>
+                                    <td style="text-align:right">
+                                        <a href="<?= $base ?>/qc-inspection/<?= $ins['id'] ?>"
+                                          style="background:rgba(99,102,241,.1);color:#6366f1;border:none;border-radius:7px;padding:4px 12px;font-size:11px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px">
+                                          <i class="fal fa-eye"></i> View
+                                        </a>
+                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">No inspections found.</td>
+                                    <td colspan="7" class="text-center py-4 text-muted">No inspections found.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>

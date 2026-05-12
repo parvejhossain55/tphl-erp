@@ -57,7 +57,7 @@ class Con_WorkingPlanController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -65,6 +65,20 @@ class Con_WorkingPlanController extends Controller
         $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
         $budgets     = $this->budgetModel->getAll();
+
+        // Fetch allocated weights for all budgets
+        $allocatedWeights = [];
+        $allocQuery = $this->db->query("SELECT initial_budget_id, SUM(weight_percentage) as allocated FROM project_working_plans GROUP BY initial_budget_id");
+        if ($allocQuery) {
+            while ($row = $allocQuery->fetch_assoc()) {
+                $allocatedWeights[$row['initial_budget_id']] = (float)$row['allocated'];
+            }
+        }
+
+        foreach ($budgets as &$b) {
+            $b['allocated_weight'] = $allocatedWeights[$b['id']] ?? 0.0;
+        }
+        unset($b);
 
         // Pre-load work_types grouped by project_id for instant dropdown fill (no extra AJAX)
         $wtQuery = $this->db->query(
@@ -124,6 +138,7 @@ class Con_WorkingPlanController extends Controller
             'work_description'  =>          trim($_POST['work_description'] ?? ''),
             'planned_quantity'  => (float) ($_POST['planned_quantity']  ?? 0),
             'estimated_cost'    => (float) ($_POST['estimated_cost']    ?? 0),
+            'weight_percentage' => (float) ($_POST['weight_percentage'] ?? 0),
             'created_by'        => (int)   ($_SESSION['user']['id']     ?? 0),
         ];
 
@@ -131,6 +146,22 @@ class Con_WorkingPlanController extends Controller
             setError('Project and Budget are required.');
             header("Location: {$GLOBALS['base_url']}/con-working-plan-create");
             exit;
+        }
+
+        // Validate weight percentage
+        if ($data['weight_percentage'] > 0) {
+            $budget = $this->budgetModel->find($data['initial_budget_id']);
+            $totalWeight = (float)($budget['weight_percentage'] ?? 0);
+            
+            $allocQuery = $this->db->query("SELECT SUM(weight_percentage) as allocated FROM project_working_plans WHERE initial_budget_id = " . $data['initial_budget_id']);
+            $allocated = (float)($allocQuery->fetch_assoc()['allocated'] ?? 0);
+            
+            if (($allocated + $data['weight_percentage']) > $totalWeight) {
+                $remaining = max(0, $totalWeight - $allocated);
+                setError("Cannot allocate {$data['weight_percentage']}%. Only {$remaining}% is remaining for this budget.");
+                header("Location: {$GLOBALS['base_url']}/con-working-plan-create");
+                exit;
+            }
         }
 
         $result = $this->model->createPlan($data);
@@ -168,7 +199,7 @@ class Con_WorkingPlanController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -176,6 +207,21 @@ class Con_WorkingPlanController extends Controller
         $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
         $budgets     = $this->budgetModel->getAll();
+        
+        // Fetch allocated weights for all budgets
+        $allocatedWeights = [];
+        $allocQuery = $this->db->query("SELECT initial_budget_id, SUM(weight_percentage) as allocated FROM project_working_plans GROUP BY initial_budget_id");
+        if ($allocQuery) {
+            while ($row = $allocQuery->fetch_assoc()) {
+                $allocatedWeights[$row['initial_budget_id']] = (float)$row['allocated'];
+            }
+        }
+
+        foreach ($budgets as &$b) {
+            $b['allocated_weight'] = $allocatedWeights[$b['id']] ?? 0.0;
+        }
+        unset($b);
+        
         $designTypes = $this->designTypeModel->getAll();
 
         $this->view('phase2/working_plans/edit-working-plan', [
@@ -209,7 +255,24 @@ class Con_WorkingPlanController extends Controller
             'work_description'  =>          trim($_POST['work_description'] ?? ''),
             'planned_quantity'  => (float) ($_POST['planned_quantity']  ?? 0),
             'estimated_cost'    => (float) ($_POST['estimated_cost']    ?? 0),
+            'weight_percentage' => (float) ($_POST['weight_percentage'] ?? 0),
         ];
+
+        // Validate weight percentage
+        if ($data['weight_percentage'] > 0) {
+            $budget = $this->budgetModel->find($data['initial_budget_id']);
+            $totalWeight = (float)($budget['weight_percentage'] ?? 0);
+            
+            $allocQuery = $this->db->query("SELECT SUM(weight_percentage) as allocated FROM project_working_plans WHERE initial_budget_id = " . $data['initial_budget_id'] . " AND id != " . (int)$id);
+            $allocated = (float)($allocQuery->fetch_assoc()['allocated'] ?? 0);
+            
+            if (($allocated + $data['weight_percentage']) > $totalWeight) {
+                $remaining = max(0, $totalWeight - $allocated);
+                setError("Cannot allocate {$data['weight_percentage']}%. Only {$remaining}% is remaining for this budget.");
+                header("Location: {$GLOBALS['base_url']}/con-working-plan-edit/{$id}");
+                exit;
+            }
+        }
 
         $result = $this->model->updatePlan($id, $data);
         if ($result['ok']) {
@@ -274,7 +337,7 @@ class Con_WorkingPlanController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -449,10 +512,23 @@ class Con_WorkingPlanController extends Controller
             ];
         }, $workTypesRaw);
 
+        // Work Orders for this project
+        $stmtWo = $this->db->prepare(
+            "SELECT wo.id, wo.title, wo.wo_number, wo.description, dt.name AS design_name 
+             FROM con_work_orders wo
+             LEFT JOIN project_drawings pd ON pd.id = wo.design_id
+             LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+             WHERE wo.project_id = ? AND wo.status != 'rejected' ORDER BY wo.id DESC"
+        );
+        $stmtWo->bind_param('i', $projectId);
+        $stmtWo->execute();
+        $workOrders = $stmtWo->get_result()->fetch_all(MYSQLI_ASSOC);
+
         echo json_encode([
-            'work_plans' => $workPlans, 
-            'budgets'    => $budgets,
-            'work_types' => $workTypes
+            'work_plans'  => $workPlans, 
+            'budgets'     => $budgets,
+            'work_types'  => $workTypes,
+            'work_orders' => $workOrders
         ]);
         exit;
     }

@@ -1104,6 +1104,72 @@ $statusColor = [
     <?php endif; ?>
 
     <?php
+    $pendingWorkOrders = $pendingWorkOrders ?? [];
+    if (!empty($pendingWorkOrders)):
+      ?>
+      <div class="con-panel card__wrapper mb-4" style="border-color:rgba(14,165,233,.35);background:rgba(14,165,233,.03)">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="sec-title" style="margin-bottom:0">
+            <div class="sec-title-dot" style="background:#0ea5e9"></div>
+            <i class="fal fa-file-signature me-2" style="color:#0ea5e9"></i>
+            Pending Work Orders &mdash; Management Approval Required
+            <span
+              style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(14,165,233,.12);color:#0ea5e9">
+              <?= count($pendingWorkOrders) ?> Awaiting
+            </span>
+          </div>
+          <a href="<?= $base ?>/con-work-orders"
+            style="font-size:11px;color:#0ea5e9;text-decoration:none">View All <i
+              class="fal fa-arrow-right ms-1"></i></a>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="proj-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Project</th>
+                <th>Work Order Title</th>
+                <th>Contractor</th>
+                <th>Total Amount</th>
+                <th>Created By</th>
+                <th>Date</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($pendingWorkOrders as $pi => $wo): ?>
+                <tr>
+                  <td style="font-size:11px;color:var(--text-muted)"><?= $pi + 1 ?></td>
+                  <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($wo['project_name'] ?? '&mdash;') ?></td>
+                  <td style="font-weight:600;color:#0ea5e9"><?= htmlspecialchars($wo['title'] ?? '&mdash;') ?></td>
+                  <td style="font-size:12px"><?= htmlspecialchars($wo['contractor_name'] ?? '&mdash;') ?></td>
+                  <td style="font-weight:800;color:var(--cd-primary,#198754)"><?= conFmt($wo['total_amount'] ?? 0) ?></td>
+                  <td style="font-size:12px">
+                     <div style="display:flex;align-items:center;gap:8px">
+                      <div style="width:28px;height:28px;border-radius:50%;background:rgba(14,165,233,.1);
+                display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <i class="fal fa-user" style="font-size:11px;color:#0ea5e9"></i>
+                      </div>
+                      <div>
+                        <div style="font-size:12px;font-weight:600"><?= htmlspecialchars($wo['creator_name'] ?? '&mdash;') ?></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="font-size:11px;color:var(--text-muted)">
+                    <?= !empty($wo['created_at']) ? date('d M Y', strtotime($wo['created_at'])) : '&mdash;' ?>
+                  </td>
+                  <td style="text-align:right"><a href="<?= $base ?>/con-work-order/<?= $wo['id'] ?>"
+                      style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 14px;border-radius:8px;text-decoration:none;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff"><i
+                        class="fal fa-check-circle"></i> Review &amp; Approve</a></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <?php endif; ?>
+
+    <?php
     $pendingReturns = $pendingReturns ?? [];
     if (!empty($pendingReturns)):
       ?>

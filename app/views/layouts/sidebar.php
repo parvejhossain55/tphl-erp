@@ -1323,9 +1323,9 @@
                 <!-- ====== QC MODULE ====== -->
                 <?php if (hasPermission('QC Dashboard')): ?>
                         <li
-                            class="slide has-sub <?= isActive(['qc-dashboard', 'qc-inspection-create', 'qc-material-test-create'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['qc-dashboard', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['qc-dashboard', 'qc-inspection-create', 'qc-material-test-create'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['qc-dashboard', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
                                 <span class="sidebar__menu-label">QC Module</span>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1350,6 +1350,12 @@
                                     <a href="<?= $GLOBALS['base_url'] ?>/qc-material-test-create"
                                         class="sidebar__menu-item <?= isActive('qc-material-test-create', $current_route) ?>">Quality Control Tests</a>
                                 </li>
+                                <li class="slide <?= isActive('qc-checklists', $current_route) ?>">
+                                    <a href="<?= $GLOBALS['base_url'] ?>/qc-checklists"
+                                        class="sidebar__menu-item <?= isActive('qc-checklists', $current_route) ?>">
+                                        <i class="fal fa-clipboard-list me-1"></i> Checklists
+                                    </a>
+                                </li>
                          
                             </ul>
                         </li>
@@ -1359,9 +1365,9 @@
                 <!-- Pre-Construction — only show if user has at least one permission -->
                 <?php if (hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Project structure design') || hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Soil tests') || hasPermission('Construction Management')): ?>
                         <li
-                            class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit'], $current_route) ? 'active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                                 <div class="side-menu__icon">
                                     <i class="bi bi-building"></i>
@@ -1385,11 +1391,15 @@
                                 <?php if (hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Construction Management')): ?>
                                         <li class="slide <?= isActive('con-design-types', $current_route) ?>">
                                             <a class="sidebar__menu-item <?= isActive('con-design-types', $current_route) ?>"
-                                                href="<?= $base_url ?>/con-design-types">Design Types</a>
+                                                href="<?= $base_url ?>/con-design-types">Drawing Types</a>
                                         </li>
                                         <li class="slide <?= isActive('con-project-drawings', $current_route) ?>">
                                             <a class="sidebar__menu-item <?= isActive('con-project-drawings', $current_route) ?>"
                                                 href="<?= $base_url ?>/con-project-drawings">Project Drawings</a>
+                                        </li>
+                                        <li class="slide <?= isActive(['legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
+                                            <a class="sidebar__menu-item <?= isActive(['legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>"
+                                                href="<?= $base_url ?>/legal-sheet-lists">Project Legal Sheets</a>
                                         </li>
                                 <?php endif; ?>
                                 <?php if (hasPermission('Project structure design')): ?>

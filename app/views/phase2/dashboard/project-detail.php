@@ -291,6 +291,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
   <button class="pd-tab" data-tab="workplan"><i class="fal fa-calendar-alt me-1"></i>Work Plan</button>
   <button class="pd-tab" data-tab="targets"><i class="fal fa-bullseye me-1"></i>Targets</button>
   <button class="pd-tab" data-tab="weekly"><i class="fal fa-chart-bar me-1"></i>Weekly Report</button>
+  <button class="pd-tab" data-tab="workorders"><i class="fal fa-file-signature me-1"></i>Work Orders</button>
 </div>
 
 <!-- ═══════════════════════ TAB 1: OVERVIEW ══════════════════════════════ -->
@@ -335,6 +336,23 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
           ['Other Costs',    $budget ? pdFmt($budget['other_costs'] ?? 0) : '—'],
           ['Total Area',     $budget && $budget['total_area_sqft'] ? number_format($budget['total_area_sqft']) . ' sqft' : '—'],
         ];
+        
+        // Calculate project duration
+        if ($budget && !empty($budget['start_date']) && !empty($budget['end_date'])) {
+            $sDate = new DateTime($budget['start_date']);
+            $eDate = new DateTime($budget['end_date']);
+            $interval = $sDate->diff($eDate);
+            $totalMonths = ($interval->y * 12) + $interval->m;
+            if ($totalMonths <= 0) $totalMonths = 1;
+            
+            $durationText = $interval->y . ' Years ' . $interval->m . ' Months';
+            $budgetWeight = (float)($budget['weight_percentage'] ?? 100);
+            $perYearWeight = ($interval->y > 0) ? round($budgetWeight / $interval->y, 2) : $budgetWeight;
+            
+            $tlRows[] = ['Project Duration', $durationText];
+            $tlRows[] = ['Est. Target / Year', $perYearWeight . '% per year (Total: ' . $budgetWeight . '%)'];
+        }
+
         foreach ($tlRows as [$label, $val]):
         ?>
         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.05);font-size:12.5px">
@@ -571,19 +589,27 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
   </div>
 </div>
 
-<!-- ═══════════════════════ TAB 7: WEEKLY REPORT (AJAX) ════════════════ -->
-<div class="pd-tab-pane" id="tab-weekly">
-  <div id="wr-content">
-    <div class="ajax-loader"><span class="spinner"></span>Loading weekly report...</div>
+<!-- ═══════════════════════ TAB 8: WORK ORDERS (AJAX) ════════════════ -->
+<div class="pd-tab-pane" id="tab-workorders">
+  <div id="wo-content">
+    <div class="ajax-loader"><span class="spinner"></span>Loading work orders...</div>
   </div>
 </div>
+
+<!-- ═══════════════════════ TAB 7: WEEKLY REPORT (AJAX) ═════════════ -->
+<div class="pd-tab-pane" id="tab-weekly">
+  <div id="wr-content">
+    <div class="ajax-loader"><span class="spinner"></span>Loading weekly report data...</div>
+  </div>
+</div>
+
 
 <!-- ═══════════════════════ JS ══════════════════════════════════════════ -->
 <script>
 (function(){
   const base   = "<?= $base ?>";
   const projId = "<?= (int)($project['id'] ?? 0) ?>";
-  let wpLoaded = false, tgLoaded = false, wrLoaded = false;
+  let wpLoaded = false, tgLoaded = false, wrLoaded = false, woLoaded = false;
 
   // ── Tab switching ────────────────────────────────────────────────────
   document.querySelectorAll('.pd-tab').forEach(function(btn){
@@ -598,12 +624,13 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
       if(btn.dataset.tab === 'workplan' && !wpLoaded) { wpLoaded=true; loadWorkPlan(); }
       if(btn.dataset.tab === 'targets'  && !tgLoaded) { tgLoaded=true; loadTargets(); }
       if(btn.dataset.tab === 'weekly'   && !wrLoaded) { wrLoaded=true; loadWeekly(); }
+      if(btn.dataset.tab === 'workorders' && !woLoaded) { woLoaded=true; loadWorkOrders(); }
     });
   });
 
   // ── Tab 5: Work Plan ─────────────────────────────────────────────────
   function loadWorkPlan(){
-    fetch(base + '/con-ajax-workplan/' + projId)
+    fetch(base + '/con-ajax-workplan/' + projId + '?t=' + new Date().getTime())
       .then(function(r){ return r.json(); })
       .then(function(res){
         var el = document.getElementById('wp-content');
@@ -613,14 +640,19 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
         }
         var html = '';
         res.data.forEach(function(month){
+          var totalMonthWeight = 0;
+          month.plans.forEach(function(p){ totalMonthWeight += parseFloat(p.weight_percentage||0); });
+          
           html += '<div class="pd-panel mb-3">';
-          html += '<div class="pd-panel-title"><i class="fal fa-calendar-alt me-1"></i>' + month.label + '</div>';
-          html += '<table class="wp-table"><thead><tr><th>Design Type</th><th>Work Description</th><th>Qty</th><th style="text-align:right">Est. Cost</th></tr></thead><tbody>';
+          html += '<div class="pd-panel-title d-flex justify-content-between align-items-center"><div class="d-flex align-items-center"><i class="fal fa-calendar-alt me-2"></i>' + month.label + '</div>';
+          html += '<div style="font-size:11px;background:rgba(59,130,246,.1);color:#3b82f6;padding:4px 10px;border-radius:6px;">Plans: ' + month.plans.length + ' | Monthly Weight: ' + totalMonthWeight.toFixed(2) + '%</div></div>';
+          html += '<table class="wp-table"><thead><tr><th>Design Type</th><th>Work Description</th><th>Qty</th><th style="text-align:right">Plan Weight</th><th style="text-align:right">Est. Cost</th></tr></thead><tbody>';
           month.plans.forEach(function(p){
             html += '<tr>';
             html += '<td><span style="font-size:11px;background:rgba(99,102,241,.1);color:#6366f1;padding:2px 8px;border-radius:5px;font-weight:600">' + (p.design_type_name||'—') + '</span></td>';
             html += '<td>' + escHtml(p.work_description||'—') + '</td>';
             html += '<td>' + (p.planned_quantity||'—') + '</td>';
+            html += '<td style="text-align:right;font-weight:700;color:#f59e0b">' + parseFloat(p.weight_percentage||0).toFixed(2) + '%</td>';
             html += '<td style="text-align:right;font-weight:700;color:#3b82f6">' + fmtMoney(p.estimated_cost) + '</td>';
             html += '</tr>';
           });
@@ -628,12 +660,12 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
         });
         el.innerHTML = html;
       })
-      .catch(function(){ document.getElementById('wp-content').innerHTML = '<div class="empty-pd">Failed to load work plan</div>'; });
+      .catch(function(e){ console.error(e); document.getElementById('wp-content').innerHTML = '<div class="empty-pd">Failed to load work plan</div>'; });
   }
 
   // ── Tab 6: Targets ────────────────────────────────────────────────────
   function loadTargets(){
-    fetch(base + '/con-ajax-targets/' + projId)
+    fetch(base + '/con-ajax-targets/' + projId + '?t=' + new Date().getTime())
       .then(function(r){ return r.json(); })
       .then(function(res){
         var el = document.getElementById('tg-content');
@@ -642,7 +674,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
           return;
         }
         var html = '<div class="pd-panel"><table class="wp-table"><thead><tr>';
-        html += '<th>Title</th><th>Period</th><th>Week</th><th style="text-align:right">Target%</th><th style="text-align:right">Gain%</th><th>Approvals</th>';
+        html += '<th>Title</th><th>Period</th><th>Week</th><th style="text-align:right">Target%</th><th style="text-align:right">Gain% (Out of Target)</th><th>Approvals</th>';
         html += '</tr></thead><tbody>';
         res.data.forEach(function(t){
           var apvLabels = ['SE','QC','PC','PD','MGR'];
@@ -653,7 +685,8 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
           }).join('');
 
           var gPct = parseFloat(t.gain_percentage||0);
-          var gClr = gPct >= 75 ? '#10b981' : (gPct >= 40 ? '#f59e0b' : '#ef4444');
+          var tPct = parseFloat(t.target_percentage||0);
+          var gClr = gPct >= tPct ? '#10b981' : (gPct > 0 ? '#f59e0b' : '#ef4444');
 
           html += '<tr>';
           html += '<td><strong>' + escHtml(t.target_title||'—') + '</strong>';
@@ -661,15 +694,15 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
           html += '</td>';
           html += '<td>' + monthName(t.month) + ' ' + t.year + '</td>';
           html += '<td>Week ' + t.week_number + '</td>';
-          html += '<td style="text-align:right;font-weight:700;color:#6366f1">' + parseFloat(t.target_percentage||0).toFixed(1) + '%</td>';
-          html += '<td style="text-align:right;font-weight:700;color:'+gClr+'">' + gPct.toFixed(1) + '%</td>';
+          html += '<td style="text-align:right;font-weight:700;color:#6366f1">' + tPct.toFixed(1) + '%</td>';
+          html += '<td style="text-align:right;font-weight:700;color:'+gClr+'">' + gPct.toFixed(1) + '% (of ' + tPct.toFixed(1) + '%)</td>';
           html += '<td>' + apvHtml + '</td>';
           html += '</tr>';
         });
         html += '</tbody></table></div>';
         el.innerHTML = html;
       })
-      .catch(function(){ document.getElementById('tg-content').innerHTML = '<div class="empty-pd">Failed to load targets</div>'; });
+      .catch(function(e){ console.error(e); document.getElementById('tg-content').innerHTML = '<div class="empty-pd">Failed to load targets</div>'; });
   }
 
   // ── Tab 7: Weekly Report ──────────────────────────────────────────────
@@ -677,7 +710,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
   var curMonth = 0, curWeek = 0;
 
   function loadWeekly(){
-    fetch(base + '/con-ajax-weekly/' + projId)
+    fetch(base + '/con-ajax-weekly/' + projId + '?t=' + new Date().getTime())
       .then(function(r){ return r.json(); })
       .then(function(res){
         var el = document.getElementById('wr-content');
@@ -795,45 +828,126 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
     if(!week.dprs || !week.dprs.length)
       return '<div class="empty-pd"><div class="empty-pd-ico"><i class="fal fa-chart-line"></i></div>No daily progress reports for this week</div>';
     var html = '<div class="pd-panel"><table class="wp-table"><thead><tr>';
-    html += '<th>Date</th><th>Engineer</th><th>Work Done</th><th>Weather</th><th>Manpower</th><th style="text-align:right">Progress %</th>';
+    html += '<th>Date & By</th><th>Work Plan & Target</th><th>Contractor & Work Order</th><th>Contractor Bill</th><th>Work Details</th><th>Approvals</th><th style="text-align:right">Progress %</th>';
     html += '</tr></thead><tbody>';
     week.dprs.forEach(function(d){
-      var pct = parseFloat(d.progress_percentage||0);
-      var clr = pct>=75?'#10b981':(pct>=40?'#f59e0b':'#ef4444');
+      var wpName   = d.work_plan_title ? escHtml(d.work_plan_title) : '—';
+      var tName    = d.target_title ? escHtml(d.target_title) : '—';
+      var woName   = d.work_order_title ? escHtml(d.work_order_title) : '<span style="color:#94a3b8">No Work Order</span>';
+      var contName = d.contractor_name ? escHtml(d.contractor_name) : '<span style="color:#94a3b8">No Contractor</span>';
+      var contPhone= d.contractor_phone ? escHtml(d.contractor_phone) : '';
+      var contTrade= d.contractor_trade ? escHtml(d.contractor_trade) : '';
+      var moYr = d.target_month && d.target_year ? monthName(d.target_month) + ' ' + d.target_year + ' (W' + (d.week_number||d.week_no||'') + ')' : '';
+
+      // Bill info
+      var billHtml = '<span style="color:#94a3b8;font-size:11px">No Bill</span>';
+      if(d.bill_amount) {
+        var bStatus = d.bill_status || 'pending';
+        var bClr = bStatus === 'fully_paid' ? '#10b981' : (bStatus === 'partial' ? '#f59e0b' : '#ef4444');
+        var bLabel = bStatus === 'fully_paid' ? '✓ Fully Paid' : (bStatus === 'partial' ? '⚡ Partial' : bStatus.toUpperCase());
+        billHtml  = '<div style="font-weight:700;color:#3b82f6">' + fmtMoney(d.bill_amount) + '</div>';
+        billHtml += '<div style="font-size:10px;font-weight:700;color:'+bClr+'">' + bLabel + '</div>';
+        if(parseFloat(d.bill_due_amount) > 0)
+          billHtml += '<div style="font-size:10px;color:#ef4444">Due: ' + fmtMoney(d.bill_due_amount) + '</div>';
+      }
+
+      var apvPM = d.pm_name ? '<span class="apv-yes" style="padding:2px 6px;border-radius:4px;font-size:10px;">PM: '+escHtml(d.pm_name)+'</span>' : '<span class="apv-no" style="padding:2px 6px;border-radius:4px;font-size:10px;">PM: Pending</span>';
+      var apvQC = d.qc_name ? '<span class="apv-yes" style="padding:2px 6px;border-radius:4px;font-size:10px;">QC: '+escHtml(d.qc_name)+'</span>' : '<span class="apv-no" style="padding:2px 6px;border-radius:4px;font-size:10px;">QC: Pending</span>';
+      var creator = d.creator_name ? escHtml(d.creator_name) : (d.engineer_name ? escHtml(d.engineer_name) : '—');
+
+      // Contractor cell
+      var contCell = '<strong style="color:#f59e0b">' + contName + '</strong>';
+      if(contPhone) contCell += '<br><span style="font-size:10px;color:var(--text-muted)"><i class="fal fa-phone-alt me-1"></i>' + contPhone + '</span>';
+      if(contTrade) contCell += '<br><span style="font-size:10px;color:#6366f1">' + contTrade + '</span>';
+      contCell += '<br><span style="font-size:10px;color:var(--text-muted)">WO: ' + woName + '</span>';
+
       html += '<tr>';
-      html += '<td>'+escHtml(d.report_date||'—')+'</td>';
-      html += '<td>'+escHtml(d.engineer_name||'—')+'</td>';
-      html += '<td style="max-width:200px">'+escHtml((d.work_done||'—').substring(0,80))+'</td>';
-      html += '<td>'+escHtml(d.weather_condition||'—')+'</td>';
-      html += '<td>'+escHtml(String(d.manpower_count||'—'))+'</td>';
-      html += '<td style="text-align:right;font-weight:700;color:'+clr+'">'+pct.toFixed(1)+'%</td>';
+      html += '<td><strong>' + formatDate(d.report_date) + '</strong><br><span style="font-size:10px;color:var(--text-muted)">By: ' + creator + '</span></td>';
+      html += '<td><strong style="color:#3b82f6">' + wpName + '</strong><br><span style="font-size:11px;color:var(--text-muted)">T: ' + tName + ' ('+moYr+')</span></td>';
+      html += '<td>' + contCell + '</td>';
+      html += '<td>' + billHtml + '</td>';
+      html += '<td>' + escHtml(d.work_done||'—') + '<br><span style="font-size:10px;color:var(--text-muted)">Manpower: ' + (d.manpower_count||0) + '</span></td>';
+      html += '<td><div style="display:flex;flex-direction:column;gap:4px">' + apvQC + apvPM + '</div></td>';
+      html += '<td style="text-align:right;font-weight:700;color:#10b981">' + parseFloat(d.progress_percentage||0).toFixed(1) + '%</td>';
       html += '</tr>';
     });
     html += '</tbody></table></div>';
     return html;
   }
 
+
+
   function renderFinancial(week){
     if(!week.transactions || !week.transactions.length)
       return '<div class="empty-pd"><div class="empty-pd-ico"><i class="fal fa-credit-card"></i></div>No financial transactions for this week</div>';
-    var total = week.transactions.reduce(function(s,t){ return s + parseFloat(t.amount||0); }, 0);
+    var total = week.transactions.reduce(function(s,t){ return s + parseFloat(t.amount_paid||t.amount||0); }, 0);
     var html = '<div class="pd-panel">';
-    html += '<div style="text-align:right;margin-bottom:12px;font-size:13px">Total: <strong style="color:#3b82f6">'+fmtMoney(total)+'</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+    html += '<span style="font-size:12px;color:var(--text-muted)">'+week.transactions.length+' transaction(s)</span>';
+    html += '<span style="font-size:13px">Total Paid: <strong style="color:#3b82f6">'+fmtMoney(total)+'</strong></span>';
+    html += '</div>';
     html += '<table class="wp-table"><thead><tr>';
-    html += '<th>Date</th><th>Type</th><th>Method</th><th>Ref No</th><th>Processor</th><th style="text-align:right">Amount</th>';
+    html += '<th>Transaction Date</th><th>Type</th><th>Payment Type</th><th>Method</th>';
+    html += '<th style="text-align:right">Bill Amount</th><th style="text-align:right">Paid Amount</th><th>Bill Status</th><th>Processor</th>';
     html += '</tr></thead><tbody>';
     week.transactions.forEach(function(t){
+      // Date
+      var txDate = t.payment_date || t.transaction_date_str || '';
+      if(!txDate && t.transaction_date) txDate = t.transaction_date.substring(0, 10);
+      var txAmt     = parseFloat(t.amount_paid || t.amount || 0);
+      var billAmt   = parseFloat(t.cbr_bill_amount || 0);
+      var dueAmt    = parseFloat(t.cbr_due_amount || 0);
+      var billSt    = t.cbr_status || '';
+      var billStClr = billSt === 'fully_paid' ? '#10b981' : (billSt === 'partial' ? '#f59e0b' : '#ef4444');
+      var billStLbl = billSt === 'fully_paid' ? '✓ Fully Paid' : (billSt === 'partial_paid' ? '⚡ Partial' : (billSt ? billSt.replace(/_/g,' ').toUpperCase() : '—'));
+
       html += '<tr>';
-      html += '<td>'+escHtml(t.payment_date||'—')+'</td>';
+      html += '<td><strong>'+(txDate ? formatDate(txDate) : '—')+'</strong></td>';
       html += '<td><span style="font-size:11px;background:rgba(59,130,246,.1);color:#3b82f6;padding:2px 8px;border-radius:5px;font-weight:600">'+escHtml(t.ref_type||'—')+'</span></td>';
+      html += '<td><span style="font-size:11px;background:rgba(245,158,11,.1);color:#f59e0b;padding:2px 8px;border-radius:5px;font-weight:600">'+escHtml(t.payment_type||t.cbr_bill_type||'—')+'</span></td>';
       html += '<td>'+escHtml(t.payment_method||'—')+'</td>';
-      html += '<td style="font-size:11px;color:var(--text-muted)">'+escHtml(t.reference_no||'—')+'</td>';
+      html += '<td style="text-align:right;color:var(--text-muted)">'+(billAmt>0 ? fmtMoney(billAmt) : '—')+'</td>';
+      html += '<td style="text-align:right;font-weight:700;color:#3b82f6">'+fmtMoney(txAmt)+'</td>';
+      html += '<td>';
+      if(billSt) {
+        html += '<span style="font-size:10px;font-weight:700;color:'+billStClr+'">'+billStLbl+'</span>';
+        if(dueAmt>0) html += '<br><span style="font-size:10px;color:#ef4444">Due: '+fmtMoney(dueAmt)+'</span>';
+      } else html += '—';
+      html += '</td>';
       html += '<td>'+escHtml(t.processor_name||'—')+'</td>';
-      html += '<td style="text-align:right;font-weight:700;color:#3b82f6">'+fmtMoney(t.amount)+'</td>';
       html += '</tr>';
     });
     html += '</tbody></table></div>';
     return html;
+  }
+
+
+  // ── Tab 8: Work Orders ──────────────────────────────────────────────
+  function loadWorkOrders(){
+    fetch(base + '/con-ajax-workorders/' + projId + '?t=' + new Date().getTime())
+      .then(function(r){ return r.json(); })
+      .then(function(res){
+        var el = document.getElementById('wo-content');
+        if(!res.success || !res.data.length){
+          el.innerHTML = '<div class="empty-pd"><div class="empty-pd-ico"><i class="fal fa-file-signature"></i></div>No Work Orders found for this project.</div>';
+          return;
+        }
+        var html = '<div class="pd-panel"><table class="wp-table"><thead><tr>';
+        html += '<th>ID & Date</th><th>Work Description</th><th>Contractor Details</th><th>Status</th><th style="text-align:right">Amount</th>';
+        html += '</tr></thead><tbody>';
+        res.data.forEach(function(w){
+          html += '<tr>';
+          html += '<td><strong>WO-' + w.id + '</strong><br><span style="font-size:11px;color:var(--text-muted)">' + formatDate(w.created_at) + '</span></td>';
+          html += '<td><strong style="color:#1e293b">' + escHtml(w.title||'—') + '</strong><br><span style="font-size:12px;color:#64748b">' + escHtml(w.scope_of_work||'No scope specified') + '</span></td>';
+          html += '<td><div style="font-weight:600;color:#3b82f6">' + escHtml(w.contractor_name||'—') + '</div><div style="font-size:11px;color:#64748b"><i class="fal fa-phone-alt me-1"></i>' + escHtml(w.contractor_phone||'N/A') + '</div></td>';
+          html += '<td><span class="apv-yes" style="padding:4px 8px;border-radius:10px;font-size:10px;text-transform:uppercase">' + escHtml(w.status||'draft') + '</span></td>';
+          html += '<td style="text-align:right;font-weight:700;color:#059669">' + fmtMoney(w.total_amount||0) + '</td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        el.innerHTML = html;
+      })
+      .catch(function(e){ console.error(e); document.getElementById('wo-content').innerHTML = '<div class="empty-pd">Failed to load work orders</div>'; });
   }
 
   // ── Utilities ─────────────────────────────────────────────────────────
@@ -849,6 +963,12 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
   }
   var months=['','January','February','March','April','May','June','July','August','September','October','November','December'];
   function monthName(m){ return months[parseInt(m)]||'Month'; }
+  function formatDate(dStr){
+    if(!dStr) return '—';
+    var d = new Date(dStr);
+    if(isNaN(d)) return dStr;
+    return d.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+  }
 })();
 </script>
 

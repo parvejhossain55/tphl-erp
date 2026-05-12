@@ -157,8 +157,9 @@ class FlatModel extends Model
                 development_charges,
                 created_by,
                 status,
-                is_booked
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                is_booked,
+                upload_from
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
         if (!$stmt) {
@@ -184,11 +185,12 @@ class FlatModel extends Model
         $created_by           = isset($data['created_by'])           && trim($data['created_by'])           !== '' ? trim($data['created_by'])           : null;
 
         // If status is booked or sold, is_booked = 1
-        $status    = strtolower(trim($data['status'] ?? 'available')) ?: 'available';
-        $is_booked = in_array($status, ['booked', 'sold']) ? 1 : 0;
+        $status      = strtolower(trim($data['status'] ?? 'available')) ?: 'available';
+        $is_booked   = in_array($status, ['booked', 'sold']) ? 1 : 0;
+        $upload_from = $data['upload_from'] ?? 'From company csv';
 
         $stmt->bind_param(
-            "sssssssssssssssssi",
+            "ssssssssssssssssssi",
             $project_id,
             $flat_name,
             $sqft,
@@ -206,6 +208,7 @@ class FlatModel extends Model
             $development_charges,
             $created_by,
             $status,
+            $upload_from,
             $is_booked
         );
 

@@ -355,6 +355,7 @@ class FlatController extends Controller
 
                 $data['project_id'] = $projectId;
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
+                $data['upload_from'] = 'From company csv'; // CSV bulk import tag
 
                 try {
                     $this->flatModel->createFromCsvBulk($data);
@@ -385,6 +386,7 @@ class FlatController extends Controller
             header("Location: {$GLOBALS['base_url']}/flat-lists");
             exit;
         } else {
+            
             setError("Unable to read CSV file");
             header("Location: {$GLOBALS['base_url']}/flat-lists");
             exit;

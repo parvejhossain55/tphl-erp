@@ -29,7 +29,7 @@ $show_breadcrumb = true;
                     <thead>
                         <tr class="table__title">
                             <th>#</th>
-                            <th>Design Type Name</th>
+                            <th>Drawing Type Name</th>
                             <th>Status</th>
                             <th>Action</th>
                         </tr>

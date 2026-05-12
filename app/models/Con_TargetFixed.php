@@ -32,6 +32,8 @@ class Con_TargetFixed extends Model
     {
         $sql = "SELECT tf.*,
                        p.name           AS project_name,
+                       wo.title         AS work_order_title,
+                       wo.wo_number     AS work_order_number,
                        wp.work_description AS plan_description,
                        wp.year          AS plan_year,
                        wp.month         AS plan_month,
@@ -44,6 +46,7 @@ class Con_TargetFixed extends Model
                 FROM {$this->table} tf
                 LEFT JOIN projects              p    ON p.id    = tf.project_id
                 LEFT JOIN project_working_plans wp   ON wp.id   = tf.work_plan_id
+                LEFT JOIN con_work_orders       wo   ON wo.id   = tf.work_order_id
                 LEFT JOIN work_types            wt   ON wt.id   = wp.work_type_id
                 LEFT JOIN design_types          dt   ON dt.id   = wt.design_type_id
                 LEFT JOIN users                 u    ON u.id    = tf.user_id
@@ -63,6 +66,8 @@ class Con_TargetFixed extends Model
         $stmt = $this->db->prepare(
             "SELECT tf.*,
                     p.name           AS project_name,
+                    wo.title         AS work_order_title,
+                    wo.wo_number     AS work_order_number,
                     wp.work_description AS plan_description,
                     wp.year          AS plan_year,
                     wp.month         AS plan_month,
@@ -76,6 +81,7 @@ class Con_TargetFixed extends Model
              FROM {$this->table} tf
              LEFT JOIN projects              p    ON p.id    = tf.project_id
              LEFT JOIN project_working_plans wp   ON wp.id   = tf.work_plan_id
+             LEFT JOIN con_work_orders       wo   ON wo.id   = tf.work_order_id
              LEFT JOIN work_types            wt   ON wt.id   = wp.work_type_id
              LEFT JOIN design_types          dt   ON dt.id   = wt.design_type_id
              LEFT JOIN users                 u    ON u.id    = tf.user_id
@@ -146,21 +152,22 @@ class Con_TargetFixed extends Model
         $details     = $data['target_details'] ?? null;
 
         $sql = "INSERT INTO {$this->table}
-                (project_id, work_plan_id, target_title, user_id,
+                (project_id, work_plan_id, work_order_id, target_title, user_id,
                  year, month, week_number, target_percentage,
-                 is_lab_test, lab_test_date, target_details,
+                 is_lab_test, lab_test_date, description,
                  gain_percentage, photo_link, field_test_details,
                  lab_test_result, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.00, NULL, NULL, NULL, NOW())";
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.00, NULL, NULL, NULL, NOW())";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             error_log('Con_TargetFixed::create prepare failed: ' . $this->db->error);
             return 0;
         }
         $stmt->bind_param(
-            'iisiiiidiss',
+            'iiisiiiidiss',
             $data['project_id'],
             $data['work_plan_id'],
+            $data['work_order_id'],
             $data['target_title'],
             $data['user_id'],
             $data['year'],
@@ -169,7 +176,7 @@ class Con_TargetFixed extends Model
             $data['target_percentage'],
             $isLabTest,
             $labTestDate,
-            $details
+            $data['description']
         );
         if (!$stmt->execute()) {
             error_log('Con_TargetFixed::create execute failed: ' . $stmt->error);
@@ -188,6 +195,7 @@ class Con_TargetFixed extends Model
         $sql = "UPDATE {$this->table}
                 SET project_id        = ?,
                     work_plan_id      = ?,
+                    work_order_id     = ?,
                     target_title      = ?,
                     year              = ?,
                     month             = ?,
@@ -195,14 +203,15 @@ class Con_TargetFixed extends Model
                     target_percentage = ?,
                     is_lab_test       = ?,
                     lab_test_date     = ?,
-                    target_details    = ?,
+                    description       = ?,
                     updated_at        = NOW()
                 WHERE id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iisiiiidissi',
+            'iiisiiiidissi',
             $data['project_id'],
             $data['work_plan_id'],
+            $data['work_order_id'],
             $data['target_title'],
             $data['year'],
             $data['month'],
@@ -210,7 +219,7 @@ class Con_TargetFixed extends Model
             $data['target_percentage'],
             $isLabTest,
             $labTestDate,
-            $details,
+            $data['description'],
             $id
         );
         return $stmt->execute();

@@ -55,9 +55,35 @@ $months = ['January','February','March','April','May','June','July','August','Se
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Target Title <span class="text-danger">*</span></label>
-                            <input type="text" name="target_title" class="form-control" required value="<?= htmlspecialchars($t['target_title']) ?>">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Target Title <span class="text-danger">*</span></label>
+                                <input type="text" name="target_title" class="form-control" required value="<?= htmlspecialchars($t['target_title']) ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Work Order (Optional)</label>
+                                <select name="work_order_id" id="work_order_id" class="form-select">
+                                    <option value="">-- Select Work Order --</option>
+                                    <?php foreach ($workOrders as $wo): ?>
+                                        <?php if ($wo['project_id'] == $t['project_id']): ?>
+                                            <option value="<?= $wo['id'] ?>" 
+                                                data-desc="<?= htmlspecialchars($wo['description'] ?? '') ?>"
+                                                data-design="<?= htmlspecialchars($wo['design_name'] ?? '') ?>"
+                                                <?= $t['work_order_id'] == $wo['id'] ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($wo['wo_number'] . ' - ' . $wo['title']) ?>
+                                            </option>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </select>
+                                <div id="woDetailsBox" class="mt-2 d-none p-2 bg-light border rounded small text-muted"></div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Description</label>
+                                <textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($t['description'] ?? '') ?></textarea>
+                            </div>
                         </div>
 
                         <div class="row mb-3">
@@ -102,3 +128,29 @@ $months = ['January','February','March','April','May','June','July','August','Se
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const woSel = document.getElementById('work_order_id');
+    const detailsBox = document.getElementById('woDetailsBox');
+
+    function updateWoDetails() {
+        if(woSel.selectedIndex === -1) return;
+        const opt = woSel.options[woSel.selectedIndex];
+        if (woSel.value && (opt.dataset.desc || opt.dataset.design)) {
+            let html = '';
+            if (opt.dataset.design) html += `<strong>Design:</strong> ${opt.dataset.design}<br>`;
+            if (opt.dataset.desc) html += `<strong>Description:</strong> ${opt.dataset.desc}`;
+            detailsBox.innerHTML = html;
+            detailsBox.classList.remove('d-none');
+        } else {
+            detailsBox.classList.add('d-none');
+        }
+    }
+
+    woSel.addEventListener('change', updateWoDetails);
+    
+    // Initial call to show details if a work order is already selected
+    updateWoDetails();
+});
+</script>

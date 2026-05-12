@@ -192,134 +192,176 @@ class BookingController extends Controller
             $usersCache = [];
 
             $errors = [];
+            $skippedDetails = [];
             $rowNum = 1;
-            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+            while (($row = fgetcsv($handle, 2000, ",")) !== false) {
                 $rowNum++;
                 if (count(array_filter($row)) === 0) continue;
                 if (count($header) !== count($row)) {
-                    $errors[] = "Row $rowNum: Column mismatch";
+                    $errors[] = "Row $rowNum: Column mismatch (expected " . count($header) . ", got " . count($row) . ")";
                     continue;
                 }
 
                 $data = array_combine($header, $row);
+                $rowIssues = []; // collect all issues for this row before skipping
                 
+                // ═══════════════════════════════════════════════════════
                 // 1. Resolve lead_id from lead_phone
+                // ═══════════════════════════════════════════════════════
                 $leadPhone = trim($data['lead_phone'] ?? '');
-                if (empty($leadPhone)) {
-                    $errors[] = "Row $rowNum: Lead phone empty";
-                    continue;
-                }
-
                 $leadId = null;
-                if (isset($leadsCache[$leadPhone])) {
-                    $leadId = $leadsCache[$leadPhone];
+                if (empty($leadPhone)) {
+                    $rowIssues[] = "lead_phone is empty";
                 } else {
-                    $stmt = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE phone = ? LIMIT 1");
-                    $stmt->bind_param("s", $leadPhone);
-                    $stmt->execute();
-                    $res = $stmt->get_result()->fetch_assoc();
-                    if ($res) {
-                        $leadsCache[$leadPhone] = ['id' => $res['id'], 'assigned_id' => $res['assigned_id']];
-                        $leadId = $res['id'];
+                    if (isset($leadsCache[$leadPhone])) {
+                        $leadId = $leadsCache[$leadPhone]['id'];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE phone = ? AND deleted_at IS NULL LIMIT 1");
+                        $stmt->bind_param("s", $leadPhone);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $leadsCache[$leadPhone] = ['id' => $res['id'], 'assigned_id' => $res['assigned_id']];
+                            $leadId = $res['id'];
+                        } else {
+                            $rowIssues[] = "Lead not found for phone '$leadPhone'";
+                        }
                     }
                 }
-                if (!$leadId) {
-                    $errors[] = "Row $rowNum: Lead not found for phone '$leadPhone'";
-                    continue;
-                }
-                $data['lead_id'] = $leadId;
-                
-                // Handle Sales Agent
-                $salesAgentInput = trim($data['sales_agent'] ?? '');
+
+                // ═══════════════════════════════════════════════════════
+                // 2. Resolve sales agent from email (sales_agent column)
+                // ═══════════════════════════════════════════════════════
+                $salesAgentEmail = trim($data['sales_agent'] ?? '');
                 $salesById = null;
                 $salesAgentOld = null;
 
-                if (!empty($salesAgentInput)) {
-                    if (isset($usersCache[$salesAgentInput])) {
-                        $salesById = $usersCache[$salesAgentInput];
+                if (!empty($salesAgentEmail)) {
+                    if (isset($usersCache[$salesAgentEmail])) {
+                        $salesById = $usersCache[$salesAgentEmail];
                     } else {
-                        $stmt = $this->db->prepare("SELECT id FROM users WHERE id = ? OR full_name = ? LIMIT 1");
-                        $stmt->bind_param("ss", $salesAgentInput, $salesAgentInput);
+                        $stmt = $this->db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+                        $stmt->bind_param("s", $salesAgentEmail);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
                         
                         if ($res) {
                             $salesById = $res['id'];
-                            $usersCache[$salesAgentInput] = $salesById;
+                            $usersCache[$salesAgentEmail] = $salesById;
                         } else {
-                            $salesAgentOld = $salesAgentInput;
+                            $rowIssues[] = "Sales agent not found for email '$salesAgentEmail'";
                         }
                     }
                 } else {
                     // Fall back to lead's assigned user
-                    $salesById = $leadsCache[$leadPhone]['assigned_id'] ?? null;
+                    if ($leadId && isset($leadsCache[$leadPhone])) {
+                        $salesById = $leadsCache[$leadPhone]['assigned_id'] ?? null;
+                    }
                 }
 
-                $data['sales_by_id'] = $salesById;
-                $data['sales_agent_old'] = $salesAgentOld;
-
-                // 2. Resolve project_id from project_name
+                // ═══════════════════════════════════════════════════════
+                // 3. Resolve project_id from project_name
+                // ═══════════════════════════════════════════════════════
                 $projectName = trim($data['project_name'] ?? '');
-                if (empty($projectName)) {
-                    $errors[] = "Row $rowNum: Project name empty";
-                    continue;
-                }
-
                 $projectId = null;
-                if (isset($projectsCache[$projectName])) {
-                    $projectId = $projectsCache[$projectName];
+                if (empty($projectName)) {
+                    $rowIssues[] = "project_name is empty";
                 } else {
-                    $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
-                    $stmt->bind_param("s", $projectName);
-                    $stmt->execute();
-                    $res = $stmt->get_result()->fetch_assoc();
-                    if ($res) {
-                        $projectId = $res['id'];
-                        $projectsCache[$projectName] = $projectId;
+                    if (isset($projectsCache[$projectName])) {
+                        $projectId = $projectsCache[$projectName];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                        $stmt->bind_param("s", $projectName);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $projectId = $res['id'];
+                            $projectsCache[$projectName] = $projectId;
+                        } else {
+                            $rowIssues[] = "Project not found '$projectName'";
+                        }
                     }
                 }
-                if (!$projectId) {
-                    $errors[] = "Row $rowNum: Project not found '$projectName'";
-                    continue;
-                }
-                $data['project_id'] = $projectId;
 
-                // 3. Resolve flat_id from flat_name and project_id
+                // ═══════════════════════════════════════════════════════
+                // 4. Resolve flat_id from flat_name + project_id
+                // ═══════════════════════════════════════════════════════
                 $flatName = trim($data['flat_name'] ?? '');
-                if (empty($flatName)) {
-                    $errors[] = "Row $rowNum: Flat name empty";
-                    continue;
-                }
-
-                $flatCacheKey = $projectId . '_' . $flatName;
                 $flatId = null;
-                if (isset($flatsCache[$flatCacheKey])) {
-                    $flatId = $flatsCache[$flatCacheKey];
-                } else {
-                    $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? LIMIT 1");
-                    $stmt->bind_param("is", $projectId, $flatName);
-                    $stmt->execute();
-                    $res = $stmt->get_result()->fetch_assoc();
-                    if ($res) {
-                        $flatId = $res['id'];
-                        $flatsCache[$flatCacheKey] = $flatId;
+                if (empty($flatName)) {
+                    $rowIssues[] = "flat_name is empty";
+                } elseif ($projectId) {
+                    $flatCacheKey = $projectId . '_' . $flatName;
+                    if (isset($flatsCache[$flatCacheKey])) {
+                        $flatId = $flatsCache[$flatCacheKey];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL LIMIT 1");
+                        $stmt->bind_param("is", $projectId, $flatName);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $flatId = $res['id'];
+                            $flatsCache[$flatCacheKey] = $flatId;
+                        } else {
+                            $rowIssues[] = "Flat '$flatName' not found in project '$projectName'";
+                        }
                     }
+                } else {
+                    $rowIssues[] = "Cannot lookup flat — project not resolved";
                 }
-                if (!$flatId) {
-                    $errors[] = "Row $rowNum: Flat not found '$flatName' in project '$projectName'";
+
+                // ═══════════════════════════════════════════════════════
+                // If ANY required field is missing, skip with details
+                // ═══════════════════════════════════════════════════════
+                if (!empty($rowIssues)) {
+                    $detail = "Row $rowNum: " . implode(' | ', $rowIssues);
+                    $errors[] = $detail;
+                    $skippedDetails[] = $detail;
                     continue;
                 }
-                $data['flat_id'] = $flatId;
 
-                $data['created_by'] = $_SESSION['user']['id'] ?? null;
+                // All resolved — prepare data
+                $data['lead_id']        = $leadId;
+                $data['project_id']     = $projectId;
+                $data['flat_id']        = $flatId;
+                $data['sales_by_id']    = $salesById;
+                $data['sales_agent_old'] = $salesAgentOld;
+                $data['created_by']     = $_SESSION['user']['id'] ?? null;
+                $data['uploaded_from']  = 'From Company csv';
                 
                 // Approval status logic
                 if (!empty($data['approved_amount']) && (float)$data['approved_amount'] > 0) {
                     $data['approval_status'] = 'approved';
                 }
 
+                // Date formatting for booking_date
+                if (!empty($data['booking_date'])) {
+                    $dateStr = str_replace('/', '-', $data['booking_date']);
+                    $timestamp = strtotime($dateStr);
+                    if ($timestamp !== false) {
+                        $data['booking_date'] = date('Y-m-d', $timestamp);
+                    } else {
+                        $data['booking_date'] = null;
+                    }
+                }
+
                 try {
-                    $this->bookingModel->createFromCsvBulk($data);
+                    $bookingId = $this->bookingModel->createFromCsvBulk($data);
+
+                    // ── After successful insert: update leads.assigned_id ──
+                    if ($salesById && $leadId) {
+                        $stmtLead = $this->db->prepare("UPDATE leads SET assigned_id = ? WHERE id = ?");
+                        $stmtLead->bind_param("ii", $salesById, $leadId);
+                        $stmtLead->execute();
+                    }
+
+                    // ── After successful insert: set flat is_booked = 1 ──
+                    if ($flatId) {
+                        $stmtFlat = $this->db->prepare("UPDATE flats SET is_booked = 1 WHERE id = ?");
+                        $stmtFlat->bind_param("i", $flatId);
+                        $stmtFlat->execute();
+                    }
+
                     $successCount++;
                 } catch (Exception $e) {
                     $errors[] = "Row $rowNum: DB Error - " . $e->getMessage();
@@ -329,18 +371,24 @@ class BookingController extends Controller
             }
             fclose($handle);
 
+            // ═══════════════════════════════════════════════════════
+            // Build detailed result message
+            // ═══════════════════════════════════════════════════════
+            $totalRows = $rowNum - 1; // exclude header
+            $failedCount = count($errors);
+
             if ($successCount > 0) {
-                $msg = "$successCount Bookings imported successfully.";
-                if (count($errors) > 0) {
-                    $msg .= " Failed rows: " . implode("; ", array_slice($errors, 0, 3));
-                    if (count($errors) > 3) $msg .= " and " . (count($errors) - 3) . " more errors.";
+                $msg = "✅ $successCount / $totalRows Bookings imported successfully.";
+                if ($failedCount > 0) {
+                    $msg .= " ⚠️ $failedCount row(s) skipped: " . implode(" | ", array_slice($errors, 0, 5));
+                    if ($failedCount > 5) $msg .= " ... and " . ($failedCount - 5) . " more.";
                 }
                 setSuccess($msg);
             } else {
-                $msg = "0 Bookings imported.";
-                if (count($errors) > 0) {
-                    $msg .= " Errors: " . implode("; ", array_slice($errors, 0, 3));
-                    if (count($errors) > 3) $msg .= " and " . (count($errors) - 3) . " more errors.";
+                $msg = "❌ 0 / $totalRows Bookings imported.";
+                if ($failedCount > 0) {
+                    $msg .= " Errors: " . implode(" | ", array_slice($errors, 0, 5));
+                    if ($failedCount > 5) $msg .= " ... and " . ($failedCount - 5) . " more.";
                 }
                 setError($msg);
             }

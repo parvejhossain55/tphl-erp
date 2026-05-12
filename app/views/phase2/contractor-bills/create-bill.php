@@ -58,6 +58,10 @@ $page_title = $page_title ?? 'New Contractor Bill';
                                 <select name="work_order_id" id="work_order_id" class="form-select" required disabled>
                                     <option value="">-- Select Project First --</option>
                                 </select>
+                                <div id="woDetailsBox" class="alert alert-info mt-2 d-none py-2 small">
+                                    <h6 class="fw-bold mb-1"><i class="bi bi-info-circle me-1"></i> Work Order Details</h6>
+                                    <div id="woDetailsContent"></div>
+                                </div>
                             </div>
 
                             <!-- Target (cascades from project via AJAX) -->
@@ -68,15 +72,14 @@ $page_title = $page_title ?? 'New Contractor Bill';
                                 <select name="target_id" id="target_id" class="form-select" disabled>
                                     <option value="">-- Select Project First --</option>
                                 </select>
-                                <div id="targetBudgetInfo" class="alert alert-warning mt-2 d-none py-2 small">
-                                    <i class="bi bi-exclamation-triangle me-1"></i>
-                                    Bill requires a linked target with Gain % &gt; 0 for approval.
-                                    <span id="targetGainText" class="ms-2 fw-semibold"></span>
+                                <div id="targetBudgetInfo" class="alert alert-info mt-2 d-none py-2 small">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    <span id="targetGainText" class="fw-semibold"></span>
                                 </div>
                             </div>
 
                             <!-- Work Type -->
-                            <div class="col-md-12 mt-3">
+                            <div class="col-md-6 mt-3">
                                 <label class="form-label fw-semibold">Work Type <span class="text-danger">*</span></label>
                                 <select name="work_type_id" id="work_type_id" class="form-select" required>
                                     <option value="">-- Select Work Type --</option>
@@ -87,8 +90,19 @@ $page_title = $page_title ?? 'New Contractor Bill';
                                 <small class="text-muted">A Passed QC Inspection is required for this work type.</small>
                             </div>
 
+                            <!-- Bill Type -->
+                            <div class="col-md-6 mt-3">
+                                <label class="form-label fw-semibold">Bill Type <span class="text-danger">*</span></label>
+                                <select name="bill_type" class="form-select" required>
+                                    <option value="Progress">Progress (After Work)</option>
+                                    <option value="Advance">Advance Payment</option>
+                                    <option value="Retention">Retention Payment</option>
+                                </select>
+                                <small class="text-muted">Select the type of payment request.</small>
+                            </div>
+
                             <!-- Bill Date -->
-                            <div class="col-md-6">
+                            <div class="col-md-6 mt-3">
                                 <label class="form-label fw-semibold">Bill Date <span class="text-danger">*</span></label>
                                 <input type="date" name="bill_date" class="form-control"
                                        value="<?= date('Y-m-d') ?>" required>
@@ -136,19 +150,24 @@ $page_title = $page_title ?? 'New Contractor Bill';
 <script>
 const BASE_URL = '<?= $base_url ?>';
 
+let currentWorkOrders = [];
+
 document.getElementById('project_id').addEventListener('change', function () {
     const pid        = this.value;
     const targetSel  = document.getElementById('target_id');
     const woSel      = document.getElementById('work_order_id');
     const infoBox    = document.getElementById('targetBudgetInfo');
     const gainTxt    = document.getElementById('targetGainText');
+    const woBox      = document.getElementById('woDetailsBox');
 
     targetSel.innerHTML = '<option value="">-- Loading targets... --</option>';
     targetSel.disabled  = true;
     woSel.innerHTML     = '<option value="">-- Loading work orders... --</option>';
     woSel.disabled      = true;
     infoBox.classList.add('d-none');
+    woBox.classList.add('d-none');
     gainTxt.textContent = '';
+    currentWorkOrders = [];
 
     if (!pid) {
         targetSel.innerHTML = '<option value="">-- Select Project First --</option>';
@@ -162,11 +181,23 @@ document.getElementById('project_id').addEventListener('change', function () {
         .then(data => {
             woSel.innerHTML = '<option value="">(No linked work order)</option>';
             if (data.work_orders && data.work_orders.length) {
+                currentWorkOrders = data.work_orders;
                 data.work_orders.forEach(wo => {
                     const total = parseFloat(wo.total_amount) || 0;
                     const billed = parseFloat(wo.billed_amount) || 0;
                     const rem = total - billed;
-                    woSel.innerHTML += `<option value="${wo.id}">${wo.wo_number} — ${wo.title} (${wo.contractor_name}) | Limit: ৳${rem.toFixed(2)} remaining</option>`;
+                    
+                    const advPct = parseFloat(wo.advance_percent) || 0;
+                    const advAmt = parseFloat(wo.advance_amount) || 0;
+                    const paidAmt = parseFloat(wo.paid_amount) || 0;
+                    
+                    let advStatus = '';
+                    if (advPct > 0) {
+                        const isAdvPaid = paidAmt >= advAmt ? 'Paid' : (paidAmt > 0 ? 'Partially Paid' : 'Not Paid');
+                        advStatus = ` | Adv: ${advPct}% (${isAdvPaid})`;
+                    }
+                    
+                    woSel.innerHTML += `<option value="${wo.id}">${wo.wo_number} — ${wo.title} (${wo.contractor_name}) | Limit: ৳${rem.toFixed(2)} remaining${advStatus}</option>`;
                 });
                 woSel.disabled = false;
             }
@@ -203,13 +234,60 @@ document.getElementById('target_id').addEventListener('change', function () {
     const gainTxt = document.getElementById('targetGainText');
 
     if (this.value && opt.dataset.gain !== undefined) {
-        infoBox.classList.remove('d-none');
+        infoBox.classList.remove('d-none', 'alert-warning', 'alert-success', 'alert-info');
         const gain = parseFloat(opt.dataset.gain);
-        gainTxt.textContent = gain > 0
-            ? '✅ Gain ' + gain + '% — eligible for approval'
-            : '⚠️ Gain 0% — approval will be blocked';
+        if (gain > 0) {
+            infoBox.classList.add('alert-success');
+            gainTxt.textContent = 'Gain ' + gain + '% — eligible for progress bill';
+        } else {
+            infoBox.classList.add('alert-warning');
+            gainTxt.textContent = 'Gain 0% — Progress approval may be blocked';
+        }
     } else {
         infoBox.classList.add('d-none');
+    }
+});
+
+document.getElementById('work_order_id').addEventListener('change', function () {
+    const woid = this.value;
+    const woBox = document.getElementById('woDetailsBox');
+    const woContent = document.getElementById('woDetailsContent');
+    
+    if (!woid) {
+        woBox.classList.add('d-none');
+        return;
+    }
+    
+    const wo = currentWorkOrders.find(w => w.id == woid);
+    if (wo) {
+        const total = parseFloat(wo.total_amount) || 0;
+        const billed = parseFloat(wo.billed_amount) || 0;
+        const advPct = parseFloat(wo.advance_percent) || 0;
+        const advAmt = parseFloat(wo.advance_amount) || 0;
+        const paidAmt = parseFloat(wo.paid_amount) || 0;
+        
+        let advText = `No advance specified (0%).`;
+        if (advPct > 0) {
+            let statusText = `<span class="text-danger fw-bold">Not Paid</span>`;
+            if (paidAmt >= advAmt) {
+                statusText = `<span class="text-success fw-bold">Paid</span>`;
+            } else if (paidAmt > 0) {
+                statusText = `<span class="text-warning fw-bold">Partially Paid (৳${paidAmt.toFixed(2)})</span>`;
+            }
+            advText = `Advance: <strong>${advPct}%</strong> (৳${advAmt.toFixed(2)}) — Status: ${statusText}`;
+        }
+        
+        let paymentText = paidAmt > 0 ? `<br>Total amount paid by Accounts (includes advance): <strong>৳${paidAmt.toFixed(2)}</strong>` : '';
+        
+        woContent.innerHTML = `
+            <div>Total WO Amount: <strong>৳${total.toFixed(2)}</strong></div>
+            <div>Already Billed: <strong>৳${billed.toFixed(2)}</strong></div>
+            <div>${advText}</div>
+            ${paymentText}
+        `;
+        woBox.classList.remove('d-none');
+    } else {
+        woBox.classList.add('d-none');
     }
 });
 </script>
