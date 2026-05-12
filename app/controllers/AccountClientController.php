@@ -56,6 +56,12 @@ public function indexTwo($bookingId = null)
         exit;
     }
 
+    if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+        require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+        $this->clientModel = new AccountShopClient($this->db);
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+    }
+
     // Get transaction history for this booking
     $transactions = $this->clientModel->getTransactionsByBookingId($bookingId);
     

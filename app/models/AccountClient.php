@@ -378,6 +378,8 @@ ORDER BY lb.booking_date DESC
                 f.land_share_value as total_land_share,
                 COALESCE(f.development_charges, 0) as flat_development_charges,
                 f.flat_name as unit_name,
+                f.is_shop,
+                f.unit_type,
                 u.full_name as agent_name,
                 -- Payment calculations
                 COALESCE(

@@ -47,10 +47,11 @@ $show_breadcrumb = true;
 
     <!-- Summary Cards -->
     <?php
-        $devTarget = (float)($paymentSummary['flat_development_charges'] ?? 0);
-        $devPaid   = (float)($paymentSummary['development_charge_paid']  ?? 0);
+        $isShop = !empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1;
+        $devTarget = (float)($isShop ? ($paymentSummary['shop_service_charge_target'] ?? 0) : ($paymentSummary['flat_development_charges'] ?? 0));
+        $devPaid   = (float)($isShop ? ($paymentSummary['shop_service_charge_paid_total']  ?? 0) : ($paymentSummary['development_charge_paid']  ?? 0));
         $devRemain = max(0, $devTarget - $devPaid);
-        $svcRate   = (float)($paymentSummary['service_charge_per_emi']   ?? 0);
+        $svcRate   = (float)($isShop ? ($paymentSummary['shop_service_charge_pct'] ?? 0) : ($paymentSummary['service_charge_per_emi']   ?? 0));
         $landRemain= (float)($paymentSummary['remaining_land_share']     ?? 0);
     ?>
     <div class="row">
@@ -162,9 +163,9 @@ $show_breadcrumb = true;
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-wrench"></i></span></div>
+                    <div class="card__icon"><span><i class="fa-light <?= $isShop ? 'fa-store' : 'fa-wrench' ?>"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Development Charges</h6>
+                        <h6 class="card__sub-title mb-10"><?= $isShop ? 'Shop Service Charge' : 'Development Charges' ?></h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title">TK.<?= number_format($devTarget, 2) ?></h4>
                         </div>
@@ -180,7 +181,7 @@ $show_breadcrumb = true;
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon"><span><i class="fa-light fa-tools"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Dev. Charges Paid</h6>
+                        <h6 class="card__sub-title mb-10"><?= $isShop ? 'Shop Service Charge Paid' : 'Dev. Charges Paid' ?></h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title">TK.<?= number_format($devPaid, 2) ?></h4>
                         </div>
@@ -196,7 +197,7 @@ $show_breadcrumb = true;
                         <span style="color:<?= $devRemain > 0 ? '#e74c3c' : '#27ae60' ?>;"><i class="fa-light fa-hourglass-end"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Dev. Charges Remaining</h6>
+                        <h6 class="card__sub-title mb-10"><?= $isShop ? 'Shop Svc Charge Remaining' : 'Dev. Charges Remaining' ?></h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title" style="color:<?= $devRemain > 0 ? '#e74c3c' : '#27ae60' ?>;">
                                 <?php if ($devRemain <= 0): ?>
@@ -300,7 +301,7 @@ $show_breadcrumb = true;
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Service Charge Rate</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title" style="color:#e67e22;"><?= number_format($paymentSummary['service_charge_per_emi'] ?? 0, 0) ?>% <small style="font-size:13px;color:#999;">per EMI</small></h4>
+                            <h4 class="card__title" style="color:#e67e22;"><?= number_format($svcRate, 0) ?>% <small style="font-size:13px;color:#999;"><?= $isShop ? 'of Total Value' : 'per EMI' ?></small></h4>
                         </div>
                     </div>
                 </div>
@@ -383,7 +384,7 @@ $show_breadcrumb = true;
                 &mdash; <?= count($outstandingDues) ?> EMI payment(s) have unpaid balances.
                 <small class="d-block mt-1 text-muted">This will be <strong>automatically cleared</strong> from your next EMI payment (oldest due first).</small>
             </div>
-            <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['booking_id'] ?>"
+            <a href="<?= $GLOBALS['base_url'] ?>/<?= $isShop ? 'shop-client-cash-in-form' : 'client-cash-in-form' ?>?booking_id=<?= $clientDetails['booking_id'] ?>"
                class="btn btn-sm text-white" style="background:#6c5ffc;border-color:#6c5ffc;">
                 <i class="fa-light fa-plus me-1"></i> Add EMI Payment
             </a>
@@ -401,7 +402,7 @@ $show_breadcrumb = true;
 
 
                 <div class="mt-3 d-flex gap-2 position ">
-                        <a href="<?= $GLOBALS['base_url'] ?>/client-cash-in-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
+                        <a href="<?= $GLOBALS['base_url'] ?>/<?= $isShop ? 'shop-client-cash-in-form' : 'client-cash-in-form' ?>?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                             <i class="fa-light fa-plus me-2"></i> Add Transaction
                         </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-info mb-3 text-white">
