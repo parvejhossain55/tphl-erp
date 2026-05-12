@@ -848,11 +848,32 @@ h6{
   align-items: center;
 }
 
-.preloader-logo {
-  animation: preloader-float 2s ease-in-out infinite;
+.logo-path {
+ fill: none;
+ stroke: #006837;
+ stroke-width: 3.5;
+ stroke-linecap: round;
+ stroke-linejoin: miter;
+ }
+
+/* Smooth breathing effect using GPU */
+.container {
+ transform-origin: center;
+animation: pulse 1.5s ease-in-out infinite alternate;
+ will-change: transform, opacity;
+ }
+
+ @keyframes pulse {
+ 0% { transform: scale(0.95); opacity: 0.6; }
+ 100% { transform: scale(1.05); opacity: 1; }
 }
 
-@keyframes preloader-float {
+
+/* .preloader-logo {
+  animation: preloader-float 2s ease-in-out infinite;
+} */
+
+/* @keyframes preloader-float {
   0% {
     transform: translateY(0) rotate(0deg);
   }
@@ -868,7 +889,7 @@ h6{
   100% {
     transform: translateY(0) rotate(0deg);
   }
-}
+} */
 
 /* lead-lists style  */
 

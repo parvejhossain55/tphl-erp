@@ -68,8 +68,23 @@
     <!-- Preloader start -->
 <div class="preloader" id="preloader">
     <div class="loading">
-        <img src="<?=  getImage('settings', getSetting('white_logo')) ?>" alt="Logo" class="preloader-logo">
-       
+        <svg width="100" height="110" viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">
+    
+
+            <g class="container">
+                <!-- House outline -->
+                <path class="logo-path house-outline" pathLength="100" d="M10,85 L10,50 L50,15 L90,50 L90,85 L10,85 Z" />
+
+                <!-- Vertical lines -->
+                <path class="logo-path vertical-lines" pathLength="100" d="M50,15 L50,85" />
+                <path class="logo-path vertical-lines" pathLength="100" d="M31,32 L31,85 M69,32 L69,85" />
+
+                <!-- Roof and M Shapes -->
+                <path class="logo-path m-shapes" pathLength="100" d="M31,32 L50,51 L69,32" />
+                <path class="logo-path m-shapes" pathLength="100" d="M10,50 L31,31 L50,50 L69,31 L90,50" />
+                <path class="logo-path m-shapes" pathLength="100" d="M10,70 L31,51 L50,70 L69,51 L90,70" />
+            </g>
+        </svg>
     </div>
 </div>
 
