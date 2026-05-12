@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 10, 2026 at 07:51 AM
+-- Generation Time: May 11, 2026 at 11:07 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -670,7 +670,8 @@ CREATE TABLE `con_material_issues` (
 INSERT INTO `con_material_issues` (`id`, `project_id`, `warehouse_id`, `material_id`, `quantity`, `issued_to`, `purpose`, `target_id`, `work_plan_id`, `issued_by`, `issue_date`, `created_at`) VALUES
 (1, 13, 1, 4, 200.000, 0, 'test', 1, 2, 123, '2026-05-07', '2026-05-07 07:40:11'),
 (2, 13, 1, 2, 100.000, 1, 'test', 1, 2, 123, '2026-05-07', '2026-05-07 09:11:33'),
-(3, 13, 1, 1, 150.000, 1, 'Floor 3 slab', 2, 2, 123, '2026-05-07', '2026-05-07 10:50:29');
+(3, 13, 1, 1, 150.000, 1, 'Floor 3 slab', 2, 2, 123, '2026-05-07', '2026-05-07 10:50:29'),
+(4, 13, 1, 4, 200.000, 1, 'column cast', 3, 2, 123, '2026-05-10', '2026-05-10 10:58:36');
 
 -- --------------------------------------------------------
 
@@ -714,7 +715,7 @@ CREATE TABLE `con_stocks` (
 --
 
 INSERT INTO `con_stocks` (`id`, `material_id`, `warehouse_id`, `current_quantity`, `unit_price`, `total_value`, `updated_at`) VALUES
-(1, 4, 1, 300.000, 85.50, 42750.00, '2026-05-07 07:40:11'),
+(1, 4, 1, 100.000, 85.50, 42750.00, '2026-05-10 10:58:36'),
 (2, 2, 1, 100.000, 420.00, 84000.00, '2026-05-07 09:11:33'),
 (3, 1, 1, 850.000, 12.00, 12000.00, '2026-05-07 10:50:29');
 
@@ -746,7 +747,8 @@ INSERT INTO `con_stock_movements` (`id`, `material_id`, `warehouse_id`, `type`, 
 (3, 1, 1, 'IN', 1000.000, 'material_receiving', 1, 127, '2026-05-07 06:47:04'),
 (4, 4, 1, 'OUT', 200.000, 'material_issue', 1, 123, '2026-05-07 07:40:11'),
 (5, 2, 1, 'OUT', 100.000, 'material_issue', 2, 123, '2026-05-07 09:11:33'),
-(6, 1, 1, 'OUT', 150.000, 'material_issue', 3, 123, '2026-05-07 10:50:29');
+(6, 1, 1, 'OUT', 150.000, 'material_issue', 3, 123, '2026-05-07 10:50:29'),
+(7, 4, 1, 'OUT', 200.000, 'material_issue', 4, 123, '2026-05-10 10:58:36');
 
 -- --------------------------------------------------------
 
@@ -781,11 +783,13 @@ CREATE TABLE `con_work_orders` (
   `project_id` int(11) NOT NULL,
   `contractor_id` int(11) NOT NULL,
   `work_type_id` int(11) DEFAULT NULL,
+  `design_id` int(11) DEFAULT NULL,
   `boq_id` int(11) DEFAULT NULL,
   `wo_number` varchar(50) DEFAULT NULL,
   `title` varchar(255) DEFAULT NULL,
   `scope_of_work` text DEFAULT NULL,
   `notes` text DEFAULT NULL,
+  `description` longtext DEFAULT NULL,
   `unit` varchar(50) DEFAULT NULL,
   `unit_rate` decimal(15,2) DEFAULT NULL,
   `quantity` decimal(10,2) DEFAULT NULL,
@@ -811,6 +815,13 @@ CREATE TABLE `con_work_orders` (
   `target_id` int(11) DEFAULT NULL,
   `work_plan_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `con_work_orders`
+--
+
+INSERT INTO `con_work_orders` (`id`, `project_id`, `contractor_id`, `work_type_id`, `design_id`, `boq_id`, `wo_number`, `title`, `scope_of_work`, `notes`, `description`, `unit`, `unit_rate`, `quantity`, `total_amount`, `start_date`, `end_date`, `advance_percent`, `running_percent`, `retention_percent`, `advance_amount`, `retention_amount`, `status`, `created_by`, `approved_by`, `approved_at`, `qc_approved_by`, `qc_approved_at`, `completed_by`, `completed_at`, `rejection_reason`, `updated_at`, `created_at`, `target_id`, `work_plan_id`) VALUES
+(1, 13, 1, 2, 1, NULL, 'WO-2026-0001', 'Foundation Work', 'Test work order', '', NULL, 'sqft', 1000.00, 10000.00, 10000000.00, '2026-05-10', '2026-05-15', 20.00, 70.00, 10.00, 2000000.00, 1000000.00, 'approved', 120, 6, '2026-05-11 11:09:43', NULL, NULL, NULL, NULL, NULL, '2026-05-11 05:09:43', '2026-05-10 11:22:36', 1, 2);
 
 -- --------------------------------------------------------
 
@@ -6714,7 +6725,7 @@ CREATE TABLE `material_receiving` (
 --
 
 INSERT INTO `material_receiving` (`id`, `purchase_order_id`, `received_by`, `receiving_date`, `received_status`, `site_eng_note`, `site_eng_photo`, `qc_checked_by`, `qc_note`, `qc_photo`, `overall_status`, `created_by`, `warehouse_id`, `notes`, `created_at`, `updated_at`, `pm_checked_by`, `pm_note`, `pm_approved_at`) VALUES
-(1, 2, 127, '2026-05-10', 'Full', NULL, NULL, 120, NULL, NULL, 'Accepted', 127, 1, NULL, '2026-05-07 06:47:04', '2026-05-10 05:41:00', 120, NULL, NULL);
+(1, 2, 127, '2026-05-10', 'Full', NULL, NULL, 120, NULL, NULL, 'Accepted', 127, 1, NULL, '2026-05-07 06:47:04', '2026-05-10 09:23:00', 120, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -7182,6 +7193,51 @@ INSERT INTO `project_drawings` (`id`, `project_id`, `design_type_id`, `is_in_hou
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `project_legal_sheets`
+--
+
+CREATE TABLE `project_legal_sheets` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `project_id` bigint(20) UNSIGNED NOT NULL,
+  `sheet_type` varchar(100) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `version` varchar(50) DEFAULT 'V1',
+  `link` text NOT NULL,
+  `submitted_by` bigint(20) UNSIGNED NOT NULL,
+  `remark` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `project_legal_sheets`
+--
+
+INSERT INTO `project_legal_sheets` (`id`, `project_id`, `sheet_type`, `title`, `version`, `link`, `submitted_by`, `remark`, `created_at`, `updated_at`) VALUES
+(1, 13, 'Amin', 'Ami Sheet', 'V1', 'https://drive.google.com/', 124, 'test', '2026-05-11 08:30:48', '2026-05-11 08:30:48');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `project_sheets`
+--
+
+CREATE TABLE `project_sheets` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `project_id` bigint(20) UNSIGNED NOT NULL,
+  `sheet_type` varchar(100) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `version` varchar(50) DEFAULT 'V1',
+  `link` text NOT NULL,
+  `submitted_by` bigint(20) UNSIGNED NOT NULL,
+  `remark` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `project_structural_designs`
 --
 
@@ -7383,6 +7439,23 @@ CREATE TABLE `qc_checklists` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `qc_checklists`
+--
+
+INSERT INTO `qc_checklists` (`id`, `work_type_id`, `material_item_id`, `checklist_item_name`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 1, NULL, 'Soil bearing capacity test conducted', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(2, 1, NULL, 'Footing depth matches approved drawing', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(3, 1, NULL, 'Footing size & reinforcement verified', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(4, 1, NULL, 'Concrete grade matches specification', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(5, 1, NULL, 'Compaction test done before pouring', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(6, 2, NULL, 'Floor plan dimensions match approved drawing', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(7, 2, NULL, 'Column positions verified against layout', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(8, 2, NULL, 'Elevation levels checked with datum', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(9, 2, NULL, 'Drainage slope and outlets verified', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(10, 2, NULL, 'Wall alignment and plumb checked', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(11, 2, NULL, 'Openings (doors/windows) size and position verified', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02');
+
 -- --------------------------------------------------------
 
 --
@@ -7401,6 +7474,13 @@ CREATE TABLE `qc_inspections` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `qc_inspections`
+--
+
+INSERT INTO `qc_inspections` (`id`, `project_id`, `work_type_id`, `inspector_id`, `inspection_date`, `overall_status`, `attachment`, `comments`, `created_at`) VALUES
+(1, 13, 2, 126, '2026-05-11', 'passed', NULL, '', '2026-05-11 07:20:21');
+
 -- --------------------------------------------------------
 
 --
@@ -7416,6 +7496,18 @@ CREATE TABLE `qc_inspection_items` (
   `attachment` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `qc_inspection_items`
+--
+
+INSERT INTO `qc_inspection_items` (`id`, `qc_inspection_id`, `qc_checklist_id`, `is_passed`, `observation_note`, `attachment`) VALUES
+(1, 1, 6, 1, 'Passed', NULL),
+(2, 1, 7, 1, 'Passed', NULL),
+(3, 1, 8, 1, 'Passed', NULL),
+(4, 1, 9, 0, 'Failed', NULL),
+(5, 1, 10, 0, 'Failed', NULL),
+(6, 1, 11, 0, 'Failed', NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -7424,6 +7516,7 @@ CREATE TABLE `qc_inspection_items` (
 
 CREATE TABLE `qc_material_tests` (
   `id` bigint(20) UNSIGNED NOT NULL,
+  `material_item_id` int(11) DEFAULT NULL,
   `project_id` int(11) DEFAULT NULL,
   `work_type_id` int(11) DEFAULT NULL,
   `test_type_id` int(11) DEFAULT NULL,
@@ -7439,6 +7532,14 @@ CREATE TABLE `qc_material_tests` (
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `qc_material_tests`
+--
+
+INSERT INTO `qc_material_tests` (`id`, `material_item_id`, `project_id`, `work_type_id`, `test_type_id`, `material_receiving_id`, `test_name`, `test_date`, `age_of_sample`, `required_value`, `result_value`, `test_status`, `lab_report_link`, `attachment`, `created_by`, `created_at`) VALUES
+(1, NULL, NULL, NULL, NULL, 1, 'GRN-1 Test material', NULL, NULL, NULL, '', 'pass', '', NULL, 126, '2026-05-10 09:55:36'),
+(4, NULL, 13, 2, 1, NULL, 'Cylinder Compressive Strength', '2026-05-10', 7, '23', '20', 'pass', '', 'uploads/qc/qc_6a0061b524ded_1778409909.png', 126, '2026-05-10 10:45:09');
 
 -- --------------------------------------------------------
 
@@ -7656,31 +7757,10 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (550, 19, 41, '2026-05-06 06:40:22', '2026-05-06 06:40:22'),
 (551, 19, 31, '2026-05-06 06:40:22', '2026-05-06 06:40:22'),
 (552, 19, 37, '2026-05-06 06:40:22', '2026-05-06 06:40:22'),
-(553, 20, 47, '2026-05-06 07:24:11', '2026-05-06 07:24:11'),
-(554, 20, 45, '2026-05-06 07:24:11', '2026-05-06 07:24:11'),
-(555, 20, 43, '2026-05-06 07:24:11', '2026-05-06 07:24:11'),
-(556, 20, 46, '2026-05-06 07:24:11', '2026-05-06 07:24:11'),
-(557, 20, 35, '2026-05-06 07:24:11', '2026-05-06 07:24:11'),
 (558, 17, 44, '2026-05-06 08:57:06', '2026-05-06 08:57:06'),
 (559, 17, 38, '2026-05-06 08:57:06', '2026-05-06 08:57:06'),
 (560, 17, 35, '2026-05-06 08:57:06', '2026-05-06 08:57:06'),
 (561, 17, 36, '2026-05-06 08:57:06', '2026-05-06 08:57:06'),
-(579, 12, 26, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(580, 12, 45, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(581, 12, 40, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(582, 12, 31, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(583, 12, 28, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(584, 12, 27, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(585, 12, 33, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(586, 12, 44, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(587, 12, 43, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(588, 12, 38, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(589, 12, 34, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(590, 12, 46, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(591, 12, 32, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(592, 12, 35, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(593, 12, 30, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
-(594, 12, 42, '2026-05-07 11:15:32', '2026-05-07 11:15:32'),
 (595, 3, 10, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
 (596, 3, 3, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
 (597, 3, 1, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
@@ -7740,7 +7820,26 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (651, 15, 42, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
 (652, 22, 26, '2026-05-09 08:41:10', '2026-05-09 08:41:10'),
 (653, 22, 50, '2026-05-09 08:41:10', '2026-05-09 08:41:10'),
-(656, 23, 51, '2026-05-09 12:28:27', '2026-05-09 12:28:27');
+(656, 23, 51, '2026-05-09 12:28:27', '2026-05-09 12:28:27'),
+(660, 20, 44, '2026-05-10 07:25:53', '2026-05-10 07:25:53'),
+(661, 20, 43, '2026-05-10 07:25:53', '2026-05-10 07:25:53'),
+(662, 20, 46, '2026-05-10 07:25:53', '2026-05-10 07:25:53'),
+(663, 20, 35, '2026-05-10 07:25:53', '2026-05-10 07:25:53'),
+(664, 12, 26, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(665, 12, 45, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(666, 12, 40, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(667, 12, 31, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(668, 12, 28, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(669, 12, 27, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(670, 12, 33, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(671, 12, 44, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(672, 12, 38, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(673, 12, 34, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(674, 12, 46, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(675, 12, 32, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(676, 12, 35, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(677, 12, 30, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(678, 12, 42, '2026-05-10 07:34:54', '2026-05-10 07:34:54');
 
 -- --------------------------------------------------------
 
@@ -7881,6 +7980,7 @@ CREATE TABLE `target_fixed` (
   `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
   `work_plan_id` int(11) DEFAULT NULL,
+  `work_order_id` int(11) DEFAULT NULL,
   `target_title` varchar(200) DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `year` smallint(5) UNSIGNED NOT NULL,
@@ -7900,6 +8000,7 @@ CREATE TABLE `target_fixed` (
   `is_lab_test` int(11) NOT NULL DEFAULT 0,
   `lab_test_date` date DEFAULT NULL,
   `target_details` text DEFAULT NULL,
+  `description` longtext DEFAULT NULL,
   `qc_reviewed_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
@@ -7911,10 +8012,10 @@ CREATE TABLE `target_fixed` (
 -- Dumping data for table `target_fixed`
 --
 
-INSERT INTO `target_fixed` (`id`, `project_id`, `work_plan_id`, `target_title`, `user_id`, `year`, `month`, `week_number`, `target_percentage`, `gain_percentage`, `photo_link`, `field_test_details`, `lab_test_result`, `approved_by_site_eng`, `approved_by_qc`, `approved_by_pc`, `approved_by_pd`, `approved_by_manager`, `qc_reviewed_by_id`, `is_lab_test`, `lab_test_date`, `target_details`, `qc_reviewed_at`, `created_at`, `updated_at`, `manager_approved_by_id`, `manager_approved_at`) VALUES
-(1, 13, 2, 'Column Cast', 120, 2026, 5, 1, 24.98, 0.00, NULL, NULL, NULL, 0, 0, 0, 0, 1, NULL, 0, NULL, 'tyregjrf jkdfhuyreiuertijkdhf kdjfhurt', NULL, '2026-05-06 08:29:10', '2026-05-06 09:32:49', NULL, NULL),
-(2, 13, 2, 'Floor 3 slab Target Week 1', 123, 2026, 5, 1, 0.00, 0.00, NULL, NULL, NULL, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, '2026-05-07 10:50:29', NULL, NULL, NULL),
-(3, 13, 2, 'Column Cast', 123, 2026, 5, 1, 25.00, 0.00, NULL, NULL, NULL, 0, 0, 0, 0, 0, NULL, 0, NULL, 'Column\r\nBeam\r\nFooting', NULL, '2026-05-07 12:16:15', NULL, NULL, NULL);
+INSERT INTO `target_fixed` (`id`, `project_id`, `work_plan_id`, `work_order_id`, `target_title`, `user_id`, `year`, `month`, `week_number`, `target_percentage`, `gain_percentage`, `photo_link`, `field_test_details`, `lab_test_result`, `approved_by_site_eng`, `approved_by_qc`, `approved_by_pc`, `approved_by_pd`, `approved_by_manager`, `qc_reviewed_by_id`, `is_lab_test`, `lab_test_date`, `target_details`, `description`, `qc_reviewed_at`, `created_at`, `updated_at`, `manager_approved_by_id`, `manager_approved_at`) VALUES
+(1, 13, 2, 1, 'Column Cast', 120, 2026, 5, 1, 24.98, 0.00, NULL, NULL, NULL, 0, 0, 0, 0, 1, NULL, 0, NULL, 'tyregjrf jkdfhuyreiuertijkdhf kdjfhurt', NULL, NULL, '2026-05-06 08:29:10', '2026-05-11 05:23:33', NULL, NULL),
+(2, 13, 2, 1, 'Floor 3 slab Target Week 1', 123, 2026, 5, 1, 0.00, 0.00, NULL, NULL, NULL, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, '2026-05-07 10:50:29', '2026-05-11 05:23:37', NULL, NULL),
+(3, 13, 2, NULL, 'Column Cast', 123, 2026, 5, 1, 25.00, 0.00, NULL, NULL, NULL, 0, 0, 0, 0, 0, NULL, 0, NULL, 'Column\r\nBeam\r\nFooting', NULL, NULL, '2026-05-07 12:16:15', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -8054,7 +8155,7 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 0, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-04-19 05:54:47', 4, '2026-02-23 03:24:25', '2026-04-19 05:54:47', 0),
 (4, 1008, 'Md. Jasim Uddin', 'Jasim Uddin', '01762013007', 'hr@gmail.com', 14, 'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.', '1903663282', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, '', '', '2026-04-24 12:21:28', 4, '2026-02-23 05:44:19', '2026-04-24 12:21:28', NULL),
 (5, 0, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 3, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, '', '', '2026-04-08 09:48:37', 6, '2026-02-23 06:11:06', '2026-04-08 09:48:37', NULL),
-(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-05-09 18:14:45', 110, '2026-03-29 03:44:44', '2026-05-09 12:14:45', 0),
+(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-05-11 12:55:09', 110, '2026-03-29 03:44:44', '2026-05-11 06:55:09', 0),
 (7, NULL, 'CED', 'CED', '01872364346', 'ced@gmail.com', 1, 'Dhaka', '823445', 7, '$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.', NULL, '', '', '2026-03-31 12:05:54', 6, '2026-03-29 04:01:38', '2026-03-31 12:05:54', NULL),
 (8, NULL, 'Sales Team Head', 'Sales Head', '01327488234', 'sales-head@gmail.com', 1, 'Dhaka', '09231943', 9, '$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.', NULL, '', '', '2026-04-08 09:30:55', 1, '2026-03-29 04:16:47', '2026-04-08 09:30:55', NULL),
 (9, 3, 'Md. rafi', 'admin_39_', '01234567890', 'rafi@easytechx.com', 9, 'ADDL Tower, Dhanmondi 27/A', '', 8, '$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG', NULL, '', '', '2026-03-29 10:24:18', 0, '2026-03-29 10:23:39', '2026-03-30 16:36:23', NULL),
@@ -8145,18 +8246,18 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (117, 86, 'Test Employee', 'Test', '01790128472', 'test3@gmail.com', 32, 'Mohammadpur, Dhaka-1207', '', 0, '$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW', NULL, '', '', '2026-04-10 10:07:16', 0, '2026-04-10 10:07:16', '2026-04-10 10:07:16', 0),
 (118, 87, 'Shazzadur Rahman Shoumic', 'Shazzad', '01765562314', 'shazzadur.tphl@gmail.com', 20, '', '', 8, '$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6', NULL, '', '', '2026-04-12 11:46:52', 0, '2026-04-12 11:46:52', '2026-04-12 11:46:52', 5),
 (119, 90, 'Shohanur Rahaman', 'Shohanur Rahaman', '01958253372', 'shohan.tphl@gmail.com', 13, 'Khagan Ashulia', '', 11, '$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK', NULL, '', '', '2026-04-19 04:42:58', 119, '2026-04-17 13:13:21', '2026-04-19 04:42:58', 0),
-(120, NULL, 'Project Manager1', 'Project Manager1', '01876123454', 'project.manager1@gmail.com', 36, 'Dhaka', '', 15, '$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu', NULL, '', '', '2026-05-09 18:40:03', 6, '2026-04-26 03:55:58', '2026-05-09 12:40:03', 0),
+(120, NULL, 'Project Manager1', 'Project Manager1', '01876123454', 'project.manager1@gmail.com', 36, 'Dhaka', '', 15, '$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu', NULL, '', '', '2026-05-11 14:46:45', 6, '2026-04-26 03:55:58', '2026-05-11 08:46:45', 0),
 (121, NULL, 'Land Man1', 'Land Man1', '01993878733', 'land.manager1@gmail.com', 33, 'Dhaka', '', 14, '$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO', NULL, '', '', '2026-05-05 13:04:21', 6, '2026-04-26 03:56:52', '2026-05-05 13:04:21', 0),
 (122, NULL, 'Mr. Architect1', 'Mr. Architect1', '01875438578', 'architecture1@gmail.com', 34, 'Dhaka', '', 18, '$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2', NULL, '', '', '2026-05-09 12:33:09', 6, '2026-04-26 03:58:02', '2026-05-09 06:33:09', 0),
-(123, NULL, 'Mr. Site Engineer1', 'Mr. Site Engineer1', '01987328476', 'site.engineer1@gmail.com', 38, 'Dhaka', '', 12, '$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi', NULL, '', '', '2026-05-09 18:03:22', 6, '2026-04-26 03:58:54', '2026-05-09 12:03:22', 0),
-(124, NULL, 'Mr. Draftsman1', 'Mr. Draftsman1', '01763425454', 'draftsman1@gmail.com', 35, 'dhaka', '', 16, '$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De', NULL, '', '', '2026-05-09 12:46:47', 6, '2026-04-26 03:59:33', '2026-05-09 06:46:47', 0),
+(123, NULL, 'Mr. Site Engineer1', 'Mr. Site Engineer1', '01987328476', 'site.engineer1@gmail.com', 38, 'Dhaka', '', 12, '$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi', NULL, '', '', '2026-05-10 17:02:35', 6, '2026-04-26 03:58:54', '2026-05-10 11:02:35', 0),
+(124, NULL, 'Mr. Draftsman1', 'Mr. Draftsman1', '01763425454', 'draftsman1@gmail.com', 35, 'dhaka', '', 16, '$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De', NULL, '', '', '2026-05-11 14:40:09', 6, '2026-04-26 03:59:33', '2026-05-11 08:40:09', 0),
 (125, NULL, 'Mr Estimator1', 'Mr Estimator1', '', 'estimator1@gmail.com', 37, 'dhaka', '', 19, '$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay', NULL, '', '', '2026-05-09 12:52:46', 6, '2026-04-26 04:00:08', '2026-05-09 06:52:46', 0),
-(126, NULL, 'Mr. QC1', 'Mr. QC1', '01986378256', 'qc1@gmail.com', 43, 'Dhaka', '', 13, '$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi', NULL, '', '', '2026-05-10 11:50:28', 6, '2026-04-26 04:00:52', '2026-05-10 05:50:28', 0),
+(126, NULL, 'Mr. QC1', 'Mr. QC1', '01986378256', 'qc1@gmail.com', 43, 'Dhaka', '', 13, '$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi', NULL, '', '', '2026-05-11 14:05:37', 6, '2026-04-26 04:00:52', '2026-05-11 08:05:37', 0),
 (127, NULL, 'Mr Purchase Head1', 'Mr Purchase Head1', '01782354543', 'purchase1@gmail.com', 42, 'Dhaka', '', 17, '$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe', NULL, '', '', '2026-05-09 18:17:03', 6, '2026-04-26 04:01:41', '2026-05-09 12:17:03', 0),
 (128, NULL, 'Mr Site Operators1', 'Mr Site Operators1', '01723876324', 'operations1@gmail.com', 38, 'Dhaka', '', 20, '$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q', NULL, '', '', '2026-05-07 18:08:10', 6, '2026-04-26 04:05:25', '2026-05-07 12:08:10', 0),
 (129, NULL, 'Mr Structural Designer1', 'Mr Structure Designer1', '01653247632', 'structural.designer1@gmail.com', 15, 'Dhaka', '', 21, '$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G', NULL, '', '', '2026-05-03 05:21:16', 6, '2026-04-26 05:41:57', '2026-05-03 05:21:16', 0),
 (130, NULL, 'M.H Jony', 'M.H Jony', '01861685153', 'admin@gmail.com', 28, 'Dhaka', '', 1, '$2y$10$ZsoxIYkWS/zUeQjawL6/4.9oL7L21uVMvqu/7bIAQq6r4OL29eByy', NULL, '', '', '2026-05-02 04:44:05', 130, '2026-05-02 04:34:07', '2026-05-02 04:44:05', 0),
-(131, NULL, 'Mr. Purchase Exeutive', 'Mr. Purchase Exeutive', '01882364534', 'purchase.executive1@gmail.com', 15, 'Dhaka', '2343543654', 23, '$2y$10$c/zYf4q4.8zQSeitdqmjY.e4vgjLE7ePADun84jFmskm595xO0CA.', NULL, '', '', '2026-05-09 18:35:02', 6, '2026-05-09 11:22:56', '2026-05-09 12:35:02', 0);
+(131, NULL, 'Mr. Purchase Exeutive', 'Mr. Purchase Exeutive', '01882364534', 'purchase.executive1@gmail.com', 15, 'Dhaka', '2343543654', 23, '$2y$10$c/zYf4q4.8zQSeitdqmjY.e4vgjLE7ePADun84jFmskm595xO0CA.', NULL, '', '', '2026-05-11 12:50:14', 6, '2026-05-09 11:22:56', '2026-05-11 06:50:14', 0);
 
 -- --------------------------------------------------------
 
@@ -8277,8 +8378,19 @@ CREATE TABLE `weekly_progress_report` (
   `approved_by_qc` int(11) DEFAULT NULL,
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `work_order_id` int(11) DEFAULT NULL
+  `work_order_id` int(11) DEFAULT NULL,
+  `qc_gain_percentage` decimal(5,2) DEFAULT 0.00,
+  `qc_photo` varchar(255) DEFAULT NULL,
+  `qc_field_test_details` text DEFAULT NULL,
+  `qc_lab_test_result` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `weekly_progress_report`
+--
+
+INSERT INTO `weekly_progress_report` (`id`, `project_id`, `site_engineer_id`, `work_plan_id`, `week_no`, `target_id`, `work_done`, `progress_percentage`, `report_date`, `progress_image`, `weather_condition`, `approved_by_pm`, `manpower_count`, `approved_by_qc`, `created_by`, `created_at`, `work_order_id`, `qc_gain_percentage`, `qc_photo`, `qc_field_test_details`, `qc_lab_test_result`) VALUES
+(1, 13, 120, 2, 1, 1, 'test work done', 80.00, '2026-05-11', NULL, '', 6, 30, 126, 120, '2026-05-11 06:35:21', NULL, 80.00, 'uploads/qc-reports/1778482589_users.png', 'test data', '100');
 
 -- --------------------------------------------------------
 
@@ -8905,6 +9017,22 @@ ALTER TABLE `project_drawings`
   ADD KEY `idx_pd_created_by` (`created_by`);
 
 --
+-- Indexes for table `project_legal_sheets`
+--
+ALTER TABLE `project_legal_sheets`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_project_id` (`project_id`),
+  ADD KEY `idx_sheet_type` (`sheet_type`);
+
+--
+-- Indexes for table `project_sheets`
+--
+ALTER TABLE `project_sheets`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_project_id` (`project_id`),
+  ADD KEY `idx_sheet_type` (`sheet_type`);
+
+--
 -- Indexes for table `project_structural_designs`
 --
 ALTER TABLE `project_structural_designs`
@@ -9304,7 +9432,7 @@ ALTER TABLE `con_materials`
 -- AUTO_INCREMENT for table `con_material_issues`
 --
 ALTER TABLE `con_material_issues`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `con_material_issue_items`
@@ -9322,7 +9450,7 @@ ALTER TABLE `con_stocks`
 -- AUTO_INCREMENT for table `con_stock_movements`
 --
 ALTER TABLE `con_stock_movements`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `con_warehouses`
@@ -9334,7 +9462,7 @@ ALTER TABLE `con_warehouses`
 -- AUTO_INCREMENT for table `con_work_orders`
 --
 ALTER TABLE `con_work_orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `departments`
@@ -9607,6 +9735,18 @@ ALTER TABLE `project_drawings`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
+-- AUTO_INCREMENT for table `project_legal_sheets`
+--
+ALTER TABLE `project_legal_sheets`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `project_sheets`
+--
+ALTER TABLE `project_sheets`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `project_structural_designs`
 --
 ALTER TABLE `project_structural_designs`
@@ -9652,25 +9792,25 @@ ALTER TABLE `purchase_request_items`
 -- AUTO_INCREMENT for table `qc_checklists`
 --
 ALTER TABLE `qc_checklists`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `qc_inspections`
 --
 ALTER TABLE `qc_inspections`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `qc_inspection_items`
 --
 ALTER TABLE `qc_inspection_items`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `qc_material_tests`
 --
 ALTER TABLE `qc_material_tests`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `qc_test_types`
@@ -9706,7 +9846,7 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `role_permissions`
 --
 ALTER TABLE `role_permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=657;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=679;
 
 --
 -- AUTO_INCREMENT for table `sales_targets`
@@ -9796,7 +9936,7 @@ ALTER TABLE `vendor_ratings`
 -- AUTO_INCREMENT for table `weekly_progress_report`
 --
 ALTER TABLE `weekly_progress_report`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `whatsapp_campaigns`

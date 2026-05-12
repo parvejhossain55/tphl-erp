@@ -229,12 +229,12 @@ class Con_WorkingPlan extends Model
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->planTable}
                      (project_id, initial_budget_id, work_type_id, year, month,
-                      work_description, planned_quantity, estimated_cost, created_by,
+                      work_description, planned_quantity, estimated_cost, weight_percentage, created_by,
                       approved_status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')"
             );
             $stmt->bind_param(
-                'iiiiisddi',
+                'iiiiisdddi',
                 $data['project_id'],
                 $data['initial_budget_id'],
                 $data['work_type_id'],
@@ -243,6 +243,7 @@ class Con_WorkingPlan extends Model
                 $data['work_description'],
                 $data['planned_quantity'],
                 $data['estimated_cost'],
+                $data['weight_percentage'],
                 $data['created_by']
             );
             $stmt->execute();
@@ -278,11 +279,11 @@ class Con_WorkingPlan extends Model
             "UPDATE {$this->planTable}
              SET project_id = ?, initial_budget_id = ?, work_type_id = ?,
                  year = ?, month = ?, work_description = ?,
-                 planned_quantity = ?, estimated_cost = ?
+                 planned_quantity = ?, estimated_cost = ?, weight_percentage = ?
              WHERE id = ?"
         );
         $stmt->bind_param(
-            'iiiiisddi',
+            'iiiiisdddi',
             $data['project_id'],
             $data['initial_budget_id'],
             $data['work_type_id'],
@@ -291,6 +292,7 @@ class Con_WorkingPlan extends Model
             $data['work_description'],
             $data['planned_quantity'],
             $data['estimated_cost'],
+            $data['weight_percentage'],
             $id
         );
         return $stmt->execute()

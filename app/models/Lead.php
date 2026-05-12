@@ -900,10 +900,10 @@ class Lead extends Model
             nationality, religion, nominee_name, nomi_father_name, nomi_mother_name, 
             nomi_profession, relation_with_lead, nomi_dob, nomi_nid_passport, 
             nomi_phone, nomi_email, nomi_present_add, nomi_permanent_address, nomi_image,
-            status, visibility, created_by, team_id, assigned_id
+            status, visibility, created_by, team_id, assigned_id, uploaded_from
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?
         )";
 
         $stmt = $this->db->prepare($sql);
@@ -914,21 +914,48 @@ class Lead extends Model
             return (isset($data[$key]) && trim($data[$key]) !== '') ? trim($data[$key]) : null;
         };
 
-        $createdBy = $data['created_by'] ?? null;
-        $status = $data['status'] ?? 'active';
-        $visibility = $data['visibility'] ?? 'public';
-        
-        $team_id = $v('team_id');
-        $assigned_id = $v('assigned_id');
+        // Extract ALL values into named variables (bind_param requires variables by reference)
+        $full_name             = $v('full_name');
+        $job_title             = $v('job_title');
+        $company_name          = $v('company_name');
+        $phone                 = $v('phone');
+        $alt_phone_number      = $v('alt_phone_number');
+        $email                 = $v('email');
+        $lead_image            = $v('lead_image');
+        $lead_name_bn          = $v('lead_name_bn');
+        $father_name_bn        = $v('father_name_bn');
+        $mother_name_bn        = $v('mother_name_bn');
+        $profession_bn         = $v('profession_bn');
+        $nationality           = $v('nationality');
+        $religion              = $v('religion');
+        $nominee_name          = $v('nominee_name');
+        $nomi_father_name      = $v('nomi_father_name');
+        $nomi_mother_name      = $v('nomi_mother_name');
+        $nomi_profession       = $v('nomi_profession');
+        $relation_with_lead    = $v('relation_with_lead');
+        $nomi_dob              = $v('nomi_dob');
+        $nomi_nid_passport     = $v('nomi_nid_passport');
+        $nomi_phone            = $v('nomi_phone');
+        $nomi_email            = $v('nomi_email');
+        $nomi_present_add      = $v('nomi_present_add');
+        $nomi_permanent_address = $v('nomi_permanent_address');
+        $nomi_image            = $v('nomi_image');
+        $status                = $data['status']       ?? 'active';
+        $visibility            = $data['visibility']   ?? 'public';
+        $createdBy             = $data['created_by']   ?? null;
+        $team_id               = $v('team_id');
+        $assigned_id           = $v('assigned_id');
+        $uploadedFrom          = $data['uploaded_from'] ?? 'From Company csv';
 
+        // 31 columns: 25 s + status(s) + visibility(s) = 27s, then i(created_by), s(team_id), s(assigned_id), s(uploaded_from) = 31
         $stmt->bind_param(
-            "sssssssssssssssssssssssssssiis",
-            $v('full_name'), $v('job_title'), $v('company_name'), $v('phone'), $v('alt_phone_number'), $v('email'),
-            $v('lead_image'), $v('lead_name_bn'), $v('father_name_bn'), $v('mother_name_bn'), $v('profession_bn'),
-            $v('nationality'), $v('religion'), $v('nominee_name'), $v('nomi_father_name'), $v('nomi_mother_name'),
-            $v('nomi_profession'), $v('relation_with_lead'), $v('nomi_dob'), $v('nomi_nid_passport'),
-            $v('nomi_phone'), $v('nomi_email'), $v('nomi_present_add'), $v('nomi_permanent_address'), $v('nomi_image'),
-            $status, $visibility, $createdBy, $team_id, $assigned_id
+            "sssssssssssssssssssssssssssiiss",
+            $full_name, $job_title, $company_name, $phone, $alt_phone_number, $email,
+            $lead_image, $lead_name_bn, $father_name_bn, $mother_name_bn, $profession_bn,
+            $nationality, $religion, $nominee_name, $nomi_father_name, $nomi_mother_name,
+            $nomi_profession, $relation_with_lead, $nomi_dob, $nomi_nid_passport,
+            $nomi_phone, $nomi_email, $nomi_present_add, $nomi_permanent_address, $nomi_image,
+            $status, $visibility, $createdBy, $team_id, $assigned_id, $uploadedFrom
         );
 
         if (!$stmt->execute()) {

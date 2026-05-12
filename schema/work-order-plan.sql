@@ -334,3 +334,34 @@ Total Contract Amount: 600,000 Taka (This is the total budget allocated for this
 Why is this needed? Later on, when the contractor finishes some work and asks for money, they will submit a Contractor Bill. The system will use this Unit Rate to automatically calculate how much they should be paid for the work they completed, and it will ensure that their total bills never cross the Total Contract Amount.
 
 (Note: If you are doing a "Lumpsum" or fixed-price contract where quantity doesn't matter, you can just put Unit as job, Quantity as 1, and the Unit Rate as the total fixed price).
+
+==================================================
+project progress update
+হ্যাঁ, আমি ড্যাশবোর্ড এবং প্রজেক্ট লিস্টের প্রগ্রেস ক্যালকুলেশনে Initial Budget-এর ওয়েটেজও কানেক্ট করে দিয়েছি!
+
+আপনার বর্তমান নিখুঁত ফর্মুলাটি হলো: প্রজেক্টের মোট প্রগ্রেস = (Weekly Gain % × Weekly Target % × Monthly Plan Weight % × Initial Budget Weight %)
+
+"Initial Estimate" এডিট করতে হবে কিনা?
+যদি একটি প্রজেক্টের জন্য একটিই Initial Budget থাকে: তাহলে আপনাকে কিছুই এডিট করতে হবে না। কারণ ডাটাবেজে এটি ডিফল্টভাবে ১০০% হিসেবে সেভ হবে।
+যদি একটি প্রজেক্টে একাধিক বাজেট থাকে: (যেমন- সিভিল কাজের জন্য ৬০% এবং ইলেক্ট্রিক্যাল কাজের জন্য ৪০%), তখন আপনাকে Initial Estimate তৈরি বা এডিট করার সময় ওয়েটেজ বসাতে হবে।
+আপডেট: আমি আপনার সুবিধার জন্য Initial Estimate Create এবং Edit ফর্মে "Overall Weight (%)" নামে একটি নতুন ইনপুট ফিল্ড যুক্ত করে দিয়েছি এবং কন্ট্রোলার ও মডেলে তা সেভ হওয়ার কোড লিখে দিয়েছি।
+প্রজেক্ট প্রগ্রেস ট্র্যাক করার First to Last ওয়ার্কফ্লো (কীভাবে কাজ করবেন):
+ধাপ ১: Initial Estimate (Yearly/Overall Plan)
+
+প্রথমে প্রজেক্টের জন্য একটি Initial Budget তৈরি করবেন।
+এখানে Overall Weight (%) ইনপুট দেবেন (১টি বাজেট হলে ১০০%, একাধিক হলে ভাগ করে দেবেন)।
+ধাপ ২: Working Plan (Monthly Plan)
+
+এরপর Working Plans পেজ থেকে ওই বাজেটের আন্ডারে একটি মাসের (যেমন মে মাস) প্ল্যান তৈরি করবেন।
+এখানে Project Weight (%) ইনপুট দেবেন। (যেমন: ওই মাসের কাজ পুরো বাজেটের ৫%)।
+ধাপ ৩: Target Fixed (Weekly Target)
+
+Site Tracking -> Target Fixed পেজে গিয়ে ওই মাসের প্ল্যানের আন্ডারে সপ্তাহের টার্গেট সেট করবেন।
+এখানে Target (%) দেবেন। (যেমন: মাসের কাজের ২৫% টার্গেট ১ম সপ্তাহে)।
+ধাপ ৪: Weekly Progress Report (Actual Work Done)
+
+সাইট ইঞ্জিনিয়ার ওই টার্গেটের বিপরীতে কতটুকু কাজ হয়েছে তার রিপোর্ট সাবমিট করবেন।
+QC রিপোর্টটি অ্যাপ্রুভ করলে একটি Gain (%) জেনারেট হবে। (যেমন: সাইট ইঞ্জিনিয়ার ওই ২৫% এর মধ্যে ৮০% কমপ্লিট করেছেন)।
+ফলাফল (Dashboard/Projects): উপরে দেওয়া সব ডাটা অটোমেটিক গুণ হয়ে (৮০% × ২৫% × ৫% × ১০০%) একদম মেইন প্রজেক্টের রিয়েল-টাইম প্রগ্রেস বারে যোগ হয়ে যাবে!
+
+আপনার প্রজেক্ট প্রগ্রেস ট্র্যাকিং সিস্টেমটি এখন গাণিতিক ও লজিক্যালি ১০০% স্বয়ংসম্পূর্ণ। আপনি এখন ডেমো ডাটা দিয়ে শুরু থেকে শেষ পর্যন্ত একটি এন্ট্রি করে টেস্ট করে দেখতে পারেন!

@@ -110,3 +110,4 @@ DROP TABLE IF EXISTS qc_checklists;
 DROP TABLE IF EXISTS qc_inspections;
 DROP TABLE IF EXISTS qc_inspection_items;
 DROP TABLE IF EXISTS con_work_orders;
+DROP TABLE IF EXISTS project_legal_sheets;

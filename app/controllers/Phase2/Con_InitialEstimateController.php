@@ -116,6 +116,7 @@ class Con_InitialEstimateController extends Controller
             'other_cost_detail'=>         ($_POST['other_cost_detail']?? null),
             'budget_link'      =>         ($_POST['budget_link']      ?? null),
             'work_details'     =>         ($_POST['work_details']     ?? null),
+            'weight_percentage'=> (float) ($_POST['weight_percentage']?? 100.00),
             'created_by'       => (int)   ($_SESSION['user']['id']    ?? 0),
         ];
 
@@ -360,6 +361,7 @@ class Con_InitialEstimateController extends Controller
             'other_cost_detail'=>         ($_POST['other_cost_detail']?? null),
             'budget_link'      =>         ($_POST['budget_link']      ?? null),
             'work_details'     =>         ($_POST['work_details']     ?? null),
+            'weight_percentage'=> (float) ($_POST['weight_percentage']?? 100.00),
             'updated_by'      => (int)   ($_SESSION['user']['id']   ?? 0),
         ];
 

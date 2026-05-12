@@ -287,12 +287,12 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             lead_id, project_id, flat_id, agreement_value, discount_amount, 
             booking_date, booking_status, created_by, sales_by_id, sales_agent_old, 
             approval_status, approved_amount, service_fee_balance, landshare_status, 
-            payment_status, attachment_image
+            payment_status, attachment_image, uploaded_from
         ) VALUES (
             ?, ?, ?, ?, ?, 
             ?, ?, ?, ?, ?, 
             ?, ?, ?, ?, 
-            ?, ?
+            ?, ?, ?
         )";
 
         $stmt = $this->db->prepare($sql);
@@ -306,14 +306,15 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         $v_booking_date = $v('booking_date'); $v_booking_status = $v('booking_status'); $v_created_by = $v('created_by'); $v_sales_by_id = $v('sales_by_id'); $v_sales_agent_old = $v('sales_agent_old');
         $v_approval_status = $v('approval_status'); $v_approved_amount = $v('approved_amount'); $v_service_fee_balance = $v('service_fee_balance'); $v_landshare_status = $v('landshare_status');
         $v_payment_status = $v('payment_status'); $v_attachment_image = $v('attachment_image');
+        $v_uploaded_from = $data['uploaded_from'] ?? 'From Company csv';
 
-        $bindStr = str_repeat('s', 16);
+        $bindStr = str_repeat('s', 17);
         $stmt->bind_param(
             $bindStr,
             $v_lead_id, $v_project_id, $v_flat_id, $v_agreement_value, $v_discount_amount,
             $v_booking_date, $v_booking_status, $v_created_by, $v_sales_by_id, $v_sales_agent_old,
             $v_approval_status, $v_approved_amount, $v_service_fee_balance, $v_landshare_status,
-            $v_payment_status, $v_attachment_image
+            $v_payment_status, $v_attachment_image, $v_uploaded_from
         );
 
         if (!$stmt->execute()) {

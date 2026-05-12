@@ -105,11 +105,16 @@ class Con_WorkOrder extends Model
         $types = str_repeat('s', count($statusFilter));
         $params = array_merge([(int)$projectId], $statusFilter);
 
-        $sql = "SELECT wo.id, wo.wo_number, wo.title, wo.status, wo.total_amount,
+        $sql = "SELECT wo.id, wo.wo_number, wo.title, wo.status, wo.total_amount, 
+                       wo.advance_percent, wo.advance_amount,
                        c.name AS contractor_name,
                        (SELECT COALESCE(SUM(IF(approved_amount IS NOT NULL AND approved_amount > 0, approved_amount, bill_amount)), 0)
                         FROM contractor_bill_requests
-                        WHERE work_order_id = wo.id AND status != 'rejected') AS billed_amount
+                        WHERE work_order_id = wo.id AND status != 'rejected') AS billed_amount,
+                       (SELECT COALESCE(SUM(amount_paid), 0)
+                        FROM con_financial_transactions cft
+                        INNER JOIN contractor_bill_requests cbr ON cft.ref_id = cbr.id
+                        WHERE cft.ref_type = 'contractor_bill' AND cbr.work_order_id = wo.id) AS paid_amount
                 FROM {$this->table} wo
                 LEFT JOIN contractors c ON c.id = wo.contractor_id
                 WHERE wo.project_id = ? AND wo.status IN ({$placeholders})

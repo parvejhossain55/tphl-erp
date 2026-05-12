@@ -225,11 +225,11 @@ class Con_InitialEstimate extends Model
     public function createBudget($data)
     {
         $sql = "INSERT INTO {$this->budgetTable}
-                    (project_id, architecture_id, work_type_id, start_date, end_date, total_area_sqft, other_costs, other_cost_detail, budget_link, work_details, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)";
+                    (project_id, architecture_id, work_type_id, start_date, end_date, total_area_sqft, other_costs, other_cost_detail, budget_link, work_details, weight_percentage, status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiissddsssi',
+            'iiissddsssdi',
             $data['project_id'],
             $data['architecture_id'],
             $data['work_type_id'],
@@ -240,6 +240,7 @@ class Con_InitialEstimate extends Model
             $data['other_cost_detail'],
             $data['budget_link'],
             $data['work_details'],
+            $data['weight_percentage'],
             $data['created_by']
         );
         if ($stmt->execute()) {
@@ -447,11 +448,11 @@ class Con_InitialEstimate extends Model
 
         $stmt = $this->db->prepare(
             "UPDATE {$this->budgetTable}
-             SET project_id = ?, architecture_id = ?, work_type_id = ?, start_date = ?, end_date = ?, total_area_sqft = ?, other_costs = ?, other_cost_detail = ?, budget_link = ?, work_details = ?
+             SET project_id = ?, architecture_id = ?, work_type_id = ?, start_date = ?, end_date = ?, total_area_sqft = ?, other_costs = ?, other_cost_detail = ?, budget_link = ?, work_details = ?, weight_percentage = ?
              WHERE id = ? AND status = 'pending'"
         );
         $stmt->bind_param(
-            'iiissddsssi',
+            'iiissddsssdi',
             $data['project_id'],
             $data['architecture_id'],
             $data['work_type_id'],
@@ -462,6 +463,7 @@ class Con_InitialEstimate extends Model
             $data['other_cost_detail'],
             $data['budget_link'],
             $data['work_details'],
+            $data['weight_percentage'],
             $id
         );
         return $stmt->execute();

@@ -32,6 +32,7 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                             <th>#</th>
                             <th>Project</th>
                             <th>Contractor</th>
+                            <th>Bill Type</th>
                             <th>Bill Date</th>
                             <th class="text-end">Amount (৳)</th>
                             <th>Status</th>
@@ -64,6 +65,11 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                                     <td>
                                         <span class="fw-semibold"><?= htmlspecialchars($b['operator_name'] ?? '-') ?></span><br>
                                         <small class="text-muted"><?= htmlspecialchars($b['operator_role'] ?? '') ?></small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-<?= ($b['bill_type'] === 'Advance') ? 'warning' : (($b['bill_type'] === 'Retention') ? 'info' : 'primary') ?>-transparent">
+                                            <?= htmlspecialchars($b['bill_type'] ?? 'Progress') ?>
+                                        </span>
                                     </td>
                                     <td><?= date('d M Y', strtotime($b['bill_date'])) ?></td>
                                     <td class="fw-semibold text-end">৳ <?= number_format($b['bill_amount'], 2) ?></td>

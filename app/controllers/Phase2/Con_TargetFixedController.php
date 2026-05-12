@@ -362,8 +362,7 @@ class Con_TargetFixedController extends Controller
                 $upd->bind_param('ii', $userId, $id);
                 $upd->execute();
             }
-                setSuccess('Approval recorded successfully!');
-            }
+            setSuccess('Approval recorded successfully!');
 
         } else {
             setError('Approval failed.');
