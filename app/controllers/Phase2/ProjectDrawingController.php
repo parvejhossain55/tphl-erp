@@ -24,9 +24,61 @@ class ProjectDrawingController extends Controller {
         $userId = $_SESSION['user']['id']  ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
 
-        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
-            $records = $this->model->getAll();
-        } else {
+        // Only Draftsman (16) and admin-tier roles can create/edit/delete
+        $canModify = in_array($roleId, [1, 2, 13, 15, 16, 22]);
+
+        // Filter by project_id if passed (e.g. from estimator dashboard)
+        $filterProjectId = (int)($_GET['project_id'] ?? 0);
+
+        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
+            // Admins / PM / QC — see all (or filtered)
+            if ($filterProjectId > 0) {
+                $stmt = $this->db->prepare("
+                    SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
+                    FROM project_drawings d
+                    LEFT JOIN projects p  ON d.project_id    = p.id
+                    LEFT JOIN design_types dt ON d.design_type_id = dt.id
+                    LEFT JOIN users u ON d.user_id = u.id
+                    WHERE d.project_id = ?
+                    ORDER BY d.id DESC
+                ");
+                $stmt->bind_param('i', $filterProjectId);
+                $stmt->execute();
+                $records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            } else {
+                $records = $this->model->getAll();
+            }
+
+        } elseif ($roleId === 19) {
+            // Estimator — read-only: only drawings of projects they are assigned to
+            if ($filterProjectId > 0) {
+                $stmt = $this->db->prepare("
+                    SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
+                    FROM project_drawings d
+                    LEFT JOIN projects p  ON d.project_id    = p.id
+                    LEFT JOIN design_types dt ON d.design_type_id = dt.id
+                    LEFT JOIN users u ON d.user_id = u.id
+                    WHERE d.project_id = ? AND p.estimator_id = ?
+                    ORDER BY d.id DESC
+                ");
+                $stmt->bind_param('ii', $filterProjectId, $userId);
+            } else {
+                $stmt = $this->db->prepare("
+                    SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
+                    FROM project_drawings d
+                    LEFT JOIN projects p  ON d.project_id    = p.id
+                    LEFT JOIN design_types dt ON d.design_type_id = dt.id
+                    LEFT JOIN users u ON d.user_id = u.id
+                    WHERE p.estimator_id = ?
+                    ORDER BY d.id DESC
+                ");
+                $stmt->bind_param('i', $userId);
+            }
+            $stmt->execute();
+            $records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        } elseif ($roleId === 16) {
+            // Draftsman — drawings of their assigned projects
             $stmt = $this->db->prepare("
                 SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
                 FROM project_drawings d
@@ -39,19 +91,27 @@ class ProjectDrawingController extends Controller {
             $stmt->bind_param('i', $userId);
             $stmt->execute();
             $records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        } else {
+            // All other roles — read-only, see all
+            $records = $this->model->getAll();
         }
 
         $this->view('phase2/project_drawings/project-drawings', [
-            'current_route' => 'con-project-drawings',
-            'records' => $records,
-            'page_title'   => 'Project Drawings'
+            'current_route'   => 'con-project-drawings',
+            'records'         => $records,
+            'page_title'      => 'Project Drawings',
+            'canModify'       => $canModify,
+            'filterProjectId' => $filterProjectId,
         ]);
     }
 
     public function create() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        // Only Draftsman (16) and super-admins (1, 2, 13, 15) can create
+        if (!in_array($roleId, [1, 2, 13, 15, 16])) {
+            setError('Only Draftsman can create project drawings.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
             exit;
         }
 
@@ -78,9 +138,10 @@ class ProjectDrawingController extends Controller {
     }
 
     public function store() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!in_array($roleId, [1, 2, 13, 15, 16])) {
+            setError('Only Draftsman can create project drawings.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
             exit;
         }
 
@@ -118,9 +179,10 @@ class ProjectDrawingController extends Controller {
     }
 
     public function edit() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!in_array($roleId, [1, 2, 13, 15, 16])) {
+            setError('Only Draftsman can edit project drawings.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
             exit;
         }
 
@@ -148,9 +210,10 @@ class ProjectDrawingController extends Controller {
     }
 
     public function update() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!in_array($roleId, [1, 2, 13, 15, 16])) {
+            setError('Only Draftsman can edit project drawings.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
             exit;
         }
 
@@ -189,9 +252,10 @@ class ProjectDrawingController extends Controller {
     }
 
     public function delete() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!in_array($roleId, [1, 2, 13, 15, 16])) {
+            setError('Only Draftsman can delete project drawings.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
             exit;
         }
 
@@ -214,7 +278,7 @@ class ProjectDrawingController extends Controller {
 
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
             return $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);
@@ -233,7 +297,7 @@ class ProjectDrawingController extends Controller {
      */
     private function getProjectsForDraftsman(int $userId, int $roleId): array
     {
-        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
             // Admins/PM/QC see all projects with AE fully done
             return $this->db->query("
                 SELECT DISTINCT p.id, p.name
@@ -263,7 +327,7 @@ class ProjectDrawingController extends Controller {
     private function getBlockedProjectsForDraftsman(int $userId, int $roleId): array
     {
         // Admins can create for any project regardless; no blocked state for them
-        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
             return [];
         }
         $stmt = $this->db->prepare("

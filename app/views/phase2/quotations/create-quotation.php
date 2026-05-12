@@ -35,6 +35,7 @@
                                 <th>Vendor</th>
                                 <th class="text-end">Total Amount</th>
                                 <th>Valid Until</th>
+                                <th>Attachment</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -43,8 +44,18 @@
                             <tr>
                                 <td><?= $i + 1 ?></td>
                                 <td class="fw-bold"><?= htmlspecialchars($eq['vendor_name']) ?></td>
-                                <td class="text-end">৳ <?= number_format($eq['total_amount'] ?? 0, 2) ?></td>
+                                <td>৳ <?= number_format($eq['total_amount'] ?? 0, 2) ?></td>
                                 <td><?= $eq['validity_date'] ? date('d M Y', strtotime($eq['validity_date'])) : '—' ?></td>
+                                <td>
+                                    <?php if (!empty($eq['attachment'])): ?>
+                                        <a href="<?= $base_url ?>/public/uploads/vendor_quotation/<?= htmlspecialchars($eq['attachment']) ?>"
+                                           target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2">
+                                            <i class="bi bi-paperclip me-1"></i>View
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-muted small">—</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><span class="badge bg-info"><?= $eq['status'] ?></span></td>
                             </tr>
                             <?php endforeach; ?>
@@ -62,7 +73,8 @@
                     </h6>
                 </div>
                 <div class="card__body p-4">
-                    <form action="<?= $base_url ?>/con-quotation-store" method="POST" id="quotationForm">
+                    <form action="<?= $base_url ?>/con-quotation-store" method="POST"
+                          id="quotationForm" enctype="multipart/form-data">
                         <input type="hidden" name="request_id" value="<?= $pr['id'] ?>">
 
                         <div class="row mb-4">
@@ -77,7 +89,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">Validity Date</label>
-                                <input type="date" name="validity_date" class="form-control">
+                                <input type="date" name="validity_date" class="form-control" required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Project</label>
@@ -92,15 +104,19 @@
                             <table class="table table-bordered align-middle" id="quotItemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:35%;">Material</th>
-                                        <th style="width:15%;">PR Qty</th>
-                                        <th style="width:15%;">Qty <span class="text-danger">*</span></th>
-                                        <th style="width:15%;">Unit Price <span class="text-danger">*</span></th>
-                                        <th style="width:20%;" class="text-end">Total</th>
+                                        <th style="width:30%;">Material</th>
+                                        <th style="width:12%;">PR Qty</th>
+                                        <th style="width:12%;">Qty <span class="text-danger">*</span></th>
+                                        <th style="width:13%;">Unit Price <span class="text-danger">*</span></th>
+                                        <th style="width:18%;" class="text-center">
+                                            <i class="bi bi-paperclip me-1"></i>Attachment
+                                            <small class="text-muted d-block fw-normal" style="font-size:10px">(per vendor)</small>
+                                        </th>
+                                        <th style="width:15%;" class="text-end">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody id="quotItemsBody">
-                                    <?php foreach ($prItems as $item): ?>
+                                    <?php foreach ($prItems as $idx => $item): ?>
                                     <tr>
                                         <td>
                                             <span class="fw-bold"><?= htmlspecialchars($item['material_name']) ?></span>
@@ -118,13 +134,24 @@
                                                    class="form-control quot-price" required min="0"
                                                    placeholder="0.00">
                                         </td>
+                                        <?php if ($idx === 0): ?>
+                                        <td class="text-center align-middle" rowspan="<?= count($prItems) ?>"
+                                            style="background:rgba(99,102,241,.04);vertical-align:middle">
+                                            <input type="file" name="attachment" id="attachment"
+                                                   class="form-control form-control-sm"
+                                                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+                                            <div class="form-text text-center" style="font-size:10px">
+                                                PDF, Image, Word
+                                            </div>
+                                        </td>
+                                        <?php endif; ?>
                                         <td class="text-end fw-bold quot-row-total">0.00</td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
                                 <tfoot>
                                     <tr>
-                                        <td colspan="4" class="text-end fw-bold py-3">Total Quotation Amount:</td>
+                                        <td colspan="5" class="text-end fw-bold py-3">Total Quotation Amount:</td>
                                         <td class="text-end fw-bold py-3 text-primary fs-6">
                                             <span id="quotGrandTotal">0.00</span>
                                         </td>
@@ -132,6 +159,7 @@
                                 </tfoot>
                             </table>
                         </div>
+
 
                         <div class="mt-4 text-end">
                             <a href="<?= $base_url ?>/con-purchase-request/<?= $pr['id'] ?>" class="btn btn-secondary me-2">Cancel</a>

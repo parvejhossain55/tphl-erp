@@ -51,13 +51,13 @@ class Con_PurchaseOrderController extends Controller
         $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $createdBy     = (int)($po['created_by'] ?? 0);
 
-        // Role guards — SE (12) approves SE step, PM (15) approves PM step
-        $seApproved   = !empty($po['approved_by_se']);
-        $pmApproved   = !empty($po['approved_by_pm']);
-        $fullyApproved = $seApproved && $pmApproved;
+        // Role guard — Only Management/PM (1, 3, 15) approval needed
+        $pmApproved    = !empty($po['approved_by_pm']);
+        $seApproved    = !empty($po['approved_by_se']); // kept for legacy display
+        $fullyApproved = $pmApproved; // PM approval alone is sufficient
 
-        $canApproveSE = ($currentRoleId === 12) && !$seApproved; // && ($currentUserId !== $createdBy);
-        $canApprovePM = in_array($currentRoleId, [1, 3, 15, 20]) && !$pmApproved;
+        $canApproveSE = false; // SE approval no longer required
+        $canApprovePM = in_array($currentRoleId, [1, 3, 15]) && !$pmApproved;
 
         $items        = $this->poModel->getItems($id);
         $pendingItems = $this->poModel->getPendingItems($id);
@@ -112,7 +112,7 @@ class Con_PurchaseOrderController extends Controller
 
             $mailService->notifyApproversForNewPO($requestId, $projectName, $result['id']);
 
-            setSuccess('Purchase Order #' . $result['id'] . ' generated. Awaiting SE & PM approval.');
+            setSuccess('Purchase Order #' . $result['id'] . ' generated. Awaiting Management/PM approval.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$result['id']}");
         } else {
             setError('PO generation failed: ' . $result['error']);
@@ -139,24 +139,11 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
-        // Role guard
-        if ($roleId === 12) {
-            // SE approval
-            if (!empty($po['approved_by_se'])) {
-                setError('SE has already approved this PO.');
-                header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
-                exit;
-            }
-            $stmt = $this->db->prepare(
-                "UPDATE purchase_orders SET approved_by_se = ?, se_approved_at = NOW() WHERE id = ?"
-            );
-            $stmt->bind_param('ii', $userId, $id);
-            $stmt->execute();
-
-        } elseif (in_array($roleId, [1, 3, 15, 20, 23])) {
-            // PM / Top Management approval
+        // Role guard — Only Management/PM (1, 3, 15) can approve
+        if (in_array($roleId, [1, 3, 15])) {
+            // Management / PM approval
             if (!empty($po['approved_by_pm'])) {
-                setError('Authorized PM/Director has already approved this PO.');
+                setError('Management/PM has already approved this PO.');
                 header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
                 exit;
             }
@@ -172,10 +159,10 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
-        // Refresh PO to check full approval
+        // PM approval alone = Fully Approved
         $fresh = $this->poModel->find($id);
-        if (!empty($fresh['approved_by_se']) && !empty($fresh['approved_by_pm'])) {
-            // Both approved — update status to 'Approved'
+        if (!empty($fresh['approved_by_pm'])) {
+            // Management approved — update status to 'Approved'
             $upd = $this->db->prepare("UPDATE purchase_orders SET status = 'Approved' WHERE id = ?");
             $upd->bind_param('i', $id);
             $upd->execute();
@@ -185,9 +172,9 @@ class Con_PurchaseOrderController extends Controller
             $mailService = new \ProjectWorkflowMailService($this->db);
             $mailService->notifySiteOperatorForApprovedPO($id, $po['project_name']);
 
-            setSuccess('PO fully approved by SE & PM. Status updated to Approved!');
+            setSuccess('Purchase Order approved by Management/PM. Status updated to Approved!');
         } else {
-            setSuccess('Your approval has been recorded. Waiting for the other approval.');
+            setSuccess('Approval recorded successfully.');
         }
 
         header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");

@@ -349,6 +349,12 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
 
 </div>
 
+<div class="d-flex justify-content-end mb-3 mt-3">
+    <a href="#drawing-design-section" class="btn btn-sm" style="border-radius: 20px; font-weight: 600; font-size: 12px; background: rgba(59,130,246,.1); color: var(--qc-blue);">
+        <i class="fal fa-layer-group me-1"></i> Show all drawing and design <i class="fal fa-arrow-down ms-1"></i>
+    </a>
+</div>
+
 <?php if (!empty($pendingGRNsQC)): ?>
 <div class="rd-panel" style="border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.03);margin-top:4px">
   <div class="d-flex justify-content-between align-items-center mb-3">
@@ -582,13 +588,17 @@ if (!empty($pendingWeeklyReportsQC)):
         </div>
     </div>
 
-    <!-- Material Tests Table -->
-    <div class="col-md-12">
+
+    <!-- GRN Material Tests Table -->
+    <div class="col-md-12 mb-4">
         <div class="card__wrapper shadow-sm rd-panel">
             <div class="card-header bg-transparent border-bottom pb-3 mb-3 d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0" style="font-size: 14px; font-weight: 700;">Recent Material Lab Tests</h5>
-                <a href="<?= $base ?>/qc-material-test-create" class="btn btn-sm btn-secondary" style="font-size: 11px;">
-                    <i class="fal fa-plus-circle me-1"></i> Log Material Test
+                <h5 class="card-title mb-0" style="font-size: 14px; font-weight: 700;">
+                    <i class="fal fa-truck me-2" style="color:var(--qc-teal)"></i>
+                    Recent Material Lab Tests <small class="text-muted fw-normal ms-1" style="font-size:11px">(GRN / Challan)</small>
+                </h5>
+                <a href="<?= $base ?>/qc-material-test-create" class="btn btn-sm" style="font-size:11px;background:rgba(20,184,166,.1);color:var(--qc-teal);border-radius:8px;">
+                    <i class="fal fa-plus-circle me-1"></i> Log GRN Test
                 </a>
             </div>
             <div class="card__body p-0">
@@ -596,41 +606,243 @@ if (!empty($pendingWeeklyReportsQC)):
                     <table class="rd-table multiple-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Challan No</th>
+                                <th>#</th>
+                                <th>Challan</th>
+                                <th>Project</th>
                                 <th>Test Name</th>
                                 <th>Result</th>
                                 <th>Status</th>
-                                <th>Report Link</th>
+                                <th>By</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (!empty($materialTests)): ?>
-                                <?php foreach ($materialTests as $mt): ?>
+                            <?php
+                            $grnMaterialTests = $grnMaterialTests ?? [];
+                            if (!empty($grnMaterialTests)):
+                                foreach ($grnMaterialTests as $i => $mt): ?>
+                            <tr>
+                                <td style="font-size:11px;color:var(--text-muted)"><?= $i + 1 ?></td>
+                                <td style="font-weight:800;color:var(--qc-teal)">
+                                    GRN-<?= (int)$mt['material_receiving_id'] ?>
+                                </td>
+                                <td style="font-weight:700"><?= htmlspecialchars($mt['project_name'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($mt['test_name'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($mt['result_value'] ?? 'N/A') ?></td>
+                                <td>
+                                    <?php
+                                    $st = $mt['test_status'] ?? '';
+                                    $stClass = $st === 'pass' ? 'background:rgba(16,185,129,.1);color:#059669'
+                                             : ($st === 'partially_passed' ? 'background:rgba(245,158,11,.1);color:#d97706'
+                                             : 'background:rgba(239,68,68,.1);color:#dc2626');
+                                    $stLabel = $st === 'pass' ? 'Pass' : ($st === 'partially_passed' ? 'Partial' : 'Fail');
+                                    ?>
+                                    <span class="status-pill" style="<?= $stClass ?>"><?= $stLabel ?></span>
+                                </td>
+                                <td style="font-size:11px"><?= htmlspecialchars($mt['created_by_name'] ?? '—') ?></td>
+                            </tr>
+                            <?php endforeach; else: ?>
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">No GRN material tests logged yet.</td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Site Work (Other QC) Tests Table -->
+    <div class="col-md-12">
+        <div class="card__wrapper shadow-sm rd-panel" style="border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.02)">
+            <div class="card-header bg-transparent border-bottom pb-3 mb-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0" style="font-size: 14px; font-weight: 700;">
+                    <i class="fal fa-building me-2" style="color:var(--qc-indigo)"></i>
+                    Other QC Tests <small class="text-muted fw-normal ms-1" style="font-size:11px">(Site Work)</small>
+                </h5>
+                <a href="<?= $base ?>/qc-material-test-create" class="btn btn-sm" style="font-size:11px;background:rgba(99,102,241,.1);color:var(--qc-indigo);border-radius:8px;">
+                    <i class="fal fa-plus-circle me-1"></i> Log Site Test
+                </a>
+            </div>
+            <div class="card__body p-0">
+                <div class="table-responsive">
+                    <table class="rd-table multiple-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Project</th>
+                                <th>Work Type</th>
+                                <th>Test Type</th>
+                                <th>Test Date</th>
+                                <th>Required</th>
+                                <th>Result</th>
+                                <th>Status</th>
+                                <th>By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $siteWorkTests = $siteWorkTests ?? [];
+                            if (!empty($siteWorkTests)):
+                                foreach ($siteWorkTests as $i => $sw): ?>
+                            <tr>
+                                <td style="font-size:11px;color:var(--text-muted)"><?= $i + 1 ?></td>
+                                <td style="font-weight:700"><?= htmlspecialchars($sw['project_name'] ?? '—') ?></td>
+                                <td>
+                                    <span class="status-pill" style="background:rgba(99,102,241,.08);color:var(--qc-indigo)">
+                                        <?= htmlspecialchars($sw['work_type_name'] ?? '—') ?>
+                                    </span>
+                                </td>
+                                <td><?= htmlspecialchars($sw['test_type_name'] ?? '—') ?></td>
+                                <td style="font-size:11px;color:var(--text-muted)">
+                                    <?= !empty($sw['test_date']) ? date('d M Y', strtotime($sw['test_date'])) : '—' ?>
+                                </td>
+                                <td style="font-size:12px"><?= htmlspecialchars($sw['required_value'] ?? '—') ?></td>
+                                <td style="font-size:12px"><?= htmlspecialchars($sw['result_value'] ?? '—') ?></td>
+                                <td>
+                                    <?php
+                                    $st = $sw['test_status'] ?? '';
+                                    $stClass = $st === 'pass' ? 'background:rgba(16,185,129,.1);color:#059669'
+                                             : ($st === 'partially_passed' ? 'background:rgba(245,158,11,.1);color:#d97706'
+                                             : 'background:rgba(239,68,68,.1);color:#dc2626');
+                                    $stLabel = $st === 'pass' ? 'Pass' : ($st === 'partially_passed' ? 'Partial' : 'Fail');
+                                    ?>
+                                    <span class="status-pill" style="<?= $stClass ?>"><?= $stLabel ?></span>
+                                </td>
+                                <td style="font-size:11px"><?= htmlspecialchars($sw['created_by_name'] ?? '—') ?></td>
+                            </tr>
+                            <?php endforeach; else: ?>
+                            <tr>
+                                <td colspan="9" class="text-center py-4 text-muted">No site work QC tests logged yet.</td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="drawing-design-section" class="row mt-4">
+    <!-- Architecture Engineering Data Table -->
+    <div class="col-md-12 mb-4">
+        <div class="card__wrapper shadow-sm rd-panel" style="border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.03);">
+            <div class="card-header bg-transparent border-bottom pb-3 mb-3 d-flex justify-content-between align-items-center">
+                <div class="rd-panel-title" style="margin-bottom:0">
+                  <div class="rd-dot" style="background:var(--qc-blue,#3b82f6)"></div>
+                  <i class="fal fa-building me-2" style="color:var(--qc-blue,#3b82f6)"></i>
+                  Architecture Design(Assigned Projects)
+                </div>
+            </div>
+            <div class="card__body p-0">
+                <div class="table-responsive">
+                    <table class="rd-table multiple-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Project</th>
+                                <th>Status</th>
+                                <th>Created By</th>
+                                <th>Design Link</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                            $architectEngineering = $architectEngineering ?? [];
+                            if (!empty($architectEngineering)): 
+                            ?>
+                                <?php foreach ($architectEngineering as $ai => $arch): ?>
                                 <tr>
-                                    <td><?= $mt['id'] ?></td>
-                                    <td style="font-weight:700">GRN-<?= htmlspecialchars($mt['material_receiving_id']) ?></td>
-                                    <td><?= htmlspecialchars($mt['test_name']) ?></td>
-                                    <td><?= htmlspecialchars($mt['result_value']) ?></td>
+                                    <td><?= $ai + 1 ?></td>
+                                    <td style="font-weight:700"><?= htmlspecialchars($arch['project_name'] ?? 'N/A') ?></td>
                                     <td>
-                                        <?php if ($mt['test_status'] == 'pass'): ?>
-                                            <span class="status-pill" style="background:rgba(16,185,129,.1);color:#059669">Pass</span>
-                                        <?php else: ?>
-                                            <span class="status-pill" style="background:rgba(239,68,68,.1);color:#dc2626">Fail</span>
-                                        <?php endif; ?>
+                                        <span class="status-pill" style="background:rgba(16,185,129,.1);color:#059669">
+                                            <?= htmlspecialchars(ucfirst($arch['status'] ?? 'Draft')) ?>
+                                        </span>
                                     </td>
+                                    <td><?= htmlspecialchars($arch['user_name'] ?? 'N/A') ?></td>
                                     <td>
-                                        <?php if (!empty($mt['lab_report_link'])): ?>
-                                            <a href="<?= htmlspecialchars($mt['lab_report_link']) ?>" target="_blank" class="btn btn-sm" style="background:rgba(59,130,246,.1);color:#2563eb;font-size:11px;font-weight:600;"><i class="fal fa-external-link me-1"></i> View Report</a>
+                                        <?php if (!empty($arch['full_architecture_design_link'])): ?>
+                                            <a href="<?= htmlspecialchars($arch['full_architecture_design_link']) ?>" target="_blank" class="btn btn-sm" style="background:rgba(59,130,246,.1);color:#2563eb;font-size:11px;font-weight:600;"><i class="fal fa-external-link me-1"></i> View Design</a>
                                         <?php else: ?>
-                                            <span class="text-muted">N/A</span>
+                                            <span class="text-muted">No Link</span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">No material tests found.</td>
+                                    <td colspan="5" class="text-center py-4 text-muted">No architecture and engineering data found.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Drawings Table -->
+    <div class="col-md-12">
+        <div class="card__wrapper shadow-sm rd-panel" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03);">
+            <div class="card-header bg-transparent border-bottom pb-3 mb-3 d-flex justify-content-between align-items-center">
+                <div class="rd-panel-title" style="margin-bottom:0">
+                  <div class="rd-dot" style="background:var(--qc-amber,#f59e0b)"></div>
+                  <i class="fal fa-drafting-compass me-2" style="color:var(--qc-amber,#f59e0b)"></i>
+                  Project Drawings
+                </div>
+            </div>
+            <div class="card__body p-0">
+                <div class="table-responsive">
+                    <table class="rd-table multiple-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Project</th>
+                                <th>Design Type</th>
+                                <th>Status</th>
+                                <th>Designer</th>
+                                <th>Design Link</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                            $draftDrawings = $draftDrawings ?? [];
+                            if (!empty($draftDrawings)): 
+                            ?>
+                                <?php foreach ($draftDrawings as $di => $drawing): ?>
+                                <tr>
+                                    <td><?= $di + 1 ?></td>
+                                    <td style="font-weight:700"><?= htmlspecialchars($drawing['project_name'] ?? 'N/A') ?></td>
+                                    <td>
+                                        <span class="status-pill" style="background:rgba(245,158,11,.1);color:#d97706">
+                                            <?= htmlspecialchars($drawing['design_type_name'] ?? 'N/A') ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-pill" style="background:rgba(16,185,129,.1);color:#059669">
+                                            <?= htmlspecialchars(ucfirst($drawing['status'] ?? 'Draft')) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php
+                                            $designer = $drawing['is_in_house'] ? ($drawing['internal_designer_name'] ?? 'In-House') : ($drawing['designer_name'] ?? 'Vendor');
+                                            echo htmlspecialchars($designer);
+                                        ?>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($drawing['design_link'])): ?>
+                                            <a href="<?= htmlspecialchars($drawing['design_link']) ?>" target="_blank" class="btn btn-sm" style="background:rgba(59,130,246,.1);color:#2563eb;font-size:11px;font-weight:600;"><i class="fal fa-external-link me-1"></i> View Link</a>
+                                        <?php else: ?>
+                                            <span class="text-muted">No Link</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">No project drawings found.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>

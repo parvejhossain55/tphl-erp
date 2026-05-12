@@ -31,12 +31,28 @@ class Con_PurchaseRequestController extends Controller
 
     public function index()
     {
-        $requests = $this->prModel->getAll();
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId   = (int)($_SESSION['user']['id'] ?? 0);
+
+        // Filter for Purchase Executive
+        $executiveId = ($userRole === 23) ? $userId : null;
+        $requests = $this->prModel->getAll($executiveId);
+
+        // Fetch Purchase Executives (Role ID 23) for assignment dropdown
+        $executives = [];
+        if (in_array($userRole, [1, 3, 17, 22])) { // Admin, Management, Purchase Head
+            $stmt = $this->db->prepare("SELECT id, full_name FROM users WHERE role_id = 23 ORDER BY full_name");
+            $stmt->execute();
+            $executives = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
 
         $this->view('phase2/purchase-requests/purchase-request-lists', [
             'current_route' => 'con-purchase-requests',
             'page_title'    => 'Purchase Requests',
             'requests'      => $requests,
+            'executives'    => $executives,
+            'userRole'      => $userRole,
         ]);
     }
 
@@ -46,13 +62,50 @@ class Con_PurchaseRequestController extends Controller
 
     public function create()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId   = (int)($_SESSION['user']['id'] ?? 0);
+
+        // Block management-only roles
+        if ($userRole === 20) {
+            setError('You do not have permission to create Purchase Requests.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
         }
 
-        $projects  = $this->projectModel->getAll();
+        // Roles 1, 3, 22 → all projects; everyone else → only their assigned projects
+        if (in_array($userRole, [1, 3, 22])) {
+            $pResult  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+            $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
+        } else {
+            $pStmt = $this->db->prepare("
+                SELECT id, name FROM projects
+                WHERE deleted_at IS NULL
+                AND (
+                    purchase_user_id     = ?
+                    OR pm_id             = ?
+                    OR site_engineer_id  = ?
+                    OR landman_id        = ?
+                    OR struct_engineer_id= ?
+                    OR operation_head_id = ?
+                    OR draftsman_id      = ?
+                    OR architect_id      = ?
+                    OR estimator_id      = ?
+                    OR qc_id            = ?
+                    OR operator_id      = ?
+                    OR created_by       = ?
+                )
+                ORDER BY name ASC
+            ");
+            $pStmt->bind_param('iiiiiiiiiiii',
+                $userId, $userId, $userId, $userId,
+                $userId, $userId, $userId, $userId,
+                $userId, $userId, $userId, $userId
+            );
+            $pStmt->execute();
+            $projects = $pStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         $materials = $this->materialModel->getAll();
 
         // Support ?boq_id=N coming from Procurement Dashboard "Create PR" button
@@ -97,7 +150,7 @@ class Con_PurchaseRequestController extends Controller
 
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -181,6 +234,8 @@ class Con_PurchaseRequestController extends Controller
 
     public function approve($id)
     {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
         $status = $_POST['status'] ?? 'Approved';
         if (!in_array($status, ['Submitted', 'Approved', 'Rejected'])) {
             setError('Invalid status.');
@@ -188,12 +243,67 @@ class Con_PurchaseRequestController extends Controller
             exit;
         }
 
-        if ($this->prModel->updateStatus($id, $status)) {
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+
+        // Update status + track approver
+        $stmt = $this->db->prepare(
+            "UPDATE purchase_requests SET status = ?, approved_by_id = ?, approved_at = NOW() WHERE id = ?"
+        );
+        $stmt->bind_param('sii', $status, $userId, $id);
+        if ($stmt->execute()) {
             setSuccess("Purchase Request status updated to {$status}.");
         } else {
             setError('Failed to update status.');
         }
         header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // ASSIGN EXECUTIVE
+    // =========================================================================
+
+    public function assignExecutive($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // Only Admin, Management, or Purchase Head can assign
+        if (!in_array($userRole, [1, 3, 17, 22])) {
+            setError('You do not have permission to assign an executive.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        $executiveId = (int)($_POST['executive_id'] ?? 0);
+        if (!$executiveId) {
+            setError('Please select a Purchase Executive.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        $stmt = $this->db->prepare("UPDATE purchase_requests SET assigned_executive_id = ? WHERE id = ?");
+        $stmt->bind_param('ii', $executiveId, $id);
+        
+        if ($stmt->execute()) {
+            setSuccess('Purchase Executive assigned successfully.');
+
+            // Create notification for the assigned executive
+            require_once __DIR__ . '/../../models/HeadNotification.php';
+            $notifModel = new \HeadNotification($this->db);
+            $notifModel->create([
+                'user_id'    => $executiveId,
+                'type'       => 'PR Assignment',
+                'title'      => 'New Purchase Request Assigned',
+                'message'    => "Purchase Request PR-{$id} has been assigned to you for Quotation/CST processing.",
+                'url'        => "{$GLOBALS['base_url']}/con-quotation-create/{$id}"
+            ]);
+
+        } else {
+            setError('Failed to assign Purchase Executive.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
         exit;
     }
 
@@ -283,14 +393,37 @@ class Con_PurchaseRequestController extends Controller
                         FROM purchase_request_items pri
                         JOIN purchase_requests pr ON pr.id = pri.request_id
                         WHERE pr.project_id = ?
+                          AND pr.bom_id = bi.boq_id
                           AND pri.material_id = bi.material_id
                           AND pr.status NOT IN ('Rejected','Draft')
-                    ), 0) AS used_qty
+                    ), 0) AS used_qty,
+                    COALESCE((
+                        SELECT SUM(poi.quantity)
+                        FROM purchase_order_items poi
+                        JOIN purchase_orders po ON po.id = poi.purchase_order_id
+                        JOIN purchase_requests pr ON pr.id = po.request_id
+                        WHERE pr.project_id = ?
+                          AND pr.bom_id = bi.boq_id
+                          AND poi.material_id = bi.material_id
+                          AND po.status NOT IN ('Draft', 'Rejected')
+                    ), 0) AS po_qty,
+                    COALESCE((
+                        SELECT SUM(mri.received_quantity)
+                        FROM material_receiving_items mri
+                        JOIN material_receiving mr ON mr.id = mri.receiving_id
+                        JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+                        JOIN purchase_orders po ON po.id = mr.purchase_order_id
+                        JOIN purchase_requests pr ON pr.id = po.request_id
+                        WHERE pr.project_id = ?
+                          AND pr.bom_id = bi.boq_id
+                          AND poi.material_id = bi.material_id
+                          AND mri.status = 'Accepted'
+                    ), 0) AS received_qty
                 FROM boq_items bi
                 JOIN con_materials m ON m.id = bi.material_id
                 WHERE bi.boq_id = ?
                 ORDER BY m.name ASC");
-            $stmtItems->bind_param('ii', $projectId, $boq['id']);
+            $stmtItems->bind_param('iiii', $projectId, $projectId, $projectId, $boq['id']);
             $stmtItems->execute();
             $items = $stmtItems->get_result()->fetch_all(MYSQLI_ASSOC);
 

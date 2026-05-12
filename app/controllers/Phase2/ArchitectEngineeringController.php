@@ -24,7 +24,7 @@ class ArchitectEngineeringController extends Controller {
         $userId  = $_SESSION['user']['id']  ?? 0;
         $roleId  = $_SESSION['user']['role_id'] ?? 0;
 
-        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
             $records = $this->model->getAll();
         } else {
             $stmt = $this->db->prepare("
@@ -42,12 +42,12 @@ class ArchitectEngineeringController extends Controller {
         $this->view('phase2/architect_engineering/architect-engineering', [
             'current_route' => 'con-architect-engineering',
             'records' => $records,
-            'page_title'   => 'Architect & Engineering'
+            'page_title'   => 'Architecture Design Records',
         ]);
     }
 
     public function create() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -60,14 +60,14 @@ class ArchitectEngineeringController extends Controller {
 
         $this->view('phase2/architect_engineering/create-architect-engineering', [
             'current_route' => 'con-architect-engineering',
-            'page_title'    => 'Add Architect & Engineering',
+            'page_title'    => 'Add Architecture',
             'projects' => $projects,
             'users'    => $users,
         ]);
     }
 
     public function store() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -99,7 +99,7 @@ class ArchitectEngineeringController extends Controller {
             } catch (\Throwable $e) {
                 error_log('[AE] Email error: ' . $e->getMessage());
             }
-            setSuccess("Architect & Engineering record created successfully.");
+            setSuccess("Architecture record created successfully.");
         } else {
             setError("Failed to create record.");
         }
@@ -108,7 +108,7 @@ class ArchitectEngineeringController extends Controller {
     }
 
     public function edit() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -128,7 +128,7 @@ class ArchitectEngineeringController extends Controller {
 
         $this->view('phase2/architect_engineering/edit-architect-engineering', [
             'current_route' => 'con-architect-engineering',
-            'page_title'    => 'Edit Architect & Engineering',
+            'page_title'    => 'Edit Architecture',
             'record'   => $record,
             'projects' => $projects,
             'users'    => $users,
@@ -136,7 +136,7 @@ class ArchitectEngineeringController extends Controller {
     }
 
     public function update() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -186,7 +186,7 @@ class ArchitectEngineeringController extends Controller {
     }
 
     public function delete() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -211,7 +211,7 @@ class ArchitectEngineeringController extends Controller {
 
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        if (in_array($roleId, [1, 2, 3, 13, 15, 23])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
             return $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);
@@ -343,7 +343,7 @@ class ArchitectEngineeringController extends Controller {
         if ($errorCount > 0) {
             setError("Imported $successCount. Failed $errorCount. " . implode(' | ', array_slice($errors, 0, 5)));
         } else {
-            setSuccess("Successfully imported $successCount architect/engineering records.");
+            setSuccess("Successfully imported $successCount architect records.");
         }
 
         header('Location: ' . $GLOBALS['base_url'] . '/con-architect-engineering');

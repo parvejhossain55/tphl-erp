@@ -72,6 +72,9 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                                     <td>
                                         <?php if (!empty($b['approved_by_name'])): ?>
                                             <span class="text-success fw-semibold"><?= htmlspecialchars($b['approved_by_name']) ?></span>
+                                            <?php if (!empty($b['approved_by_role'])): ?>
+                                                <br><small class="text-muted fst-italic"><?= htmlspecialchars($b['approved_by_role']) ?></small>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <span class="text-muted">—</span>
                                         <?php endif; ?>

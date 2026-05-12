@@ -50,10 +50,20 @@ $page_title = $page_title ?? 'New Contractor Bill';
                                 </select>
                             </div>
 
-                            <!-- Target (cascades from project via AJAX) -->
-                            <div class="col-md-12">
+                            <!-- Work Order (cascades from project) -->
+                            <div class="col-md-6">
                                 <label class="form-label fw-semibold">
-                                    Link to Site Target <span class="text-muted small">(optional — select project first)</span>
+                                    Link to Work Order <span class="text-danger">*</span>
+                                </label>
+                                <select name="work_order_id" id="work_order_id" class="form-select" required disabled>
+                                    <option value="">-- Select Project First --</option>
+                                </select>
+                            </div>
+
+                            <!-- Target (cascades from project via AJAX) -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    Link to Site Target <span class="text-muted small">(optional)</span>
                                 </label>
                                 <select name="target_id" id="target_id" class="form-select" disabled>
                                     <option value="">-- Select Project First --</option>
@@ -129,18 +139,38 @@ const BASE_URL = '<?= $base_url ?>';
 document.getElementById('project_id').addEventListener('change', function () {
     const pid        = this.value;
     const targetSel  = document.getElementById('target_id');
+    const woSel      = document.getElementById('work_order_id');
     const infoBox    = document.getElementById('targetBudgetInfo');
     const gainTxt    = document.getElementById('targetGainText');
 
     targetSel.innerHTML = '<option value="">-- Loading targets... --</option>';
     targetSel.disabled  = true;
+    woSel.innerHTML     = '<option value="">-- Loading work orders... --</option>';
+    woSel.disabled      = true;
     infoBox.classList.add('d-none');
     gainTxt.textContent = '';
 
     if (!pid) {
         targetSel.innerHTML = '<option value="">-- Select Project First --</option>';
+        woSel.innerHTML     = '<option value="">-- Select Project First --</option>';
         return;
     }
+
+    // Fetch Work Orders for this project
+    fetch(BASE_URL + '/con-ajax-wo-by-project?project_id=' + pid)
+        .then(r => r.json())
+        .then(data => {
+            woSel.innerHTML = '<option value="">(No linked work order)</option>';
+            if (data.work_orders && data.work_orders.length) {
+                data.work_orders.forEach(wo => {
+                    const total = parseFloat(wo.total_amount) || 0;
+                    const billed = parseFloat(wo.billed_amount) || 0;
+                    const rem = total - billed;
+                    woSel.innerHTML += `<option value="${wo.id}">${wo.wo_number} — ${wo.title} (${wo.contractor_name}) | Limit: ৳${rem.toFixed(2)} remaining</option>`;
+                });
+                woSel.disabled = false;
+            }
+        });
 
     // Fetch targets for this project from the targets endpoint
     fetch(BASE_URL + '/con-ajax-project-targets?project_id=' + pid)

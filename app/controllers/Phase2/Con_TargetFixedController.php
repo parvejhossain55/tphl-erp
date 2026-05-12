@@ -40,7 +40,7 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function create()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -52,7 +52,7 @@ class Con_TargetFixedController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22, 23])) {
+        if (!in_array($roleId, [1, 3, 15, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -73,7 +73,7 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -135,22 +135,31 @@ class Con_TargetFixedController extends Controller
         $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $createdBy     = (int)($target['user_id'] ?? 0);
 
-        // ── Who can approve? ───────────────────────────────────────────
-        // QC (13) approves step 'qc', PM (15) approves step 'manager'
-        // SE (12) creates but CANNOT approve their own target
-        $approverRoleMap = [13 => 'qc', 15 => 'manager']; // roleId => step key
-        $approverRole    = $approverRoleMap[$currentRoleId] ?? null;
-        $canApprove      = ($approverRole !== null) && ($currentUserId !== $createdBy);
+        // Roles 3 (Director), 15 (PM), 22 (PM Head) can approve as manager
+        // Role 13 (QC) approves as QC step
+        $managerRoles = [3, 15, 22];
+        $qcRoles      = [13];
 
-        // Already approved this step?
-        $stepCol   = ($approverRole === 'qc') ? 'approved_by_qc' : 'approved_by_manager';
-        $alreadyApproved = $canApprove && !empty($target[$stepCol]);
+        $qcApproved      = !empty($target['approved_by_qc']);
+        $approverRole    = null;
+        $canApprove      = false;
+        $alreadyApproved = false;
+
+        if (in_array($currentRoleId, $managerRoles)) {
+            $approverRole    = 'manager';
+            $canApprove      = true;
+            $alreadyApproved = !empty($target['approved_by_manager']);
+            // $alreadyApproved = !empty($target['approved_by_pd']) || $alreadyApproved); // PD approval also counts for manager step
+        } elseif (in_array($currentRoleId, $qcRoles)) {
+            $approverRole    = 'qc';
+            $canApprove      = true;
+            $alreadyApproved = $qcApproved;
+        }
 
         // Fetch creator info
         $creatorInfo = [];
         if ($createdBy) {
-            $stmt = $this->db->prepare("
-                SELECT u.full_name, COALESCE(d.name,'') AS designation
+            $stmt = $this->db->prepare(" SELECT u.full_name, COALESCE(d.name,'') AS designation
                 FROM   users u
                 LEFT JOIN employees   e ON e.user_id = u.id
                 LEFT JOIN designations d ON d.id = e.designation_id
@@ -161,8 +170,7 @@ class Con_TargetFixedController extends Controller
         }
 
         // Fetch related weekly progress reports for this target
-        $reportsStmt = $this->db->prepare("
-            SELECT w.*, u.full_name as reported_by_name 
+        $reportsStmt = $this->db->prepare(" SELECT w.*, u.full_name as reported_by_name 
             FROM weekly_progress_report w 
             LEFT JOIN users u ON u.id = w.created_by 
             WHERE w.target_id = ? 
@@ -179,6 +187,7 @@ class Con_TargetFixedController extends Controller
             'canApprove'      => $canApprove,
             'alreadyApproved' => $alreadyApproved,
             'approverRole'    => $approverRole,
+            'qcApproved'      => $qcApproved,
             'creatorInfo'     => $creatorInfo,
             'currentRoleId'   => $currentRoleId,
             'weeklyReports'   => $weeklyReports,
@@ -190,7 +199,7 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function edit($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -209,7 +218,7 @@ class Con_TargetFixedController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22, 23])) {
+        if (!in_array($roleId, [1, 3, 15, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -231,7 +240,7 @@ class Con_TargetFixedController extends Controller
     // =========================================================================
     public function update($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 23])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -305,8 +314,7 @@ class Con_TargetFixedController extends Controller
 
     // =========================================================================
     // APPROVE A STEP
-    // QC (role 13) approves step 'qc'
-    // PM (role 15) approves step 'manager'
+    // PM (role 22) approves step 'manager'
     // SE (role 12) creates and CANNOT approve
     // =========================================================================
     public function approve($id)
@@ -316,26 +324,61 @@ class Con_TargetFixedController extends Controller
         $userId = (int)($_SESSION['user']['id']   ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Role guard
-        $roleStepMap = [13 => 'qc', 15 => 'manager'];
-        if (!isset($roleStepMap[$roleId])) {
+        // Role guard — PM (15), Director (3), PM Head (22) or QC (13) can approve
+        $allowedRoles = [3, 13, 15, 22];
+        if (!in_array($roleId, $allowedRoles)) {
             setError('You do not have permission to approve targets.');
             header("Location: {$GLOBALS['base_url']}/con-target/{$id}");
             exit;
         }
 
-        // Creator cannot self-approve
-        $target = $this->targetModel->find($id);
-        if ($target && (int)($target['user_id'] ?? 0) === $userId) {
-            setError('You cannot approve a target that you created.');
-            header("Location: {$GLOBALS['base_url']}/con-target/{$id}");
-            exit;
-        }
+        // QC role approves 'qc' step, others approve 'manager' step
+        $step = ($roleId === 13) ? 'qc' : 'manager';
 
-        $step = $roleStepMap[$roleId]; // 'qc' or 'manager'
+        // Creator cannot self-approve - Removed restriction as PM might create and approve
+        // $target = $this->targetModel->find($id);
+        // if ($target && (int)($target['user_id'] ?? 0) === $userId) {
+        //     setError('You cannot approve a target that you created.');
+        //     header("Location: {$GLOBALS['base_url']}/con-target/{$id}");
+        //     exit;
+        // }
+
+
 
         if ($this->targetModel->approveStep($id, $step, $userId)) {
-            setSuccess('Approval recorded successfully!');
+
+            if ($step === 'qc') {
+                // QC: save photo, notes and gain
+                $photoPath    = null;
+                $fieldDetails = trim($_POST['qc_field_details'] ?? '');
+                $labResult    = trim($_POST['qc_lab_result']    ?? '');
+                $gainPct      = (float)($_POST['qc_gain_pct']   ?? 0);
+
+                if (!empty($_FILES['qc_photo']['name']) && $_FILES['qc_photo']['error'] === UPLOAD_ERR_OK) {
+                    $uploadDir = __DIR__ . '/../../../public/uploads/target-photos/';
+                    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                    $filename = time() . '_' . basename($_FILES['qc_photo']['name']);
+                    if (move_uploaded_file($_FILES['qc_photo']['tmp_name'], $uploadDir . $filename)) {
+                        $photoPath = 'uploads/target-photos/' . $filename;
+                    }
+                }
+                $this->targetModel->updateGain($id, $gainPct, $photoPath ?: null, $fieldDetails ?: null, $labResult ?: null);
+
+                // Also save qc_reviewed_by_id / qc_reviewed_at (already done in approveStep 'qc')
+                setSuccess('QC Review & approval recorded successfully!');
+
+            } else {
+                // Manager: store who approved and when
+                $upd = $this->db->prepare(
+                    "UPDATE target_fixed SET manager_approved_by_id = ?, manager_approved_at = NOW() WHERE id = ?"
+                );
+                if ($upd) {
+                    $upd->bind_param('ii', $userId, $id);
+                    $upd->execute();
+                }
+                setSuccess('Approval recorded successfully!');
+            }
+
         } else {
             setError('Approval failed.');
         }
@@ -415,12 +458,12 @@ class Con_TargetFixedController extends Controller
                 $ins = $db->prepare("INSERT INTO target_fixed
                     (project_id, user_id, target_title, year, month, week_number, target_percentage, is_lab_test, approved_by_site_eng, approved_by_qc, approved_by_pc, approved_by_pd, approved_by_manager)
                     VALUES (?,?,?,?,?,?,?,0,0,0,0,0,0)");
-                $ins->bind_param('iissiii d', $projectId, $userId, $targetTitle, $year, $month, $weekNumber, $targetPct);
+                $ins->bind_param('iisiiid', $projectId, $userId, $targetTitle, $year, $month, $weekNumber, $targetPct);
             } else {
                 $ins = $db->prepare("INSERT INTO target_fixed
                     (project_id, user_id, target_title, year, month, target_percentage, is_lab_test, approved_by_site_eng, approved_by_qc, approved_by_pc, approved_by_pd, approved_by_manager)
                     VALUES (?,?,?,?,?,?,0,0,0,0,0,0)");
-                $ins->bind_param('iissii d', $projectId, $userId, $targetTitle, $year, $month, $targetPct);
+                $ins->bind_param('iisiid', $projectId, $userId, $targetTitle, $year, $month, $targetPct);
             }
 
             if ($ins->execute()) { $successCount++; } else { $errorCount++; $errors[] = "DB error: " . $db->error; }

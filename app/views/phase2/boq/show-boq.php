@@ -3,6 +3,7 @@ $base              = $base_url;
 $boq               = $boq               ?? [];
 $items             = $items             ?? [];
 $canApprove        = $canApprove        ?? false;
+$canEdit           = $canEdit           ?? false;
 $creatorInfo       = $creatorInfo       ?? [];
 $totalBoqQty       = $totalBoqQty       ?? 0;
 $totalOrdered      = $totalOrdered      ?? 0;
@@ -137,7 +138,7 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
         </p>
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
-          <?php if ($status !== 'Approved'): ?>
+          <?php if ($canEdit): ?>
           <a href="<?= $base ?>/con-boq-edit/<?= $boq['id'] ?>" class="boq-btn-w">
             <i class="fal fa-pencil"></i>Edit BOQ
           </a>
@@ -168,6 +169,9 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
         <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:8px">
           <i class="fal fa-user-check me-1"></i>
           Approved by <strong style="color:#fff"><?= htmlspecialchars($boq['approved_by_name']) ?></strong><br>
+          <?php if (!empty($boq['approved_by_role'])): ?>
+          <span style="font-size:10px;font-style:italic;color:rgba(255,255,255,.5)"><?= htmlspecialchars($boq['approved_by_role']) ?></span><br>
+          <?php endif; ?>
           <i class="fal fa-calendar me-1"></i><?= !empty($boq['approved_at']) ? date('d M Y', strtotime($boq['approved_at'])) : '' ?>
         </div>
         <?php endif; ?>

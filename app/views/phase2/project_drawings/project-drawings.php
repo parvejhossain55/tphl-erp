@@ -1,14 +1,27 @@
 <?php
 $addPage = true;
 $show_breadcrumb = false;
+$canModify       = $canModify       ?? false;
+$filterProjectId = $filterProjectId ?? 0;
 ?>
 
-<h4 class="mb-2">Project Drawings</h4>
+<h4 class="mb-2">
+  Project Drawings
+  <?php if (!$canModify): ?>
+    <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6;vertical-align:middle;margin-left:8px">
+      <i class="fal fa-eye me-1"></i>View Only
+    </span>
+  <?php endif; ?>
+  <?php if ($filterProjectId > 0 && !empty($records[0]['project_name'])): ?>
+    <small class="text-muted" style="font-size:13px;font-weight:400;margin-left:10px">&mdash; <?= htmlspecialchars($records[0]['project_name']) ?></small>
+  <?php endif; ?>
+</h4>
 
 <div class="row justify-content-end mb-3">
     <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
         <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
             <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                <?php if ($canModify): ?>
                 <a href="<?= $GLOBALS['base_url'] ?>/con-project-drawings/create" class="btn btn-primary text-nowrap">
                     <i class="fa-light fa-plus me-1"></i> Add Drawing
                 </a>
@@ -16,6 +29,7 @@ $show_breadcrumb = false;
                 <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importProjectDrawingCsvModal">
                     <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
                 </button>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -35,7 +49,7 @@ $show_breadcrumb = false;
                             <th>Version</th>
                             <th>Status</th>
                             <th>Design Link</th>
-                            <th>Actions</th>
+                            <?php if ($canModify): ?><th>Actions</th><?php endif; ?>
                         </tr>
                     </thead>
                     <tbody class="table__body">
@@ -72,6 +86,7 @@ $show_breadcrumb = false;
                                         <?php endif; ?>
                                     </td>
                                     <td class="table__icon-box">
+                                        <?php if ($canModify): ?>
                                         <div class="d-flex align-items-center justify-content-center gap-10">
                                             <a href="<?= $GLOBALS['base_url'] ?>/con-project-drawings/edit?id=<?= $row['id'] ?>" class="table__icon edit">
                                                 <i class="fa-sharp fa-light fa-pen"></i>
@@ -83,12 +98,15 @@ $show_breadcrumb = false;
                                                 <i class="fa-regular fa-trash"></i>
                                             </button>
                                         </div>
+                                        <?php else: ?>
+                                          <span style="font-size:11px;color:var(--text-muted)">—</span>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="8" class="text-center text-muted py-4">No drawings found.</td>
+                                <td colspan="<?= $canModify ? 8 : 7 ?>" class="text-center text-muted py-4">No drawings found.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

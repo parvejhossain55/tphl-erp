@@ -15,12 +15,14 @@ class Con_FundRequest extends Model
                        u.full_name  AS requester_name,
                        oo.name      AS operator_name,
                        ab.full_name AS approved_by_name,
+                       ab_r.name    AS approved_by_role,
                        pb.full_name AS payment_by_name
                 FROM {$this->table} ofr
                 LEFT JOIN projects p              ON p.id   = ofr.project_id
                 LEFT JOIN users u                 ON u.id   = ofr.requester_id
                 LEFT JOIN contractors oo ON oo.id  = ofr.operator_id
                 LEFT JOIN users ab                ON ab.id  = ofr.approved_by
+                LEFT JOIN roles ab_r              ON ab_r.id = ab.role_id
                 LEFT JOIN (
                     SELECT ref_id, processed_by
                     FROM con_financial_transactions
@@ -44,12 +46,14 @@ class Con_FundRequest extends Model
                        p.name      AS project_name,
                        u.full_name AS requester_name,
                        oo.name     AS operator_name,
-                       ab.full_name AS approved_by_name
+                       ab.full_name AS approved_by_name,
+                       ab_r.name   AS approved_by_role
                 FROM {$this->table} ofr
                 LEFT JOIN projects p              ON p.id   = ofr.project_id
                 LEFT JOIN users u                 ON u.id   = ofr.requester_id
                 LEFT JOIN contractors oo ON oo.id  = ofr.operator_id
                 LEFT JOIN users ab                ON ab.id  = ofr.approved_by
+                LEFT JOIN roles ab_r              ON ab_r.id = ab.role_id
                 WHERE ofr.id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $id);

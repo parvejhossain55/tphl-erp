@@ -707,7 +707,7 @@ $statusColor = [
                 <th>Project</th>
                 <th>Target Title</th>
                 <th>Created By (SE)</th>
-                <th>QC Status</th>
+
                 <th>Target %</th>
                 <th>Gain %</th>
                 <th>Period</th>
@@ -735,14 +735,7 @@ $statusColor = [
                       </div>
                     </div>
                   </td>
-                  <td>
-                    <?php $qcDone = !empty($pt['approved_by_qc']); ?>
-                    <span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;
-              background:<?= $qcDone ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.1)' ?>;
-              color:<?= $qcDone ? '#059669' : '#dc2626' ?>">
-                      <?= $qcDone ? '✓ QC Approved' : '⏳ QC Pending' ?>
-                    </span>
-                  </td>
+
                   <td><span
                       style="font-size:11px;font-weight:700;color:#2563eb"><?= number_format($pt['target_percentage'] ?? 0, 1) ?>%</span>
                   </td>
@@ -1574,7 +1567,11 @@ $statusColor = [
               <?php foreach (array_slice($pendingAlerts, 0, 3) as $pa): ?>
                 <div
                   style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.05)">
-                  <span><?= $pa['description'] ?></span>
+                  <span>
+                      <a href="<?= $base ?><?= $pa['url'] ?? '#' ?>" style="text-decoration:none;color:inherit;">
+                          <?= $pa['description'] ?>
+                      </a>
+                  </span>
                   <span style="font-weight:600;color:var(--cd-amber)"><?= conFmt($pa['amount'] ?? 0) ?></span>
                 </div>
               <?php endforeach; ?>

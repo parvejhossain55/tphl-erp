@@ -38,14 +38,20 @@ class Con_TargetFixed extends Model
                        wt.work_type_name AS work_type_name,
                        dt.name          AS design_type_name,
                        u.full_name      AS created_by_name,
-                       qc.full_name     AS qc_reviewed_by_name
+                       qc.full_name     AS qc_reviewed_by_name,
+                       apv.full_name    AS manager_approver_name,
+                       apv_r.name       AS manager_approver_role
                 FROM {$this->table} tf
-                LEFT JOIN projects              p  ON p.id  = tf.project_id
-                LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-                LEFT JOIN work_types            wt ON wt.id = wp.work_type_id
-                LEFT JOIN design_types          dt ON dt.id = wt.design_type_id
-                LEFT JOIN users                 u  ON u.id  = tf.user_id
-                LEFT JOIN users                 qc ON qc.id = tf.qc_reviewed_by_id
+                LEFT JOIN projects              p    ON p.id    = tf.project_id
+                LEFT JOIN project_working_plans wp   ON wp.id   = tf.work_plan_id
+                LEFT JOIN work_types            wt   ON wt.id   = wp.work_type_id
+                LEFT JOIN design_types          dt   ON dt.id   = wt.design_type_id
+                LEFT JOIN users                 u    ON u.id    = tf.user_id
+                LEFT JOIN users                 qc   ON qc.id   = tf.qc_reviewed_by_id
+                LEFT JOIN users                 apv  ON apv.id  = COALESCE(
+                    (SELECT manager_approved_by_id FROM {$this->table} WHERE id = tf.id LIMIT 1), NULL
+                )
+                LEFT JOIN roles                 apv_r ON apv_r.id = apv.role_id
                 ORDER BY tf.year DESC, tf.month DESC, tf.week_number ASC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -64,14 +70,20 @@ class Con_TargetFixed extends Model
                     wt.work_type_name AS work_type_name,
                     dt.name          AS design_type_name,
                     u.full_name      AS created_by_name,
-                    qc.full_name     AS qc_reviewed_by_name
+                    qc.full_name     AS qc_reviewed_by_name,
+                    apv.full_name    AS manager_approver_name,
+                    apv_r.name       AS manager_approver_role
              FROM {$this->table} tf
-             LEFT JOIN projects              p  ON p.id  = tf.project_id
-             LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-             LEFT JOIN work_types            wt ON wt.id = wp.work_type_id
-             LEFT JOIN design_types          dt ON dt.id = wt.design_type_id
-             LEFT JOIN users                 u  ON u.id  = tf.user_id
-             LEFT JOIN users                 qc ON qc.id = tf.qc_reviewed_by_id
+             LEFT JOIN projects              p    ON p.id    = tf.project_id
+             LEFT JOIN project_working_plans wp   ON wp.id   = tf.work_plan_id
+             LEFT JOIN work_types            wt   ON wt.id   = wp.work_type_id
+             LEFT JOIN design_types          dt   ON dt.id   = wt.design_type_id
+             LEFT JOIN users                 u    ON u.id    = tf.user_id
+             LEFT JOIN users                 qc   ON qc.id   = tf.qc_reviewed_by_id
+             LEFT JOIN users                 apv  ON apv.id  = COALESCE(
+                 (SELECT manager_approved_by_id FROM {$this->table} WHERE id = tf.id LIMIT 1), NULL
+             )
+             LEFT JOIN roles                 apv_r ON apv_r.id = apv.role_id
              WHERE tf.id = ?"
         );
         if (!$stmt) {
@@ -141,8 +153,12 @@ class Con_TargetFixed extends Model
                  lab_test_result, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.00, NULL, NULL, NULL, NOW())";
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log('Con_TargetFixed::create prepare failed: ' . $this->db->error);
+            return 0;
+        }
         $stmt->bind_param(
-            'iiisiiidiss',
+            'iisiiiidiss',
             $data['project_id'],
             $data['work_plan_id'],
             $data['target_title'],
@@ -155,7 +171,10 @@ class Con_TargetFixed extends Model
             $labTestDate,
             $details
         );
-        $stmt->execute();
+        if (!$stmt->execute()) {
+            error_log('Con_TargetFixed::create execute failed: ' . $stmt->error);
+            return 0;
+        }
         return $stmt->insert_id;
     }
 
@@ -181,7 +200,7 @@ class Con_TargetFixed extends Model
                 WHERE id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiisiidissi',
+            'iisiiiidissi',
             $data['project_id'],
             $data['work_plan_id'],
             $data['target_title'],
@@ -250,17 +269,17 @@ class Con_TargetFixed extends Model
         return $stmt->execute();
     }
 
-    /** Check if target is fully approved by all 5 levels */
+    /** Check if target is fully approved by PM (role 22) */
     public function isFullyApproved($id)
     {
         $stmt = $this->db->prepare(
-            "SELECT (approved_by_site_eng + approved_by_qc + approved_by_pc + approved_by_pd + approved_by_manager) AS total_approvals
+            "SELECT approved_by_manager AS is_approved
              FROM {$this->table} WHERE id = ?"
         );
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
-        return $row && $row['total_approvals'] >= 5;
+        return $row && $row['is_approved'] == 1;
     }
 
     /** DELETE — only if no approvals */
@@ -269,8 +288,7 @@ class Con_TargetFixed extends Model
         $stmt = $this->db->prepare(
             "DELETE FROM {$this->table}
              WHERE id = ?
-               AND approved_by_site_eng = 0
-               AND approved_by_qc = 0"
+               AND approved_by_manager = 0"
         );
         $stmt->bind_param('i', $id);
         return $stmt->execute();

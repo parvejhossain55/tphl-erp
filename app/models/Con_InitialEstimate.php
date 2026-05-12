@@ -25,17 +25,19 @@ class Con_InitialEstimate extends Model
                        ae.id         AS arch_id,
                        u.full_name   AS created_by_name,
                        ab.full_name  AS approved_by_name,
+                       ab_r.name     AS approved_by_role,
                        dt.name       AS design_type_name,
                        wt.work_type_name,
                        wt.design_type_id AS design_type_id,
                        CONCAT(dt.name, ' (', wt.work_type_name, ')') AS work_type_label
                 FROM {$this->budgetTable} b
-                LEFT JOIN projects            p  ON p.id  = b.project_id
-                LEFT JOIN architect_engineering ae ON ae.id = b.architecture_id
-                LEFT JOIN users               u  ON u.id  = b.created_by
-                LEFT JOIN users               ab ON ab.id = b.approved_by
-                LEFT JOIN work_types          wt ON wt.id = b.work_type_id
-                LEFT JOIN design_types        dt ON dt.id = wt.design_type_id
+                LEFT JOIN projects            p    ON p.id    = b.project_id
+                LEFT JOIN architect_engineering ae  ON ae.id  = b.architecture_id
+                LEFT JOIN users               u    ON u.id   = b.created_by
+                LEFT JOIN users               ab   ON ab.id  = b.approved_by
+                LEFT JOIN roles               ab_r ON ab_r.id = ab.role_id
+                LEFT JOIN work_types          wt   ON wt.id  = b.work_type_id
+                LEFT JOIN design_types        dt   ON dt.id  = wt.design_type_id
                 ORDER BY b.id DESC";
 
         $result = $this->db->query($sql);
@@ -62,13 +64,15 @@ class Con_InitialEstimate extends Model
                        p.name        AS project_name,
                        u.full_name   AS created_by_name,
                        ab.full_name  AS approved_by_name,
+                       ab_r.name     AS approved_by_role,
                        dt.name       AS design_type_name,
                        wt.work_type_name,
                        CONCAT(dt.name, ' (', wt.work_type_name, ')') AS work_type_label
                 FROM {$this->budgetTable} b
-                LEFT JOIN projects p  ON p.id  = b.project_id
-                LEFT JOIN users    u  ON u.id  = b.created_by
-                LEFT JOIN users    ab ON ab.id = b.approved_by
+                LEFT JOIN projects p    ON p.id    = b.project_id
+                LEFT JOIN users    u    ON u.id    = b.created_by
+                LEFT JOIN users    ab   ON ab.id   = b.approved_by
+                LEFT JOIN roles    ab_r ON ab_r.id = ab.role_id
                 LEFT JOIN work_types   wt ON wt.id = b.work_type_id
                 LEFT JOIN design_types dt ON dt.id = wt.design_type_id
                 WHERE b.id = ?";
