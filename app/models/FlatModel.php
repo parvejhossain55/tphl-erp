@@ -11,7 +11,7 @@ class FlatModel extends Model
     /* =========================
        Get All Projects
     ========================== */
-    public function getAll($search = '', $project_id = '')
+    public function getAll($search = '', $project_id = '', $status = '')
     {
         $sql = "
         SELECT 
@@ -24,6 +24,7 @@ class FlatModel extends Model
 
         $params = [];
         $types  = "";
+
         if (!empty($search)) {
             $sql .= " AND (f.flat_name LIKE ? OR f.sqft LIKE ?)";
             $params[] = "%$search%";
@@ -35,6 +36,13 @@ class FlatModel extends Model
             $sql .= " AND f.project_id = ?";
             $params[] = $project_id;
             $types   .= "i";
+        }
+
+        // Status filter: available / booked / sold
+        if (!empty($status) && in_array($status, ['available', 'booked', 'sold'])) {
+            $sql .= " AND f.status = ?";
+            $params[] = $status;
+            $types   .= "s";
         }
 
         $sql .= " ORDER BY f.id DESC";
@@ -76,6 +84,123 @@ class FlatModel extends Model
         $result = $sql->get_result()->fetch_assoc();
         return $result['total'];
     }
+
+    public function getFlatsAjax($start, $length, $search, $project_id, $status, $orderCol, $orderDir)
+    {
+        $sql = "
+        SELECT 
+            f.*,
+            p.name AS project_name
+        FROM flats AS f
+        LEFT JOIN projects AS p ON f.project_id = p.id
+        WHERE f.deleted_at IS NULL
+        ";
+
+        $params = [];
+        $types  = "";
+
+        if (!empty($search)) {
+            $sql .= " AND (f.flat_name LIKE ? OR f.sqft LIKE ? OR p.name LIKE ?)";
+            $searchParam = "%$search%";
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $types   .= "sss";
+        }
+
+        if (!empty($project_id)) {
+            $sql .= " AND f.project_id = ?";
+            $params[] = $project_id;
+            $types   .= "i";
+        }
+
+        if (!empty($status) && in_array($status, ['available', 'booked', 'sold'])) {
+            $sql .= " AND f.status = ?";
+            $params[] = $status;
+            $types   .= "s";
+        }
+
+        // Ordering
+        $allowedCols = [
+            '1' => 'p.name',
+            '2' => 'f.flat_name',
+            '3' => 'f.unit_type',
+            '4' => 'f.upload_from',
+            '5' => 'f.facing_site',
+            '6' => 'f.sqft',
+            '7' => 'f.land_share_value',
+            '8' => 'f.development_charges',
+            '9' => 'f.price_value',
+            '10' => 'f.shop_service_charge',
+            '11' => 'f.status',
+        ];
+
+        if (array_key_exists($orderCol, $allowedCols)) {
+            $colName = $allowedCols[$orderCol];
+            $dir = (strtolower($orderDir) === 'desc') ? 'DESC' : 'ASC';
+            $sql .= " ORDER BY $colName $dir";
+        } else {
+            $sql .= " ORDER BY f.id DESC"; // Default
+        }
+
+        if ($length != -1) {
+            $sql .= " LIMIT ?, ?";
+            $params[] = (int)$start;
+            $params[] = (int)$length;
+            $types   .= "ii";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function getFlatsAjaxCount($search, $project_id, $status)
+    {
+        $sql = "
+        SELECT COUNT(*) AS total
+        FROM flats AS f
+        LEFT JOIN projects AS p ON f.project_id = p.id
+        WHERE f.deleted_at IS NULL
+        ";
+
+        $params = [];
+        $types  = "";
+
+        if (!empty($search)) {
+            $sql .= " AND (f.flat_name LIKE ? OR f.sqft LIKE ? OR p.name LIKE ?)";
+            $searchParam = "%$search%";
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $types   .= "sss";
+        }
+
+        if (!empty($project_id)) {
+            $sql .= " AND f.project_id = ?";
+            $params[] = $project_id;
+            $types   .= "i";
+        }
+
+        if (!empty($status) && in_array($status, ['available', 'booked', 'sold'])) {
+            $sql .= " AND f.status = ?";
+            $params[] = $status;
+            $types   .= "s";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+    }
+
     /* =========================
        Create Project
     ========================== */

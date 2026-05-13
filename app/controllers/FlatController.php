@@ -25,8 +25,9 @@ class FlatController extends Controller
         }
 
         //  GET filters
-        $search        = $_GET['q'] ?? '';
+        $search          = $_GET['q'] ?? '';
         $selectedProject = $_GET['project_id'] ?? '';
+        $selectedStatus  = $_GET['status'] ?? '';
 
         //  Data load
         $projects   = $this->projectModel->getAll();
@@ -35,9 +36,10 @@ class FlatController extends Controller
         $bookedFlats    = $flatCounts['booked'] ?? 0;
         $availableFlats = $flatCounts['available'] ?? 0;
 
-        //  Filtered flat list
-        $flats = $this->flatModel->getAll($search, $selectedProject);
+        // Data loaded via AJAX now
+        $flats = []; 
         $totalFlatCount = $this->flatModel->getTotalFlats();
+
         //  View
         $this->view("sales-developments/flats/flat-lists", [
             "current_route"     => "flat-lists",
@@ -52,9 +54,115 @@ class FlatController extends Controller
             //  IMPORTANT for select & search retain
             "searchTerm"        => $search,
             "selectedProject"   => $selectedProject,
-            "totalFlatCount"   => $totalFlatCount,
+            "selectedStatus"    => $selectedStatus,
+            "totalFlatCount"    => $totalFlatCount,
         ]);
     }
+
+    public function ajaxFlatList()
+    {
+        $draw = isset($_GET['draw']) ? intval($_GET['draw']) : 1;
+        $start = isset($_GET['start']) ? intval($_GET['start']) : 0;
+        $length = isset($_GET['length']) ? intval($_GET['length']) : 10;
+        $search = isset($_GET['search']['value']) ? $_GET['search']['value'] : '';
+
+        // Capture our custom filters if they are sent in the URL (e.g. DataTables ajax.url)
+        // or through DataTables ajax data function
+        $projectId = $_GET['project_id'] ?? '';
+        $status = $_GET['status'] ?? '';
+        
+        // Also fallback to the main search box if they use our custom search input
+        if (empty($search) && !empty($_GET['q'])) {
+            $search = $_GET['q'];
+        }
+
+        $orderCol = $_GET['order'][0]['column'] ?? 0;
+        $orderDir = $_GET['order'][0]['dir'] ?? 'desc';
+
+        $totalRecords = $this->flatModel->getTotalFlats();
+        
+        if (empty($search) && empty($projectId) && empty($status)) {
+            $totalFiltered = $totalRecords;
+        } else {
+            $totalFiltered = $this->flatModel->getFlatsAjaxCount($search, $projectId, $status);
+        }
+
+        $flats = $this->flatModel->getFlatsAjax($start, $length, $search, $projectId, $status, $orderCol, $orderDir);
+
+        $data = [];
+        $base_url = $GLOBALS['base_url'];
+        $hasPermission = hasPermission("view lead");
+
+        foreach ($flats as $index => $flat) {
+            $serial = $start + $index + 1;
+            
+            // Format type badge
+            if (($flat['unit_type'] ?? 'residential') === 'commercial') {
+                $typeBadge = '<span class="bd-badge bg-warning text-dark"><i class="bi bi-shop me-1"></i> Shop</span>';
+            } else {
+                $typeBadge = '<span class="bd-badge bg-primary"><i class="bi bi-building me-1"></i> Flat</span>';
+            }
+
+            // Format service charge
+            if (($flat['unit_type'] ?? 'residential') === 'commercial' && !empty($flat['shop_service_charge'])) {
+                $serviceCharge = '<span class="bd-badge bg-info text-dark">' . (int)$flat['shop_service_charge'] . '%</span>';
+            } else {
+                $serviceCharge = '<span class="text-muted">—</span>';
+            }
+
+            // Format status badge
+            $statusVal = $flat['status'] ?? 'available';
+            if ($statusVal === 'sold') {
+                $statusBadge = '<span class="bd-badge bg-danger">Sold</span>';
+            } elseif ($statusVal === 'booked') {
+                $statusBadge = '<span class="bd-badge bg-warning text-dark">Booked</span>';
+            } else {
+                $statusBadge = '<span class="bd-badge bg-success">Available</span>';
+            }
+
+            // Format actions
+            $actions = '<div class="d-flex align-items-center justify-content-center gap-10">
+                <a href="' . $base_url . '/edit-flat/' . $flat['id'] . '" class="table__icon edit">
+                    <i class="fa-sharp fa-light fa-pen"></i>
+                </a>
+                <a class="table__icon download" href="' . $base_url . '/flat-details/' . $flat['id'] . '" title="View Transaction History">
+                    <i class="fa-regular fa-eye"></i>
+                </a>';
+            
+            if ($hasPermission) {
+                $actions .= '<button class="d-none table__icon delete removeBtnCust" data-name="' . htmlspecialchars($flat['flat_name'] ?? '') . '" data-action="delete-flat" data-id="' . $flat['id'] . '"><i class="fa-regular fa-trash"></i></button>';
+            } else {
+                $actions .= '<button class="table__icon delete removeBtnCust" data-name="' . htmlspecialchars($flat['flat_name'] ?? '') . '" data-action="delete-flat" data-id="' . $flat['id'] . '"><i class="fa-regular fa-trash"></i></button>';
+            }
+            $actions .= '</div>';
+
+            $data[] = [
+                $serial,
+                htmlspecialchars($flat['project_name'] ?? ''),
+                htmlspecialchars($flat['flat_name'] ?? 'N/A'),
+                $typeBadge,
+                htmlspecialchars($flat['upload_from'] ?? 'N/A'),
+                htmlspecialchars($flat['facing_site'] ?? 'N/A'),
+                htmlspecialchars($flat['sqft'] ?? 'N/A'),
+                format_bdt($flat['land_share_value'] ?? 0),
+                !empty($flat['development_charges']) ? format_bdt($flat['development_charges'] ?? 0) : 'N/A',
+                format_bdt($flat['price_value'] ?? 0),
+                $serviceCharge,
+                $statusBadge,
+                $actions
+            ];
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            "draw"            => $draw,
+            "recordsTotal"    => $totalRecords,
+            "recordsFiltered" => $totalFiltered,
+            "data"            => $data
+        ]);
+        exit;
+    }
+
 
     /* =========================
        Create Form
