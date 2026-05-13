@@ -418,6 +418,7 @@ $routes = [
 
     //flat
     "flat-lists" => ["controller" => "FlatController", "method" => "index"],
+    "ajax-flat-lists" => ["controller" => "FlatController", "method" => "ajaxFlatList"],
     "create-flat" => ["controller" => "FlatController", "method" => "create"],
     "store-flat" => ["controller" => "FlatController", "method" => "store"],
     "edit-flat/(\d+)" => ["controller" => "FlatController", "method" => "edit"],

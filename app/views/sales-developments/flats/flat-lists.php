@@ -6,7 +6,9 @@ $show_breadcrumb = false;
 
 <div class="card__wrapper mb-3">
     <form action="" method="get">
-        <div class="row g-2 align-items-center">
+
+        <!-- Row 1: Filter inputs -->
+        <div class="row g-2 align-items-center mb-2">
 
             <!-- Project Filter -->
             <div class="col-xl-3 col-md-4 col-sm-6">
@@ -21,6 +23,16 @@ $show_breadcrumb = false;
                 </select>
             </div>
 
+            <!-- Status Filter -->
+            <div class="col-xl-2 col-md-3 col-sm-6">
+                <select class="form-control form-control-sm" name="status">
+                    <option value="">All Status</option>
+                    <option value="available" <?= ($selectedStatus ?? '') === 'available' ? 'selected' : '' ?>>Available</option>
+                    <option value="booked"    <?= ($selectedStatus ?? '') === 'booked'    ? 'selected' : '' ?>>Booked</option>
+                    <option value="sold"      <?= ($selectedStatus ?? '') === 'sold'      ? 'selected' : '' ?>>Sold</option>
+                </select>
+            </div>
+
             <!-- Search -->
             <div class="col-xl-3 col-md-4 col-sm-6">
                 <input type="text" class="form-control form-control-sm" name="q" id="flatName"
@@ -29,7 +41,7 @@ $show_breadcrumb = false;
             </div>
 
             <!-- Filter + Reset -->
-            <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="col-xl-2 col-md-3 col-sm-6">
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-secondary btn-sm flex-fill">
                         <i class="fa-solid fa-filter me-1"></i> Filter
@@ -40,9 +52,12 @@ $show_breadcrumb = false;
                 </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="col-xl-4 col-md-12">
-                <div class="d-flex flex-wrap gap-2 justify-content-xl-end">
+        </div>
+
+        <!-- Row 2: Action Buttons -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="d-flex flex-wrap gap-2">
                     <a class="btn btn-primary btn-sm" href="<?= $GLOBALS['base_url'] ?>/create-flat">
                         <i class="fa-solid fa-plus me-1"></i> Add Flat/Shop
                     </a>
@@ -58,8 +73,8 @@ $show_breadcrumb = false;
                     <?php endif ?>
                 </div>
             </div>
-
         </div>
+
     </form>
 </div>
 
@@ -68,9 +83,10 @@ $show_breadcrumb = false;
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables">
+                <table class="table mb-20" id="flatListTable">
                     <thead>
                         <tr class="table__title">
+                            <th style="width:40px">#</th>
                             <th>Project</th>
                             <th>Flat/Unit</th>
                             <th>Type</th>
@@ -86,68 +102,7 @@ $show_breadcrumb = false;
                         </tr>
                     </thead>
                     <tbody class="table__body">
-                        <?php foreach ($flats as $flat): ?>
-                            <tr>
-                                <td class="td_1"><?= htmlspecialchars($flat['project_name'] ?? '') ?></td>
-                                <td class="td_2"><?= htmlspecialchars($flat['flat_name'] ?? 'N/A') ?></td>
-                                <td>
-                                    <?php if (($flat['unit_type'] ?? 'residential') === 'commercial'): ?>
-                                        <span class="bd-badge bg-warning text-dark">
-                                            <i class="bi bi-shop me-1"></i> Shop
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="bd-badge bg-primary">
-                                            <i class="bi bi-building me-1"></i> Flat
-                                        </span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= htmlspecialchars($flat['upload_from'] ?? 'N/A') ?></td>
-                                <td><?= htmlspecialchars($flat['facing_site'] ?? 'N/A') ?></td>
-                                <td><?= htmlspecialchars($flat['sqft'] ?? 'N/A') ?></td>
-                                <td><?= format_bdt($flat['land_share_value'] ?? 0) ?></td>
-                                <td><?= !empty($flat['development_charges']) ? format_bdt($flat['development_charges'] ?? 0) : 'N/A' ?></td>
-                                <td><?= format_bdt($flat['price_value'] ?? 0) ?></td>
-                                <td>
-                                    <?php if (($flat['unit_type'] ?? 'residential') === 'commercial' && !empty($flat['shop_service_charge'])): ?>
-                                        <span class="bd-badge bg-info text-dark"><?= (int)($flat['shop_service_charge'] ?? 0) ?>%</span>
-                                    <?php else: ?>
-                                        <span class="text-muted">—</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($flat['is_booked'] == 1) : ?>
-                                        <span class="bd-badge bg-danger">Booked</span>
-                                    <?php else: ?>
-                                        <span class="bd-badge bg-success">Available</span>
-                                    <?php endif ?>
-                                </td>
-                                <td class="table__icon-box">
-                                    <div class="d-flex align-items-center justify-content-center gap-10">
-                                        <a href="<?= $GLOBALS['base_url'] ?>/edit-flat/<?= $flat['id'] ?>" class="table__icon edit">
-                                            <i class="fa-sharp fa-light fa-pen"></i>
-                                        </a>
-                                        <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/flat-details/<?= $flat['id'] ?>"
-                                            title="View Transaction History"> <i class="fa-regular fa-eye"></i>
-                                        </a>
-                                        <?php if (hasPermission("view lead")): ?>
-                                            <button class="d-none table__icon delete removeBtnCust  "
-                                                data-name="<?= $flat['flat_name'] ?>"
-                                                data-action="delete-flat"
-                                                data-id="<?= $flat['id'] ?>">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
-                                        <?php else: ?>
-                                            <button class="table__icon delete removeBtnCust  "
-                                                data-name="<?= $flat['flat_name'] ?>"
-                                                data-action="delete-flat"
-                                                data-id="<?= $flat['id'] ?>">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
-                                        <?php endif ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
+                        <!-- Populated by DataTables AJAX -->
                     </tbody>
                 </table>
             </div>
@@ -157,7 +112,71 @@ $show_breadcrumb = false;
 
 
 <script>
-    const base_url = "<?= $GLOBALS['base_url'] ?>"
+    var base_url = "<?= $GLOBALS['base_url'] ?>";
+
+    // Custom DataTable for flat-lists — Server Side Processing
+    document.addEventListener('DOMContentLoaded', function () {
+        // Read URL params if present (from the GET filter form)
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('project_id') || '';
+        const status = urlParams.get('status') || '';
+        const q = urlParams.get('q') || '';
+
+        $('#flatListTable').DataTable({
+            destroy: true,
+            processing: true,
+            serverSide: true,
+            ajax: {
+                url: base_url + '/ajax-flat-lists',
+                type: 'GET',
+                data: function (d) {
+                    d.project_id = projectId;
+                    d.status = status;
+                    if (q && !d.search.value) {
+                        d.search.value = q; // Pass initial search query to DataTables search
+                    }
+                },
+                error: function (xhr, error, thrown) {
+                    console.error("DataTables AJAX error:", error, thrown);
+                    console.error("Response Text:", xhr.responseText);
+                }
+            },
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, 'All']],
+            order: [[1, 'asc']],   // default sort by Project name
+            columnDefs: [
+                { orderable: false, searchable: false, targets: 0 },  // # serial column
+                { orderable: false, searchable: false, targets: -1 }, // Actions column
+            ],
+            drawCallback: function(settings) {
+                // Re-bind sweetalert/delete events for dynamic buttons
+                $('#flatListTable .removeBtnCust').off('click').on('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const itemId = $(this).data('id');
+                    const itemName = $(this).data('name');
+                    const actionUrl = $(this).attr('data-action');
+                    
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: `You are about to delete "${itemName}". This action cannot be undone!`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, delete it!'
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            const form = $('<form>', {
+                                method: 'POST',
+                                action: base_url + '/' + actionUrl
+                            });
+                            form.append($('<input>', { type: 'hidden', name: 'id', value: itemId }));
+                            $('body').append(form);
+                            form.submit();
+                        }
+                    });
+                });
+            }
+        });
+    });
 </script>
 <!-- CSV Import Modal (Flats) -->
 <div class="modal fade" id="importCsvModal" tabindex="-1">

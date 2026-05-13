@@ -1,8 +1,21 @@
 <?php
-require_once __DIR__ . '/../app/config/database.php';
-$res = $GLOBALS['db']->query("SELECT COUNT(*) FROM target_fixed WHERE project_id=13");
-var_dump($res->fetch_row());
-$res2 = $GLOBALS['db']->query("SELECT COUNT(*) FROM weekly_progress_report WHERE project_id=13");
-var_dump($res2->fetch_row());
-$res3 = $GLOBALS['db']->query("SELECT COUNT(*) FROM con_financial_transactions WHERE project_id=13");
-var_dump($res3->fetch_row());
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+$root = __DIR__ . '/../';
+require_once $root . "app/core/Model.php";
+require_once $root . "app/core/Database.php";
+require_once $root . "app/models/FlatModel.php";
+
+$config = require $root . "app/config/config.php";
+$database = new Database($config);
+$db = $database->conn;
+
+$flatModel = new FlatModel($db);
+
+try {
+    $res = $flatModel->getFlatsAjax(0, 10, '', '', '', 0, 'desc');
+    print_r($res);
+} catch (Throwable $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+}
