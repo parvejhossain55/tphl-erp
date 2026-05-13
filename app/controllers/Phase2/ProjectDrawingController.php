@@ -298,22 +298,21 @@ class ProjectDrawingController extends Controller {
     private function getProjectsForDraftsman(int $userId, int $roleId): array
     {
         if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
-            // Admins/PM/QC see all projects with AE fully done
+            // Admins/PM/QC see ALL projects
             return $this->db->query("
-                SELECT DISTINCT p.id, p.name
-                FROM projects p
-                INNER JOIN architect_engineering ae ON ae.project_id = p.id AND ae.status = 'fully'
-                WHERE p.deleted_at IS NULL
-                ORDER BY p.name ASC
+                SELECT id, name
+                FROM projects
+                WHERE deleted_at IS NULL
+                ORDER BY name ASC
             ")->fetch_all(MYSQLI_ASSOC);
         }
-        // Draftsman: only their assigned projects with AE = fully
+
+        // Draftsman: show ALL projects assigned to them (regardless of AE status)
         $stmt = $this->db->prepare("
-            SELECT DISTINCT p.id, p.name
-            FROM projects p
-            INNER JOIN architect_engineering ae ON ae.project_id = p.id AND ae.status = 'fully'
-            WHERE p.draftsman_id = ? AND p.deleted_at IS NULL
-            ORDER BY p.name ASC
+            SELECT id, name
+            FROM projects
+            WHERE draftsman_id = ? AND deleted_at IS NULL
+            ORDER BY name ASC
         ");
         $stmt->bind_param('i', $userId);
         $stmt->execute();

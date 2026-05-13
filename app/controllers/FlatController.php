@@ -363,6 +363,26 @@ class FlatController extends Controller
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
                 $data['upload_from'] = 'From company csv'; // CSV bulk import tag
 
+                // ── Normalize status column ────────────────────────────
+                // Maps various CSV status values → DB enum('available','booked','sold')
+                $rawStatus = strtolower(trim($data['status'] ?? ''));
+                $statusMap = [
+                    'available'  => 'available',
+                    'unsold'     => 'available',   // unsold = available
+                    'on sale'    => 'available',   // on sale = available
+                    'on_sale'    => 'available',
+                    'for sale'   => 'available',
+                    'for_sale'   => 'available',
+                    'open'       => 'available',
+                    'booked'     => 'booked',
+                    'reserved'   => 'booked',
+                    'sold'       => 'sold',
+                    'sold out'   => 'sold',
+                    'sold_out'   => 'sold',
+                ];
+                $data['status']    = $statusMap[$rawStatus] ?? 'available';
+                $data['is_booked'] = in_array($data['status'], ['booked', 'sold']) ? 1 : 0;
+
                 try {
                     $this->flatModel->createFromCsvBulk($data);
                     $successCount++;
@@ -534,9 +554,24 @@ class FlatController extends Controller
                     ? (int)$data['shop_service_charge']
                     : null;
 
-                // Status
-                $status = strtolower(trim($data['status'] ?? 'available'));
-                $data['status']    = in_array($status, ['available', 'booked', 'sold']) ? $status : 'available';
+                // ── Normalize status column ────────────────────────────
+                // Maps various CSV status values → DB enum('available','booked','sold')
+                $rawStatus = strtolower(trim($data['status'] ?? ''));
+                $statusMap = [
+                    'available'  => 'available',
+                    'unsold'     => 'available',   // unsold = available
+                    'on sale'    => 'available',   // on sale = available
+                    'on_sale'    => 'available',
+                    'for sale'   => 'available',
+                    'for_sale'   => 'available',
+                    'open'       => 'available',
+                    'booked'     => 'booked',
+                    'reserved'   => 'booked',
+                    'sold'       => 'sold',
+                    'sold out'   => 'sold',
+                    'sold_out'   => 'sold',
+                ];
+                $data['status']    = $statusMap[$rawStatus] ?? 'available';
                 $data['is_booked'] = in_array($data['status'], ['booked', 'sold']) ? 1 : 0;
 
                 try {
