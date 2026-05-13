@@ -48,5 +48,6 @@ if (!empty($show_breadcrumb) && $show_breadcrumb === true) {
 
 <?php ?>
 <script>
- const base_url = "<?= $GLOBALS['base_url'] ?>"; 
+ // base_url is already defined in footer.php before scripts load
+ var base_url = "<?= $GLOBALS['base_url'] ?>"; 
 </script>

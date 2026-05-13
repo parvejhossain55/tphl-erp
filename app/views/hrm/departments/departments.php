@@ -195,7 +195,7 @@ $show_breadcrumb = true;
 </div>
 <!-- edit department modal end -->
 <script>
-    const base_url = "<?= $GLOBALS['base_url'] ?>"; // PHP outputs the correct base URL
+    var base_url = "<?= $GLOBALS['base_url'] ?>"; // PHP outputs the correct base URL
 
 
 

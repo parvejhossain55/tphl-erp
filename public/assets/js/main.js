@@ -1793,40 +1793,35 @@ function bd_settings_append($x) {
 
 	// crypto order list search js 
 	
-$(document).ready(function () {
-    $('.removeBtnCust').on('click', function (e) {
-        e.preventDefault();
-        // alert("ok");
+$(document).on('click', '.removeBtnCust', function (e) {
+    e.preventDefault();
 
-        const itemId = $(this).data('id');
-        const itemName = $(this).data('name');
-        const actionUrl = $(this).attr('data-action'); // <- change here
+    const itemId   = $(this).data('id');
+    const itemName = $(this).data('name');
+    const actionUrl = $(this).attr('data-action');
 
-        Swal.fire({
-            title: "Are you sure?",
-            text: `You are about to delete "${itemName}". This action cannot be undone!`,
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Yes, delete it!"
-        }).then((result) => {
-            if (result.isConfirmed) {
+    Swal.fire({
+        title: "Are you sure?",
+        text: `You are about to delete "${itemName}". This action cannot be undone!`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Yes, delete it!"
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = $('<form>', {
+                method: 'POST',
+                action: base_url + '/' + actionUrl
+            });
 
-               const form = $('<form>', {
-					method: 'POST',
-					action: base_url + '/' + actionUrl
-				});
+            form.append($('<input>', {
+                type: 'hidden',
+                name: 'id',
+                value: itemId
+            }));
 
-
-                form.append($('<input>', {
-                    type: 'hidden',
-                    name: 'id',
-                    value: itemId
-                }));
-
-                $('body').append(form);
-                form.submit();
-            }
-        });
+            $('body').append(form);
+            form.submit();
+        }
     });
 });
 

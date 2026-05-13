@@ -74,8 +74,7 @@ $show_breadcrumb = false;
                             <th>Project</th>
                             <th>Flat/Unit</th>
                             <th>Type</th>
-                            <th>BHK</th>
-                            <th>Floor No</th>
+                            <th>Flat Uploaded From</th>
                             <th>Facing Site</th>
                             <th>Sqft</th>
                             <th>Land Share Value</th>
@@ -102,8 +101,7 @@ $show_breadcrumb = false;
                                         </span>
                                     <?php endif; ?>
                                 </td>
-                                <td><?= htmlspecialchars($flat['bhk'] ?? 'N/A') ?></td>
-                                <td><?= htmlspecialchars($flat['floor_no'] ?? 'N/A') ?></td>
+                                <td><?= htmlspecialchars($flat['upload_from'] ?? 'N/A') ?></td>
                                 <td><?= htmlspecialchars($flat['facing_site'] ?? 'N/A') ?></td>
                                 <td><?= htmlspecialchars($flat['sqft'] ?? 'N/A') ?></td>
                                 <td><?= format_bdt($flat['land_share_value'] ?? 0) ?></td>
