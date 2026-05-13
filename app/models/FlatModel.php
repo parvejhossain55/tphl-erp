@@ -303,23 +303,35 @@ class FlatModel extends Model
         // Extract values into named variables (bind_param requires variables by reference)
         $project_id           = isset($data['project_id'])           && trim($data['project_id'])           !== '' ? trim($data['project_id'])           : null;
         $flat_name            = isset($data['flat_name'])            && trim($data['flat_name'])            !== '' ? trim($data['flat_name'])            : null;
-        $sqft                 = isset($data['sqft'])                 && trim($data['sqft'])                 !== '' ? str_replace(',', '', trim($data['sqft']))                 : null;
-        $bhk                  = isset($data['bhk'])                  && trim($data['bhk'])                  !== '' ? trim($data['bhk'])                  : null;
-        $bedroom              = isset($data['bedroom'])              && trim($data['bedroom'])              !== '' ? trim($data['bedroom'])              : null;
-        $bathroom             = isset($data['bathroom'])             && trim($data['bathroom'])             !== '' ? trim($data['bathroom'])             : null;
-        $balcony              = isset($data['balcony'])              && trim($data['balcony'])              !== '' ? trim($data['balcony'])              : null;
+
+        // For integer/numeric fields: strip commas, units like "SFT", "BHK", etc.
+        // preg_replace keeps only digits (and decimal point for floats)
+        $extractInt = function($v) {
+            $v = str_replace(',', '', trim($v ?? ''));
+            return preg_replace('/[^0-9]/', '', $v); // keep digits only
+        };
+        $extractDecimal = function($v) {
+            $v = str_replace(',', '', trim($v ?? ''));
+            return preg_replace('/[^0-9.]/', '', $v); // keep digits + decimal point
+        };
+
+        $sqft                 = isset($data['sqft'])    && trim($data['sqft'])    !== '' ? $extractInt($data['sqft'])             : null;
+        $bhk                  = isset($data['bhk'])     && trim($data['bhk'])     !== '' ? $extractInt($data['bhk'])              : null;
+        $bedroom              = isset($data['bedroom']) && trim($data['bedroom']) !== '' ? $extractInt($data['bedroom'])           : null;
+        $bathroom             = isset($data['bathroom'])&& trim($data['bathroom'])!== '' ? $extractInt($data['bathroom'])          : null;
+        $balcony              = isset($data['balcony']) && trim($data['balcony']) !== '' ? $extractInt($data['balcony'])           : null;
         $drawing_dining       = isset($data['drawing_dining_kitchen']) ? (int)$data['drawing_dining_kitchen'] : 0;
-        $common_dining        = isset($data['common_dining'])        ? (int)$data['common_dining']         : 0;
-        $floor_no             = isset($data['floor_no'])             && trim($data['floor_no'])             !== '' ? trim($data['floor_no'])             : null;
-        $facing_site          = isset($data['facing_site'])          && trim($data['facing_site'])          !== '' ? trim($data['facing_site'])          : null;
-        $is_shop              = isset($data['is_shop'])              ? (int)$data['is_shop']               : 0;
-        $unit_type            = !empty($data['unit_type'])           ? trim($data['unit_type'])            : 'residential';
-        $price_value          = isset($data['price_value'])          && trim($data['price_value'])          !== '' ? str_replace(',', '', trim($data['price_value']))          : null;
-        $shop_service_charge  = isset($data['shop_service_charge'])  && $data['shop_service_charge'] !== ''  ? (int)$data['shop_service_charge']         : null;
-        $facilities           = isset($data['facilities'])           && trim($data['facilities'])           !== '' ? trim($data['facilities'])           : null;
-        $land_share_value     = isset($data['land_share_value'])     && trim($data['land_share_value'])     !== '' ? str_replace(',', '', trim($data['land_share_value']))     : null;
-        $development_charges  = isset($data['development_charges'])  && trim($data['development_charges'])  !== '' ? str_replace(',', '', trim($data['development_charges']))  : null;
-        $created_by           = isset($data['created_by'])           && trim($data['created_by'])           !== '' ? trim($data['created_by'])           : null;
+        $common_dining        = isset($data['common_dining'])          ? (int)$data['common_dining']         : 0;
+        $floor_no             = isset($data['floor_no'])    && trim($data['floor_no'])    !== '' ? $extractInt($data['floor_no'])  : null;
+        $facing_site          = isset($data['facing_site']) && trim($data['facing_site']) !== '' ? trim($data['facing_site'])      : null;
+        $is_shop              = isset($data['is_shop'])     ? (int)$data['is_shop']                                                : 0;
+        $unit_type            = !empty($data['unit_type'])  ? trim($data['unit_type'])                                             : 'residential';
+        $price_value          = isset($data['price_value'])         && trim($data['price_value'])         !== '' ? $extractDecimal($data['price_value'])         : null;
+        $shop_service_charge  = isset($data['shop_service_charge']) && $data['shop_service_charge'] !== '' ? (int)$extractInt($data['shop_service_charge']) : null;
+        $facilities           = isset($data['facilities'])          && trim($data['facilities'])          !== '' ? trim($data['facilities'])                  : null;
+        $land_share_value     = isset($data['land_share_value'])    && trim($data['land_share_value'])    !== '' ? $extractDecimal($data['land_share_value'])    : null;
+        $development_charges  = isset($data['development_charges']) && trim($data['development_charges']) !== '' ? $extractDecimal($data['development_charges']) : null;
+        $created_by           = isset($data['created_by'])          && trim($data['created_by'])          !== '' ? trim($data['created_by'])                  : null;
 
         // If status is booked or sold, is_booked = 1
         $status      = strtolower(trim($data['status'] ?? 'available')) ?: 'available';

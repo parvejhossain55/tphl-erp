@@ -1,8 +1,45 @@
 <?php
 $addPage = true;
 $show_breadcrumb = false;
+
+// ── CSV import skipped-row report ────────────────────────────────────
+$csvSkipped = $_SESSION['csv_import_skipped'] ?? [];
+unset($_SESSION['csv_import_skipped']); // clear after reading
 ?>
 <h4 class="mb-2">Flat Management</h4>
+
+<?php if (!empty($csvSkipped)): ?>
+<div class="card__wrapper mb-3" style="border-left: 4px solid #f59e0b;">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
+        <h6 class="mb-0 fw-semibold text-warning">
+            <?= count($csvSkipped) ?> row(s) were <u>not imported</u> from the CSV
+        </h6>
+    </div>
+    <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
+        <table class="table table-sm table-bordered mb-0" style="font-size:13px;">
+            <thead class="table-warning">
+                <tr>
+                    <th style="width:60px">CSV Row</th>
+                    <th>Project</th>
+                    <th>Flat / Unit</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($csvSkipped as $sk): ?>
+                <tr>
+                    <td class="text-center fw-bold"><?= (int)$sk['row'] ?></td>
+                    <td><?= htmlspecialchars($sk['project'] ?? '—') ?></td>
+                    <td><?= htmlspecialchars($sk['flat']    ?? '—') ?></td>
+                    <td class="text-danger"><?= htmlspecialchars($sk['reason'] ?? '') ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="card__wrapper mb-3">
     <form action="" method="get">
