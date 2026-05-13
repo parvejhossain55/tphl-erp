@@ -12,8 +12,13 @@ require_once("../app/helpers/helper.php");
 require_once __DIR__ . '/../vendor/autoload.php';
 //// Maintenance Mode Check
 // if (file_exists(__DIR__ . '/maintenance.flag')) {
-//     http_response_code(503); // Service Unavailable
-//     echo "<h1 style=\"color: #333; text-align: center;\">Site is under maintenance</h1><p style=\"color: #666; text-align: center;\">We'll be back soon!</p>";
+//     http_response_code(503);
+//     $maintenancePage = __DIR__ . '/maintenance.html';
+//     if (file_exists($maintenancePage)) {
+//         readfile($maintenancePage);
+//     } else {
+//         echo "<h1 style=\"color:#2d4a54;text-align:center;font-family:sans-serif;margin-top:15%\">We're Down for Maintenance</h1><p style=\"color:#788395;text-align:center\">We'll be back soon!</p>";
+//     }
 //     exit;
 // }
 

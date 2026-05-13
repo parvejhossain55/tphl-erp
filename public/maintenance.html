@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Under Maintenance — TPHL ERP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
+            background: #f7f8fc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px 20px;
+            max-width: 680px;
+            width: 100%;
+        }
+
+        /* Illustration wrapper */
+        .illustration-wrap {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 36px;
+        }
+
+        /* Big blurred circle background */
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            background: #eef0f5;
+            z-index: 0;
+        }
+        .mt-4{
+                margin-top: 1.5rem;
+        }
+        .blob-main {
+            width: 420px;
+            height: 300px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .blob-left {
+            width: 100px;
+            height: 200px;
+            top: 10px;
+            left: -20px;
+        }
+        .blob-right {
+            width: 100px;
+            height: 200px;
+            top: 10px;
+            right: -20px;
+        }
+
+        svg.truck-scene {
+            position: relative;
+            z-index: 1;
+            max-width: 480px;
+            width: 100%;
+            height: auto;
+        }
+
+        /* Floating animation */
+        .float-car {
+            animation: floatCar 2.4s ease-in-out infinite;
+            transform-origin: 215px 95px;
+        }
+        @keyframes floatCar {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50%       { transform: translateY(-6px) rotate(-2deg); }
+        }
+
+        /* Title */
+        h1 {
+            font-size: 2rem;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #2d4a54;
+            margin-bottom: 14px;
+            line-height: 1.2;
+        }
+
+        p.subtitle {
+            font-size: 1rem;
+            color: #788395;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .btn-contact {
+            display: inline-block;
+            background: #2ec4b6;
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 14px 36px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            transition: background 0.25s, transform 0.2s, box-shadow 0.25s;
+            box-shadow: 0 8px 24px rgba(46,196,182,0.3);
+        }
+        .btn-contact:hover {
+            background: #25b0a3;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(46,196,182,0.4);
+        }
+        .btn-contact:active {
+            transform: translateY(0);
+        }
+
+        /* Decorative dots */
+        .dot {
+            position: fixed;
+            border-radius: 50%;
+            opacity: 0.12;
+            background: #2ec4b6;
+        }
+        .dot-1 { width:220px; height:220px; top:-60px; right:-60px; }
+        .dot-2 { width:160px; height:160px; bottom:-40px; left:-40px; }
+
+        @media (max-width: 480px) {
+            h1 { font-size: 1.4rem; }
+            .blob-main { width: 300px; height: 220px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Decorative background dots -->
+    <div class="dot dot-1"></div>
+    <div class="dot dot-2"></div>
+
+    <div class="container">
+
+        <!-- SVG Illustration (tow truck scene) -->
+        <div class="illustration-wrap">
+            <div class="blob blob-main"></div>
+            <div class="blob blob-left"></div>
+            <div class="blob blob-right"></div>
+
+            <svg class="truck-scene" viewBox="0 0 520 320" xmlns="http://www.w3.org/2000/svg">
+
+                <!-- Ground -->
+                <ellipse cx="260" cy="295" rx="220" ry="14" fill="#f5d9a8" opacity="0.7"/>
+
+                <!-- ─── DECORATIVE PLANTS (left) ─── -->
+                <!-- Plant left -->
+                <line x1="75" y1="290" x2="75" y2="170" stroke="#2ec4b6" stroke-width="3" stroke-linecap="round"/>
+                <line x1="75" y1="230" x2="50" y2="200" stroke="#2ec4b6" stroke-width="2.5" stroke-linecap="round"/>
+                <line x1="75" y1="210" x2="100" y2="185" stroke="#2ec4b6" stroke-width="2.5" stroke-linecap="round"/>
+                <line x1="75" y1="195" x2="55" y2="172" stroke="#2ec4b6" stroke-width="2" stroke-linecap="round"/>
+                <!-- Plant left 2 -->
+                <line x1="100" y1="290" x2="100" y2="195" stroke="#2ec4b6" stroke-width="2" stroke-linecap="round"/>
+                <line x1="100" y1="250" x2="82" y2="230" stroke="#2ec4b6" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="100" y1="230" x2="118" y2="212" stroke="#2ec4b6" stroke-width="1.8" stroke-linecap="round"/>
+
+                <!-- ─── DECORATIVE PLANTS (right) ─── -->
+                <line x1="430" y1="290" x2="430" y2="170" stroke="#2ec4b6" stroke-width="3" stroke-linecap="round"/>
+                <line x1="430" y1="230" x2="408" y2="200" stroke="#2ec4b6" stroke-width="2.5" stroke-linecap="round"/>
+                <line x1="430" y1="210" x2="452" y2="185" stroke="#2ec4b6" stroke-width="2.5" stroke-linecap="round"/>
+                <line x1="430" y1="195" x2="415" y2="172" stroke="#2ec4b6" stroke-width="2" stroke-linecap="round"/>
+                <line x1="455" y1="290" x2="455" y2="210" stroke="#2ec4b6" stroke-width="2" stroke-linecap="round"/>
+                <line x1="455" y1="250" x2="440" y2="233" stroke="#2ec4b6" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="455" y1="232" x2="470" y2="215" stroke="#2ec4b6" stroke-width="1.8" stroke-linecap="round"/>
+
+                <!-- ─── TOW TRUCK BODY ─── -->
+                <!-- Truck flatbed platform -->
+                <rect x="160" y="220" width="220" height="22" rx="4" fill="#f5a623"/>
+                <!-- Truck cab -->
+                <rect x="340" y="185" width="90" height="57" rx="8" fill="#e8392d"/>
+                <!-- Cab windshield -->
+                <rect x="348" y="192" width="52" height="32" rx="5" fill="#b8e4f9" opacity="0.85"/>
+                <!-- Cab door detail -->
+                <line x1="390" y1="192" x2="390" y2="242" stroke="#c5372d" stroke-width="1.5" opacity="0.6"/>
+
+                <!-- ─── CRANE ARM ─── -->
+                <!-- Crane base on truck -->
+                <rect x="300" y="200" width="18" height="42" rx="4" fill="#e8a020"/>
+                <!-- Crane arm -->
+                <line x1="308" y1="200" x2="200" y2="85" stroke="#8B4513" stroke-width="8" stroke-linecap="round"/>
+                <!-- Crane tip circle -->
+                <circle cx="200" cy="85" r="7" fill="#c4874a"/>
+                <!-- Chain/hook line -->
+                <line x1="200" y1="92" x2="220" y2="152" stroke="#8B4513" stroke-width="3" stroke-dasharray="4,3" stroke-linecap="round"/>
+                <!-- Hook circle on car -->
+                <circle cx="222" cy="156" r="5" fill="#8B4513"/>
+
+                <!-- ─── FLOATING CAR (animated) ─── -->
+                <g class="float-car">
+                    <!-- Car body -->
+                    <rect x="158" y="140" width="110" height="50" rx="12" fill="#2ec4b6"/>
+                    <!-- Car roof -->
+                    <rect x="172" y="118" width="78" height="30" rx="10" fill="#2ec4b6"/>
+                    <!-- Car windows -->
+                    <rect x="177" y="122" width="30" height="22" rx="4" fill="#b8e4f9" opacity="0.8"/>
+                    <rect x="213" y="122" width="32" height="22" rx="4" fill="#b8e4f9" opacity="0.8"/>
+                    <!-- Car front detail -->
+                    <rect x="258" y="158" width="10" height="6" rx="2" fill="#ffe066"/>
+                    <!-- Wheels -->
+                    <circle cx="190" cy="192" r="16" fill="#2d2d2d"/>
+                    <circle cx="190" cy="192" r="8"  fill="#888"/>
+                    <circle cx="190" cy="192" r="3"  fill="#555"/>
+                    <circle cx="250" cy="192" r="16" fill="#2d2d2d"/>
+                    <circle cx="250" cy="192" r="8"  fill="#888"/>
+                    <circle cx="250" cy="192" r="3"  fill="#555"/>
+                </g>
+
+                <!-- ─── RAMP ─── -->
+                <line x1="160" y1="220" x2="120" y2="260" stroke="#3a7bd5" stroke-width="6" stroke-linecap="round"/>
+                <line x1="170" y1="222" x2="130" y2="262" stroke="#3a7bd5" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+
+                <!-- ─── TRUCK WHEELS ─── -->
+                <!-- Rear wheel -->
+                <circle cx="215" cy="252" r="22" fill="#2d2d2d"/>
+                <circle cx="215" cy="252" r="11" fill="#888"/>
+                <circle cx="215" cy="252" r="4"  fill="#555"/>
+                <!-- Front wheel -->
+                <circle cx="370" cy="252" r="22" fill="#2d2d2d"/>
+                <circle cx="370" cy="252" r="11" fill="#888"/>
+                <circle cx="370" cy="252" r="4"  fill="#555"/>
+                <!-- Extra rear wheel (tandem) -->
+                <circle cx="255" cy="252" r="22" fill="#2d2d2d"/>
+                <circle cx="255" cy="252" r="11" fill="#888"/>
+                <circle cx="255" cy="252" r="4"  fill="#555"/>
+
+                <!-- Exhaust pipe -->
+                <rect x="418" y="178" width="8" height="16" rx="3" fill="#b0b0b0"/>
+                <ellipse cx="422" cy="176" rx="5" ry="3" fill="#d0d0d0" opacity="0.5"/>
+
+            </svg>
+        </div>
+
+        <!-- Text content -->
+        <h1 class="mt-4">We're Down for Maintenance</h1>
+        <p class="subtitle">
+            This page is undergoing maintenance and will be back soon.<br>
+            We apologize for the inconvenience.
+        </p>
+
+     <a href="mailto:farzana.tphl24@gmail.com" class="btn-contact">Contact Us</a>
+    </div>
+
+</body>
+</html>

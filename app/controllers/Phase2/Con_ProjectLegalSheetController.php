@@ -40,22 +40,46 @@ class Con_ProjectLegalSheetController extends Controller {
         $rid = (int)($_SESSION['user']['role_id'] ?? 0);
 
         if (in_array($rid, [1, 3, 22])) {
-            $filter = "1=1";
+            // Admin / super user — see all projects
+            $sql    = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
+            $result = $this->db->query($sql);
         } else {
-            $filter = "(p.pm_id = $uid
-                     OR p.site_engineer_id    = $uid
-                     OR p.landman_id          = $uid
-                     OR p.struct_engineer_id  = $uid
-                     OR p.operation_head_id   = $uid
-                     OR p.draftsman_id        = $uid
-                     OR p.architect_id        = $uid
-                     OR p.estimator_id        = $uid
-                     OR p.qc_id               = $uid
-                     OR p.operator_id         = $uid
-                     OR p.purchase_user_id    = $uid)";
+            // Show projects where this user is assigned in ANY role
+            $sql = "SELECT id, name FROM projects
+                    WHERE deleted_at IS NULL
+                      AND (
+                          pm_id              = ? OR
+                          site_engineer_id   = ? OR
+                          landman_id         = ? OR
+                          struct_engineer_id = ? OR
+                          operation_head_id  = ? OR
+                          draftsman_id       = ? OR
+                          architect_id       = ? OR
+                          estimator_id       = ? OR
+                          qc_id              = ? OR
+                          operator_id        = ? OR
+                          created_by         = ?
+                      )
+                    ORDER BY name";
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param(
+                    "iiiiiiiiiii",
+                    $uid, $uid, $uid, $uid, $uid,
+                    $uid, $uid, $uid, $uid, $uid, $uid
+                );
+                $stmt->execute();
+                $result = $stmt->get_result();
+            } else {
+                // Fallback: show all if prepare fails
+                $result = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
+            }
         }
-        $sql = "SELECT id, name FROM projects p WHERE deleted_at IS NULL AND $filter ORDER BY name";
-        return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+
+        if (!$result) {
+            return []; // DB error — return empty array safely
+        }
+        return $result->fetch_all(MYSQLI_ASSOC);
     }
 
     public function create() {
