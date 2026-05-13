@@ -123,6 +123,11 @@
         <!-- JS -->
         <!-- Footer Scripts -->
 
+        <!-- ✅ base_url defined FIRST — used by main.js delete handlers -->
+        <script>
+            var base_url = "<?= $GLOBALS['base_url'] ?>";
+        </script>
+
         <!-- ✅ jQuery FIRST (MOST IMPORTANT) -->
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/jquery-3.7.0.js"></script>
 

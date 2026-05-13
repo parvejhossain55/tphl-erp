@@ -2,69 +2,67 @@
 $addPage = true;
 $show_breadcrumb = false;
 ?>
-<h4 class="mb-2">
-    Flat Management
-</h4>
-<form action="" method="get">
+<h4 class="mb-2">Flat Management</h4>
 
-    <div class="row flat-select">
-        <!-- Search -->
-        <!-- Department Filter -->
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
-            <div class="card__wrapper">
-                <div class="from__input-box">
-                    <select class="form-control" name="project_id">
-                        <option value="">Select Project</option>
-                        <?php foreach ($projects as $project): ?>
-                            <option value="<?= $project['id'] ?>"
-                                <?= $selectedProject == $project['id'] ? 'selected' : '' ?>>
-                                <?= $project['name'] ?>
-                            </option>
-                        <?php endforeach ?>
-                    </select>
-                </div>
-            </div>
-        </div>
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-6">
-            <div class="card__wrapper">
-                <div class="search-box">
-                    <input type="text" class="form-control" name="q" id="flatName"
-                        placeholder="Flat/Unit/Sqft "
-                        value="<?= htmlspecialchars($searchTerm ?? '') ?>">
-                </div>
-            </div>
-        </div>
+<div class="card__wrapper mb-3">
+    <form action="" method="get">
+        <div class="row g-2 align-items-center">
 
-        <!-- Submit -->
-        <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
-            <div class="card__wrapper">
-                <div class="d-flex flex-column flex-sm-row gap-2">
-                    <button type="submit" class="btn btn-secondary w-100">
-                        Filter
+            <!-- Project Filter -->
+            <div class="col-xl-3 col-md-4 col-sm-6">
+                <select class="form-control form-control-sm" name="project_id">
+                    <option value="">All Projects</option>
+                    <?php foreach ($projects as $project): ?>
+                        <option value="<?= $project['id'] ?>"
+                            <?= $selectedProject == $project['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($project['name']) ?>
+                        </option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+
+            <!-- Search -->
+            <div class="col-xl-3 col-md-4 col-sm-6">
+                <input type="text" class="form-control form-control-sm" name="q" id="flatName"
+                    placeholder="Search Flat / Unit / Sqft"
+                    value="<?= htmlspecialchars($searchTerm ?? '') ?>">
+            </div>
+
+            <!-- Filter + Reset -->
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-secondary btn-sm flex-fill">
+                        <i class="fa-solid fa-filter me-1"></i> Filter
                     </button>
-
-                    <a href="<?= $GLOBALS['base_url'] ?>/flat-lists" class="btn btn-success w-100">
-                        Reset
+                    <a href="<?= $GLOBALS['base_url'] ?>/flat-lists" class="btn btn-success btn-sm flex-fill">
+                        <i class="fa-solid fa-rotate-right me-1"></i> Reset
                     </a>
+                </div>
+            </div>
 
-                    <?php if (hasPermission("view lead")): ?>
-                        <a class="d-none btn btn-primary w-100" href="<?= $GLOBALS['base_url'] ?>/create-flat">
-                            Add Flat
-                        </a>
-                    <?php else: ?>
-                        <button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#importCsvModal">
-                            Import CSV
+            <!-- Action Buttons -->
+            <div class="col-xl-4 col-md-12">
+                <div class="d-flex flex-wrap gap-2 justify-content-xl-end">
+                    <a class="btn btn-primary btn-sm" href="<?= $GLOBALS['base_url'] ?>/create-flat">
+                        <i class="fa-solid fa-plus me-1"></i> Add Flat/Shop
+                    </a>
+                    <?php if (!hasPermission("view lead")): ?>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                            data-bs-toggle="modal" data-bs-target="#importCsvModal">
+                            <i class="fa-solid fa-building me-1"></i> Import Flat CSV
                         </button>
-                        <a class="btn btn-primary w-100" href="<?= $GLOBALS['base_url'] ?>/create-flat">
-                            Add Flat
-                        </a>
+                        <button type="button" class="btn btn-warning btn-sm"
+                            data-bs-toggle="modal" data-bs-target="#importShopCsvModal">
+                            <i class="bi bi-shop me-1"></i> Import Shop CSV
+                        </button>
                     <?php endif ?>
                 </div>
             </div>
-        </div>
 
-    </div>
-</form>
+        </div>
+    </form>
+</div>
+
 
 <div class="row">
     <div class="col-xxl-12">
@@ -75,16 +73,15 @@ $show_breadcrumb = false;
                         <tr class="table__title">
                             <th>Project</th>
                             <th>Flat/Unit</th>
-                            <th>BHK</th>
-
-                            <th>Floor No</th>
+                            <th>Type</th>
+                            <th>Flat Uploaded From</th>
                             <th>Facing Site</th>
                             <th>Sqft</th>
                             <th>Land Share Value</th>
                             <th>Dev. Charges</th>
                             <th>Price</th>
-                            <th>Facilities</th>
-                            <th>Available/Booked </th>
+                            <th>Service Charge</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -93,25 +90,35 @@ $show_breadcrumb = false;
                             <tr>
                                 <td class="td_1"><?= htmlspecialchars($flat['project_name'] ?? '') ?></td>
                                 <td class="td_2"><?= htmlspecialchars($flat['flat_name'] ?? 'N/A') ?></td>
-                                <td><?= htmlspecialchars($flat['bhk']) ?></td>
-
-                                <td><?= htmlspecialchars($flat['floor_no']) ?></td>
-                                <td><?= htmlspecialchars($flat['facing_site']) ?></td>
-                                <td><?= htmlspecialchars($flat['sqft']) ?></td>
-                                <td><?= format_bdt($flat['land_share_value']) ?? 'N/A' ?></td>
-                                <td><?= !empty($flat['development_charges']) ? format_bdt($flat['development_charges']) : 'N/A' ?></td>
-                                <td><?= format_bdt($flat['price_value']) ?></td>
-                                <td><?= htmlspecialchars($flat['facilities']) ?></td>
                                 <td>
-                                    <?php if ($flat['is_booked'] == 1) : ?>
-                                        <span class="bd-badge bg-danger">
-                                            Booked
+                                    <?php if (($flat['unit_type'] ?? 'residential') === 'commercial'): ?>
+                                        <span class="bd-badge bg-warning text-dark">
+                                            <i class="bi bi-shop me-1"></i> Shop
                                         </span>
                                     <?php else: ?>
-                                        <span class="bd-badge bg-success">
-                                            Available
+                                        <span class="bd-badge bg-primary">
+                                            <i class="bi bi-building me-1"></i> Flat
                                         </span>
-
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= htmlspecialchars($flat['upload_from'] ?? 'N/A') ?></td>
+                                <td><?= htmlspecialchars($flat['facing_site'] ?? 'N/A') ?></td>
+                                <td><?= htmlspecialchars($flat['sqft'] ?? 'N/A') ?></td>
+                                <td><?= format_bdt($flat['land_share_value'] ?? 0) ?></td>
+                                <td><?= !empty($flat['development_charges']) ? format_bdt($flat['development_charges'] ?? 0) : 'N/A' ?></td>
+                                <td><?= format_bdt($flat['price_value'] ?? 0) ?></td>
+                                <td>
+                                    <?php if (($flat['unit_type'] ?? 'residential') === 'commercial' && !empty($flat['shop_service_charge'])): ?>
+                                        <span class="bd-badge bg-info text-dark"><?= (int)($flat['shop_service_charge'] ?? 0) ?>%</span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($flat['is_booked'] == 1) : ?>
+                                        <span class="bd-badge bg-danger">Booked</span>
+                                    <?php else: ?>
+                                        <span class="bd-badge bg-success">Available</span>
                                     <?php endif ?>
                                 </td>
                                 <td class="table__icon-box">
@@ -152,38 +159,7 @@ $show_breadcrumb = false;
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>"
 </script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.querySelector('form');
-        const resetBtn = form.querySelector('button[type="reset"]');
-
-        resetBtn.addEventListener('click', function(e) {
-            e.preventDefault(); // avoid default reset
-            // Clear all inputs
-            form.querySelectorAll('input, select').forEach(function(el) {
-                if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
-                else el.value = ''; // input clear
-            });
-        });
-    });
-</script>
-<style>
-    @media (max-width: 575.98px) {
-        .card__wrapper .d-flex {
-            flex-direction: row !important;
-        }
-
-        .card__wrapper .btn {
-            flex: 1 1 0;
-            width: auto !important;
-            font-size: 0.8rem;
-            padding: 0.45rem 0.5rem;
-            white-space: nowrap;
-        }
-    }
-</style>
-
-<!-- CSV Import Modal -->
+<!-- CSV Import Modal (Flats) -->
 <div class="modal fade" id="importCsvModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-md">
         <div class="modal-content">
@@ -217,11 +193,74 @@ $show_breadcrumb = false;
                     </div>
                 </form>
 
-                <div class="mt-15 p-2  rounded text-muted" style="font-size: 12px; max-height: 200px; overflow-y: auto;">
+                <div class="mt-15 p-2 rounded text-muted" style="font-size: 12px; max-height: 200px; overflow-y: auto;">
                     <strong>Required CSV Headers:</strong><br>
                     project_name, sqft, bhk, land_share_value, development_charges, bedroom, bathroom, balcony, drawing_dining_kitchen, common_dining, floor_no, flat_name, facing_site, price_value, facilities, status
                     <br><br>
-                    <em>Note: project_name must exactly match an existing project's name in the system. status can be available, booked, or sold.</em>
+                    <em>Note: project_name must exactly match an existing project. status can be available, booked, or sold.</em>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Shop CSV Import Modal -->
+<div class="modal fade" id="importShopCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg,#f59e0b,#d97706); color:#fff;">
+                <h5 class="modal-title"><i class="bi bi-shop me-2"></i>Import Shops (Commercial) from CSV</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" style="color:#fff;">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/bulk-shops-import-csv"
+                    method="post"
+                    enctype="multipart/form-data">
+
+                    <div class="from__input-box mb-20">
+                        <div class="form__input-title">
+                            <label>Upload Shop CSV File <span>*</span></label>
+                        </div>
+                        <div class="form__input">
+                            <input type="file"
+                                name="csv_file"
+                                class="form-control"
+                                accept=".csv"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="submit__btn text-center">
+                        <button class="btn btn-warning">Import Shops</button>
+                    </div>
+                </form>
+
+                <div class="mt-15 p-2 rounded" style="font-size: 12px; max-height: 220px; overflow-y: auto; background:#fffbeb; border:1px solid #fcd34d;">
+                    <strong>📋 Required CSV Column Headers (for Shop):</strong><br><br>
+                    <table style="width:100%; font-size:11px; border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#fef3c7;">
+                                <th style="padding:3px 6px; border:1px solid #fcd34d;">Column in CSV</th>
+                                <th style="padding:3px 6px; border:1px solid #fcd34d;">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>project_name</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">Exact project name from system</td></tr>
+                            <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>shop_name</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">Shop unit name / number</td></tr>
+                            <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>sqft</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">Area in square feet</td></tr>
+                            <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>floor_no</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">Floor number</td></tr>
+                            <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>facing_site</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">e.g. North, East</td></tr>
+                            <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>price_value</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">Shop price (BDT)</td></tr>
+                            <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>land_share_value</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">Land share (15+15% booking+registration)</td></tr>
+                            <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>shop_service_charge</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">Service charge % (e.g. 10)</td></tr>
+                            <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>status</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">available / booked / sold</td></tr>
+                        </tbody>
+                    </table>
+                    <br>
+                    <em class="text-warning">⚠ unit_type=commercial and is_shop=1 are set automatically.</em>
                 </div>
             </div>
         </div>

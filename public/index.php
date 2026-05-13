@@ -420,6 +420,7 @@ $routes = [
     "update-flat/(\d+)" => ["controller" => "FlatController", "method" => "update"],
     "delete-flat" => ["controller" => "FlatController", "method" => "delete"],
     "bulk-flats-import-csv" => ["controller" => "FlatController", "method" => "importCsvBulkFlats"],
+    "bulk-shops-import-csv" => ["controller" => "FlatController", "method" => "importCsvBulkShops"],
 
     //follow-up-leads
     "follow-up-leads/(\d+)" => ["controller" => "FollowUpController", "method" => "index"],

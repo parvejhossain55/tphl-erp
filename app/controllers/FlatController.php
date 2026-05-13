@@ -94,7 +94,7 @@ class FlatController extends Controller
         // ======================
         $data = [
             'project_id'             => $_POST['project_id'] ?? null,
-            'flat_name'                => $_POST['flat_name'] ?? null,
+            'flat_name'              => $_POST['flat_name'] ?? null,
             'sqft'                   => $_POST['sqft'] ?? null,
             'bhk'                    => $_POST['bhk'] ?? null,
             'bedroom'                => $_POST['bedroom'] ?? null,
@@ -104,13 +104,16 @@ class FlatController extends Controller
             'common_dining'          => isset($_POST['common_dining']) ? 1 : 0,
             'floor_no'               => $_POST['floor_no'] ?? null,
             'facing_site'            => $_POST['facing_site'] ?? null,
+            'is_shop'                => isset($_POST['is_shop']) ? 1 : 0,
+            'unit_type'              => $_POST['unit_type'] ?? 'residential',
             'price_value'            => $_POST['price_value'] ?? null,
+            'shop_service_charge'    => !empty($_POST['shop_service_charge']) ? (int)$_POST['shop_service_charge'] : null,
             'land_share_value'       => $_POST['land_share_value'] ?? null,
             'development_charges'    => $_POST['development_charges'] ?? null,
             'facilities'             => $_POST['facilities'] ?? null,
-            'is_booked'              => $is_booked, //  add this
+            'is_booked'              => $is_booked,
             'status'                 => $_POST['status'] ?? null,
-            'created_by'              => $_SESSION['user']['id'] ?? null,
+            'created_by'             => $_SESSION['user']['id'] ?? null,
         ];
 
         // ======================
@@ -158,7 +161,7 @@ class FlatController extends Controller
         // Collect form data
         $data = [
             'project_id'             => $_POST['project_id'] ?? null,
-            'flat_name'                => $_POST['flat_name'] ?? null,
+            'flat_name'              => $_POST['flat_name'] ?? null,
             'sqft'                   => $_POST['sqft'] ?? null,
             'bhk'                    => $_POST['bhk'] ?? null,
             'bedroom'                => $_POST['bedroom'] ?? null,
@@ -168,7 +171,10 @@ class FlatController extends Controller
             'common_dining'          => isset($_POST['common_dining']) ? 1 : 0,
             'floor_no'               => $_POST['floor_no'] ?? null,
             'facing_site'            => $_POST['facing_site'] ?? null,
+            'is_shop'                => isset($_POST['is_shop']) ? 1 : 0,
+            'unit_type'              => $_POST['unit_type'] ?? 'residential',
             'price_value'            => $_POST['price_value'] ?? null,
+            'shop_service_charge'    => !empty($_POST['shop_service_charge']) ? (int)$_POST['shop_service_charge'] : null,
             'land_share_value'       => $_POST['land_share_value'] ?? null,
             'development_charges'    => $_POST['development_charges'] ?? null,
             'facilities'             => $_POST['facilities'] ?? null,
@@ -387,6 +393,181 @@ class FlatController extends Controller
             exit;
         } else {
             
+            setError("Unable to read CSV file");
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  Shop / Commercial Unit CSV Bulk Import
+    // ──────────────────────────────────────────────────────────────────────
+    public function importCsvBulkShops()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
+            setError("CSV upload failed");
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        }
+
+        $fileTmp = $_FILES['csv_file']['tmp_name'];
+        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+
+        if ($ext !== 'csv') {
+            setError("Only CSV files allowed");
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        }
+
+        if (($handle = fopen($fileTmp, "r")) !== false) {
+            $rawHeader = fgetcsv($handle);
+
+            // BOM strip + normalize header
+            $rawHeader[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $rawHeader[0]);
+            $header = array_map(function ($col) {
+                return strtolower(trim(preg_replace('/\s+/', '_', $col)));
+            }, $rawHeader);
+
+            // Alias map — shop_name → flat_name, and other variations
+            $aliasMap = [
+                'project_name'        => 'project_name',
+                'project'             => 'project_name',
+                'shop_name'           => 'flat_name',   // primary alias
+                'shop_no'             => 'flat_name',
+                'unit_name'           => 'flat_name',
+                'flat_name'           => 'flat_name',
+                'sqft'                => 'sqft',
+                'sft'                 => 'sqft',
+                'size'                => 'sqft',
+                'floor_no'            => 'floor_no',
+                'floor'               => 'floor_no',
+                'facing_site'         => 'facing_site',
+                'facing'              => 'facing_site',
+                'price_value'         => 'price_value',
+                'price'               => 'price_value',
+                'shop_service_charge' => 'shop_service_charge',
+                'service_charge'      => 'shop_service_charge',
+                'service_charge_%'    => 'shop_service_charge',
+                // land_share_value: "15+15% booking+registration"
+                'land_share_value(15%+15%)' => 'land_share_value',
+                'land_share_value'    => 'land_share_value',
+                'land_share'          => 'land_share_value',
+                'booking_registration'=> 'land_share_value',
+                'status'              => 'status',
+            ];
+
+            $header = array_map(function ($col) use ($aliasMap) {
+                return $aliasMap[$col] ?? $col;
+            }, $header);
+
+            $successCount  = 0;
+            $errors        = [];
+            $rowNum        = 1;
+            $projectsCache = [];
+
+            while (($row = fgetcsv($handle, 2000, ",")) !== false) {
+                $rowNum++;
+                if (count(array_filter($row)) === 0) continue;
+                if (count($header) !== count($row)) {
+                    $errors[] = "Row $rowNum: Column count mismatch — skipped";
+                    continue;
+                }
+
+                $data = array_combine($header, $row);
+                $rowIssues = [];
+
+                // ── Resolve project_id ──────────────────────────────────
+                $projectName = trim($data['project_name'] ?? '');
+                if (empty($projectName)) {
+                    $rowIssues[] = "project_name is empty";
+                } else {
+                    if (isset($projectsCache[$projectName])) {
+                        $projectId = $projectsCache[$projectName];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL LIMIT 1");
+                        $stmt->bind_param("s", $projectName);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $projectId = $res['id'];
+                            $projectsCache[$projectName] = $projectId;
+                        } else {
+                            $rowIssues[] = "Project not found: '$projectName'";
+                            $projectId = null;
+                        }
+                    }
+                }
+
+                // ── shop_name / flat_name required ───────────────────────
+                $flatName = trim($data['flat_name'] ?? '');
+                if (empty($flatName)) {
+                    $rowIssues[] = "shop_name is empty";
+                }
+
+                if (!empty($rowIssues)) {
+                    $errors[] = "Row $rowNum: " . implode(' | ', $rowIssues);
+                    continue;
+                }
+
+                // ── Build data for createFromCsvBulk ───────────────────
+                $data['project_id']         = $projectId;
+                $data['flat_name']          = $flatName;
+                $data['unit_type']          = 'commercial'; // forced
+                $data['is_shop']            = 1;            // forced
+                $data['upload_from']        = 'From company csv';
+                $data['created_by']         = $_SESSION['user']['id'] ?? null;
+
+                // Defaults for unused residential fields
+                $data['bhk']                    = $data['bhk']                    ?? null;
+                $data['bedroom']                = $data['bedroom']                ?? null;
+                $data['bathroom']               = $data['bathroom']               ?? null;
+                $data['balcony']                = $data['balcony']                ?? null;
+                $data['drawing_dining_kitchen'] = 0;
+                $data['common_dining']          = 0;
+                $data['development_charges']    = null;
+                $data['facilities']             = null;
+
+                // shop_service_charge: integer %
+                $data['shop_service_charge'] = !empty($data['shop_service_charge'])
+                    ? (int)$data['shop_service_charge']
+                    : null;
+
+                // Status
+                $status = strtolower(trim($data['status'] ?? 'available'));
+                $data['status']    = in_array($status, ['available', 'booked', 'sold']) ? $status : 'available';
+                $data['is_booked'] = in_array($data['status'], ['booked', 'sold']) ? 1 : 0;
+
+                try {
+                    $this->flatModel->createFromCsvBulk($data);
+                    $successCount++;
+                } catch (Exception $e) {
+                    $errors[] = "Row $rowNum: DB Error — " . $e->getMessage();
+                    error_log("Shop CSV Import Error (row $rowNum): " . $e->getMessage());
+                }
+            }
+            fclose($handle);
+
+            $totalRows   = $rowNum - 1;
+            $failedCount = count($errors);
+
+            if ($successCount > 0) {
+                $msg = "✅ $successCount / $totalRows Shops imported successfully.";
+                if ($failedCount > 0) {
+                    $msg .= " ⚠️ $failedCount skipped: " . implode(" | ", array_slice($errors, 0, 5));
+                    if ($failedCount > 5) $msg .= " ... and " . ($failedCount - 5) . " more.";
+                }
+                setSuccess($msg);
+            } else {
+                $msg = "❌ 0 / $totalRows Shops imported. Errors: " . implode(" | ", array_slice($errors, 0, 5));
+                if ($failedCount > 5) $msg .= " ... and " . ($failedCount - 5) . " more.";
+                setError($msg);
+            }
+
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        } else {
             setError("Unable to read CSV file");
             header("Location: {$GLOBALS['base_url']}/flat-lists");
             exit;

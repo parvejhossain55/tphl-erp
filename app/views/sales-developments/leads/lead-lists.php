@@ -254,6 +254,7 @@ $show_breadcrumb = true;
                                 </th><!-- non-sticky first column -->
                                 <th>Lead Date</th>
                                 <th>Lead Name</th>
+                                <th>Lead Uploaded</th>
                                 <th>Phone</th>
                                 <th>Project Campaign</th>
                                 <th>Status</th>
@@ -489,11 +490,11 @@ $show_breadcrumb = true;
                                         </a>
                                     </li>
                                     <li>
-                                        <buton class="dropdown__item text-danger removeBtnCust" data-name="<?= $lead['full_name'] ?>"
+                                        <button class="dropdown__item text-danger removeBtnCust w-100 text-start d-flex align-items-center" data-name="<?= $lead['full_name'] ?>"
                                             data-action="lead-delete"
                                             data-id="<?= $lead['id'] ?>">
                                             <i class="bi bi-trash me-2"></i> Delete
-                                        </buton>
+                                        </button>
                                     </li>
                                 </ul>
                             </div>
@@ -677,7 +678,7 @@ $show_breadcrumb = true;
 
 
 <script>
-    const base_url = "<?= $GLOBALS['base_url'] ?>";
+    var base_url = "<?= $GLOBALS['base_url'] ?>"; // var allows redeclaration safely
 
     document.querySelectorAll('.note-view-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -766,7 +767,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function submitAssignForm(userId, selectedLeads, assignedDate) {
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = '<?= $base_url ?>/assign-multiple-leads';
+        form.action = '<?= $GLOBALS['base_url'] ?>/assign-multiple-leads';
         const addHidden = (name, val) => {
             const inp = document.createElement('input');
             inp.type = 'hidden'; inp.name = name; inp.value = val;
@@ -875,6 +876,36 @@ document.addEventListener('DOMContentLoaded', function () {
                 $('.viewCampaignBtnDynamic').off('click').on('click', function () {
                     const camEl = document.getElementById('view_campaign_id');
                     if (camEl) camEl.value = this.getAttribute('data-description');
+                });
+
+                // Re-bind delete buttons (Bootstrap dropdown blocks event delegation)
+                $('#serverSideLeadTable .removeBtnCust').off('click.leadDelete').on('click.leadDelete', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const itemId    = $(this).data('id');
+                    const itemName  = $(this).data('name');
+                    const actionUrl = $(this).attr('data-action');
+                    // close dropdown first
+                    $(this).closest('.dropdown').find('[data-bs-toggle="dropdown"]').dropdown('hide');
+                    setTimeout(function () {
+                        Swal.fire({
+                            title: 'Are you sure?',
+                            text: `You are about to delete "${itemName}". This action cannot be undone!`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Yes, delete it!'
+                        }).then(function (result) {
+                            if (result.isConfirmed) {
+                                const form = $('<form>', {
+                                    method: 'POST',
+                                    action: base_url + '/' + actionUrl
+                                });
+                                form.append($('<input>', { type: 'hidden', name: 'id', value: itemId }));
+                                $('body').append(form);
+                                form.submit();
+                            }
+                        });
+                    }, 200);
                 });
             }
         });

@@ -94,14 +94,17 @@ class FlatModel extends Model
         common_dining,
         floor_no,
         facing_site,
+        is_shop,
+        unit_type,
         price_value,
+        shop_service_charge,
         facilities,
         land_share_value,
         development_charges,
         created_by,
         status,
         is_booked
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 ");
 
         if (!$stmt) {
@@ -109,7 +112,7 @@ class FlatModel extends Model
             return false;
         }
         $stmt->bind_param(
-            "isiiiiiiiisdsddssi",
+            "isiiiiiiiisisdisddisi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -121,7 +124,10 @@ class FlatModel extends Model
             $data['common_dining'],
             $data['floor_no'],
             $data['facing_site'],
+            $data['is_shop'],
+            $data['unit_type'],
             $data['price_value'],
+            $data['shop_service_charge'],
             $data['facilities'],
             $data['land_share_value'],
             $data['development_charges'],
@@ -151,7 +157,10 @@ class FlatModel extends Model
                 common_dining,
                 floor_no,
                 facing_site,
+                is_shop,
+                unit_type,
                 price_value,
+                shop_service_charge,
                 facilities,
                 land_share_value,
                 development_charges,
@@ -159,7 +168,7 @@ class FlatModel extends Model
                 status,
                 is_booked,
                 upload_from
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
         if (!$stmt) {
@@ -169,19 +178,22 @@ class FlatModel extends Model
         // Extract values into named variables (bind_param requires variables by reference)
         $project_id           = isset($data['project_id'])           && trim($data['project_id'])           !== '' ? trim($data['project_id'])           : null;
         $flat_name            = isset($data['flat_name'])            && trim($data['flat_name'])            !== '' ? trim($data['flat_name'])            : null;
-        $sqft                 = isset($data['sqft'])                 && trim($data['sqft'])                 !== '' ? trim($data['sqft'])                 : null;
+        $sqft                 = isset($data['sqft'])                 && trim($data['sqft'])                 !== '' ? str_replace(',', '', trim($data['sqft']))                 : null;
         $bhk                  = isset($data['bhk'])                  && trim($data['bhk'])                  !== '' ? trim($data['bhk'])                  : null;
         $bedroom              = isset($data['bedroom'])              && trim($data['bedroom'])              !== '' ? trim($data['bedroom'])              : null;
         $bathroom             = isset($data['bathroom'])             && trim($data['bathroom'])             !== '' ? trim($data['bathroom'])             : null;
         $balcony              = isset($data['balcony'])              && trim($data['balcony'])              !== '' ? trim($data['balcony'])              : null;
-        $drawing_dining       = isset($data['drawing_dining_kitchen']) && trim($data['drawing_dining_kitchen']) !== '' ? trim($data['drawing_dining_kitchen']) : null;
-        $common_dining        = isset($data['common_dining'])        && trim($data['common_dining'])        !== '' ? trim($data['common_dining'])        : null;
+        $drawing_dining       = isset($data['drawing_dining_kitchen']) ? (int)$data['drawing_dining_kitchen'] : 0;
+        $common_dining        = isset($data['common_dining'])        ? (int)$data['common_dining']         : 0;
         $floor_no             = isset($data['floor_no'])             && trim($data['floor_no'])             !== '' ? trim($data['floor_no'])             : null;
         $facing_site          = isset($data['facing_site'])          && trim($data['facing_site'])          !== '' ? trim($data['facing_site'])          : null;
-        $price_value          = isset($data['price_value'])          && trim($data['price_value'])          !== '' ? trim($data['price_value'])          : null;
+        $is_shop              = isset($data['is_shop'])              ? (int)$data['is_shop']               : 0;
+        $unit_type            = !empty($data['unit_type'])           ? trim($data['unit_type'])            : 'residential';
+        $price_value          = isset($data['price_value'])          && trim($data['price_value'])          !== '' ? str_replace(',', '', trim($data['price_value']))          : null;
+        $shop_service_charge  = isset($data['shop_service_charge'])  && $data['shop_service_charge'] !== ''  ? (int)$data['shop_service_charge']         : null;
         $facilities           = isset($data['facilities'])           && trim($data['facilities'])           !== '' ? trim($data['facilities'])           : null;
-        $land_share_value     = isset($data['land_share_value'])     && trim($data['land_share_value'])     !== '' ? trim($data['land_share_value'])     : null;
-        $development_charges  = isset($data['development_charges'])  && trim($data['development_charges'])  !== '' ? trim($data['development_charges'])  : null;
+        $land_share_value     = isset($data['land_share_value'])     && trim($data['land_share_value'])     !== '' ? str_replace(',', '', trim($data['land_share_value']))     : null;
+        $development_charges  = isset($data['development_charges'])  && trim($data['development_charges'])  !== '' ? str_replace(',', '', trim($data['development_charges']))  : null;
         $created_by           = isset($data['created_by'])           && trim($data['created_by'])           !== '' ? trim($data['created_by'])           : null;
 
         // If status is booked or sold, is_booked = 1
@@ -190,7 +202,7 @@ class FlatModel extends Model
         $upload_from = $data['upload_from'] ?? 'From company csv';
 
         $stmt->bind_param(
-            "ssssssssssssssssssi",
+            "sssssssiissississsssis",
             $project_id,
             $flat_name,
             $sqft,
@@ -202,14 +214,17 @@ class FlatModel extends Model
             $common_dining,
             $floor_no,
             $facing_site,
+            $is_shop,
+            $unit_type,
             $price_value,
+            $shop_service_charge,
             $facilities,
             $land_share_value,
             $development_charges,
             $created_by,
             $status,
-            $upload_from,
-            $is_booked
+            $is_booked,
+            $upload_from
         );
 
         if (!$stmt->execute()) {
@@ -242,8 +257,11 @@ class FlatModel extends Model
     public function update($id, $data)
     {
         $sql = "UPDATE flats SET
-        project_id = ?,flat_name=?,  sqft = ?, bhk = ?, bedroom = ?, bathroom = ?, balcony = ?,
-        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?, price_value = ?, facilities = ?,created_by=?,land_share_value=?,development_charges=?
+        project_id = ?, flat_name = ?, sqft = ?, bhk = ?, bedroom = ?, bathroom = ?, balcony = ?,
+        drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?,
+        is_shop = ?, unit_type = ?,
+        price_value = ?, shop_service_charge = ?,
+        facilities = ?, created_by = ?, land_share_value = ?, development_charges = ?
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -252,7 +270,7 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "isiiiiiiiisdsiddi",
+            "isiiiiiiiisisdisiddi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -264,14 +282,16 @@ class FlatModel extends Model
             $data['common_dining'],
             $data['floor_no'],
             $data['facing_site'],
+            $data['is_shop'],
+            $data['unit_type'],
             $data['price_value'],
+            $data['shop_service_charge'],
             $data['facilities'],
             $data['created_by'],
             $data['land_share_value'],
             $data['development_charges'],
             $id
         );
-
 
         if (!$stmt->execute()) {
             throw new Exception("Update failed: " . $stmt->error);
