@@ -780,10 +780,8 @@ $amountInWords    = numberToWords($actualPaidAmount);
                 $bookingDiscount   = (float)($paymentSummary['discount_amount'] ?? 0);
                 $bulkEmiDiscount   = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0);
                 $totalDiscounts    = $bookingDiscount + $bulkEmiDiscount;
-                // Remaining = sum of component-level remaining (already correctly accounts for discounts)
-                $remainingLandShare = (float)($paymentSummary['remaining_land_share'] ?? 0);
-                $remainingCF        = (float)($paymentSummary['remaining_construction_fee'] ?? 0);
-                $remainingBalance   = max(0, $remainingLandShare + $remainingCF);
+                // Remaining balance should match Total Price - Total Paid - Discounts
+                $remainingBalance   = (float)($paymentSummary['total_due'] ?? 0);
             ?>
             <table class="totals-table">
                 <tr>
@@ -795,7 +793,7 @@ $amountInWords    = numberToWords($actualPaidAmount);
             <!-- Balance Summary -->
             <table class="totals-table" style="margin-top:5px;border-top:1px dashed #333;padding-top:8px;">
                 <tr>
-                    <td class="totals-label" style="font-weight:normal;">Total Price (Agreement):</td>
+                    <td class="totals-label" style="font-weight:normal;">Total Price :</td>
                     <td class="totals-value">৳<?= number_format($totalPrice, 2) ?></td>
                 </tr>
                 <tr>

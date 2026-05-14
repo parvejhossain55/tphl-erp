@@ -531,9 +531,11 @@ $routes = [
     "clients-cash-in-history/(\d+)" => ["controller" => "AccountClientController", "method" => "indexTwo"],
     // Add transaction route
     "add-transaction" => ["controller" => "AccountClientController", "method" => "addTransaction"],
+    "add-shop-transaction" => ["controller" => "AccountShopClientController", "method" => "addShopTransaction"],
     "edit-client-cash-in/(\d+)" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
     "edit-client-cash-in" => ["controller" => "AccountClientController", "method" => "showEditTransactionForm"],
     "client-cash-in-form" => ["controller" => "AccountClientController", "method" => "showAddTransactionForm"],
+    "shop-client-cash-in-form" => ["controller" => "AccountShopClientController", "method" => "showShopTransactionForm"],
     "update-transaction" => ["controller" => "AccountClientController", "method" => "updateTransaction"],
     "delete-transaction" => ["controller" => "AccountClientController", "method" => "deleteTransaction"],
 

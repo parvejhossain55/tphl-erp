@@ -92,10 +92,11 @@ class CentralStatement extends Model
         $emiPayments = $this->getTotalPaymentByType('emi', $startDate, $endDate, $projectId);
         $bookingMoneyPayments = $this->getTotalPaymentByType('booking_money', $startDate, $endDate, $projectId);
         $developmentChargePayments = $this->getTotalPaymentByType('development_charge', $startDate, $endDate, $projectId); // ADDED
+        $shopServiceChargePayments = $this->getTotalPaymentByType('shop_service_charge', $startDate, $endDate, $projectId);
 
         // Calculate cashin according to formula (INCLUDES management_cashin)
         $totalCashin = $landsharePayments + $registrationPayments +
-            $totalBookingMoney + $emiPayments + $totalManagementCashin + $developmentChargePayments; // ADDED management_cashin and development_charge
+            $totalBookingMoney + $emiPayments + $totalManagementCashin + $developmentChargePayments + $shopServiceChargePayments; // ADDED management_cashin and development_charge and shop_service_charge
 
         // Calculate revenue — includes land share, booking money, service fee, development charges, AND registration
         $totalRevenue = $totalLandShare + $totalBookingMoney + $totalServiceFee + $developmentChargePayments + $registrationPayments; // registration is now revenue
@@ -246,7 +247,11 @@ class CentralStatement extends Model
         $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
-        return (float)($row['total_service_fee'] ?? 0);
+        $emiServiceFee = (float)($row['total_service_fee'] ?? 0);
+        
+        $shopServiceCharge = $this->getTotalPaymentByType('shop_service_charge', $startDate, $endDate, $projectId);
+        
+        return $emiServiceFee + $shopServiceCharge;
     }
 
     private function getPaymentBreakdown($startDate, $endDate, $projectId = null)
@@ -547,6 +552,7 @@ class CentralStatement extends Model
         $emiPaymentsData = $this->getDailyPaymentByType('emi', $startDate, $endDate, $projectId);
         $bookingMoneyData = $this->getDailyBookingMoney($startDate, $endDate, $projectId);
         $serviceFeeData = $this->getDailyServiceFees($startDate, $endDate, $projectId);
+        $shopServiceChargeData = $this->getDailyPaymentByType('shop_service_charge', $startDate, $endDate, $projectId); // ADDED
         $managementCashinData = $this->getDailyManagementCashins($startDate, $endDate); // Already exists
         $developmentChargeData = $this->getDailyPaymentByType('development_charge', $startDate, $endDate, $projectId);
         $vendorPaymentData = $this->getDailyVendorPayments($startDate, $endDate, $projectId);
@@ -567,6 +573,7 @@ class CentralStatement extends Model
             'service_fee' => 0,
             'management_cashin' => 0,
             'development_charge' => 0,
+            'shop_service_charge' => 0, // ADDED
             'vendor_payment' => 0,
             'contractor_bill' => 0,
             'discount' => 0,
@@ -582,7 +589,8 @@ class CentralStatement extends Model
             $registrationPayments = $registrationPaymentsData[$date] ?? 0;
             $emiPayments = $emiPaymentsData[$date] ?? 0;
             $bookingMoney = $bookingMoneyData[$date] ?? 0;
-            $serviceFee = $serviceFeeData[$date] ?? 0;
+            $shopServiceCharge = $shopServiceChargeData[$date] ?? 0; // ADDED
+            $serviceFee = ($serviceFeeData[$date] ?? 0) + $shopServiceCharge; // COMBINED
             $managementCashin = $managementCashinData[$date] ?? 0;
             $developmentCharge = $developmentChargeData[$date] ?? 0;
             $vendorPayment = $vendorPaymentData[$date] ?? 0;
@@ -593,7 +601,7 @@ class CentralStatement extends Model
             $cashin = 0;
             if ($category === 'all' || $category === 'total_cashin') {
                 // Total cashin includes all revenue sources INCLUDING management_cashin minus discount
-                $cashin = $landsharePayments + $registrationPayments + $bookingMoney + $emiPayments + $managementCashin + $developmentCharge; // ADDED management_cashin and development_charge
+                $cashin = $landsharePayments + $registrationPayments + $bookingMoney + $emiPayments + $managementCashin + $developmentCharge + $shopServiceCharge; // ADDED shop_service_charge // ADDED management_cashin and development_charge
             } elseif ($category === 'emi') {
                 $cashin = $emiPayments;
             } elseif ($category === 'development_charge') {
@@ -665,10 +673,10 @@ class CentralStatement extends Model
         if ($category === 'all' || $category === 'total_cashin') {
             // Include management_cashin in total cashin
             $totalCashin = $totals['landshare_payments'] + $totals['registration_payments'] +
-                $totals['booking_money'] + $totals['emi_payments'] + $totals['management_cashin'] + $totals['development_charge']; // ADDED management_cashin and development_charge
+                $totals['booking_money'] + $totals['emi_payments'] + $totals['management_cashin'] + $totals['development_charge'] + $totals['shop_service_charge']; // ADDED shop_service_charge
 
             // Include registration payments in revenue
-            $totalRevenue = $totals['landshare_payments'] + $totals['booking_money'] + $totals['service_fee'] + $totals['development_charge'] + $totals['registration_payments']; // registration is revenue
+            $totalRevenue = $totals['landshare_payments'] + $totals['booking_money'] + $totals['service_fee'] + $totals['development_charge'] + $totals['registration_payments']; // service_fee already includes shop_service_charge
         } elseif ($category === 'development_charge') {
             $totalCashin = $totals['development_charge'];
             $totalRevenue = $totals['development_charge'];

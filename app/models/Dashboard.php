@@ -1444,6 +1444,18 @@ LIMIT ?
                            net_salary as amount, NULL as project_id
                     FROM payslips
                     WHERE status = 'paid'
+                
+                    UNION ALL
+                    
+                    SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, bill_amount) as amount, project_id
+                    FROM contractor_bill_requests
+                    WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')
+                    
+                    UNION ALL
+                    
+                    SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, net_payable) as amount, project_id
+                    FROM vendor_payment_requests
+                    WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
                 ) combined
                 WHERE date BETWEEN ? AND ?
             ";
@@ -1483,6 +1495,18 @@ LIMIT ?
                            net_salary as amount, NULL as project_id
                     FROM payslips
                     WHERE status = 'paid'
+                
+                    UNION ALL
+                    
+                    SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, bill_amount) as amount, project_id
+                    FROM contractor_bill_requests
+                    WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')
+                    
+                    UNION ALL
+                    
+                    SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, net_payable) as amount, project_id
+                    FROM vendor_payment_requests
+                    WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
                 ) combined
                 WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL ? MONTH)
             ";
@@ -1572,6 +1596,18 @@ LIMIT ?
                            net_salary as amount, NULL as project_id
                     FROM payslips
                     WHERE status = 'paid'
+                
+                    UNION ALL
+                    
+                    SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, bill_amount) as amount, project_id
+                    FROM contractor_bill_requests
+                    WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')
+                    
+                    UNION ALL
+                    
+                    SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, net_payable) as amount, project_id
+                    FROM vendor_payment_requests
+                    WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
                 ) combined
                 WHERE date BETWEEN ? AND ?
             ";
@@ -1663,7 +1699,19 @@ LIMIT ?
                                net_salary as amount, NULL as project_id
                         FROM payslips
                         WHERE status = 'paid'
-                    ) combined
+                    
+                    UNION ALL
+                    
+                    SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, bill_amount) as amount, project_id
+                    FROM contractor_bill_requests
+                    WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')
+                    
+                    UNION ALL
+                    
+                    SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, net_payable) as amount, project_id
+                    FROM vendor_payment_requests
+                    WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+                ) combined
                     WHERE date BETWEEN ? AND ?
                 ";
 
@@ -1726,7 +1774,19 @@ LIMIT ?
                                net_salary as amount, NULL as project_id
                         FROM payslips
                         WHERE status = 'paid'
-                    ) combined
+                    
+                    UNION ALL
+                    
+                    SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, bill_amount) as amount, project_id
+                    FROM contractor_bill_requests
+                    WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')
+                    
+                    UNION ALL
+                    
+                    SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, net_payable) as amount, project_id
+                    FROM vendor_payment_requests
+                    WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+                ) combined
                     WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL ? YEAR)
                 ";
 

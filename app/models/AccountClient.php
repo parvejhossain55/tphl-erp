@@ -378,6 +378,9 @@ ORDER BY lb.booking_date DESC
                 f.land_share_value as total_land_share,
                 COALESCE(f.development_charges, 0) as flat_development_charges,
                 f.flat_name as unit_name,
+                f.is_shop,
+                f.unit_type,
+                COALESCE(f.shop_service_charge, 0) as shop_service_charge,
                 u.full_name as agent_name,
                 -- Payment calculations
                 COALESCE(
@@ -1066,6 +1069,8 @@ ORDER BY lb.booking_date DESC
             }
 
             if ($paymentType === 'emi' && $emiScheduleData) {
+                // Ensure the backend-calculated due amount is passed to the schedule!
+                $emiScheduleData['due_emi_amount'] = $dueEmiAmount;
                 $this->createEMISchedule($bookingId, $paymentId, $amount, $serviceFee, $emiScheduleData);
             }
 
@@ -1093,7 +1098,7 @@ ORDER BY lb.booking_date DESC
      * Finds the first gap in the non-rejected sequence (e.g., if #5 was rejected, returns 5).
      * If no gaps, returns COUNT(non-rejected) + 1.
      */
-    private function getNextAvailableEmiNo($bookingId)
+    protected function getNextAvailableEmiNo($bookingId)
     {
         $stmt = $this->db->prepare("
             SELECT es.emi_no 
@@ -1269,7 +1274,7 @@ ORDER BY lb.booking_date DESC
     /**
      * Create EMI schedule
      */
-    private function createEMISchedule($bookingId, $paymentId, $emiAmount, $serviceFee, $emiScheduleData)
+    protected function createEMISchedule($bookingId, $paymentId, $emiAmount, $serviceFee, $emiScheduleData)
     {
         $nextEmiNo = $this->getNextAvailableEmiNo($bookingId);
 
@@ -1339,6 +1344,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
                     WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
                     WHEN lp.payment_type = 'development_charge' THEN 'DEV CHARGE'
+                    WHEN lp.payment_type = 'shop_service_charge' THEN 'SHOP SVC CHARGE'
                     ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
                 END as installment_label,
                 CASE 
@@ -1349,6 +1355,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
                     WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
                     WHEN lp.payment_type = 'development_charge' THEN 'Development Charge'
+                    WHEN lp.payment_type = 'shop_service_charge' THEN 'Shop Service Charge'
                     ELSE 'Other Payment'
                 END as payment_details,
                 b.bank_name as bank_display_name
@@ -1456,6 +1463,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
                     WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
                     WHEN lp.payment_type = 'development_charge' THEN 'DEV CHARGE'
+                    WHEN lp.payment_type = 'shop_service_charge' THEN 'SHOP SVC CHARGE'
                     ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
                 END as installment_label,
                 CASE 
@@ -1466,6 +1474,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
                     WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
                     WHEN lp.payment_type = 'development_charge' THEN 'Development Charge'
+                    WHEN lp.payment_type = 'shop_service_charge' THEN 'Shop Service Charge'
                     ELSE 'Other Payment'
                 END as payment_details,
                 b.bank_name as bank_display_name

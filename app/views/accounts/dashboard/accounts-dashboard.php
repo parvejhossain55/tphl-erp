@@ -39,8 +39,8 @@ switch ($period ?? 'all_time') {
 }
 
 // Weekly data for charts
-$weeklyCashInData = $weeklyData ?? [0, 0, 0, 0, 0, 0, 0];
-$weeklyCashOutData = $weeklyData ?? [0, 0, 0, 0, 0, 0, 0];
+$weeklyCashInData = $weeklyCashInDataArray ?? [0, 0, 0, 0, 0, 0, 0];
+$weeklyCashOutData = $weeklyCashOutDataArray ?? [0, 0, 0, 0, 0, 0, 0];
 
 // Payment method data
 $paymentMethodLabels = ['Cash', 'Bank', 'Cheque', 'Online'];
@@ -941,6 +941,8 @@ function getStatusBadge($status)
         // Chart data from PHP
         const dynamicChartLabels = <?= json_encode($chartLabels) ?>;
         const dynamicChartData = <?= json_encode($chartData) ?>;
+        const dynamicYearlyLabels = <?= json_encode($yearlyLabels) ?>;
+        const dynamicYearlyChartData = <?= json_encode($yearlyChartData) ?>;
         const paymentMethodLabels = <?= json_encode($paymentMethodLabels) ?>;
         const paymentMethodData = <?= json_encode($paymentMethodData) ?>;
 
@@ -1158,8 +1160,8 @@ function getStatusBadge($status)
         ========================== */
         const ctxYear = document.getElementById('transactionChartYearly');
         if (ctxYear) {
-            const yearlyLabels = dynamicChartLabels.length ? dynamicChartLabels : ['2023', '2024', '2025'];
-            const yearlyData = dynamicChartData.length ? dynamicChartData : [1250000, 1420000, 1380000];
+            const yearlyLabels = dynamicYearlyLabels.length ? dynamicYearlyLabels : ['2023', '2024', '2025'];
+            const yearlyData = dynamicYearlyChartData.length ? dynamicYearlyChartData : [1250000, 1420000, 1380000];
             const yearlyColor = '<?= $viewType === "cashin" ? "#6366f1" : "#ef4444" ?>';
 
             const transactionChartYearly = new Chart(ctxYear.getContext('2d'), {
