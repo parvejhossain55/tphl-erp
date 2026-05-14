@@ -700,6 +700,7 @@ $routes = [
     'edit-legal-sheet/(\d+)'      => ['controller' => 'Phase2\Con_ProjectLegalSheetController', 'method' => 'edit'],
     'legal-sheet-update/(\d+)'    => ['controller' => 'Phase2\Con_ProjectLegalSheetController', 'method' => 'update'],
     'delete-legal-sheet/(\d+)'    => ['controller' => 'Phase2\Con_ProjectLegalSheetController', 'method' => 'delete'],
+    'legal-sheet-import-csv'      => ['controller' => 'Phase2\Con_ProjectLegalSheetController', 'method' => 'importCsv'],
 
 ];
 

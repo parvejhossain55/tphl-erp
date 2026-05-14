@@ -304,7 +304,7 @@ function redirectByRole()
         case 13: // QC
             $url = "{$GLOBALS['base_url']}/qc-dashboard";
             break;
-        case 14: // QC
+        case 14: // land officer
             $url = "{$GLOBALS['base_url']}/land-dashboard";
             break;
         case 15: // Project Manager
@@ -325,7 +325,7 @@ function redirectByRole()
         case 20: // Purchase team lead
             $url = "{$GLOBALS['base_url']}/operations-dashboard";
             break;
-        case 21: // Project designer
+        case 21: // structural designer
             $url = "{$GLOBALS['base_url']}/project-structural-design-dashboard";
             break;
         case 22: //  Project Manager Head

@@ -1812,7 +1812,7 @@
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-weekly-report-create"
                                         class="sidebar__menu-item <?= isActive('con-weekly-report-create', $current_route) ?>">
-                                        + New DPR
+                                        + New WPR
                                     </a>
                                 </li>
                             </ul>
