@@ -24,8 +24,8 @@ class ProjectDrawingController extends Controller {
         $userId = $_SESSION['user']['id']  ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
 
-        // Only Draftsman (16) and admin-tier roles can create/edit/delete
-        $canModify = in_array($roleId, [1, 2, 13, 15, 16, 22]);
+        // Only Draftsman (16) can create/edit/delete
+        $canModify = ($roleId === 16);
 
         // Filter by project_id if passed (e.g. from estimator dashboard)
         $filterProjectId = (int)($_GET['project_id'] ?? 0);
@@ -108,8 +108,8 @@ class ProjectDrawingController extends Controller {
 
     public function create() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        // Only Draftsman (16) and super-admins (1, 2, 13, 15) can create
-        if (!in_array($roleId, [1, 2, 13, 15, 16])) {
+        // Only Draftsman (16) can create
+        if ($roleId !== 16) {
             setError('Only Draftsman can create project drawings.');
             header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
             exit;
@@ -139,7 +139,7 @@ class ProjectDrawingController extends Controller {
 
     public function store() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 2, 13, 15, 16])) {
+        if ($roleId !== 16) {
             setError('Only Draftsman can create project drawings.');
             header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
             exit;
@@ -180,7 +180,7 @@ class ProjectDrawingController extends Controller {
 
     public function edit() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 2, 13, 15, 16])) {
+        if ($roleId !== 16) {
             setError('Only Draftsman can edit project drawings.');
             header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
             exit;
@@ -211,7 +211,7 @@ class ProjectDrawingController extends Controller {
 
     public function update() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 2, 13, 15, 16])) {
+        if ($roleId !== 16) {
             setError('Only Draftsman can edit project drawings.');
             header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
             exit;
@@ -253,7 +253,7 @@ class ProjectDrawingController extends Controller {
 
     public function delete() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 2, 13, 15, 16])) {
+        if ($roleId !== 16) {
             setError('Only Draftsman can delete project drawings.');
             header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
             exit;

@@ -1890,9 +1890,6 @@
 
                 <?php endif; ?>
                 <!-- FOR Task Manage  -->
-
-
-
                 <!-- ====== BATCH IMPORTS ====== -->
                 <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): // Only Admins can import ?>
                         <li class="slide">

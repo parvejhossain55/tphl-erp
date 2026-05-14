@@ -83,6 +83,12 @@ class Con_ProjectLegalSheetController extends Controller {
     }
 
     public function create() {
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 16) {
+            setError('Only Draftsman can add Legal Sheets.');
+            header("Location: {$GLOBALS['base_url']}/legal-sheet-lists");
+            exit;
+        }
+
         $projects = $this->getProjects();
         
         $this->view('phase2/project_legal_sheets/create-legal-sheet', [
@@ -93,6 +99,12 @@ class Con_ProjectLegalSheetController extends Controller {
     }
 
     public function store() {
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 16) {
+            setError('Only Draftsman can add Legal Sheets.');
+            header("Location: {$GLOBALS['base_url']}/legal-sheet-lists");
+            exit;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = [
                 'project_id' => $_POST['project_id'] ?? 0,
@@ -122,6 +134,12 @@ class Con_ProjectLegalSheetController extends Controller {
     }
 
     public function edit($id) {
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 16) {
+            setError('Only Draftsman can edit Legal Sheets.');
+            header("Location: {$GLOBALS['base_url']}/legal-sheet-lists");
+            exit;
+        }
+
         $sheet = $this->sheetModel->getById($id);
         if (!$sheet) {
             setError('Sheet not found.');
@@ -140,6 +158,12 @@ class Con_ProjectLegalSheetController extends Controller {
     }
 
     public function update($id) {
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 16) {
+            setError('Only Draftsman can edit Legal Sheets.');
+            header("Location: {$GLOBALS['base_url']}/legal-sheet-lists");
+            exit;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = [
                 'project_id' => $_POST['project_id'] ?? 0,
@@ -161,6 +185,12 @@ class Con_ProjectLegalSheetController extends Controller {
     }
 
     public function delete($id) {
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 16) {
+            setError('Only Draftsman can delete Legal Sheets.');
+            header("Location: {$GLOBALS['base_url']}/legal-sheet-lists");
+            exit;
+        }
+
         if ($this->sheetModel->delete($id)) {
             setSuccess('Legal sheet deleted successfully.');
         } else {

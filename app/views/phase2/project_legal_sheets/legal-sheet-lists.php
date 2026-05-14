@@ -1,6 +1,8 @@
 <?php
 $addPage = true;
 $show_breadcrumb = false;
+$roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+$canModify = ($roleId === 16);
 
 // ── CSV import skipped-row report ────────────────────────────────────
 $csvSkipped = $_SESSION['csv_legal_sheet_skipped'] ?? [];
@@ -54,6 +56,7 @@ unset($_SESSION['csv_legal_sheet_skipped']); // clear after reading
                     Project Legal Sheets
                 </h4>
                 <div class="d-flex gap-2 flex-wrap">
+                    <?php if ($canModify): ?>
                     <button type="button" class="btn btn-outline-success" style="border-radius:8px"
                         data-bs-toggle="modal" data-bs-target="#importLegalSheetCsvModal">
                         <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
@@ -61,6 +64,7 @@ unset($_SESSION['csv_legal_sheet_skipped']); // clear after reading
                     <a href="<?= $GLOBALS['base_url'] ?>/create-legal-sheet" class="btn btn-primary" style="border-radius:8px">
                         <i class="fal fa-plus-circle me-1"></i> Add Legal Sheet
                     </a>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -108,6 +112,7 @@ unset($_SESSION['csv_legal_sheet_skipped']); // clear after reading
                                                        class="btn btn-sm btn-info text-white" title="View Link" style="border-radius:6px; padding:4px 10px">
                                                         <i class="fal fa-external-link"></i>
                                                     </a>
+                                                    <?php if ($canModify): ?>
                                                     <a href="<?= $GLOBALS['base_url'] ?>/edit-legal-sheet/<?= $s['id'] ?>" 
                                                        class="btn btn-sm btn-light border" title="Edit" style="border-radius:6px; padding:4px 10px">
                                                         <i class="fal fa-edit text-primary"></i>
@@ -118,6 +123,7 @@ unset($_SESSION['csv_legal_sheet_skipped']); // clear after reading
                                                        style="border-radius:6px; padding:4px 10px">
                                                         <i class="fal fa-trash-alt text-danger"></i>
                                                     </a>
+                                                    <?php endif; ?>
                                                 </div>
                                             </td>
                                         </tr>
